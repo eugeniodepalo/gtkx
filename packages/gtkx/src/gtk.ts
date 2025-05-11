@@ -12,7 +12,7 @@ const getMinorVersion = () => {
 
 const getMicroVersion = () => {
   call("getMicroVersion", [], "number");
-  return 2;
+  return 4;
 };
 
 export { getMajorVersion, getMinorVersion, getMicroVersion };

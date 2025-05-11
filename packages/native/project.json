@@ -1,0 +1,18 @@
+{
+  "targets": {
+    "build": {
+      "inputs": [
+        "{projectRoot}/src",
+        "{projectRoot}/index.d.ts",
+        "{projectRoot}/index.js",
+        "{projectRoot}/package-lock.json"
+      ],
+      "outputs": [
+        "{projectRoot}/dist",
+        "{projectRoot}/target",
+        "{projectRoot}/index.node",
+        "{projectRoot}/cargo.log"
+      ]
+    }
+  }
+}

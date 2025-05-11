@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "targetDefaults": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "{projectRoot}/dist"
+      ],
+      "cache": true
+    },
+    "start": {
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "test": {
+      "cache": true
+    }
+  },
+  "nxCloudId": "68211a61db7c0371a056553d",
+  "plugins": [
+    {
+      "plugin": "@nx/js/typescript",
+      "options": {
+        "build": {
+          "targetName": "build"
+        }
+      }
+    }
+  ]
+}

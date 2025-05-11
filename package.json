@@ -18,10 +18,16 @@
     "examples/*"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "nx run-many -t test",
+    "build": "nx run-many -t build"
   },
   "devDependencies": {
-    "@types/node": "^22.15.17",
+    "@nx/js": "^21.0.3",
+    "@swc-node/register": "1.10.10",
+    "@swc/core": "1.11.24",
+    "@swc/helpers": "0.5.17",
+    "nx": "21.0.3",
     "typescript": "5.8.3"
-  }
+  },
+  "dependencies": {}
 }
