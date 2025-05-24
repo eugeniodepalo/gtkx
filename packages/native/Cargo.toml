@@ -12,7 +12,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 neon = "1.0.0"
-crossbeam = "0.8.4"
 gtk4 = "0.9.6"
 libloading = "0.8.7"
 libffi = "4.1.0"

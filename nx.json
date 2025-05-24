@@ -12,7 +12,7 @@
     },
     "start": {
       "dependsOn": [
-        "^build"
+        "build"
       ]
     },
     "test": {

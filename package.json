@@ -22,11 +22,12 @@
     "build": "nx run-many -t build"
   },
   "devDependencies": {
-    "@nx/js": "^21.0.3",
+    "@nx/js": "21.1.2",
     "@swc-node/register": "1.10.10",
-    "@swc/core": "1.11.24",
+    "@swc/core": "1.11.29",
     "@swc/helpers": "0.5.17",
-    "nx": "21.0.3",
+    "@types/node": "22.15.21",
+    "nx": "21.1.2",
     "typescript": "5.8.3"
   }
 }
