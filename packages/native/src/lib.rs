@@ -1,63 +1,120 @@
-use glib::translate::{FromGlibPtrFull, FromGlibPtrNone};
+use glib::translate::FromGlibPtrFull;
 use gtk4::glib;
 use gtk4::prelude::*;
+use libffi::middle::Cif;
+use libffi::middle::{Arg as FfiArg, CodePtr, Type};
 use libloading::Library;
 use neon::prelude::*;
+use std::any::Any;
+use std::cell::OnceCell;
+use std::cell::RefCell;
 use std::ffi::c_void;
-use std::sync::{mpsc, OnceLock};
+use std::ffi::CStr;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc;
 
-static GTK4_LIBRARY: OnceLock<Library> = OnceLock::new();
-static MAIN_LOOP: OnceLock<glib::MainLoop> = OnceLock::new();
+const APP_OBJECT_ID: usize = 0;
 
-struct GPointer(*mut c_void);
+thread_local! {
+    static GTK4_LIBRARY: OnceCell<Library> = OnceCell::new();
 
-impl Finalize for GPointer {
-    fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {
-        if !self.0.is_null() {
-            unsafe {
-                glib::ffi::g_free(self.0);
-            }
-        }
+    static OBJECT_MAP: RefCell<std::collections::HashMap<usize, Box<dyn Any>>> =
+        RefCell::new(std::collections::HashMap::new());
+
+    static APP_HOLD_GUARD: RefCell<Option<gtk4::gio::ApplicationHoldGuard>> =
+        RefCell::new(None);
+
+    static NEXT_OBJECT_ID: AtomicUsize = AtomicUsize::new(1);
+}
+
+static IS_APP_RUNNING: AtomicBool = AtomicBool::new(false);
+
+#[derive(Debug)]
+struct ObjectId(usize);
+
+impl ObjectId {
+    fn new() -> Self {
+        let id = NEXT_OBJECT_ID.with(|id| id.fetch_add(1, Ordering::SeqCst));
+        ObjectId(id)
     }
 }
 
-#[allow(dead_code)]
-struct GObjectWrapper(glib::Object);
+impl Finalize for ObjectId {
+    fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {
+        if !IS_APP_RUNNING.load(Ordering::SeqCst) {
+            return;
+        }
 
-impl Finalize for GObjectWrapper {
-    fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {}
+        glib::idle_add_once(move || {
+            OBJECT_MAP.with(|map| {
+                let mut map = map.borrow_mut();
+                map.remove(&self.0);
+            });
+        });
+    }
 }
 
 #[derive(Debug)]
-enum CallArg {
-    U8(u8),
-    U16(u16),
-    U32(u32),
-    U64(u64),
-    I8(i8),
-    I16(i16),
-    I32(i32),
-    I64(i64),
-    F32(f32),
-    F64(f64),
-    Boolean(bool),
-    String(String),
-    Pointer(usize),
-    StringArray(Vec<String>),
-    U8Array(Vec<u8>),
-    U16Array(Vec<u16>),
-    U32Array(Vec<u32>),
-    U64Array(Vec<u64>),
-    I8Array(Vec<i8>),
-    I16Array(Vec<i16>),
-    I32Array(Vec<i32>),
-    I64Array(Vec<i64>),
-    F32Array(Vec<f32>),
-    F64Array(Vec<f64>),
+struct Custom {
+    ptr: *mut c_void,
+    unref: String,
 }
 
-#[allow(dead_code)]
-enum FfiArg {
+impl Custom {
+    fn new(ptr: *mut c_void, unref: String) -> Self {
+        Custom { ptr, unref }
+    }
+}
+
+impl Drop for Custom {
+    fn drop(&mut self) {
+        let unref = self.unref.clone();
+        let ptr = self.ptr;
+
+        GTK4_LIBRARY.with(|lib| {
+            let symbol: libloading::Symbol<unsafe extern "C" fn(*mut c_void)> =
+                unsafe { lib.get().unwrap().get(unref.as_bytes()).unwrap() };
+            unsafe { symbol(ptr) };
+        });
+    }
+}
+
+#[derive(Debug)]
+enum IntegerSize {
+    _8,
+    _16,
+    _32,
+    _64,
+}
+
+#[derive(Debug)]
+enum IntegerSign {
+    Unsigned,
+    Signed,
+}
+
+#[derive(Debug)]
+enum FloatSize {
+    _32,
+    _64,
+}
+
+#[derive(Debug)]
+enum Arg {
+    Integer(i64, IntegerSize, IntegerSign),
+    Float(f64, FloatSize),
+    String(String),
+    Boolean(bool),
+    Object(usize),
+    IntegerArray(Vec<i64>, IntegerSize, IntegerSign),
+    FloatArray(Vec<f64>, FloatSize),
+    StringArray(Vec<String>),
+    BooleanArray(Vec<bool>),
+}
+
+#[derive(Debug)]
+enum CifArg {
     U8(u8),
     U16(u16),
     U32(u32),
@@ -69,9 +126,9 @@ enum FfiArg {
     F32(f32),
     F64(f64),
     Boolean(u8),
-    String(std::ffi::CString),
+    String(Box<CStr>),
     Pointer(*const c_void),
-    StringArray(Vec<std::ffi::CString>),
+    StringArray(Box<[Box<CStr>]>),
     U8Array(Vec<u8>),
     U16Array(Vec<u16>),
     U32Array(Vec<u32>),
@@ -84,194 +141,44 @@ enum FfiArg {
     F64Array(Vec<f64>),
 }
 
-impl FfiArg {
-    fn from_call_arg(arg: &CallArg) -> Self {
-        match arg {
-            CallArg::U8(n) => FfiArg::U8(*n),
-            CallArg::U16(n) => FfiArg::U16(*n),
-            CallArg::U32(n) => FfiArg::U32(*n),
-            CallArg::U64(n) => FfiArg::U64(*n),
-            CallArg::I8(n) => FfiArg::I8(*n),
-            CallArg::I16(n) => FfiArg::I16(*n),
-            CallArg::I32(n) => FfiArg::I32(*n),
-            CallArg::I64(n) => FfiArg::I64(*n),
-            CallArg::F32(n) => FfiArg::F32(*n),
-            CallArg::F64(n) => FfiArg::F64(*n),
-            CallArg::String(s) => FfiArg::String(std::ffi::CString::new(s.as_str()).unwrap()),
-            CallArg::Boolean(b) => FfiArg::Boolean(*b as u8),
-            CallArg::Pointer(ptr) => FfiArg::Pointer(*ptr as *const c_void),
-            CallArg::StringArray(arr) => {
-                let c_strings: Vec<std::ffi::CString> = arr
-                    .iter()
-                    .map(|s| std::ffi::CString::new(s.as_str()).unwrap())
-                    .collect();
-                FfiArg::StringArray(c_strings)
-            }
-            CallArg::U8Array(arr) => {
-                let c_bytes: Vec<u8> = arr.iter().map(|b| *b).collect();
-                FfiArg::U8Array(c_bytes)
-            }
-            CallArg::U16Array(arr) => {
-                let c_bytes: Vec<u16> = arr.iter().map(|b| *b).collect();
-                FfiArg::U16Array(c_bytes)
-            }
-            CallArg::U32Array(arr) => {
-                let c_bytes: Vec<u32> = arr.iter().map(|b| *b).collect();
-                FfiArg::U32Array(c_bytes)
-            }
-            CallArg::U64Array(arr) => {
-                let c_bytes: Vec<u64> = arr.iter().map(|b| *b).collect();
-                FfiArg::U64Array(c_bytes)
-            }
-            CallArg::I8Array(arr) => {
-                let c_bytes: Vec<i8> = arr.iter().map(|b| *b).collect();
-                FfiArg::I8Array(c_bytes)
-            }
-            CallArg::I16Array(arr) => {
-                let c_bytes: Vec<i16> = arr.iter().map(|b| *b).collect();
-                FfiArg::I16Array(c_bytes)
-            }
-            CallArg::I32Array(arr) => {
-                let c_bytes: Vec<i32> = arr.iter().map(|b| *b).collect();
-                FfiArg::I32Array(c_bytes)
-            }
-            CallArg::I64Array(arr) => {
-                let c_bytes: Vec<i64> = arr.iter().map(|b| *b).collect();
-                FfiArg::I64Array(c_bytes)
-            }
-            CallArg::F32Array(arr) => {
-                let c_bytes: Vec<f32> = arr.iter().map(|b| *b).collect();
-                FfiArg::F32Array(c_bytes)
-            }
-            CallArg::F64Array(arr) => {
-                let c_bytes: Vec<f64> = arr.iter().map(|b| *b).collect();
-                FfiArg::F64Array(c_bytes)
-            }
-        }
-    }
-
-    fn get_type(&self) -> libffi::middle::Type {
-        match self {
-            FfiArg::U8(_) => libffi::middle::Type::u8(),
-            FfiArg::U16(_) => libffi::middle::Type::u16(),
-            FfiArg::U32(_) => libffi::middle::Type::u32(),
-            FfiArg::U64(_) => libffi::middle::Type::u64(),
-            FfiArg::I8(_) => libffi::middle::Type::i8(),
-            FfiArg::I16(_) => libffi::middle::Type::i16(),
-            FfiArg::I32(_) => libffi::middle::Type::i32(),
-            FfiArg::I64(_) => libffi::middle::Type::i64(),
-            FfiArg::F32(_) => libffi::middle::Type::f32(),
-            FfiArg::F64(_) => libffi::middle::Type::f64(),
-            FfiArg::String(_) => libffi::middle::Type::pointer(),
-            FfiArg::Boolean(_) => libffi::middle::Type::u8(),
-            FfiArg::Pointer(_) => libffi::middle::Type::pointer(),
-            FfiArg::StringArray(_) => libffi::middle::Type::pointer(),
-            FfiArg::U8Array(_) => libffi::middle::Type::pointer(),
-            FfiArg::U16Array(_) => libffi::middle::Type::pointer(),
-            FfiArg::U32Array(_) => libffi::middle::Type::pointer(),
-            FfiArg::U64Array(_) => libffi::middle::Type::pointer(),
-            FfiArg::I8Array(_) => libffi::middle::Type::pointer(),
-            FfiArg::I16Array(_) => libffi::middle::Type::pointer(),
-            FfiArg::I32Array(_) => libffi::middle::Type::pointer(),
-            FfiArg::I64Array(_) => libffi::middle::Type::pointer(),
-            FfiArg::F32Array(_) => libffi::middle::Type::pointer(),
-            FfiArg::F64Array(_) => libffi::middle::Type::pointer(),
-        }
-    }
-
-    fn as_arg(&self) -> libffi::middle::Arg {
-        match self {
-            FfiArg::U8(n) => libffi::middle::Arg::new(n),
-            FfiArg::U16(n) => libffi::middle::Arg::new(n),
-            FfiArg::U32(n) => libffi::middle::Arg::new(n),
-            FfiArg::U64(n) => libffi::middle::Arg::new(n),
-            FfiArg::I8(n) => libffi::middle::Arg::new(n),
-            FfiArg::I16(n) => libffi::middle::Arg::new(n),
-            FfiArg::I32(n) => libffi::middle::Arg::new(n),
-            FfiArg::I64(n) => libffi::middle::Arg::new(n),
-            FfiArg::F32(n) => libffi::middle::Arg::new(n),
-            FfiArg::F64(n) => libffi::middle::Arg::new(n),
-            FfiArg::String(s) => {
-                let ptr = s.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::Boolean(b) => libffi::middle::Arg::new(b),
-            FfiArg::Pointer(ptr) => libffi::middle::Arg::new(ptr),
-            FfiArg::StringArray(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::U8Array(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::U16Array(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::U32Array(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::U64Array(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::I8Array(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::I16Array(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::I32Array(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::I64Array(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::F32Array(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-            FfiArg::F64Array(arr) => {
-                let ptr = arr.as_ptr();
-                libffi::middle::Arg::new(&ptr)
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
-enum CallResult {
+enum Result {
+    Void,
     Number(f64),
     String(String),
     Boolean(bool),
-    GPointer(usize),
-    Void,
+    Object(ObjectId),
 }
 
-fn start(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
     let app_id = cx.argument::<JsString>(0)?.value(&mut cx);
     let (send, recv) = mpsc::channel();
 
     std::thread::spawn(move || {
         let app = gtk4::Application::builder().application_id(app_id).build();
-        let _ = GTK4_LIBRARY.set(unsafe { Library::new("libgtk-4.so.1").unwrap() });
 
-        app.connect_activate(move |_| {
+        GTK4_LIBRARY.with(|lib| {
+            let _ = lib.set(unsafe { Library::new("libgtk-4.so.1").unwrap() });
+        });
+
+        OBJECT_MAP.with(|map| {
+            let mut map = map.borrow_mut();
+            map.insert(APP_OBJECT_ID, Box::new(app.clone()) as Box<dyn Any>);
+        });
+
+        app.connect_activate(move |app| {
             let send = send.clone();
-            let main_loop = glib::MainLoop::new(None, false);
-            let _ = MAIN_LOOP.set(main_loop);
+
+            APP_HOLD_GUARD.with(|guard| {
+                let mut guard = guard.borrow_mut();
+                *guard = Some(app.hold());
+            });
+
+            IS_APP_RUNNING.store(true, Ordering::SeqCst);
 
             glib::idle_add_once(move || {
                 send.send(()).unwrap();
             });
-
-            MAIN_LOOP.get().unwrap().run();
         });
 
         app.run_with_args::<&str>(&[]);
@@ -279,15 +186,44 @@ fn start(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     recv.recv().unwrap();
 
-    Ok(cx.undefined())
+    Ok(cx.boxed(ObjectId(APP_OBJECT_ID)).upcast())
 }
 
 fn quit(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    if !IS_APP_RUNNING.load(Ordering::SeqCst) {
+        panic!("Application is not running, cannot quit.");
+    }
+
     let (send, recv) = mpsc::channel();
 
     glib::idle_add_once(move || {
-        MAIN_LOOP.get().unwrap().quit();
-        send.send(()).unwrap();
+        OBJECT_MAP.with(|map| {
+            let map = map.borrow_mut();
+            let app = map.get(&APP_OBJECT_ID).unwrap();
+            let app = app.downcast_ref::<gtk4::Application>().unwrap();
+            let send = send.clone();
+
+            app.connect_shutdown(move |_| {
+                OBJECT_MAP.with(|map| {
+                    map.borrow_mut().clear();
+                });
+
+                NEXT_OBJECT_ID.with(|id| {
+                    id.store(0, Ordering::SeqCst);
+                });
+
+                APP_HOLD_GUARD.with(|guard| {
+                    let mut guard = guard.borrow_mut();
+                    *guard = None;
+                });
+
+                IS_APP_RUNNING.store(false, Ordering::SeqCst);
+
+                send.send(()).unwrap();
+            });
+
+            app.quit();
+        });
     });
 
     recv.recv().unwrap();
@@ -295,423 +231,644 @@ fn quit(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
-    let (send, recv) = mpsc::channel::<CallResult>();
-    let symbol_name = cx.argument::<JsString>(0)?.value(&mut cx);
-    let args = cx.argument::<JsArray>(1)?;
-    let return_type = cx.argument::<JsString>(2)?.value(&mut cx);
-    let return_type_for_conversion = return_type.clone();
-    let mut call_args = Vec::<CallArg>::with_capacity(args.len(&mut cx) as usize);
+fn extract_args(cx: &mut FunctionContext, js_args: Handle<JsArray>) -> NeonResult<Vec<Arg>> {
+    let args_len = js_args.len(cx);
+    let mut args = Vec::with_capacity(args_len as usize);
 
-    for i in 0..args.len(&mut cx) {
-        let arg = args
-            .get_value(&mut cx, i)
-            .unwrap()
-            .downcast::<JsObject, _>(&mut cx)
-            .unwrap();
-        let arg_type = arg
-            .get_value(&mut cx, "type")
-            .unwrap()
-            .downcast::<JsString, _>(&mut cx)
-            .unwrap()
-            .value(&mut cx);
-        let arg_value = arg
-            .get_value(&mut cx, "value")
-            .unwrap()
-            .downcast::<JsValue, _>(&mut cx)
-            .unwrap();
+    for i in 0..args_len {
+        let arg_obj = js_args
+            .get::<JsValue, _, _>(cx, i)?
+            .downcast_or_throw::<JsObject, _>(cx)?;
+        let arg_type_value = arg_obj.get::<JsString, _, _>(cx, "type")?;
+        let arg_type = arg_type_value.value(cx);
+        let value = arg_obj.get::<JsValue, _, _>(cx, "value")?;
 
         match arg_type.as_str() {
-            "u8" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::U8(value as u8));
+            "uint" | "int" => {
+                let size = arg_obj.get::<JsNumber, _, _>(cx, "size")?;
+                let size_value = size.value(cx) as u8;
+                let num_value = value.downcast_or_throw::<JsNumber, _>(cx)?.value(cx) as i64;
+
+                let integer_size = match size_value {
+                    8 => IntegerSize::_8,
+                    16 => IntegerSize::_16,
+                    32 => IntegerSize::_32,
+                    64 => IntegerSize::_64,
+                    _ => panic!("Invalid integer size"),
+                };
+
+                let integer_sign = if arg_type == "uint" {
+                    IntegerSign::Unsigned
+                } else {
+                    IntegerSign::Signed
+                };
+
+                args.push(Arg::Integer(num_value, integer_size, integer_sign));
             }
-            "u16" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::U16(value as u16));
-            }
-            "u32" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::U32(value as u32));
-            }
-            "u64" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::U64(value as u64));
-            }
-            "i8" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::I8(value as i8));
-            }
-            "i16" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::I16(value as i16));
-            }
-            "i32" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::I32(value as i32));
-            }
-            "i64" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::I64(value as i64));
-            }
-            "f32" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::F32(value as f32));
-            }
-            "f64" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::F64(value as f64));
-            }
-            "string" => {
-                let value = arg_value
-                    .downcast::<JsString, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::String(value));
+            "float" => {
+                let size = arg_obj.get::<JsNumber, _, _>(cx, "size")?;
+                let size_value = size.value(cx) as u8;
+                let num_value = value.downcast_or_throw::<JsNumber, _>(cx)?.value(cx);
+
+                let float_size = match size_value {
+                    32 => FloatSize::_32,
+                    64 => FloatSize::_64,
+                    _ => panic!("Invalid float size"),
+                };
+
+                args.push(Arg::Float(num_value, float_size));
             }
             "boolean" => {
-                let value = arg_value
-                    .downcast::<JsBoolean, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::Boolean(value));
+                let bool_value = value.downcast_or_throw::<JsBoolean, _>(cx)?.value(cx);
+                args.push(Arg::Boolean(bool_value));
             }
-            "gpointer" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::Pointer(value as usize));
+            "string" => {
+                let string_value = value.downcast_or_throw::<JsString, _>(cx)?.value(cx);
+                args.push(Arg::String(string_value));
             }
-            "string[]" => call_args.push(CallArg::StringArray(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsString, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx)
-                    })
-                    .collect(),
-            )),
-            "u8[]" => call_args.push(CallArg::U8Array(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsNumber, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx) as u8
-                    })
-                    .collect(),
-            )),
-            "u16[]" => call_args.push(CallArg::U16Array(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsNumber, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx) as u16
-                    })
-                    .collect(),
-            )),
-            "u32[]" => call_args.push(CallArg::U32Array(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsNumber, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx) as u32
-                    })
-                    .collect(),
-            )),
-            "u64[]" => call_args.push(CallArg::U64Array(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsNumber, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx) as u64
-                    })
-                    .collect(),
-            )),
-            "i8[]" => call_args.push(CallArg::I8Array(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsNumber, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx) as i8
-                    })
-                    .collect(),
-            )),
-            "i16[]" => call_args.push(CallArg::I16Array(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsNumber, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx) as i16
-                    })
-                    .collect(),
-            )),
-            "i32[]" => call_args.push(CallArg::I32Array(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsNumber, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx) as i32
-                    })
-                    .collect(),
-            )),
-            "i64[]" => call_args.push(CallArg::I64Array(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsNumber, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx) as i64
-                    })
-                    .collect(),
-            )),
-            "f32[]" => call_args.push(CallArg::F32Array(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsNumber, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx) as f32
-                    })
-                    .collect(),
-            )),
-            "f64[]" => call_args.push(CallArg::F64Array(
-                arg_value
-                    .downcast::<JsArray, _>(&mut cx)
-                    .unwrap()
-                    .to_vec(&mut cx)
-                    .unwrap()
-                    .iter()
-                    .map(|value| {
-                        value
-                            .downcast::<JsNumber, _>(&mut cx)
-                            .unwrap()
-                            .value(&mut cx) as f64
-                    })
-                    .collect(),
-            )),
-            _ => unreachable!(),
+            "object" => {
+                if value.is_a::<JsBox<ObjectId>, _>(cx) {
+                    let obj_id = value.downcast_or_throw::<JsBox<ObjectId>, _>(cx)?;
+                    args.push(Arg::Object(obj_id.0));
+                } else {
+                    panic!("Expected an object ID");
+                }
+            }
+            "array" => {
+                let array = value.downcast_or_throw::<JsArray, _>(cx)?;
+                let array_length = array.len(cx);
+                let element_type = arg_obj.get::<JsObject, _, _>(cx, "elementType")?;
+                let element_type_value = element_type.get::<JsString, _, _>(cx, "type")?;
+                let element_type_str = element_type_value.value(cx);
+
+                match element_type_str.as_str() {
+                    "uint" | "int" => {
+                        let size = element_type.get::<JsNumber, _, _>(cx, "size")?;
+                        let size_value = size.value(cx) as u8;
+                        let integer_size = match size_value {
+                            8 => IntegerSize::_8,
+                            16 => IntegerSize::_16,
+                            32 => IntegerSize::_32,
+                            64 => IntegerSize::_64,
+                            _ => panic!("Invalid integer size"),
+                        };
+
+                        let integer_sign = if element_type_str == "uint" {
+                            IntegerSign::Unsigned
+                        } else {
+                            IntegerSign::Signed
+                        };
+
+                        let mut values = Vec::with_capacity(array_length as usize);
+                        for i in 0..array_length {
+                            let element = array.get::<JsValue, _, _>(cx, i)?;
+                            let value =
+                                element.downcast_or_throw::<JsNumber, _>(cx)?.value(cx) as i64;
+                            values.push(value);
+                        }
+
+                        args.push(Arg::IntegerArray(values, integer_size, integer_sign));
+                    }
+                    "float" => {
+                        let size = element_type.get::<JsNumber, _, _>(cx, "size")?;
+                        let size_value = size.value(cx) as u8;
+                        let float_size = match size_value {
+                            32 => FloatSize::_32,
+                            64 => FloatSize::_64,
+                            _ => panic!("Invalid float size"),
+                        };
+
+                        let mut values = Vec::with_capacity(array_length as usize);
+                        for i in 0..array_length {
+                            let element = array.get::<JsValue, _, _>(cx, i)?;
+                            let value = element.downcast_or_throw::<JsNumber, _>(cx)?.value(cx);
+                            values.push(value);
+                        }
+
+                        args.push(Arg::FloatArray(values, float_size));
+                    }
+                    "boolean" => {
+                        let mut values = Vec::with_capacity(array_length as usize);
+                        for i in 0..array_length {
+                            let element = array.get::<JsValue, _, _>(cx, i)?;
+                            let value = element.downcast_or_throw::<JsBoolean, _>(cx)?.value(cx);
+                            values.push(value);
+                        }
+
+                        args.push(Arg::BooleanArray(values));
+                    }
+                    "string" => {
+                        let mut values = Vec::with_capacity(array_length as usize);
+                        for i in 0..array_length {
+                            let element = array.get::<JsValue, _, _>(cx, i)?;
+                            let value = element.downcast_or_throw::<JsString, _>(cx)?.value(cx);
+                            values.push(value);
+                        }
+
+                        args.push(Arg::StringArray(values));
+                    }
+                    _ => {
+                        panic!("Unsupported array element type: {}", element_type_str);
+                    }
+                }
+            }
+            _ => panic!("Unsupported argument type: {}", arg_type),
         }
     }
 
-    glib::idle_add_once(move || {
-        let lib = GTK4_LIBRARY.get().unwrap();
+    Ok(args)
+}
 
-        let result = unsafe {
-            let symbol: libloading::Symbol<*const c_void> =
-                lib.get(symbol_name.as_bytes()).unwrap();
-            let func_ptr = *symbol as *mut c_void;
+fn prepare_ffi_args(args: &[Arg]) -> (Vec<CifArg>, Vec<Type>) {
+    let mut cif_args = Vec::with_capacity(args.len());
+    let mut arg_types = Vec::with_capacity(args.len());
 
-            let ffi_args: Vec<FfiArg> = call_args.iter().map(FfiArg::from_call_arg).collect();
-            let arg_types: Vec<libffi::middle::Type> =
-                ffi_args.iter().map(|a| a.get_type()).collect();
-            let arg_values: Vec<libffi::middle::Arg> =
-                ffi_args.iter().map(|a| a.as_arg()).collect();
+    for arg in args {
+        match arg {
+            Arg::Integer(value, size, sign) => match (size, sign) {
+                (IntegerSize::_8, IntegerSign::Unsigned) => {
+                    cif_args.push(CifArg::U8(*value as u8));
+                    arg_types.push(Type::u8());
+                }
+                (IntegerSize::_8, IntegerSign::Signed) => {
+                    cif_args.push(CifArg::I8(*value as i8));
+                    arg_types.push(Type::i8());
+                }
+                (IntegerSize::_16, IntegerSign::Unsigned) => {
+                    cif_args.push(CifArg::U16(*value as u16));
+                    arg_types.push(Type::u16());
+                }
+                (IntegerSize::_16, IntegerSign::Signed) => {
+                    cif_args.push(CifArg::I16(*value as i16));
+                    arg_types.push(Type::i16());
+                }
+                (IntegerSize::_32, IntegerSign::Unsigned) => {
+                    cif_args.push(CifArg::U32(*value as u32));
+                    arg_types.push(Type::u32());
+                }
+                (IntegerSize::_32, IntegerSign::Signed) => {
+                    cif_args.push(CifArg::I32(*value as i32));
+                    arg_types.push(Type::i32());
+                }
+                (IntegerSize::_64, IntegerSign::Unsigned) => {
+                    cif_args.push(CifArg::U64(*value as u64));
+                    arg_types.push(Type::u64());
+                }
+                (IntegerSize::_64, IntegerSign::Signed) => {
+                    cif_args.push(CifArg::I64(*value));
+                    arg_types.push(Type::i64());
+                }
+            },
+            Arg::Float(value, size) => match size {
+                FloatSize::_32 => {
+                    cif_args.push(CifArg::F32(*value as f32));
+                    arg_types.push(Type::f32());
+                }
+                FloatSize::_64 => {
+                    cif_args.push(CifArg::F64(*value));
+                    arg_types.push(Type::f64());
+                }
+            },
+            Arg::String(value) => {
+                cif_args.push(CifArg::String(
+                    std::ffi::CString::new(value.clone())
+                        .unwrap()
+                        .into_boxed_c_str(),
+                ));
+                arg_types.push(Type::pointer());
+            }
+            Arg::Boolean(value) => {
+                cif_args.push(CifArg::Boolean(if *value { 1 } else { 0 }));
+                arg_types.push(Type::u8());
+            }
+            Arg::Object(id) => {
+                OBJECT_MAP.with(|map| {
+                    let map = map.borrow();
+                    let obj = map.get(id).expect("Object not found");
 
-            let ffi_return_type = match return_type.as_str() {
-                "void" => libffi::middle::Type::void(),
-                "u8" => libffi::middle::Type::u8(),
-                "u16" => libffi::middle::Type::u16(),
-                "u32" => libffi::middle::Type::u32(),
-                "u64" => libffi::middle::Type::u64(),
-                "i8" => libffi::middle::Type::i8(),
-                "i16" => libffi::middle::Type::i16(),
-                "i32" => libffi::middle::Type::i32(),
-                "i64" => libffi::middle::Type::i64(),
-                "f32" => libffi::middle::Type::f32(),
-                "f64" => libffi::middle::Type::f64(),
-                "string" => libffi::middle::Type::pointer(),
-                "boolean" => libffi::middle::Type::u8(),
-                "gpointer" | "gobject-borrowed" | "gobject" => libffi::middle::Type::pointer(),
-                _ => unreachable!(),
-            };
-
-            let cif = libffi::middle::Cif::new(arg_types.into_iter(), ffi_return_type);
-
-            match return_type.as_str() {
-                "void" => {
-                    cif.call::<()>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Void
-                }
-                "u8" => {
-                    let result = cif.call::<u8>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Number(result as f64)
-                }
-                "u16" => {
-                    let result = cif.call::<u16>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Number(result as f64)
-                }
-                "u32" => {
-                    let result = cif.call::<u32>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Number(result as f64)
-                }
-                "u64" => {
-                    let result = cif.call::<u64>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Number(result as f64)
-                }
-                "i8" => {
-                    let result = cif.call::<i8>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Number(result as f64)
-                }
-                "i16" => {
-                    let result = cif.call::<i16>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Number(result as f64)
-                }
-                "i32" => {
-                    let result = cif.call::<i32>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Number(result as f64)
-                }
-                "i64" => {
-                    let result = cif.call::<i64>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Number(result as f64)
-                }
-                "f32" => {
-                    let result = cif.call::<f32>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Number(result as f64)
-                }
-                "f64" => {
-                    let result = cif.call::<f64>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Number(result)
-                }
-                "string" => {
-                    let result =
-                        cif.call::<*const i8>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    if result.is_null() {
-                        CallResult::String(String::new())
+                    let ptr = if let Some(custom) = obj.downcast_ref::<Custom>() {
+                        custom.ptr
+                    } else if let Some(app) = obj.downcast_ref::<gtk4::Application>() {
+                        app.as_ptr() as *mut c_void
+                    } else if let Some(obj) = obj.downcast_ref::<glib::Object>() {
+                        obj.as_ptr() as *mut c_void
                     } else {
-                        let c_str = std::ffi::CStr::from_ptr(result);
-                        CallResult::String(c_str.to_string_lossy().to_string())
+                        panic!(
+                            "Unknown object type: {}, type_name: {}",
+                            std::any::type_name_of_val(&**obj),
+                            std::any::type_name_of_val(&**obj)
+                        );
+                    };
+
+                    cif_args.push(CifArg::Pointer(ptr));
+                    arg_types.push(Type::pointer());
+                });
+            }
+            Arg::IntegerArray(values, size, sign) => {
+                match (size, sign) {
+                    (IntegerSize::_8, IntegerSign::Unsigned) => {
+                        let vec = values.iter().map(|&v| v as u8).collect();
+                        cif_args.push(CifArg::U8Array(vec));
+                    }
+                    (IntegerSize::_8, IntegerSign::Signed) => {
+                        let vec = values.iter().map(|&v| v as i8).collect();
+                        cif_args.push(CifArg::I8Array(vec));
+                    }
+                    (IntegerSize::_16, IntegerSign::Unsigned) => {
+                        let vec = values.iter().map(|&v| v as u16).collect();
+                        cif_args.push(CifArg::U16Array(vec));
+                    }
+                    (IntegerSize::_16, IntegerSign::Signed) => {
+                        let vec = values.iter().map(|&v| v as i16).collect();
+                        cif_args.push(CifArg::I16Array(vec));
+                    }
+                    (IntegerSize::_32, IntegerSign::Unsigned) => {
+                        let vec = values.iter().map(|&v| v as u32).collect();
+                        cif_args.push(CifArg::U32Array(vec));
+                    }
+                    (IntegerSize::_32, IntegerSign::Signed) => {
+                        let vec = values.iter().map(|&v| v as i32).collect();
+                        cif_args.push(CifArg::I32Array(vec));
+                    }
+                    (IntegerSize::_64, IntegerSign::Unsigned) => {
+                        let vec = values.iter().map(|&v| v as u64).collect();
+                        cif_args.push(CifArg::U64Array(vec));
+                    }
+                    (IntegerSize::_64, IntegerSign::Signed) => {
+                        let vec = values.iter().map(|&v| v as i64).collect();
+                        cif_args.push(CifArg::I64Array(vec));
                     }
                 }
-                "boolean" => {
-                    let result = cif.call::<u8>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::Boolean(result != 0)
+                arg_types.push(Type::pointer());
+            }
+            Arg::FloatArray(values, size) => {
+                match size {
+                    FloatSize::_32 => {
+                        let vec = values.iter().map(|&v| v as f32).collect();
+                        cif_args.push(CifArg::F32Array(vec));
+                    }
+                    FloatSize::_64 => {
+                        cif_args.push(CifArg::F64Array(values.clone()));
+                    }
                 }
-                "gpointer" | "gobject-borrowed" | "gobject" => {
-                    let result =
-                        cif.call::<*const c_void>(libffi::middle::CodePtr(func_ptr), &arg_values);
-                    CallResult::GPointer(result as usize)
+                arg_types.push(Type::pointer());
+            }
+            Arg::StringArray(values) => {
+                let cstrings: Vec<Box<CStr>> = values
+                    .iter()
+                    .map(|s| {
+                        std::ffi::CString::new(s.clone())
+                            .unwrap()
+                            .into_boxed_c_str()
+                    })
+                    .collect();
+                cif_args.push(CifArg::StringArray(cstrings.into_boxed_slice()));
+                arg_types.push(Type::pointer());
+            }
+            Arg::BooleanArray(values) => {
+                let vec = values.iter().map(|&v| if v { 1u8 } else { 0u8 }).collect();
+                cif_args.push(CifArg::U8Array(vec));
+                arg_types.push(Type::pointer());
+            }
+        }
+    }
+
+    (cif_args, arg_types)
+}
+
+fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
+    let mut ffi_args = Vec::with_capacity(cif_args.len());
+
+    for arg in cif_args {
+        match arg {
+            CifArg::U8(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::U16(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::U32(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::U64(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::I8(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::I16(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::I32(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::I64(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::F32(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::F64(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::Boolean(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::String(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::Pointer(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::StringArray(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::U8Array(v) => {
+                let ptr = if v.is_empty() {
+                    std::ptr::null()
+                } else {
+                    v.as_ptr()
+                };
+                ffi_args.push(FfiArg::new(&ptr));
+            }
+            CifArg::U16Array(v) => {
+                let ptr = if v.is_empty() {
+                    std::ptr::null()
+                } else {
+                    v.as_ptr()
+                };
+                ffi_args.push(FfiArg::new(&ptr));
+            }
+            CifArg::U32Array(v) => {
+                let ptr = if v.is_empty() {
+                    std::ptr::null()
+                } else {
+                    v.as_ptr()
+                };
+                ffi_args.push(FfiArg::new(&ptr));
+            }
+            CifArg::U64Array(v) => {
+                let ptr = if v.is_empty() {
+                    std::ptr::null()
+                } else {
+                    v.as_ptr()
+                };
+                ffi_args.push(FfiArg::new(&ptr));
+            }
+            CifArg::I8Array(v) => {
+                let ptr = if v.is_empty() {
+                    std::ptr::null()
+                } else {
+                    v.as_ptr()
+                };
+                ffi_args.push(FfiArg::new(&ptr));
+            }
+            CifArg::I16Array(v) => {
+                let ptr = if v.is_empty() {
+                    std::ptr::null()
+                } else {
+                    v.as_ptr()
+                };
+                ffi_args.push(FfiArg::new(&ptr));
+            }
+            CifArg::I32Array(v) => {
+                let ptr = if v.is_empty() {
+                    std::ptr::null()
+                } else {
+                    v.as_ptr()
+                };
+                ffi_args.push(FfiArg::new(&ptr));
+            }
+            CifArg::I64Array(v) => {
+                let ptr = if v.is_empty() {
+                    std::ptr::null()
+                } else {
+                    v.as_ptr()
+                };
+                ffi_args.push(FfiArg::new(&ptr));
+            }
+            CifArg::F32Array(v) => {
+                let ptr = if v.is_empty() {
+                    std::ptr::null()
+                } else {
+                    v.as_ptr()
+                };
+                ffi_args.push(FfiArg::new(&ptr));
+            }
+            CifArg::F64Array(v) => {
+                let ptr = if v.is_empty() {
+                    std::ptr::null()
+                } else {
+                    v.as_ptr()
+                };
+                ffi_args.push(FfiArg::new(&ptr));
+            }
+        }
+    }
+
+    ffi_args
+}
+
+fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
+    if !IS_APP_RUNNING.load(Ordering::SeqCst) {
+        panic!("Application is not running, cannot call function.");
+    }
+
+    let fn_name = cx.argument::<JsString>(0)?.value(&mut cx);
+    let js_args = cx.argument::<JsArray>(1)?;
+    let js_return_type = cx.argument::<JsObject>(2)?;
+
+    let args = match extract_args(&mut cx, js_args) {
+        Ok(args) => args,
+        Err(e) => return Err(e),
+    };
+
+    let return_type_value = js_return_type
+        .get::<JsString, _, _>(&mut cx, "type")?
+        .downcast_or_throw::<JsString, _>(&mut cx)?;
+    let return_type_str = return_type_value.value(&mut cx);
+
+    let return_size =
+        if return_type_str == "uint" || return_type_str == "int" || return_type_str == "float" {
+            Some(
+                js_return_type
+                    .get::<JsNumber, _, _>(&mut cx, "size")?
+                    .downcast_or_throw::<JsNumber, _>(&mut cx)?
+                    .value(&mut cx) as u8,
+            )
+        } else {
+            None
+        };
+
+    let unref_fn = if return_type_str == "custom" {
+        Some(
+            js_return_type
+                .get::<JsString, _, _>(&mut cx, "unref")?
+                .downcast_or_throw::<JsString, _>(&mut cx)?
+                .value(&mut cx),
+        )
+    } else {
+        None
+    };
+
+    let (send, recv) = mpsc::channel();
+
+    glib::idle_add_once(move || {
+        let fn_ptr = GTK4_LIBRARY.with(|lib| {
+            let symbol =
+                unsafe { lib.get().unwrap().get::<*mut c_void>(fn_name.as_bytes()) }.unwrap();
+
+            CodePtr::from_ptr(*symbol)
+        });
+
+        let (cif_args, arg_types) = prepare_ffi_args(&args);
+
+        let return_type = match return_type_str.as_str() {
+            "uint" | "int" => {
+                let size_value = return_size.unwrap_or(32);
+
+                match size_value {
+                    8 => {
+                        if return_type_str == "uint" {
+                            Type::u8()
+                        } else {
+                            Type::i8()
+                        }
+                    }
+                    16 => {
+                        if return_type_str == "uint" {
+                            Type::u16()
+                        } else {
+                            Type::i16()
+                        }
+                    }
+                    32 => {
+                        if return_type_str == "uint" {
+                            Type::u32()
+                        } else {
+                            Type::i32()
+                        }
+                    }
+                    64 => {
+                        if return_type_str == "uint" {
+                            Type::u64()
+                        } else {
+                            Type::i64()
+                        }
+                    }
+                    _ => {
+                        panic!("Invalid integer size");
+                    }
                 }
-                _ => unreachable!(),
+            }
+            "float" => {
+                let size_value = return_size.unwrap_or(64);
+
+                match size_value {
+                    32 => Type::f32(),
+                    64 => Type::f64(),
+                    _ => {
+                        panic!("Invalid float size");
+                    }
+                }
+            }
+            "boolean" => Type::u8(),
+            "string" => Type::pointer(),
+            "gobject" => Type::pointer(),
+            "custom" => Type::pointer(),
+            "void" => Type::void(),
+            _ => {
+                panic!("Unsupported return type: {}", return_type_str);
             }
         };
 
-        send.send(result).unwrap()
+        let cif = Cif::new(arg_types, return_type);
+        let ffi_args = get_ffi_args(&cif_args);
+
+        match return_type_str.as_str() {
+            "void" => {
+                unsafe { cif.call::<()>(fn_ptr, &ffi_args) };
+                send.send(Result::Void).unwrap();
+            }
+            "uint" => {
+                let size_value = return_size.unwrap_or(32);
+
+                let result = match size_value {
+                    8 => unsafe { cif.call::<u8>(fn_ptr, &ffi_args) as f64 },
+                    16 => unsafe { cif.call::<u16>(fn_ptr, &ffi_args) as f64 },
+                    32 => unsafe { cif.call::<u32>(fn_ptr, &ffi_args) as f64 },
+                    64 => unsafe { cif.call::<u64>(fn_ptr, &ffi_args) as f64 },
+                    _ => {
+                        panic!("Invalid unsigned integer size");
+                    }
+                };
+
+                send.send(Result::Number(result)).unwrap();
+            }
+            "int" => {
+                let size_value = return_size.unwrap_or(32);
+
+                let result = match size_value {
+                    8 => unsafe { cif.call::<i8>(fn_ptr, &ffi_args) as f64 },
+                    16 => unsafe { cif.call::<i16>(fn_ptr, &ffi_args) as f64 },
+                    32 => unsafe { cif.call::<i32>(fn_ptr, &ffi_args) as f64 },
+                    64 => unsafe { cif.call::<i64>(fn_ptr, &ffi_args) as f64 },
+                    _ => {
+                        panic!("Invalid signed integer size");
+                    }
+                };
+
+                send.send(Result::Number(result)).unwrap();
+            }
+            "float" => {
+                let size_value = return_size.unwrap_or(64);
+
+                let result = match size_value {
+                    32 => unsafe { cif.call::<f32>(fn_ptr, &ffi_args) as f64 },
+                    64 => unsafe { cif.call::<f64>(fn_ptr, &ffi_args) },
+                    _ => {
+                        panic!("Invalid float size");
+                    }
+                };
+
+                send.send(Result::Number(result)).unwrap();
+            }
+            "boolean" => {
+                let result = unsafe { cif.call::<u8>(fn_ptr, &ffi_args) != 0 };
+                send.send(Result::Boolean(result)).unwrap();
+            }
+            "string" => {
+                let result = unsafe { cif.call::<*const i8>(fn_ptr, &ffi_args) };
+                if result.is_null() {
+                    send.send(Result::String("".to_string())).unwrap();
+                } else {
+                    let c_str = unsafe { std::ffi::CStr::from_ptr(result) };
+                    let string = c_str.to_string_lossy().to_string();
+                    send.send(Result::String(string)).unwrap();
+                }
+            }
+            "gobject" => {
+                let result = unsafe { cif.call::<*mut c_void>(fn_ptr, &ffi_args) };
+                if result.is_null() {
+                    panic!("Null pointer returned for GObject");
+                } else {
+                    let object = unsafe {
+                        glib::Object::from_glib_full(result as *mut glib::gobject_ffi::GObject)
+                    };
+                    let obj_id = ObjectId::new();
+
+                    OBJECT_MAP.with(|map| {
+                        let mut map = map.borrow_mut();
+                        map.insert(obj_id.0, Box::new(object));
+                    });
+
+                    send.send(Result::Object(obj_id)).unwrap();
+                }
+            }
+            "custom" => {
+                let result = unsafe { cif.call::<*mut c_void>(fn_ptr, &ffi_args) };
+                if result.is_null() {
+                    panic!("Null pointer returned for custom type");
+                } else {
+                    let unref = unref_fn.unwrap_or_else(|| "g_object_unref".to_string());
+                    let custom = Custom::new(result, unref);
+                    let obj_id = ObjectId::new();
+
+                    OBJECT_MAP.with(|map| {
+                        let mut map = map.borrow_mut();
+                        map.insert(obj_id.0, Box::new(custom));
+                    });
+
+                    send.send(Result::Object(obj_id)).unwrap();
+                }
+            }
+            _ => {
+                panic!("Unsupported return type: {}", return_type_str);
+            }
+        }
     });
 
     let result = recv.recv().unwrap();
 
-    let res = match result {
-        CallResult::Void => Ok(cx.undefined().upcast()),
-        CallResult::Number(n) => Ok(cx.number(n).upcast()),
-        CallResult::String(s) => Ok(cx.string(s).upcast()),
-        CallResult::Boolean(b) => Ok(cx.boolean(b).upcast()),
-        CallResult::GPointer(ptr) => match return_type_for_conversion.as_str() {
-            "gobject-borrowed" => unsafe {
-                let gobject = glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject);
-                Ok(cx.boxed(GObjectWrapper(gobject)).upcast())
-            },
-            "gobject" => unsafe {
-                let gobject = glib::Object::from_glib_full(ptr as *mut glib::gobject_ffi::GObject);
-                Ok(cx.boxed(GObjectWrapper(gobject)).upcast())
-            },
-            "gpointer" => {
-                let boxed = cx.boxed(GPointer(ptr as *mut c_void));
-                Ok(boxed.upcast())
-            }
-            _ => unreachable!(),
-        },
-    };
-
-    res
+    match result {
+        Result::Void => Ok(cx.undefined().upcast()),
+        Result::Number(n) => Ok(cx.number(n).upcast()),
+        Result::String(s) => Ok(cx.string(s).upcast()),
+        Result::Boolean(b) => Ok(cx.boolean(b).upcast()),
+        Result::Object(obj_id) => Ok(cx.boxed(obj_id).upcast()),
+    }
 }
 
 #[neon::main]

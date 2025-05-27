@@ -1,15 +1,17 @@
 import { call } from "@gtkx/native";
 
 const getMajorVersion = () => {
-  return call("gtk_get_major_version", [], "u32");
+  return call("gtk_get_major_version", [], { type: "uint", size: 32 });
 };
 
 const getMinorVersion = () => {
-  return call("gtk_get_minor_version", [], "u32");
+  return call("gtk_get_minor_version", [], { type: "uint", size: 32 });
 };
 
 const getMicroVersion = () => {
-  return call("gtk_get_micro_version", [], "u32");
+  return call("gtk_get_micro_version", [], { type: "uint", size: 32 });
 };
 
 export { getMajorVersion, getMinorVersion, getMicroVersion };
+
+export * from "./gtk/application-window.js";
