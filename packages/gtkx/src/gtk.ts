@@ -13,3 +13,4 @@ const getMicroVersion = () => {
 };
 
 export { getMajorVersion, getMinorVersion, getMicroVersion };
+export * from "./gtk/application-window.js";

@@ -21,7 +21,6 @@ impl Finalize for GPointer {
     }
 }
 
-#[allow(dead_code)]
 struct GObjectWrapper(glib::Object);
 
 impl Finalize for GObjectWrapper {
@@ -254,7 +253,7 @@ enum CallResult {
     Void,
 }
 
-fn start(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
     let app_id = cx.argument::<JsString>(0)?.value(&mut cx);
     let (send, recv) = mpsc::channel();
 
@@ -279,7 +278,7 @@ fn start(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     recv.recv().unwrap();
 
-    Ok(cx.undefined())
+    Ok(cx.undefined().upcast())
 }
 
 fn quit(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -406,12 +405,18 @@ fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
                     .value(&mut cx);
                 call_args.push(CallArg::Boolean(value));
             }
-            "gpointer" => {
-                let value = arg_value
-                    .downcast::<JsNumber, _>(&mut cx)
-                    .unwrap()
-                    .value(&mut cx);
-                call_args.push(CallArg::Pointer(value as usize));
+            "pointer" => {
+                if arg_value.is_a::<JsBox<GObjectWrapper>, _>(&mut cx) {
+                    let value = arg_value
+                        .downcast::<JsBox<GObjectWrapper>, _>(&mut cx)
+                        .unwrap();
+                    call_args.push(CallArg::Pointer(value.0.as_ptr() as usize));
+                } else if arg_value.is_a::<JsBox<GPointer>, _>(&mut cx) {
+                    let value = arg_value.downcast::<JsBox<GPointer>, _>(&mut cx).unwrap();
+                    call_args.push(CallArg::Pointer(value.0 as usize));
+                } else {
+                    unreachable!()
+                }
             }
             "string[]" => call_args.push(CallArg::StringArray(
                 arg_value

@@ -94,7 +94,7 @@ module "@gtkx/native" {
     value: ArgTypeMap[T];
   };
 
-  export function start(appId: string): void;
+  export function start(appId: string): unknown;
   export function quit(): void;
 
   export function call<T extends ReturnType>(
