@@ -8,7 +8,7 @@ export class ApplicationWindow {
       "gtk_application_window_new",
       [
         {
-          type: "object",
+          type: "gobject",
           value: app,
         },
       ],
@@ -21,7 +21,7 @@ export class ApplicationWindow {
       "gtk_window_set_title",
       [
         {
-          type: "object",
+          type: "gobject",
           value: this.ptr,
         },
         {
@@ -38,18 +38,20 @@ export class ApplicationWindow {
       "gtk_window_set_default_size",
       [
         {
-          type: "object",
+          type: "gobject",
           value: this.ptr,
         },
         {
-          type: "uint",
+          type: "int",
           size: 32,
           value: width,
+          unsigned: true,
         },
         {
-          type: "uint",
+          type: "int",
           size: 32,
           value: height,
+          unsigned: true,
         },
       ],
       { type: "void" }
@@ -61,8 +63,38 @@ export class ApplicationWindow {
       "gtk_window_present",
       [
         {
-          type: "object",
+          type: "gobject",
           value: this.ptr,
+        },
+      ],
+      { type: "void" }
+    );
+  }
+
+  connectClose(handler: (object: unknown, signal: string) => string) {
+    call(
+      "g_signal_connect",
+      [
+        {
+          type: "gobject",
+          value: this.ptr,
+        },
+        {
+          type: "string",
+          value: "close-request",
+        },
+        {
+          type: "callback",
+          argTypes: [
+            {
+              type: "gobject",
+            },
+            {
+              type: "string",
+            },
+          ] as const,
+          returnType: { type: "string" },
+          value: handler,
         },
       ],
       { type: "void" }
