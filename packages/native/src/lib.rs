@@ -1,28 +1,32 @@
-use glib::translate::FromGlibPtrFull;
-use gtk4::glib;
-use gtk4::prelude::*;
-use libffi::middle::Cif;
-use libffi::middle::{Arg as FfiArg, CodePtr, Type};
-use libloading::Library;
+use libffi::middle as ffi;
 use neon::prelude::*;
-use std::any::Any;
-use std::cell::OnceCell;
-use std::cell::RefCell;
-use std::ffi::c_void;
-use std::ffi::CStr;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc;
+
+use std::{
+    any::Any,
+    cell::{OnceCell, RefCell},
+    collections::HashMap,
+    ffi::{c_void, CStr},
+    sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        mpsc,
+    },
+};
+
+use gtk4::{
+    gio,
+    glib::{self, translate::FromGlibPtrFull},
+    prelude::*,
+};
 
 const APP_OBJECT_ID: usize = 0;
 
 thread_local! {
-    static GTK4_LIBRARY: OnceCell<Library> = OnceCell::new();
+    static GTK4_LIBRARY: OnceCell<libloading::Library> = OnceCell::new();
 
-    static OBJECT_MAP: RefCell<std::collections::HashMap<usize, Box<dyn Any>>> =
-        RefCell::new(std::collections::HashMap::new());
+    static OBJECT_MAP: RefCell<HashMap<usize, Box<dyn Any>>> =
+        RefCell::new(HashMap::new());
 
-    static APP_HOLD_GUARD: RefCell<Option<gtk4::gio::ApplicationHoldGuard>> =
+    static APP_HOLD_GUARD: RefCell<Option<gio::ApplicationHoldGuard>> =
         RefCell::new(None);
 
     static NEXT_OBJECT_ID: AtomicUsize = AtomicUsize::new(1);
@@ -158,7 +162,7 @@ fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
         let app = gtk4::Application::builder().application_id(app_id).build();
 
         GTK4_LIBRARY.with(|lib| {
-            let _ = lib.set(unsafe { Library::new("libgtk-4.so.1").unwrap() });
+            let _ = lib.set(unsafe { libloading::Library::new("libgtk-4.so.1").unwrap() });
         });
 
         OBJECT_MAP.with(|map| {
@@ -297,7 +301,7 @@ fn extract_args(cx: &mut FunctionContext, js_args: Handle<JsArray>) -> NeonResul
             "array" => {
                 let array = value.downcast_or_throw::<JsArray, _>(cx)?;
                 let array_length = array.len(cx);
-                let element_type = arg_obj.get::<JsObject, _, _>(cx, "elementType")?;
+                let element_type = arg_obj.get::<JsObject, _, _>(cx, "elementffi::Type")?;
                 let element_type_value = element_type.get::<JsString, _, _>(cx, "type")?;
                 let element_type_str = element_type_value.value(cx);
 
@@ -379,7 +383,7 @@ fn extract_args(cx: &mut FunctionContext, js_args: Handle<JsArray>) -> NeonResul
     Ok(args)
 }
 
-fn prepare_ffi_args(args: &[Arg]) -> (Vec<CifArg>, Vec<Type>) {
+fn prepare_ffi_args(args: &[Arg]) -> (Vec<CifArg>, Vec<ffi::Type>) {
     let mut cif_args = Vec::with_capacity(args.len());
     let mut arg_types = Vec::with_capacity(args.len());
 
@@ -388,45 +392,45 @@ fn prepare_ffi_args(args: &[Arg]) -> (Vec<CifArg>, Vec<Type>) {
             Arg::Integer(value, size, sign) => match (size, sign) {
                 (IntegerSize::_8, IntegerSign::Unsigned) => {
                     cif_args.push(CifArg::U8(*value as u8));
-                    arg_types.push(Type::u8());
+                    arg_types.push(ffi::Type::u8());
                 }
                 (IntegerSize::_8, IntegerSign::Signed) => {
                     cif_args.push(CifArg::I8(*value as i8));
-                    arg_types.push(Type::i8());
+                    arg_types.push(ffi::Type::i8());
                 }
                 (IntegerSize::_16, IntegerSign::Unsigned) => {
                     cif_args.push(CifArg::U16(*value as u16));
-                    arg_types.push(Type::u16());
+                    arg_types.push(ffi::Type::u16());
                 }
                 (IntegerSize::_16, IntegerSign::Signed) => {
                     cif_args.push(CifArg::I16(*value as i16));
-                    arg_types.push(Type::i16());
+                    arg_types.push(ffi::Type::i16());
                 }
                 (IntegerSize::_32, IntegerSign::Unsigned) => {
                     cif_args.push(CifArg::U32(*value as u32));
-                    arg_types.push(Type::u32());
+                    arg_types.push(ffi::Type::u32());
                 }
                 (IntegerSize::_32, IntegerSign::Signed) => {
                     cif_args.push(CifArg::I32(*value as i32));
-                    arg_types.push(Type::i32());
+                    arg_types.push(ffi::Type::i32());
                 }
                 (IntegerSize::_64, IntegerSign::Unsigned) => {
                     cif_args.push(CifArg::U64(*value as u64));
-                    arg_types.push(Type::u64());
+                    arg_types.push(ffi::Type::u64());
                 }
                 (IntegerSize::_64, IntegerSign::Signed) => {
                     cif_args.push(CifArg::I64(*value));
-                    arg_types.push(Type::i64());
+                    arg_types.push(ffi::Type::i64());
                 }
             },
             Arg::Float(value, size) => match size {
                 FloatSize::_32 => {
                     cif_args.push(CifArg::F32(*value as f32));
-                    arg_types.push(Type::f32());
+                    arg_types.push(ffi::Type::f32());
                 }
                 FloatSize::_64 => {
                     cif_args.push(CifArg::F64(*value));
-                    arg_types.push(Type::f64());
+                    arg_types.push(ffi::Type::f64());
                 }
             },
             Arg::String(value) => {
@@ -435,11 +439,11 @@ fn prepare_ffi_args(args: &[Arg]) -> (Vec<CifArg>, Vec<Type>) {
                         .unwrap()
                         .into_boxed_c_str(),
                 ));
-                arg_types.push(Type::pointer());
+                arg_types.push(ffi::Type::pointer());
             }
             Arg::Boolean(value) => {
                 cif_args.push(CifArg::Boolean(if *value { 1 } else { 0 }));
-                arg_types.push(Type::u8());
+                arg_types.push(ffi::Type::u8());
             }
             Arg::Object(id) => {
                 OBJECT_MAP.with(|map| {
@@ -461,7 +465,7 @@ fn prepare_ffi_args(args: &[Arg]) -> (Vec<CifArg>, Vec<Type>) {
                     };
 
                     cif_args.push(CifArg::Pointer(ptr));
-                    arg_types.push(Type::pointer());
+                    arg_types.push(ffi::Type::pointer());
                 });
             }
             Arg::IntegerArray(values, size, sign) => {
@@ -499,7 +503,7 @@ fn prepare_ffi_args(args: &[Arg]) -> (Vec<CifArg>, Vec<Type>) {
                         cif_args.push(CifArg::I64Array(vec));
                     }
                 }
-                arg_types.push(Type::pointer());
+                arg_types.push(ffi::Type::pointer());
             }
             Arg::FloatArray(values, size) => {
                 match size {
@@ -511,7 +515,7 @@ fn prepare_ffi_args(args: &[Arg]) -> (Vec<CifArg>, Vec<Type>) {
                         cif_args.push(CifArg::F64Array(values.clone()));
                     }
                 }
-                arg_types.push(Type::pointer());
+                arg_types.push(ffi::Type::pointer());
             }
             Arg::StringArray(values) => {
                 let cstrings: Vec<Box<CStr>> = values
@@ -523,12 +527,12 @@ fn prepare_ffi_args(args: &[Arg]) -> (Vec<CifArg>, Vec<Type>) {
                     })
                     .collect();
                 cif_args.push(CifArg::StringArray(cstrings.into_boxed_slice()));
-                arg_types.push(Type::pointer());
+                arg_types.push(ffi::Type::pointer());
             }
             Arg::BooleanArray(values) => {
                 let vec = values.iter().map(|&v| if v { 1u8 } else { 0u8 }).collect();
                 cif_args.push(CifArg::U8Array(vec));
-                arg_types.push(Type::pointer());
+                arg_types.push(ffi::Type::pointer());
             }
         }
     }
@@ -536,32 +540,32 @@ fn prepare_ffi_args(args: &[Arg]) -> (Vec<CifArg>, Vec<Type>) {
     (cif_args, arg_types)
 }
 
-fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
+fn get_ffi_args(cif_args: &[CifArg]) -> Vec<ffi::Arg> {
     let mut ffi_args = Vec::with_capacity(cif_args.len());
 
     for arg in cif_args {
         match arg {
-            CifArg::U8(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::U16(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::U32(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::U64(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::I8(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::I16(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::I32(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::I64(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::F32(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::F64(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::Boolean(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::String(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::Pointer(v) => ffi_args.push(FfiArg::new(v)),
-            CifArg::StringArray(v) => ffi_args.push(FfiArg::new(v)),
+            CifArg::U8(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::U16(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::U32(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::U64(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::I8(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::I16(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::I32(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::I64(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::F32(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::F64(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::Boolean(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::String(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::Pointer(v) => ffi_args.push(ffi::Arg::new(v)),
+            CifArg::StringArray(v) => ffi_args.push(ffi::Arg::new(v)),
             CifArg::U8Array(v) => {
                 let ptr = if v.is_empty() {
                     std::ptr::null()
                 } else {
                     v.as_ptr()
                 };
-                ffi_args.push(FfiArg::new(&ptr));
+                ffi_args.push(ffi::Arg::new(&ptr));
             }
             CifArg::U16Array(v) => {
                 let ptr = if v.is_empty() {
@@ -569,7 +573,7 @@ fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
                 } else {
                     v.as_ptr()
                 };
-                ffi_args.push(FfiArg::new(&ptr));
+                ffi_args.push(ffi::Arg::new(&ptr));
             }
             CifArg::U32Array(v) => {
                 let ptr = if v.is_empty() {
@@ -577,7 +581,7 @@ fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
                 } else {
                     v.as_ptr()
                 };
-                ffi_args.push(FfiArg::new(&ptr));
+                ffi_args.push(ffi::Arg::new(&ptr));
             }
             CifArg::U64Array(v) => {
                 let ptr = if v.is_empty() {
@@ -585,7 +589,7 @@ fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
                 } else {
                     v.as_ptr()
                 };
-                ffi_args.push(FfiArg::new(&ptr));
+                ffi_args.push(ffi::Arg::new(&ptr));
             }
             CifArg::I8Array(v) => {
                 let ptr = if v.is_empty() {
@@ -593,7 +597,7 @@ fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
                 } else {
                     v.as_ptr()
                 };
-                ffi_args.push(FfiArg::new(&ptr));
+                ffi_args.push(ffi::Arg::new(&ptr));
             }
             CifArg::I16Array(v) => {
                 let ptr = if v.is_empty() {
@@ -601,7 +605,7 @@ fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
                 } else {
                     v.as_ptr()
                 };
-                ffi_args.push(FfiArg::new(&ptr));
+                ffi_args.push(ffi::Arg::new(&ptr));
             }
             CifArg::I32Array(v) => {
                 let ptr = if v.is_empty() {
@@ -609,7 +613,7 @@ fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
                 } else {
                     v.as_ptr()
                 };
-                ffi_args.push(FfiArg::new(&ptr));
+                ffi_args.push(ffi::Arg::new(&ptr));
             }
             CifArg::I64Array(v) => {
                 let ptr = if v.is_empty() {
@@ -617,7 +621,7 @@ fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
                 } else {
                     v.as_ptr()
                 };
-                ffi_args.push(FfiArg::new(&ptr));
+                ffi_args.push(ffi::Arg::new(&ptr));
             }
             CifArg::F32Array(v) => {
                 let ptr = if v.is_empty() {
@@ -625,7 +629,7 @@ fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
                 } else {
                     v.as_ptr()
                 };
-                ffi_args.push(FfiArg::new(&ptr));
+                ffi_args.push(ffi::Arg::new(&ptr));
             }
             CifArg::F64Array(v) => {
                 let ptr = if v.is_empty() {
@@ -633,7 +637,7 @@ fn get_ffi_args(cif_args: &[CifArg]) -> Vec<FfiArg> {
                 } else {
                     v.as_ptr()
                 };
-                ffi_args.push(FfiArg::new(&ptr));
+                ffi_args.push(ffi::Arg::new(&ptr));
             }
         }
     }
@@ -690,7 +694,7 @@ fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
             let symbol =
                 unsafe { lib.get().unwrap().get::<*mut c_void>(fn_name.as_bytes()) }.unwrap();
 
-            CodePtr::from_ptr(*symbol)
+            ffi::CodePtr::from_ptr(*symbol)
         });
 
         let (cif_args, arg_types) = prepare_ffi_args(&args);
@@ -702,30 +706,30 @@ fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
                 match size_value {
                     8 => {
                         if return_type_str == "uint" {
-                            Type::u8()
+                            ffi::Type::u8()
                         } else {
-                            Type::i8()
+                            ffi::Type::i8()
                         }
                     }
                     16 => {
                         if return_type_str == "uint" {
-                            Type::u16()
+                            ffi::Type::u16()
                         } else {
-                            Type::i16()
+                            ffi::Type::i16()
                         }
                     }
                     32 => {
                         if return_type_str == "uint" {
-                            Type::u32()
+                            ffi::Type::u32()
                         } else {
-                            Type::i32()
+                            ffi::Type::i32()
                         }
                     }
                     64 => {
                         if return_type_str == "uint" {
-                            Type::u64()
+                            ffi::Type::u64()
                         } else {
-                            Type::i64()
+                            ffi::Type::i64()
                         }
                     }
                     _ => {
@@ -737,24 +741,24 @@ fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
                 let size_value = return_size.unwrap_or(64);
 
                 match size_value {
-                    32 => Type::f32(),
-                    64 => Type::f64(),
+                    32 => ffi::Type::f32(),
+                    64 => ffi::Type::f64(),
                     _ => {
                         panic!("Invalid float size");
                     }
                 }
             }
-            "boolean" => Type::u8(),
-            "string" => Type::pointer(),
-            "gobject" => Type::pointer(),
-            "custom" => Type::pointer(),
-            "void" => Type::void(),
+            "boolean" => ffi::Type::u8(),
+            "string" => ffi::Type::pointer(),
+            "gobject" => ffi::Type::pointer(),
+            "custom" => ffi::Type::pointer(),
+            "void" => ffi::Type::void(),
             _ => {
                 panic!("Unsupported return type: {}", return_type_str);
             }
         };
 
-        let cif = Cif::new(arg_types, return_type);
+        let cif = ffi::Cif::new(arg_types, return_type);
         let ffi_args = get_ffi_args(&cif_args);
 
         match return_type_str.as_str() {

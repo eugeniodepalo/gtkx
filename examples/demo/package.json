@@ -16,6 +16,6 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@gtkx/gtkx": "*"
+    "@gtkx/gtkx": "workspace:*"
   }
 }

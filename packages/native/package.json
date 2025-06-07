@@ -2,17 +2,22 @@
   "name": "@gtkx/native",
   "version": "0.1.0",
   "description": "",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "default": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
   "scripts": {
     "test": "cargo test",
     "cargo-build": "cargo build --message-format=json-render-diagnostics > cargo.log",
     "cross-build": "cross build --message-format=json-render-diagnostics > cross.log",
     "postcargo-build": "neon dist < cargo.log",
     "postcross-build": "neon dist -m /target < cross.log",
-    "debug": "npm run cargo-build --",
-    "build": "npm run cargo-build -- --release",
-    "cross": "npm run cross-build -- --release"
+    "debug": "pnpm run cargo-build",
+    "build": "pnpm run cargo-build --release",
+    "cross": "pnpm run cross-build --release"
   },
   "author": "",
   "license": "ISC",
