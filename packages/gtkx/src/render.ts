@@ -1,22 +1,24 @@
-import { start, quit as nativeQuit } from "@gtkx/native";
+import { start, stop as nativeStop } from "@gtkx/native";
 
 let keepAliveTimeout: NodeJS.Timeout | null = null;
+let app: unknown | null = null;
 
-function keepAlive(app: unknown) {
-  keepAliveTimeout = setTimeout(() => keepAlive(app), 2147483647);
+function keepAlive() {
+  keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
 }
 
 export function render(appId: string) {
-  const app = start(appId);
-  keepAlive(app);
+  app = start(appId);
+  console.log("Started GTK application: ", app);
+  keepAlive();
   return app;
 }
 
-export function quit() {
+export function stop() {
   if (keepAliveTimeout) {
     clearTimeout(keepAliveTimeout);
     keepAliveTimeout = null;
   }
 
-  nativeQuit();
+  nativeStop(app);
 }

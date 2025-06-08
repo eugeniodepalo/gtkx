@@ -1,8 +1,6 @@
-import { Gtk, render, quit } from "@gtkx/gtkx";
+import { Gtk, render, stop } from "@gtkx/gtkx";
 
 const app = render("com.gtkx.demo");
-
-console.log("Started GTK application: ", app);
 
 const majorVersion = Gtk.getMajorVersion();
 const minorVersion = Gtk.getMinorVersion();
@@ -23,6 +21,6 @@ let globalState: { window: Gtk.ApplicationWindow } | null = {
 };
 
 setTimeout(() => {
-  quit();
+  stop();
   globalState = null;
 }, 50000);
