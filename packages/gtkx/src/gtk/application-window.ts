@@ -8,7 +8,7 @@ export class ApplicationWindow {
       "gtk_application_window_new",
       [
         {
-          type: "gobject",
+          type: { type: "gobject" },
           value: app,
         },
       ],
@@ -21,11 +21,11 @@ export class ApplicationWindow {
       "gtk_window_set_title",
       [
         {
-          type: "gobject",
+          type: { type: "gobject" },
           value: this.ptr,
         },
         {
-          type: "string",
+          type: { type: "string" },
           value: title,
         },
       ],
@@ -38,20 +38,16 @@ export class ApplicationWindow {
       "gtk_window_set_default_size",
       [
         {
-          type: "gobject",
+          type: { type: "gobject" },
           value: this.ptr,
         },
         {
-          type: "int",
-          size: 32,
+          type: { type: "int", size: 32, unsigned: true },
           value: width,
-          unsigned: true,
         },
         {
-          type: "int",
-          size: 32,
+          type: { type: "int", size: 32, unsigned: true },
           value: height,
-          unsigned: true,
         },
       ],
       { type: "void" }
@@ -63,7 +59,7 @@ export class ApplicationWindow {
       "gtk_window_present",
       [
         {
-          type: "gobject",
+          type: { type: "gobject" },
           value: this.ptr,
         },
       ],
@@ -71,33 +67,25 @@ export class ApplicationWindow {
     );
   }
 
-  connectClose(handler: (object: unknown, signal: string) => string) {
+  connectClose(handler: (object: unknown, signal: string) => void) {
     call(
-      "g_signal_connect",
+      "g_signal_connect_closure",
       [
         {
-          type: "gobject",
+          type: { type: "gobject" },
           value: this.ptr,
         },
         {
-          type: "string",
+          type: { type: "string" },
           value: "close-request",
         },
         {
-          type: "callback",
-          argTypes: [
-            {
-              type: "gobject",
-            },
-            {
-              type: "string",
-            },
-          ] as const,
-          returnType: { type: "string" },
+          type: { type: "callback" },
           value: handler,
         },
+        { type: { type: "boolean" }, value: false },
       ],
-      { type: "void" }
+      { type: "int", size: 32 }
     );
   }
 }

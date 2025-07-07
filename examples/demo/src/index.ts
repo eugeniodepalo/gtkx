@@ -16,6 +16,12 @@ window.setTitle("Hello, GTK!");
 window.setDefaultSize(800, 600);
 window.present();
 
+window.connectClose((...args) => {
+  console.log("Window closed, stopping the app.");
+  console.log("Arguments: ", args);
+  process.exit(0);
+});
+
 let globalState: { window: Gtk.ApplicationWindow } | null = {
   window,
 };

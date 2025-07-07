@@ -1,25 +1,21 @@
 use libffi::middle as ffi;
-use neon::prelude::*;
+use neon::{object::Object as _, prelude::*};
 
 use std::{
-    any::{Any, TypeId},
     cell::{OnceCell, RefCell},
     collections::HashMap,
     ffi::{c_char, c_void, CString},
-    sync::mpsc,
+    sync::{mpsc, Arc},
 };
 
 use gtk4::{
     gio,
     glib::{
         self,
-        translate::{FromGlibPtrBorrow, FromGlibPtrFull},
+        translate::{FromGlibPtrFull, FromGlibPtrNone as _, IntoGlib},
     },
     prelude::*,
 };
-
-type UnrefFn<'a> = libloading::Symbol<'a, unsafe extern "C" fn(*mut c_void)>;
-type RefFn<'a> = libloading::Symbol<'a, unsafe extern "C" fn(*mut c_void)>;
 
 struct GtkThreadState(RefCell<OnceCell<GtkThreadStateInner>>);
 
@@ -37,6 +33,7 @@ impl GtkThreadState {
 
             inner.get_or_init(|| GtkThreadStateInner {
                 library: unsafe { libloading::Library::new("libgtk-4.so.1").unwrap() },
+                next_object_id: 0,
                 object_map: HashMap::new(),
                 app_hold_guard: None,
             });
@@ -48,7 +45,8 @@ impl GtkThreadState {
 
 struct GtkThreadStateInner {
     library: libloading::Library,
-    object_map: HashMap<usize, Box<dyn Any>>,
+    next_object_id: usize,
+    object_map: HashMap<usize, Object>,
     app_hold_guard: Option<gio::ApplicationHoldGuard>,
 }
 
@@ -56,12 +54,84 @@ thread_local! {
     static GTK_THREAD_STATE: GtkThreadState = GtkThreadState::new();
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
+struct Boxed {
+    ptr: *mut c_void,
+    type_: glib::Type,
+}
+
+impl Boxed {
+    fn from_glib_full(type_: glib::Type, ptr: *mut c_void) -> Self {
+        Boxed { ptr, type_ }
+    }
+
+    fn from_glib_none(type_: glib::Type, ptr: *mut c_void) -> Self {
+        let cloned_ptr = unsafe { glib::gobject_ffi::g_boxed_copy(type_.into_glib(), ptr) };
+
+        Boxed {
+            ptr: cloned_ptr,
+            type_,
+        }
+    }
+}
+
+impl Clone for Boxed {
+    fn clone(&self) -> Self {
+        let cloned_ptr =
+            unsafe { glib::gobject_ffi::g_boxed_copy(self.type_.into_glib(), self.ptr) };
+
+        Boxed {
+            ptr: cloned_ptr,
+            type_: self.type_,
+        }
+    }
+}
+
+impl Drop for Boxed {
+    fn drop(&mut self) {
+        unsafe {
+            glib::gobject_ffi::g_boxed_free(self.type_.into_glib(), self.ptr);
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Object {
+    GObject(glib::Object),
+    Boxed(Boxed),
+}
+
+impl Clone for Object {
+    fn clone(&self) -> Self {
+        match self {
+            Object::GObject(obj) => Object::GObject(obj.clone()),
+            Object::Boxed(boxed) => Object::Boxed(boxed.clone()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 struct ObjectId(usize);
 
 impl ObjectId {
-    fn new(id: usize) -> Self {
-        Self(id)
+    fn new(object: Object) -> Self {
+        GtkThreadState::with(|state| {
+            let id = state.next_object_id;
+            state.next_object_id += 1;
+            state.object_map.insert(id, object.clone());
+            ObjectId(id)
+        })
+    }
+
+    fn as_ptr(&self) -> *mut c_void {
+        GtkThreadState::with(|state| {
+            let object = state.object_map.get(&self.0).unwrap();
+
+            match object {
+                Object::GObject(obj) => obj.as_ptr() as *mut c_void,
+                Object::Boxed(boxed) => boxed.ptr,
+            }
+        })
     }
 }
 
@@ -72,59 +142,6 @@ impl Finalize for ObjectId {
                 state.object_map.remove(&self.0);
             });
         });
-    }
-}
-
-#[derive(Debug)]
-struct Custom {
-    ptr: *mut c_void,
-    unref: String,
-    ref_: String,
-}
-
-impl Custom {
-    fn from_ptr_full(ptr: *mut c_void, unref: String, ref_: String) -> Self {
-        Self { ptr, unref, ref_ }
-    }
-
-    fn from_ptr_borrow(ptr: *mut c_void, unref: String, ref_: String) -> Self {
-        let custom = Self::from_ptr_full(ptr, unref, ref_);
-        custom.ref_();
-        custom
-    }
-
-    fn ref_(&self) {
-        let ref_fn = self.ref_.clone();
-        let ptr = self.ptr;
-
-        GtkThreadState::with(|state| {
-            let library = &state.library;
-            let symbol: RefFn = unsafe { library.get(ref_fn.as_bytes()).unwrap() };
-
-            unsafe {
-                symbol(ptr);
-            }
-        });
-    }
-
-    fn unref(&self) {
-        let unref_fn = self.unref.clone();
-        let ptr = self.ptr;
-
-        GtkThreadState::with(|state| {
-            let library = &state.library;
-            let symbol: UnrefFn = unsafe { library.get(unref_fn.as_bytes()).unwrap() };
-
-            unsafe {
-                symbol(ptr);
-            }
-        });
-    }
-}
-
-impl Drop for Custom {
-    fn drop(&mut self) {
-        self.unref();
     }
 }
 
@@ -169,7 +186,7 @@ impl IntegerSign {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum FloatSize {
     _32,
     _64,
@@ -187,7 +204,7 @@ impl FloatSize {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct IntegerType {
     size: IntegerSize,
     sign: IntegerSign,
@@ -200,10 +217,10 @@ impl IntegerType {
 
     fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let size_value = obj.prop(cx, "size").get()?;
-        let sign_value = obj.prop(cx, "signed").get()?;
-        let size = IntegerSize::from_js_value(cx, size_value)?;
-        let sign = IntegerSign::from_js_value(cx, sign_value)?;
+        let size_prop = obj.prop(cx, "size").get()?;
+        let sign_prop = obj.prop(cx, "signed").get()?;
+        let size = IntegerSize::from_js_value(cx, size_prop)?;
+        let sign = IntegerSign::from_js_value(cx, sign_prop)?;
 
         Ok(Self::new(size, sign))
     }
@@ -220,7 +237,7 @@ impl IntegerType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct FloatType {
     size: FloatSize,
 }
@@ -232,8 +249,8 @@ impl FloatType {
 
     fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let size_value = obj.prop(cx, "size").get()?;
-        let size = FloatSize::from_js_value(cx, size_value)?;
+        let size_prop = obj.prop(cx, "size").get()?;
+        let size = FloatSize::from_js_value(cx, size_prop)?;
 
         Ok(Self::new(size))
     }
@@ -246,7 +263,7 @@ impl FloatType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct GObjectType {
     is_borrowed: bool,
 }
@@ -258,9 +275,9 @@ impl GObjectType {
 
     fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let is_borrowed_value: Handle<'_, JsValue> = obj.prop(cx, "borrowed").get()?;
+        let is_borrowed_prop: Handle<'_, JsValue> = obj.prop(cx, "borrowed").get()?;
 
-        let is_borrowed = is_borrowed_value
+        let is_borrowed = is_borrowed_prop
             .downcast::<JsBoolean, _>(cx)
             .map(|b| b.value(cx))
             .unwrap_or(false);
@@ -273,89 +290,34 @@ impl GObjectType {
     }
 }
 
-#[derive(Debug)]
-struct CustomType {
+#[derive(Debug, Clone)]
+struct BoxedType {
     is_borrowed: bool,
-    unref: Option<String>,
-    ref_: Option<String>,
+    type_: String,
 }
 
-impl CustomType {
-    fn new(is_borrowed: bool, unref: Option<String>, ref_: Option<String>) -> Self {
-        CustomType {
-            is_borrowed,
-            unref,
-            ref_,
-        }
+impl BoxedType {
+    fn new(is_borrowed: bool, type_: String) -> Self {
+        BoxedType { is_borrowed, type_ }
     }
 
     fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let is_borrowed_value: Handle<'_, JsValue> = obj.prop(cx, "borrowed").get()?;
+        let is_borrowed_prop: Handle<'_, JsValue> = obj.prop(cx, "borrowed").get()?;
 
-        let is_borrowed = is_borrowed_value
+        let is_borrowed = is_borrowed_prop
             .downcast::<JsBoolean, _>(cx)
             .map(|b| b.value(cx))
             .unwrap_or(false);
 
-        let unref_value: Handle<'_, JsValue> = obj.prop(cx, "unref").get()?;
+        let type_prop: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
 
-        let unref = unref_value
+        let type_ = type_prop
             .downcast::<JsString, _>(cx)
-            .map(|s| s.value(cx))
-            .ok();
-
-        let ref_value: Handle<'_, JsValue> = obj.prop(cx, "ref").get()?;
-
-        let ref_ = ref_value
-            .downcast::<JsString, _>(cx)
-            .map(|s| s.value(cx))
-            .ok();
-
-        Ok(Self::new(is_borrowed, unref, ref_))
-    }
-
-    fn into_ffi_type(&self) -> ffi::Type {
-        ffi::Type::pointer()
-    }
-}
-
-#[derive(Debug)]
-struct CallbackType {
-    arg_types: Vec<Type>,
-    return_type: Type,
-}
-
-impl CallbackType {
-    fn new(arg_types: Vec<Type>, return_type: Type) -> Self {
-        CallbackType {
-            arg_types,
-            return_type,
-        }
-    }
-
-    fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let arg_types_value: Handle<'_, JsValue> = obj.prop(cx, "argTypes").get()?;
-
-        let arg_types_value = arg_types_value
-            .downcast::<JsArray, _>(cx)
             .or_throw(cx)?
-            .to_vec(cx)?;
+            .value(cx);
 
-        let return_type_value: Handle<'_, JsValue> = obj.prop(cx, "returnType").get()?;
-
-        let arg_types = arg_types_value
-            .into_iter()
-            .map(|v| Type::from_js_value(cx, v))
-            .collect::<NeonResult<Vec<_>>>()?;
-
-        let return_type = Type::from_js_value(cx, return_type_value)?;
-
-        Ok(CallbackType {
-            arg_types,
-            return_type,
-        })
+        Ok(Self::new(is_borrowed, type_))
     }
 
     fn into_ffi_type(&self) -> ffi::Type {
@@ -363,12 +325,9 @@ impl CallbackType {
     }
 }
 
-#[derive(Debug)]
-enum ArrayType {
-    Integer(IntegerType),
-    Float(FloatType),
-    String,
-    Boolean,
+#[derive(Debug, Clone)]
+struct ArrayType {
+    item_type: Box<Type>,
 }
 
 impl ArrayType {
@@ -377,13 +336,9 @@ impl ArrayType {
         let item_type_value: Handle<'_, JsValue> = obj.prop(cx, "itemType").get()?;
         let item_type = Type::from_js_value(cx, item_type_value)?;
 
-        match item_type {
-            Type::Integer(type_) => Ok(ArrayType::Integer(type_)),
-            Type::Float(type_) => Ok(ArrayType::Float(type_)),
-            Type::String => Ok(ArrayType::String),
-            Type::Boolean => Ok(ArrayType::Boolean),
-            _ => cx.throw_type_error("Invalid item type for array"),
-        }
+        Ok(Self {
+            item_type: Box::new(item_type),
+        })
     }
 
     fn into_ffi_type(&self) -> ffi::Type {
@@ -391,17 +346,17 @@ impl ArrayType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Type {
     Integer(IntegerType),
     Float(FloatType),
     String,
+    Null,
     Boolean,
     GObject(GObjectType),
-    Custom(CustomType),
+    Boxed(BoxedType),
     Array(ArrayType),
-    Callback(Box<CallbackType>),
-    VoidType,
+    Callback,
 }
 
 impl Type {
@@ -419,13 +374,11 @@ impl Type {
             "float" => Ok(Type::Float(FloatType::from_js_value(cx, value)?)),
             "string" => Ok(Type::String),
             "boolean" => Ok(Type::Boolean),
+            "null" => Ok(Type::Null),
             "gobject" => Ok(Type::GObject(GObjectType::from_js_value(cx, value)?)),
-            "custom" => Ok(Type::Custom(CustomType::from_js_value(cx, value)?)),
+            "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
             "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
-            "callback" => Ok(Type::Callback(Box::new(CallbackType::from_js_value(
-                cx, value,
-            )?))),
-            "void" => Ok(Type::VoidType),
+            "callback" => Ok(Type::Callback),
             _ => cx.throw_type_error("Unknown type"),
         }
     }
@@ -436,50 +389,138 @@ impl Type {
             Type::Float(type_) => type_.into_ffi_type(),
             Type::String => ffi::Type::pointer(),
             Type::Boolean => ffi::Type::u8(),
+            Type::Null => ffi::Type::pointer(),
             Type::GObject(type_) => type_.into_ffi_type(),
-            Type::Custom(type_) => type_.into_ffi_type(),
+            Type::Boxed(type_) => type_.into_ffi_type(),
             Type::Array(type_) => type_.into_ffi_type(),
-            Type::Callback(type_) => type_.into_ffi_type(),
-            Type::VoidType => ffi::Type::void(),
+            Type::Callback => ffi::Type::pointer(),
         }
     }
 }
 
 #[derive(Debug)]
-enum ArrayArg {
-    Integer(IntegerType, Vec<i64>),
-    Float(FloatType, Vec<f64>),
-    String(Vec<String>),
-    Boolean(Vec<bool>),
+enum Value {
+    Number(f64),
+    String(String),
+    Boolean(bool),
+    Object(ObjectId),
+    Null,
+    Array(Vec<Value>),
+    Callback(Arc<Root<JsFunction>>, Channel),
 }
 
-impl ArrayArg {
-    fn into_ffi_type(&self) -> ffi::Type {
-        ffi::Type::pointer()
+impl Value {
+    fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
+        if let Ok(number) = value.downcast::<JsNumber, _>(cx) {
+            return Ok(Value::Number(number.value(cx)));
+        }
+
+        if let Ok(string) = value.downcast::<JsString, _>(cx) {
+            return Ok(Value::String(string.value(cx)));
+        }
+
+        if let Ok(boolean) = value.downcast::<JsBoolean, _>(cx) {
+            return Ok(Value::Boolean(boolean.value(cx)));
+        }
+
+        if let Ok(_) = value.downcast::<JsNull, _>(cx) {
+            return Ok(Value::Null);
+        }
+
+        if let Ok(object_id) = value.downcast::<JsBox<ObjectId>, _>(cx) {
+            return Ok(Value::Object(object_id.as_inner().clone()));
+        }
+
+        if let Ok(callback) = value.downcast::<JsFunction, _>(cx) {
+            return Ok(Value::Callback(Arc::new(callback.root(cx)), cx.channel()));
+        }
+
+        if let Ok(array) = value.downcast::<JsArray, _>(cx) {
+            let values = array.to_vec(cx)?;
+            let mut vec_values = Vec::with_capacity(values.len());
+
+            for item in values {
+                vec_values.push(Self::from_js_value(cx, item)?);
+            }
+
+            return Ok(Value::Array(vec_values));
+        }
+
+        cx.throw_type_error("Unsupported JS value type")
+    }
+
+    fn to_js_value<'a, C: Context<'a>>(&self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
+        match self {
+            Value::Number(n) => Ok(cx.number(*n).upcast()),
+            Value::String(s) => Ok(cx.string(s).upcast()),
+            Value::Boolean(b) => Ok(cx.boolean(*b).upcast()),
+            Value::Object(id) => Ok(cx.boxed(id.clone()).upcast()),
+            Value::Array(arr) => {
+                let js_array = cx.empty_array();
+                for (i, item) in arr.iter().enumerate() {
+                    let js_item = item.to_js_value(cx)?;
+                    js_array.set(cx, i as u32, js_item)?;
+                }
+                Ok(js_array.upcast())
+            }
+            _ => cx.throw_type_error("Unsupported Value type for JS conversion"),
+        }
+    }
+
+    fn from_glib_value(value: &glib::Value) -> Self {
+        if value.is_type(glib::types::Type::I8) {
+            Value::Number(value.get::<i8>().unwrap() as f64)
+        } else if value.is_type(glib::types::Type::U8) {
+            Value::Number(value.get::<u8>().unwrap() as f64)
+        } else if value.is_type(glib::types::Type::I32) {
+            Value::Number(value.get::<i32>().unwrap() as f64)
+        } else if value.is_type(glib::types::Type::U32) {
+            Value::Number(value.get::<u32>().unwrap() as f64)
+        } else if value.is_type(glib::types::Type::I64) {
+            Value::Number(value.get::<i64>().unwrap() as f64)
+        } else if value.is_type(glib::types::Type::U64) {
+            Value::Number(value.get::<u64>().unwrap() as f64)
+        } else if value.is_type(glib::types::Type::F32) {
+            Value::Number(value.get::<f32>().unwrap() as f64)
+        } else if value.is_type(glib::types::Type::F64) {
+            Value::Number(value.get::<f64>().unwrap())
+        } else if value.is_type(glib::types::Type::STRING) {
+            let string: String = value.get().unwrap();
+            Value::String(string)
+        } else if value.is_type(glib::types::Type::BOOL) {
+            let boolean: bool = value.get().unwrap();
+            Value::Boolean(boolean)
+        } else if value.is_type(glib::types::Type::OBJECT) {
+            let object: glib::Object = value.get().unwrap();
+            let object_id = ObjectId::new(Object::GObject(object));
+            Value::Object(object_id)
+        } else if value.is_type(glib::types::Type::BOXED) {
+            let boxed_ptr = value.as_ptr();
+            let boxed = Boxed::from_glib_none(value.type_(), boxed_ptr as *mut c_void);
+            let object_id = ObjectId::new(Object::Boxed(boxed));
+            Value::Object(object_id)
+        } else {
+            panic!("Unsupported glib value type: {:?}", value.type_());
+        }
     }
 }
 
-type BoxedObjectId = JsBox<ObjectId>;
-
 #[derive(Debug)]
-enum Arg {
-    Integer(IntegerType, i64),
-    Float(FloatType, f64),
-    String(String),
-    Boolean(bool),
-    GObject(GObjectType, usize),
-    Custom(CustomType, usize),
-    Array(ArrayArg),
-    Callback(Box<CallbackType>, Root<JsFunction>),
+struct Arg {
+    type_: Type,
+    value: Value,
 }
 
 impl Arg {
-    fn from_js_array(cx: &mut FunctionContext, value: Handle<JsArray>) -> NeonResult<Vec<Self>> {
+    fn vec_from_js_value(
+        cx: &mut FunctionContext,
+        value: Handle<JsArray>,
+    ) -> NeonResult<Vec<Self>> {
         let array = value.to_vec(cx)?;
         let mut args = Vec::with_capacity(array.len());
 
         for item in array {
-            args.push(Arg::from_js_value(cx, item)?);
+            args.push(Self::from_js_value(cx, item)?);
         }
 
         Ok(args)
@@ -487,194 +528,233 @@ impl Arg {
 
     fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let type_ = Type::from_js_value(cx, value)?;
+        let type_prop: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
+        let value_prop: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
+        let type_ = Type::from_js_value(cx, type_prop)?;
+        let value = Value::from_js_value(cx, value_prop)?;
 
-        match type_ {
-            Type::Integer(type_) => {
-                let value_value: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
-
-                let value = value_value
-                    .downcast::<JsNumber, _>(cx)
-                    .or_throw(cx)?
-                    .value(cx) as i64;
-
-                Ok(Self::Integer(type_, value))
-            }
-            Type::Float(type_) => {
-                let value_value: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
-
-                let value = value_value
-                    .downcast::<JsNumber, _>(cx)
-                    .or_throw(cx)?
-                    .value(cx) as f64;
-
-                Ok(Self::Float(type_, value))
-            }
-            Type::String => {
-                let value_value: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
-
-                let value = value_value
-                    .downcast::<JsString, _>(cx)
-                    .or_throw(cx)?
-                    .value(cx);
-
-                Ok(Self::String(value))
-            }
-            Type::Boolean => {
-                let value_value: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
-
-                let value = value_value
-                    .downcast::<JsBoolean, _>(cx)
-                    .or_throw(cx)?
-                    .value(cx);
-
-                Ok(Self::Boolean(value))
-            }
-            Type::GObject(type_) => {
-                let value_value: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
-
-                let value = value_value
-                    .downcast::<BoxedObjectId, _>(cx)
-                    .or_throw(cx)?
-                    .as_inner()
-                    .0;
-
-                Ok(Self::GObject(type_, value))
-            }
-            Type::Custom(type_) => {
-                let value_value: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
-
-                let value = value_value
-                    .downcast::<BoxedObjectId, _>(cx)
-                    .or_throw(cx)?
-                    .as_inner()
-                    .0;
-
-                Ok(Self::Custom(type_, value))
-            }
-            Type::Array(array_type) => {
-                let value_value: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
-                let value = value_value.downcast::<JsArray, _>(cx).or_throw(cx)?;
-
-                let array_value = match array_type {
-                    ArrayType::Integer(type_) => {
-                        let values: Vec<i64> = value
-                            .to_vec(cx)?
-                            .into_iter()
-                            .map(|v| {
-                                v.downcast::<JsNumber, _>(cx)
-                                    .or_throw(cx)
-                                    .unwrap()
-                                    .value(cx) as i64
-                            })
-                            .collect();
-
-                        ArrayArg::Integer(type_, values)
-                    }
-                    ArrayType::Float(type_) => {
-                        let values: Vec<f64> = value
-                            .to_vec(cx)?
-                            .into_iter()
-                            .map(|v| {
-                                v.downcast::<JsNumber, _>(cx)
-                                    .or_throw(cx)
-                                    .unwrap()
-                                    .value(cx) as f64
-                            })
-                            .collect();
-
-                        ArrayArg::Float(type_, values)
-                    }
-                    ArrayType::String => {
-                        let values: Vec<String> = value
-                            .to_vec(cx)?
-                            .into_iter()
-                            .map(|v| {
-                                v.downcast::<JsString, _>(cx)
-                                    .or_throw(cx)
-                                    .unwrap()
-                                    .value(cx)
-                            })
-                            .collect();
-
-                        ArrayArg::String(values)
-                    }
-                    ArrayType::Boolean => {
-                        let values: Vec<bool> = value
-                            .to_vec(cx)?
-                            .into_iter()
-                            .map(|v| {
-                                v.downcast::<JsBoolean, _>(cx)
-                                    .or_throw(cx)
-                                    .unwrap()
-                                    .value(cx)
-                            })
-                            .collect();
-
-                        ArrayArg::Boolean(values)
-                    }
-                };
-
-                Ok(Self::Array(array_value))
-            }
-            Type::Callback(type_) => {
-                let value_value: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
-                let value = value_value.downcast::<JsFunction, _>(cx).or_throw(cx)?;
-
-                Ok(Self::Callback(type_, value.root(cx)))
-            }
-            _ => cx.throw_type_error("Unsupported argument type"),
-        }
+        Ok(Arg { type_, value })
     }
 
     pub fn into_ffi_type(&self) -> ffi::Type {
-        match self {
-            Arg::Integer(type_, _) => type_.into_ffi_type(),
-            Arg::Float(type_, _) => type_.into_ffi_type(),
-            Arg::String(_) => ffi::Type::pointer(),
-            Arg::Boolean(_) => ffi::Type::u8(),
-            Arg::GObject(type_, _) => type_.into_ffi_type(),
-            Arg::Custom(type_, _) => type_.into_ffi_type(),
-            Arg::Array(array_arg) => array_arg.into_ffi_type(),
-            Arg::Callback(type_, _) => type_.into_ffi_type(),
-        }
+        self.type_.into_ffi_type()
     }
 
     pub fn into_cif_arg(&self) -> CifArg {
-        match self {
-            Arg::Integer(_type, value) => match (_type.size, _type.sign) {
-                (IntegerSize::_8, IntegerSign::Unsigned) => CifArg::U8(*value as u8),
-                (IntegerSize::_8, IntegerSign::Signed) => CifArg::I8(*value as i8),
-                (IntegerSize::_32, IntegerSign::Unsigned) => CifArg::U32(*value as u32),
-                (IntegerSize::_32, IntegerSign::Signed) => CifArg::I32(*value as i32),
-                (IntegerSize::_64, IntegerSign::Unsigned) => CifArg::U64(*value as u64),
-                (IntegerSize::_64, IntegerSign::Signed) => CifArg::I64(*value as i64),
-            },
-            Arg::Float(_type, value) => match _type.size {
-                FloatSize::_32 => CifArg::F32(*value as f32),
-                FloatSize::_64 => CifArg::F64(*value),
-            },
-            Arg::String(value) => CifArg::String(CString::new(value.as_str()).unwrap()),
-            Arg::Boolean(value) => CifArg::U8(if *value { 1 } else { 0 }),
-            Arg::GObject(_type, value) => CifArg::Pointer(*value as *mut c_void),
-            Arg::Custom(_type, value) => CifArg::Pointer(*value as *mut c_void),
-            Arg::Array(array_arg) => match array_arg {
-                ArrayArg::Integer(_type, values) => CifArg::Pointer(values.as_ptr() as *mut c_void),
-                ArrayArg::Float(_type, values) => CifArg::Pointer(values.as_ptr() as *mut c_void),
-                ArrayArg::String(values) => {
-                    let cstrings: Vec<CString> = values
-                        .iter()
-                        .map(|s| CString::new(s.as_str()).unwrap())
-                        .collect();
+        match &self.type_ {
+            Type::Integer(type_) => {
+                let number = match self.value {
+                    Value::Number(n) => n,
+                    _ => panic!("Expected a Number for integer type"),
+                };
 
-                    CifArg::StringArray(cstrings)
+                match type_.size {
+                    IntegerSize::_8 => match type_.sign {
+                        IntegerSign::Unsigned => CifArg::U8(number as u8),
+                        IntegerSign::Signed => CifArg::I8(number as i8),
+                    },
+                    IntegerSize::_32 => match type_.sign {
+                        IntegerSign::Unsigned => CifArg::U32(number as u32),
+                        IntegerSign::Signed => CifArg::I32(number as i32),
+                    },
+                    IntegerSize::_64 => match type_.sign {
+                        IntegerSign::Unsigned => CifArg::U64(number as u64),
+                        IntegerSign::Signed => CifArg::I64(number as i64),
+                    },
                 }
-                ArrayArg::Boolean(values) => {
-                    let ptr = values.as_ptr() as *mut c_void;
-                    CifArg::Pointer(ptr)
+            }
+            Type::Float(type_) => {
+                let number = match self.value {
+                    Value::Number(n) => n,
+                    _ => panic!("Expected a Number for float type"),
+                };
+
+                match type_.size {
+                    FloatSize::_32 => CifArg::F32(number as f32),
+                    FloatSize::_64 => CifArg::F64(number),
                 }
-            },
-            Arg::Callback(_, _) => CifArg::Pointer(std::ptr::null_mut()),
+            }
+            Type::String => {
+                let string = match &self.value {
+                    Value::String(s) => s,
+                    _ => panic!("Expected a String for string type"),
+                };
+
+                let cstring = CString::new(string.as_bytes()).unwrap();
+                CifArg::String(cstring)
+            }
+            Type::Boolean => {
+                let boolean = match self.value {
+                    Value::Boolean(b) => b,
+                    _ => panic!("Expected a Boolean for boolean type"),
+                };
+
+                CifArg::U8(if boolean { 1 } else { 0 })
+            }
+            Type::Null => CifArg::Pointer(std::ptr::null_mut()),
+            Type::GObject(_) => {
+                let object_id = match &self.value {
+                    Value::Object(id) => id,
+                    _ => panic!("Expected a Object for gobject type"),
+                };
+
+                CifArg::Pointer(object_id.as_ptr())
+            }
+            Type::Boxed(_) => {
+                let object_id = match &self.value {
+                    Value::Object(id) => id,
+                    _ => panic!("Expected a Boxed for boxed type"),
+                };
+
+                CifArg::Pointer(object_id.as_ptr())
+            }
+            Type::Array(ref array_type) => {
+                let array = match &self.value {
+                    Value::Array(arr) => arr,
+                    _ => panic!("Expected an Array for array type"),
+                };
+
+                match *array_type.item_type {
+                    Type::Integer(type_) => {
+                        let values = array
+                            .into_iter()
+                            .map(|v| match v {
+                                Value::Number(n) => n,
+                                _ => panic!("Expected a Number for integer array type"),
+                            })
+                            .collect::<Vec<_>>();
+
+                        match (type_.size, type_.sign) {
+                            (IntegerSize::_8, IntegerSign::Unsigned) => {
+                                CifArg::U8Array(values.iter().map(|&v| *v as u8).collect())
+                            }
+                            (IntegerSize::_8, IntegerSign::Signed) => {
+                                CifArg::I8Array(values.iter().map(|&v| *v as i8).collect())
+                            }
+                            (IntegerSize::_32, IntegerSign::Unsigned) => {
+                                CifArg::U32Array(values.iter().map(|&v| *v as u32).collect())
+                            }
+                            (IntegerSize::_32, IntegerSign::Signed) => {
+                                CifArg::I32Array(values.iter().map(|&v| *v as i32).collect())
+                            }
+                            (IntegerSize::_64, IntegerSign::Unsigned) => {
+                                CifArg::U64Array(values.iter().map(|&v| *v as u64).collect())
+                            }
+                            (IntegerSize::_64, IntegerSign::Signed) => {
+                                CifArg::I64Array(values.iter().map(|&v| *v as i64).collect())
+                            }
+                        }
+                    }
+                    Type::Float(type_) => {
+                        let values = array
+                            .into_iter()
+                            .map(|v| match v {
+                                Value::Number(n) => n,
+                                _ => panic!("Expected a Number for float array type"),
+                            })
+                            .collect::<Vec<_>>();
+
+                        match type_.size {
+                            FloatSize::_32 => {
+                                CifArg::F32Array(values.iter().map(|&v| *v as f32).collect())
+                            }
+                            FloatSize::_64 => {
+                                CifArg::F64Array(values.iter().map(|&v| *v).collect())
+                            }
+                        }
+                    }
+                    Type::String => {
+                        let cstrings = array
+                            .into_iter()
+                            .map(|v| match v {
+                                Value::String(s) => CString::new(s.as_bytes()).unwrap(),
+                                _ => panic!("Expected a String for string array type"),
+                            })
+                            .collect::<Vec<_>>();
+
+                        CifArg::StringArray(cstrings)
+                    }
+                    Type::GObject(_) => {
+                        let pointers = array
+                            .into_iter()
+                            .map(|v| match v {
+                                Value::Object(id) => id.as_ptr(),
+                                _ => panic!("Expected a GObject for gobject array type"),
+                            })
+                            .collect::<Vec<_>>();
+
+                        CifArg::PointerArray(pointers)
+                    }
+                    Type::Boxed(_) => {
+                        let pointers = array
+                            .into_iter()
+                            .map(|v| match v {
+                                Value::Object(id) => id.as_ptr(),
+                                _ => panic!("Expected a Boxed object for pointer array type"),
+                            })
+                            .collect::<Vec<_>>();
+
+                        CifArg::PointerArray(pointers)
+                    }
+                    Type::Boolean => {
+                        let values = array
+                            .into_iter()
+                            .map(|v| match v {
+                                Value::Boolean(b) => {
+                                    if *b {
+                                        1
+                                    } else {
+                                        0
+                                    }
+                                }
+                                _ => panic!("Expected a Boolean for boolean array type"),
+                            })
+                            .collect::<Vec<_>>();
+
+                        CifArg::U8Array(values)
+                    }
+                    _ => panic!("Unsupported array item type"),
+                }
+            }
+            Type::Callback => {
+                let (callback, channel) = match &self.value {
+                    Value::Callback(callback, channel) => (callback, channel),
+                    _ => panic!("Expected a callback for callback type"),
+                };
+
+                let channel = channel.clone();
+                let callback = callback.clone();
+
+                let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    println!("Callback called with args: {:?}", args);
+                    let args_values = args
+                        .into_iter()
+                        .map(|v| Value::from_glib_value(v))
+                        .collect::<Vec<_>>();
+
+                    let callback = callback.clone();
+
+                    let return_value = channel.send(move |mut cx| {
+                        let js_args = args_values
+                            .into_iter()
+                            .map(|v| v.to_js_value(&mut cx))
+                            .collect::<NeonResult<Vec<_>>>()?;
+
+                        let js_this = cx.undefined();
+                        let js_callback = callback.clone().to_inner(&mut cx);
+                        let js_return_value = js_callback.call(&mut cx, js_this, js_args)?;
+
+                        let return_value =
+                            ReturnValue::from_js_value(&mut cx, js_return_value).unwrap();
+
+                        Ok(return_value)
+                    });
+
+                    return_value.join().unwrap().to_glib_value()
+                });
+
+                CifArg::Callback(closure)
+            }
         }
     }
 }
@@ -688,8 +768,18 @@ enum CifArg {
     I64(i64),
     F32(f32),
     F64(f64),
-    String(CString),
+    U8Array(Vec<u8>),
+    I8Array(Vec<i8>),
+    U32Array(Vec<u32>),
+    I32Array(Vec<i32>),
+    U64Array(Vec<u64>),
+    I64Array(Vec<i64>),
+    F32Array(Vec<f32>),
+    F64Array(Vec<f64>),
     StringArray(Vec<CString>),
+    PointerArray(Vec<*mut c_void>),
+    Callback(glib::Closure),
+    String(CString),
     Pointer(*mut c_void),
 }
 
@@ -706,14 +796,55 @@ impl CifArg {
             CifArg::F64(value) => RawCifArg::F64(*value),
             CifArg::String(cstring) => {
                 let ptr = cstring.as_ptr();
-                RawCifArg::String(ptr)
+                RawCifArg::Pointer(ptr as *mut c_void)
+            }
+            CifArg::Pointer(ptr) => RawCifArg::Pointer(*ptr),
+            CifArg::U8Array(values) => {
+                let ptr = values.as_ptr() as *const c_void;
+                RawCifArg::Pointer(ptr as *mut c_void)
+            }
+            CifArg::I8Array(values) => {
+                let ptr = values.as_ptr() as *const c_void;
+                RawCifArg::Pointer(ptr as *mut c_void)
+            }
+            CifArg::U32Array(values) => {
+                let ptr = values.as_ptr() as *const c_void;
+                RawCifArg::Pointer(ptr as *mut c_void)
+            }
+            CifArg::I32Array(values) => {
+                let ptr = values.as_ptr() as *const c_void;
+                RawCifArg::Pointer(ptr as *mut c_void)
+            }
+            CifArg::U64Array(values) => {
+                let ptr = values.as_ptr() as *const c_void;
+                RawCifArg::Pointer(ptr as *mut c_void)
+            }
+            CifArg::I64Array(values) => {
+                let ptr = values.as_ptr() as *const c_void;
+                RawCifArg::Pointer(ptr as *mut c_void)
+            }
+            CifArg::F32Array(values) => {
+                let ptr = values.as_ptr() as *const c_void;
+                RawCifArg::Pointer(ptr as *mut c_void)
+            }
+            CifArg::F64Array(values) => {
+                let ptr = values.as_ptr() as *const c_void;
+                RawCifArg::Pointer(ptr as *mut c_void)
             }
             CifArg::StringArray(cstrings) => {
                 let ptrs: Vec<*const c_char> = cstrings.iter().map(|s| s.as_ptr()).collect();
                 let ptr = ptrs.as_ptr();
-                RawCifArg::StringArray(ptr)
+                RawCifArg::Pointer(ptr as *mut c_void)
             }
-            CifArg::Pointer(ptr) => RawCifArg::Pointer(*ptr),
+            CifArg::PointerArray(pointers) => {
+                let ptrs: Vec<*mut c_void> = pointers.iter().map(|p| *p).collect();
+                let ptr = ptrs.as_ptr();
+                RawCifArg::Pointer(ptr as *mut c_void)
+            }
+            CifArg::Callback(closure) => {
+                let ptr = closure.as_ptr() as *mut c_void;
+                RawCifArg::Pointer(ptr)
+            }
         }
     }
 }
@@ -727,8 +858,6 @@ enum RawCifArg {
     I64(i64),
     F32(f32),
     F64(f64),
-    String(*const c_char),
-    StringArray(*const *const c_char),
     Pointer(*mut c_void),
 }
 
@@ -743,19 +872,116 @@ impl RawCifArg {
             RawCifArg::I64(value) => ffi::arg(value),
             RawCifArg::F32(value) => ffi::arg(value),
             RawCifArg::F64(value) => ffi::arg(value),
-            RawCifArg::String(ptr) => ffi::arg(ptr),
-            RawCifArg::StringArray(ptr) => ffi::arg(ptr),
             RawCifArg::Pointer(ptr) => ffi::arg(ptr),
+        }
+    }
+}
+
+enum ReturnType {
+    Void,
+    Null,
+    Integer(IntegerType),
+    Float(FloatType),
+    String,
+    Boolean,
+    GObject(GObjectType),
+    Boxed(BoxedType),
+    Array(ArrayType),
+    Callback,
+}
+
+impl ReturnType {
+    fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
+        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+        let type_prop: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
+
+        let type_ = type_prop
+            .downcast::<JsString, _>(cx)
+            .or_throw(cx)?
+            .value(cx);
+
+        match type_.as_str() {
+            "void" => Ok(ReturnType::Void),
+            "null" => Ok(ReturnType::Null),
+            "int" => Ok(ReturnType::Integer(IntegerType::from_js_value(cx, value)?)),
+            "float" => Ok(ReturnType::Float(FloatType::from_js_value(cx, value)?)),
+            "string" => Ok(ReturnType::String),
+            "boolean" => Ok(ReturnType::Boolean),
+            "gobject" => Ok(ReturnType::GObject(GObjectType::from_js_value(cx, value)?)),
+            "boxed" => Ok(ReturnType::Boxed(BoxedType::from_js_value(cx, value)?)),
+            "array" => Ok(ReturnType::Array(ArrayType::from_js_value(
+                cx,
+                obj.upcast(),
+            )?)),
+            "callback" => Ok(ReturnType::Callback),
+            _ => cx.throw_type_error("Unknown return type"),
+        }
+    }
+
+    fn into_ffi_type(&self) -> ffi::Type {
+        match self {
+            ReturnType::Void => ffi::Type::void(),
+            ReturnType::Null => ffi::Type::pointer(),
+            ReturnType::Integer(type_) => type_.into_ffi_type(),
+            ReturnType::Float(type_) => type_.into_ffi_type(),
+            ReturnType::String => ffi::Type::pointer(),
+            ReturnType::Boolean => ffi::Type::u8(),
+            ReturnType::GObject(type_) => type_.into_ffi_type(),
+            ReturnType::Boxed(type_) => type_.into_ffi_type(),
+            ReturnType::Array(type_) => type_.into_ffi_type(),
+            ReturnType::Callback => ffi::Type::pointer(),
         }
     }
 }
 
 enum ReturnValue {
     Void,
+    Null,
     Number(f64),
     String(String),
     Boolean(bool),
     Object(ObjectId),
+}
+
+impl ReturnValue {
+    fn from_js_value(cx: &mut Cx, value: Handle<JsValue>) -> NeonResult<Self> {
+        if let Ok(number) = value.downcast::<JsNumber, _>(cx) {
+            return Ok(ReturnValue::Number(number.value(cx)));
+        }
+
+        if let Ok(string) = value.downcast::<JsString, _>(cx) {
+            return Ok(ReturnValue::String(string.value(cx)));
+        }
+
+        if let Ok(boolean) = value.downcast::<JsBoolean, _>(cx) {
+            return Ok(ReturnValue::Boolean(boolean.value(cx)));
+        }
+
+        if let Ok(object_id) = value.downcast::<JsBox<ObjectId>, _>(cx) {
+            return Ok(ReturnValue::Object(object_id.as_inner().clone()));
+        }
+
+        if let Ok(_) = value.downcast::<JsUndefined, _>(cx) {
+            return Ok(ReturnValue::Null);
+        }
+
+        if let Ok(_) = value.downcast::<JsNull, _>(cx) {
+            return Ok(ReturnValue::Null);
+        }
+
+        cx.throw_type_error("Unsupported JS value type for return value")
+    }
+
+    fn to_glib_value(&self) -> Option<glib::Value> {
+        match self {
+            ReturnValue::Number(n) => Some(glib::Value::from(*n)),
+            ReturnValue::String(s) => Some(glib::Value::from(s.clone())),
+            ReturnValue::Boolean(b) => Some(glib::Value::from(*b)),
+            ReturnValue::Null => None,
+            ReturnValue::Void => None,
+            _ => panic!("Unsupported Value type for GLib conversion"),
+        }
+    }
 }
 
 fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
@@ -764,18 +990,12 @@ fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     std::thread::spawn(move || {
         let app = gtk4::Application::builder().application_id(app_id).build();
-        let app_object_id = app.as_ptr() as usize;
+        let app_object_id = ObjectId::new(Object::GObject(app.clone().into()));
 
-        GtkThreadState::with(|state| {
-            state.app_hold_guard = Some(app.hold());
-
-            state
-                .object_map
-                .insert(app_object_id, Box::new(app.clone()) as Box<dyn Any>);
-        });
+        GtkThreadState::with(|state| state.app_hold_guard = Some(app.hold()));
 
         app.connect_activate(move |_| {
-            tx.send(ObjectId::new(app_object_id)).unwrap();
+            tx.send(app_object_id.clone()).unwrap();
         });
 
         app.run_with_args::<&str>(&[]);
@@ -787,7 +1007,7 @@ fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
 }
 
 fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let app_object_id = **cx.argument::<BoxedObjectId>(0)?;
+    let app_object_id = cx.argument::<JsBox<ObjectId>>(0)?.as_inner().clone();
     let (tx, rx) = mpsc::channel::<()>();
 
     glib::idle_add_once(move || {
@@ -808,142 +1028,134 @@ fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let symbol_name = cx.argument::<JsString>(0)?.value(&mut cx);
     let js_args = cx.argument::<JsArray>(1)?;
     let js_return_type = cx.argument::<JsObject>(2)?;
-    let args = Arg::from_js_array(&mut cx, js_args)?;
-    let return_type = Type::from_js_value(&mut cx, js_return_type.upcast())?;
+    let args = Arg::vec_from_js_value(&mut cx, js_args)?;
+    let return_type = ReturnType::from_js_value(&mut cx, js_return_type.upcast())?;
     let (tx, rx) = mpsc::channel::<ReturnValue>();
 
     glib::idle_add_once(move || {
-        GtkThreadState::with(|state| {
-            let cif = ffi::Builder::new()
-                .res(return_type.into_ffi_type())
-                .args(
-                    args.iter()
-                        .map(|arg| arg.into_ffi_type())
-                        .collect::<Vec<_>>(),
-                )
-                .into_cif();
+        let cif = ffi::Builder::new()
+            .res(return_type.into_ffi_type())
+            .args(
+                args.iter()
+                    .map(|arg| arg.into_ffi_type())
+                    .collect::<Vec<_>>(),
+            )
+            .into_cif();
 
-            let mut cif_args = args
-                .iter()
-                .map(|arg| arg.into_cif_arg())
-                .collect::<Vec<_>>();
+        let mut cif_args = args
+            .iter()
+            .map(|arg| arg.into_cif_arg())
+            .collect::<Vec<_>>();
 
-            let raw_args = cif_args
-                .iter_mut()
-                .map(|arg| arg.into_raw())
-                .collect::<Vec<_>>();
+        let raw_args = cif_args
+            .iter_mut()
+            .map(|arg| arg.into_raw())
+            .collect::<Vec<_>>();
 
-            let mut ffi_args = raw_args
-                .iter()
-                .map(|arg| arg.into_ffi_arg())
-                .collect::<Vec<_>>();
+        let mut ffi_args = raw_args
+            .iter()
+            .map(|arg| arg.into_ffi_arg())
+            .collect::<Vec<_>>();
 
-            let symbol = unsafe {
-                state
+        let symbol_ptr = unsafe {
+            GtkThreadState::with(|state: &mut GtkThreadStateInner| {
+                let symbol = state
                     .library
                     .get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes())
-                    .unwrap()
-            };
+                    .unwrap();
 
-            let symbol_ptr = unsafe { ffi::CodePtr(symbol.try_as_raw_ptr().unwrap()) };
+                ffi::CodePtr(symbol.try_as_raw_ptr().unwrap())
+            })
+        };
 
-            let return_value = unsafe {
-                match return_type {
-                    Type::VoidType => {
-                        cif.call::<()>(symbol_ptr, &mut ffi_args);
-                        ReturnValue::Void
-                    }
-                    Type::Integer(type_) => match (type_.size, type_.sign) {
-                        (IntegerSize::_8, IntegerSign::Unsigned) => {
-                            ReturnValue::Number(cif.call::<u8>(symbol_ptr, &mut ffi_args) as f64)
-                        }
-                        (IntegerSize::_8, IntegerSign::Signed) => {
-                            ReturnValue::Number(cif.call::<i8>(symbol_ptr, &mut ffi_args) as f64)
-                        }
-                        (IntegerSize::_32, IntegerSign::Unsigned) => {
-                            ReturnValue::Number(cif.call::<u32>(symbol_ptr, &mut ffi_args) as f64)
-                        }
-                        (IntegerSize::_32, IntegerSign::Signed) => {
-                            ReturnValue::Number(cif.call::<i32>(symbol_ptr, &mut ffi_args) as f64)
-                        }
-                        (IntegerSize::_64, IntegerSign::Unsigned) => {
-                            ReturnValue::Number(cif.call::<u64>(symbol_ptr, &mut ffi_args) as f64)
-                        }
-                        (IntegerSize::_64, IntegerSign::Signed) => {
-                            ReturnValue::Number(cif.call::<i64>(symbol_ptr, &mut ffi_args) as f64)
-                        }
-                    },
-                    Type::Float(type_) => match type_.size {
-                        FloatSize::_32 => {
-                            ReturnValue::Number(cif.call::<f32>(symbol_ptr, &mut ffi_args) as f64)
-                        }
-                        FloatSize::_64 => {
-                            ReturnValue::Number(cif.call::<f64>(symbol_ptr, &mut ffi_args))
-                        }
-                    },
-                    Type::String => {
-                        let cstring = cif.call::<CString>(symbol_ptr, &mut ffi_args);
-                        let string = cstring.to_str().unwrap_or("").to_string();
-                        ReturnValue::String(string)
-                    }
-                    Type::Boolean => {
-                        let value = cif.call::<u8>(symbol_ptr, &mut ffi_args);
-                        ReturnValue::Boolean(value != 0)
-                    }
-                    Type::GObject(type_) => {
-                        let object_ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
-                        let object_id = ObjectId::new(object_ptr as usize);
-
-                        if type_.is_borrowed {
-                            state.object_map.insert(
-                                object_id.0,
-                                Box::new(glib::Object::from_glib_borrow(
-                                    object_ptr as *mut glib::gobject_ffi::GObject,
-                                )),
-                            );
-                        } else {
-                            state.object_map.insert(
-                                object_id.0,
-                                Box::new(glib::Object::from_glib_full(
-                                    object_ptr as *mut glib::gobject_ffi::GObject,
-                                )),
-                            );
-                        }
-
-                        ReturnValue::Object(object_id)
-                    }
-                    Type::Custom(type_) => {
-                        let object_ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
-                        let object_id = ObjectId::new(object_ptr as usize);
-
-                        if type_.is_borrowed {
-                            state.object_map.insert(
-                                object_id.0,
-                                Box::new(Custom::from_ptr_borrow(
-                                    object_ptr,
-                                    type_.unref.unwrap(),
-                                    type_.ref_.unwrap(),
-                                )),
-                            );
-                        } else {
-                            state.object_map.insert(
-                                object_id.0,
-                                Box::new(Custom::from_ptr_full(
-                                    object_ptr,
-                                    type_.unref.unwrap(),
-                                    type_.ref_.unwrap(),
-                                )),
-                            );
-                        }
-
-                        ReturnValue::Object(object_id)
-                    }
-                    _ => panic!("Unsupported return type"),
+        let return_value = unsafe {
+            match return_type {
+                ReturnType::Void => {
+                    cif.call::<()>(symbol_ptr, &mut ffi_args);
+                    ReturnValue::Void
                 }
-            };
+                ReturnType::Integer(type_) => match (type_.size, type_.sign) {
+                    (IntegerSize::_8, IntegerSign::Unsigned) => {
+                        ReturnValue::Number(cif.call::<u8>(symbol_ptr, &mut ffi_args) as f64)
+                    }
+                    (IntegerSize::_8, IntegerSign::Signed) => {
+                        ReturnValue::Number(cif.call::<i8>(symbol_ptr, &mut ffi_args) as f64)
+                    }
+                    (IntegerSize::_32, IntegerSign::Unsigned) => {
+                        ReturnValue::Number(cif.call::<u32>(symbol_ptr, &mut ffi_args) as f64)
+                    }
+                    (IntegerSize::_32, IntegerSign::Signed) => {
+                        ReturnValue::Number(cif.call::<i32>(symbol_ptr, &mut ffi_args) as f64)
+                    }
+                    (IntegerSize::_64, IntegerSign::Unsigned) => {
+                        ReturnValue::Number(cif.call::<u64>(symbol_ptr, &mut ffi_args) as f64)
+                    }
+                    (IntegerSize::_64, IntegerSign::Signed) => {
+                        ReturnValue::Number(cif.call::<i64>(symbol_ptr, &mut ffi_args) as f64)
+                    }
+                },
+                ReturnType::Float(type_) => match type_.size {
+                    FloatSize::_32 => {
+                        ReturnValue::Number(cif.call::<f32>(symbol_ptr, &mut ffi_args) as f64)
+                    }
+                    FloatSize::_64 => {
+                        ReturnValue::Number(cif.call::<f64>(symbol_ptr, &mut ffi_args))
+                    }
+                },
+                ReturnType::String => {
+                    let cstring = cif.call::<CString>(symbol_ptr, &mut ffi_args);
+                    let string = cstring.to_str().unwrap_or("").to_string();
+                    ReturnValue::String(string)
+                }
+                ReturnType::Boolean => {
+                    let value = cif.call::<u8>(symbol_ptr, &mut ffi_args);
+                    ReturnValue::Boolean(value != 0)
+                }
+                ReturnType::GObject(type_) => {
+                    let object_ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
 
-            tx.send(return_value).unwrap();
-        });
+                    let object = if type_.is_borrowed {
+                        let object = glib::Object::from_glib_none(
+                            object_ptr as *mut glib::gobject_ffi::GObject,
+                        );
+
+                        Object::GObject(object)
+                    } else {
+                        let object = glib::Object::from_glib_full(
+                            object_ptr as *mut glib::gobject_ffi::GObject,
+                        );
+
+                        Object::GObject(object)
+                    };
+
+                    ReturnValue::Object(ObjectId::new(object))
+                }
+                ReturnType::Boxed(type_) => {
+                    let boxed_ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
+
+                    let boxed = if type_.is_borrowed {
+                        let boxed = Boxed::from_glib_none(
+                            glib::Type::from_name(&type_.type_).unwrap(),
+                            boxed_ptr,
+                        );
+
+                        Object::Boxed(boxed)
+                    } else {
+                        let boxed = Boxed::from_glib_full(
+                            glib::Type::from_name(&type_.type_).unwrap(),
+                            boxed_ptr,
+                        );
+
+                        Object::Boxed(boxed)
+                    };
+
+                    ReturnValue::Object(ObjectId::new(boxed))
+                }
+                _ => panic!("Unsupported return type"),
+            }
+        };
+
+        tx.send(return_value).unwrap();
     });
 
     let return_value = rx.recv().unwrap();
@@ -954,6 +1166,7 @@ fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
         ReturnValue::String(value) => cx.string(value).upcast(),
         ReturnValue::Boolean(value) => cx.boolean(value).upcast(),
         ReturnValue::Object(object_id) => cx.boxed(object_id.clone()).upcast(),
+        ReturnValue::Null => cx.null().upcast(),
     };
 
     Ok(return_js_value)
