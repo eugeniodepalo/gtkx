@@ -2,6 +2,7 @@ use crate::{
     state::ObjectId,
     types::{ArrayType, BoxedType, FloatType, GObjectType, IntegerType},
 };
+use anyhow::{bail, Result as AnyhowResult};
 use gtk4::glib;
 use libffi::middle as ffi;
 use neon::prelude::*;
@@ -108,23 +109,15 @@ impl Result {
 
         cx.throw_type_error("Unsupported JS value type for return value")
     }
-}
 
-impl Into<Option<glib::Value>> for &Result {
-    fn into(self) -> Option<glib::Value> {
+    pub fn try_to_glib_value(&self) -> AnyhowResult<Option<glib::Value>> {
         match self {
-            Result::Number(n) => Some((*n).into()),
-            Result::String(s) => Some(s.clone().into()),
-            Result::Boolean(b) => Some((*b).into()),
-            Result::Null => None,
-            Result::Void => None,
-            _ => panic!("Unsupported Value type for GLib conversion"),
+            Result::Number(n) => Ok(Some((*n).into())),
+            Result::String(s) => Ok(Some(s.clone().into())),
+            Result::Boolean(b) => Ok(Some((*b).into())),
+            Result::Null => Ok(None),
+            Result::Void => Ok(None),
+            Result::Object(_) => bail!("Unsupported Value type for GLib conversion: Object"),
         }
-    }
-}
-
-impl Into<Option<glib::Value>> for Result {
-    fn into(self) -> Option<glib::Value> {
-        (&self).into()
     }
 }

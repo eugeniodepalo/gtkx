@@ -1,9 +1,11 @@
 use std::ffi::CString;
+use std::sync::Arc;
 
 use crate::cif::Arg as CifArg;
 use crate::result::Result;
 use crate::types::{FloatSize, IntegerSign, IntegerSize, Type};
 use crate::value::Value;
+use anyhow::{bail, Context as AnyhowContext, Result as AnyhowResult};
 use gtk4::glib;
 use neon::prelude::*;
 
@@ -41,224 +43,240 @@ impl Arg {
     pub fn type_(&self) -> &Type {
         &self.type_
     }
-}
 
-impl Into<CifArg> for &Arg {
-    fn into(self) -> CifArg {
+    pub fn try_into_cif_arg(&self) -> AnyhowResult<CifArg> {
         match &self.type_ {
             Type::Integer(type_) => {
                 let number = match self.value {
                     Value::Number(n) => n,
-                    _ => panic!("Expected a Number for integer type"),
+                    _ => bail!("Expected a Number for integer type, got {:?}", self.value),
                 };
 
                 match type_.size {
                     IntegerSize::_8 => match type_.sign {
-                        IntegerSign::Unsigned => CifArg::U8(number as u8),
-                        IntegerSign::Signed => CifArg::I8(number as i8),
+                        IntegerSign::Unsigned => Ok(CifArg::U8(number as u8)),
+                        IntegerSign::Signed => Ok(CifArg::I8(number as i8)),
                     },
                     IntegerSize::_32 => match type_.sign {
-                        IntegerSign::Unsigned => CifArg::U32(number as u32),
-                        IntegerSign::Signed => CifArg::I32(number as i32),
+                        IntegerSign::Unsigned => Ok(CifArg::U32(number as u32)),
+                        IntegerSign::Signed => Ok(CifArg::I32(number as i32)),
                     },
                     IntegerSize::_64 => match type_.sign {
-                        IntegerSign::Unsigned => CifArg::U64(number as u64),
-                        IntegerSign::Signed => CifArg::I64(number as i64),
+                        IntegerSign::Unsigned => Ok(CifArg::U64(number as u64)),
+                        IntegerSign::Signed => Ok(CifArg::I64(number as i64)),
                     },
                 }
             }
             Type::Float(type_) => {
                 let number = match self.value {
                     Value::Number(n) => n,
-                    _ => panic!("Expected a Number for float type"),
+                    _ => bail!("Expected a Number for float type, got {:?}", self.value),
                 };
 
                 match type_.size {
-                    FloatSize::_32 => CifArg::F32(number as f32),
-                    FloatSize::_64 => CifArg::F64(number),
+                    FloatSize::_32 => Ok(CifArg::F32(number as f32)),
+                    FloatSize::_64 => Ok(CifArg::F64(number)),
                 }
             }
             Type::String => {
                 let string = match &self.value {
                     Value::String(s) => s,
-                    _ => panic!("Expected a String for string type"),
+                    _ => bail!("Expected a String for string type, got {:?}", self.value),
                 };
 
-                let cstring = CString::new(string.as_bytes()).unwrap();
-                CifArg::String(cstring)
+                let cstring = CString::new(string.as_bytes())
+                    .with_context(|| "Failed to create CString from string")?;
+                Ok(CifArg::String(cstring))
             }
             Type::Boolean => {
                 let boolean = match self.value {
                     Value::Boolean(b) => b,
-                    _ => panic!("Expected a Boolean for boolean type"),
+                    _ => bail!("Expected a Boolean for boolean type, got {:?}", self.value),
                 };
 
-                CifArg::U8(if boolean { 1 } else { 0 })
+                Ok(CifArg::U8(if boolean { 1 } else { 0 }))
             }
-            Type::Null => CifArg::Pointer(std::ptr::null_mut()),
+            Type::Null => Ok(CifArg::Pointer(std::ptr::null_mut())),
             Type::GObject(_) => {
                 let object_id = match &self.value {
                     Value::Object(id) => id,
-                    _ => panic!("Expected a Object for gobject type"),
+                    _ => bail!("Expected a Object for gobject type, got {:?}", self.value),
                 };
 
-                CifArg::Pointer(object_id.as_ptr())
+                Ok(CifArg::Pointer(object_id.as_ptr()))
             }
             Type::Boxed(_) => {
                 let object_id = match &self.value {
                     Value::Object(id) => id,
-                    _ => panic!("Expected a Boxed for boxed type"),
+                    _ => bail!("Expected a Boxed for boxed type, got {:?}", self.value),
                 };
 
-                CifArg::Pointer(object_id.as_ptr())
+                Ok(CifArg::Pointer(object_id.as_ptr()))
             }
             Type::Array(ref array_type) => {
                 let array = match &self.value {
                     Value::Array(arr) => arr,
-                    _ => panic!("Expected an Array for array type"),
+                    _ => bail!("Expected an Array for array type, got {:?}", self.value),
                 };
 
-                match *array_type.item_type {
-                    Type::Integer(type_) => {
-                        let values = array
-                            .into_iter()
-                            .map(|v| match v {
-                                Value::Number(n) => n,
-                                _ => panic!("Expected a Number for integer array type"),
-                            })
-                            .collect::<Vec<_>>();
-
-                        match (type_.size, type_.sign) {
-                            (IntegerSize::_8, IntegerSign::Unsigned) => {
-                                CifArg::U8Array(values.iter().map(|&v| *v as u8).collect())
-                            }
-                            (IntegerSize::_8, IntegerSign::Signed) => {
-                                CifArg::I8Array(values.iter().map(|&v| *v as i8).collect())
-                            }
-                            (IntegerSize::_32, IntegerSign::Unsigned) => {
-                                CifArg::U32Array(values.iter().map(|&v| *v as u32).collect())
-                            }
-                            (IntegerSize::_32, IntegerSign::Signed) => {
-                                CifArg::I32Array(values.iter().map(|&v| *v as i32).collect())
-                            }
-                            (IntegerSize::_64, IntegerSign::Unsigned) => {
-                                CifArg::U64Array(values.iter().map(|&v| *v as u64).collect())
-                            }
-                            (IntegerSize::_64, IntegerSign::Signed) => {
-                                CifArg::I64Array(values.iter().map(|&v| *v as i64).collect())
-                            }
-                        }
-                    }
-                    Type::Float(type_) => {
-                        let values = array
-                            .into_iter()
-                            .map(|v| match v {
-                                Value::Number(n) => n,
-                                _ => panic!("Expected a Number for float array type"),
-                            })
-                            .collect::<Vec<_>>();
-
-                        match type_.size {
-                            FloatSize::_32 => {
-                                CifArg::F32Array(values.iter().map(|&v| *v as f32).collect())
-                            }
-                            FloatSize::_64 => {
-                                CifArg::F64Array(values.iter().map(|&v| *v).collect())
-                            }
-                        }
-                    }
-                    Type::String => {
-                        let cstrings = array
-                            .into_iter()
-                            .map(|v| match v {
-                                Value::String(s) => CString::new(s.as_bytes()).unwrap(),
-                                _ => panic!("Expected a String for string array type"),
-                            })
-                            .collect::<Vec<_>>();
-
-                        CifArg::StringArray(cstrings)
-                    }
-                    Type::GObject(_) => {
-                        let pointers = array
-                            .into_iter()
-                            .map(|v| match v {
-                                Value::Object(id) => id.as_ptr(),
-                                _ => panic!("Expected a GObject for gobject array type"),
-                            })
-                            .collect::<Vec<_>>();
-
-                        CifArg::PointerArray(pointers)
-                    }
-                    Type::Boxed(_) => {
-                        let pointers = array
-                            .into_iter()
-                            .map(|v| match v {
-                                Value::Object(id) => id.as_ptr(),
-                                _ => panic!("Expected a Boxed object for pointer array type"),
-                            })
-                            .collect::<Vec<_>>();
-
-                        CifArg::PointerArray(pointers)
-                    }
-                    Type::Boolean => {
-                        let values = array
-                            .into_iter()
-                            .map(|v| match v {
-                                Value::Boolean(b) => {
-                                    if *b {
-                                        1
-                                    } else {
-                                        0
-                                    }
-                                }
-                                _ => panic!("Expected a Boolean for boolean array type"),
-                            })
-                            .collect::<Vec<_>>();
-
-                        CifArg::U8Array(values)
-                    }
-                    _ => panic!("Unsupported array item type"),
-                }
+                self.convert_array_to_cif_arg(array, array_type)
             }
             Type::Callback => {
                 let (callback, channel) = match &self.value {
                     Value::Callback(callback, channel) => (callback, channel),
-                    _ => panic!("Expected a callback for callback type"),
+                    _ => bail!(
+                        "Expected a callback for callback type, got {:?}",
+                        self.value
+                    ),
                 };
 
-                let channel = channel.clone();
-                let callback = callback.clone();
-
-                let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let args_values = args.into_iter().map(|v| v.into()).collect::<Vec<Value>>();
-                    let callback = callback.clone();
-
-                    let result = channel.send(move |mut cx| {
-                        let js_args = args_values
-                            .into_iter()
-                            .map(|v| v.to_js_value(&mut cx))
-                            .collect::<NeonResult<Vec<_>>>()?;
-
-                        let js_this = cx.undefined();
-                        let js_callback = callback.clone().to_inner(&mut cx);
-                        let js_result = js_callback.call(&mut cx, js_this, js_args)?;
-
-                        let result = Result::from_js_value(&mut cx, js_result).unwrap();
-
-                        Ok(result)
-                    });
-
-                    result.join().unwrap().into()
-                });
-
-                CifArg::Callback(closure)
+                self.convert_callback_to_cif_arg(callback, channel)
             }
         }
     }
-}
 
-impl Into<CifArg> for Arg {
-    fn into(self) -> CifArg {
-        (&self).into()
+    fn convert_array_to_cif_arg(
+        &self,
+        array: &[Value],
+        array_type: &crate::types::ArrayType,
+    ) -> AnyhowResult<CifArg> {
+        match *array_type.item_type {
+            Type::Integer(type_) => {
+                let mut values = Vec::new();
+                for v in array {
+                    match v {
+                        Value::Number(n) => values.push(n),
+                        _ => bail!("Expected a Number for integer array type, got {:?}", v),
+                    }
+                }
+
+                match (type_.size, type_.sign) {
+                    (IntegerSize::_8, IntegerSign::Unsigned) => {
+                        Ok(CifArg::U8Array(values.iter().map(|&v| *v as u8).collect()))
+                    }
+                    (IntegerSize::_8, IntegerSign::Signed) => {
+                        Ok(CifArg::I8Array(values.iter().map(|&v| *v as i8).collect()))
+                    }
+                    (IntegerSize::_32, IntegerSign::Unsigned) => Ok(CifArg::U32Array(
+                        values.iter().map(|&v| *v as u32).collect(),
+                    )),
+                    (IntegerSize::_32, IntegerSign::Signed) => Ok(CifArg::I32Array(
+                        values.iter().map(|&v| *v as i32).collect(),
+                    )),
+                    (IntegerSize::_64, IntegerSign::Unsigned) => Ok(CifArg::U64Array(
+                        values.iter().map(|&v| *v as u64).collect(),
+                    )),
+                    (IntegerSize::_64, IntegerSign::Signed) => Ok(CifArg::I64Array(
+                        values.iter().map(|&v| *v as i64).collect(),
+                    )),
+                }
+            }
+            Type::Float(type_) => {
+                let mut values = Vec::new();
+                for v in array {
+                    match v {
+                        Value::Number(n) => values.push(n),
+                        _ => bail!("Expected a Number for float array type, got {:?}", v),
+                    }
+                }
+
+                match type_.size {
+                    FloatSize::_32 => Ok(CifArg::F32Array(
+                        values.iter().map(|&v| *v as f32).collect(),
+                    )),
+                    FloatSize::_64 => Ok(CifArg::F64Array(values.iter().map(|&v| *v).collect())),
+                }
+            }
+            Type::String => {
+                let mut cstrings = Vec::new();
+                for v in array {
+                    match v {
+                        Value::String(s) => {
+                            let cstring = CString::new(s.as_bytes()).with_context(|| {
+                                "Failed to create CString from string array item"
+                            })?;
+                            cstrings.push(cstring);
+                        }
+                        _ => bail!("Expected a String for string array type, got {:?}", v),
+                    }
+                }
+
+                Ok(CifArg::StringArray(cstrings))
+            }
+            Type::GObject(_) => {
+                let mut pointers = Vec::new();
+                for v in array {
+                    match v {
+                        Value::Object(id) => pointers.push(id.as_ptr()),
+                        _ => bail!("Expected a GObject for gobject array type, got {:?}", v),
+                    }
+                }
+
+                Ok(CifArg::PointerArray(pointers))
+            }
+            Type::Boxed(_) => {
+                let mut pointers = Vec::new();
+                for v in array {
+                    match v {
+                        Value::Object(id) => pointers.push(id.as_ptr()),
+                        _ => bail!(
+                            "Expected a Boxed object for pointer array type, got {:?}",
+                            v
+                        ),
+                    }
+                }
+
+                Ok(CifArg::PointerArray(pointers))
+            }
+            Type::Boolean => {
+                let mut values = Vec::new();
+                for v in array {
+                    match v {
+                        Value::Boolean(b) => values.push(if *b { 1 } else { 0 }),
+                        _ => bail!("Expected a Boolean for boolean array type, got {:?}", v),
+                    }
+                }
+
+                Ok(CifArg::U8Array(values))
+            }
+            _ => bail!("Unsupported array item type: {:?}", array_type.item_type),
+        }
+    }
+
+    fn convert_callback_to_cif_arg(
+        &self,
+        callback: &Arc<Root<JsFunction>>,
+        channel: &Channel,
+    ) -> AnyhowResult<CifArg> {
+        let channel = channel.clone();
+        let callback = callback.clone();
+
+        let closure = glib::Closure::new(move |args: &[glib::Value]| {
+            let args_values = args
+                .iter()
+                .map(|v| Value::try_from_glib_value(v))
+                .collect::<AnyhowResult<Vec<Value>>>()
+                .unwrap_or_else(|_| Vec::new());
+            let callback = callback.clone();
+
+            let result = channel.send(move |mut cx| {
+                let js_args = args_values
+                    .into_iter()
+                    .map(|v| v.to_js_value(&mut cx))
+                    .collect::<NeonResult<Vec<_>>>()?;
+
+                let js_this = cx.undefined();
+                let js_callback = callback.clone().to_inner(&mut cx);
+                let js_result = js_callback.call(&mut cx, js_this, js_args)?;
+
+                let result = Result::from_js_value(&mut cx, js_result)?;
+
+                Ok(result)
+            });
+
+            result.join().unwrap().try_to_glib_value().unwrap_or(None)
+        });
+
+        Ok(CifArg::Callback(closure))
     }
 }

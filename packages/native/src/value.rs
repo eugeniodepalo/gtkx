@@ -1,6 +1,7 @@
 use std::ffi::c_void;
 use std::sync::Arc;
 
+use anyhow::{bail, Result as AnyhowResult};
 use gtk4::glib;
 use neon::object::Object as _;
 use neon::prelude::*;
@@ -76,43 +77,41 @@ impl Value {
             _ => cx.throw_type_error("Unsupported Value type for JS conversion"),
         }
     }
-}
 
-impl From<&glib::Value> for Value {
-    fn from(value: &glib::Value) -> Self {
+    pub fn try_from_glib_value(value: &glib::Value) -> AnyhowResult<Self> {
         if value.is_type(glib::types::Type::I8) {
-            Value::Number(value.get::<i8>().unwrap() as f64)
+            Ok(Value::Number(value.get::<i8>().unwrap() as f64))
         } else if value.is_type(glib::types::Type::U8) {
-            Value::Number(value.get::<u8>().unwrap() as f64)
+            Ok(Value::Number(value.get::<u8>().unwrap() as f64))
         } else if value.is_type(glib::types::Type::I32) {
-            Value::Number(value.get::<i32>().unwrap() as f64)
+            Ok(Value::Number(value.get::<i32>().unwrap() as f64))
         } else if value.is_type(glib::types::Type::U32) {
-            Value::Number(value.get::<u32>().unwrap() as f64)
+            Ok(Value::Number(value.get::<u32>().unwrap() as f64))
         } else if value.is_type(glib::types::Type::I64) {
-            Value::Number(value.get::<i64>().unwrap() as f64)
+            Ok(Value::Number(value.get::<i64>().unwrap() as f64))
         } else if value.is_type(glib::types::Type::U64) {
-            Value::Number(value.get::<u64>().unwrap() as f64)
+            Ok(Value::Number(value.get::<u64>().unwrap() as f64))
         } else if value.is_type(glib::types::Type::F32) {
-            Value::Number(value.get::<f32>().unwrap() as f64)
+            Ok(Value::Number(value.get::<f32>().unwrap() as f64))
         } else if value.is_type(glib::types::Type::F64) {
-            Value::Number(value.get::<f64>().unwrap())
+            Ok(Value::Number(value.get::<f64>().unwrap()))
         } else if value.is_type(glib::types::Type::STRING) {
             let string: String = value.get().unwrap();
-            Value::String(string)
+            Ok(Value::String(string))
         } else if value.is_type(glib::types::Type::BOOL) {
             let boolean: bool = value.get().unwrap();
-            Value::Boolean(boolean)
+            Ok(Value::Boolean(boolean))
         } else if value.is_type(glib::types::Type::OBJECT) {
             let object: glib::Object = value.get().unwrap();
             let object_id = ObjectId::new(Object::GObject(object));
-            Value::Object(object_id)
+            Ok(Value::Object(object_id))
         } else if value.is_type(glib::types::Type::BOXED) {
             let boxed_ptr = value.as_ptr();
             let boxed = Boxed::from_glib_none(value.type_(), boxed_ptr as *mut c_void);
             let object_id = ObjectId::new(Object::Boxed(boxed));
-            Value::Object(object_id)
+            Ok(Value::Object(object_id))
         } else {
-            panic!("Unsupported glib value type: {:?}", value.type_());
+            bail!("Unsupported glib value type: {:?}", value.type_());
         }
     }
 }
