@@ -164,7 +164,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
         };
 
         // Execute the FFI call and convert the return value
-        let return_value = (|| -> AnyhowResult<Result> {
+        let result = (|| -> AnyhowResult<Result> {
             unsafe {
                 match result_type {
                     ResultType::Void => {
@@ -259,19 +259,19 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
             }
         })();
 
-        tx.send(return_value).unwrap();
+        tx.send(result).unwrap();
     });
 
     // Wait for the FFI call to complete
-    let return_value = rx.recv().unwrap();
+    let result = rx.recv().unwrap();
 
-    let return_value = match return_value {
+    let result = match result {
         Ok(result) => result,
         Err(err) => return cx.throw_error(format!("FFI call failed: {}", err)),
     };
 
     // Convert the return value to JavaScript
-    let return_js_value = match return_value {
+    let js_result = match result {
         Result::Void => cx.undefined().upcast(),
         Result::Number(value) => cx.number(value).upcast(),
         Result::String(value) => cx.string(value).upcast(),
@@ -280,5 +280,5 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
         Result::Null => cx.null().upcast(),
     };
 
-    Ok(return_js_value)
+    Ok(js_result)
 }

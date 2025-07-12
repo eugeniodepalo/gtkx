@@ -1,14 +1,20 @@
-import { Gtk, render, stop } from "@gtkx/gtkx";
+import { start, stop } from "@gtkx/bridge";
+import {
+  getMajorVersion,
+  getMinorVersion,
+  getMicroVersion,
+  ApplicationWindow,
+} from "@gtkx/bridge/gtk";
 
-const app = render("com.gtkx.demo");
+const app = start("com.gtkx.demo");
 
-const majorVersion = Gtk.getMajorVersion();
-const minorVersion = Gtk.getMinorVersion();
-const microVersion = Gtk.getMicroVersion();
+const majorVersion = getMajorVersion();
+const minorVersion = getMinorVersion();
+const microVersion = getMicroVersion();
 
 console.log(`GTK version: ${majorVersion}.${minorVersion}.${microVersion}`);
 
-const window = new Gtk.ApplicationWindow(app);
+const window = new ApplicationWindow(app);
 
 console.log("Created a new ApplicationWindow: ", window);
 
@@ -16,17 +22,9 @@ window.setTitle("Hello, GTK!");
 window.setDefaultSize(800, 600);
 window.present();
 
-window.connectClose((...args) => {
+window.connect("close-request", (...args: any[]) => {
   console.log("Window closed, stopping the app.");
   console.log("Arguments: ", args);
-  process.exit(0);
+  setTimeout(stop, 0);
+  return false;
 });
-
-let globalState: { window: Gtk.ApplicationWindow } | null = {
-  window,
-};
-
-setTimeout(() => {
-  stop();
-  globalState = null;
-}, 50000);

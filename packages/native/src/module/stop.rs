@@ -9,7 +9,7 @@ use std::sync::mpsc;
 use gtk4::glib;
 use neon::prelude::*;
 
-use crate::state::{ObjectId, ThreadState};
+use crate::state::ThreadState;
 
 /// Stops a GTK4 application and cleans up associated resources.
 ///
@@ -20,7 +20,6 @@ use crate::state::{ObjectId, ThreadState};
 /// # Arguments
 ///
 /// * `cx` - Function context from Neon providing access to JavaScript values
-///   - `app_object_id` - JavaScript boxed ObjectId representing the GTK4 application
 ///
 /// # Returns
 ///
@@ -37,7 +36,7 @@ use crate::state::{ObjectId, ThreadState};
 /// ```javascript
 /// const appId = start("com.example.myapp");
 /// // ... use the application ...
-/// stop(appId); // Clean shutdown
+/// stop(); // Clean shutdown
 /// ```
 ///
 /// # Panics
@@ -47,15 +46,11 @@ use crate::state::{ObjectId, ThreadState};
 /// - The channel communication fails between threads
 /// - The application hold guard is not present
 pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let app_object_id = cx.argument::<JsBox<ObjectId>>(0)?.as_inner().clone();
     let (tx, rx) = mpsc::channel::<()>();
 
     // Schedule cleanup on the GTK4 main thread
     glib::idle_add_once(move || {
         ThreadState::with(|state| {
-            // Remove the application object from the object map
-            state.object_map.remove(&app_object_id.0).unwrap();
-
             // Release the application hold guard, allowing the app to terminate
             let _ = state.app_hold_guard.take().unwrap();
         });

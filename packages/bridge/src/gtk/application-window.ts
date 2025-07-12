@@ -13,7 +13,7 @@ export class ApplicationWindow {
           value: app,
         },
       ],
-      { type: "gobject" }
+      { type: "gobject", borrowed: true }
     );
   }
 
@@ -71,7 +71,11 @@ export class ApplicationWindow {
     );
   }
 
-  connectClose(handler: (object: unknown, signal: string) => void) {
+  connect(
+    signal: string,
+    handler: (...args: unknown[]) => unknown,
+    after = false
+  ) {
     call(
       "libgobject-2.0.so.0",
       "g_signal_connect_closure",
@@ -82,7 +86,7 @@ export class ApplicationWindow {
         },
         {
           type: { type: "string" },
-          value: "close-request",
+          value: signal,
         },
         {
           type: { type: "callback" },
@@ -90,7 +94,7 @@ export class ApplicationWindow {
         },
         {
           type: { type: "boolean" },
-          value: false,
+          value: after,
         },
       ],
       { type: "void" }

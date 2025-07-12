@@ -52,7 +52,7 @@ module "@gtkx/native" {
 }
 
 export function start(appId: string): unknown;
-export function stop(app: unknown): void;
+export function stop(): void;
 
 export function call<TResultType extends ResultType>(
   library: string,

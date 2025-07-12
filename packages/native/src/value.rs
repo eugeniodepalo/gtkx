@@ -75,7 +75,7 @@ impl Value {
         }
 
         if let Ok(object_id) = value.downcast::<JsBox<ObjectId>, _>(cx) {
-            return Ok(Value::Object(object_id.as_inner().clone()));
+            return Ok(Value::Object(*object_id.as_inner()));
         }
 
         if let Ok(callback) = value.downcast::<JsFunction, _>(cx) {
@@ -118,7 +118,7 @@ impl Value {
             Value::Number(n) => Ok(cx.number(*n).upcast()),
             Value::String(s) => Ok(cx.string(s).upcast()),
             Value::Boolean(b) => Ok(cx.boolean(*b).upcast()),
-            Value::Object(id) => Ok(cx.boxed(id.clone()).upcast()),
+            Value::Object(id) => Ok(cx.boxed(*id).upcast()),
             Value::Array(arr) => {
                 let js_array = cx.empty_array();
                 for (i, item) in arr.iter().enumerate() {
