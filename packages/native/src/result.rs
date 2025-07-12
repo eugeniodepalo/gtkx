@@ -46,20 +46,28 @@ impl ResultType {
             _ => cx.throw_type_error("Unknown return type"),
         }
     }
+}
 
-    pub fn into_ffi_type(&self) -> ffi::Type {
+impl Into<ffi::Type> for &ResultType {
+    fn into(self) -> ffi::Type {
         match self {
             ResultType::Void => ffi::Type::void(),
             ResultType::Null => ffi::Type::pointer(),
-            ResultType::Integer(type_) => type_.into_ffi_type(),
-            ResultType::Float(type_) => type_.into_ffi_type(),
+            ResultType::Integer(type_) => type_.into(),
+            ResultType::Float(type_) => type_.into(),
             ResultType::String => ffi::Type::pointer(),
             ResultType::Boolean => ffi::Type::u8(),
-            ResultType::GObject(type_) => type_.into_ffi_type(),
-            ResultType::Boxed(type_) => type_.into_ffi_type(),
-            ResultType::Array(type_) => type_.into_ffi_type(),
+            ResultType::GObject(type_) => type_.into(),
+            ResultType::Boxed(type_) => type_.into(),
+            ResultType::Array(type_) => type_.into(),
             ResultType::Callback => ffi::Type::pointer(),
         }
+    }
+}
+
+impl Into<ffi::Type> for ResultType {
+    fn into(self) -> ffi::Type {
+        (&self).into()
     }
 }
 
@@ -100,15 +108,23 @@ impl Result {
 
         cx.throw_type_error("Unsupported JS value type for return value")
     }
+}
 
-    pub fn to_glib_value(&self) -> Option<glib::Value> {
+impl Into<Option<glib::Value>> for &Result {
+    fn into(self) -> Option<glib::Value> {
         match self {
-            Result::Number(n) => Some(glib::Value::from(*n)),
-            Result::String(s) => Some(glib::Value::from(s.clone())),
-            Result::Boolean(b) => Some(glib::Value::from(*b)),
+            Result::Number(n) => Some((*n).into()),
+            Result::String(s) => Some(s.clone().into()),
+            Result::Boolean(b) => Some((*b).into()),
             Result::Null => None,
             Result::Void => None,
             _ => panic!("Unsupported Value type for GLib conversion"),
         }
+    }
+}
+
+impl Into<Option<glib::Value>> for Result {
+    fn into(self) -> Option<glib::Value> {
+        (&self).into()
     }
 }

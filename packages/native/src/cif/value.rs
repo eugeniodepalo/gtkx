@@ -14,8 +14,8 @@ pub enum Value {
     Pointer(*mut c_void),
 }
 
-impl Value {
-    pub fn into_ffi_arg(&self) -> ffi::Arg {
+impl Into<ffi::Arg> for &Value {
+    fn into(self) -> ffi::Arg {
         match self {
             Value::U8(value) => ffi::arg(value),
             Value::I8(value) => ffi::arg(value),
@@ -27,5 +27,11 @@ impl Value {
             Value::F64(value) => ffi::arg(value),
             Value::Pointer(ptr) => ffi::arg(ptr),
         }
+    }
+}
+
+impl Into<ffi::Arg> for Value {
+    fn into(self) -> ffi::Arg {
+        (&self).into()
     }
 }

@@ -62,8 +62,10 @@ impl IntegerType {
 
         Ok(Self::new(size, sign))
     }
+}
 
-    pub fn into_ffi_type(&self) -> ffi::Type {
+impl Into<ffi::Type> for &IntegerType {
+    fn into(self) -> ffi::Type {
         match (self.size, self.sign) {
             (IntegerSize::_8, IntegerSign::Unsigned) => ffi::Type::u8(),
             (IntegerSize::_8, IntegerSign::Signed) => ffi::Type::i8(),
@@ -72,5 +74,11 @@ impl IntegerType {
             (IntegerSize::_64, IntegerSign::Unsigned) => ffi::Type::u64(),
             (IntegerSize::_64, IntegerSign::Signed) => ffi::Type::i64(),
         }
+    }
+}
+
+impl Into<ffi::Type> for IntegerType {
+    fn into(self) -> ffi::Type {
+        (&self).into()
     }
 }

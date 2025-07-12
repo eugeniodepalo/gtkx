@@ -12,6 +12,7 @@ use neon::prelude::*;
 
 use crate::{
     arg::Arg,
+    cif::{Arg as CifArg, Value as CifValue},
     object::{Boxed, Object},
     result::{Result, ResultType},
     state::{GtkThreadState, ObjectId},
@@ -28,28 +29,19 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     glib::idle_add_once(move || {
         let cif = ffi::Builder::new()
-            .res(result_type.into_ffi_type())
+            .res((&result_type).into())
             .args(
                 args.iter()
-                    .map(|arg| arg.into_ffi_type())
+                    .map(|arg| arg.type_().into())
                     .collect::<Vec<_>>(),
             )
             .into_cif();
 
-        let mut cif_args = args
-            .iter()
-            .map(|arg| arg.into_cif_arg())
-            .collect::<Vec<_>>();
+        let cif_args: Vec<CifArg> = args.iter().map(Into::into).collect();
 
-        let raw_args = cif_args
-            .iter_mut()
-            .map(|arg| arg.into_value())
-            .collect::<Vec<_>>();
+        let raw_args: Vec<CifValue> = cif_args.iter().map(Into::into).collect();
 
-        let mut ffi_args = raw_args
-            .iter()
-            .map(|arg| arg.into_ffi_arg())
-            .collect::<Vec<_>>();
+        let mut ffi_args = raw_args.iter().map(Into::into).collect::<Vec<_>>();
 
         let symbol_ptr = unsafe {
             GtkThreadState::with(|state| {

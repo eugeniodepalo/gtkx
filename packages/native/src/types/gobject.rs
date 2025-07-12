@@ -22,8 +22,16 @@ impl GObjectType {
 
         Ok(Self::new(is_borrowed))
     }
+}
 
-    pub fn into_ffi_type(&self) -> ffi::Type {
+impl Into<ffi::Type> for &GObjectType {
+    fn into(self) -> ffi::Type {
         ffi::Type::pointer()
+    }
+}
+
+impl Into<ffi::Type> for GObjectType {
+    fn into(self) -> ffi::Type {
+        (&self).into()
     }
 }

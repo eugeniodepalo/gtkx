@@ -14,4 +14,5 @@ crate-type = ["cdylib"]
 neon = "1.1.1"
 gtk4 = "0.9.7"
 libloading = "0.8.8"
-libffi = "4.1.0"
+libffi = "4.1.1"
+anyhow = "1.0.98"

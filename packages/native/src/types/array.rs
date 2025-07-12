@@ -18,8 +18,16 @@ impl ArrayType {
             item_type: Box::new(item_type),
         })
     }
+}
 
-    pub fn into_ffi_type(&self) -> ffi::Type {
+impl Into<ffi::Type> for &ArrayType {
+    fn into(self) -> ffi::Type {
         ffi::Type::pointer()
+    }
+}
+
+impl Into<ffi::Type> for ArrayType {
+    fn into(self) -> ffi::Type {
+        (&self).into()
     }
 }

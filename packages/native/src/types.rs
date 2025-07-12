@@ -49,18 +49,26 @@ impl Type {
             _ => cx.throw_type_error("Unknown type"),
         }
     }
+}
 
-    pub fn into_ffi_type(&self) -> ffi::Type {
+impl Into<ffi::Type> for &Type {
+    fn into(self) -> ffi::Type {
         match self {
-            Type::Integer(type_) => type_.into_ffi_type(),
-            Type::Float(type_) => type_.into_ffi_type(),
+            Type::Integer(type_) => type_.into(),
+            Type::Float(type_) => type_.into(),
             Type::String => ffi::Type::pointer(),
             Type::Boolean => ffi::Type::u8(),
             Type::Null => ffi::Type::pointer(),
-            Type::GObject(type_) => type_.into_ffi_type(),
-            Type::Boxed(type_) => type_.into_ffi_type(),
-            Type::Array(type_) => type_.into_ffi_type(),
+            Type::GObject(type_) => type_.into(),
+            Type::Boxed(type_) => type_.into(),
+            Type::Array(type_) => type_.into(),
             Type::Callback => ffi::Type::pointer(),
         }
+    }
+}
+
+impl Into<ffi::Type> for Type {
+    fn into(self) -> ffi::Type {
+        (&self).into()
     }
 }

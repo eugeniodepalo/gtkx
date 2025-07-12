@@ -21,9 +21,11 @@ impl Boxed {
             type_,
         }
     }
+}
 
-    pub fn as_ptr(&self) -> *mut c_void {
-        self.ptr
+impl AsRef<*mut c_void> for Boxed {
+    fn as_ref(&self) -> &*mut c_void {
+        &self.ptr
     }
 }
 

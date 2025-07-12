@@ -30,8 +30,16 @@ impl BoxedType {
 
         Ok(Self::new(is_borrowed, type_))
     }
+}
 
-    pub fn into_ffi_type(&self) -> ffi::Type {
+impl Into<ffi::Type> for &BoxedType {
+    fn into(self) -> ffi::Type {
         ffi::Type::pointer()
+    }
+}
+
+impl Into<ffi::Type> for BoxedType {
+    fn into(self) -> ffi::Type {
+        (&self).into()
     }
 }

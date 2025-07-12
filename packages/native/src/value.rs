@@ -76,8 +76,10 @@ impl Value {
             _ => cx.throw_type_error("Unsupported Value type for JS conversion"),
         }
     }
+}
 
-    pub fn from_glib_value(value: &glib::Value) -> Self {
+impl From<&glib::Value> for Value {
+    fn from(value: &glib::Value) -> Self {
         if value.is_type(glib::types::Type::I8) {
             Value::Number(value.get::<i8>().unwrap() as f64)
         } else if value.is_type(glib::types::Type::U8) {

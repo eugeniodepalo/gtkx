@@ -5,7 +5,6 @@ use crate::result::Result;
 use crate::types::{FloatSize, IntegerSign, IntegerSize, Type};
 use crate::value::Value;
 use gtk4::glib;
-use libffi::middle as ffi;
 use neon::prelude::*;
 
 #[derive(Debug)]
@@ -39,11 +38,13 @@ impl Arg {
         Ok(Arg { type_, value })
     }
 
-    pub fn into_ffi_type(&self) -> ffi::Type {
-        self.type_.into_ffi_type()
+    pub fn type_(&self) -> &Type {
+        &self.type_
     }
+}
 
-    pub fn into_cif_arg(&self) -> CifArg {
+impl Into<CifArg> for &Arg {
+    fn into(self) -> CifArg {
         match &self.type_ {
             Type::Integer(type_) => {
                 let number = match self.value {
@@ -229,12 +230,7 @@ impl Arg {
                 let callback = callback.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    println!("Callback called with args: {:?}", args);
-                    let args_values = args
-                        .into_iter()
-                        .map(|v| Value::from_glib_value(v))
-                        .collect::<Vec<_>>();
-
+                    let args_values = args.into_iter().map(|v| v.into()).collect::<Vec<Value>>();
                     let callback = callback.clone();
 
                     let result = channel.send(move |mut cx| {
@@ -252,11 +248,17 @@ impl Arg {
                         Ok(result)
                     });
 
-                    result.join().unwrap().to_glib_value()
+                    result.join().unwrap().into()
                 });
 
                 CifArg::Callback(closure)
             }
         }
+    }
+}
+
+impl Into<CifArg> for Arg {
+    fn into(self) -> CifArg {
+        (&self).into()
     }
 }

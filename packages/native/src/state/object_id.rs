@@ -26,7 +26,7 @@ impl ObjectId {
 
             match object {
                 Object::GObject(obj) => obj.as_ptr() as *mut c_void,
-                Object::Boxed(boxed) => boxed.as_ptr(),
+                Object::Boxed(boxed) => *boxed.as_ref(),
             }
         })
     }
