@@ -11,7 +11,7 @@ use neon::prelude::*;
 
 use crate::{
     object::Object,
-    state::{GtkThreadState, ObjectId},
+    state::{ObjectId, ThreadState},
 };
 
 /// Starts a GTK4 application in a separate thread.
@@ -59,7 +59,9 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
         let app_object_id = ObjectId::new(Object::GObject(app.clone().into()));
 
         // Hold the application to prevent it from terminating immediately
-        GtkThreadState::with(|state| state.app_hold_guard = Some(app.hold()));
+        ThreadState::with(|state| {
+            state.app_hold_guard = Some(app.hold());
+        });
 
         // Set up activation callback to signal when the app is ready
         app.connect_activate(move |_| {

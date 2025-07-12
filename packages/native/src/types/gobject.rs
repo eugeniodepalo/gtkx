@@ -11,7 +11,7 @@ use neon::prelude::*;
 ///
 /// This struct defines how a GObject should be handled in FFI calls,
 /// particularly regarding reference counting and ownership semantics.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GObjectType {
     /// Whether the GObject reference is borrowed or owned
     ///
@@ -76,5 +76,80 @@ impl Into<ffi::Type> for &GObjectType {
 impl Into<ffi::Type> for GObjectType {
     fn into(self) -> ffi::Type {
         (&self).into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gobject_type_creation() {
+        let borrowed = GObjectType::new(true);
+        let owned = GObjectType::new(false);
+
+        assert_eq!(borrowed.is_borrowed, true);
+        assert_eq!(owned.is_borrowed, false);
+    }
+
+    #[test]
+    fn test_gobject_type_equality() {
+        let type1 = GObjectType::new(true);
+        let type2 = GObjectType::new(true);
+        let type3 = GObjectType::new(false);
+
+        assert_eq!(type1, type2);
+        assert_ne!(type1, type3);
+    }
+
+    #[test]
+    fn test_ffi_type_conversion() {
+        let borrowed_type = GObjectType::new(true);
+        let owned_type = GObjectType::new(false);
+
+        // Test that conversion works without panicking
+        let _: ffi::Type = (&borrowed_type).into();
+        let _: ffi::Type = (&owned_type).into();
+
+        // Test owned conversion
+        let _: ffi::Type = borrowed_type.into();
+        let _: ffi::Type = owned_type.into();
+    }
+
+    #[test]
+    fn test_debug_output() {
+        let gobject_type = GObjectType::new(true);
+        let debug_str = format!("{:?}", gobject_type);
+        assert!(debug_str.contains("GObjectType"));
+        assert!(debug_str.contains("true"));
+    }
+
+    #[test]
+    fn test_clone() {
+        let original = GObjectType::new(false);
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+        assert_eq!(original.is_borrowed, cloned.is_borrowed);
+    }
+
+    #[test]
+    fn test_borrowed_vs_owned() {
+        let borrowed = GObjectType::new(true);
+        let owned = GObjectType::new(false);
+
+        assert!(borrowed.is_borrowed);
+        assert!(!owned.is_borrowed);
+        assert_ne!(borrowed, owned);
+    }
+
+    #[test]
+    fn test_default_ownership_semantics() {
+        // Test the typical cases
+        let default_owned = GObjectType::new(false);
+        let explicit_borrowed = GObjectType::new(true);
+
+        // Default should be owned (false)
+        assert!(!default_owned.is_borrowed);
+        assert!(explicit_borrowed.is_borrowed);
     }
 }

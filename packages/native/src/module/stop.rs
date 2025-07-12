@@ -9,7 +9,7 @@ use std::sync::mpsc;
 use gtk4::glib;
 use neon::prelude::*;
 
-use crate::state::{GtkThreadState, ObjectId};
+use crate::state::{ObjectId, ThreadState};
 
 /// Stops a GTK4 application and cleans up associated resources.
 ///
@@ -52,7 +52,7 @@ pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     // Schedule cleanup on the GTK4 main thread
     glib::idle_add_once(move || {
-        GtkThreadState::with(|state| {
+        ThreadState::with(|state| {
             // Remove the application object from the object map
             state.object_map.remove(&app_object_id.0).unwrap();
 

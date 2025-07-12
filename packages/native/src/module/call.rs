@@ -1,6 +1,6 @@
 //! FFI Function Call Interface
 //!
-//! This module provides the `call` function that enables dynamic calling of GTK4
+//! This module provides the `call` function that enables dynamic calling of C library
 //! functions through FFI. It handles type-safe argument marshalling, function
 //! symbol resolution, and return value conversion between C and JavaScript types.
 
@@ -15,6 +15,7 @@ use gtk4::glib::{
     translate::{FromGlibPtrFull as _, FromGlibPtrNone as _},
 };
 use libffi::middle as ffi;
+use libloading::Library;
 use neon::prelude::*;
 
 use crate::{
@@ -22,20 +23,21 @@ use crate::{
     cif::{Arg as CifArg, Value as CifValue},
     object::{Boxed, Object},
     result::{Result, ResultType},
-    state::{GtkThreadState, ObjectId},
+    state::{ObjectId, ThreadState},
     types::{FloatSize, IntegerSign, IntegerSize},
 };
 
-/// Dynamically calls a GTK4 function through FFI.
+/// Dynamically calls a C library function through FFI.
 ///
-/// This function provides a type-safe interface for calling arbitrary GTK4 functions
+/// This function provides a type-safe interface for calling arbitrary C library functions
 /// from JavaScript. It handles argument marshalling, symbol resolution, FFI call
 /// execution, and return value conversion.
 ///
 /// # Arguments
 ///
 /// * `cx` - Function context from Neon providing access to JavaScript values
-///   - `symbol_name` - JavaScript string containing the name of the GTK4 function to call
+///   - `library_name` - JavaScript string containing the exact name of the library to load
+///   - `symbol_name` - JavaScript string containing the name of the function to call
 ///   - `args` - JavaScript array of arguments, each with type and value information
 ///   - `result_type` - JavaScript object describing the expected return type
 ///
@@ -47,42 +49,47 @@ use crate::{
 /// # Threading
 ///
 /// The actual FFI call is executed on the GTK4 main thread using `glib::idle_add_once`
-/// to ensure thread safety when interacting with GTK4 objects.
+/// to ensure thread safety when interacting with GLib/GTK4 objects.
 ///
 /// # Type Safety
 ///
 /// All arguments and return values are type-checked and converted safely between
 /// JavaScript and C types. The function supports:
 /// - Primitive types (integers, floats, strings, booleans)
-/// - GTK4 objects (GObject and Boxed types)
+/// - GLib/GTK4 objects (GObject and Boxed types)
 /// - Arrays of supported types
 /// - Callback functions
 ///
 /// # Example
 ///
 /// ```javascript
-/// // Call gtk_window_new(GTK_WINDOW_TOPLEVEL)
-/// const windowId = call("gtk_window_new", [
+/// // Call gtk_window_new(GTK_WINDOW_TOPLEVEL) from GTK4 library
+/// const windowId = call("libgtk-4.so.1", "gtk_window_new", [
 ///   { type: { type: "int", size: 32, signed: false }, value: 0 }
 /// ], { type: "gobject", borrowed: false });
+///
+/// // Call g_get_home_dir() from GLib
+/// const homeDir = call("libglib-2.0.so.0", "g_get_home_dir", [], { type: "string" });
 /// ```
 ///
 /// # Errors
 ///
 /// Returns a JavaScript error if:
+/// - The library cannot be loaded
 /// - The function symbol cannot be found
 /// - Argument types are invalid or conversion fails
 /// - The FFI call fails
 /// - Return value conversion fails
 pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
-    let symbol_name = cx.argument::<JsString>(0)?.value(&mut cx);
-    let js_args = cx.argument::<JsArray>(1)?;
-    let js_result_type = cx.argument::<JsObject>(2)?;
+    let library_name = cx.argument::<JsString>(0)?.value(&mut cx);
+    let symbol_name = cx.argument::<JsString>(1)?.value(&mut cx);
+    let js_args = cx.argument::<JsArray>(2)?;
+    let js_result_type = cx.argument::<JsObject>(3)?;
     let args = Arg::vec_from_js_value(&mut cx, js_args)?;
     let result_type = ResultType::from_js_value(&mut cx, js_result_type.upcast())?;
     let (tx, rx) = mpsc::channel::<AnyhowResult<Result>>();
 
-    // Execute the FFI call on the GTK4 main thread
+    // Execute the FFI call on the main thread
     glib::idle_add_once(move || {
         // Build the FFI call interface
         let cif = ffi::Builder::new()
@@ -111,16 +118,49 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
         let mut ffi_args = raw_args.iter().map(Into::into).collect::<Vec<_>>();
 
-        // Resolve the function symbol from the GTK4 library
+        // Resolve the function symbol from the specified library
         let symbol_ptr = unsafe {
-            GtkThreadState::with(|state| {
-                let symbol = state
-                    .library
-                    .get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes())
-                    .unwrap();
+            let symbol_result = ThreadState::with(|state| {
+                // Load the library if it's not already loaded
+                if !state.libraries.contains_key(&library_name) {
+                    match Library::new(&library_name) {
+                        Ok(lib) => {
+                            state.libraries.insert(library_name.clone(), lib);
+                        }
+                        Err(e) => {
+                            return Err(anyhow::anyhow!(
+                                "Failed to load library '{}': {}",
+                                library_name,
+                                e
+                            ));
+                        }
+                    }
+                }
 
-                ffi::CodePtr(symbol.try_as_raw_ptr().unwrap())
-            })
+                // Get the library and resolve the symbol
+                match state.libraries.get(&library_name) {
+                    Some(lib) => {
+                        match lib.get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes()) {
+                            Ok(symbol) => Ok(ffi::CodePtr(symbol.try_as_raw_ptr().unwrap())),
+                            Err(e) => Err(anyhow::anyhow!(
+                                "Failed to get symbol '{}' from library '{}': {}",
+                                symbol_name,
+                                library_name,
+                                e
+                            )),
+                        }
+                    }
+                    None => Err(anyhow::anyhow!("Library '{}' not loaded", library_name)),
+                }
+            });
+
+            match symbol_result {
+                Ok(ptr) => ptr,
+                Err(err) => {
+                    tx.send(Err(err)).unwrap();
+                    return;
+                }
+            }
         };
 
         // Execute the FFI call and convert the return value

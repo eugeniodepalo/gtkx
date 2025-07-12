@@ -55,7 +55,8 @@ export function start(appId: string): unknown;
 export function stop(app: unknown): void;
 
 export function call<TResultType extends ResultType>(
-  name: string,
+  library: string,
+  symbol: string,
   args: Arg[],
   returnType: TResultType
 ): Result[TResultType["type"]];

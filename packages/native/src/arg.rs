@@ -349,3 +349,270 @@ impl Arg {
         Ok(CifArg::Callback(closure))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::object::Object;
+    use crate::state::ObjectId;
+    use crate::types::{ArrayType, FloatType, GObjectType, IntegerType};
+
+    fn create_mock_arg(type_: Type, value: Value) -> Arg {
+        Arg { type_, value }
+    }
+
+    #[test]
+    fn test_arg_creation() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let number_value = Value::Number(42.0);
+        let arg = create_mock_arg(int_type, number_value);
+
+        assert!(matches!(arg.type_, Type::Integer(_)));
+        assert!(matches!(arg.value, Value::Number(42.0)));
+    }
+
+    #[test]
+    fn test_arg_type_accessor() {
+        let float_type = Type::Float(FloatType::new(FloatSize::_64));
+        let float_value = Value::Number(3.14);
+        let arg = create_mock_arg(float_type, float_value);
+
+        match arg.type_() {
+            Type::Float(f) => assert_eq!(f.size, FloatSize::_64),
+            _ => panic!("Expected Float type"),
+        }
+    }
+
+    #[test]
+    fn test_integer_conversion() {
+        let test_cases = vec![
+            (IntegerSize::_8, IntegerSign::Unsigned, 255.0),
+            (IntegerSize::_8, IntegerSign::Signed, -128.0),
+            (IntegerSize::_32, IntegerSign::Unsigned, 4294967295.0),
+            (IntegerSize::_32, IntegerSign::Signed, -2147483648.0),
+            (
+                IntegerSize::_64,
+                IntegerSign::Unsigned,
+                18446744073709551615.0,
+            ),
+            (
+                IntegerSize::_64,
+                IntegerSign::Signed,
+                -9223372036854775808.0,
+            ),
+        ];
+
+        for (size, sign, value) in test_cases {
+            let int_type = Type::Integer(IntegerType::new(size, sign));
+            let number_value = Value::Number(value);
+            let arg = create_mock_arg(int_type, number_value);
+
+            let result = arg.try_into_cif_arg();
+            assert!(result.is_ok(), "Failed for {:?} {:?} {}", size, sign, value);
+        }
+    }
+
+    #[test]
+    fn test_float_conversion() {
+        let test_cases = vec![(FloatSize::_32, 3.14159), (FloatSize::_64, 2.718281828)];
+
+        for (size, value) in test_cases {
+            let float_type = Type::Float(FloatType::new(size));
+            let number_value = Value::Number(value);
+            let arg = create_mock_arg(float_type, number_value);
+
+            let result = arg.try_into_cif_arg();
+            assert!(result.is_ok(), "Failed for {:?} {}", size, value);
+        }
+    }
+
+    #[test]
+    fn test_string_conversion() {
+        let string_type = Type::String;
+        let string_value = Value::String("Hello, World!".to_string());
+        let arg = create_mock_arg(string_type, string_value);
+
+        let result = arg.try_into_cif_arg();
+        assert!(result.is_ok());
+
+        if let Ok(CifArg::String(cstring)) = result {
+            assert_eq!(cstring.to_str().unwrap(), "Hello, World!");
+        } else {
+            panic!("Expected String CifArg");
+        }
+    }
+
+    #[test]
+    fn test_boolean_conversion() {
+        let bool_type = Type::Boolean;
+
+        let true_arg = create_mock_arg(bool_type.clone(), Value::Boolean(true));
+        let false_arg = create_mock_arg(bool_type, Value::Boolean(false));
+
+        let true_result = true_arg.try_into_cif_arg().unwrap();
+        let false_result = false_arg.try_into_cif_arg().unwrap();
+
+        assert!(matches!(true_result, CifArg::U8(1)));
+        assert!(matches!(false_result, CifArg::U8(0)));
+    }
+
+    #[test]
+    fn test_null_conversion() {
+        let null_type = Type::Null;
+        let null_value = Value::Null;
+        let arg = create_mock_arg(null_type, null_value);
+
+        let result = arg.try_into_cif_arg().unwrap();
+        assert!(matches!(result, CifArg::Pointer(ptr) if ptr.is_null()));
+    }
+
+    #[test]
+    fn test_gobject_conversion() {
+        let gobject_type = Type::GObject(GObjectType::new(false));
+
+        // Create a mock object for testing
+        let mock_object = Object::GObject(glib::Object::new::<glib::Object>());
+        let object_id = ObjectId::new(mock_object);
+        let object_value = Value::Object(object_id);
+
+        let arg = create_mock_arg(gobject_type, object_value);
+        let result = arg.try_into_cif_arg();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_type_mismatch_errors() {
+        // Test integer type with string value
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let string_value = Value::String("not a number".to_string());
+        let arg = create_mock_arg(int_type, string_value);
+
+        let result = arg.try_into_cif_arg();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Expected a Number"));
+    }
+
+    #[test]
+    fn test_string_with_null_bytes_error() {
+        let string_type = Type::String;
+        let string_with_null = Value::String("Hello\0World".to_string());
+        let arg = create_mock_arg(string_type, string_with_null);
+
+        let result = arg.try_into_cif_arg();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Failed to create CString"));
+    }
+
+    #[test]
+    fn test_integer_array_conversion() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let array_type = Type::Array(ArrayType {
+            item_type: Box::new(int_type),
+        });
+
+        let array_value = Value::Array(vec![
+            Value::Number(1.0),
+            Value::Number(2.0),
+            Value::Number(3.0),
+        ]);
+
+        let arg = create_mock_arg(array_type, array_value);
+        let result = arg.try_into_cif_arg();
+        assert!(result.is_ok());
+
+        if let Ok(CifArg::I32Array(arr)) = result {
+            assert_eq!(arr, vec![1, 2, 3]);
+        } else {
+            panic!("Expected I32Array");
+        }
+    }
+
+    #[test]
+    fn test_string_array_conversion() {
+        let string_type = Type::String;
+        let array_type = Type::Array(ArrayType {
+            item_type: Box::new(string_type),
+        });
+
+        let array_value = Value::Array(vec![
+            Value::String("hello".to_string()),
+            Value::String("world".to_string()),
+        ]);
+
+        let arg = create_mock_arg(array_type, array_value);
+        let result = arg.try_into_cif_arg();
+        assert!(result.is_ok());
+
+        if let Ok(CifArg::StringArray(arr)) = result {
+            assert_eq!(arr.len(), 2);
+            assert_eq!(arr[0].to_str().unwrap(), "hello");
+            assert_eq!(arr[1].to_str().unwrap(), "world");
+        } else {
+            panic!("Expected StringArray");
+        }
+    }
+
+    #[test]
+    fn test_boolean_array_conversion() {
+        let bool_type = Type::Boolean;
+        let array_type = Type::Array(ArrayType {
+            item_type: Box::new(bool_type),
+        });
+
+        let array_value = Value::Array(vec![
+            Value::Boolean(true),
+            Value::Boolean(false),
+            Value::Boolean(true),
+        ]);
+
+        let arg = create_mock_arg(array_type, array_value);
+        let result = arg.try_into_cif_arg();
+        assert!(result.is_ok());
+
+        if let Ok(CifArg::U8Array(arr)) = result {
+            assert_eq!(arr, vec![1, 0, 1]);
+        } else {
+            panic!("Expected U8Array for boolean array");
+        }
+    }
+
+    #[test]
+    fn test_array_type_mismatch_error() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let array_type = Type::Array(ArrayType {
+            item_type: Box::new(int_type),
+        });
+
+        // Array contains string values but declares integer type
+        let array_value = Value::Array(vec![
+            Value::String("not".to_string()),
+            Value::String("numbers".to_string()),
+        ]);
+
+        let arg = create_mock_arg(array_type, array_value);
+        let result = arg.try_into_cif_arg();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Expected a Number"));
+    }
+
+    #[test]
+    fn test_debug_output() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let number_value = Value::Number(42.0);
+        let arg = create_mock_arg(int_type, number_value);
+
+        let debug_str = format!("{:?}", arg);
+        assert!(debug_str.contains("Arg"));
+        assert!(debug_str.contains("Integer"));
+        assert!(debug_str.contains("Number"));
+    }
+}

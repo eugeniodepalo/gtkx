@@ -5,6 +5,7 @@ export class ApplicationWindow {
 
   constructor(app: unknown) {
     this.ptr = call(
+      "libgtk-4.so.1",
       "gtk_application_window_new",
       [
         {
@@ -18,6 +19,7 @@ export class ApplicationWindow {
 
   setTitle(title: string) {
     call(
+      "libgtk-4.so.1",
       "gtk_window_set_title",
       [
         {
@@ -35,6 +37,7 @@ export class ApplicationWindow {
 
   setDefaultSize(width: number, height: number) {
     call(
+      "libgtk-4.so.1",
       "gtk_window_set_default_size",
       [
         {
@@ -42,11 +45,11 @@ export class ApplicationWindow {
           value: this.ptr,
         },
         {
-          type: { type: "int", size: 32, unsigned: true },
+          type: { type: "int", size: 32, unsigned: false },
           value: width,
         },
         {
-          type: { type: "int", size: 32, unsigned: true },
+          type: { type: "int", size: 32, unsigned: false },
           value: height,
         },
       ],
@@ -56,6 +59,7 @@ export class ApplicationWindow {
 
   present() {
     call(
+      "libgtk-4.so.1",
       "gtk_window_present",
       [
         {
@@ -69,6 +73,7 @@ export class ApplicationWindow {
 
   connectClose(handler: (object: unknown, signal: string) => void) {
     call(
+      "libgobject-2.0.so.0",
       "g_signal_connect_closure",
       [
         {
@@ -83,9 +88,12 @@ export class ApplicationWindow {
           type: { type: "callback" },
           value: handler,
         },
-        { type: { type: "boolean" }, value: false },
+        {
+          type: { type: "boolean" },
+          value: false,
+        },
       ],
-      { type: "int", size: 32 }
+      { type: "void" }
     );
   }
 }

@@ -11,7 +11,7 @@ use neon::prelude::*;
 ///
 /// This enum defines the supported floating-point precisions for GTK4 FFI calls.
 /// Each precision corresponds to a specific C floating-point type.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FloatSize {
     /// 32-bit floating-point (float)
     _32,
@@ -49,7 +49,7 @@ impl FloatSize {
 ///
 /// This struct specifies a floating-point type for use in GTK4 FFI calls.
 /// It provides conversion methods to libffi types for actual function calls.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FloatType {
     /// The precision of the floating-point type in bits
     pub size: FloatSize,
@@ -108,5 +108,93 @@ impl Into<ffi::Type> for &FloatType {
 impl Into<ffi::Type> for FloatType {
     fn into(self) -> ffi::Type {
         (&self).into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_float_size_creation() {
+        assert_eq!(FloatSize::_32, FloatSize::_32);
+        assert_eq!(FloatSize::_64, FloatSize::_64);
+    }
+
+    #[test]
+    fn test_float_size_equality() {
+        assert_eq!(FloatSize::_32, FloatSize::_32);
+        assert_eq!(FloatSize::_64, FloatSize::_64);
+        assert_ne!(FloatSize::_32, FloatSize::_64);
+    }
+
+    #[test]
+    fn test_float_type_creation() {
+        let float32 = FloatType::new(FloatSize::_32);
+        let float64 = FloatType::new(FloatSize::_64);
+
+        assert_eq!(float32.size, FloatSize::_32);
+        assert_eq!(float64.size, FloatSize::_64);
+    }
+
+    #[test]
+    fn test_float_type_equality() {
+        let type1 = FloatType::new(FloatSize::_32);
+        let type2 = FloatType::new(FloatSize::_32);
+        let type3 = FloatType::new(FloatSize::_64);
+
+        assert_eq!(type1, type2);
+        assert_ne!(type1, type3);
+    }
+
+    #[test]
+    fn test_ffi_type_conversion() {
+        let f32_type = FloatType::new(FloatSize::_32);
+        let f64_type = FloatType::new(FloatSize::_64);
+
+        // Test that conversion works without panicking
+        let _: ffi::Type = (&f32_type).into();
+        let _: ffi::Type = (&f64_type).into();
+
+        // Test owned conversion
+        let _: ffi::Type = f32_type.into();
+        let _: ffi::Type = f64_type.into();
+    }
+
+    #[test]
+    fn test_debug_output() {
+        let float_type = FloatType::new(FloatSize::_64);
+        let debug_str = format!("{:?}", float_type);
+        assert!(debug_str.contains("FloatType"));
+        assert!(debug_str.contains("_64"));
+    }
+
+    #[test]
+    fn test_clone() {
+        let original = FloatType::new(FloatSize::_32);
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+        assert_eq!(original.size, cloned.size);
+    }
+
+    #[test]
+    fn test_all_float_sizes() {
+        let sizes = [FloatSize::_32, FloatSize::_64];
+        for size in sizes {
+            let float_type = FloatType::new(size);
+            assert_eq!(float_type.size, size);
+        }
+    }
+
+    #[test]
+    fn test_float_size_debug() {
+        let size32 = FloatSize::_32;
+        let size64 = FloatSize::_64;
+
+        let debug32 = format!("{:?}", size32);
+        let debug64 = format!("{:?}", size64);
+
+        assert!(debug32.contains("_32"));
+        assert!(debug64.contains("_64"));
     }
 }

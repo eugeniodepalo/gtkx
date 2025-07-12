@@ -11,7 +11,7 @@ use neon::prelude::*;
 ///
 /// This enum defines the supported integer sizes for GTK4 FFI calls.
 /// Each size corresponds to a specific C integer type.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntegerSize {
     /// 8-bit integer (char/int8_t)
     _8,
@@ -52,7 +52,7 @@ impl IntegerSize {
 ///
 /// This enum defines whether an integer type is signed or unsigned,
 /// affecting the range of values it can represent.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntegerSign {
     /// Unsigned integer (only positive values)
     Unsigned,
@@ -91,7 +91,7 @@ impl IntegerSign {
 /// This struct combines size and signedness information to fully specify
 /// an integer type for use in GTK4 FFI calls. It provides conversion
 /// methods to libffi types for actual function calls.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IntegerType {
     /// The size of the integer in bits
     pub size: IntegerSize,
@@ -159,5 +159,100 @@ impl Into<ffi::Type> for &IntegerType {
 impl Into<ffi::Type> for IntegerType {
     fn into(self) -> ffi::Type {
         (&self).into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_integer_size_creation() {
+        assert_eq!(IntegerSize::_8, IntegerSize::_8);
+        assert_eq!(IntegerSize::_32, IntegerSize::_32);
+        assert_eq!(IntegerSize::_64, IntegerSize::_64);
+    }
+
+    #[test]
+    fn test_integer_sign_creation() {
+        assert_eq!(IntegerSign::Unsigned, IntegerSign::Unsigned);
+        assert_eq!(IntegerSign::Signed, IntegerSign::Signed);
+    }
+
+    #[test]
+    fn test_integer_type_creation() {
+        let int_type = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
+        assert_eq!(int_type.size, IntegerSize::_32);
+        assert_eq!(int_type.sign, IntegerSign::Signed);
+    }
+
+    #[test]
+    fn test_integer_type_equality() {
+        let type1 = IntegerType::new(IntegerSize::_64, IntegerSign::Unsigned);
+        let type2 = IntegerType::new(IntegerSize::_64, IntegerSign::Unsigned);
+        let type3 = IntegerType::new(IntegerSize::_32, IntegerSign::Unsigned);
+
+        assert_eq!(type1, type2);
+        assert_ne!(type1, type3);
+    }
+
+    #[test]
+    fn test_ffi_type_conversion() {
+        let u8_type = IntegerType::new(IntegerSize::_8, IntegerSign::Unsigned);
+        let i8_type = IntegerType::new(IntegerSize::_8, IntegerSign::Signed);
+        let u32_type = IntegerType::new(IntegerSize::_32, IntegerSign::Unsigned);
+        let i32_type = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
+        let u64_type = IntegerType::new(IntegerSize::_64, IntegerSign::Unsigned);
+        let i64_type = IntegerType::new(IntegerSize::_64, IntegerSign::Signed);
+
+        // Test that conversion works without panicking
+        let _: ffi::Type = (&u8_type).into();
+        let _: ffi::Type = (&i8_type).into();
+        let _: ffi::Type = (&u32_type).into();
+        let _: ffi::Type = (&i32_type).into();
+        let _: ffi::Type = (&u64_type).into();
+        let _: ffi::Type = (&i64_type).into();
+
+        // Test owned conversion
+        let _: ffi::Type = u8_type.into();
+        let _: ffi::Type = i8_type.into();
+    }
+
+    #[test]
+    fn test_debug_output() {
+        let int_type = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
+        let debug_str = format!("{:?}", int_type);
+        assert!(debug_str.contains("IntegerType"));
+        assert!(debug_str.contains("_32"));
+        assert!(debug_str.contains("Signed"));
+    }
+
+    #[test]
+    fn test_clone() {
+        let original = IntegerType::new(IntegerSize::_64, IntegerSign::Unsigned);
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+
+        // Ensure they're actually separate instances
+        assert_eq!(original.size, cloned.size);
+        assert_eq!(original.sign, cloned.sign);
+    }
+
+    #[test]
+    fn test_all_size_variants() {
+        let sizes = [IntegerSize::_8, IntegerSize::_32, IntegerSize::_64];
+        for size in sizes {
+            let int_type = IntegerType::new(size, IntegerSign::Signed);
+            assert_eq!(int_type.size, size);
+        }
+    }
+
+    #[test]
+    fn test_all_sign_variants() {
+        let signs = [IntegerSign::Unsigned, IntegerSign::Signed];
+        for sign in signs {
+            let int_type = IntegerType::new(IntegerSize::_32, sign);
+            assert_eq!(int_type.sign, sign);
+        }
     }
 }

@@ -185,3 +185,309 @@ impl Value {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::object::Object;
+
+    #[test]
+    fn test_value_number() {
+        let number_val = Value::Number(42.5);
+
+        match number_val {
+            Value::Number(n) => assert_eq!(n, 42.5),
+            _ => panic!("Expected Number value"),
+        }
+    }
+
+    #[test]
+    fn test_value_string() {
+        let string_val = Value::String("Hello, World!".to_string());
+
+        match string_val {
+            Value::String(s) => assert_eq!(s, "Hello, World!"),
+            _ => panic!("Expected String value"),
+        }
+    }
+
+    #[test]
+    fn test_value_boolean() {
+        let true_val = Value::Boolean(true);
+        let false_val = Value::Boolean(false);
+
+        match true_val {
+            Value::Boolean(b) => assert!(b),
+            _ => panic!("Expected Boolean value"),
+        }
+
+        match false_val {
+            Value::Boolean(b) => assert!(!b),
+            _ => panic!("Expected Boolean value"),
+        }
+    }
+
+    #[test]
+    fn test_value_null() {
+        let null_val = Value::Null;
+
+        match null_val {
+            Value::Null => {} // Expected
+            _ => panic!("Expected Null value"),
+        }
+    }
+
+    #[test]
+    fn test_value_object() {
+        // Create a mock object for testing
+        let mock_object = Object::GObject(glib::Object::new::<glib::Object>());
+        let object_id = ObjectId::new(mock_object);
+        let object_val = Value::Object(object_id);
+
+        match object_val {
+            Value::Object(_) => {} // Expected
+            _ => panic!("Expected Object value"),
+        }
+    }
+
+    #[test]
+    fn test_value_array() {
+        let array_val = Value::Array(vec![
+            Value::Number(1.0),
+            Value::String("test".to_string()),
+            Value::Boolean(true),
+        ]);
+
+        match array_val {
+            Value::Array(arr) => {
+                assert_eq!(arr.len(), 3);
+                assert!(matches!(arr[0], Value::Number(1.0)));
+                assert!(matches!(arr[1], Value::String(ref s) if s == "test"));
+                assert!(matches!(arr[2], Value::Boolean(true)));
+            }
+            _ => panic!("Expected Array value"),
+        }
+    }
+
+    #[test]
+    fn test_value_debug() {
+        let values = vec![
+            Value::Number(3.14),
+            Value::String("debug".to_string()),
+            Value::Boolean(false),
+            Value::Null,
+            Value::Array(vec![Value::Number(1.0)]),
+        ];
+
+        for value in values {
+            let debug_str = format!("{:?}", value);
+            assert!(!debug_str.is_empty());
+            assert!(
+                debug_str.starts_with("Number")
+                    || debug_str.starts_with("String")
+                    || debug_str.starts_with("Boolean")
+                    || debug_str.starts_with("Null")
+                    || debug_str.starts_with("Array")
+            );
+        }
+    }
+
+    #[test]
+    fn test_nested_arrays() {
+        let nested = Value::Array(vec![
+            Value::Number(1.0),
+            Value::Array(vec![
+                Value::String("nested".to_string()),
+                Value::Boolean(true),
+            ]),
+            Value::Number(2.0),
+        ]);
+
+        match nested {
+            Value::Array(outer) => {
+                assert_eq!(outer.len(), 3);
+                match &outer[1] {
+                    Value::Array(inner) => {
+                        assert_eq!(inner.len(), 2);
+                        assert!(matches!(inner[0], Value::String(ref s) if s == "nested"));
+                        assert!(matches!(inner[1], Value::Boolean(true)));
+                    }
+                    _ => panic!("Expected nested array"),
+                }
+            }
+            _ => panic!("Expected outer array"),
+        }
+    }
+
+    #[test]
+    fn test_empty_array() {
+        let empty_array = Value::Array(vec![]);
+
+        match empty_array {
+            Value::Array(arr) => assert!(arr.is_empty()),
+            _ => panic!("Expected Array value"),
+        }
+    }
+
+    #[test]
+    fn test_empty_string() {
+        let empty_string = Value::String(String::new());
+
+        match empty_string {
+            Value::String(s) => assert!(s.is_empty()),
+            _ => panic!("Expected String value"),
+        }
+    }
+
+    #[test]
+    fn test_unicode_string() {
+        let unicode_string = Value::String("🦀 Rust 🔥".to_string());
+
+        match unicode_string {
+            Value::String(s) => {
+                assert_eq!(s, "🦀 Rust 🔥");
+                assert!(s.chars().count() > 0);
+            }
+            _ => panic!("Expected String value"),
+        }
+    }
+
+    #[test]
+    fn test_extreme_numbers() {
+        let extreme_numbers = vec![
+            Value::Number(f64::MAX),
+            Value::Number(f64::MIN),
+            Value::Number(f64::INFINITY),
+            Value::Number(f64::NEG_INFINITY),
+            Value::Number(f64::NAN),
+            Value::Number(0.0),
+            Value::Number(-0.0),
+        ];
+
+        for value in extreme_numbers {
+            match value {
+                Value::Number(n) => {
+                    // Just verify it's a number - specific equality checks
+                    // for NaN and infinity are tricky
+                    assert!(n.is_finite() || n.is_infinite() || n.is_nan());
+                }
+                _ => panic!("Expected Number value"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_glib_value_conversion_integers() {
+        let test_cases = vec![
+            (glib::Value::from(42i8), 42.0),
+            (glib::Value::from(255u8), 255.0),
+            (glib::Value::from(-12345i32), -12345.0),
+            (glib::Value::from(98765u32), 98765.0),
+            (glib::Value::from(-9876543210i64), -9876543210.0),
+            (glib::Value::from(1234567890u64), 1234567890.0),
+        ];
+
+        for (glib_val, expected) in test_cases {
+            let result = Value::try_from_glib_value(&glib_val);
+            assert!(result.is_ok());
+
+            match result.unwrap() {
+                Value::Number(n) => assert_eq!(n, expected),
+                _ => panic!("Expected Number value"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_glib_value_conversion_floats() {
+        let test_cases = vec![
+            (glib::Value::from(3.14f32), 3.14f32 as f64),
+            (glib::Value::from(2.718281828f64), 2.718281828f64),
+        ];
+
+        for (glib_val, expected) in test_cases {
+            let result = Value::try_from_glib_value(&glib_val);
+            assert!(result.is_ok());
+
+            match result.unwrap() {
+                Value::Number(n) => assert!((n - expected).abs() < f64::EPSILON),
+                _ => panic!("Expected Number value"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_glib_value_conversion_string() {
+        let glib_val = glib::Value::from("Hello from GLib");
+        let result = Value::try_from_glib_value(&glib_val);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            Value::String(s) => assert_eq!(s, "Hello from GLib"),
+            _ => panic!("Expected String value"),
+        }
+    }
+
+    #[test]
+    fn test_glib_value_conversion_boolean() {
+        let true_val = glib::Value::from(true);
+        let false_val = glib::Value::from(false);
+
+        let true_result = Value::try_from_glib_value(&true_val).unwrap();
+        let false_result = Value::try_from_glib_value(&false_val).unwrap();
+
+        assert!(matches!(true_result, Value::Boolean(true)));
+        assert!(matches!(false_result, Value::Boolean(false)));
+    }
+
+    #[test]
+    fn test_glib_value_conversion_object() {
+        let glib_object = glib::Object::new::<glib::Object>();
+        let glib_val = glib::Value::from(&glib_object);
+
+        let result = Value::try_from_glib_value(&glib_val);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            Value::Object(_) => {} // Expected
+            _ => panic!("Expected Object value"),
+        }
+    }
+
+    #[test]
+    fn test_large_array() {
+        let large_array = Value::Array((0..1000).map(|i| Value::Number(i as f64)).collect());
+
+        match large_array {
+            Value::Array(arr) => {
+                assert_eq!(arr.len(), 1000);
+                assert!(matches!(arr[0], Value::Number(0.0)));
+                assert!(matches!(arr[999], Value::Number(999.0)));
+            }
+            _ => panic!("Expected Array value"),
+        }
+    }
+
+    #[test]
+    fn test_mixed_type_array() {
+        let mixed_array = Value::Array(vec![
+            Value::Number(42.0),
+            Value::String("mixed".to_string()),
+            Value::Boolean(true),
+            Value::Null,
+            Value::Array(vec![Value::Number(1.0)]),
+        ]);
+
+        match mixed_array {
+            Value::Array(arr) => {
+                assert_eq!(arr.len(), 5);
+                assert!(matches!(arr[0], Value::Number(42.0)));
+                assert!(matches!(arr[1], Value::String(ref s) if s == "mixed"));
+                assert!(matches!(arr[2], Value::Boolean(true)));
+                assert!(matches!(arr[3], Value::Null));
+                assert!(matches!(arr[4], Value::Array(_)));
+            }
+            _ => panic!("Expected Array value"),
+        }
+    }
+}

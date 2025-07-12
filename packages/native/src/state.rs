@@ -4,8 +4,8 @@
 //! in a separate thread from the Node.js event loop. It handles object lifecycle
 //! management, library symbol resolution, and application hold guards.
 
-mod gtk_thread;
 mod object_id;
+mod thread;
 
-pub use gtk_thread::*;
 pub use object_id::*;
+pub use thread::*;
