@@ -1,3 +1,9 @@
+//! Value Conversion and Representation
+//!
+//! This module provides the `Value` enum and related functionality for representing
+//! JavaScript values in Rust and converting between different type systems.
+//! It handles conversion between JavaScript values, Rust values, and GLib values.
+
 use std::ffi::c_void;
 use std::sync::Arc;
 
@@ -9,18 +15,48 @@ use neon::prelude::*;
 use crate::object::{Boxed, Object};
 use crate::state::ObjectId;
 
+/// Represents a JavaScript value in Rust.
+///
+/// This enum provides a safe way to represent JavaScript values that can be
+/// converted to C types for FFI calls. It supports all the basic JavaScript
+/// types plus GTK4-specific types like object references and callbacks.
 #[derive(Debug)]
 pub enum Value {
+    /// A JavaScript number (64-bit floating point)
     Number(f64),
+    /// A JavaScript string (UTF-8)
     String(String),
+    /// A JavaScript boolean
     Boolean(bool),
+    /// A GTK4 object reference (GObject or Boxed)
     Object(ObjectId),
+    /// A JavaScript null value
     Null,
+    /// A JavaScript array of values
     Array(Vec<Value>),
+    /// A JavaScript callback function with its execution channel
     Callback(Arc<Root<JsFunction>>, Channel),
 }
 
 impl Value {
+    /// Creates a Value from a JavaScript value.
+    ///
+    /// This method examines the JavaScript value and creates the appropriate
+    /// Rust representation. It handles all supported JavaScript types and
+    /// performs necessary conversions.
+    ///
+    /// # Arguments
+    ///
+    /// * `cx` - Neon function context
+    /// * `value` - JavaScript value to convert
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Value` enum representing the JavaScript value.
+    ///
+    /// # Errors
+    ///
+    /// Returns a JavaScript error if the value type is not supported.
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         if let Ok(number) = value.downcast::<JsNumber, _>(cx) {
             return Ok(Value::Number(number.value(cx)));
@@ -60,6 +96,23 @@ impl Value {
         cx.throw_type_error("Unsupported JS value type")
     }
 
+    /// Converts the Value to a JavaScript value.
+    ///
+    /// This method performs the reverse conversion, taking a Rust Value
+    /// and creating the appropriate JavaScript representation.
+    ///
+    /// # Arguments
+    ///
+    /// * `cx` - Neon context for creating JavaScript values
+    ///
+    /// # Returns
+    ///
+    /// Returns a JavaScript value handle.
+    ///
+    /// # Errors
+    ///
+    /// Returns a JavaScript error if the conversion fails or the value
+    /// type is not supported for JavaScript conversion.
     pub fn to_js_value<'a, C: Context<'a>>(&self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
         match self {
             Value::Number(n) => Ok(cx.number(*n).upcast()),
@@ -78,6 +131,23 @@ impl Value {
         }
     }
 
+    /// Attempts to create a Value from a GLib value.
+    ///
+    /// This method handles conversion from GLib's type system to the Rust
+    /// Value representation. It supports all the basic GLib types and
+    /// GTK4 object types.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - GLib value to convert
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Value` representing the GLib value.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the GLib value type is not supported.
     pub fn try_from_glib_value(value: &glib::Value) -> AnyhowResult<Self> {
         if value.is_type(glib::types::Type::I8) {
             Ok(Value::Number(value.get::<i8>().unwrap() as f64))

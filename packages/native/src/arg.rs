@@ -1,3 +1,9 @@
+//! Argument Handling and Conversion
+//!
+//! This module provides the `Arg` struct and related functionality for handling
+//! function arguments in FFI calls. It manages the conversion between JavaScript
+//! values and C-compatible types, including complex types like arrays and callbacks.
+
 use std::ffi::CString;
 use std::sync::Arc;
 
@@ -9,6 +15,12 @@ use anyhow::{bail, Context as AnyhowContext, Result as AnyhowResult};
 use gtk4::glib;
 use neon::prelude::*;
 
+/// Represents a function argument with its type and value.
+///
+/// This struct encapsulates both the type information and the actual value
+/// of an argument that will be passed to a GTK4 function through FFI.
+/// It provides type-safe conversion methods to ensure arguments are
+/// correctly marshalled for C function calls.
 #[derive(Debug)]
 pub struct Arg {
     type_: Type,
@@ -16,6 +28,20 @@ pub struct Arg {
 }
 
 impl Arg {
+    /// Creates a vector of arguments from a JavaScript array.
+    ///
+    /// # Arguments
+    ///
+    /// * `cx` - Neon function context
+    /// * `value` - JavaScript array containing argument objects
+    ///
+    /// # Returns
+    ///
+    /// Returns a vector of `Arg` structs representing the JavaScript arguments.
+    ///
+    /// # Errors
+    ///
+    /// Returns a JavaScript error if any argument is invalid or cannot be converted.
     pub fn vec_from_js_value(
         cx: &mut FunctionContext,
         value: Handle<JsArray>,
@@ -30,6 +56,20 @@ impl Arg {
         Ok(args)
     }
 
+    /// Creates an argument from a JavaScript value.
+    ///
+    /// # Arguments
+    ///
+    /// * `cx` - Neon function context
+    /// * `value` - JavaScript object containing 'type' and 'value' properties
+    ///
+    /// # Returns
+    ///
+    /// Returns an `Arg` struct representing the JavaScript argument.
+    ///
+    /// # Errors
+    ///
+    /// Returns a JavaScript error if the argument format is invalid.
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let type_prop: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
@@ -40,10 +80,28 @@ impl Arg {
         Ok(Arg { type_, value })
     }
 
+    /// Returns a reference to the argument's type.
     pub fn type_(&self) -> &Type {
         &self.type_
     }
 
+    /// Converts the argument to a CIF argument for use with libffi.
+    ///
+    /// This method performs the actual conversion from the high-level Rust
+    /// representation to the low-level C representation that can be passed
+    /// through libffi to GTK4 functions.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `CifArg` that can be used with libffi, or an error if the
+    /// conversion fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The value type doesn't match the declared type
+    /// - The value cannot be converted to the target C type
+    /// - Array or callback conversion fails
     pub fn try_into_cif_arg(&self) -> AnyhowResult<CifArg> {
         match &self.type_ {
             Type::Integer(type_) => {
@@ -135,6 +193,10 @@ impl Arg {
         }
     }
 
+    /// Converts a JavaScript array to a CIF argument.
+    ///
+    /// This method handles the conversion of JavaScript arrays to C-compatible
+    /// array representations. It supports arrays of primitive types and objects.
     fn convert_array_to_cif_arg(
         &self,
         array: &[Value],
@@ -243,6 +305,11 @@ impl Arg {
         }
     }
 
+    /// Converts a JavaScript callback to a CIF argument.
+    ///
+    /// This method creates a GLib closure that can be passed to GTK4 functions
+    /// as a callback. The closure handles the conversion between GLib values
+    /// and JavaScript values automatically.
     fn convert_callback_to_cif_arg(
         &self,
         callback: &Arc<Root<JsFunction>>,
@@ -251,6 +318,7 @@ impl Arg {
         let channel = channel.clone();
         let callback = callback.clone();
 
+        // Create a GLib closure that bridges to JavaScript
         let closure = glib::Closure::new(move |args: &[glib::Value]| {
             let args_values = args
                 .iter()
@@ -259,6 +327,7 @@ impl Arg {
                 .unwrap_or_else(|_| Vec::new());
             let callback = callback.clone();
 
+            // Execute the JavaScript callback on the Node.js thread
             let result = channel.send(move |mut cx| {
                 let js_args = args_values
                     .into_iter()

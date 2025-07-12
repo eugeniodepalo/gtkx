@@ -1,3 +1,9 @@
+//! FFI Function Call Interface
+//!
+//! This module provides the `call` function that enables dynamic calling of GTK4
+//! functions through FFI. It handles type-safe argument marshalling, function
+//! symbol resolution, and return value conversion between C and JavaScript types.
+
 use std::{
     ffi::{c_void, CString},
     sync::mpsc,
@@ -20,6 +26,54 @@ use crate::{
     types::{FloatSize, IntegerSign, IntegerSize},
 };
 
+/// Dynamically calls a GTK4 function through FFI.
+///
+/// This function provides a type-safe interface for calling arbitrary GTK4 functions
+/// from JavaScript. It handles argument marshalling, symbol resolution, FFI call
+/// execution, and return value conversion.
+///
+/// # Arguments
+///
+/// * `cx` - Function context from Neon providing access to JavaScript values
+///   - `symbol_name` - JavaScript string containing the name of the GTK4 function to call
+///   - `args` - JavaScript array of arguments, each with type and value information
+///   - `result_type` - JavaScript object describing the expected return type
+///
+/// # Returns
+///
+/// Returns a `JsValue` containing the result of the function call, converted to the
+/// appropriate JavaScript type based on the specified return type.
+///
+/// # Threading
+///
+/// The actual FFI call is executed on the GTK4 main thread using `glib::idle_add_once`
+/// to ensure thread safety when interacting with GTK4 objects.
+///
+/// # Type Safety
+///
+/// All arguments and return values are type-checked and converted safely between
+/// JavaScript and C types. The function supports:
+/// - Primitive types (integers, floats, strings, booleans)
+/// - GTK4 objects (GObject and Boxed types)
+/// - Arrays of supported types
+/// - Callback functions
+///
+/// # Example
+///
+/// ```javascript
+/// // Call gtk_window_new(GTK_WINDOW_TOPLEVEL)
+/// const windowId = call("gtk_window_new", [
+///   { type: { type: "int", size: 32, signed: false }, value: 0 }
+/// ], { type: "gobject", borrowed: false });
+/// ```
+///
+/// # Errors
+///
+/// Returns a JavaScript error if:
+/// - The function symbol cannot be found
+/// - Argument types are invalid or conversion fails
+/// - The FFI call fails
+/// - Return value conversion fails
 pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let symbol_name = cx.argument::<JsString>(0)?.value(&mut cx);
     let js_args = cx.argument::<JsArray>(1)?;
@@ -28,7 +82,9 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let result_type = ResultType::from_js_value(&mut cx, js_result_type.upcast())?;
     let (tx, rx) = mpsc::channel::<AnyhowResult<Result>>();
 
+    // Execute the FFI call on the GTK4 main thread
     glib::idle_add_once(move || {
+        // Build the FFI call interface
         let cif = ffi::Builder::new()
             .res((&result_type).into())
             .args(
@@ -38,6 +94,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
             )
             .into_cif();
 
+        // Convert arguments to CIF format
         let cif_args: Vec<CifArg> = match args
             .iter()
             .map(|arg| arg.try_into_cif_arg())
@@ -54,6 +111,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
         let mut ffi_args = raw_args.iter().map(Into::into).collect::<Vec<_>>();
 
+        // Resolve the function symbol from the GTK4 library
         let symbol_ptr = unsafe {
             GtkThreadState::with(|state| {
                 let symbol = state
@@ -65,6 +123,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
             })
         };
 
+        // Execute the FFI call and convert the return value
         let return_value = (|| -> AnyhowResult<Result> {
             unsafe {
                 match result_type {
@@ -113,12 +172,14 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
                         let object_ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
 
                         let object = if type_.is_borrowed {
+                            // Borrowed reference - increment ref count
                             let object = glib::Object::from_glib_none(
                                 object_ptr as *mut glib::gobject_ffi::GObject,
                             );
 
                             Object::GObject(object)
                         } else {
+                            // Owned reference - take ownership
                             let object = glib::Object::from_glib_full(
                                 object_ptr as *mut glib::gobject_ffi::GObject,
                             );
@@ -132,6 +193,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
                         let boxed_ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
 
                         let boxed = if type_.is_borrowed {
+                            // Borrowed reference - copy the boxed value
                             let boxed = Boxed::from_glib_none(
                                 glib::Type::from_name(&type_.type_).unwrap(),
                                 boxed_ptr,
@@ -139,6 +201,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
                             Object::Boxed(boxed)
                         } else {
+                            // Owned reference - take ownership
                             let boxed = Boxed::from_glib_full(
                                 glib::Type::from_name(&type_.type_).unwrap(),
                                 boxed_ptr,
@@ -159,6 +222,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
         tx.send(return_value).unwrap();
     });
 
+    // Wait for the FFI call to complete
     let return_value = rx.recv().unwrap();
 
     let return_value = match return_value {
@@ -166,6 +230,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
         Err(err) => return cx.throw_error(format!("FFI call failed: {}", err)),
     };
 
+    // Convert the return value to JavaScript
     let return_js_value = match return_value {
         Result::Void => cx.undefined().upcast(),
         Result::Number(value) => cx.number(value).upcast(),
