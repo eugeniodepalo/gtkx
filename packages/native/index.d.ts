@@ -10,7 +10,7 @@ module "@gtkx/native" {
   type CallbackType = { type: "callback" };
   type NullType = { type: "null" };
 
-  type ReturnType =
+  type ResultType =
     | Exclude<Type, ArrayType | CallbackType>
     | VoidType
     | NullType;
@@ -34,7 +34,7 @@ module "@gtkx/native" {
     | unknown[]
     | ((...args: unknown[]) => unknown);
 
-  type ReturnValue = {
+  type Result = {
     int: number;
     float: number;
     boolean: boolean;
@@ -54,8 +54,8 @@ module "@gtkx/native" {
 export function start(appId: string): unknown;
 export function stop(app: unknown): void;
 
-export function call<TReturnType extends ReturnType>(
+export function call<TResultType extends ResultType>(
   name: string,
   args: Arg[],
-  returnType: TReturnType
-): ReturnValue[TReturnType["type"]];
+  returnType: TResultType
+): Result[TResultType["type"]];
