@@ -24,14 +24,8 @@ impl GObjectType {
     }
 }
 
-impl Into<ffi::Type> for &GObjectType {
-    fn into(self) -> ffi::Type {
+impl From<&GObjectType> for ffi::Type {
+    fn from(_value: &GObjectType) -> Self {
         ffi::Type::pointer()
-    }
-}
-
-impl Into<ffi::Type> for GObjectType {
-    fn into(self) -> ffi::Type {
-        (&self).into()
     }
 }

@@ -38,17 +38,11 @@ impl FloatType {
     }
 }
 
-impl Into<ffi::Type> for &FloatType {
-    fn into(self) -> ffi::Type {
-        match self.size {
+impl From<&FloatType> for ffi::Type {
+    fn from(value: &FloatType) -> Self {
+        match value.size {
             FloatSize::_32 => ffi::Type::f32(),
             FloatSize::_64 => ffi::Type::f64(),
         }
-    }
-}
-
-impl Into<ffi::Type> for FloatType {
-    fn into(self) -> ffi::Type {
-        (&self).into()
     }
 }

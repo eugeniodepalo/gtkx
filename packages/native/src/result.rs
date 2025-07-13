@@ -7,6 +7,7 @@ use gtk4::glib;
 use libffi::middle as ffi;
 use neon::prelude::*;
 
+#[derive(Debug, Clone)]
 pub enum ResultType {
     Void,
     Null,
@@ -47,11 +48,51 @@ impl ResultType {
             _ => cx.throw_type_error("Unknown return type"),
         }
     }
+
+    pub fn is_void(&self) -> bool {
+        matches!(self, ResultType::Void)
+    }
+
+    pub fn is_null(&self) -> bool {
+        matches!(self, ResultType::Null)
+    }
+
+    pub fn is_integer(&self) -> bool {
+        matches!(self, ResultType::Integer(_))
+    }
+
+    pub fn is_float(&self) -> bool {
+        matches!(self, ResultType::Float(_))
+    }
+
+    pub fn is_string(&self) -> bool {
+        matches!(self, ResultType::String)
+    }
+
+    pub fn is_boolean(&self) -> bool {
+        matches!(self, ResultType::Boolean)
+    }
+
+    pub fn is_gobject(&self) -> bool {
+        matches!(self, ResultType::GObject(_))
+    }
+
+    pub fn is_boxed(&self) -> bool {
+        matches!(self, ResultType::Boxed(_))
+    }
+
+    pub fn is_array(&self) -> bool {
+        matches!(self, ResultType::Array(_))
+    }
+
+    pub fn is_callback(&self) -> bool {
+        matches!(self, ResultType::Callback)
+    }
 }
 
-impl Into<ffi::Type> for &ResultType {
-    fn into(self) -> ffi::Type {
-        match self {
+impl From<&ResultType> for ffi::Type {
+    fn from(value: &ResultType) -> Self {
+        match value {
             ResultType::Void => ffi::Type::void(),
             ResultType::Null => ffi::Type::pointer(),
             ResultType::Integer(type_) => type_.into(),
@@ -63,12 +104,6 @@ impl Into<ffi::Type> for &ResultType {
             ResultType::Array(type_) => type_.into(),
             ResultType::Callback => ffi::Type::pointer(),
         }
-    }
-}
-
-impl Into<ffi::Type> for ResultType {
-    fn into(self) -> ffi::Type {
-        (&self).into()
     }
 }
 

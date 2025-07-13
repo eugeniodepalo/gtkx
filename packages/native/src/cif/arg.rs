@@ -29,9 +29,9 @@ pub enum Arg {
     Pointer(*mut c_void),
 }
 
-impl Into<Value> for &Arg {
-    fn into(self) -> Value {
-        match self {
+impl From<&Arg> for Value {
+    fn from(arg: &Arg) -> Value {
+        match arg {
             Arg::U8(value) => Value::U8(*value),
             Arg::I8(value) => Value::I8(*value),
             Arg::U32(value) => Value::U32(*value),
@@ -92,11 +92,5 @@ impl Into<Value> for &Arg {
                 Value::Pointer(ptr)
             }
         }
-    }
-}
-
-impl Into<Value> for Arg {
-    fn into(self) -> Value {
-        (&self).into()
     }
 }

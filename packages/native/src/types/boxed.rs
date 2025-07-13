@@ -32,14 +32,8 @@ impl BoxedType {
     }
 }
 
-impl Into<ffi::Type> for &BoxedType {
-    fn into(self) -> ffi::Type {
+impl From<&BoxedType> for ffi::Type {
+    fn from(_value: &BoxedType) -> Self {
         ffi::Type::pointer()
-    }
-}
-
-impl Into<ffi::Type> for BoxedType {
-    fn into(self) -> ffi::Type {
-        (&self).into()
     }
 }

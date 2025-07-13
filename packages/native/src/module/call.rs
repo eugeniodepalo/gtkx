@@ -26,23 +26,20 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let symbol_name = cx.argument::<JsString>(1)?.value(&mut cx);
     let js_args = cx.argument::<JsArray>(2)?;
     let js_result_type = cx.argument::<JsObject>(3)?;
-    let args = Arg::vec_from_js_value(&mut cx, js_args)?;
+    let args = Arg::from_js_array(&mut cx, js_args)?;
     let result_type = ResultType::from_js_value(&mut cx, js_result_type.upcast())?;
     let (tx, rx) = mpsc::channel::<AnyhowResult<Result>>();
 
-    // Execute the FFI call on the main thread
     glib::idle_add_once(move || {
-        // Build the FFI call interface
         let cif = ffi::Builder::new()
             .res((&result_type).into())
             .args(
                 args.iter()
-                    .map(|arg| arg.type_().into())
+                    .map(|arg| arg.get_type().into())
                     .collect::<Vec<_>>(),
             )
             .into_cif();
 
-        // Convert arguments to CIF format
         let cif_args: Vec<CifArg> = match args
             .iter()
             .map(|arg| arg.try_into_cif_arg())
@@ -59,10 +56,8 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
         let mut ffi_args = raw_args.iter().map(Into::into).collect::<Vec<_>>();
 
-        // Resolve the function symbol from the specified library
         let symbol_ptr = unsafe {
             let symbol_result = ThreadState::with(|state| {
-                // Load the library if it's not already loaded
                 if !state.libraries.contains_key(&library_name) {
                     match Library::new(&library_name) {
                         Ok(lib) => {
@@ -78,7 +73,6 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
                     }
                 }
 
-                // Get the library and resolve the symbol
                 match state.libraries.get(&library_name) {
                     Some(lib) => {
                         match lib.get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes()) {
@@ -104,7 +98,6 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
             }
         };
 
-        // Execute the FFI call and convert the return value
         let result = (|| -> AnyhowResult<Result> {
             unsafe {
                 match result_type {
@@ -153,14 +146,12 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
                         let object_ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
 
                         let object = if type_.is_borrowed {
-                            // Borrowed reference - increment ref count
                             let object = glib::Object::from_glib_none(
                                 object_ptr as *mut glib::gobject_ffi::GObject,
                             );
 
                             Object::GObject(object)
                         } else {
-                            // Owned reference - take ownership
                             let object = glib::Object::from_glib_full(
                                 object_ptr as *mut glib::gobject_ffi::GObject,
                             );
@@ -174,7 +165,6 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
                         let boxed_ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
 
                         let boxed = if type_.is_borrowed {
-                            // Borrowed reference - copy the boxed value
                             let boxed = Boxed::from_glib_none(
                                 glib::Type::from_name(&type_.type_).unwrap(),
                                 boxed_ptr,
@@ -182,7 +172,6 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
                             Object::Boxed(boxed)
                         } else {
-                            // Owned reference - take ownership
                             let boxed = Boxed::from_glib_full(
                                 glib::Type::from_name(&type_.type_).unwrap(),
                                 boxed_ptr,
@@ -203,7 +192,6 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
         tx.send(result).unwrap();
     });
 
-    // Wait for the FFI call to complete
     let result = rx.recv().unwrap();
 
     let result = match result {
@@ -211,7 +199,6 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
         Err(err) => return cx.throw_error(format!("FFI call failed: {}", err)),
     };
 
-    // Convert the return value to JavaScript
     let js_result = match result {
         Result::Void => cx.undefined().upcast(),
         Result::Number(value) => cx.number(value).upcast(),

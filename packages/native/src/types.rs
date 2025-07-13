@@ -51,9 +51,9 @@ impl Type {
     }
 }
 
-impl Into<ffi::Type> for &Type {
-    fn into(self) -> ffi::Type {
-        match self {
+impl From<&Type> for ffi::Type {
+    fn from(value: &Type) -> Self {
+        match value {
             Type::Integer(type_) => type_.into(),
             Type::Float(type_) => type_.into(),
             Type::String => ffi::Type::pointer(),
@@ -64,11 +64,5 @@ impl Into<ffi::Type> for &Type {
             Type::Array(type_) => type_.into(),
             Type::Callback => ffi::Type::pointer(),
         }
-    }
-}
-
-impl Into<ffi::Type> for Type {
-    fn into(self) -> ffi::Type {
-        (&self).into()
     }
 }

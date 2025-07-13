@@ -14,24 +14,18 @@ pub enum Value {
     Pointer(*mut c_void),
 }
 
-impl Into<ffi::Arg> for &Value {
-    fn into(self) -> ffi::Arg {
-        match self {
-            Value::U8(value) => ffi::arg(value),
-            Value::I8(value) => ffi::arg(value),
-            Value::U32(value) => ffi::arg(value),
-            Value::I32(value) => ffi::arg(value),
-            Value::U64(value) => ffi::arg(value),
-            Value::I64(value) => ffi::arg(value),
-            Value::F32(value) => ffi::arg(value),
-            Value::F64(value) => ffi::arg(value),
-            Value::Pointer(ptr) => ffi::arg(ptr),
+impl From<&Value> for ffi::Arg {
+    fn from(value: &Value) -> Self {
+        match value {
+            Value::U8(val) => ffi::arg(val),
+            Value::I8(val) => ffi::arg(val),
+            Value::U32(val) => ffi::arg(val),
+            Value::I32(val) => ffi::arg(val),
+            Value::U64(val) => ffi::arg(val),
+            Value::I64(val) => ffi::arg(val),
+            Value::F32(val) => ffi::arg(val),
+            Value::F64(val) => ffi::arg(val),
+            Value::Pointer(val) => ffi::arg(val),
         }
-    }
-}
-
-impl Into<ffi::Arg> for Value {
-    fn into(self) -> ffi::Arg {
-        (&self).into()
     }
 }

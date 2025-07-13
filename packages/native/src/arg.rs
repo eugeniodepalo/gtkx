@@ -16,7 +16,7 @@ pub struct Arg {
 }
 
 impl Arg {
-    pub fn vec_from_js_value(
+    pub fn from_js_array(
         cx: &mut FunctionContext,
         value: Handle<JsArray>,
     ) -> NeonResult<Vec<Self>> {
@@ -40,7 +40,7 @@ impl Arg {
         Ok(Arg { type_, value })
     }
 
-    pub fn type_(&self) -> &Type {
+    pub fn get_type(&self) -> &Type {
         &self.type_
     }
 
