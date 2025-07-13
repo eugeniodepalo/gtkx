@@ -100,4 +100,35 @@ export class ApplicationWindow {
       { type: "void" }
     );
   }
+
+  getDefaultSizeRefs(
+    widthRef: { value: unknown },
+    heightRef: { value: unknown }
+  ) {
+    call(
+      "libgtk-4.so.1",
+      "gtk_window_get_default_size",
+      [
+        {
+          type: { type: "gobject" },
+          value: this.ptr,
+        },
+        {
+          type: {
+            type: "ref",
+            innerType: { type: "int", size: 32, unsigned: false },
+          },
+          value: widthRef,
+        },
+        {
+          type: {
+            type: "ref",
+            innerType: { type: "int", size: 32, unsigned: false },
+          },
+          value: heightRef,
+        },
+      ],
+      { type: "void" }
+    );
+  }
 }

@@ -3,7 +3,7 @@ use std::{
     sync::mpsc,
 };
 
-use anyhow::{bail, Result as AnyhowResult};
+use anyhow::Result as AnyhowResult;
 use gtk4::glib::{
     self,
     translate::{FromGlibPtrFull as _, FromGlibPtrNone as _},
@@ -11,6 +11,10 @@ use gtk4::glib::{
 use libffi::middle as ffi;
 use libloading::Library;
 use neon::prelude::*;
+// use neon::object::Object as _; // not needed
+use neon::handle::Root;
+use std::sync::Arc as StdArc;
+use neon::object::Object as _;
 
 use crate::{
     arg::Arg,
@@ -28,7 +32,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let js_result_type = cx.argument::<JsObject>(3)?;
     let args = Arg::from_js_array(&mut cx, js_args)?;
     let result_type = ResultType::from_js_value(&mut cx, js_result_type.upcast())?;
-    let (tx, rx) = mpsc::channel::<AnyhowResult<Result>>();
+    let (tx, rx) = mpsc::channel::<AnyhowResult<(Result, Vec<(StdArc<Root<JsObject>>, crate::value::Value)>)>>();
 
     glib::idle_add_once(move || {
         let cif = ffi::Builder::new()
@@ -40,12 +44,21 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
             )
             .into_cif();
 
+        // Build CIF args while collecting prepared refs for later readback
+        let mut prepared_refs: Vec<crate::arg::PreparedRef> = Vec::new();
         let cif_args: Vec<CifArg> = match args
             .iter()
-            .map(|arg| arg.try_into_cif_arg())
+            .map(|arg| arg.try_into_cif_arg_with_ref())
             .collect::<AnyhowResult<Vec<_>>>()
         {
-            Ok(cif_args) => cif_args,
+            Ok(pairs) => {
+                let mut v = Vec::with_capacity(pairs.len());
+                for (cif, maybe_ref) in pairs {
+                    v.push(cif);
+                    if let Some(pr) = maybe_ref { prepared_refs.push(pr); }
+                }
+                v
+            }
             Err(err) => {
                 tx.send(Err(err)).unwrap();
                 return;
@@ -98,49 +111,47 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
             }
         };
 
-        let result = (|| -> AnyhowResult<Result> {
-            unsafe {
+        let result_and_refs = (|| -> AnyhowResult<(Result, Vec<(StdArc<Root<JsObject>>, crate::value::Value)>)> {
+            let result: Result = unsafe {
                 match result_type {
                     ResultType::Void => {
                         cif.call::<()>(symbol_ptr, &mut ffi_args);
-                        Ok(Result::Void)
+                        Result::Void
                     }
                     ResultType::Integer(type_) => match (type_.size, type_.sign) {
-                        (IntegerSize::_8, IntegerSign::Unsigned) => Ok(Result::Number(
+                        (IntegerSize::_8, IntegerSign::Unsigned) => Result::Number(
                             cif.call::<u8>(symbol_ptr, &mut ffi_args) as f64,
-                        )),
-                        (IntegerSize::_8, IntegerSign::Signed) => Ok(Result::Number(
+                        ),
+                        (IntegerSize::_8, IntegerSign::Signed) => Result::Number(
                             cif.call::<i8>(symbol_ptr, &mut ffi_args) as f64,
-                        )),
-                        (IntegerSize::_32, IntegerSign::Unsigned) => Ok(Result::Number(
+                        ),
+                        (IntegerSize::_32, IntegerSign::Unsigned) => Result::Number(
                             cif.call::<u32>(symbol_ptr, &mut ffi_args) as f64,
-                        )),
-                        (IntegerSize::_32, IntegerSign::Signed) => Ok(Result::Number(
+                        ),
+                        (IntegerSize::_32, IntegerSign::Signed) => Result::Number(
                             cif.call::<i32>(symbol_ptr, &mut ffi_args) as f64,
-                        )),
-                        (IntegerSize::_64, IntegerSign::Unsigned) => Ok(Result::Number(
+                        ),
+                        (IntegerSize::_64, IntegerSign::Unsigned) => Result::Number(
                             cif.call::<u64>(symbol_ptr, &mut ffi_args) as f64,
-                        )),
-                        (IntegerSize::_64, IntegerSign::Signed) => Ok(Result::Number(
+                        ),
+                        (IntegerSize::_64, IntegerSign::Signed) => Result::Number(
                             cif.call::<i64>(symbol_ptr, &mut ffi_args) as f64,
-                        )),
+                        ),
                     },
                     ResultType::Float(type_) => match type_.size {
-                        FloatSize::_32 => Ok(Result::Number(
+                        FloatSize::_32 => Result::Number(
                             cif.call::<f32>(symbol_ptr, &mut ffi_args) as f64,
-                        )),
-                        FloatSize::_64 => {
-                            Ok(Result::Number(cif.call::<f64>(symbol_ptr, &mut ffi_args)))
-                        }
+                        ),
+                        FloatSize::_64 => Result::Number(cif.call::<f64>(symbol_ptr, &mut ffi_args)),
                     },
                     ResultType::String => {
                         let cstring = cif.call::<CString>(symbol_ptr, &mut ffi_args);
                         let string = cstring.to_str().unwrap_or("").to_string();
-                        Ok(Result::String(string))
+                        Result::String(string)
                     }
                     ResultType::Boolean => {
                         let value = cif.call::<u8>(symbol_ptr, &mut ffi_args);
-                        Ok(Result::Boolean(value != 0))
+                        Result::Boolean(value != 0)
                     }
                     ResultType::GObject(type_) => {
                         let object_ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
@@ -159,7 +170,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
                             Object::GObject(object)
                         };
 
-                        Ok(Result::Object(ObjectId::new(object)))
+                        Result::Object(ObjectId::new(object))
                     }
                     ResultType::Boxed(type_) => {
                         let boxed_ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
@@ -180,24 +191,40 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
                             Object::Boxed(boxed)
                         };
 
-                        Ok(Result::Object(ObjectId::new(boxed)))
+                        Result::Object(ObjectId::new(boxed))
                     }
-                    ResultType::Null => Ok(Result::Null),
-                    ResultType::Array(_) => bail!("Array return type not yet supported"),
-                    ResultType::Callback => bail!("Callback return type not yet supported"),
+                    ResultType::Null => Result::Null,
+                    ResultType::Array(_) => return Err(anyhow::anyhow!("Array return type not yet supported")),
+                    ResultType::Callback => return Err(anyhow::anyhow!("Callback return type not yet supported")),
+                }
+            };
+            // If we reach here, we have a Result. Now read back ref values
+            let mut ref_updates: Vec<(StdArc<Root<JsObject>>, crate::value::Value)> = Vec::new();
+            for prepared in prepared_refs.into_iter() {
+                match unsafe { prepared.read_back_value() } {
+                    Ok(value) => ref_updates.push((prepared.js_obj.clone(), value)),
+                    Err(_) => {}
                 }
             }
+            Ok((result, ref_updates))
         })();
 
-        tx.send(result).unwrap();
+        tx.send(result_and_refs).unwrap();
     });
 
-    let result = rx.recv().unwrap();
+    let result_and_updates = rx.recv().unwrap();
 
-    let result = match result {
-        Ok(result) => result,
+    let (result, updates) = match result_and_updates {
+        Ok(v) => v,
         Err(err) => return cx.throw_error(format!("FFI call failed: {}", err)),
     };
+
+    // Apply ref updates synchronously on Node thread
+    for (root, value) in updates.into_iter() {
+        let obj = root.to_inner(&mut cx);
+        let js_value = value.to_js_value(&mut cx)?;
+        obj.set(&mut cx, "value", js_value)?;
+    }
 
     let js_result = match result {
         Result::Void => cx.undefined().upcast(),

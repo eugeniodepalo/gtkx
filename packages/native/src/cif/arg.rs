@@ -27,6 +27,7 @@ pub enum Arg {
     Callback(glib::Closure),
     String(CString),
     Pointer(*mut c_void),
+    // For out parameters, we pass a pointer-to-pointer if needed, but we model all refs as Pointer
 }
 
 impl From<&Arg> for Value {

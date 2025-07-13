@@ -5,6 +5,7 @@ import {
   getMicroVersion,
   ApplicationWindow,
 } from "@gtkx/bridge/gtk";
+import { createRef } from "@gtkx/native";
 
 const app = start("com.gtkx.demo");
 
@@ -21,6 +22,12 @@ console.log("Created a new ApplicationWindow: ", window);
 window.setTitle("Hello, GTK!");
 window.setDefaultSize(800, 600);
 window.present();
+
+// Test refs with gtk_window_get_default_size
+const wRef = createRef(null);
+const hRef = createRef(null);
+window.getDefaultSizeRefs(wRef, hRef);
+console.log("Default size via refs:", wRef.value, hRef.value);
 
 window.connect("close-request", (...args: any[]) => {
   console.log("Window closed, stopping the app.");

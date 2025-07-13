@@ -6,7 +6,7 @@ module "@gtkx/native" {
   type GObjectType = { type: "gobject"; borrowed?: boolean };
   type BoxedType = { type: "boxed"; borrowed?: boolean; innerType: string };
   type ArrayType = { type: "array"; itemType: Type };
-  type RefType = { type: "ref" };
+  type RefType = { type: "ref"; innerType: Type };
   type VoidType = { type: "void" };
   type CallbackType = { type: "callback" };
   type NullType = { type: "null" };
@@ -23,11 +23,6 @@ module "@gtkx/native" {
     | RefType
     | CallbackType;
 
-  type ResultType =
-    | Exclude<Type, ArrayType | CallbackType>
-    | VoidType
-    | NullType;
-
   type Result = {
     int: number;
     float: number;
@@ -39,16 +34,14 @@ module "@gtkx/native" {
     null: null;
   };
 
-  type Arg = {
-    type: Type;
-    value: unknown;
-  };
+  type ResultType = Exclude<Type, ArrayType | CallbackType> | VoidType;
+  type Arg = { type: Type; value: unknown };
+  type Ref<T> = { value: T };
 }
 
-export function createRef(type: Type, value: unknown): unknown;
-export function getRef(ref: unknown): unknown;
 export function start(appId: string): unknown;
 export function stop(): void;
+export function createRef<T>(value: T): Ref<T>;
 
 export function call<TResultType extends ResultType>(
   library: string,

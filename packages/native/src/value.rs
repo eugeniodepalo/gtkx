@@ -8,6 +8,8 @@ use neon::prelude::*;
 
 use crate::object::{Boxed, Object};
 use crate::state::ObjectId;
+use neon::handle::Root;
+use std::sync::Arc as StdArc;
 
 #[derive(Debug)]
 pub enum Value {
@@ -18,6 +20,7 @@ pub enum Value {
     Null,
     Array(Vec<Value>),
     Callback(Arc<Root<JsFunction>>, Channel),
+    Ref(Ref),
 }
 
 impl Value {
@@ -74,7 +77,11 @@ impl Value {
                 }
                 Ok(js_array.upcast())
             }
-            _ => cx.throw_type_error("Unsupported Value type for JS conversion"),
+            Value::Null => Ok(cx.null().upcast()),
+            Value::Callback(_, _) => {
+                cx.throw_type_error("Unsupported Value type for JS conversion: Callback")
+            }
+            Value::Ref(_) => cx.throw_type_error("Unsupported Value type for JS conversion: Ref"),
         }
     }
 
@@ -112,6 +119,23 @@ impl Value {
             Ok(Value::Object(object_id))
         } else {
             bail!("Unsupported glib value type: {:?}", value.type_());
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Ref {
+    pub inner: Box<Value>,
+    pub js_obj: StdArc<Root<JsObject>>,
+    pub channel: Channel,
+}
+
+impl Ref {
+    pub fn new(inner: Box<Value>, js_obj: Root<JsObject>, channel: Channel) -> Self {
+        Ref {
+            inner,
+            js_obj: StdArc::new(js_obj),
+            channel,
         }
     }
 }

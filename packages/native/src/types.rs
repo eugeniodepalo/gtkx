@@ -6,12 +6,14 @@ mod boxed;
 mod float;
 mod gobject;
 mod integer;
+mod r#ref;
 
 pub use array::*;
 pub use boxed::*;
 pub use float::*;
 pub use gobject::*;
 pub use integer::*;
+pub use r#ref::*;
 
 #[derive(Debug, Clone)]
 pub enum Type {
@@ -24,6 +26,7 @@ pub enum Type {
     Boxed(BoxedType),
     Array(ArrayType),
     Callback,
+    Ref(RefType),
 }
 
 impl Type {
@@ -46,6 +49,7 @@ impl Type {
             "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
             "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
             "callback" => Ok(Type::Callback),
+            "ref" => Ok(Type::Ref(RefType::from_js_value(cx, obj.upcast())?)),
             _ => cx.throw_type_error("Unknown type"),
         }
     }
@@ -63,6 +67,7 @@ impl From<&Type> for ffi::Type {
             Type::Boxed(type_) => type_.into(),
             Type::Array(type_) => type_.into(),
             Type::Callback => ffi::Type::pointer(),
+            Type::Ref(_) => ffi::Type::pointer(),
         }
     }
 }
