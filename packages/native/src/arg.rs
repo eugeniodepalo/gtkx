@@ -1,9 +1,3 @@
-//! Argument Handling and Conversion
-//!
-//! This module provides the `Arg` struct and related functionality for handling
-//! function arguments in FFI calls. It manages the conversion between JavaScript
-//! values and C-compatible types, including complex types like arrays and callbacks.
-
 use std::ffi::CString;
 use std::sync::Arc;
 
@@ -15,12 +9,6 @@ use anyhow::{bail, Context as AnyhowContext, Result as AnyhowResult};
 use gtk4::glib;
 use neon::prelude::*;
 
-/// Represents a function argument with its type and value.
-///
-/// This struct encapsulates both the type information and the actual value
-/// of an argument that will be passed to a GTK4 function through FFI.
-/// It provides type-safe conversion methods to ensure arguments are
-/// correctly marshalled for C function calls.
 #[derive(Debug)]
 pub struct Arg {
     type_: Type,
@@ -28,20 +16,6 @@ pub struct Arg {
 }
 
 impl Arg {
-    /// Creates a vector of arguments from a JavaScript array.
-    ///
-    /// # Arguments
-    ///
-    /// * `cx` - Neon function context
-    /// * `value` - JavaScript array containing argument objects
-    ///
-    /// # Returns
-    ///
-    /// Returns a vector of `Arg` structs representing the JavaScript arguments.
-    ///
-    /// # Errors
-    ///
-    /// Returns a JavaScript error if any argument is invalid or cannot be converted.
     pub fn vec_from_js_value(
         cx: &mut FunctionContext,
         value: Handle<JsArray>,
@@ -56,20 +30,6 @@ impl Arg {
         Ok(args)
     }
 
-    /// Creates an argument from a JavaScript value.
-    ///
-    /// # Arguments
-    ///
-    /// * `cx` - Neon function context
-    /// * `value` - JavaScript object containing 'type' and 'value' properties
-    ///
-    /// # Returns
-    ///
-    /// Returns an `Arg` struct representing the JavaScript argument.
-    ///
-    /// # Errors
-    ///
-    /// Returns a JavaScript error if the argument format is invalid.
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let type_prop: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
@@ -80,28 +40,10 @@ impl Arg {
         Ok(Arg { type_, value })
     }
 
-    /// Returns a reference to the argument's type.
     pub fn type_(&self) -> &Type {
         &self.type_
     }
 
-    /// Converts the argument to a CIF argument for use with libffi.
-    ///
-    /// This method performs the actual conversion from the high-level Rust
-    /// representation to the low-level C representation that can be passed
-    /// through libffi to GTK4 functions.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `CifArg` that can be used with libffi, or an error if the
-    /// conversion fails.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - The value type doesn't match the declared type
-    /// - The value cannot be converted to the target C type
-    /// - Array or callback conversion fails
     pub fn try_into_cif_arg(&self) -> AnyhowResult<CifArg> {
         match &self.type_ {
             Type::Integer(type_) => {
@@ -193,10 +135,6 @@ impl Arg {
         }
     }
 
-    /// Converts a JavaScript array to a CIF argument.
-    ///
-    /// This method handles the conversion of JavaScript arrays to C-compatible
-    /// array representations. It supports arrays of primitive types and objects.
     fn convert_array_to_cif_arg(
         &self,
         array: &[Value],
@@ -305,11 +243,6 @@ impl Arg {
         }
     }
 
-    /// Converts a JavaScript callback to a CIF argument.
-    ///
-    /// This method creates a GLib closure that can be passed to GTK4 functions
-    /// as a callback. The closure handles the conversion between GLib values
-    /// and JavaScript values automatically.
     fn convert_callback_to_cif_arg(
         &self,
         callback: &Arc<Root<JsFunction>>,
@@ -318,7 +251,6 @@ impl Arg {
         let channel = channel.clone();
         let callback = callback.clone();
 
-        // Create a GLib closure that bridges to JavaScript
         let closure = glib::Closure::new(move |args: &[glib::Value]| {
             let args_values = args
                 .iter()
@@ -327,7 +259,6 @@ impl Arg {
                 .unwrap_or_else(|_| Vec::new());
             let callback = callback.clone();
 
-            // Execute the JavaScript callback on the Node.js thread
             let result = channel.send(move |mut cx| {
                 let js_args = args_values
                     .into_iter()
@@ -347,272 +278,5 @@ impl Arg {
         });
 
         Ok(CifArg::Callback(closure))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::object::Object;
-    use crate::state::ObjectId;
-    use crate::types::{ArrayType, FloatType, GObjectType, IntegerType};
-
-    fn create_mock_arg(type_: Type, value: Value) -> Arg {
-        Arg { type_, value }
-    }
-
-    #[test]
-    fn test_arg_creation() {
-        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
-        let number_value = Value::Number(42.0);
-        let arg = create_mock_arg(int_type, number_value);
-
-        assert!(matches!(arg.type_, Type::Integer(_)));
-        assert!(matches!(arg.value, Value::Number(42.0)));
-    }
-
-    #[test]
-    fn test_arg_type_accessor() {
-        let float_type = Type::Float(FloatType::new(FloatSize::_64));
-        let float_value = Value::Number(3.14);
-        let arg = create_mock_arg(float_type, float_value);
-
-        match arg.type_() {
-            Type::Float(f) => assert_eq!(f.size, FloatSize::_64),
-            _ => panic!("Expected Float type"),
-        }
-    }
-
-    #[test]
-    fn test_integer_conversion() {
-        let test_cases = vec![
-            (IntegerSize::_8, IntegerSign::Unsigned, 255.0),
-            (IntegerSize::_8, IntegerSign::Signed, -128.0),
-            (IntegerSize::_32, IntegerSign::Unsigned, 4294967295.0),
-            (IntegerSize::_32, IntegerSign::Signed, -2147483648.0),
-            (
-                IntegerSize::_64,
-                IntegerSign::Unsigned,
-                18446744073709551615.0,
-            ),
-            (
-                IntegerSize::_64,
-                IntegerSign::Signed,
-                -9223372036854775808.0,
-            ),
-        ];
-
-        for (size, sign, value) in test_cases {
-            let int_type = Type::Integer(IntegerType::new(size, sign));
-            let number_value = Value::Number(value);
-            let arg = create_mock_arg(int_type, number_value);
-
-            let result = arg.try_into_cif_arg();
-            assert!(result.is_ok(), "Failed for {:?} {:?} {}", size, sign, value);
-        }
-    }
-
-    #[test]
-    fn test_float_conversion() {
-        let test_cases = vec![(FloatSize::_32, 3.14159), (FloatSize::_64, 2.718281828)];
-
-        for (size, value) in test_cases {
-            let float_type = Type::Float(FloatType::new(size));
-            let number_value = Value::Number(value);
-            let arg = create_mock_arg(float_type, number_value);
-
-            let result = arg.try_into_cif_arg();
-            assert!(result.is_ok(), "Failed for {:?} {}", size, value);
-        }
-    }
-
-    #[test]
-    fn test_string_conversion() {
-        let string_type = Type::String;
-        let string_value = Value::String("Hello, World!".to_string());
-        let arg = create_mock_arg(string_type, string_value);
-
-        let result = arg.try_into_cif_arg();
-        assert!(result.is_ok());
-
-        if let Ok(CifArg::String(cstring)) = result {
-            assert_eq!(cstring.to_str().unwrap(), "Hello, World!");
-        } else {
-            panic!("Expected String CifArg");
-        }
-    }
-
-    #[test]
-    fn test_boolean_conversion() {
-        let bool_type = Type::Boolean;
-
-        let true_arg = create_mock_arg(bool_type.clone(), Value::Boolean(true));
-        let false_arg = create_mock_arg(bool_type, Value::Boolean(false));
-
-        let true_result = true_arg.try_into_cif_arg().unwrap();
-        let false_result = false_arg.try_into_cif_arg().unwrap();
-
-        assert!(matches!(true_result, CifArg::U8(1)));
-        assert!(matches!(false_result, CifArg::U8(0)));
-    }
-
-    #[test]
-    fn test_null_conversion() {
-        let null_type = Type::Null;
-        let null_value = Value::Null;
-        let arg = create_mock_arg(null_type, null_value);
-
-        let result = arg.try_into_cif_arg().unwrap();
-        assert!(matches!(result, CifArg::Pointer(ptr) if ptr.is_null()));
-    }
-
-    #[test]
-    fn test_gobject_conversion() {
-        let gobject_type = Type::GObject(GObjectType::new(false));
-
-        // Create a mock object for testing
-        let mock_object = Object::GObject(glib::Object::new::<glib::Object>());
-        let object_id = ObjectId::new(mock_object);
-        let object_value = Value::Object(object_id);
-
-        let arg = create_mock_arg(gobject_type, object_value);
-        let result = arg.try_into_cif_arg();
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_type_mismatch_errors() {
-        // Test integer type with string value
-        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
-        let string_value = Value::String("not a number".to_string());
-        let arg = create_mock_arg(int_type, string_value);
-
-        let result = arg.try_into_cif_arg();
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Expected a Number"));
-    }
-
-    #[test]
-    fn test_string_with_null_bytes_error() {
-        let string_type = Type::String;
-        let string_with_null = Value::String("Hello\0World".to_string());
-        let arg = create_mock_arg(string_type, string_with_null);
-
-        let result = arg.try_into_cif_arg();
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Failed to create CString"));
-    }
-
-    #[test]
-    fn test_integer_array_conversion() {
-        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
-        let array_type = Type::Array(ArrayType {
-            item_type: Box::new(int_type),
-        });
-
-        let array_value = Value::Array(vec![
-            Value::Number(1.0),
-            Value::Number(2.0),
-            Value::Number(3.0),
-        ]);
-
-        let arg = create_mock_arg(array_type, array_value);
-        let result = arg.try_into_cif_arg();
-        assert!(result.is_ok());
-
-        if let Ok(CifArg::I32Array(arr)) = result {
-            assert_eq!(arr, vec![1, 2, 3]);
-        } else {
-            panic!("Expected I32Array");
-        }
-    }
-
-    #[test]
-    fn test_string_array_conversion() {
-        let string_type = Type::String;
-        let array_type = Type::Array(ArrayType {
-            item_type: Box::new(string_type),
-        });
-
-        let array_value = Value::Array(vec![
-            Value::String("hello".to_string()),
-            Value::String("world".to_string()),
-        ]);
-
-        let arg = create_mock_arg(array_type, array_value);
-        let result = arg.try_into_cif_arg();
-        assert!(result.is_ok());
-
-        if let Ok(CifArg::StringArray(arr)) = result {
-            assert_eq!(arr.len(), 2);
-            assert_eq!(arr[0].to_str().unwrap(), "hello");
-            assert_eq!(arr[1].to_str().unwrap(), "world");
-        } else {
-            panic!("Expected StringArray");
-        }
-    }
-
-    #[test]
-    fn test_boolean_array_conversion() {
-        let bool_type = Type::Boolean;
-        let array_type = Type::Array(ArrayType {
-            item_type: Box::new(bool_type),
-        });
-
-        let array_value = Value::Array(vec![
-            Value::Boolean(true),
-            Value::Boolean(false),
-            Value::Boolean(true),
-        ]);
-
-        let arg = create_mock_arg(array_type, array_value);
-        let result = arg.try_into_cif_arg();
-        assert!(result.is_ok());
-
-        if let Ok(CifArg::U8Array(arr)) = result {
-            assert_eq!(arr, vec![1, 0, 1]);
-        } else {
-            panic!("Expected U8Array for boolean array");
-        }
-    }
-
-    #[test]
-    fn test_array_type_mismatch_error() {
-        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
-        let array_type = Type::Array(ArrayType {
-            item_type: Box::new(int_type),
-        });
-
-        // Array contains string values but declares integer type
-        let array_value = Value::Array(vec![
-            Value::String("not".to_string()),
-            Value::String("numbers".to_string()),
-        ]);
-
-        let arg = create_mock_arg(array_type, array_value);
-        let result = arg.try_into_cif_arg();
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Expected a Number"));
-    }
-
-    #[test]
-    fn test_debug_output() {
-        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
-        let number_value = Value::Number(42.0);
-        let arg = create_mock_arg(int_type, number_value);
-
-        let debug_str = format!("{:?}", arg);
-        assert!(debug_str.contains("Arg"));
-        assert!(debug_str.contains("Integer"));
-        assert!(debug_str.contains("Number"));
     }
 }

@@ -4,16 +4,12 @@ module "@gtkx/native" {
   type BooleanType = { type: "boolean" };
   type StringType = { type: "string" };
   type GObjectType = { type: "gobject"; borrowed?: boolean };
-  type BoxedType = { type: "boxed"; borrowed?: boolean; type: string };
+  type BoxedType = { type: "boxed"; borrowed?: boolean; innerType: string };
   type ArrayType = { type: "array"; itemType: Type };
+  type RefType = { type: "ref" };
   type VoidType = { type: "void" };
   type CallbackType = { type: "callback" };
   type NullType = { type: "null" };
-
-  type ResultType =
-    | Exclude<Type, ArrayType | CallbackType>
-    | VoidType
-    | NullType;
 
   type Type =
     | IntegerType
@@ -24,15 +20,13 @@ module "@gtkx/native" {
     | GObjectType
     | BoxedType
     | ArrayType
+    | RefType
     | CallbackType;
 
-  type Value =
-    | number
-    | string
-    | boolean
-    | unknown
-    | unknown[]
-    | ((...args: unknown[]) => unknown);
+  type ResultType =
+    | Exclude<Type, ArrayType | CallbackType>
+    | VoidType
+    | NullType;
 
   type Result = {
     int: number;
@@ -47,10 +41,12 @@ module "@gtkx/native" {
 
   type Arg = {
     type: Type;
-    value: Value;
+    value: unknown;
   };
 }
 
+export function createRef(type: Type, value: unknown): unknown;
+export function getRef(ref: unknown): unknown;
 export function start(appId: string): unknown;
 export function stop(): void;
 

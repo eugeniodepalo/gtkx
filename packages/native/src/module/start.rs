@@ -1,9 +1,3 @@
-//! GTK4 Application Initialization
-//!
-//! This module provides the `start` function that initializes a GTK4 application
-//! in a separate thread and returns an object ID that can be used to reference
-//! the application from JavaScript.
-
 use std::sync::mpsc;
 
 use gtk4::prelude::*;
@@ -14,41 +8,6 @@ use crate::{
     state::{ObjectId, ThreadState},
 };
 
-/// Starts a GTK4 application in a separate thread.
-///
-/// This function creates a new GTK4 application with the specified application ID,
-/// spawns a dedicated thread for the GTK4 main loop, and returns an object ID
-/// that can be used to reference the application from JavaScript.
-///
-/// # Arguments
-///
-/// * `cx` - Function context from Neon providing access to JavaScript values
-///   - `app_id` - JavaScript string containing the GTK4 application ID
-///
-/// # Returns
-///
-/// Returns a `JsValue` containing a boxed `ObjectId` that represents the GTK4
-/// application instance. This ID can be used in subsequent calls to interact
-/// with the application.
-///
-/// # Threading
-///
-/// The GTK4 application runs in its own thread separate from the Node.js event loop.
-/// Communication between threads is handled through channels, ensuring thread safety.
-///
-/// # Example
-///
-/// ```javascript
-/// const appId = start("com.example.myapp");
-/// // appId can now be used with other functions like call() and stop()
-/// ```
-///
-/// # Panics
-///
-/// This function will panic if:
-/// - The GTK4 library cannot be initialized
-/// - The channel communication fails between threads
-/// - The application ID is invalid
 pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
     let app_id = cx.argument::<JsString>(0)?.value(&mut cx);
     let (tx, rx) = mpsc::channel::<ObjectId>();

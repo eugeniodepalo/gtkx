@@ -1,9 +1,3 @@
-//! FFI Function Call Interface
-//!
-//! This module provides the `call` function that enables dynamic calling of C library
-//! functions through FFI. It handles type-safe argument marshalling, function
-//! symbol resolution, and return value conversion between C and JavaScript types.
-
 use std::{
     ffi::{c_void, CString},
     sync::mpsc,
@@ -27,59 +21,6 @@ use crate::{
     types::{FloatSize, IntegerSign, IntegerSize},
 };
 
-/// Dynamically calls a C library function through FFI.
-///
-/// This function provides a type-safe interface for calling arbitrary C library functions
-/// from JavaScript. It handles argument marshalling, symbol resolution, FFI call
-/// execution, and return value conversion.
-///
-/// # Arguments
-///
-/// * `cx` - Function context from Neon providing access to JavaScript values
-///   - `library_name` - JavaScript string containing the exact name of the library to load
-///   - `symbol_name` - JavaScript string containing the name of the function to call
-///   - `args` - JavaScript array of arguments, each with type and value information
-///   - `result_type` - JavaScript object describing the expected return type
-///
-/// # Returns
-///
-/// Returns a `JsValue` containing the result of the function call, converted to the
-/// appropriate JavaScript type based on the specified return type.
-///
-/// # Threading
-///
-/// The actual FFI call is executed on the GTK4 main thread using `glib::idle_add_once`
-/// to ensure thread safety when interacting with GLib/GTK4 objects.
-///
-/// # Type Safety
-///
-/// All arguments and return values are type-checked and converted safely between
-/// JavaScript and C types. The function supports:
-/// - Primitive types (integers, floats, strings, booleans)
-/// - GLib/GTK4 objects (GObject and Boxed types)
-/// - Arrays of supported types
-/// - Callback functions
-///
-/// # Example
-///
-/// ```javascript
-/// // Call gtk_window_new(GTK_WINDOW_TOPLEVEL) from GTK4 library
-/// const windowId = call("libgtk-4.so.1", "gtk_window_new", [
-///   { type: { type: "int", size: 32, signed: false }, value: 0 }
-/// ], { type: "gobject", borrowed: false });
-///
-/// // Call g_get_home_dir() from GLib
-/// const homeDir = call("libglib-2.0.so.0", "g_get_home_dir", [], { type: "string" });
-/// ```
-///
-/// # Errors
-///
-/// Returns a JavaScript error if:
-/// - The library cannot be loaded
-/// - The function symbol cannot be found
-/// - Argument types are invalid or conversion fails
-/// - The FFI call fails
-/// - Return value conversion fails
 pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let library_name = cx.argument::<JsString>(0)?.value(&mut cx);
     let symbol_name = cx.argument::<JsString>(1)?.value(&mut cx);
