@@ -1,253 +1,86 @@
-# GTKx - React Renderer for GTK4
+# GTKx
 
-A modern React renderer that brings React's declarative UI paradigm to native GTK4 applications. Build desktop applications using familiar React patterns while leveraging the full power of GTK4's native widgets and performance.
+React-driven native GTK4 UI. This monorepo contains:
 
-## 🚀 Overview
+- `@gtkx/native`: a Rust+Neon FFI layer that starts a GTK4 main thread and exposes a typed `call` API
+- `@gtkx/bridge`: a TypeScript wrapper that maps high-level types to `@gtkx/native` (planned to be generated from GIR)
+- `@gtkx/gtkx`: the top-level developer API and, eventually, the React reconciler that renders widgets
 
-GTKx enables you to write desktop applications using React components that render to native GTK4 widgets. Instead of targeting the DOM, your React components create real GTK4 windows, buttons, and other native UI elements.
+### High-level architecture
 
-```tsx
-import { render } from "@gtkx/react";
-import { Application, Window, Button } from "@gtkx/gtkx";
+- Node (JS/TS) calls into the Rust native module via Neon.
+- The native module marshals arguments into libffi call frames and dispatches them on the GTK main thread.
+- Return values and out-params (refs) are converted back into JS values. JS callbacks are invoked on the Node thread via a Neon channel.
 
-function App() {
-  return (
-    <Application id="com.example.myapp">
-      <Window title="Hello GTKx" defaultWidth={400} defaultHeight={300}>
-        <Button onClick={() => console.log("Clicked!")}>Hello, GTK4!</Button>
-      </Window>
-    </Application>
-  );
-}
+### Repo layout
 
-render(<App />);
-```
+- `packages/native/`: Rust implementation of the FFI layer (libffi + glib/gtk + Neon)
+- `packages/bridge/`: TS bridge exposing ergonomic helpers and thin wrappers for common GTK calls
+- `packages/gtkx/`: top-level developer-facing package; future home of the React reconciler and JSX components
+- `examples/demo/`: small app that exercises the bridge and FFI
 
-## 🏗️ Architecture
+## Status
 
-The project consists of three main layers:
+- `@gtkx/native`: core FFI flow, object management, callbacks, arrays. New: ref/out-parameter support through `createRef`.
+- `@gtkx/bridge`: minimal typed wrappers; wired to demo. Will be generated from GIR in the future.
+- `@gtkx/gtkx`: scaffolded; will export `render` and JSX bindings in later iterations.
 
-### 1. **Native Bridge** (`packages/native/`)
+## Quick start
 
-A high-performance Rust library built with Neon that provides:
-
-- **Type-safe FFI** - Direct calls to GTK4 C functions with full type safety
-- **Object Management** - Automatic memory management for GTK4 objects
-- **Thread Safety** - Proper handling of GTK4's main thread requirements
-- **Callback Support** - Bidirectional communication between Node.js and GTK4
-
-### 2. **GTK4 Bindings** (`packages/gtkx/`)
-
-TypeScript bindings that provide:
-
-- **Widget Wrappers** - Type-safe interfaces for all GTK4 widgets
-- **Event Handling** - React-style event system for GTK4 signals
-- **Property Mapping** - Automatic conversion between React props and GTK4 properties
-- **Layout System** - Integration with GTK4's layout managers
-
-### 3. **React Renderer** (Coming Soon)
-
-A custom React renderer that:
-
-- **Declarative UI** - Use React components to describe GTK4 widget trees
-- **State Management** - Full React state and effects support
-- **Hot Reload** - Development-time hot reloading for rapid iteration
-- **DevTools** - React DevTools integration for debugging
-
-## 📦 Packages
-
-| Package        | Description              | Status         |
-| -------------- | ------------------------ | -------------- |
-| `@gtkx/native` | Rust FFI bridge to GTK4  | ✅ Complete    |
-| `@gtkx/gtkx`   | TypeScript GTK4 bindings | 🚧 In Progress |
-| `@gtkx/react`  | React renderer           | 📋 Planned     |
-
-## 🛠️ Development Setup
-
-### Prerequisites
-
-- **Node.js** 18+ with pnpm
-- **Rust** 1.70+ with Cargo
-- **GTK4** development libraries
-- **Python** 3.8+ (for native module compilation)
-
-### Install GTK4 Development Libraries
-
-**Ubuntu/Debian:**
-
-```bash
-sudo apt install libgtk-4-dev build-essential
-```
-
-**macOS:**
-
-```bash
-brew install gtk4 pkg-config
-```
-
-**Fedora:**
-
-```bash
-sudo dnf install gtk4-devel gcc
-```
-
-### Clone and Install
-
-```bash
-git clone https://github.com/your-org/gtkx.git
-cd gtkx
-pnpm install
-```
-
-### Build the Project
-
-```bash
-# Build native module and TypeScript packages
-pnpm build
-
-# Run the demo application
-pnpm demo
-```
-
-## 🎯 Project Status
-
-### ✅ Completed
-
-- [x] **FFI Bridge**: Complete Rust-to-GTK4 bridge with type safety
-- [x] **Memory Management**: Automatic cleanup of GTK4 objects
-- [x] **Thread Safety**: Proper GTK4 main thread handling
-- [x] **Basic Bindings**: Core GTK4 widgets wrapped for TypeScript
-
-### 🚧 In Progress
-
-- [ ] **Complete Widget Set**: Full coverage of GTK4 widgets
-- [ ] **Event System**: React-style event handling
-- [ ] **Layout Integration**: GTK4 layout managers as React components
-
-### 📋 Planned
-
-- [ ] **React Renderer**: Custom React reconciler for GTK4
-- [ ] **Hot Reload**: Development-time hot reloading
-- [ ] **DevTools**: React DevTools integration
-- [ ] **Styling System**: CSS-like styling for GTK4 widgets
-- [ ] **Animation**: React-based animations using GTK4
-- [ ] **Accessibility**: Full a11y support through GTK4
-
-## 🏁 Quick Start
-
-### 1. Install Dependencies
+Prereqs: Node 18+, pnpm, Rust toolchain, GTK4 dev packages (e.g. Fedora: `sudo dnf install gtk4-devel gcc`).
 
 ```bash
 pnpm install
+pnpm -w build
+pnpm -C examples/demo start
 ```
 
-### 2. Build the Native Module
+The demo logs the GTK version, shows a window, and prints default size read via GTK out-params using refs.
 
-```bash
-pnpm build:native
-```
+## FFI at a glance
 
-### 3. Run the Demo
+From JS you can call any exported C symbol via:
 
-```bash
-pnpm demo
-```
+```ts
+import { call, start, stop, createRef } from "@gtkx/native";
 
-This will launch a simple GTK4 application demonstrating the current functionality.
+const app = start("com.example.app");
 
-## 📚 Examples
-
-### Basic Window
-
-```typescript
-import { call, start, stop } from "@gtkx/native";
-
-// Start GTK4 application
-const app = start("com.example.basic");
-
-// Create a window
-const window = call("gtk_window_new", [], { type: "gobject", borrowed: false });
-
-// Set window properties
+// Out params via refs
+const w = createRef(null);
+const h = createRef(null);
 call(
-  "gtk_window_set_title",
+  "libgtk-4.so.1",
+  "gtk_window_get_default_size",
   [
-    { type: { type: "gobject", borrowed: false }, value: window },
-    { type: { type: "string" }, value: "My GTK4 App" },
+    { type: { type: "gobject" }, value: someWindow },
+    {
+      type: {
+        type: "ref",
+        innerType: { type: "int", size: 32, unsigned: false },
+      },
+      value: w,
+    },
+    {
+      type: {
+        type: "ref",
+        innerType: { type: "int", size: 32, unsigned: false },
+      },
+      value: h,
+    },
   ],
   { type: "void" }
 );
+console.log(w.value, h.value);
 
-// Show the window
-call(
-  "gtk_widget_show",
-  [{ type: { type: "gobject", borrowed: false }, value: window }],
-  { type: "void" }
-);
+stop();
 ```
 
-### With Type-Safe Bindings
+`createRef()` returns `{ value: any }`. When used with a `ref` type, the callee can write into it; the native layer converts the C value back into a JS value synchronously before `call` returns.
 
-```typescript
-import { Application, Window } from "@gtkx/gtkx";
+## Developing
 
-const app = new Application("com.example.typed");
-const window = new Window();
-window.setTitle("Type-Safe GTK4");
-window.show();
+- Native module builds as part of the Nx workspace. If you touch Rust, run `pnpm -w -C packages/native build`.
+- Demo app lives in `examples/demo`. Keep it green to sanity-check the FFI.
 
-app.addWindow(window);
-```
-
-## 🔧 Configuration
-
-### TypeScript Configuration
-
-The project uses TypeScript with strict type checking. Configuration is shared across packages via the root `tsconfig.json`.
-
-### Build System
-
-Built with Nx for efficient monorepo management:
-
-- **Native Module**: Built with Cargo and Neon CLI
-- **TypeScript**: Built with tsc and Nx
-- **Examples**: Built with esbuild for fast iteration
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Workflow
-
-1. **Fork** the repository
-2. **Create** a feature branch
-3. **Write** tests for new functionality
-4. **Ensure** all tests pass: `pnpm test`
-5. **Submit** a pull request
-
-### Code Style
-
-- **Rust**: Follow standard Rust formatting with `cargo fmt`
-- **TypeScript**: Use Prettier with our configuration
-- **Commits**: Use conventional commit format
-
-## 📄 License
-
-This project is licensed under the [ISC License](LICENSE).
-
-## 🙏 Acknowledgments
-
-- **GTK4 Team** - For the amazing toolkit
-- **Neon** - For seamless Rust-Node.js integration
-- **React Team** - For the reconciler architecture
-
-## 🔗 Links
-
-- **Documentation**: [docs.gtkx.dev](https://docs.gtkx.dev) (Coming Soon)
-- **Examples**: [github.com/gtkx/examples](https://github.com/gtkx/examples) (Coming Soon)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/gtkx/discussions)
-- **Issues**: [GitHub Issues](https://github.com/your-org/gtkx/issues)
-
----
-
-**Note**: This project is under active development. APIs may change before the 1.0 release. Star the repo to stay updated! ⭐
+See individual package READMEs for details.

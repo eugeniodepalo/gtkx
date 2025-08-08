@@ -1,6 +1,5 @@
 {
   "rust-analyzer.linkedProjects": [
     "${workspaceFolder}/packages/native/Cargo.toml"
-  ],
-  "nxConsole.generateAiAgentRules": true
+  ]
 }
