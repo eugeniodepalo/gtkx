@@ -1,24 +1,16 @@
 [package]
 name = "native"
 version = "0.1.0"
-license = "ISC"
-edition = "2021"
+license = "MPL-2.0"
+edition = "2024"
 exclude = ["index.node"]
 
 [lib]
 crate-type = ["cdylib"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 neon = "1.1.1"
-gtk4 = "0.9.7"
-libloading = "0.8.8"
-libffi = "4.1.1"
-anyhow = "1.0.98"
-
-[dev-dependencies]
-tokio = { version = "1.0", features = ["rt", "rt-multi-thread", "macros"] }
-serial_test = "3.0"
-tempfile = "3.8"
-once_cell = "1.19"
+gtk4 = "0.10.2"
+libloading = "0.9.0"
+libffi = "5.0.0"
+anyhow = "1.0.100"

@@ -33,12 +33,6 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ffi
 
-  packages/bridge:
-    dependencies:
-      '@gtkx/native':
-        specifier: workspace:*
-        version: link:../native
-
   packages/ffi:
     dependencies:
       '@gtkx/native':

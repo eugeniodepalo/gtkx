@@ -1,6 +1,6 @@
 {
   "name": "@gtkx/gtkx",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "license": "MPL-2.0",
   "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
   "type": "module",
