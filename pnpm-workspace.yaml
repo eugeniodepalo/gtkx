@@ -1,6 +1,3 @@
 packages:
   - packages/*
   - examples/*
-onlyBuiltDependencies:
-  - "@swc/core"
-  - nx

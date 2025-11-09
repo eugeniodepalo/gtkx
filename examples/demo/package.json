@@ -1,21 +1,14 @@
 {
   "name": "demo",
   "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
+  "license": "MPL-2.0",
+  "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
   "type": "module",
-  "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "default": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
   "scripts": {
-    "start": "node dist/index.js"
+    "build": "tsc -b",
+    "start": "node ./dist/index.js"
   },
   "dependencies": {
-    "@gtkx/bridge": "workspace:*"
+    "@gtkx/ffi": "workspace:*"
   }
 }

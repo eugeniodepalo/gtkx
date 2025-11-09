@@ -1,5 +1,5 @@
 {
-  "name": "@gtkx/gtkx",
+  "name": "@gtkx/ffi",
   "version": "1.0.0",
   "license": "MPL-2.0",
   "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
@@ -13,6 +13,6 @@
     }
   },
   "dependencies": {
-    "@gtkx/ffi": "workspace:*"
+    "@gtkx/native": "workspace:*"
   }
 }

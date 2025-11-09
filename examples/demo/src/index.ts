@@ -1,21 +1,22 @@
-import { start, stop } from "@gtkx/bridge";
 import {
-  getMajorVersion,
-  getMinorVersion,
-  getMicroVersion,
-  ApplicationWindow,
-} from "@gtkx/bridge/gtk";
-import { createRef } from "@gtkx/native";
+  Gtk_getMajorVersion,
+  Gtk_getMinorVersion,
+  Gtk_getMicroVersion,
+  Gtk_ApplicationWindow,
+  createRef,
+  start,
+  stop,
+} from "@gtkx/ffi";
 
 const app = start("com.gtkx.demo");
 
-const majorVersion = getMajorVersion();
-const minorVersion = getMinorVersion();
-const microVersion = getMicroVersion();
+const majorVersion = Gtk_getMajorVersion();
+const minorVersion = Gtk_getMinorVersion();
+const microVersion = Gtk_getMicroVersion();
 
 console.log(`GTK version: ${majorVersion}.${minorVersion}.${microVersion}`);
 
-const window = new ApplicationWindow(app);
+const window = new Gtk_ApplicationWindow(app);
 
 console.log("Created a new ApplicationWindow: ", window);
 
