@@ -6,7 +6,8 @@ type GObjectType = { type: "gobject"; borrowed?: boolean };
 type BoxedType = { type: "boxed"; borrowed?: boolean; innerType: string };
 type ArrayType = { type: "array"; itemType: Type };
 type RefType = { type: "ref"; innerType: Type };
-type VoidType = { type: "void" };
+type NullType = { type: "null" };
+type UndefinedType = { type: "undefined" };
 type CallbackType = { type: "callback" };
 
 export type Type =
@@ -19,7 +20,8 @@ export type Type =
   | ArrayType
   | RefType
   | CallbackType
-  | VoidType;
+  | NullType
+  | UndefinedType;
 
-export type Param = { type: Type; value: unknown };
+export type Arg = { type: Type; value: unknown };
 export type Ref<T> = { value: T };

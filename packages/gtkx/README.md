@@ -5,7 +5,7 @@ Top-level developer API for GTKx and future home of the React reconciler.
 ## Goals
 
 - Provide a stable, ergonomic API for building GTK4 apps from JS/TS
-- Eventually export `render(jsx)` that drives a custom React renderer
+- Eventually export `render(jsx, appOptions)` that drives a custom React renderer
 - Wrap the `@gtkx/bridge` surface with higher-level components and patterns
 
 ## Today

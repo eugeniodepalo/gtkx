@@ -7,12 +7,20 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
+      "development": "./src/index.ts",
       "default": "./dist/index.js",
-      "types": "./dist/index.d.ts",
-      "development": "./src/index.ts"
+      "types": "./dist/index.d.ts"
+    },
+    "./gtk": {
+      "development": "./src/gtk/index.ts",
+      "default": "./dist/gtk/index.js",
+      "types": "./dist/gtk/index.d.ts"
     }
   },
   "dependencies": {
     "@gtkx/native": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -b"
   }
 }

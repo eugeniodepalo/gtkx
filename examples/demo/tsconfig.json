@@ -6,11 +6,5 @@
     {
       "path": "tsconfig.lib.json"
     }
-  ],
-  "compilerOptions": {
-    "outDir": "dist",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  }
+  ]
 }

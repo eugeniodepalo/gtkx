@@ -1,15 +1,14 @@
 mod arg;
+mod boxed;
 mod cif;
 mod module;
 mod object;
-mod result;
 mod state;
 mod types;
 mod value;
 
-use neon::prelude::*;
-
 use module::{call, start, stop};
+use neon::prelude::*;
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {

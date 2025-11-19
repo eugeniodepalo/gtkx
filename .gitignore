@@ -1,5 +1,6 @@
+.turbo
 *.log
 *.node
+*.tsbuildinfo
 dist/
 node_modules/
-.turbo

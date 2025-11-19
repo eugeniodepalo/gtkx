@@ -22,9 +22,3 @@ export const getMicroVersion = () => {
 };
 
 export * from "./application-window.js";
-
-export const getDebugInfoWithRef = () => {
-  // Example using g_get_prgname which returns const char*; as a ref example we can use g_get_application_name? Many return values, but here we demo a boolean out via g_application_get_is_busy? Not stable.
-  // Keep this as placeholder to show pattern.
-  return null;
-};

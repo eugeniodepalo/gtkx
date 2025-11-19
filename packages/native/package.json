@@ -7,13 +7,13 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
+      "development": "./index.ts",
       "default": "./dist/index.js",
-      "types": "./dist/index.d.ts",
-      "development": "./index.ts"
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && cp index.node dist/",
     "neon-build": "cargo build --message-format=json-render-diagnostics --release > cargo.log && neon dist < cargo.log",
     "test": "cargo test"
   },

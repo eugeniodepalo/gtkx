@@ -7,9 +7,9 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
+      "development": "./src/index.ts",
       "default": "./dist/index.js",
-      "types": "./dist/index.d.ts",
-      "development": "./src/index.ts"
+      "types": "./dist/index.d.ts"
     }
   },
   "dependencies": {

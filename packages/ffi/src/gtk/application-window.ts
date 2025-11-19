@@ -1,4 +1,4 @@
-import { call } from "@gtkx/native";
+import { call, Ref } from "@gtkx/native";
 
 export class ApplicationWindow {
   private ptr: unknown;
@@ -31,7 +31,7 @@ export class ApplicationWindow {
           value: title,
         },
       ],
-      { type: "void" }
+      { type: "undefined" }
     );
   }
 
@@ -53,7 +53,7 @@ export class ApplicationWindow {
           value: height,
         },
       ],
-      { type: "void" }
+      { type: "undefined" }
     );
   }
 
@@ -67,7 +67,7 @@ export class ApplicationWindow {
           value: this.ptr,
         },
       ],
-      { type: "void" }
+      { type: "undefined" }
     );
   }
 
@@ -97,14 +97,11 @@ export class ApplicationWindow {
           value: after,
         },
       ],
-      { type: "void" }
+      { type: "undefined" }
     );
   }
 
-  getDefaultSizeRefs(
-    widthRef: { value: unknown },
-    heightRef: { value: unknown }
-  ) {
+  getDefaultSize(widthRef: Ref<number>, heightRef: Ref<number>) {
     call(
       "libgtk-4.so.1",
       "gtk_window_get_default_size",
@@ -128,7 +125,7 @@ export class ApplicationWindow {
           value: heightRef,
         },
       ],
-      { type: "void" }
+      { type: "undefined" }
     );
   }
 }

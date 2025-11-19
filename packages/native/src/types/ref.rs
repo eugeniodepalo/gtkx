@@ -26,7 +26,6 @@ impl RefType {
 
 impl From<&RefType> for ffi::Type {
     fn from(_value: &RefType) -> Self {
-        // Refs are passed as pointers to memory that will be written by the callee
         ffi::Type::pointer()
     }
 }

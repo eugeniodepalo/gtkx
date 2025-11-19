@@ -21,6 +21,7 @@ pub enum Type {
     Float(FloatType),
     String,
     Null,
+    Undefined,
     Boolean,
     GObject(GObjectType),
     Boxed(BoxedType),
@@ -45,12 +46,13 @@ impl Type {
             "string" => Ok(Type::String),
             "boolean" => Ok(Type::Boolean),
             "null" => Ok(Type::Null),
+            "undefined" => Ok(Type::Undefined),
             "gobject" => Ok(Type::GObject(GObjectType::from_js_value(cx, value)?)),
             "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
             "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
             "callback" => Ok(Type::Callback),
             "ref" => Ok(Type::Ref(RefType::from_js_value(cx, obj.upcast())?)),
-            _ => cx.throw_type_error("Unknown type"),
+            _ => cx.throw_type_error(format!("Unknown type: {}", type_)),
         }
     }
 }
@@ -67,7 +69,8 @@ impl From<&Type> for ffi::Type {
             Type::Boxed(type_) => type_.into(),
             Type::Array(type_) => type_.into(),
             Type::Callback => ffi::Type::pointer(),
-            Type::Ref(_) => ffi::Type::pointer(),
+            Type::Ref(type_) => type_.into(),
+            Type::Undefined => ffi::Type::void(),
         }
     }
 }

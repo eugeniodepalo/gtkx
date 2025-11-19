@@ -4,6 +4,7 @@
     "composite": true,
     "target": "ESNext",
     "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "declaration": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
