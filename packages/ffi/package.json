@@ -11,16 +11,20 @@
       "default": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
-    "./gtk": {
-      "development": "./src/gtk/index.ts",
-      "default": "./dist/gtk/index.js",
-      "types": "./dist/gtk/index.d.ts"
+    "./*": {
+      "development": "./src/generated/*/index.ts",
+      "default": "./dist/generated/*/index.js",
+      "types": "./dist/generated/*/index.d.ts"
     }
   },
   "dependencies": {
     "@gtkx/native": "workspace:*"
   },
+  "devDependencies": {
+    "@gtkx/codegen": "workspace:*"
+  },
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b",
+    "codegen": "gtkx-codegen batch /usr/share/gir-1.0 -o ./src/generated"
   }
 }

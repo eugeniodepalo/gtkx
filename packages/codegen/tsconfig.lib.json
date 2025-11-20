@@ -3,12 +3,8 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
-    "types": ["node"],
     "paths": {
       "@/*": ["./src/*"]
     }
-  },
-  "include": ["src/**/*"]
+  }
 }

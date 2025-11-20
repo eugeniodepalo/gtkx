@@ -106,6 +106,10 @@ impl Value {
             return Ok(Value::Null);
         }
 
+        if let Ok(_) = value.downcast::<JsUndefined, _>(cx) {
+            return Ok(Value::Undefined);
+        }
+
         if let Ok(object_id) = value.downcast::<JsBox<ObjectId>, _>(cx) {
             return Ok(Value::Object(*object_id.as_inner()));
         }
