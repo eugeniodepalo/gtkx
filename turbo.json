@@ -1,8 +1,11 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "tasks": {
+    "codegen": {
+      "outputs": ["src/generated/**"]
+    },
     "build": {
-      "dependsOn": ["@gtkx/native#build"],
+      "dependsOn": ["@gtkx/native#build", "^codegen"],
       "outputs": ["dist/**"]
     },
     "start": {

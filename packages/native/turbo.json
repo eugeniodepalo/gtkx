@@ -1,12 +1,12 @@
 {
-  "$schema": "https://turborepo.com/schema.json",
-  "extends": ["//"],
-  "tasks": {
-    "build": {
-      "dependsOn": ["neon-build"]
-    },
-    "neon-build": {
-      "outputs": ["target/**", "index.node", "cargo.log"]
-    }
-  }
+	"$schema": "https://turborepo.com/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		"build": {
+			"dependsOn": ["neon-build"]
+		},
+		"neon-build": {
+			"outputs": ["target/**", "index.node", "cargo.log"]
+		}
+	}
 }

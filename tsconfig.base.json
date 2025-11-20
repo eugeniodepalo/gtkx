@@ -1,14 +1,14 @@
 {
-  "compilerOptions": {
-    "incremental": true,
-    "composite": true,
-    "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "declaration": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "customConditions": ["development"]
-  }
+	"compilerOptions": {
+		"incremental": true,
+		"composite": true,
+		"target": "ESNext",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"declaration": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"customConditions": ["development"]
+	}
 }

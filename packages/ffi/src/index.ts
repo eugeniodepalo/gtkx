@@ -1,2 +1,2 @@
+export { call, createRef } from "@gtkx/native";
 export * from "./native.js";
-export { createRef, call } from "@gtkx/native";

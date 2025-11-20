@@ -1,23 +1,39 @@
-import Reconciler from "react-reconciler";
 import * as gtk from "@gtkx/ffi/gtk";
+import React from "react";
+import Reconciler from "react-reconciler";
 
 type Type = string;
-type Props = Record<string, any>;
-type Container = any;
-type Instance = any;
+type Props = Record<string, unknown>;
+type Container = unknown;
+
+interface GtkWidget {
+  ptr: unknown;
+  setChild?: (ptr: unknown) => void;
+  append?: (ptr: unknown) => void;
+  add?: (ptr: unknown) => void;
+  remove?: (ptr: unknown) => void;
+  insertChildAfter?: (childPtr: unknown, beforePtr: unknown) => void;
+  connect?: (signal: string, handler: unknown) => void;
+  present?: () => void;
+  constructor: { name: string };
+  [key: string]: unknown;
+}
+
+type Instance = GtkWidget;
 type TextInstance = never;
 type SuspenseInstance = never;
 type HydratableInstance = never;
 type PublicInstance = Instance;
-type HostContext = {};
-type UpdatePayload = Record<string, any>;
+type HostContext = Record<string, never>;
 type ChildSet = never;
 type TimeoutHandle = number;
 type NoTimeout = -1;
+type TransitionStatus = number;
+type FormInstance = never;
 
 // Dynamically build widget classes map from all exports in gtk module
 // Only include classes that inherit from Widget
-const widgetClasses: Record<string, any> = {};
+const widgetClasses: Record<string, unknown> = {};
 
 for (const [name, value] of Object.entries(gtk)) {
   // Check if it's a class constructor with Widget in its prototype chain
@@ -32,24 +48,36 @@ for (const [name, value] of Object.entries(gtk)) {
 }
 
 // Store app reference globally for ApplicationWindow creation
-let currentApp: any = null;
+let currentApp: unknown = null;
 
-export function setAppForRendering(app: any): void {
+export function setAppForRendering(app: unknown): void {
   currentApp = app;
+}
+
+// Helper to convert React.Context to Reconciler.ReactContext
+// These types are compatible at runtime but TypeScript sees them as different
+function createReconcilerContext<T>(value: T): Reconciler.ReactContext<T> {
+  const context = React.createContext<T>(value);
+  // React.Context and Reconciler.ReactContext are compatible at runtime
+  // but TypeScript treats them as different types
+  // @ts-expect-error - React.Context and Reconciler.ReactContext are runtime-compatible
+  return context;
 }
 
 function createInstance(
   type: Type,
   props: Props,
-  rootContainer: Container
+  _rootContainer: Container
 ): Instance {
-  const WidgetClass = widgetClasses[type];
+  const WidgetClass = widgetClasses[type] as new (
+    ...args: unknown[]
+  ) => Instance;
   if (!WidgetClass) {
     throw new Error(`Unknown widget type: ${type}`);
   }
 
   // Create the widget instance with appropriate constructor arguments
-  let instance: any;
+  let instance: Instance;
 
   if (type === "ApplicationWindow") {
     instance = new WidgetClass(currentApp);
@@ -62,7 +90,15 @@ function createInstance(
     // Separator requires orientation
     instance = new WidgetClass(props.orientation);
   } else if (type === "Button" && typeof props.label === "string") {
-    instance = WidgetClass.newWithLabel(String(props.label));
+    const buttonClass = WidgetClass as {
+      newWithLabel?: (label: string) => Instance;
+      new?: () => Instance;
+    };
+    if (typeof buttonClass.newWithLabel === "function") {
+      instance = buttonClass.newWithLabel(String(props.label));
+    } else {
+      instance = new WidgetClass();
+    }
   } else if (type === "Label" && typeof props.label === "string") {
     // Use the constructor which calls gtk_label_new
     instance = new WidgetClass(String(props.label));
@@ -114,7 +150,9 @@ function updateInstanceProps(
         .toLowerCase() // Convert to lowercase
         .replace(/^-/, ""); // Remove leading hyphen if present
       // Connect signal handler
-      instance.connect(eventName, newValue);
+      if (instance.connect) {
+        instance.connect(eventName, newValue);
+      }
       continue;
     }
 
@@ -181,12 +219,13 @@ const hostConfig: Reconciler.HostConfig<
   TextInstance,
   SuspenseInstance,
   HydratableInstance,
+  FormInstance,
   PublicInstance,
   HostContext,
-  UpdatePayload,
   ChildSet,
   TimeoutHandle,
-  NoTimeout
+  NoTimeout,
+  TransitionStatus
 > = {
   supportsMutation: true,
   supportsPersistence: false,
@@ -195,26 +234,26 @@ const hostConfig: Reconciler.HostConfig<
 
   noTimeout: -1 as NoTimeout,
 
-  getRootHostContext: (rootContainer: Container): HostContext => {
+  getRootHostContext: (_rootContainer: Container): HostContext => {
     return {};
   },
 
   getChildHostContext: (
     parentHostContext: HostContext,
-    type: Type
+    _type: Type
   ): HostContext => {
     return parentHostContext;
   },
 
-  shouldSetTextContent: (type: Type, props: Props): boolean => {
+  shouldSetTextContent: (_type: Type, _props: Props): boolean => {
     return false;
   },
 
   createInstance,
 
   createTextInstance: (
-    text: string,
-    rootContainer: Container
+    _text: string,
+    _rootContainer: Container
   ): TextInstance => {
     throw new Error("Text nodes are not supported. Use Label widget instead.");
   },
@@ -222,34 +261,24 @@ const hostConfig: Reconciler.HostConfig<
   appendInitialChild: appendChild,
 
   finalizeInitialChildren: (
-    instance: Instance,
-    type: Type,
-    props: Props
+    _instance: Instance,
+    _type: Type,
+    _props: Props
   ): boolean => {
     return false;
   },
 
-  prepareUpdate: (
-    instance: Instance,
-    type: Type,
-    oldProps: Props,
-    newProps: Props
-  ): UpdatePayload | null => {
-    // Always return an update payload if props changed
-    return newProps;
-  },
-
   commitUpdate: (
     instance: Instance,
-    updatePayload: UpdatePayload,
-    type: Type,
+    _type: Type,
     oldProps: Props,
-    newProps: Props
+    newProps: Props,
+    _internalHandle: unknown
   ): void => {
     updateInstanceProps(instance, oldProps, newProps);
   },
 
-  commitMount: (instance: Instance, type: Type, props: Props): void => {
+  commitMount: (_instance: Instance, _type: Type, _props: Props): void => {
     // Nothing to do here
   },
 
@@ -257,11 +286,11 @@ const hostConfig: Reconciler.HostConfig<
   removeChild,
   insertBefore,
 
-  removeChildFromContainer: (container: Container, child: Instance): void => {
+  removeChildFromContainer: (_container: Container, _child: Instance): void => {
     // Root container doesn't need special handling
   },
 
-  appendChildToContainer: (container: Container, child: Instance): void => {
+  appendChildToContainer: (_container: Container, child: Instance): void => {
     // The container is the app ID, the child should be presented
     if (typeof child.present === "function") {
       child.present();
@@ -269,9 +298,9 @@ const hostConfig: Reconciler.HostConfig<
   },
 
   insertInContainerBefore: (
-    container: Container,
-    child: Instance,
-    beforeChild: Instance
+    _container: Container,
+    _child: Instance,
+    _beforeChild: Instance
   ): void => {
     // Not applicable for GTK
   },
@@ -285,18 +314,18 @@ const hostConfig: Reconciler.HostConfig<
   },
 
   commitTextUpdate: (
-    textInstance: TextInstance,
-    oldText: string,
-    newText: string
+    _textInstance: TextInstance,
+    _oldText: string,
+    _newText: string
   ): void => {
     throw new Error("Text nodes are not supported");
   },
 
-  clearContainer: (container: Container): void => {
+  clearContainer: (_container: Container): void => {
     // Nothing to do
   },
 
-  preparePortalMount: (container: Container): void => {
+  preparePortalMount: (_container: Container): void => {
     // Not implemented
   },
 
@@ -304,18 +333,25 @@ const hostConfig: Reconciler.HostConfig<
     fn: (...args: unknown[]) => unknown,
     delay?: number
   ): TimeoutHandle => {
-    return setTimeout(fn, delay) as any;
+    const timeoutId = setTimeout(fn, delay ?? 0);
+    return typeof timeoutId === "number" ? timeoutId : Number(timeoutId);
   },
 
   cancelTimeout: (id: TimeoutHandle): void => {
     clearTimeout(id);
   },
 
-  getPublicInstance: (instance: Instance): PublicInstance => {
-    return instance;
+  getPublicInstance: (instance: Instance | TextInstance): PublicInstance => {
+    return instance as PublicInstance;
   },
 
-  getCurrentEventPriority: () => 2 as any, // DefaultEventPriority
+  getCurrentUpdatePriority: () => 2, // DefaultEventPriority
+  setCurrentUpdatePriority: (_newPriority: number): void => {
+    // Not needed for GTK
+  },
+  resolveUpdatePriority: () => 2, // DefaultEventPriority
+  NotPendingTransition: null,
+  HostTransitionContext: createReconcilerContext<TransitionStatus>(0),
 
   getInstanceFromNode: () => null,
   beforeActiveInstanceBlur: () => {},
@@ -323,6 +359,32 @@ const hostConfig: Reconciler.HostConfig<
   prepareScopeUpdate: () => {},
   getInstanceFromScope: () => null,
   detachDeletedInstance: () => {},
+
+  resetFormInstance: (_instance: FormInstance): void => {
+    // Not needed for GTK
+  },
+  requestPostPaintCallback: (_callback: (time: number) => void): void => {
+    // Not needed for GTK
+  },
+  shouldAttemptEagerTransition: () => false,
+  trackSchedulerEvent: (): void => {
+    // Not needed for GTK
+  },
+  resolveEventType: (): null | string => null,
+  resolveEventTimeStamp: (): number => Date.now(),
+  maySuspendCommit: (_type: Type, _props: Props): boolean => false,
+  preloadInstance: (_type: Type, _props: Props): boolean => false,
+  startSuspendingCommit: (): void => {
+    // Not needed for GTK
+  },
+  suspendInstance: (): void => {
+    // Not needed for GTK
+  },
+  waitForCommitToBeReady: ():
+    | ((
+        initiateCommit: (...args: unknown[]) => unknown
+      ) => (...args: unknown[]) => unknown)
+    | null => null,
 };
 
 export const reconciler = Reconciler(hostConfig);

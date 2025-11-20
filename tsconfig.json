@@ -1,18 +1,18 @@
 {
-  "include": [],
-  "files": [],
-  "references": [
-    {
-      "path": "./packages/ffi/tsconfig.json"
-    },
-    {
-      "path": "./packages/native/tsconfig.json"
-    },
-    {
-      "path": "./packages/gtkx/tsconfig.json"
-    },
-    {
-      "path": "./examples/demo/tsconfig.json"
-    }
-  ]
+	"include": [],
+	"files": [],
+	"references": [
+		{
+			"path": "./packages/ffi/tsconfig.json"
+		},
+		{
+			"path": "./packages/native/tsconfig.json"
+		},
+		{
+			"path": "./packages/gtkx/tsconfig.json"
+		},
+		{
+			"path": "./examples/demo/tsconfig.json"
+		}
+	]
 }

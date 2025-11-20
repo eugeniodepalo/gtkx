@@ -7,7 +7,7 @@ function keepAlive() {
 }
 
 export function start(appId: string) {
-  let app = nativeStart(appId);
+  const app = nativeStart(appId);
   keepAlive();
   return app;
 }

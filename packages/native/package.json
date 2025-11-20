@@ -1,23 +1,23 @@
 {
-  "name": "@gtkx/native",
-  "version": "0.1.0",
-  "license": "MPL-2.0",
-  "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
-  "type": "module",
-  "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "development": "./index.ts",
-      "default": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "scripts": {
-    "build": "tsc -b && cp index.node dist/",
-    "neon-build": "cargo build --message-format=json-render-diagnostics --release > cargo.log && neon dist < cargo.log",
-    "test": "cargo test"
-  },
-  "devDependencies": {
-    "@neon-rs/cli": "0.1.82"
-  }
+	"name": "@gtkx/native",
+	"version": "0.1.0",
+	"license": "MPL-2.0",
+	"author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+	"type": "module",
+	"exports": {
+		"./package.json": "./package.json",
+		".": {
+			"development": "./index.ts",
+			"default": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"scripts": {
+		"build": "tsc -b && cp index.node dist/",
+		"neon-build": "cargo build --message-format=json-render-diagnostics --release > cargo.log && neon dist < cargo.log",
+		"test": "cargo test"
+	},
+	"devDependencies": {
+		"@neon-rs/cli": "0.1.82"
+	}
 }

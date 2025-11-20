@@ -11,17 +11,17 @@ type UndefinedType = { type: "undefined" };
 type CallbackType = { type: "callback" };
 
 export type Type =
-  | IntegerType
-  | FloatType
-  | BooleanType
-  | StringType
-  | GObjectType
-  | BoxedType
-  | ArrayType
-  | RefType
-  | CallbackType
-  | NullType
-  | UndefinedType;
+	| IntegerType
+	| FloatType
+	| BooleanType
+	| StringType
+	| GObjectType
+	| BoxedType
+	| ArrayType
+	| RefType
+	| CallbackType
+	| NullType
+	| UndefinedType;
 
 export type Arg = { type: Type; value: unknown };
 export type Ref<T> = { value: T };

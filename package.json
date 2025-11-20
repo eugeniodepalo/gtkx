@@ -1,28 +1,29 @@
 {
-  "name": "gtkx",
-  "version": "1.0.0",
-  "homepage": "https://github.com/eugeniodepalo/gtkx#readme",
-  "bugs": {
-    "url": "https://github.com/eugeniodepalo/gtkx/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/eugeniodepalo/gtkx.git"
-  },
-  "license": "MPL-2.0",
-  "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
-  "type": "module",
-  "scripts": {
-    "test": "turbo test",
-    "build": "turbo build"
-  },
-  "devDependencies": {
-    "@swc-node/register": "1.11.1",
-    "@swc/core": "1.15.1",
-    "@swc/helpers": "0.5.17",
-    "@types/node": "24.10.0",
-    "turbo": "2.6.1",
-    "typescript": "5.9.3"
-  },
-  "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd"
+	"name": "gtkx",
+	"version": "1.0.0",
+	"homepage": "https://github.com/eugeniodepalo/gtkx#readme",
+	"bugs": {
+		"url": "https://github.com/eugeniodepalo/gtkx/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/eugeniodepalo/gtkx.git"
+	},
+	"license": "MPL-2.0",
+	"author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+	"type": "module",
+	"scripts": {
+		"test": "turbo test",
+		"build": "turbo build"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.6",
+		"@swc-node/register": "1.11.1",
+		"@swc/core": "1.15.2",
+		"@swc/helpers": "0.5.17",
+		"@types/node": "24.10.1",
+		"turbo": "2.6.1",
+		"typescript": "5.9.3"
+	},
+	"packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd"
 }

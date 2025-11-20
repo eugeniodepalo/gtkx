@@ -1,5 +1,5 @@
 {
-  "rust-analyzer.linkedProjects": [
-    "${workspaceFolder}/packages/native/Cargo.toml"
-  ]
+	"rust-analyzer.linkedProjects": [
+		"${workspaceFolder}/packages/native/Cargo.toml"
+	]
 }

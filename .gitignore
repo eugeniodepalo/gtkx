@@ -4,3 +4,4 @@
 *.tsbuildinfo
 dist/
 node_modules/
+packages/gtkx/src/generated/
