@@ -1,7 +1,5 @@
 # AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Repository Overview
 
 GTKX is a React-driven native GTK4 UI framework that bridges JavaScript/TypeScript to GTK4 through a typed FFI layer. It's a monorepo with three main packages:
