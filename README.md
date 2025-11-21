@@ -1,10 +1,8 @@
 # GTKX
 
-React-driven native GTK4 UI. This monorepo contains:
-
 - `@gtkx/native`: a Rust+Neon FFI layer that starts a GTK4 main thread and exposes a typed `call` API
-- `@gtkx/ffi`: a TypeScript wrapper that maps high-level types to `@gtkx/native` (planned to be generated from GIR)
-- `@gtkx/gtkx`: the top-level developer API and, eventually, the React reconciler that renders widgets
+- `@gtkx/ffi`: a TypeScript wrapper that maps high-level types to `@gtkx/native`
+- `@gtkx/gtkx`: the top-level developer API
 
 ### High-level architecture
 
