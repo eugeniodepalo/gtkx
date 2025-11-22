@@ -46,24 +46,46 @@ importers:
         specifier: 19.2.6
         version: 19.2.6
 
+  examples/kitchen-sink:
+    dependencies:
+      '@gtkx/ffi':
+        specifier: workspace:*
+        version: link:../../packages/ffi
+      '@gtkx/gtkx':
+        specifier: workspace:*
+        version: link:../../packages/gtkx
+      react:
+        specifier: 19.2.0
+        version: 19.2.0
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.6
+        version: 19.2.6
+
   packages/ffi:
     dependencies:
       '@gtkx/native':
         specifier: workspace:*
         version: link:../native
     devDependencies:
+      '@gtkx/gir':
+        specifier: workspace:*
+        version: link:../gir
       commander:
         specifier: 14.0.2
         version: 14.0.2
-      fast-xml-parser:
-        specifier: 5.3.2
-        version: 5.3.2
       prettier:
         specifier: 3.6.2
         version: 3.6.2
       tsx:
         specifier: 4.20.6
         version: 4.20.6
+
+  packages/gir:
+    dependencies:
+      fast-xml-parser:
+        specifier: 5.3.2
+        version: 5.3.2
 
   packages/gtkx:
     dependencies:
@@ -77,12 +99,24 @@ importers:
         specifier: 0.33.0
         version: 0.33.0(react@19.2.0)
     devDependencies:
+      '@gtkx/gir':
+        specifier: workspace:*
+        version: link:../gir
       '@types/react':
         specifier: 19.2.6
         version: 19.2.6
       '@types/react-reconciler':
         specifier: 0.32.3
         version: 0.32.3(@types/react@19.2.6)
+      commander:
+        specifier: 14.0.2
+        version: 14.0.2
+      prettier:
+        specifier: 3.6.2
+        version: 3.6.2
+      tsx:
+        specifier: 4.20.6
+        version: 4.20.6
 
   packages/native:
     devDependencies:

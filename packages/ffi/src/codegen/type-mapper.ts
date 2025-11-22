@@ -1,4 +1,4 @@
-import type { GirParameter, GirType } from "./gir-parser.js";
+import type { GirParameter, GirType } from "@gtkx/gir";
 
 export interface FfiTypeDescriptor {
 	type: string;
@@ -10,6 +10,9 @@ export interface FfiTypeDescriptor {
 }
 
 export class TypeMapper {
+	private enumNames: Set<string> = new Set();
+	private enumTransforms: Map<string, string> = new Map(); // original -> transformed
+	private onEnumUsed?: (enumName: string) => void;
 	private typeMap = new Map<string, { ts: string; ffi: FfiTypeDescriptor }>([
 		// Basic types
 		["gboolean", { ts: "boolean", ffi: { type: "boolean" } }],
@@ -31,6 +34,10 @@ export class TypeMapper {
 		],
 		[
 			"gulong",
+			{ ts: "number", ffi: { type: "int", size: 64, unsigned: true } },
+		],
+		[
+			"GType",
 			{ ts: "number", ffi: { type: "int", size: 64, unsigned: true } },
 		],
 		["gint8", { ts: "number", ffi: { type: "int", size: 8, unsigned: false } }],
@@ -85,6 +92,17 @@ export class TypeMapper {
 		["float", { ts: "number", ffi: { type: "float", size: 32 } }],
 	]);
 
+	registerEnum(originalName: string, transformedName?: string) {
+		this.enumNames.add(originalName);
+		if (transformedName) {
+			this.enumTransforms.set(originalName, transformedName);
+		}
+	}
+
+	setEnumUsageCallback(callback: (enumName: string) => void) {
+		this.onEnumUsed = callback;
+	}
+
 	mapType(
 		girType: GirType,
 		isReturn: boolean = false,
@@ -112,10 +130,34 @@ export class TypeMapper {
 			return basicType;
 		}
 
+		// Check if it's an enum type (enums are represented as int32)
+		if (this.enumNames.has(girType.name)) {
+			const transformedName =
+				this.enumTransforms.get(girType.name) || girType.name;
+			if (this.onEnumUsed) {
+				this.onEnumUsed(transformedName);
+			}
+			return {
+				ts: transformedName,
+				ffi: { type: "int", size: 32, unsigned: false },
+			};
+		}
+
 		// Handle namespace-prefixed types
 		const namespacePrefixed = girType.name.includes(".");
 		if (namespacePrefixed) {
-			const [_ns, _typeName] = girType.name.split(".", 2);
+			const [_ns, typeName] = girType.name.split(".", 2);
+			// Check if the type (without namespace) is an enum
+			if (this.enumNames.has(typeName)) {
+				const transformedName = this.enumTransforms.get(typeName) || typeName;
+				if (this.onEnumUsed) {
+					this.onEnumUsed(transformedName);
+				}
+				return {
+					ts: transformedName,
+					ffi: { type: "int", size: 32, unsigned: false },
+				};
+			}
 			// For now, treat all object types as GObject
 			return {
 				ts: "unknown",

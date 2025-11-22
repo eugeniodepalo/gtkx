@@ -23,10 +23,16 @@
 		"react-reconciler": "0.33.0"
 	},
 	"devDependencies": {
+		"@gtkx/gir": "workspace:*",
 		"@types/react": "19.2.6",
-		"@types/react-reconciler": "0.32.3"
+		"@types/react-reconciler": "0.32.3",
+		"commander": "14.0.2",
+		"prettier": "3.6.2",
+		"tsx": "4.20.6"
 	},
 	"scripts": {
-		"build": "tsc -b"
+		"build": "tsc -b",
+		"codegen": "tsx src/codegen/cli.ts generate /usr/share/gir-1.0/Gtk-4.0.gir -o ./src/generated/jsx.ts",
+		"example": "tsx --conditions=development src/example.tsx"
 	}
 }

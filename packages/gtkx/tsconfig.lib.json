@@ -6,5 +6,7 @@
 		"paths": {
 			"@/*": ["./src/*"]
 		}
-	}
+	},
+	"include": ["src/**/*"],
+	"exclude": ["src/example.tsx", "src/ref-example.tsx"]
 }

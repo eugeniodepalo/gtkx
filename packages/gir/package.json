@@ -1,0 +1,14 @@
+{
+  "name": "@gtkx/gir",
+  "version": "0.1.0",
+  "license": "MPL-2.0",
+  "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "fast-xml-parser": "5.3.2"
+  }
+}

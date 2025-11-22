@@ -83,15 +83,18 @@ impl TryFrom<arg::Arg> for Value {
                 }
             }
             Type::String => {
-                let string = match &arg.value {
-                    value::Value::String(s) => s,
+                match &arg.value {
+                    value::Value::String(s) => {
+                        let cstring = CString::new(s.as_bytes())?;
+                        let ptr = cstring.as_ptr() as *mut c_void;
+                        Ok(Value::OwnedPtr(OwnedPtr::new(cstring, ptr)))
+                    }
+                    value::Value::Null | value::Value::Undefined => {
+                        // NULL string for varargs termination
+                        Ok(Value::Ptr(std::ptr::null_mut()))
+                    }
                     _ => bail!("Expected a String for string type, got {:?}", arg.value),
-                };
-
-                let cstring = CString::new(string.as_bytes())?;
-                let ptr = cstring.as_ptr() as *mut c_void;
-
-                Ok(Value::OwnedPtr(OwnedPtr::new(cstring, ptr)))
+                }
             }
             Type::Boolean => {
                 let boolean = match arg.value {
@@ -106,7 +109,7 @@ impl TryFrom<arg::Arg> for Value {
             Type::GObject(_) => {
                 let object_id = match &arg.value {
                     value::Value::Object(id) => Some(id),
-                    value::Value::Null => None,
+                    value::Value::Null | value::Value::Undefined => None,
                     _ => bail!("Expected an Object for gobject type, got {:?}", arg.value),
                 };
 
@@ -117,7 +120,7 @@ impl TryFrom<arg::Arg> for Value {
             Type::Boxed(_) => {
                 let object_id = match &arg.value {
                     value::Value::Object(id) => Some(id),
-                    value::Value::Null => None,
+                    value::Value::Null | value::Value::Undefined => None,
                     _ => bail!("Expected an Object for boxed type, got {:?}", arg.value),
                 };
 
@@ -242,8 +245,10 @@ impl Value {
                     }
                 }
 
-                let ptrs: Vec<*mut c_void> =
+                let mut ptrs: Vec<*mut c_void> =
                     cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
+
+                ptrs.push(std::ptr::null_mut());
 
                 let ptr = ptrs.as_ptr() as *mut c_void;
 
@@ -308,7 +313,38 @@ impl Value {
                 value::Value::from_js_value(&mut cx, js_result)
             });
 
-            result.join().unwrap().into()
+            // Pump the GTK main loop while waiting for the JS thread to respond
+            // This prevents deadlock when GTK calls a callback synchronously
+            let join_handle = result;
+
+            // Use unsafe transmute to access the underlying mpsc::Receiver
+            // JoinHandle is a wrapper around Receiver<Result<T, Throw>>
+            let rx: std::sync::mpsc::Receiver<Result<value::Value, neon::result::Throw>> = unsafe {
+                std::mem::transmute(join_handle)
+            };
+
+            // Poll the receiver while iterating the main context
+            let main_context = glib::MainContext::default();
+            loop {
+                match rx.try_recv() {
+                    Ok(result) => {
+                        return match result {
+                            Ok(value) => value.into(),
+                            Err(_) => {
+                                eprintln!("JS callback threw an error");
+                                None
+                            }
+                        };
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {
+                        // Iterate the main context to process pending events
+                        main_context.iteration(false);
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        panic!("JS thread disconnected while waiting for callback result");
+                    }
+                }
+            }
         });
 
         let ptr = closure.as_ptr() as *mut c_void;

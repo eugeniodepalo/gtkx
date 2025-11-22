@@ -1,12 +1,30 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { CodeGenerator } from "./code-generator.js";
-import { GirParser } from "./gir-parser.js";
+import { GirParser } from "@gtkx/gir";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// List of important GIR files for GTK 4 development
+const IMPORTANT_GIRS = new Set([
+	"GLib-2.0.gir",
+	"GModule-2.0.gir",
+	"GObject-2.0.gir",
+	"Gdk-4.0.gir",
+	"GdkPixbuf-2.0.gir",
+	"Gio-2.0.gir",
+	"Graphene-1.0.gir",
+	"Gsk-4.0.gir",
+	"Gtk-4.0.gir",
+	"HarfBuzz-0.0.gir",
+	"Pango-1.0.gir",
+	"PangoCairo-1.0.gir",
+	"cairo-1.0.gir",
+	"freetype2-2.0.gir",
+]);
 
 const program = new Command();
 
@@ -61,12 +79,21 @@ program
 	.description("Generate TypeScript bindings from all GIR files in a directory")
 	.option("-o, --output <dir>", "Output directory", "./generated")
 	.option("-p, --pattern <pattern>", "GIR file pattern", "*.gir")
+	.option("--all", "Process all GIR files (default: only important ones)")
 	.action(async (girDir: string, options) => {
 		try {
 			const { readdirSync } = await import("node:fs");
-			const files = readdirSync(girDir).filter((f) => f.endsWith(".gir"));
+			let files = readdirSync(girDir).filter((f) => f.endsWith(".gir"));
 
-			console.log(`Found ${files.length} GIR files`);
+			// Filter to important GIR files unless --all flag is used
+			if (!options.all) {
+				files = files.filter((f) => IMPORTANT_GIRS.has(f));
+				console.log(
+					`Found ${files.length} important GIR files (use --all to process all)`,
+				);
+			} else {
+				console.log(`Found ${files.length} GIR files`);
+			}
 
 			for (const file of files) {
 				const girFile = join(girDir, file);
@@ -88,16 +115,8 @@ program
 					mkdirSync(outputDir, { recursive: true });
 
 					for (const [filename, content] of generatedFiles) {
-						// Special handling for jsx.ts - write it to gtkx generated directory
-						if (filename === "jsx.ts" && namespace.name === "Gtk" && namespace.version.startsWith("4")) {
-							const gtkxJsxPath = resolve(__dirname, "../../../gtkx/src/generated/jsx.ts");
-							mkdirSync(dirname(gtkxJsxPath), { recursive: true });
-							writeFileSync(gtkxJsxPath, content);
-							console.log(`Writing jsx.ts to ${gtkxJsxPath}`);
-						} else {
-							const filepath = join(outputDir, filename);
-							writeFileSync(filepath, content);
-						}
+						const filepath = join(outputDir, filename);
+						writeFileSync(filepath, content);
 					}
 
 					console.log(

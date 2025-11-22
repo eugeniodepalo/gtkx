@@ -25,6 +25,24 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let js_result_type = cx.argument::<JsObject>(3)?;
     let args = Arg::from_js_array(&mut cx, js_args)?;
     let result_type = Type::from_js_value(&mut cx, js_result_type.upcast())?;
+
+    // For void-returning functions with no ref parameters, don't block waiting for the result
+    // This prevents deadlock when the GTK function triggers a callback synchronously
+    let has_refs = args.iter().any(|arg| matches!(arg.value, crate::value::Value::Ref(_)));
+    let is_void = matches!(result_type, Type::Undefined | Type::Null);
+
+    if is_void && !has_refs {
+        // Fire and forget for void functions without refs
+        glib::idle_add_once(move || {
+            if let Err(err) = handle_call(library_name, symbol_name, args, result_type) {
+                eprintln!("Error during void FFI call: {err}");
+            }
+        });
+
+        return Ok(cx.undefined().upcast());
+    }
+
+    // For non-void functions, we need to wait for the result
     let (tx, rx) = mpsc::channel::<anyhow::Result<(Value, Vec<RefUpdate>)>>();
 
     glib::idle_add_once(move || {

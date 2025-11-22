@@ -1,6 +1,7 @@
 export { createRef } from "@gtkx/ffi";
 export * from "./generated/jsx.js";
 export { render } from "./render.js";
+export { createPortal } from "./create-portal.js";
 import { stop } from "@gtkx/ffi";
 
 export const quit = () => {
