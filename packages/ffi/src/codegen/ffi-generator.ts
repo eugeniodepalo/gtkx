@@ -628,26 +628,26 @@ ${allArgs ? `${allArgs},` : ""}
 
         this.typeMapper.setEnumUsageCallback(savedCallback);
 
-        if (signalMetadata.length > 0) {
-            this.usesType = true;
-        }
+        this.usesType = true;
 
         const signalMapCode =
             signalMetadata.length > 0
                 ? `const signalMeta: Record<string, { type: Type; cls?: { prototype: object } }[]> = {\n${signalMetadata.join(",\n")}\n  };
     const meta = signalMeta[signal];
-    const argTypes = meta?.map((m) => m.type);`
-                : `const meta = undefined;\n    const argTypes = undefined;`;
+    const selfType: Type = { type: "gobject", borrowed: false };
+    const argTypes = meta ? [selfType, ...meta.map((m) => m.type)] : [selfType];`
+                : `const meta = undefined;\n    const selfType: Type = { type: "gobject", borrowed: false };\n    const argTypes = [selfType];`;
 
         const wrapperCode = `const wrappedHandler = (...args: unknown[]) => {
-      if (!meta) return handler(...args);
+      const signalArgs = args.slice(1);
+      if (!meta) return handler(...signalArgs);
       const wrapped = meta.map((m, i) => {
-        if (m.cls && args[i] != null) {
+        if (m.cls && signalArgs[i] != null) {
           const inst = Object.create(m.cls.prototype) as { ptr: unknown };
-          inst.ptr = args[i];
+          inst.ptr = signalArgs[i];
           return inst;
         }
-        return args[i];
+        return signalArgs[i];
       });
       return handler(...wrapped);
     };`;

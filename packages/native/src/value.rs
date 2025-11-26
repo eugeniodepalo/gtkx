@@ -440,13 +440,8 @@ impl Value {
                 let boolean: bool = gvalue.get().unwrap();
                 Value::Boolean(boolean)
             }
-            Type::GObject(gobject_type) => {
-                let object_ptr = gvalue.as_ptr() as *mut glib::gobject_ffi::GObject;
-                let object = if gobject_type.is_borrowed {
-                    unsafe { glib::Object::from_glib_none(object_ptr) }
-                } else {
-                    unsafe { glib::Object::from_glib_full(object_ptr) }
-                };
+            Type::GObject(_) => {
+                let object: glib::Object = gvalue.get().unwrap();
                 let object_id = ObjectId::new(Object::GObject(object));
                 Value::Object(object_id)
             }
