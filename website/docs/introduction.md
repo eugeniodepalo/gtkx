@@ -56,9 +56,13 @@ GTKX is organized as a monorepo with the following packages:
 ## Requirements
 
 - Node.js 20+
-- pnpm
-- GTK4 development libraries
+- GTK4 runtime libraries
 - Linux (GTK4 is primarily a Linux toolkit)
+
+For development from source, you also need:
+- pnpm 10+
+- Rust toolchain
+- GTK4 development headers
 
 ## Next Steps
 

@@ -66,7 +66,7 @@ function MyComponent() {
     <>
       <Box ref={containerRef} />
       {containerRef.current && createPortal(
-        <Label label="Rendered in the Box" />,
+        <Label.Root label="Rendered in the Box" />,
         containerRef.current
       )}
     </>
@@ -136,7 +136,7 @@ Basic widgets accept props directly:
 
 ```tsx
 <Button label="Click me" onClicked={() => {}} />
-<Label label="Hello, World!" />
+<Label.Root label="Hello, World!" />
 <Spinner spinning={true} />
 ```
 
@@ -303,7 +303,7 @@ GTKX supports React text nodes, which are automatically rendered as GTK Labels:
 
 // Equivalent to
 <Box>
-  <Label label="Hello World" />
+  <Label.Root label="Hello World" />
 </Box>
 ```
 

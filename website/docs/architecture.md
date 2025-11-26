@@ -112,11 +112,18 @@ GTKX uses different node types for different widget categories:
 
 | Node Type | Purpose |
 |-----------|---------|
-| `WidgetNode` | Standard GTK widgets (Button, Box, Label) |
-| `TextNode` | Text nodes rendered as Labels |
-| `DialogNode` | Non-widget dialogs (FileDialog, AlertDialog) |
+| `WidgetNode` | Standard GTK widgets (Button, Box, Label) - fallback handler |
+| `TextNode` | Text nodes wrapped in Label widgets |
+| `DialogNode` | Dialog widgets (FileDialog, ColorDialog, FontDialog, AlertDialog, AboutDialog) |
 | `SlotNode` | Named child slots (HeaderBar.TitleWidget) |
-| `ListItemNode` | List item handling for ListView |
+| `ListViewNode` / `ListItemNode` | List item handling for ListView |
+| `DropDownNode` / `DropDownItemNode` | DropDown widget with StringList model |
+| `GridNode` / `GridChildNode` | Grid widget with row/column attachment |
+| `OverlayNode` | Overlay widget with child/overlay management |
+| `ActionBarNode` | ActionBar widget with start/center/end slots |
+| `NotebookNode` | Notebook widget with page management |
+
+All nodes implement the `Node` interface and nodes with signal handlers must implement `dispose()` for cleanup.
 
 ### Reconciler Operations
 
@@ -225,5 +232,7 @@ Signals are connected when the component mounts and disconnected on unmount.
 
 - Widget pointers are stored in JavaScript objects
 - GTK's reference counting manages native memory
-- The reconciler ensures proper cleanup when components unmount
-- Callbacks use refs to prevent garbage collection issues
+- The reconciler tracks all node instances in a Set for cleanup
+- `disposeAllInstances()` ensures all signal handlers are disconnected when the app exits
+- Signal handler closures capture Neon Channels, which keep Node.js alive until properly disconnected
+- Void-returning FFI calls are async (dispatched via `idle_add_once`); non-void calls are synchronous

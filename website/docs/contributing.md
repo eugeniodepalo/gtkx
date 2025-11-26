@@ -104,7 +104,7 @@ const calc = (p: number, r: number, m: number) => ...
 Never edit files in `src/generated/` directories. Instead:
 
 1. Edit the generator source:
-   - `packages/ffi/src/generator.ts` for FFI bindings
+   - `packages/ffi/src/codegen/ffi-generator.ts` for FFI bindings
    - `packages/gtkx/src/codegen/jsx-generator.ts` for JSX types
 
 2. Run codegen to see changes:
