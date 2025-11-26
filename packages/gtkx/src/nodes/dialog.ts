@@ -1,8 +1,9 @@
 import type * as gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
+import { isConnectable, isPresentable } from "../widget-capabilities.js";
 
-const DIALOG_TYPES = ["FileDialog", "ColorDialog", "FontDialog", "AlertDialog"];
+const DIALOG_TYPES = ["FileDialog", "ColorDialog", "FontDialog", "AlertDialog", "AboutDialog"];
 
 interface FileDialogWidget extends gtk.Widget {
     open(parent: unknown, cancellable: null, callback: null, userData: null): void;
@@ -28,6 +29,7 @@ export class DialogNode implements Node {
     private dialogType: string;
     private dialog: gtk.Widget;
     private initialProps: Props;
+    private signalHandlers = new Map<string, number>();
 
     constructor(dialogType: string, dialog: gtk.Widget, initialProps: Props) {
         this.dialogType = dialogType;
@@ -51,7 +53,25 @@ export class DialogNode implements Node {
             const newValue = newProps[key];
 
             if (oldValue === newValue) continue;
-            if (key.startsWith("on") && typeof newValue === "function") continue;
+
+            if (key.startsWith("on")) {
+                const eventName = key
+                    .slice(2)
+                    .replace(/([A-Z])/g, "-$1")
+                    .toLowerCase()
+                    .replace(/^-/, "");
+
+                const oldHandlerId = this.signalHandlers.get(eventName);
+                if (oldHandlerId !== undefined && isConnectable(this.dialog)) {
+                    this.signalHandlers.delete(eventName);
+                }
+
+                if (typeof newValue === "function" && isConnectable(this.dialog)) {
+                    const handlerId = this.dialog.connect(eventName, newValue as (...args: unknown[]) => void);
+                    this.signalHandlers.set(eventName, handlerId);
+                }
+                continue;
+            }
 
             const setterName = `set${key.charAt(0).toUpperCase()}${key.slice(1)}`;
             if (typeof this.dialog[setterName as keyof gtk.Widget] === "function") {
@@ -61,6 +81,11 @@ export class DialogNode implements Node {
     }
 
     mount(): void {
+        if (this.dialogType === "AboutDialog" && isPresentable(this.dialog)) {
+            this.dialog.present();
+            return;
+        }
+
         if (this.dialogType !== "FileDialog" || !isFileDialog(this.dialog)) return;
 
         const mode = this.initialProps.mode as string | undefined;

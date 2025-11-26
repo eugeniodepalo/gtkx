@@ -463,7 +463,7 @@ const ListViewSection = () => {
     };
 
     const renderItem = (item: { id: number; text: string } | null) => {
-        const box = new Gtk.Box();
+        const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
         const label = new Gtk.Label(item?.text ?? "");
         box.append(label.ptr);
         box.setMarginStart(10);

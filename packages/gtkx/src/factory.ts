@@ -1,9 +1,12 @@
 import * as gtk from "@gtkx/ffi/gtk";
 import type { Node } from "./node.js";
+import { ActionBarNode } from "./nodes/action-bar.js";
 import { DialogNode } from "./nodes/dialog.js";
 import { DropDownItemNode, DropDownNode } from "./nodes/dropdown.js";
 import { GridChildNode, GridNode } from "./nodes/grid.js";
-import { ListItemNode } from "./nodes/list.js";
+import { ListItemNode, ListViewNode } from "./nodes/list.js";
+import { NotebookNode } from "./nodes/notebook.js";
+import { OverlayNode } from "./nodes/overlay.js";
 import { SlotNode } from "./nodes/slot.js";
 import { WidgetNode } from "./nodes/widget.js";
 
@@ -22,7 +25,7 @@ type WidgetConstructor = new (...args: unknown[]) => gtk.Widget;
 
 const CONSTRUCTOR_ARGS: Record<string, (props: Props, currentApp?: unknown) => unknown[]> = {
     ApplicationWindow: (_props, app) => [app],
-    Box: (props) => [undefined, props.orientation, props.spacing ?? 0],
+    Box: (props) => [props.orientation, props.spacing ?? 0],
     Separator: (props) => [props.orientation],
     Paned: (props) => [props.orientation],
     Scale: (props) => [props.orientation, props.adjustment],
@@ -43,6 +46,10 @@ const NODE_CLASSES: AnyNodeClass[] = [
     DropDownNode,
     GridChildNode,
     GridNode,
+    NotebookNode,
+    OverlayNode,
+    ActionBarNode,
+    ListViewNode,
     DialogNode,
     WidgetNode,
 ];

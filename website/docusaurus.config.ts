@@ -149,7 +149,7 @@ const config: Config = {
                     ],
                 },
             ],
-            copyright: `Copyright ${new Date().getFullYear()} Eugenio Depalo. Built with Docusaurus.`,
+            copyright: `Copyright ${new Date().getFullYear()} Eugenio Depalo.`,
         },
         prism: {
             theme: prismThemes.github,

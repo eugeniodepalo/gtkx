@@ -1,76 +1,169 @@
 import * as gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
+import { appendChild, isConnectable, removeChild } from "../widget-capabilities.js";
 
-class StringListStore<T> {
-    private store: gtk.StringList;
-    private itemMap = new Map<string, T>();
-    private itemList: T[] = [];
-    private idCounter = 0;
+type RenderItemFn<T> = (item: T | null) => gtk.Widget;
 
-    constructor() {
-        this.store = new gtk.StringList([]);
-    }
-
-    private generateId(): string {
-        return `item_${this.idCounter++}`;
-    }
-
-    append(item: T): void {
-        const id = this.generateId();
-        this.itemMap.set(id, item);
-        this.store.append(id);
-        this.itemList.push(item);
-    }
-
-    remove(position: number): void {
-        const id = this.store.getString(position);
-        this.itemMap.delete(id);
-        this.store.remove(position);
-        this.itemList.splice(position, 1);
-    }
-
-    findItem(item: T): number {
-        return this.itemList.indexOf(item);
-    }
-
-    get length(): number {
-        return this.itemList.length;
-    }
+interface ListViewWidget extends gtk.Widget {
+    setModel(model: unknown): void;
+    setFactory(factory: unknown): void;
 }
 
-const listStores = new WeakMap<gtk.Widget, StringListStore<unknown>>();
+const isListViewWidget = (widget: gtk.Widget): widget is ListViewWidget =>
+    "setModel" in widget &&
+    typeof widget.setModel === "function" &&
+    "setFactory" in widget &&
+    typeof widget.setFactory === "function";
 
-const getOrCreateListStore = <T>(widget: gtk.Widget): StringListStore<T> => {
-    let store = listStores.get(widget) as StringListStore<T> | undefined;
-    if (!store) {
-        store = new StringListStore<T>();
-        listStores.set(widget, store as StringListStore<unknown>);
+const LIST_VIEW_TYPES = ["ListView", "ListView.Root"];
+
+export class ListViewNode<T = unknown> implements Node<ListViewWidget> {
+    static needsWidget = true;
+
+    static matches(type: string, widget: gtk.Widget | null): widget is ListViewWidget {
+        if (!LIST_VIEW_TYPES.includes(type) && !type.startsWith("ListView")) return false;
+        return widget !== null && isListViewWidget(widget);
     }
-    return store;
-};
 
-const addItemToList = <T>(widget: gtk.Widget, item: T): void => {
-    const store = getOrCreateListStore<T>(widget);
-    store.append(item);
-};
+    private widget: ListViewWidget;
+    private stringList: gtk.StringList;
+    private selectionModel: gtk.SingleSelection;
+    private factory: gtk.SignalListItemFactory;
+    private items: T[] = [];
+    private renderItem: RenderItemFn<T> | null = null;
+    private signalHandlers = new Map<string, number>();
 
-const removeItemFromList = <T>(widget: gtk.Widget, item: T): void => {
-    const store = listStores.get(widget) as StringListStore<T> | undefined;
-    if (store) {
-        const position = store.findItem(item);
-        if (position !== -1) {
-            store.remove(position);
+    constructor(_type: string, widget: gtk.Widget, props: Props) {
+        if (!isListViewWidget(widget)) {
+            throw new Error("ListViewNode requires a ListView widget");
+        }
+        this.widget = widget;
+
+        this.stringList = new gtk.StringList([]);
+        this.selectionModel = new gtk.SingleSelection(this.stringList.ptr);
+        this.factory = new gtk.SignalListItemFactory();
+
+        this.renderItem = props.renderItem as RenderItemFn<T> | null;
+
+        this.factory.connect("setup", (listItemPtr: unknown) => {
+            const listItem = Object.create(gtk.ListItem.prototype) as gtk.ListItem;
+            listItem.ptr = listItemPtr;
+
+            if (this.renderItem) {
+                const widget = this.renderItem(null);
+                listItem.setChild(widget.ptr);
+            }
+        });
+
+        this.factory.connect("bind", (listItemPtr: unknown) => {
+            const listItem = Object.create(gtk.ListItem.prototype) as gtk.ListItem;
+            listItem.ptr = listItemPtr;
+
+            const position = listItem.getPosition();
+            const item = this.items[position];
+
+            if (this.renderItem && item !== undefined) {
+                const widget = this.renderItem(item);
+                listItem.setChild(widget.ptr);
+            }
+        });
+
+        this.widget.setModel(this.selectionModel.ptr);
+        this.widget.setFactory(this.factory.ptr);
+    }
+
+    getWidget(): ListViewWidget {
+        return this.widget;
+    }
+
+    appendChild(child: Node): void {
+        child.attachToParent(this);
+    }
+
+    removeChild(child: Node): void {
+        child.detachFromParent(this);
+    }
+
+    insertBefore(child: Node, _before: Node): void {
+        this.appendChild(child);
+    }
+
+    attachToParent(parent: Node): void {
+        const parentWidget = parent.getWidget?.();
+        if (parentWidget) {
+            appendChild(parentWidget, this.widget);
         }
     }
-};
+
+    detachFromParent(parent: Node): void {
+        const parentWidget = parent.getWidget?.();
+        if (parentWidget) {
+            removeChild(parentWidget, this.widget);
+        }
+    }
+
+    addItem(item: T): void {
+        this.items.push(item);
+        this.stringList.append("");
+    }
+
+    removeItem(item: T): void {
+        const index = this.items.indexOf(item);
+        if (index !== -1) {
+            this.items.splice(index, 1);
+            this.stringList.remove(index);
+        }
+    }
+
+    updateProps(oldProps: Props, newProps: Props): void {
+        if (oldProps.renderItem !== newProps.renderItem) {
+            this.renderItem = newProps.renderItem as RenderItemFn<T> | null;
+        }
+
+        const consumedProps = new Set(["children", "renderItem"]);
+        const allKeys = new Set([...Object.keys(oldProps), ...Object.keys(newProps)]);
+
+        for (const key of allKeys) {
+            if (consumedProps.has(key)) continue;
+
+            const oldValue = oldProps[key];
+            const newValue = newProps[key];
+
+            if (oldValue === newValue) continue;
+
+            if (key.startsWith("on")) {
+                const eventName = key
+                    .slice(2)
+                    .replace(/([A-Z])/g, "-$1")
+                    .toLowerCase()
+                    .replace(/^-/, "");
+
+                const oldHandlerId = this.signalHandlers.get(eventName);
+                if (oldHandlerId !== undefined && isConnectable(this.widget)) {
+                    this.signalHandlers.delete(eventName);
+                }
+
+                if (typeof newValue === "function" && isConnectable(this.widget)) {
+                    const handlerId = this.widget.connect(eventName, newValue as (...args: unknown[]) => void);
+                    this.signalHandlers.set(eventName, handlerId);
+                }
+                continue;
+            }
+
+            const setterName = `set${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+            const setter = this.widget[setterName as keyof typeof this.widget];
+            if (typeof setter === "function") {
+                (setter as (value: unknown) => void).call(this.widget, newValue);
+            }
+        }
+    }
+
+    mount(): void {}
+}
 
 const LIST_WIDGETS = ["ListView", "ColumnView", "GridView"];
 
-/**
- * Node implementation for list widget items.
- * Represents individual items in ListView, ColumnView, or GridView.
- */
 export class ListItemNode<T = unknown> implements Node {
     static needsWidget = false;
 
@@ -99,16 +192,14 @@ export class ListItemNode<T = unknown> implements Node {
     insertBefore(_child: Node, _before: Node): void {}
 
     attachToParent(parent: Node): void {
-        const widget = parent.getWidget?.();
-        if (widget) {
-            addItemToList(widget, this.item);
+        if (parent instanceof ListViewNode) {
+            parent.addItem(this.item);
         }
     }
 
     detachFromParent(parent: Node): void {
-        const widget = parent.getWidget?.();
-        if (widget) {
-            removeItemFromList(widget, this.item);
+        if (parent instanceof ListViewNode) {
+            parent.removeItem(this.item);
         }
     }
 

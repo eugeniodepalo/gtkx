@@ -3,6 +3,9 @@ import { call } from "@gtkx/native";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
 import { appendChild, isConnectable, isDefaultSizable, isPresentable, removeChild } from "../widget-capabilities.js";
+import { ActionBarNode } from "./action-bar.js";
+import { NotebookNode } from "./notebook.js";
+import { OverlayNode } from "./overlay.js";
 
 type CombinedPropHandler = {
     props: string[];
@@ -57,6 +60,19 @@ export class WidgetNode implements Node {
     }
 
     attachToParent(parent: Node): void {
+        if (parent instanceof NotebookNode) {
+            parent.attachChild(this.widget);
+            return;
+        }
+        if (parent instanceof OverlayNode) {
+            parent.attachChild(this.widget);
+            return;
+        }
+        if (parent instanceof ActionBarNode) {
+            parent.attachChild(this.widget);
+            return;
+        }
+
         const parentWidget = parent.getWidget?.();
         if (parentWidget) {
             appendChild(parentWidget, this.widget);
@@ -64,6 +80,19 @@ export class WidgetNode implements Node {
     }
 
     detachFromParent(parent: Node): void {
+        if (parent instanceof NotebookNode) {
+            parent.detachChild(this.widget);
+            return;
+        }
+        if (parent instanceof OverlayNode) {
+            parent.detachChild(this.widget);
+            return;
+        }
+        if (parent instanceof ActionBarNode) {
+            parent.detachChild(this.widget);
+            return;
+        }
+
         const parentWidget = parent.getWidget?.();
         if (parentWidget) {
             removeChild(parentWidget, this.widget);

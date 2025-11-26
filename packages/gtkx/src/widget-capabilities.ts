@@ -36,6 +36,12 @@ export interface GridAttachable extends gtk.Widget {
     attach(child: unknown, column: number, row: number, width: number, height: number): void;
 }
 
+export interface NotebookLike extends gtk.Widget {
+    appendPage(child: unknown, tabLabel?: unknown): number;
+    pageNum(child: unknown): number;
+    removePage(pageNum: number): void;
+}
+
 export const isAppendable = (widget: gtk.Widget): widget is Appendable =>
     "append" in widget && typeof widget.append === "function";
 
@@ -62,6 +68,14 @@ export const isSelectable = (widget: gtk.Widget): widget is Selectable =>
 
 export const isGridAttachable = (widget: gtk.Widget): widget is GridAttachable =>
     "attach" in widget && typeof widget.attach === "function";
+
+export const isNotebookLike = (widget: gtk.Widget): widget is NotebookLike =>
+    "appendPage" in widget &&
+    typeof widget.appendPage === "function" &&
+    "pageNum" in widget &&
+    typeof widget.pageNum === "function" &&
+    "removePage" in widget &&
+    typeof widget.removePage === "function";
 
 export const appendChild = (parent: gtk.Widget, child: gtk.Widget): void => {
     if (isSingleChild(parent)) {

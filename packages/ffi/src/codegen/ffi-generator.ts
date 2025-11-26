@@ -194,8 +194,6 @@ export class CodeGenerator {
         const classMap = this.buildClassMap(namespace);
         this.attachConstructorFunctions(namespace, classMap);
 
-        const parentClasses = this.buildParentClassSet(classMap);
-
         for (const iface of namespace.interfaces) {
             files.set(
                 `${toKebabCase(iface.name)}.ts`,
@@ -204,10 +202,7 @@ export class CodeGenerator {
         }
 
         for (const cls of namespace.classes) {
-            files.set(
-                `${toKebabCase(cls.name)}.ts`,
-                await this.generateClass(cls, namespace.sharedLibrary, classMap, parentClasses),
-            );
+            files.set(`${toKebabCase(cls.name)}.ts`, await this.generateClass(cls, namespace.sharedLibrary, classMap));
         }
 
         const standaloneFunctions = this.getStandaloneFunctions(namespace, classMap);
@@ -240,16 +235,6 @@ export class CodeGenerator {
             classMap.set(cls.name, cls);
         }
         return classMap;
-    }
-
-    private buildParentClassSet(classMap: Map<string, GirClass>): Set<string> {
-        const parentClasses = new Set<string>();
-        for (const cls of classMap.values()) {
-            if (cls.parent && classMap.has(cls.parent)) {
-                parentClasses.add(cls.parent);
-            }
-        }
-        return parentClasses;
     }
 
     private attachConstructorFunctions(namespace: GirNamespace, classMap: Map<string, GirClass>): void {
@@ -301,7 +286,6 @@ export class CodeGenerator {
         cls: GirClass,
         sharedLibrary: string,
         classMap: Map<string, GirClass>,
-        parentClasses: Set<string>,
     ): Promise<string> {
         this.resetState();
 
@@ -314,7 +298,6 @@ export class CodeGenerator {
         const hasParent = !!(cls.parent && classMap.has(cls.parent));
         const parentClassName = cls.parent ? normalizeClassName(cls.parent) : "";
         const extendsClause = hasParent ? ` extends ${parentClassName}` : "";
-        const isParentClass = parentClasses.has(cls.name);
 
         const sections: string[] = [];
 
@@ -330,11 +313,10 @@ export class CodeGenerator {
 
         if (!extendsClause) {
             sections.push(`  ptr: unknown;\n`);
-        } else if (cls.constructors.length === 0) {
-            sections.push(`  ptr: unknown = undefined as any;\n`);
         }
 
-        sections.push(this.generateConstructors(cls, sharedLibrary, hasParent, isParentClass));
+        sections.push(this.generateConstructors(cls, sharedLibrary, hasParent));
+        sections.push(this.generateCreatePtr(cls, sharedLibrary, hasParent));
         sections.push(this.generateMethods(cls.methods, sharedLibrary, cls.name));
         sections.push(this.generateProperties(cls.properties, cls.methods));
 
@@ -349,80 +331,99 @@ export class CodeGenerator {
         return this.formatCode(imports + sections.join("\n"));
     }
 
-    private generateConstructors(
-        cls: GirClass,
-        sharedLibrary: string,
-        hasParent: boolean,
-        isParentClass: boolean,
-    ): string {
-        if (cls.constructors.length === 0) {
-            if (isParentClass && hasParent) {
-                return `  constructor(_skipCreate?: boolean) {\n    super(true);\n  }\n`;
-            }
-            if (isParentClass) {
-                return `  constructor(_skipCreate?: boolean) {}\n`;
-            }
-            if (hasParent) {
-                return `  constructor() {\n    super(true);\n  }\n`;
-            }
-            return "";
-        }
-
+    private generateConstructors(cls: GirClass, _sharedLibrary: string, hasParent: boolean): string {
         const mainConstructor = cls.constructors.find((c) => !c.parameters.some(isVararg));
         const sections: string[] = [];
 
         if (mainConstructor) {
-            sections.push(this.generateConstructor(mainConstructor, cls.name, sharedLibrary, hasParent, isParentClass));
+            sections.push(this.generateConstructor(mainConstructor, hasParent));
             for (const ctor of cls.constructors) {
                 if (ctor !== mainConstructor) {
-                    sections.push(this.generateStaticFactoryMethod(ctor, cls.name, sharedLibrary));
+                    sections.push(this.generateStaticFactoryMethod(ctor, cls.name, _sharedLibrary));
                 }
             }
-        } else {
+        } else if (cls.constructors.length > 0) {
             for (const ctor of cls.constructors) {
-                sections.push(this.generateStaticFactoryMethod(ctor, cls.name, sharedLibrary));
+                sections.push(this.generateStaticFactoryMethod(ctor, cls.name, _sharedLibrary));
+            }
+        }
+
+        if (!mainConstructor) {
+            if (hasParent) {
+                sections.push(`  constructor(_args: unknown[] = []) {\n    super(_args);\n  }\n`);
+            } else {
+                sections.push(`  constructor(_args: unknown[] = []) {\n    this.ptr = this.createPtr(_args);\n  }\n`);
             }
         }
 
         return sections.join("\n");
     }
 
-    private generateConstructor(
-        ctor: GirConstructor,
-        _className: string,
-        sharedLibrary: string,
-        hasParent: boolean,
-        isParentClass: boolean,
-    ): string {
-        const args = this.generateCallArguments(ctor.parameters);
+    private generateConstructor(ctor: GirConstructor, hasParent: boolean): string {
         const ctorDoc = formatMethodDoc(ctor.doc, ctor.parameters);
+        const filteredParams = ctor.parameters.filter((p) => !isVararg(p));
 
-        if (isParentClass) {
-            const params = this.generateParameterList(ctor.parameters, true);
-            const allParams = params ? `_skipCreate?: boolean, ${params}` : "_skipCreate?: boolean";
-            return `${ctorDoc}  constructor(${allParams}) {
-${hasParent ? "    super(true);\n" : ""}    if (!_skipCreate) this.ptr = call(
-      "${sharedLibrary}",
-      "${ctor.cIdentifier}",
-      [
-${args}
-      ],
-      { type: "gobject", borrowed: true }
-    ) as unknown;
+        if (filteredParams.length === 0) {
+            if (hasParent) {
+                return `${ctorDoc}  constructor(_args: unknown[] = []) {\n    super(_args);\n  }\n`;
+            }
+            return `${ctorDoc}  constructor(_args: unknown[] = []) {\n    this.ptr = this.createPtr(_args);\n  }\n`;
+        }
+
+        const typedParams = this.generateParameterList(ctor.parameters, false);
+        const paramNames = filteredParams.map((p) => toValidIdentifier(toCamelCase(p.name)));
+        const firstParamType = this.typeMapper.mapParameter(filteredParams[0] as GirParameter).ts;
+        const isFirstParamArray = firstParamType.endsWith("[]") || firstParamType.startsWith("Array<");
+        const superOrCreate = hasParent ? "super(_args)" : "this.ptr = this.createPtr(_args)";
+
+        if (isFirstParamArray) {
+            return `${ctorDoc}  constructor(${typedParams}) {
+    const _args = [${paramNames.join(", ")}];
+    ${superOrCreate};
   }
 `;
         }
 
-        const params = this.generateParameterList(ctor.parameters, true);
-        return `${ctorDoc}  constructor(${params}) {
-${hasParent ? "    super(true);\n" : ""}    this.ptr = call(
+        return `${ctorDoc}  constructor(${typedParams});
+  constructor(_args: unknown[]);
+  constructor(...args: unknown[]) {
+    const _args = args.length === 1 && Array.isArray(args[0]) ? args[0] : args;
+    ${superOrCreate};
+  }
+`;
+    }
+
+    private generateCreatePtr(cls: GirClass, sharedLibrary: string, hasParent: boolean): string {
+        const mainConstructor = cls.constructors.find((c) => !c.parameters.some(isVararg));
+
+        if (!mainConstructor) {
+            if (hasParent) {
+                return `  protected override createPtr(_args: unknown[]): unknown {\n    return null;\n  }\n`;
+            }
+            return `  protected createPtr(_args: unknown[]): unknown {\n    return null;\n  }\n`;
+        }
+
+        const filteredParams = mainConstructor.parameters.filter((p) => !isVararg(p));
+        const paramTypes = filteredParams.map((p) => this.typeMapper.mapParameter(p).ts);
+        const paramNames = filteredParams.map((p) => toValidIdentifier(toCamelCase(p.name)));
+
+        const destructuring =
+            paramNames.length > 0
+                ? `    const [${paramNames.join(", ")}] = _args as [${paramTypes.join(", ")}];\n`
+                : "";
+
+        const args = this.generateCallArguments(mainConstructor.parameters);
+        const override = hasParent ? "override " : "";
+
+        return `  protected ${override}createPtr(_args: unknown[]): unknown {
+${destructuring}    return call(
       "${sharedLibrary}",
-      "${ctor.cIdentifier}",
+      "${mainConstructor.cIdentifier}",
       [
 ${args}
       ],
       { type: "gobject", borrowed: true }
-    ) as unknown;
+    );
   }
 `;
     }
@@ -806,7 +807,6 @@ ${allArgs ? `${allArgs},` : ""}
             const paramName = toValidIdentifier(toCamelCase(param.name));
             const isOptional = makeAllOptional || this.typeMapper.isNullable(param);
             const paramStr = `${paramName}${isOptional ? "?" : ""}: ${mapped.ts}`;
-
             (isOptional ? optional : required).push(paramStr);
         }
 
