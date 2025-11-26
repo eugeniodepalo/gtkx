@@ -110,11 +110,7 @@ const formatDoc = (doc: string | undefined, indent: string = ""): string => {
     return `${indent}/**\n${formattedLines.join("\n")}\n${indent} */\n`;
 };
 
-const formatMethodDoc = (
-    doc: string | undefined,
-    params: GirParameter[],
-    indent: string = "  ",
-): string => {
+const formatMethodDoc = (doc: string | undefined, params: GirParameter[], indent: string = "  "): string => {
     if (!doc && params.every((p) => !p.doc)) return "";
     const lines: string[] = [];
     if (doc) {
@@ -763,7 +759,7 @@ ${allArgs ? `${allArgs},` : ""}
             const members = enumeration.members.map((member) => {
                 let memberName = toConstantCase(member.name);
                 if (/^\d/.test(memberName)) memberName = `_${memberName}`;
-                const memberDoc = member.doc ? formatDoc(member.doc, "  ").trimEnd() + "\n" : "";
+                const memberDoc = member.doc ? `${formatDoc(member.doc, "  ").trimEnd()}\n` : "";
                 return `${memberDoc}  ${memberName} = ${member.value},`;
             });
             const enumDoc = enumeration.doc ? formatDoc(enumeration.doc) : "";

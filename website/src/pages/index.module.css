@@ -1,0 +1,56 @@
+.heroBanner {
+    padding: 4rem 0;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+@media screen and (max-width: 996px) {
+    .heroBanner {
+        padding: 2rem;
+    }
+}
+
+.buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.features {
+    display: flex;
+    align-items: center;
+    padding: 2rem 0;
+    width: 100%;
+}
+
+.showcase {
+    padding: 3rem 0;
+}
+
+.screenshot {
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .screenshot {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.codeExample {
+    padding: 2rem 0;
+    background: var(--ifm-color-emphasis-100);
+}
+
+[data-theme="dark"] .codeExample {
+    background: var(--ifm-color-emphasis-200);
+}
+
+.codeBlock {
+    padding: 1.5rem;
+    border-radius: var(--ifm-code-border-radius);
+    background: var(--ifm-code-background);
+    font-size: 0.9rem;
+    overflow-x: auto;
+}

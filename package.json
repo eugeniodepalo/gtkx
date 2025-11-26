@@ -6,9 +6,11 @@
     "type": "module",
     "scripts": {
         "build": "turbo build",
-        "test": "turbo test",
+        "docs": "pnpm --filter website start",
+        "docs:build": "pnpm --filter website build",
         "knip": "knip",
-        "knip:fix": "knip --fix"
+        "knip:fix": "knip --fix",
+        "test": "turbo test"
     },
     "devDependencies": {
         "@biomejs/biome": "2.3.6",

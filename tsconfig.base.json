@@ -2,12 +2,16 @@
     "files": [],
     "compilerOptions": {
         "composite": true,
-        "customConditions": ["development"],
+        "customConditions": [
+            "development"
+        ],
         "declaration": true,
         "forceConsistentCasingInFileNames": true,
         "incremental": true,
         "jsx": "react-jsx",
-        "lib": ["ESNext"],
+        "lib": [
+            "ESNext"
+        ],
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "noUncheckedIndexedAccess": true,
@@ -20,7 +24,9 @@
         "skipLibCheck": true,
         "strict": true,
         "target": "ESNext",
-        "types": ["node"]
+        "types": [
+            "node"
+        ]
     },
     "include": []
 }

@@ -3,9 +3,13 @@
         "rootDir": "src",
         "outDir": "dist",
         "paths": {
-            "@/*": ["./src/*"]
+            "@/*": [
+                "./src/*"
+            ]
         }
     },
     "extends": "../../tsconfig.base.json",
-    "include": ["src/**/*"]
+    "include": [
+        "src/**/*"
+    ]
 }
