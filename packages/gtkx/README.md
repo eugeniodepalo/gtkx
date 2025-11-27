@@ -56,7 +56,7 @@ Renders a React element tree as a GTK4 application.
 
 ### `quit()`
 
-Signals the application to close. Returns `true` to indicate the request was handled.
+Signals the application to close. Returns `false` (useful as a direct event handler for `onCloseRequest`).
 
 ```tsx
 <ApplicationWindow onCloseRequest={quit}>...</ApplicationWindow>

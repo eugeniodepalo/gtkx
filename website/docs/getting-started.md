@@ -180,5 +180,6 @@ cd examples/demo && pnpm build && pnpm start
 ## Next Steps
 
 - [Components Guide](/docs/guides/components) - Learn about available widgets
+- [Styling Guide](/docs/guides/styling) - CSS-in-JS styling with @gtkx/css
 - [Event Handling](/docs/guides/events) - Handle user interactions
 - [Architecture](/docs/architecture) - Understand how GTKX works internally

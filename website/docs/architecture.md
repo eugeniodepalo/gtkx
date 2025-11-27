@@ -8,231 +8,288 @@ This document explains the internal architecture of GTKX and how it bridges Reac
 
 ## Overview
 
-GTKX consists of four main layers:
+GTKX consists of five packages that work together to render React components as native GTK widgets:
 
 ```
 ┌─────────────────────────────────────┐
-│         React Components            │  @gtkx/gtkx
-│    (JSX, hooks, state management)   │
+│         Your Application            │
+│    (React components + hooks)       │
 ├─────────────────────────────────────┤
-│         React Reconciler            │  @gtkx/gtkx
-│    (translates React → GTK calls)   │
+│            @gtkx/gtkx               │
+│    React Reconciler + JSX Types     │
+├──────────────────┬──────────────────┤
+│    @gtkx/ffi     │    @gtkx/css     │
+│  GTK Bindings    │   CSS-in-JS      │
+├──────────────────┴──────────────────┤
+│           @gtkx/native              │
+│      Rust FFI Bridge (libffi)       │
 ├─────────────────────────────────────┤
-│         FFI Bindings                │  @gtkx/ffi
-│    (TypeScript wrappers for GTK)    │
-├─────────────────────────────────────┤
-│         Native Module               │  @gtkx/native
-│    (Rust + libffi → GTK C API)      │
+│         GTK4 / GLib / GIO           │
 └─────────────────────────────────────┘
 ```
 
-## Code Generation Pipeline
+## Code Generation
 
-GTKX uses code generation to create TypeScript bindings from GTK's introspection data:
+GTKX generates TypeScript bindings from GTK's GObject Introspection (GIR) files. This happens at build time, not runtime.
 
-### 1. GIR Files
+### GIR Files
 
-GObject Introspection Repository (GIR) files are XML documents that describe GTK's C API. They're located at `/usr/share/gir-1.0/` on Linux systems.
+GIR files are XML documents that describe GTK's C API. They're located at `/usr/share/gir-1.0/` on Linux systems and contain metadata about classes, methods, properties, and signals:
 
 ```xml
 <class name="Button" parent="Widget">
-  <method name="set_label">
+  <constructor name="new" c:identifier="gtk_button_new"/>
+  <method name="set_label" c:identifier="gtk_button_set_label">
     <parameters>
-      <parameter name="label" type="utf8"/>
+      <parameter name="label" transfer-ownership="none">
+        <type name="utf8"/>
+      </parameter>
     </parameters>
   </method>
-  <property name="label" type="utf8"/>
+  <property name="label" writable="1">
+    <type name="utf8"/>
+  </property>
   <signal name="clicked"/>
 </class>
 ```
 
-### 2. GIR Parser (@gtkx/gir)
+### @gtkx/gir
 
-The parser reads GIR files and converts them to TypeScript data structures:
+Parses GIR XML files into TypeScript data structures:
 
 ```typescript
 interface GirClass {
   name: string;
   parent?: string;
   methods: GirMethod[];
+  constructors: GirConstructor[];
   properties: GirProperty[];
   signals: GirSignal[];
 }
+
+interface GirMethod {
+  name: string;
+  cIdentifier: string;
+  returnType: GirType;
+  parameters: GirParameter[];
+}
 ```
 
-### 3. FFI Generator (@gtkx/ffi)
+### @gtkx/ffi
 
-Generates TypeScript classes with FFI calls:
+Generates TypeScript classes that call native GTK functions. Each method uses the `call()` function from `@gtkx/native`:
 
 ```typescript
-// Generated code
 export class Button extends Widget {
-  static new(): Button {
-    return new Button(call("Gtk", "gtk_button_new", [], "pointer"));
+  protected override createPtr(): unknown {
+    return call("libgtk-4.so.1", "gtk_button_new", [], {
+      type: "gobject",
+      borrowed: true,
+    });
   }
 
   setLabel(label: string): void {
-    call("Gtk", "gtk_button_set_label", [this.ptr, label], "void");
+    call(
+      "libgtk-4.so.1",
+      "gtk_button_set_label",
+      [
+        { type: { type: "gobject" }, value: this.ptr },
+        { type: { type: "string" }, value: label },
+      ],
+      { type: "undefined" }
+    );
   }
 
   getLabel(): string {
-    return call("Gtk", "gtk_button_get_label", [this.ptr], "utf8");
+    return call(
+      "libgtk-4.so.1",
+      "gtk_button_get_label",
+      [{ type: { type: "gobject" }, value: this.ptr }],
+      { type: "string" }
+    ) as string;
   }
 }
 ```
 
-### 4. JSX Generator (@gtkx/gtkx)
+### @gtkx/gtkx (JSX Generator)
 
-Generates React component types:
+Generates JSX type definitions that map React props to GTK properties and signals:
 
 ```typescript
-// Generated JSX types
 export interface ButtonProps {
   label?: string;
   onClicked?: () => void;
-  // ... other props
-}
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      Button: ButtonProps;
-    }
-  }
+  cssClasses?: string[];
+  // ... inherited Widget props
 }
 ```
 
 ## React Reconciler
 
-The reconciler is the heart of GTKX. It implements React's `react-reconciler` API to translate React operations into GTK widget operations.
+The reconciler translates React operations into GTK widget operations. It implements React's `react-reconciler` API.
 
-### Node Types
-
-GTKX uses different node types for different widget categories:
-
-| Node Type | Purpose |
-|-----------|---------|
-| `WidgetNode` | Standard GTK widgets (Button, Box, Label) - fallback handler |
-| `TextNode` | Text nodes wrapped in Label widgets |
-| `DialogNode` | Dialog widgets (FileDialog, ColorDialog, FontDialog, AlertDialog, AboutDialog) |
-| `SlotNode` | Named child slots (HeaderBar.TitleWidget) |
-| `ListViewNode` / `ListItemNode` | List item handling for ListView |
-| `DropDownNode` / `DropDownItemNode` | DropDown widget with StringList model |
-| `GridNode` / `GridChildNode` | Grid widget with row/column attachment |
-| `OverlayNode` | Overlay widget with child/overlay management |
-| `ActionBarNode` | ActionBar widget with start/center/end slots |
-| `NotebookNode` | Notebook widget with page management |
-
-All nodes implement the `Node` interface and nodes with signal handlers must implement `dispose()` for cleanup.
-
-### Reconciler Operations
+### Entry Point
 
 ```typescript
-const reconciler = createReconciler({
-  // Create a GTK widget instance
-  createInstance(type, props) {
-    return createNode(type, props);
-  },
+// render.ts
+export const render = (element: ReactNode, appId: string): void => {
+  const app = start(appId);  // Start GTK application
+  setCurrentApp(app);
+  container = reconciler.createContainer(/* ... */);
+  reconciler.updateContainer(element, container, null, () => {});
+};
+```
 
-  // Update widget properties
-  commitUpdate(node, updatePayload, type, oldProps, newProps) {
-    node.update(newProps);
-  },
+### Node System
 
-  // Append child to parent
-  appendChild(parent, child) {
-    parent.appendChild(child);
-  },
+Different GTK widgets require different handling. GTKX uses a node system where each node type knows how to manage its widget:
 
-  // Remove child from parent
-  removeChild(parent, child) {
-    parent.removeChild(child);
-  }
-});
+| Node | Purpose |
+|------|---------|
+| `WidgetNode` | Standard widgets (Button, Box, Entry) - default handler |
+| `TextNode` | String children wrapped in Label widgets |
+| `DialogNode` | Modal dialogs (FileDialog, AlertDialog, AboutDialog) |
+| `SlotNode` | Named child slots (HeaderBar.TitleWidget, CenterBox.StartWidget) |
+| `GridNode` | Grid layout with row/column positioning |
+| `ListViewNode` | Virtualized list with item factory |
+| `DropDownNode` | Dropdown with StringList model |
+| `NotebookNode` | Tabbed container with page management |
+| `OverlayNode` | Overlay widget with layered children |
+| `ActionBarNode` | Action bar with start/center/end sections |
+
+All nodes implement the `Node` interface:
+
+```typescript
+interface Node {
+  getWidget?(): Gtk.Widget;
+  appendChild(child: Node): void;
+  removeChild(child: Node): void;
+  insertBefore(child: Node, before: Node): void;
+  updateProps(oldProps: Props, newProps: Props): void;
+  mount(): void;
+  dispose?(): void;
+}
+```
+
+### Factory
+
+The factory creates the appropriate node type for each React element:
+
+```typescript
+const NODE_CLASSES = [
+  SlotNode,       // Matches *.TitleWidget, *.Start, etc.
+  ListItemNode,   // Matches ListView.Item
+  DropDownItemNode,
+  DropDownNode,
+  GridChildNode,  // Matches Grid.Child
+  GridNode,
+  NotebookNode,
+  OverlayNode,
+  ActionBarNode,
+  ListViewNode,
+  DialogNode,     // Matches *Dialog
+  WidgetNode,     // Fallback for all other widgets
+];
 ```
 
 ## Native Module (@gtkx/native)
 
-The native module is written in Rust using the Neon framework. It provides:
+Written in Rust using Neon, this module provides the FFI bridge to GTK.
 
-### call() Function
+### call()
 
-Dynamically calls C functions using libffi:
-
-```typescript
-// TypeScript usage
-call("Gtk", "gtk_button_new", [], "pointer");
-call("Gtk", "gtk_button_set_label", [ptr, "Hello"], "void");
-```
-
-### start() / stop() Functions
-
-Manage the GTK main loop:
+Dynamically invokes C functions using libffi:
 
 ```typescript
-start("com.example.app"); // Start GTK application
-stop();                    // Stop GTK main loop
+call(
+  library: string,      // "libgtk-4.so.1"
+  symbol: string,       // "gtk_button_set_label"
+  args: Arg[],          // [{ type: {...}, value: ... }, ...]
+  returnType: Type      // { type: "string" }
+): unknown
 ```
 
-### createRef() Function
-
-Creates references for callback-based APIs:
+Each argument is an object with `type` and `value`:
 
 ```typescript
-const ref = createRef(value);
-// ref can be passed to GTK and retrieved later
+type Type =
+  | { type: "string" }
+  | { type: "boolean" }
+  | { type: "int"; size: number; unsigned: boolean }
+  | { type: "float"; size: number }
+  | { type: "gobject"; borrowed?: boolean }
+  | { type: "callback"; argTypes: Type[] }
+  | { type: "ref"; innerType: Type }
+  | { type: "array"; itemType: Type }
+  | { type: "undefined" };
 ```
 
-## Widget Slots
+### start() / stop()
 
-Some GTK widgets have named child slots instead of generic children. GTKX handles these through compound components:
+Manage the GTK application lifecycle:
+
+```typescript
+start(appId: string, flags?: ApplicationFlags): unknown  // Returns app pointer
+stop(): void  // Quits the GTK main loop
+```
+
+### createRef()
+
+Creates mutable references for out parameters:
+
+```typescript
+const ref = createRef();
+someFunctionWithOutParam(ref);
+console.log(ref.value);  // Read the output
+```
+
+## Compound Components
+
+GTK widgets with named child slots use a compound component pattern:
 
 ```tsx
-// HeaderBar has specific slots for title and actions
 <HeaderBar.Root>
   <HeaderBar.TitleWidget>
-    <Label.Root label="My App" />
+    <Label.Root label="App Title" />
   </HeaderBar.TitleWidget>
   <HeaderBar.Start>
     <Button label="Back" />
   </HeaderBar.Start>
   <HeaderBar.End>
-    <Button label="Menu" />
+    <MenuButton />
   </HeaderBar.End>
 </HeaderBar.Root>
 ```
 
-The `SlotNode` captures children and assigns them to the correct GTK property.
+The `SlotNode` captures these children and assigns them to the correct GTK setter method (e.g., `setTitleWidget()`, `packStart()`).
 
-## Property Mapping
+## Property and Signal Conventions
 
-GTK uses snake_case for properties, while React conventions use camelCase:
+### Properties
 
-| GTK Property | React Prop |
-|--------------|------------|
+GTK uses snake_case; GTKX converts to camelCase:
+
+| GTK | React |
+|-----|-------|
 | `default_width` | `defaultWidth` |
 | `margin_start` | `marginStart` |
-| `tooltip_text` | `tooltipText` |
+| `css_classes` | `cssClasses` |
 
-The generator automatically converts between these conventions.
+### Signals
 
-## Signal Handling
+GTK signals become `on`-prefixed handlers:
 
-GTK signals become React event handlers with the `on` prefix:
-
-| GTK Signal | React Handler |
-|------------|---------------|
+| GTK | React |
+|-----|-------|
 | `clicked` | `onClicked` |
 | `close-request` | `onCloseRequest` |
 | `state-set` | `onStateSet` |
 
-Signals are connected when the component mounts and disconnected on unmount.
-
 ## Memory Management
 
-- Widget pointers are stored in JavaScript objects
-- GTK's reference counting manages native memory
-- The reconciler tracks all node instances in a Set for cleanup
-- `disposeAllInstances()` ensures all signal handlers are disconnected when the app exits
-- Signal handler closures capture Neon Channels, which keep Node.js alive until properly disconnected
-- Void-returning FFI calls are async (dispatched via `idle_add_once`); non-void calls are synchronous
+- **Widget Pointers**: Stored in the `ptr` property of each FFI class instance
+- **Reference Counting**: GTK manages native memory through GObject reference counting
+- **Instance Tracking**: The reconciler tracks all nodes in a Set for cleanup
+- **Signal Cleanup**: `dispose()` disconnects signal handlers when components unmount
+- **Application Exit**: `disposeAllInstances()` ensures all handlers are disconnected before quit
+- **Async Calls**: Void-returning FFI calls are dispatched via `g_idle_add_once` to avoid blocking

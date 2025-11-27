@@ -45,6 +45,7 @@ GTKX is organized as a monorepo with the following packages:
 | `@gtkx/ffi` | Generated TypeScript FFI bindings for GTK libraries |
 | `@gtkx/gir` | GIR file parser for code generation |
 | `@gtkx/native` | Rust-based Neon module for FFI calls |
+| `@gtkx/css` | Emotion-style CSS-in-JS for styling GTK widgets |
 
 ## How It Works
 
@@ -68,5 +69,6 @@ For development from source, you also need:
 
 - [Getting Started](/docs/getting-started) - Install and create your first app
 - [Components Guide](/docs/guides/components) - Core API and component patterns
+- [Styling Guide](/docs/guides/styling) - CSS-in-JS styling with @gtkx/css
 - [API Reference](/docs/api) - Generated API documentation
 - [Architecture](/docs/architecture) - Deep dive into how GTKX works

@@ -37,7 +37,8 @@ gtkx/
 │   ├── native/     # Rust FFI module
 │   ├── gir/        # GIR parser
 │   ├── ffi/        # Generated FFI bindings
-│   └── gtkx/       # React integration
+│   ├── gtkx/       # React integration
+│   └── css/        # CSS-in-JS styling
 ├── examples/
 │   ├── demo/       # Simple example
 │   └── kitchen-sink/  # Full widget showcase
