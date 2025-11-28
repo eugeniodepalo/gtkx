@@ -96,7 +96,7 @@ function ScreenshotSection(): ReactNode {
         <section className={styles.screenshotSection}>
             <div className="container">
                 <Heading as="h2" className="text--center margin-bottom--lg">
-                    Native GTK4 Widgets
+                    Comprehensive Example Application
                 </Heading>
                 <div className="row">
                     <div className="col col--10 col--offset-1">
@@ -196,9 +196,9 @@ export default function Home(): ReactNode {
             <HomepageHeader />
             <main>
                 <HomepageFeatures />
-                <ScreenshotSection />
                 <CodeExample />
                 <StylingExample />
+                <ScreenshotSection />
             </main>
         </Layout>
     );
