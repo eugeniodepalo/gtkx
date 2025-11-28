@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/gtkx",
-    "version": "0.1.10",
+    "version": "0.1.11",
     "description": "Build GTK4 desktop applications with React and TypeScript",
     "keywords": [
         "gtk",
