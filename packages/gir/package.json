@@ -28,5 +28,8 @@
     },
     "files": [
         "src"
-    ]
+    ],
+    "scripts": {
+        "test": "vitest run"
+    }
 }
