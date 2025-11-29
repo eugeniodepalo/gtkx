@@ -243,6 +243,78 @@ impl Value {
                 Ok(Value::Object(ObjectId::new(boxed)))
             }
             Type::Array(array_type) => {
+                use crate::types::ListType;
+
+                if array_type.list_type == ListType::GList || array_type.list_type == ListType::GSList {
+                    let list_ptr = match cif_value {
+                        cif::Value::Ptr(ptr) => *ptr,
+                        _ => {
+                            bail!(
+                                "Expected a pointer cif::Value for GList/GSList, got {:?}",
+                                cif_value
+                            )
+                        }
+                    };
+
+                    if list_ptr.is_null() {
+                        return Ok(Value::Array(vec![]));
+                    }
+
+                    let mut values = Vec::new();
+                    let mut current = list_ptr as *mut glib::ffi::GList;
+
+                    while !current.is_null() {
+                        let data = unsafe { (*current).data };
+                        let item_value = match &*array_type.item_type {
+                            Type::GObject(_) => {
+                                if data.is_null() {
+                                    Value::Null
+                                } else {
+                                    let object = unsafe {
+                                        glib::Object::from_glib_none(
+                                            data as *mut glib::gobject_ffi::GObject,
+                                        )
+                                    };
+                                    Value::Object(ObjectId::new(Object::GObject(object)))
+                                }
+                            }
+                            Type::Boxed(boxed_type) => {
+                                if data.is_null() {
+                                    Value::Null
+                                } else {
+                                    let gtype = boxed_type.get_gtype();
+                                    let boxed = Boxed::from_glib_none(gtype, data);
+                                    Value::Object(ObjectId::new(Object::Boxed(boxed)))
+                                }
+                            }
+                            Type::String(_) => {
+                                if data.is_null() {
+                                    Value::Null
+                                } else {
+                                    let c_str = unsafe { CStr::from_ptr(data as *const i8) };
+                                    Value::String(c_str.to_str().unwrap_or("").to_string())
+                                }
+                            }
+                            _ => {
+                                bail!(
+                                    "Unsupported GList item type: {:?}",
+                                    array_type.item_type
+                                );
+                            }
+                        };
+                        values.push(item_value);
+                        current = unsafe { (*current).next };
+                    }
+
+                    if !array_type.is_borrowed {
+                        unsafe {
+                            glib::ffi::g_list_free(list_ptr as *mut glib::ffi::GList);
+                        }
+                    }
+
+                    return Ok(Value::Array(values));
+                }
+
                 let array_ptr = match cif_value {
                     cif::Value::OwnedPtr(ptr) => ptr,
                     _ => {

@@ -41,7 +41,8 @@
     ],
     "scripts": {
         "build": "tsc -b",
-        "codegen": "tsx scripts/codegen.ts"
+        "codegen": "tsx scripts/codegen.ts",
+        "test": "vitest run"
     },
     "dependencies": {
         "@gtkx/native": "workspace:*"

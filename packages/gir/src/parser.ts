@@ -257,9 +257,21 @@ export class GirParser {
             return { name: "void" };
         }
 
-        if (typeNode["@_name"]) {
+        const typeName = typeNode["@_name"] ? String(typeNode["@_name"]) : undefined;
+
+        if (typeName === "GLib.List" || typeName === "GLib.SList") {
+            const innerType = typeNode.type as Record<string, unknown> | undefined;
             return {
-                name: String(typeNode["@_name"] ?? ""),
+                name: "array",
+                cType: typeNode["@_c:type"] ? String(typeNode["@_c:type"]) : undefined,
+                isArray: true,
+                elementType: innerType ? this.parseType(innerType) : undefined,
+            };
+        }
+
+        if (typeName) {
+            return {
+                name: typeName,
                 cType: typeNode["@_c:type"] ? String(typeNode["@_c:type"]) : undefined,
             };
         }

@@ -1291,6 +1291,119 @@ describe("Memory Management Tests", () => {
     });
 });
 
+describe("GList/GSList Types", () => {
+    it("should handle GList return type with GObject elements (gdk_display_list_seats)", () => {
+        const display = call(GDK_LIB, "gdk_display_get_default", [], {
+            type: "gobject",
+            borrowed: true,
+        });
+        expect(display).not.toBeNull();
+
+        const seats = call(
+            GDK_LIB,
+            "gdk_display_list_seats",
+            [{ type: { type: "gobject" }, value: display }],
+            { type: "array", listType: "glist", itemType: { type: "gobject", borrowed: true }, borrowed: true },
+        ) as unknown[];
+
+        expect(Array.isArray(seats)).toBe(true);
+        expect(seats.length).toBeGreaterThanOrEqual(1);
+
+        for (const seat of seats) {
+            expect(seat).not.toBeNull();
+        }
+    });
+
+    it("should handle GSList return type with GObject elements (gdk_display_manager_list_displays)", () => {
+        const displayManager = call(GDK_LIB, "gdk_display_manager_get", [], {
+            type: "gobject",
+            borrowed: true,
+        });
+        expect(displayManager).not.toBeNull();
+
+        const displays = call(
+            GDK_LIB,
+            "gdk_display_manager_list_displays",
+            [{ type: { type: "gobject" }, value: displayManager }],
+            { type: "array", listType: "gslist", itemType: { type: "gobject", borrowed: true }, borrowed: true },
+        ) as unknown[];
+
+        expect(Array.isArray(displays)).toBe(true);
+        expect(displays.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("should handle empty GList return", () => {
+        const emptyListStore = call(
+            GIO_LIB,
+            "g_list_store_new",
+            [
+                {
+                    type: { type: "int", size: 64, unsigned: true },
+                    value: call(GTK_LIB, "gtk_string_object_get_type", [], { type: "int", size: 64, unsigned: true }),
+                },
+            ],
+            { type: "gobject", borrowed: true },
+        );
+
+        const count = call(
+            GIO_LIB,
+            "g_list_model_get_n_items",
+            [{ type: { type: "gobject" }, value: emptyListStore }],
+            { type: "int", size: 32, unsigned: true },
+        );
+        expect(count).toBe(0);
+    });
+
+    it("should handle GList with multiple elements", () => {
+        const display = call(GDK_LIB, "gdk_display_get_default", [], {
+            type: "gobject",
+            borrowed: true,
+        });
+
+        const seats = call(
+            GDK_LIB,
+            "gdk_display_list_seats",
+            [{ type: { type: "gobject" }, value: display }],
+            { type: "array", listType: "glist", itemType: { type: "gobject", borrowed: true }, borrowed: true },
+        ) as unknown[];
+
+        expect(Array.isArray(seats)).toBe(true);
+
+        for (const seat of seats) {
+            const pointer = call(
+                GDK_LIB,
+                "gdk_seat_get_pointer",
+                [{ type: { type: "gobject" }, value: seat }],
+                { type: "gobject", borrowed: true },
+            );
+            expect(pointer).not.toBeNull();
+        }
+    });
+
+    it("should correctly iterate GList elements maintaining order", () => {
+        const display = call(GDK_LIB, "gdk_display_get_default", [], {
+            type: "gobject",
+            borrowed: true,
+        });
+
+        const monitors = call(
+            GDK_LIB,
+            "gdk_display_get_monitors",
+            [{ type: { type: "gobject" }, value: display }],
+            { type: "gobject", borrowed: true },
+        );
+
+        const count = call(
+            GIO_LIB,
+            "g_list_model_get_n_items",
+            [{ type: { type: "gobject" }, value: monitors }],
+            { type: "int", size: 32, unsigned: true },
+        ) as number;
+
+        expect(count).toBeGreaterThanOrEqual(1);
+    });
+});
+
 describe("Edge Cases and Error Handling", () => {
     it("should handle empty string in label", () => {
         const label = call(GTK_LIB, "gtk_label_new", [{ type: { type: "string" }, value: "" }], {

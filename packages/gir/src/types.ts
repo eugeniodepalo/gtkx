@@ -292,6 +292,8 @@ export interface FfiTypeDescriptor {
     innerType?: FfiTypeDescriptor | string;
     /** Item type for array types. */
     itemType?: FfiTypeDescriptor;
+    /** List type for arrays (glist, gslist) - indicates native GList/GSList iteration. */
+    listType?: "glist" | "gslist";
     /** Source type for asyncCallback (the GObject source). */
     sourceType?: FfiTypeDescriptor;
     /** Result type for asyncCallback (the GAsyncResult). */
@@ -475,8 +477,27 @@ const BASIC_TYPE_MAP = new Map<string, TypeMapping>([
     ["gdouble", { ts: "number", ffi: { type: "float", size: 64 } }],
     ["gpointer", { ts: "unknown", ffi: { type: "gobject" } }],
     ["gconstpointer", { ts: "unknown", ffi: { type: "gobject" } }],
+    ["gsize", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["gssize", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["goffset", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["guintptr", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["gintptr", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["pid_t", { ts: "number", ffi: { type: "int", size: 32, unsigned: false } }],
+    ["uid_t", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
+    ["gid_t", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
+    ["time_t", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
     ["Quark", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
     ["GLib.Quark", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
+    ["TimeSpan", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["GLib.TimeSpan", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["DateDay", { ts: "number", ffi: { type: "int", size: 8, unsigned: true } }],
+    ["GLib.DateDay", { ts: "number", ffi: { type: "int", size: 8, unsigned: true } }],
+    ["DateYear", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
+    ["GLib.DateYear", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
+    ["DateMonth", { ts: "number", ffi: { type: "int", size: 32, unsigned: false } }],
+    ["GLib.DateMonth", { ts: "number", ffi: { type: "int", size: 32, unsigned: false } }],
+    ["Pid", { ts: "number", ffi: { type: "int", size: 32, unsigned: false } }],
+    ["GLib.Pid", { ts: "number", ffi: { type: "int", size: 32, unsigned: false } }],
     ["void", { ts: "void", ffi: { type: "undefined" } }],
     ["none", { ts: "void", ffi: { type: "undefined" } }],
     ["int", { ts: "number", ffi: { type: "int", size: 32, unsigned: false } }],
@@ -624,16 +645,25 @@ export class TypeMapper {
      */
     mapType(girType: GirType, isReturn = false): MappedType {
         if (girType.isArray || girType.name === "array") {
+            const listType = girType.cType?.includes("GSList")
+                ? "gslist"
+                : girType.cType?.includes("GList")
+                  ? "glist"
+                  : undefined;
             if (girType.elementType) {
                 const elementType = this.mapType(girType.elementType);
                 return {
                     ts: `${elementType.ts}[]`,
-                    ffi: { type: "array", itemType: elementType.ffi },
+                    ffi: listType
+                        ? { type: "array", itemType: elementType.ffi, listType, borrowed: isReturn }
+                        : { type: "array", itemType: elementType.ffi },
                 };
             }
             return {
                 ts: `unknown[]`,
-                ffi: { type: "array", itemType: { type: "undefined" } },
+                ffi: listType
+                    ? { type: "array", itemType: { type: "undefined" }, listType, borrowed: isReturn }
+                    : { type: "array", itemType: { type: "undefined" } },
             };
         }
 
