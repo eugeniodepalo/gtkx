@@ -4,3 +4,4 @@
 **/src/generated
 dist
 node_modules
+out-tsc
