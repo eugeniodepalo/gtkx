@@ -1,7 +1,7 @@
 export { createRef } from "@gtkx/ffi";
 export * from "./generated/jsx.js";
 export { createPortal } from "./portal.js";
-export { reconciler, setCurrentApp } from "./reconciler.js";
+export { reconciler } from "./reconciler.js";
 export { render } from "./render.js";
 
 import { stop } from "@gtkx/ffi";
@@ -14,7 +14,7 @@ import { container } from "./render.js";
  * @returns Always returns true (useful for signal handlers)
  */
 export const quit = () => {
-    reconciler.updateContainer(null, container, null, () => {
+    reconciler.getInstance().updateContainer(null, container, null, () => {
         stop();
     });
 

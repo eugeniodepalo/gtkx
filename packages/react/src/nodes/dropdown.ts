@@ -51,8 +51,8 @@ export class DropDownNode extends Node<Gtk.DropDown> {
     private store: DropDownStore;
     private onSelectionChanged?: (item: unknown, index: number) => void;
 
-    constructor(type: string, props: Props, currentApp?: unknown) {
-        super(type, props, currentApp);
+    constructor(type: string, props: Props, app: Gtk.Application) {
+        super(type, props, app);
 
         const labelFn = (props.itemLabel as ItemLabelFn) ?? ((item: unknown) => String(item));
         this.onSelectionChanged = props.onSelectionChanged as ((item: unknown, index: number) => void) | undefined;
@@ -103,8 +103,8 @@ export class DropDownItemNode extends Node<never> {
 
     private item: unknown;
 
-    constructor(type: string, props: Props, _currentApp?: unknown) {
-        super(type, props);
+    constructor(type: string, props: Props, app: Gtk.Application) {
+        super(type, props, app);
         this.item = props.item;
     }
 

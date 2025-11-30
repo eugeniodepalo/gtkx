@@ -12,8 +12,6 @@ const extractConstructorArgs = (type: string, props: Props): unknown[] => {
     return params.map((p: { name: string; hasDefault: boolean }) => props[p.name]);
 };
 
-const normalizeType = (type: string): string => (type.endsWith(".Root") ? type.slice(0, -5) : type);
-
 export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undefined> {
     static matches(_type: string): boolean {
         return false;
@@ -26,26 +24,25 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         return false;
     }
 
-    constructor(type: string, props: Props, currentApp?: unknown) {
-        this.widget = (this.isVirtual() ? undefined : this.createWidget(type, props, currentApp)) as T;
+    constructor(type: string, props: Props, app: Gtk.Application) {
+        this.widget = (this.isVirtual() ? undefined : this.createWidget(type, props, app)) as T;
         this.updateProps({}, props);
     }
 
-    protected createWidget(type: string, props: Props, currentApp?: unknown): T {
-        const normalizedType = normalizeType(type);
+    protected createWidget(type: string, props: Props, app: Gtk.Application): T {
+        const normalizedType = type.split(".")[0] || type;
         // biome-ignore lint/performance/noDynamicNamespaceImportAccess: dynamic widget creation
         const WidgetClass = Gtk[normalizedType as keyof typeof Gtk] as WidgetConstructor | undefined;
 
-        if (!WidgetClass || typeof WidgetClass !== "function") {
+        if (!WidgetClass) {
             throw new Error(`Unknown GTK widget type: ${normalizedType}`);
         }
 
         if (normalizedType === "ApplicationWindow") {
-            return new WidgetClass(currentApp) as T;
+            return new WidgetClass(app) as T;
         }
 
-        const args = extractConstructorArgs(normalizedType, props);
-        return new WidgetClass(...args) as T;
+        return new WidgetClass(...extractConstructorArgs(normalizedType, props)) as T;
     }
 
     getWidget(): T {
@@ -154,7 +151,7 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         }
     }
 
-    mount(): void {}
+    mount(_app: Gtk.Application): void {}
 
-    dispose(): void {}
+    dispose(_app: Gtk.Application): void {}
 }

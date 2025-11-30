@@ -24,8 +24,8 @@ export class GridChildNode extends Node<never> {
     private childWidget: Gtk.Widget | null = null;
     private parentGrid: GridNode | null = null;
 
-    constructor(type: string, props: Props, _currentApp?: unknown) {
-        super(type, props);
+    constructor(type: string, props: Props, app: Gtk.Application) {
+        super(type, props, app);
         this.column = (props.column as number) ?? 0;
         this.row = (props.row as number) ?? 0;
         this.columnSpan = (props.columnSpan as number) ?? 1;

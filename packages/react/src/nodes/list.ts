@@ -20,8 +20,8 @@ export class ListViewNode extends Node<Gtk.ListView> {
     private renderItem: RenderItemFn | null = null;
     private factorySignalHandlers = new Map<string, number>();
 
-    constructor(type: string, props: Props, currentApp?: unknown) {
-        super(type, props, currentApp);
+    constructor(type: string, props: Props, app: Gtk.Application) {
+        super(type, props, app);
 
         this.stringList = new Gtk.StringList([]);
         this.selectionModel = new Gtk.SingleSelection(this.stringList as unknown as Gio.ListModel);
@@ -83,8 +83,8 @@ export class ListViewNode extends Node<Gtk.ListView> {
         super.updateProps(oldProps, newProps);
     }
 
-    override dispose(): void {
-        super.dispose();
+    override dispose(app: Gtk.Application): void {
+        super.dispose(app);
         this.widget.setModel(undefined);
         this.widget.setFactory(undefined);
     }
@@ -105,8 +105,8 @@ export class ListItemNode extends Node {
 
     private item: unknown;
 
-    constructor(type: string, props: Props, _currentApp?: unknown) {
-        super(type, props);
+    constructor(type: string, props: Props, app: Gtk.Application) {
+        super(type, props, app);
         this.item = props.item as unknown;
     }
 

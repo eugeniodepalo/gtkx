@@ -10,57 +10,39 @@ import { DropDownItemNode, DropDownNode } from "../src/nodes/dropdown.js";
 import { GridChildNode, GridNode } from "../src/nodes/grid.js";
 import { ListItemNode, ListViewNode } from "../src/nodes/list.js";
 import { WidgetNode } from "../src/nodes/widget.js";
-import { reconciler, setCurrentApp } from "../src/reconciler.js";
+import { reconciler } from "../src/reconciler.js";
 
 const Label = LabelNS.Root;
 
 const APP_ID = "com.gtkx.test.react";
 
-let app: Gtk.Application | null = null;
+let app: Gtk.Application;
 let container: unknown = null;
 
-const createTestContainer = (): unknown => {
-    return (
-        reconciler.createContainer as (
-            containerInfo: unknown,
-            tag: number,
-            hydrationCallbacks: unknown,
-            isStrictMode: boolean,
-            concurrentUpdatesByDefault: boolean,
-            identifierPrefix: string,
-            onRecoverableError: (error: Error, info: Reconciler.BaseErrorInfo) => void,
-            transitionCallbacks: unknown,
-            formState: unknown,
-            useModernStrictMode: unknown,
-            useClient: unknown,
-        ) => unknown
-    )(
-        APP_ID,
+const renderElement = (element: React.ReactNode): void => {
+    reconciler.getInstance().updateContainer(element, container, null, () => {});
+};
+
+const unmountAll = (): void => {
+    reconciler.getInstance().updateContainer(null, container, null, () => {});
+};
+
+beforeAll(() => {
+    app = start(APP_ID);
+    reconciler.setApp(app);
+    container = reconciler.getInstance().createContainer(
+        APP_ID as unknown as Gtk.Application,
         0,
         null,
         false,
         false,
         "",
         (error: Error) => console.error("Test reconciler error:", error),
-        null,
-        null,
-        null,
+        (_error: Error, _info: Reconciler.BaseErrorInfo) => {},
+        (_error: Error, _info: Reconciler.BaseErrorInfo) => {},
+        () => {},
         null,
     );
-};
-
-const renderElement = (element: React.ReactNode): void => {
-    reconciler.updateContainer(element, container, null, () => {});
-};
-
-const unmountAll = (): void => {
-    reconciler.updateContainer(null, container, null, () => {});
-};
-
-beforeAll(() => {
-    app = start(APP_ID);
-    setCurrentApp(app);
-    container = createTestContainer();
 });
 
 afterAll(() => {
@@ -229,7 +211,7 @@ describe("Signal Handler Management", () => {
             const node = createNode("Button", { label: "Test", onClicked }, app) as WidgetNode;
             expect(node.getWidget()).toBeDefined();
 
-            node.dispose?.();
+            node.dispose?.(app);
         });
     });
 
@@ -261,7 +243,7 @@ describe("Signal Handler Management", () => {
                 app,
             ) as WidgetNode;
 
-            node.dispose?.();
+            node.dispose?.(app);
         });
     });
 
@@ -277,7 +259,7 @@ describe("Signal Handler Management", () => {
             const renderItem = () => new Gtk.Label({ label: "Item" });
 
             const node = createNode("ListView.Root", { renderItem }, app) as ListViewNode;
-            node.dispose?.();
+            node.dispose?.(app);
         });
     });
 
@@ -315,7 +297,7 @@ describe("Signal Handler Management", () => {
                 app,
             ) as DropDownNode;
 
-            node.dispose?.();
+            node.dispose?.(app);
         });
     });
 });
@@ -328,15 +310,15 @@ describe("App Shutdown and Signal Cleanup", () => {
         const node2 = createNode("Button", { label: "Button 2", onClicked }, app);
         const node3 = createNode("Button", { label: "Button 3", onClicked }, app);
 
-        node1.dispose?.();
-        node2.dispose?.();
-        node3.dispose?.();
+        node1.dispose?.(app);
+        node2.dispose?.(app);
+        node3.dispose?.(app);
     });
 
     it("should handle rapid mount/unmount cycles", () => {
         for (let i = 0; i < 10; i++) {
             const node = createNode("Button", { label: `Button ${i}` }, app);
-            node.dispose?.();
+            node.dispose?.(app);
         }
     });
 
@@ -351,9 +333,9 @@ describe("App Shutdown and Signal Cleanup", () => {
         boxNode.removeChild(button1);
         boxNode.removeChild(button2);
 
-        button1.dispose?.();
-        button2.dispose?.();
-        boxNode.dispose?.();
+        button1.dispose?.(app);
+        button2.dispose?.(app);
+        boxNode.dispose?.(app);
     });
 });
 
@@ -365,8 +347,8 @@ describe("Multiple Windows and Dialogs", () => {
         expect(window1.getWidget()).toBeDefined();
         expect(window2.getWidget()).toBeDefined();
 
-        window1.dispose?.();
-        window2.dispose?.();
+        window1.dispose?.(app);
+        window2.dispose?.(app);
     });
 
     it("should handle multiple dialogs", () => {
@@ -376,8 +358,8 @@ describe("Multiple Windows and Dialogs", () => {
         expect(dialog1.getWidget()).toBeDefined();
         expect(dialog2.getWidget()).toBeDefined();
 
-        dialog1.dispose?.();
-        dialog2.dispose?.();
+        dialog1.dispose?.(app);
+        dialog2.dispose?.(app);
     });
 
     it("should clean up dialogs with connected signals", () => {
@@ -401,8 +383,8 @@ describe("Multiple Windows and Dialogs", () => {
             app,
         );
 
-        dialog1.dispose?.();
-        dialog2.dispose?.();
+        dialog1.dispose?.(app);
+        dialog2.dispose?.(app);
     });
 
     it("should handle window with child widgets", () => {
@@ -415,9 +397,9 @@ describe("Multiple Windows and Dialogs", () => {
 
         window.removeChild(box);
 
-        button.dispose?.();
-        box.dispose?.();
-        window.dispose?.();
+        button.dispose?.(app);
+        box.dispose?.(app);
+        window.dispose?.(app);
     });
 });
 
@@ -429,7 +411,7 @@ describe("Widget Disposal and Memory Management", () => {
         }
 
         for (const node of nodes) {
-            node.dispose?.();
+            node.dispose?.(app);
         }
     });
 
@@ -451,7 +433,7 @@ describe("Widget Disposal and Memory Management", () => {
         };
 
         const tree = createTree(4);
-        tree.dispose?.();
+        tree.dispose?.(app);
     });
 
     it("should handle disposal with signal handlers attached", () => {
@@ -465,7 +447,7 @@ describe("Widget Disposal and Memory Management", () => {
         }
 
         for (const node of nodes) {
-            node.dispose?.();
+            node.dispose?.(app);
         }
     });
 
@@ -474,11 +456,11 @@ describe("Widget Disposal and Memory Management", () => {
         const listView = createNode("ListView.Root", { renderItem }, app) as ListViewNode;
 
         for (let i = 0; i < 20; i++) {
-            const item = createNode("ListView.Item", { item: { id: i } }, null) as ListItemNode;
+            const item = createNode("ListView.Item", { item: { id: i } }, app) as ListItemNode;
             listView.appendChild(item);
         }
 
-        listView.dispose?.();
+        listView.dispose?.(app);
     });
 
     it("should handle DropDown with items disposal", () => {
@@ -486,11 +468,11 @@ describe("Widget Disposal and Memory Management", () => {
         const dropdown = createNode("DropDown.Root", { itemLabel }, app) as DropDownNode;
 
         for (let i = 0; i < 20; i++) {
-            const item = createNode("DropDown.Item", { item: { name: `Item ${i}` } }, null) as DropDownItemNode;
+            const item = createNode("DropDown.Item", { item: { name: `Item ${i}` } }, app) as DropDownItemNode;
             dropdown.appendChild(item);
         }
 
-        dropdown.dispose?.();
+        dropdown.dispose?.(app);
     });
 
     it("should handle Grid with children disposal", () => {
@@ -504,7 +486,7 @@ describe("Widget Disposal and Memory Management", () => {
                         row,
                         column: col,
                     },
-                    null,
+                    app,
                 ) as GridChildNode;
                 const button = createNode("Button", { label: `${row},${col}` }, app);
                 child.appendChild(button);
@@ -512,7 +494,7 @@ describe("Widget Disposal and Memory Management", () => {
             }
         }
 
-        grid.dispose?.();
+        grid.dispose?.(app);
     });
 
     it("should handle Notebook with pages disposal", () => {
@@ -525,7 +507,7 @@ describe("Widget Disposal and Memory Management", () => {
             notebook.appendChild(page);
         }
 
-        notebook.dispose?.();
+        notebook.dispose?.(app);
     });
 });
 
@@ -685,7 +667,7 @@ describe("Edge Cases", () => {
 
     it("should handle disposing already disposed node", () => {
         const node = createNode("Button", { label: "Test" }, app);
-        node.dispose?.();
-        node.dispose?.();
+        node.dispose?.(app);
+        node.dispose?.(app);
     });
 });

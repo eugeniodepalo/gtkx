@@ -1,3 +1,4 @@
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "./node.js";
 import { DropDownItemNode, DropDownNode } from "./nodes/dropdown.js";
 import { GridChildNode, GridNode } from "./nodes/grid.js";
@@ -25,10 +26,10 @@ const NODE_CLASSES = [
     WidgetNode,
 ] as NodeClass[];
 
-export const createNode = (type: string, props: Props, currentApp: unknown): Node => {
+export const createNode = (type: string, props: Props, app: Gtk.Application): Node => {
     for (const NodeClass of NODE_CLASSES) {
         if (NodeClass.matches(type)) {
-            return new NodeClass(type, props, currentApp);
+            return new NodeClass(type, props, app);
         }
     }
 

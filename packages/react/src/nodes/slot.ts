@@ -18,8 +18,8 @@ export class SlotNode extends Node<never> {
     private child: Node | null = null;
     private slotName: string;
 
-    constructor(type: string, props: Props, _currentApp?: unknown) {
-        super(type, props);
+    constructor(type: string, props: Props, app: Gtk.Application) {
+        super(type, props, app);
 
         const dotIndex = type.indexOf(".");
 

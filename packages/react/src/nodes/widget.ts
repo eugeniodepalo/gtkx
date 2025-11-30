@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
-import { getCurrentApp } from "../reconciler.js";
 import { OverlayNode } from "./overlay.js";
 
 type CombinedPropHandler = {
@@ -24,8 +23,8 @@ const COMBINED_PROPS: CombinedPropHandler[] = [
 
 /** Minimal wrapper around an existing widget for portal containers. */
 export class WidgetWrapper extends Node<Gtk.Widget> {
-    constructor(widget: Gtk.Widget) {
-        super("", {});
+    constructor(widget: Gtk.Widget, app: Gtk.Application) {
+        super("", {}, app);
         this.widget = widget;
     }
 
@@ -128,10 +127,9 @@ export class WidgetNode extends Node<Gtk.Widget> {
         super.updateProps(oldProps, newProps);
     }
 
-    override mount(): void {
+    override mount(app: Gtk.Application): void {
         if (this.widget instanceof Gtk.AboutDialog) {
-            const app = getCurrentApp();
-            const activeWindow = app?.getActiveWindow();
+            const activeWindow = app.getActiveWindow();
 
             if (activeWindow) {
                 this.widget.setTransientFor(activeWindow);
@@ -143,8 +141,8 @@ export class WidgetNode extends Node<Gtk.Widget> {
         }
     }
 
-    override dispose(): void {
-        super.dispose();
+    override dispose(app: Gtk.Application): void {
+        super.dispose(app);
 
         if (this.widget instanceof Gtk.Window) {
             this.widget.close();

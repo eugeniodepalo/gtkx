@@ -1,14 +1,12 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Application } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
-import Reconciler from "react-reconciler";
+import ReactReconciler from "react-reconciler";
 import { createNode, type Props } from "./factory.js";
 import type { Node } from "./node.js";
 import { WidgetWrapper } from "./nodes/widget.js";
-import { ROOT_CONTAINER } from "./portal.js";
 
-/** The React reconciler container type - ROOT_CONTAINER symbol for root, Gtk.Widget for portals. */
-type Container = Gtk.Widget | typeof ROOT_CONTAINER;
+type Container = Gtk.Application | Gtk.Widget;
 type TextInstance = Node;
 type SuspenseInstance = never;
 type HydratableInstance = never;
@@ -20,163 +18,157 @@ type NoTimeout = -1;
 type TransitionStatus = number;
 type FormInstance = never;
 
-/**
- * Custom React reconciler for GTK widgets.
- * Bridges React's component model with GTK's widget system.
- */
-export class GtkReconciler {
-    private reconciler: Reconciler.Reconciler<
-        Container,
-        Node,
-        TextInstance,
-        SuspenseInstance,
-        FormInstance,
-        PublicInstance
-    >;
+type HostConfig = ReactReconciler.HostConfig<
+    string,
+    Props,
+    Container,
+    Node,
+    TextInstance,
+    SuspenseInstance,
+    HydratableInstance,
+    FormInstance,
+    PublicInstance,
+    HostContext,
+    ChildSet,
+    TimeoutHandle,
+    NoTimeout,
+    TransitionStatus
+>;
 
-    private currentApp: Application | null = null;
+type ReconcilerInstance = ReactReconciler.Reconciler<
+    Container,
+    Node,
+    TextInstance,
+    SuspenseInstance,
+    FormInstance,
+    PublicInstance
+>;
+
+/**
+ * GTKX React reconciler class.
+ */
+export class Reconciler {
+    private instance: ReconcilerInstance;
+    private app: Application | null = null;
 
     /** Creates a new GTK reconciler instance. */
     constructor() {
-        this.reconciler = Reconciler(this.createHostConfig());
-    }
-
-    /**
-     * Sets the current GTK application instance.
-     * @param app - The GTK Application instance
-     */
-    setCurrentApp(app: Application): void {
-        this.currentApp = app;
+        this.instance = ReactReconciler(this.createHostConfig());
     }
 
     /**
      * Gets the current GTK application instance.
-     * @returns The GTK Application instance or null
+     * @returns The current GTK Application
      */
-    getCurrentApp(): Application | null {
-        return this.currentApp;
+    getApp(): Application {
+        if (!this.app) {
+            throw new Error("Tried to get GTK Application before it was set.");
+        }
+
+        return this.app;
+    }
+
+    /**
+     * Sets the current GTK application instance.
+     * @param app The GTK Application to set
+     */
+    setApp(app: Application): void {
+        this.app = app;
     }
 
     /**
      * Gets the underlying React reconciler instance.
      * @returns The react-reconciler instance
      */
-    getReconciler(): typeof this.reconciler {
-        return this.reconciler;
+    getInstance(): ReconcilerInstance {
+        return this.instance;
     }
 
-    private createHostConfig(): Reconciler.HostConfig<
-        string,
-        Props,
-        Container,
-        Node,
-        TextInstance,
-        SuspenseInstance,
-        HydratableInstance,
-        FormInstance,
-        PublicInstance,
-        HostContext,
-        ChildSet,
-        TimeoutHandle,
-        NoTimeout,
-        TransitionStatus
-    > {
+    private createHostConfig(): HostConfig {
         return {
             supportsMutation: true,
             supportsPersistence: false,
             supportsHydration: false,
             isPrimaryRenderer: true,
-            noTimeout: -1 as NoTimeout,
-            getRootHostContext: (): HostContext => ({}),
-            getChildHostContext: (parentHostContext: HostContext): HostContext => parentHostContext,
-            shouldSetTextContent: (): boolean => false,
-            createInstance: (type: string, props: Props): Node => createNode(type, props, this.currentApp),
-            createTextInstance: (text: string): TextInstance =>
-                createNode("Label.Root", { label: text }, this.currentApp),
-            appendInitialChild: (parent: Node, child: Node): void => parent.appendChild(child),
-            finalizeInitialChildren: (): boolean => true,
-            commitUpdate: (instance: Node, _type: string, oldProps: Props, newProps: Props): void => {
+            noTimeout: -1,
+            getRootHostContext: () => ({}),
+            getChildHostContext: (parentHostContext) => parentHostContext,
+            shouldSetTextContent: () => false,
+            createInstance: (type, props) => createNode(type, props, this.getApp()),
+            createTextInstance: (text) => createNode("Label.Root", { label: text }, this.getApp()),
+            appendInitialChild: (parent, child) => parent.appendChild(child),
+            finalizeInitialChildren: () => true,
+            commitUpdate: (instance, _type, oldProps, newProps) => {
                 instance.updateProps(oldProps, newProps);
             },
-            commitMount: (instance: Node): void => {
-                instance.mount();
+            commitMount: (instance) => {
+                instance.mount(this.getApp());
             },
-            appendChild: (parent: Node, child: Node): void => parent.appendChild(child),
-            removeChild: (parent: Node, child: Node): void => parent.removeChild(child),
-            insertBefore: (parent: Node, child: Node, beforeChild: Node): void =>
-                parent.insertBefore(child, beforeChild),
-
-            removeChildFromContainer: (container: Container, child: Node): void => {
-                if (container !== ROOT_CONTAINER) child.detachFromParent(new WidgetWrapper(container));
+            appendChild: (parent, child) => parent.appendChild(child),
+            removeChild: (parent, child) => parent.removeChild(child),
+            insertBefore: (parent, child, beforeChild) => parent.insertBefore(child, beforeChild),
+            removeChildFromContainer: (container, child) => {
+                if (container instanceof Gtk.Widget) {
+                    child.detachFromParent(new WidgetWrapper(container, this.getApp()));
+                }
             },
-            appendChildToContainer: (container: Container, child: Node): void => {
-                if (container !== ROOT_CONTAINER) child.attachToParent(new WidgetWrapper(container));
+            appendChildToContainer: (container, child) => {
+                if (container instanceof Gtk.Widget) {
+                    child.attachToParent(new WidgetWrapper(container, this.getApp()));
+                }
             },
-            insertInContainerBefore: (container: Container, child: Node, _beforeChild: Node): void => {
-                if (container !== ROOT_CONTAINER) child.attachToParent(new WidgetWrapper(container));
+            insertInContainerBefore: (container, child, _beforeChild) => {
+                if (container instanceof Gtk.Widget) {
+                    child.attachToParent(new WidgetWrapper(container, this.getApp()));
+                }
             },
-            prepareForCommit: (): null => null,
-            resetAfterCommit: (): void => {},
-            commitTextUpdate: (textInstance: TextInstance, oldText: string, newText: string): void => {
+            prepareForCommit: () => null,
+            resetAfterCommit: () => {},
+            commitTextUpdate: (textInstance, oldText, newText) => {
                 textInstance.updateProps({ label: oldText }, { label: newText });
             },
-            clearContainer: (): void => {},
-            preparePortalMount: (): void => {},
-            scheduleTimeout: (fn: (...args: unknown[]) => unknown, delay?: number): TimeoutHandle => {
+            clearContainer: () => {},
+            preparePortalMount: () => {},
+            scheduleTimeout: (fn, delay) => {
                 const timeoutId = setTimeout(fn, delay ?? 0);
                 return typeof timeoutId === "number" ? timeoutId : Number(timeoutId);
             },
-            cancelTimeout: (id: TimeoutHandle): void => {
+            cancelTimeout: (id) => {
                 clearTimeout(id);
             },
-            getPublicInstance: (instance: Node | TextInstance): PublicInstance =>
-                instance.getWidget() as PublicInstance,
+            getPublicInstance: (instance) => instance.getWidget() as PublicInstance,
             getCurrentUpdatePriority: () => 2,
-            setCurrentUpdatePriority: (): void => {},
+            setCurrentUpdatePriority: () => {},
             resolveUpdatePriority: () => 2,
             NotPendingTransition: null,
-            HostTransitionContext: this.createReconcilerContext<TransitionStatus>(0),
+            HostTransitionContext: this.createReconcilerContext(0),
             getInstanceFromNode: () => null,
             beforeActiveInstanceBlur: () => {},
             afterActiveInstanceBlur: () => {},
             prepareScopeUpdate: () => {},
             getInstanceFromScope: () => null,
-            detachDeletedInstance: (instance: Node): void => {
-                instance.dispose();
+            detachDeletedInstance: (instance) => {
+                instance.dispose(this.getApp());
             },
-            resetFormInstance: (): void => {},
-            requestPostPaintCallback: (): void => {},
+            resetFormInstance: () => {},
+            requestPostPaintCallback: () => {},
             shouldAttemptEagerTransition: () => false,
-            trackSchedulerEvent: (): void => {},
-            resolveEventType: (): null | string => null,
-            resolveEventTimeStamp: (): number => Date.now(),
-            maySuspendCommit: (): boolean => false,
-            preloadInstance: (): boolean => false,
-            startSuspendingCommit: (): void => {},
-            suspendInstance: (): void => {},
-            waitForCommitToBeReady: (): null => null,
+            trackSchedulerEvent: () => {},
+            resolveEventType: () => null,
+            resolveEventTimeStamp: () => Date.now(),
+            maySuspendCommit: () => false,
+            preloadInstance: () => false,
+            startSuspendingCommit: () => {},
+            suspendInstance: () => {},
+            waitForCommitToBeReady: () => null,
         };
     }
 
-    private createReconcilerContext<T>(value: T): Reconciler.ReactContext<T> {
-        const context = React.createContext<T>(value);
-        return context as unknown as Reconciler.ReactContext<T>;
+    private createReconcilerContext(value: TransitionStatus): ReactReconciler.ReactContext<TransitionStatus> {
+        const context = React.createContext<TransitionStatus>(value);
+        return context as unknown as ReactReconciler.ReactContext<TransitionStatus>;
     }
 }
 
-const gtkReconciler = new GtkReconciler();
-
-/** The React reconciler instance configured for GTK. */
-export const reconciler = gtkReconciler.getReconciler();
-
-/**
- * Sets the current GTK application for the reconciler.
- * @param app - The GTK Application instance
- */
-export const setCurrentApp = (app: Application): void => gtkReconciler.setCurrentApp(app);
-
-/**
- * Gets the current GTK application from the reconciler.
- * @returns The GTK Application instance or null
- */
-export const getCurrentApp = (): Application | null => gtkReconciler.getCurrentApp();
+/** The singleton GTKX React reconciler instance. */
+export const reconciler = new Reconciler();

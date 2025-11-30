@@ -3,8 +3,7 @@ import type { ApplicationFlags } from "@gtkx/ffi/gio";
 import type { Application } from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
-import { ROOT_CONTAINER } from "./portal.js";
-import { reconciler, setCurrentApp } from "./reconciler.js";
+import { reconciler } from "./reconciler.js";
 
 /** The root container for the React reconciler. */
 export let container: unknown = null;
@@ -29,40 +28,27 @@ export let container: unknown = null;
  */
 export const render = (element: ReactNode, appId: string, flags?: ApplicationFlags): Application => {
     const app = start(appId, flags);
+    const instance = reconciler.getInstance();
 
-    setCurrentApp(app);
+    reconciler.setApp(app);
 
-    container = (
-        reconciler.createContainer as (
-            containerInfo: unknown,
-            tag: number,
-            hydrationCallbacks: unknown,
-            isStrictMode: boolean,
-            concurrentUpdatesByDefault: boolean,
-            identifierPrefix: string,
-            onRecoverableError: (error: Error, info: Reconciler.BaseErrorInfo) => void,
-            transitionCallbacks: unknown,
-            formState: unknown,
-            useModernStrictMode: unknown,
-            useClient: unknown,
-        ) => unknown
-    )(
-        ROOT_CONTAINER,
+    container = instance.createContainer(
+        app,
         0,
         null,
         false,
-        false,
+        null,
         "",
         (error: Error, info: Reconciler.BaseErrorInfo) => {
-            console.error("React reconciler error:", error, info);
+            console.error("Uncaught error in GTKX application:", error, info);
         },
-        null,
-        null,
-        null,
+        (_error: Error, _info: Reconciler.BaseErrorInfo) => {},
+        (_error: Error, _info: Reconciler.BaseErrorInfo) => {},
+        () => {},
         null,
     );
 
-    reconciler.updateContainer(element, container, null, () => {});
+    instance.updateContainer(element, container, null, () => {});
 
     return app;
 };
