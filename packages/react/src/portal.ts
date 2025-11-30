@@ -1,6 +1,7 @@
 import type { ReactNode, ReactPortal } from "react";
 
-const ROOT_PORTAL_CONTAINER = Symbol("ROOT_PORTAL_CONTAINER");
+/** Sentinel symbol for the root container (no actual widget parent). */
+export const ROOT_CONTAINER = Symbol("ROOT_CONTAINER");
 
 /**
  * Creates a portal that renders children into a different GTK widget container.
@@ -25,7 +26,7 @@ export const createPortal = (children: ReactNode, container?: unknown, key?: str
         $$typeof: Symbol.for("react.portal"),
         key: key ?? null,
         children,
-        containerInfo: container ?? ROOT_PORTAL_CONTAINER,
+        containerInfo: container ?? ROOT_CONTAINER,
         implementation: null,
     } as unknown as ReactPortal;
 };

@@ -3,6 +3,7 @@ import type { ApplicationFlags } from "@gtkx/ffi/gio";
 import type { Application } from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
+import { ROOT_CONTAINER } from "./portal.js";
 import { reconciler, setCurrentApp } from "./reconciler.js";
 
 /** The root container for the React reconciler. */
@@ -46,7 +47,7 @@ export const render = (element: ReactNode, appId: string, flags?: ApplicationFla
             useClient: unknown,
         ) => unknown
     )(
-        appId,
+        ROOT_CONTAINER,
         0,
         null,
         false,

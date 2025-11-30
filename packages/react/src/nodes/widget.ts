@@ -22,6 +22,18 @@ const COMBINED_PROPS: CombinedPropHandler[] = [
     },
 ];
 
+/** Minimal wrapper around an existing widget for portal containers. */
+export class WidgetWrapper extends Node<Gtk.Widget> {
+    constructor(widget: Gtk.Widget) {
+        super("", {});
+        this.widget = widget;
+    }
+
+    protected override isVirtual(): boolean {
+        return true;
+    }
+}
+
 export class WidgetNode extends Node<Gtk.Widget> {
     static matches(_type: string): boolean {
         return true;

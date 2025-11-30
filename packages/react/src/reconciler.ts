@@ -4,9 +4,11 @@ import React from "react";
 import Reconciler from "react-reconciler";
 import { createNode, type Props } from "./factory.js";
 import type { Node } from "./node.js";
+import { WidgetWrapper } from "./nodes/widget.js";
+import { ROOT_CONTAINER } from "./portal.js";
 
-/** The React reconciler container type. */
-type Container = unknown;
+/** The React reconciler container type - ROOT_CONTAINER symbol for root, Gtk.Widget for portals. */
+type Container = Gtk.Widget | typeof ROOT_CONTAINER;
 type TextInstance = Node;
 type SuspenseInstance = never;
 type HydratableInstance = never;
@@ -104,9 +106,15 @@ export class GtkReconciler {
             insertBefore: (parent: Node, child: Node, beforeChild: Node): void =>
                 parent.insertBefore(child, beforeChild),
 
-            removeChildFromContainer: (_container: Container, _child: Node): void => {},
-            appendChildToContainer: (_container: Container, _child: Node): void => {},
-            insertInContainerBefore: (_container: Container, _child: Node, _beforeChild: Node): void => {},
+            removeChildFromContainer: (container: Container, child: Node): void => {
+                if (container !== ROOT_CONTAINER) child.detachFromParent(new WidgetWrapper(container));
+            },
+            appendChildToContainer: (container: Container, child: Node): void => {
+                if (container !== ROOT_CONTAINER) child.attachToParent(new WidgetWrapper(container));
+            },
+            insertInContainerBefore: (container: Container, child: Node, _beforeChild: Node): void => {
+                if (container !== ROOT_CONTAINER) child.attachToParent(new WidgetWrapper(container));
+            },
             prepareForCommit: (): null => null,
             resetAfterCommit: (): void => {},
             commitTextUpdate: (textInstance: TextInstance, oldText: string, newText: string): void => {
