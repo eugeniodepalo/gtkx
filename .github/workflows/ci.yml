@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          dnf install -y gtk4-devel gobject-introspection-devel xorg-x11-server-Xvfb gtksourceview5-devel
+          dnf install -y gtk4-devel gobject-introspection-devel xorg-x11-server-Xvfb gtksourceview5-devel mesa-libGLES
 
       - name: Checkout
         uses: actions/checkout@v4

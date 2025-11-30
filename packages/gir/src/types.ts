@@ -188,6 +188,8 @@ export interface GirParameter {
     scope?: "async" | "call" | "notified";
     /** Index of the closure/user_data parameter for callbacks. */
     closure?: number;
+    /** Index of the destroy notifier parameter for callbacks. */
+    destroy?: number;
     /** Documentation for the parameter. */
     doc?: string;
 }
@@ -296,12 +298,14 @@ export interface FfiTypeDescriptor {
     itemType?: FfiTypeDescriptor;
     /** List type for arrays (glist, gslist) - indicates native GList/GSList iteration. */
     listType?: "glist" | "gslist";
-    /** Trampoline type for callbacks (asyncReady, destroy, sourceFunc). Default is "closure". */
-    trampoline?: "asyncReady" | "destroy" | "sourceFunc";
+    /** Trampoline type for callbacks (asyncReady, destroy, sourceFunc, drawFunc). Default is "closure". */
+    trampoline?: "asyncReady" | "destroy" | "sourceFunc" | "drawFunc";
     /** Source type for asyncReady callback (the GObject source). */
     sourceType?: FfiTypeDescriptor;
     /** Result type for asyncReady callback (the GAsyncResult). */
     resultType?: FfiTypeDescriptor;
+    /** Argument types for callbacks that need explicit type info (e.g., drawFunc). */
+    argTypes?: FfiTypeDescriptor[];
 }
 
 /**
@@ -881,6 +885,22 @@ export class TypeMapper {
             };
         }
 
+        if (param.type.name === "Gtk.DrawingAreaDrawFunc" || param.type.name === "DrawingAreaDrawFunc") {
+            return {
+                ts: "(self: unknown, cr: unknown, width: number, height: number) => void",
+                ffi: {
+                    type: "callback",
+                    trampoline: "drawFunc",
+                    argTypes: [
+                        { type: "gobject", borrowed: true },
+                        { type: "int", size: 64, unsigned: true }, // cairo_t* as raw pointer
+                        { type: "int", size: 32, unsigned: false },
+                        { type: "int", size: 32, unsigned: false },
+                    ],
+                },
+            };
+        }
+
         if (param.type.name === "GLib.Closure" || param.type.name.endsWith("Func")) {
             return {
                 ts: "(...args: unknown[]) => unknown",
@@ -892,13 +912,18 @@ export class TypeMapper {
     }
 
     /**
-     * Checks if a parameter is a closure/user_data target for a GAsyncReadyCallback.
+     * Checks if a parameter is a closure/user_data target or destroy notifier for a callback that uses trampolines.
+     * These parameters are handled automatically by the trampoline mechanism.
      * @param paramIndex - The index of the parameter to check
      * @param allParams - All parameters in the method
-     * @returns True if this parameter is user_data for a GAsyncReadyCallback
+     * @returns True if this parameter is user_data or destroy for a trampoline callback
      */
     isClosureTarget(paramIndex: number, allParams: GirParameter[]): boolean {
-        return allParams.some((p) => p.type.name === "Gio.AsyncReadyCallback" && p.closure === paramIndex);
+        const trampolineCallbacks = ["Gio.AsyncReadyCallback", "Gtk.DrawingAreaDrawFunc", "DrawingAreaDrawFunc"];
+        // Check if this param is a closure (user_data) or destroy target for a trampoline callback
+        return allParams.some(
+            (p) => trampolineCallbacks.includes(p.type.name) && (p.closure === paramIndex || p.destroy === paramIndex),
+        );
     }
 
     /**

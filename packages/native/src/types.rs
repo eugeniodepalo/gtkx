@@ -25,6 +25,7 @@ pub enum CallbackTrampoline {
     AsyncReady,
     Destroy,
     SourceFunc,
+    DrawFunc,
 }
 
 #[derive(Debug, Clone)]
@@ -78,6 +79,7 @@ impl Type {
                     Some("asyncReady") => CallbackTrampoline::AsyncReady,
                     Some("destroy") => CallbackTrampoline::Destroy,
                     Some("sourceFunc") => CallbackTrampoline::SourceFunc,
+                    Some("drawFunc") => CallbackTrampoline::DrawFunc,
                     _ => CallbackTrampoline::Closure,
                 };
 

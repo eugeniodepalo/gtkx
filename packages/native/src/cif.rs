@@ -44,6 +44,7 @@ pub enum Value {
 pub struct TrampolineCallbackValue {
     pub trampoline_ptr: *mut c_void,
     pub closure: OwnedPtr,
+    pub destroy_ptr: Option<*mut c_void>,
 }
 
 impl OwnedPtr {
@@ -92,20 +93,17 @@ impl TryFrom<arg::Arg> for Value {
                     FloatSize::_64 => Ok(Value::F64(number)),
                 }
             }
-            Type::String(_) => {
-                match &arg.value {
-                    value::Value::String(s) => {
-                        let cstring = CString::new(s.as_bytes())?;
-                        let ptr = cstring.as_ptr() as *mut c_void;
-                        Ok(Value::OwnedPtr(OwnedPtr::new(cstring, ptr)))
-                    }
-                    value::Value::Null | value::Value::Undefined => {
-                        // NULL string for varargs termination
-                        Ok(Value::Ptr(std::ptr::null_mut()))
-                    }
-                    _ => bail!("Expected a String for string type, got {:?}", arg.value),
+            Type::String(_) => match &arg.value {
+                value::Value::String(s) => {
+                    let cstring = CString::new(s.as_bytes())?;
+                    let ptr = cstring.as_ptr() as *mut c_void;
+                    Ok(Value::OwnedPtr(OwnedPtr::new(cstring, ptr)))
                 }
-            }
+                value::Value::Null | value::Value::Undefined => {
+                    Ok(Value::Ptr(std::ptr::null_mut()))
+                }
+                _ => bail!("Expected a String for string type, got {:?}", arg.value),
+            },
             Type::Boolean => {
                 let boolean = match arg.value {
                     value::Value::Boolean(b) => b,
@@ -440,6 +438,7 @@ impl Value {
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
                     closure: OwnedPtr::new(closure, closure_ptr),
+                    destroy_ptr: None,
                 }))
             }
 
@@ -493,6 +492,7 @@ impl Value {
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
                     closure: OwnedPtr::new(closure, closure_ptr),
+                    destroy_ptr: None,
                 }))
             }
 
@@ -551,6 +551,81 @@ impl Value {
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
                     closure: OwnedPtr::new(closure, closure_ptr),
+                    destroy_ptr: None,
+                }))
+            }
+
+            CallbackTrampoline::DrawFunc => {
+                let arg_types = type_.arg_types.clone();
+
+                let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    let args_values: Vec<value::Value> = match &arg_types {
+                        Some(types) => args
+                            .iter()
+                            .zip(types.iter())
+                            .map(|(gval, type_)| value::Value::from_glib_value(gval, type_))
+                            .collect(),
+                        None => args.iter().map(Into::into).collect(),
+                    };
+
+                    let callback = callback.clone();
+
+                    let result = channel.send(move |mut cx| {
+                        let js_args: Vec<Handle<JsValue>> = args_values
+                            .into_iter()
+                            .map(|v| v.to_js_value(&mut cx))
+                            .collect::<NeonResult<Vec<Handle<JsValue>>>>()?;
+
+                        let js_this = cx.undefined();
+                        let js_callback = callback.clone().to_inner(&mut cx);
+                        js_callback.call(&mut cx, js_this, js_args)?;
+                        Ok(value::Value::Undefined)
+                    });
+
+                    let join_handle = result;
+                    let main_context = glib::MainContext::default();
+
+                    let rx: std::sync::mpsc::Receiver<Result<value::Value, neon::result::Throw>> =
+                        unsafe { std::mem::transmute(join_handle) };
+
+                    loop {
+                        match rx.try_recv() {
+                            Ok(result) => {
+                                if let Err(_) = result {
+                                    eprintln!("JS draw func callback threw an error");
+                                }
+
+                                return None::<glib::Value>;
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                main_context.iteration(false);
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                panic!(
+                                    "JS thread disconnected while waiting for draw func callback"
+                                );
+                            }
+                        }
+                    }
+                });
+
+                GtkThreadState::with(|state| state.register_closure(closure.clone()));
+
+                let closure_ptr = unsafe {
+                    use glib::translate::ToGlibPtr as _;
+                    let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_none().0;
+                    glib::gobject_ffi::g_closure_ref(ptr);
+                    glib::gobject_ffi::g_closure_sink(ptr);
+                    ptr as *mut c_void
+                };
+
+                let trampoline_ptr = trampolines::get_draw_func_trampoline_ptr();
+                let destroy_ptr = trampolines::get_unref_closure_trampoline_ptr();
+
+                Ok(Value::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr,
+                    closure: OwnedPtr::new(closure, closure_ptr),
+                    destroy_ptr: Some(destroy_ptr),
                 }))
             }
         }

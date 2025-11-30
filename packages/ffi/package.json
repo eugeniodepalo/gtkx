@@ -35,6 +35,11 @@
             "development": "./src/gl/index.ts",
             "default": "./dist/gl/index.js"
         },
+        "./cairo": {
+            "types": "./dist/cairo/index.d.ts",
+            "development": "./src/cairo/index.ts",
+            "default": "./dist/cairo/index.js"
+        },
         "./*": {
             "types": "./dist/generated/*/index.d.ts",
             "development": "./src/generated/*/index.ts",

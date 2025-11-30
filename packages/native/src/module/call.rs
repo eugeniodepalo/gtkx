@@ -74,15 +74,18 @@ fn handle_call(
 ) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
     let mut arg_types: Vec<ffi::Type> = Vec::with_capacity(args.len() + 1);
     for arg in &args {
-        let uses_trampoline = matches!(
-            &arg.type_,
-            Type::Callback(cb) if cb.trampoline != CallbackTrampoline::Closure
-        );
-        if uses_trampoline {
-            arg_types.push(ffi::Type::pointer());
-            arg_types.push(ffi::Type::pointer());
-        } else {
-            arg_types.push((&arg.type_).into());
+        match &arg.type_ {
+            Type::Callback(cb) if cb.trampoline != CallbackTrampoline::Closure => {
+                arg_types.push(ffi::Type::pointer());
+                arg_types.push(ffi::Type::pointer());
+
+                if cb.trampoline == CallbackTrampoline::DrawFunc {
+                    arg_types.push(ffi::Type::pointer());
+                }
+            }
+            _ => {
+                arg_types.push((&arg.type_).into());
+            }
         }
     }
 
@@ -103,6 +106,9 @@ fn handle_call(
             cif::Value::TrampolineCallback(trampoline_cb) => {
                 ffi_args.push(ffi::arg(&trampoline_cb.trampoline_ptr));
                 ffi_args.push(ffi::arg(&trampoline_cb.closure.ptr));
+                if let Some(destroy_ptr) = &trampoline_cb.destroy_ptr {
+                    ffi_args.push(ffi::arg(destroy_ptr));
+                }
             }
             other => {
                 ffi_args.push(other.into());

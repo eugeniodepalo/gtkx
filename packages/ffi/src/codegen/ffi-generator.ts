@@ -2130,6 +2130,10 @@ ${indent}  }`;
             if (type.trampoline) {
                 parts.push(`trampoline: "${type.trampoline}"`);
             }
+            if (type.argTypes) {
+                const argTypesStr = type.argTypes.map((t) => this.generateTypeDescriptor(t)).join(", ");
+                parts.push(`argTypes: [${argTypesStr}]`);
+            }
             if (type.sourceType) {
                 parts.push(`sourceType: ${this.generateTypeDescriptor(type.sourceType)}`);
             }

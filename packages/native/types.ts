@@ -35,10 +35,11 @@ type UndefinedType = { type: "undefined" };
  * - "asyncReady": Use async ready callback trampoline (GAsyncReadyCallback)
  * - "destroy": Use destroy notify trampoline (GDestroyNotify)
  * - "sourceFunc": Use source func trampoline (GSourceFunc)
+ * - "drawFunc": Use draw func trampoline (GtkDrawingAreaDrawFunc)
  */
 type CallbackType = {
     type: "callback";
-    trampoline?: "asyncReady" | "destroy" | "sourceFunc";
+    trampoline?: "asyncReady" | "destroy" | "sourceFunc" | "drawFunc";
     argTypes?: Type[];
     sourceType?: Type;
     resultType?: Type;

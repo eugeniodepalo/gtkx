@@ -230,7 +230,6 @@ impl Value {
                     }
                 };
 
-                // Return null if the pointer is null
                 if boxed_ptr.is_null() {
                     return Ok(Value::Null);
                 }
