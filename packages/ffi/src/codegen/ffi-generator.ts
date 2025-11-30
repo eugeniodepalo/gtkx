@@ -546,7 +546,7 @@ export class CodeGenerator {
 
         let signalMetaConstant = "";
         const { signals: allSignals, hasCrossNamespaceParent } = this.collectAllSignals(cls, classMap);
-        if (allSignals.length > 0 && !hasCrossNamespaceParent) {
+        if (allSignals.length > 0 || hasCrossNamespaceParent) {
             const hasConnectMethod = cls.methods.some((m) => toCamelCase(m.name) === "connect");
             const signalConnect = this.generateSignalConnect(
                 sharedLibrary,
@@ -1425,7 +1425,7 @@ ${allArgs ? `${allArgs},` : ""}
                 const signalParamClass = this.extractSignalParamClass(param, classMap);
                 if (signalParamClass) {
                     this.signalClasses.add(signalParamClass);
-                    return `{ type: ${ffiType}, cls: ${signalParamClass} }`;
+                    return `{ type: ${ffiType}, getCls: () => ${signalParamClass} }`;
                 }
                 return `{ type: ${ffiType} }`;
             });
@@ -1473,8 +1473,8 @@ ${allArgs ? `${allArgs},` : ""}
         );
 
         this.usesType = true;
+        this.usesWrapPtr = true;
         if (signalMetadata.length > 0) {
-            this.usesWrapPtr = true;
             this.usesSignalMeta = true;
         }
 
@@ -1486,19 +1486,25 @@ ${allArgs ? `${allArgs},` : ""}
                 ? `const meta = SIGNAL_META[signal];
     const selfType: Type = { type: "gobject", borrowed: true };
     const argTypes = meta ? [selfType, ...meta.map((m) => m.type)] : [selfType];`
-                : `const meta = undefined;\n    const selfType: Type = { type: "gobject", borrowed: true };\n    const argTypes = [selfType];`;
+                : `const selfType: Type = { type: "gobject", borrowed: true };\n    const argTypes = [selfType];`;
 
-        const wrapperCode = `const wrappedHandler = (...args: unknown[]) => {
+        const wrapperCode =
+            signalMetadata.length > 0
+                ? `const wrappedHandler = (...args: unknown[]) => {
       const self = wrapPtr(args[0], ${className});
       const signalArgs = args.slice(1);
       if (!meta) return handler(self, ...signalArgs);
       const wrapped = meta.map((m, i) => {
-        if (m.cls && signalArgs[i] != null) {
-          return wrapPtr(signalArgs[i], m.cls);
+        if (m.getCls && signalArgs[i] != null) {
+          return wrapPtr(signalArgs[i], m.getCls());
         }
         return signalArgs[i];
       });
       return handler(self, ...wrapped);
+    };`
+                : `const wrappedHandler = (...args: unknown[]) => {
+      const self = wrapPtr(args[0], ${className});
+      return handler(self, ...args.slice(1));
     };`;
 
         const overloadsSection = signalOverloads.length > 0 ? `${signalOverloads.join("\n")}\n` : "";
