@@ -1,5 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import type {
+    GirCallback,
     GirClass,
     GirConstructor,
     GirEnumeration,
@@ -23,6 +24,7 @@ const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.enumeration",
     "namespace.bitfield",
     "namespace.record",
+    "namespace.callback",
     "namespace.class.method",
     "namespace.class.constructor",
     "namespace.class.function",
@@ -49,6 +51,7 @@ const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.record.method.parameters.parameter",
     "namespace.record.constructor.parameters.parameter",
     "namespace.record.function.parameters.parameter",
+    "namespace.callback.parameters.parameter",
 ]);
 
 const extractDoc = (node: Record<string, unknown>): string | undefined => {
@@ -105,7 +108,27 @@ export class GirParser {
             enumerations: this.parseEnumerations(namespace.enumeration ?? []),
             bitfields: this.parseEnumerations(namespace.bitfield ?? []),
             records: this.parseRecords(namespace.record ?? []),
+            callbacks: this.parseCallbacks(namespace.callback ?? []),
         };
+    }
+
+    private parseCallbacks(callbacks: Record<string, unknown>[]): GirCallback[] {
+        if (!callbacks || !Array.isArray(callbacks)) {
+            return [];
+        }
+        return callbacks
+            .filter((cb) => cb["@_introspectable"] !== "0")
+            .map((cb) => ({
+                name: String(cb["@_name"] ?? ""),
+                cType: String(cb["@_c:type"] ?? ""),
+                returnType: this.parseReturnType(cb["return-value"] as Record<string, unknown> | undefined),
+                parameters: this.parseParameters(
+                    (cb.parameters && typeof cb.parameters === "object" && cb.parameters !== null
+                        ? cb.parameters
+                        : {}) as Record<string, unknown>,
+                ),
+                doc: extractDoc(cb),
+            }));
     }
 
     private parseClasses(classes: Record<string, unknown>[]): GirClass[] {
@@ -114,6 +137,9 @@ export class GirParser {
             cType: String(cls["@_c:type"] ?? cls["@_glib:type-name"] ?? ""),
             parent: String(cls["@_parent"] ?? ""),
             abstract: cls["@_abstract"] === "1",
+            glibTypeName: cls["@_glib:type-name"] ? String(cls["@_glib:type-name"]) : undefined,
+            glibGetType: cls["@_glib:get-type"] ? String(cls["@_glib:get-type"]) : undefined,
+            cSymbolPrefix: cls["@_c:symbol-prefix"] ? String(cls["@_c:symbol-prefix"]) : undefined,
             implements: this.parseImplements(
                 cls.implements as Record<string, unknown>[] | Record<string, unknown> | undefined,
             ),
@@ -193,6 +219,7 @@ export class GirParser {
                         ? ctor.parameters
                         : {}) as Record<string, unknown>,
                 ),
+                throws: ctor["@_throws"] === "1",
                 doc: extractDoc(ctor),
             }));
     }
@@ -265,7 +292,7 @@ export class GirParser {
         const typeName = typeNode["@_name"] ? String(typeNode["@_name"]) : undefined;
 
         if (typeName === "GLib.List" || typeName === "GLib.SList") {
-            const innerType = typeNode.type as Record<string, unknown> | undefined;
+            const innerType = (typeNode.type ?? typeNode.array) as Record<string, unknown> | undefined;
             return {
                 name: "array",
                 cType: typeNode["@_c:type"] ? String(typeNode["@_c:type"]) : undefined,

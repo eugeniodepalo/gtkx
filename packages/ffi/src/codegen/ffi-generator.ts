@@ -314,7 +314,6 @@ export class CodeGenerator {
         this.registerInterfaces(namespace);
         const classMap = this.buildClassMap(namespace);
         const interfaceMap = this.buildInterfaceMap(namespace);
-        this.attachConstructorFunctions(namespace, classMap);
 
         const allEnums = [...namespace.enumerations, ...namespace.bitfields];
         if (allEnums.length > 0) {
@@ -342,7 +341,7 @@ export class CodeGenerator {
             );
         }
 
-        const standaloneFunctions = this.getStandaloneFunctions(namespace, classMap);
+        const standaloneFunctions = this.getStandaloneFunctions(namespace);
         if (standaloneFunctions.length > 0) {
             files.set("functions.ts", await this.generateFunctions(standaloneFunctions, namespace.sharedLibrary));
         }
@@ -403,40 +402,8 @@ export class CodeGenerator {
         return interfaceMap;
     }
 
-    private attachConstructorFunctions(namespace: GirNamespace, classMap: Map<string, GirClass>): void {
-        for (const func of namespace.functions) {
-            const match = func.cIdentifier?.match(/^[a-z_]+_([a-z_]+)_new(_.*)?$/);
-            if (!match?.[1] || !func.returnType.name) continue;
-
-            const potentialClassName = match[1]
-                .split("_")
-                .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-                .join("");
-
-            const cls = classMap.get(potentialClassName);
-            if (cls) {
-                cls.constructors.push({
-                    name: func.name,
-                    cIdentifier: func.cIdentifier,
-                    returnType: func.returnType,
-                    parameters: func.parameters,
-                });
-            }
-        }
-    }
-
-    private getStandaloneFunctions(namespace: GirNamespace, classMap: Map<string, GirClass>): GirFunction[] {
-        return namespace.functions.filter((func) => {
-            const match = func.cIdentifier?.match(/^[a-z_]+_([a-z_]+)_new(_.*)?$/);
-            if (!match?.[1] || !func.returnType.name) return true;
-
-            const potentialClassName = match[1]
-                .split("_")
-                .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-                .join("");
-
-            return !classMap.has(potentialClassName);
-        });
+    private getStandaloneFunctions(namespace: GirNamespace): GirFunction[] {
+        return namespace.functions;
     }
 
     private resetState(): void {

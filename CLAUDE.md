@@ -129,11 +129,29 @@ sudo apt install libgtk-4-dev gobject-introspection
 ### No Comments
 
 - Code should be self-documenting
+- Never add inline comments - if code needs explanation, refactor it
 - Use TSDoc only for public APIs
 - Prefer descriptive names over comments
 - Never edit generated files in `src/generated/` directories
 
-### File Naming
+### Naming
 
 - Use kebab-case for all files: `my-component.ts`
 - Exception: generated files
+- Names should be clear but not overly specific
+- Prefer generic reusable names: `setup` over `setupTestsForGtk`
+- Avoid redundant context in names: `loadFile` not `loadGirFile` in a GIR-specific module
+
+### Code Reuse
+
+- DRY (Don't Repeat Yourself) is top priority
+- Extract shared logic into utility functions
+- Prefer composition over duplication
+- If code is copied more than once, extract it
+
+### Dead Code
+
+- Always check for and eliminate dead code after refactors
+- Run `pnpm knip` to detect unused exports
+- Remove unused imports, variables, and functions immediately
+- Never leave commented-out code in the codebase

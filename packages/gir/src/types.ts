@@ -22,7 +22,25 @@ export interface GirNamespace {
     bitfields: GirEnumeration[];
     /** All records (structs) defined in this namespace. */
     records: GirRecord[];
+    /** All callback types defined in this namespace. */
+    callbacks: GirCallback[];
     /** Documentation for the namespace. */
+    doc?: string;
+}
+
+/**
+ * Represents a GIR callback type definition.
+ */
+export interface GirCallback {
+    /** The callback name. */
+    name: string;
+    /** The C type name. */
+    cType: string;
+    /** The return type. */
+    returnType: GirType;
+    /** The callback parameters. */
+    parameters: GirParameter[];
+    /** Documentation for the callback. */
     doc?: string;
 }
 
@@ -56,6 +74,12 @@ export interface GirClass {
     parent?: string;
     /** Whether this is an abstract class. */
     abstract?: boolean;
+    /** The GLib type name. */
+    glibTypeName?: string;
+    /** The GLib get-type function. */
+    glibGetType?: string;
+    /** The C symbol prefix for this class. */
+    cSymbolPrefix?: string;
     /** List of interface names this class implements. */
     implements: string[];
     /** Methods defined on this class. */
@@ -148,6 +172,8 @@ export interface GirConstructor {
     returnType: GirType;
     /** The constructor parameters. */
     parameters: GirParameter[];
+    /** Whether this constructor can throw a GError. */
+    throws?: boolean;
     /** Documentation for the constructor. */
     doc?: string;
 }
@@ -354,7 +380,7 @@ export const registerEnumsFromNamespace = (typeMapper: TypeMapper, namespace: Gi
 
 type TypeMapping = { ts: string; ffi: FfiTypeDescriptor };
 
-export type TypeKind = "class" | "interface" | "enum" | "record";
+export type TypeKind = "class" | "interface" | "enum" | "record" | "callback";
 
 export interface RegisteredType {
     kind: TypeKind;
@@ -418,6 +444,16 @@ export class TypeRegistry {
         });
     }
 
+    registerCallback(namespace: string, name: string): void {
+        const transformedName = toPascalCase(name);
+        this.types.set(`${namespace}.${name}`, {
+            kind: "callback",
+            name,
+            namespace,
+            transformedName,
+        });
+    }
+
     resolve(qualifiedName: string): RegisteredType | undefined {
         return this.types.get(qualifiedName);
     }
@@ -445,15 +481,12 @@ export class TypeRegistry {
                 registry.registerEnum(ns.name, bitfield.name);
             }
             for (const record of ns.records) {
-                if (
-                    record.glibTypeName &&
-                    !record.disguised &&
-                    !record.name.endsWith("Class") &&
-                    !record.name.endsWith("Private") &&
-                    !record.name.endsWith("Iface")
-                ) {
+                if (record.glibTypeName && !record.disguised) {
                     registry.registerRecord(ns.name, record.name, record.glibTypeName);
                 }
+            }
+            for (const callback of ns.callbacks) {
+                registry.registerCallback(ns.name, callback.name);
             }
         }
         return registry;
@@ -461,6 +494,65 @@ export class TypeRegistry {
 }
 
 const STRING_TYPES = new Set(["utf8", "filename"]);
+
+const POINTER_TYPE: TypeMapping = { ts: "number", ffi: { type: "int", size: 64, unsigned: true } };
+
+const C_TYPE_MAP = new Map<string, TypeMapping>([
+    ["void", { ts: "void", ffi: { type: "undefined" } }],
+    ["gboolean", { ts: "boolean", ffi: { type: "boolean" } }],
+    ["gchar", { ts: "number", ffi: { type: "int", size: 8, unsigned: false } }],
+    ["guchar", { ts: "number", ffi: { type: "int", size: 8, unsigned: true } }],
+    ["gint", { ts: "number", ffi: { type: "int", size: 32, unsigned: false } }],
+    ["guint", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
+    ["gshort", { ts: "number", ffi: { type: "int", size: 16, unsigned: false } }],
+    ["gushort", { ts: "number", ffi: { type: "int", size: 16, unsigned: true } }],
+    ["glong", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["gulong", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["gint8", { ts: "number", ffi: { type: "int", size: 8, unsigned: false } }],
+    ["guint8", { ts: "number", ffi: { type: "int", size: 8, unsigned: true } }],
+    ["gint16", { ts: "number", ffi: { type: "int", size: 16, unsigned: false } }],
+    ["guint16", { ts: "number", ffi: { type: "int", size: 16, unsigned: true } }],
+    ["gint32", { ts: "number", ffi: { type: "int", size: 32, unsigned: false } }],
+    ["guint32", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
+    ["gint64", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["guint64", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["gfloat", { ts: "number", ffi: { type: "float", size: 32 } }],
+    ["gdouble", { ts: "number", ffi: { type: "float", size: 64 } }],
+    ["gsize", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["gssize", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["goffset", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["int", { ts: "number", ffi: { type: "int", size: 32, unsigned: false } }],
+    ["unsigned int", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
+    ["long", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["unsigned long", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["double", { ts: "number", ffi: { type: "float", size: 64 } }],
+    ["float", { ts: "number", ffi: { type: "float", size: 32 } }],
+    ["size_t", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["ssize_t", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
+    ["GType", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["GQuark", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
+]);
+
+const mapCType = (cType: string | undefined): TypeMapping => {
+    if (!cType) {
+        return POINTER_TYPE;
+    }
+
+    if (cType.endsWith("*")) {
+        return POINTER_TYPE;
+    }
+
+    const mapped = C_TYPE_MAP.get(cType);
+    if (mapped) {
+        return mapped;
+    }
+
+    if (cType.startsWith("const ")) {
+        return mapCType(cType.slice(6));
+    }
+
+    return POINTER_TYPE;
+};
 
 const BASIC_TYPE_MAP = new Map<string, TypeMapping>([
     ["gboolean", { ts: "boolean", ffi: { type: "boolean" } }],
@@ -521,16 +613,6 @@ const BASIC_TYPE_MAP = new Map<string, TypeMapping>([
     ["GLib.FreeFunc", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
     ["FreeFunc", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
 ]);
-
-const LIBRARY_MAP: Record<string, string> = {
-    Gtk: "libgtk-4.so.1",
-    GObject: "libgobject-2.0.so.0",
-    GLib: "libglib-2.0.so.0",
-    Gio: "libgio-2.0.so.0",
-    GdkPixbuf: "libgdk_pixbuf-2.0.so.0",
-    Pango: "libpango-1.0.so.0",
-    Cairo: "libcairo.so.2",
-};
 
 export interface ExternalTypeUsage {
     namespace: string;
@@ -767,6 +849,9 @@ export class TypeMapper {
                             externalType: isExternal ? externalType : undefined,
                         };
                     }
+                    if (registered.kind === "callback") {
+                        return POINTER_TYPE;
+                    }
                     return {
                         ts: qualifiedName,
                         ffi: { type: "gobject", borrowed: isReturn },
@@ -775,10 +860,7 @@ export class TypeMapper {
                     };
                 }
             }
-            return {
-                ts: "unknown",
-                ffi: { type: "gobject", borrowed: isReturn },
-            };
+            return mapCType(girType.cType);
         }
 
         if (this.typeRegistry && this.currentNamespace) {
@@ -820,6 +902,9 @@ export class TypeMapper {
                         kind: registered.kind,
                     };
                 }
+                if (registered.kind === "callback") {
+                    return POINTER_TYPE;
+                }
                 return {
                     ts: qualifiedName,
                     ffi: { type: "gobject", borrowed: isReturn },
@@ -829,10 +914,17 @@ export class TypeMapper {
             }
         }
 
-        return {
-            ts: "unknown",
-            ffi: { type: "gobject", borrowed: isReturn },
-        };
+        return mapCType(girType.cType);
+    }
+
+    isCallback(typeName: string): boolean {
+        if (this.typeRegistry) {
+            const resolved = this.currentNamespace
+                ? this.typeRegistry.resolveInNamespace(typeName, this.currentNamespace)
+                : this.typeRegistry.resolve(typeName);
+            return resolved?.kind === "callback";
+        }
+        return false;
     }
 
     /**
@@ -901,7 +993,7 @@ export class TypeMapper {
             };
         }
 
-        if (param.type.name === "GLib.Closure" || param.type.name.endsWith("Func")) {
+        if (param.type.name === "GLib.Closure" || this.isCallback(param.type.name)) {
             return {
                 ts: "(...args: unknown[]) => unknown",
                 ffi: { type: "callback" },
@@ -932,14 +1024,5 @@ export class TypeMapper {
      */
     isNullable(param: GirParameter): boolean {
         return param.nullable === true || param.optional === true;
-    }
-
-    /**
-     * Gets the shared library name for a namespace.
-     * @param namespace - The namespace name
-     * @returns The shared library file name
-     */
-    getLibraryName(namespace: string): string {
-        return LIBRARY_MAP[namespace] ?? `lib${namespace.toLowerCase()}.so`;
     }
 }

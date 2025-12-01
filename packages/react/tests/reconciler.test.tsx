@@ -1,138 +1,276 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { ApplicationWindow, Box, Button, Label as LabelNS } from "../src/index.js";
-import { renderElement, setupReactTests, unmountAll } from "./setup.js";
+import { createNode } from "../src/factory.js";
+import { ApplicationWindow, Box, Button, Label } from "../src/index.js";
+import { getApp, render, setupTests } from "./integration.js";
 
-const Label = LabelNS.Root;
+setupTests();
 
-setupReactTests();
+describe("React Reconciler", () => {
+    describe("node factory", () => {
+        it("creates Button with correct props", () => {
+            const node = createNode("Button", { label: "Click me" }, getApp());
+            const widget = node.getWidget() as Gtk.Button;
 
-describe("React Reconciler Integration", () => {
-    it("should render a simple component", () => {
-        const SimpleComponent = () => <Button label="Hello" />;
+            expect(widget).toBeInstanceOf(Gtk.Button);
+            expect(widget.getLabel()).toBe("Click me");
+        });
 
-        renderElement(<SimpleComponent />);
-        unmountAll();
+        it("creates Box with orientation", () => {
+            const node = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 10 }, getApp());
+            const widget = node.getWidget() as Gtk.Box;
+
+            expect(widget).toBeInstanceOf(Gtk.Box);
+            expect(widget.getSpacing()).toBe(10);
+        });
+
+        it("creates Label with text", () => {
+            const node = createNode("Label", { label: "Hello" }, getApp());
+            const widget = node.getWidget() as Gtk.Label;
+
+            expect(widget).toBeInstanceOf(Gtk.Label);
+            expect(widget.getLabel()).toBe("Hello");
+        });
+
+        it("creates ApplicationWindow with title", () => {
+            const node = createNode("ApplicationWindow", { title: "Test Window" }, getApp());
+            const widget = node.getWidget() as Gtk.ApplicationWindow;
+
+            expect(widget).toBeInstanceOf(Gtk.ApplicationWindow);
+            expect(widget.getTitle()).toBe("Test Window");
+        });
     });
 
-    it("should render nested components", () => {
-        const NestedComponent = () => (
-            <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
-                <Label label="Title" />
-                <Button label="Click Me" />
-            </Box>
-        );
+    describe("prop updates", () => {
+        it("updates string props", () => {
+            const node = createNode("Button", { label: "Initial" }, getApp());
+            const widget = node.getWidget() as Gtk.Button;
 
-        renderElement(<NestedComponent />);
-        unmountAll();
+            expect(widget.getLabel()).toBe("Initial");
+
+            node.updateProps({ label: "Initial" }, { label: "Updated" });
+            expect(widget.getLabel()).toBe("Updated");
+        });
+
+        it("updates boolean props", () => {
+            const node = createNode("Button", { label: "Test", sensitive: true }, getApp());
+            const widget = node.getWidget() as Gtk.Button;
+
+            expect(widget.getSensitive()).toBe(true);
+
+            node.updateProps({ sensitive: true }, { sensitive: false });
+            expect(widget.getSensitive()).toBe(false);
+        });
+
+        it("updates numeric props", () => {
+            const node = createNode("Box", { spacing: 5, orientation: Gtk.Orientation.VERTICAL }, getApp());
+            const widget = node.getWidget() as Gtk.Box;
+
+            expect(widget.getSpacing()).toBe(5);
+
+            node.updateProps({ spacing: 5 }, { spacing: 20 });
+            expect(widget.getSpacing()).toBe(20);
+        });
     });
 
-    it("should handle component updates", () => {
-        let setCount: (value: number) => void = () => {};
+    describe("child management", () => {
+        it("appends children to parent", () => {
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getApp());
+            const child = createNode("Label", { label: "Child" }, getApp());
 
-        const CounterComponent = () => {
-            const [count, _setCount] = useState(0);
-            setCount = _setCount;
-            return <Label label={`Count: ${count}`} />;
-        };
+            parent.appendChild(child);
 
-        renderElement(<CounterComponent />);
-        setCount(5);
-        unmountAll();
+            const parentWidget = parent.getWidget() as Gtk.Box;
+            expect(parentWidget.getFirstChild()).not.toBeNull();
+        });
+
+        it("removes children from parent", () => {
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getApp());
+            const child = createNode("Label", { label: "Child" }, getApp());
+
+            parent.appendChild(child);
+
+            const parentWidget = parent.getWidget() as Gtk.Box;
+            expect(parentWidget.getFirstChild()).not.toBeNull();
+
+            expect(() => parent.removeChild(child)).not.toThrow();
+        });
+
+        it("inserts child before another", () => {
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getApp());
+            const first = createNode("Label", { label: "First" }, getApp());
+            const second = createNode("Label", { label: "Second" }, getApp());
+            const middle = createNode("Label", { label: "Middle" }, getApp());
+
+            parent.appendChild(first);
+            parent.appendChild(second);
+            parent.insertBefore(middle, second);
+
+            const parentWidget = parent.getWidget() as Gtk.Box;
+            expect(parentWidget.getFirstChild()).not.toBeNull();
+            expect(parentWidget.getLastChild()).not.toBeNull();
+        });
+
+        it("handles multiple children", () => {
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getApp());
+
+            for (let i = 0; i < 5; i++) {
+                const child = createNode("Label", { label: `Label ${i}` }, getApp());
+                parent.appendChild(child);
+            }
+
+            const parentWidget = parent.getWidget() as Gtk.Box;
+            expect(parentWidget.getFirstChild()).not.toBeNull();
+            expect(parentWidget.getLastChild()).not.toBeNull();
+        });
     });
 
-    it("should handle conditional rendering", () => {
-        let setVisible: (value: boolean) => void = () => {};
-
-        const ConditionalComponent = () => {
-            const [visible, _setVisible] = useState(true);
-            setVisible = _setVisible;
-            return (
-                <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
-                    {visible && <Label label="Visible" />}
-                    <Button label="Toggle" />
-                </Box>
+    describe("signal handlers", () => {
+        it("connects signal handlers on creation", () => {
+            let clicked = false;
+            const node = createNode(
+                "Button",
+                {
+                    label: "Click",
+                    onClicked: () => {
+                        clicked = true;
+                    },
+                },
+                getApp(),
             );
-        };
 
-        renderElement(<ConditionalComponent />);
+            expect(node.getWidget()).toBeInstanceOf(Gtk.Button);
+            expect(clicked).toBe(false);
+        });
 
-        setVisible(false);
-        setVisible(true);
-        setVisible(false);
-        unmountAll();
+        it("updates signal handlers", () => {
+            let handler1Called = false;
+            let handler2Called = false;
+
+            const handler1 = () => {
+                handler1Called = true;
+            };
+            const handler2 = () => {
+                handler2Called = true;
+            };
+
+            const node = createNode("Button", { label: "Click", onClicked: handler1 }, getApp());
+            node.updateProps({ onClicked: handler1 }, { onClicked: handler2 });
+
+            expect(handler1Called).toBe(false);
+            expect(handler2Called).toBe(false);
+        });
     });
 
-    it("should handle list rendering", () => {
-        const items = [1, 2, 3, 4, 5];
+    describe("window management", () => {
+        it("attaches child to ApplicationWindow", () => {
+            const window = createNode("ApplicationWindow", { title: "Test" }, getApp());
+            const child = createNode("Label", { label: "Content" }, getApp());
 
-        const ListComponent = () => (
-            <Box spacing={5} orientation={Gtk.Orientation.VERTICAL}>
-                {items.map((item) => (
-                    <Label key={item} label={`Item ${item}`} />
-                ))}
-            </Box>
-        );
+            window.appendChild(child);
 
-        renderElement(<ListComponent />);
-        unmountAll();
+            const windowWidget = window.getWidget() as Gtk.ApplicationWindow;
+            expect(windowWidget.getChild()).not.toBeNull();
+        });
     });
 
-    it("should clean up on unmount", () => {
-        const EffectComponent = () => {
-            useEffect(() => {
-                return () => {};
-            }, []);
-            return <Label label="Effect Component" />;
-        };
+    describe("disposal", () => {
+        it("disposes node without errors", () => {
+            const node = createNode("Button", { label: "Test" }, getApp());
+            expect(() => node.dispose?.(getApp())).not.toThrow();
+        });
 
-        renderElement(<EffectComponent />);
-        unmountAll();
+        it("disposes node with signal handlers", () => {
+            const node = createNode("Button", { label: "Test", onClicked: () => {} }, getApp());
+            expect(() => node.dispose?.(getApp())).not.toThrow();
+        });
+
+        it("disposes parent with children", () => {
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getApp());
+            const child = createNode("Label", { label: "Child" }, getApp());
+
+            parent.appendChild(child);
+            expect(() => parent.dispose?.(getApp())).not.toThrow();
+        });
     });
 
-    it("should handle signal handlers in React components", () => {
-        let clickCount = 0;
+    describe("React integration", () => {
+        it("renders simple component", () => {
+            expect(() => render(<Button label="Hello" />)).not.toThrow();
+        });
 
-        const ClickableComponent = () => {
-            const handleClick = useCallback(() => {
-                clickCount++;
-            }, []);
+        it("renders nested components", () => {
+            expect(() =>
+                render(
+                    <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
+                        <Label.Root label="Title" />
+                        <Button label="Click Me" />
+                    </Box>,
+                ),
+            ).not.toThrow();
+        });
 
-            return <Button label="Click Me" onClicked={handleClick} />;
-        };
+        it("handles state updates", () => {
+            let setCount: (value: number) => void = () => {};
 
-        renderElement(<ClickableComponent />);
-        expect(clickCount).toBe(0);
-        unmountAll();
-    });
+            const Counter = () => {
+                const [count, _setCount] = useState(0);
+                setCount = _setCount;
+                return <Label.Root label={`Count: ${count}`} />;
+            };
 
-    it("should handle multiple windows", () => {
-        const MultiWindowApp = () => (
-            <>
-                <ApplicationWindow title="Window 1">
-                    <Label label="Content 1" />
-                </ApplicationWindow>
-                <ApplicationWindow title="Window 2">
-                    <Label label="Content 2" />
-                </ApplicationWindow>
-            </>
-        );
+            render(<Counter />);
+            expect(() => setCount(5)).not.toThrow();
+        });
 
-        renderElement(<MultiWindowApp />);
-        unmountAll();
-    });
+        it("handles conditional rendering", () => {
+            let setVisible: (value: boolean) => void = () => {};
 
-    it("should handle dialogs", () => {
-        const DialogApp = () => (
-            <ApplicationWindow title="Main">
-                <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
-                    <Label label="Main Window" />
-                </Box>
-            </ApplicationWindow>
-        );
+            const Conditional = () => {
+                const [visible, _setVisible] = useState(true);
+                setVisible = _setVisible;
+                return (
+                    <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
+                        {visible && <Label.Root label="Visible" />}
+                    </Box>
+                );
+            };
 
-        renderElement(<DialogApp />);
-        unmountAll();
+            render(<Conditional />);
+            expect(() => {
+                setVisible(false);
+                setVisible(true);
+            }).not.toThrow();
+        });
+
+        it("handles list rendering", () => {
+            const items = ["A", "B", "C", "D", "E"];
+
+            expect(() =>
+                render(
+                    <Box spacing={5} orientation={Gtk.Orientation.VERTICAL}>
+                        {items.map((item) => (
+                            <Label.Root key={item} label={item} />
+                        ))}
+                    </Box>,
+                ),
+            ).not.toThrow();
+        });
+
+        it("handles multiple windows", () => {
+            expect(() =>
+                render(
+                    <>
+                        <ApplicationWindow title="Window 1">
+                            <Label.Root label="Content 1" />
+                        </ApplicationWindow>
+                        <ApplicationWindow title="Window 2">
+                            <Label.Root label="Content 2" />
+                        </ApplicationWindow>
+                    </>,
+                ),
+            ).not.toThrow();
+        });
     });
 });

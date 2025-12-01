@@ -13,68 +13,6 @@ interface UnknownTypeLocation {
     type: "return" | "parameter";
 }
 
-const ALLOWED_UNKNOWN_PATTERNS = [
-    /createPtr\(/,
-    /getData\(/,
-    /getUserData\(\)/,
-    /getTaskData\(\)/,
-    /getQdata\(/,
-    /stealData\(/,
-    /stealQdata\(/,
-    /setData\(/,
-    /setQdata\(/,
-    /getSourceTag\(\)/,
-    /propagatePointer\(\)/,
-    /getVtable\(\)/,
-    /getRegion\(/,
-    /pusherNew\(\)/,
-    /pop\(\)/,
-    /addUnixFd\(/,
-    /join\(\)/,
-    /lookup\(/,
-    /lookupNode\(/,
-    /lowerBound\(/,
-    /upperBound\(/,
-    /nodeFirst\(/,
-    /nodeLast\(/,
-    /insertNode\(/,
-    /replaceNode\(/,
-    /getSync\(\)/,
-    /getMapped\(/,
-    /getBoxed\(\)/,
-    /getPointer\(\)/,
-    /peekPointer\(\)/,
-    /getOutline\(\)/,
-    /getClip\(\)/,
-    /getShadow\(/,
-    /getEndLocation\(\)/,
-    /getStartLocation\(\)/,
-    /getInvisibleChar\(\)/,
-    /getBackend\(\)/,
-    /getChar\(\)/,
-    /getSourceMarks/,
-    /getAll\(\)/,
-    /getDefaultCandidates\(\)/,
-    /asColor\(\)/,
-    /asFloat\(\)/,
-    /asFont\(\)/,
-    /asFontDesc\(\)/,
-    /asFontFeatures\(\)/,
-    /asInt\(\)/,
-    /asLanguage\(\)/,
-    /asShape\(\)/,
-    /asSize\(\)/,
-    /asString\(\)/,
-    /getAcceptedCas\(\)/,
-    /getRun\(\)/,
-    /getRunReadonly\(\)/,
-    /getDecimalPoint\(/,
-];
-
-const isAllowedUnknown = (context: string): boolean => {
-    return ALLOWED_UNKNOWN_PATTERNS.some((pattern) => pattern.test(context));
-};
-
 const getAllGeneratedFiles = (dir: string): string[] => {
     const files: string[] = [];
     const entries = readdirSync(dir);
@@ -163,7 +101,7 @@ const findUnknownArrayTypes = (filePath: string): UnknownTypeLocation[] => {
         const lineNum = i + 1;
 
         if (
-            line.includes("unknown[]") &&
+            line.includes("): unknown[]") &&
             !line.includes("...args: unknown[]") &&
             !line.includes("handler: (...args: unknown[])") &&
             !line.includes("wrappedHandler")
@@ -190,13 +128,11 @@ describe("Generated FFI Types Quality", () => {
     const allFiles = getAllGeneratedFiles(generatedDir);
 
     describe("No unknown return types", () => {
-        it("should have no methods with unknown return type (excluding allowed patterns)", () => {
+        it("should have no public methods with unknown return type", () => {
             const allUnknownReturns: UnknownTypeLocation[] = [];
 
             for (const file of allFiles) {
-                const unknowns = findUnknownTypes(file).filter(
-                    (u) => u.type === "return" && !isAllowedUnknown(u.context),
-                );
+                const unknowns = findUnknownTypes(file).filter((u) => u.type === "return");
                 allUnknownReturns.push(...unknowns);
             }
 
@@ -213,7 +149,7 @@ describe("Generated FFI Types Quality", () => {
             }
         });
 
-        it("should not regress on unknown[] return types (baseline: 70)", () => {
+        it("should have no unknown[] return types", () => {
             const allUnknownArrays: UnknownTypeLocation[] = [];
 
             for (const file of allFiles) {
@@ -221,7 +157,13 @@ describe("Generated FFI Types Quality", () => {
                 allUnknownArrays.push(...unknowns);
             }
 
-            expect(allUnknownArrays.length).toBeLessThanOrEqual(70);
+            if (allUnknownArrays.length > 0) {
+                const summary = allUnknownArrays
+                    .slice(0, 20)
+                    .map((u) => `  ${u.file}:${u.line} - ${u.context}`)
+                    .join("\n");
+                expect.fail(`Found ${allUnknownArrays.length} methods with unknown[] return type:\n${summary}`);
+            }
         });
     });
 
