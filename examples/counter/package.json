@@ -1,5 +1,5 @@
 {
-    "name": "@gtkx/counter",
+    "name": "counter-example",
     "version": "0.0.0",
     "private": true,
     "description": "Counter example - A simple counter app demonstrating state and testing",

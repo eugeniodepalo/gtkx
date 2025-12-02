@@ -6,20 +6,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 GTKX is a framework for building native GTK4 desktop applications using React and TypeScript. It bridges React's component model with GTK4's native widget system via a custom React Reconciler and Rust-based FFI bindings using libffi.
 
-## Build Commands
+## Tech Stack
+
+- **TypeScript** - Main programming language for all packages
+- **React** - UI library for building component-based interfaces
+- **Rust** - Native module for FFI bridge and performance-critical code
+- **GObject Introspection (GIR)** - XML metadata for generating FFI bindings
+- **pnpm** - Monorepo package manager
+- **Biome** - Linter and code formatter
+- **Knip** - Dead code detection
+- **Vitest** - Testing framework
+- **Turborepo** - Monorepo build system
+
+## Package-specific Commands
 
 ```bash
-pnpm install              # Install all dependencies
-pnpm build                # Build all packages
-pnpm test                 # Run all tests
+turbo build                # Build package
+turbo test                 # Run tests
+turbo start                # Start example app
+turbo codegen              # Run code generation from GIR files
+```
+
+## Root-level Commands
+
+```bash
 pnpm lint                 # Lint with Biome
 pnpm lint --write         # Auto-fix lint issues
 pnpm knip                 # Check for unused code
-```
-
-For headless testing (CI or without display):
-```bash
-xvfb-run -a pnpm test
 ```
 
 ## Architecture
@@ -31,106 +44,36 @@ xvfb-run -a pnpm test
 - **@gtkx/native** (`packages/native`) - Rust native module providing FFI bridge via libffi
 - **@gtkx/css** (`packages/css`) - Emotion-style CSS-in-JS for GTK widgets
 - **@gtkx/gir** (`packages/gir`) - GObject Introspection XML parser for code generation
+- **@gtkx/testing** (`packages/testing`) - Testing Library-inspired utilities for testing GTKX components
 
-### Data Flow
+### Examples
 
-```
-React Components (TSX)
-        ↓
-@gtkx/react Reconciler (reconciler.ts)
-        ↓
-Node Factory (factory.ts) → Specialized Nodes (widget.ts, list.ts, grid.ts, etc.)
-        ↓
-@gtkx/ffi Generated Bindings
-        ↓
-@gtkx/native Rust Bridge (lib.rs → start/stop/call/read/write/alloc)
-        ↓
-libffi → GTK4 C Libraries
-```
+- **counter-example** (`examples/counter`) - Simple counter app demonstrating state and testing
+- **gtk4-demo** (`examples/gtk4-demo`) - Comprehensive GTK4 widget showcase app, based on the official GTK4 demo
 
-### Key Abstractions
+## Coding Guidelines
 
-**React Reconciler** (`packages/react/src/reconciler.ts`): Implements React Reconciler HostConfig, managing widget creation/updates and signal routing.
+### Monorepo Practices
 
-**Node Classes** (`packages/react/src/node.ts`, `packages/react/src/nodes/`): Abstract factory pattern for GTK widgets:
-- `WidgetNode` - Default for all GTK widgets
-- `ListViewNode`/`ListItemNode` - ListView management
-- `GridNode`/`GridChildNode` - GridView management
-- `DropDownNode`/`DropDownItemNode` - DropDown menus
-- `OverlayNode` - Overlay container
-- `SlotNode` - Virtual container for children
-
-**FFI Generation** (`packages/ffi/scripts/codegen.ts`): Generates TypeScript bindings from GIR XML files in `/usr/share/gir-1.0`, outputting to `src/generated/`.
-
-**Native Module** (`packages/native/src/lib.rs`): Rust Neon module exporting `start`, `stop`, `call`, `read`, `write`, `alloc` functions for GTK application lifecycle and FFI operations.
-
-### Widget Hierarchy Rules
-
-Different parent widgets use different child attachment methods:
-- ActionBar → `packStart()`
-- Notebook → `appendPage()`
-- Overlay → custom `attachChild()` API
-- Default → `appendChild()`
-
-### Signal Handling
-
-Type-safe signal connections using `SignalMeta` metadata. Generated connect methods with typed handler wrappers and parameter marshalling via libffi.
-
-## Code Generation
-
-FFI bindings are generated from GIR files:
-```bash
-cd packages/ffi
-pnpm codegen
-```
-
-This syncs GIR files from system to `girs/` directory and generates TypeScript classes in `src/generated/`.
-
-## Running Examples
-
-```bash
-cd examples/gtk4-demo
-pnpm start
-```
-
-## System Dependencies
-
-Fedora:
-```bash
-sudo dnf install gtk4-devel gobject-introspection-devel gtksourceview5-devel
-```
-
-Ubuntu/Debian:
-```bash
-sudo apt install libgtk-4-dev gobject-introspection
-```
-
-## Conventions
-
-- **Props**: camelCase with `onEvent` handlers
-- **Constructor params**: Extracted from props via `CONSTRUCTOR_PARAMS` in generated code
-- **Formatting**: Biome with 4-space indent, 120 line width
-
-## Code Style
+- Dev-only dependencies should go in the root level `devDependencies`
+- Package-specific dependencies should go in each package's `dependencies` or `devDependencies`
+- Use workspace protocol (`"workspace:*"`) for inter-package dependencies
+- Install packages with `pnpm add <package> -w` to add to root `devDependencies`, or `pnpm add <package>` for package-specific dependencies
 
 ### Functional Programming
 
 - Prefer functional programming over imperative/OOP
-- Use pure functions and immutable data
-- Only use classes when encapsulation is necessary (e.g., FFI bindings)
+- Only use classes when encapsulation is necessary
 
 ### Modern TypeScript
 
-- Use latest ES2024+ features whenever possible
-- Use `const` arrow functions for exports
-- Prefer nullish coalescing (`??`) over logical OR (`||`)
-- Use optional chaining (`?.`) where appropriate
-- Avoid type casts (`as`) - use type guards instead
-- Avoid `as unknown` casts - refactor to use proper types
-- Avoid non-null assertions (`!`) - use proper null checks or type narrowing
-- Ensure there are no TypeScript errors after any code change
+- Use latest ESNext/NodeNext features as much as possible
+- Avoid `any` - for unknown types, use `unknown` instead, then narrow the type
+- Avoid type casts (especially `as unknown as T`) - refactor to use proper types
+- Absolutely avoid non-null assertions (`!`) - use proper null checks or type narrowing
+- Use project references: each package should have a main `tsconfig.json` that references a `tsconfig.{app,lib}.json` + an optional `tsconfig.test.json`. The test config should then reference the app/lib config. `app` is for examples, `lib` for packages. And they should both extend from `tsconfig.base.json` at the root.
 
-### No Comments
+### Comments
 
 - Code should be self-documenting
 - Never add inline comments - if code needs explanation, refactor it
@@ -141,17 +84,16 @@ sudo apt install libgtk-4-dev gobject-introspection
 ### Naming
 
 - Use kebab-case for all files: `my-component.ts`
-- Exception: generated files
-- Names should be clear but not overly specific
+- Names should be clear but not overly specific, and they should be consistent across the codebase
 - Prefer generic reusable names: `setup` over `setupTestsForGtk`
-- Avoid redundant context in names: `loadFile` not `loadGirFile` in a GIR-specific module
+- Use named exports only - never use default exports. Export names should be unique withint a package.
 
 ### Code Reuse
 
 - DRY (Don't Repeat Yourself) is top priority
-- Extract shared logic into utility functions
-- Prefer composition over duplication
 - If code is copied more than once, extract it
+- Never create a `utils` or `helpers` file - instead, prefer domain-named modules, e.g. `auth.ts`, `formatting.ts`, etc.
+- Never compromise on quality to save time - refactor properly, ensure the original goal is met
 
 ### Dead Code
 
@@ -159,3 +101,15 @@ sudo apt install libgtk-4-dev gobject-introspection
 - Run `pnpm knip` to detect unused exports
 - Remove unused imports, variables, and functions immediately
 - Never leave commented-out code in the codebase
+
+### Testing
+
+- All packages must have tests covering core functionality, in `tests/` directories at the package root
+- The tests should mirror the naming inside the `src/` directory
+- There should be one test file per source file, e.g. `src/button.ts` -> `tests/button.test.ts`
+- For the most part, the focus should be on unit testing. Integration tests should be reserved for cases where the testable outcome is not the result of a single unit (function/method). For example, React Reconciler behavior should be tested with integration tests.
+- If needed, a `tests/setup.ts` file can be created for shared test setup code (`beforeEach`, mocks, etc.) for each package.
+- Other necessary functions (such as shared utilities, e.g. `render`) can be placed in a `tests/utils.ts` file.
+- Tests should be thorough, exercising all possible permutations of the function/method arguments.
+- Tests should assert/expect specific outcomes, not just that no errors are thrown (unless that is the specific behavior being tested).
+- Only mock external dependencies when absolutely necessary. Prefer testing with real instances where possible.
