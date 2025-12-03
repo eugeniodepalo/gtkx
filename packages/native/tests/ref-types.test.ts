@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call, createRef } from "../index.js";
-import { GDK_LIB, GLIB_LIB, GTK_LIB, setup } from "./integration.js";
+import { GDK_LIB, GLIB_LIB, GTK_LIB, setup } from "./utils.js";
 
 setup();
 
@@ -175,5 +175,137 @@ describe("Ref with GObject Types", () => {
             borrowed: true,
         });
         expect(clipboard).not.toBeNull();
+    });
+});
+
+describe("Ref with Multiple Out Parameters", () => {
+    it("should handle multiple Ref<i32> out parameters", () => {
+        const window = call(GTK_LIB, "gtk_window_new", [], { type: "gobject", borrowed: true });
+
+        call(
+            GTK_LIB,
+            "gtk_window_set_default_size",
+            [
+                { type: { type: "gobject" }, value: window },
+                { type: { type: "int", size: 32, unsigned: false }, value: 1024 },
+                { type: { type: "int", size: 32, unsigned: false }, value: 768 },
+            ],
+            { type: "undefined" },
+        );
+
+        const widthRef = createRef(0);
+        const heightRef = createRef(0);
+
+        call(
+            GTK_LIB,
+            "gtk_window_get_default_size",
+            [
+                { type: { type: "gobject" }, value: window },
+                { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: widthRef },
+                { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: heightRef },
+            ],
+            { type: "undefined" },
+        );
+
+        expect(widthRef.value).toBe(1024);
+        expect(heightRef.value).toBe(768);
+    });
+
+    it("should handle zero values via out parameters", () => {
+        const window = call(GTK_LIB, "gtk_window_new", [], { type: "gobject", borrowed: true });
+
+        const widthRef = createRef(999);
+        const heightRef = createRef(999);
+
+        call(
+            GTK_LIB,
+            "gtk_window_get_default_size",
+            [
+                { type: { type: "gobject" }, value: window },
+                { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: widthRef },
+                { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: heightRef },
+            ],
+            { type: "undefined" },
+        );
+
+        expect(widthRef.value).toBe(0);
+        expect(heightRef.value).toBe(0);
+    });
+});
+
+describe("Ref with Boxed Error Type", () => {
+    it("should handle null GError when operation succeeds", () => {
+        const keyFile = call(GLIB_LIB, "g_key_file_new", [], {
+            type: "boxed",
+            borrowed: true,
+            innerType: "GKeyFile",
+            lib: GLIB_LIB,
+        });
+
+        call(
+            GLIB_LIB,
+            "g_key_file_set_string",
+            [
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "string" }, value: "Section" },
+                { type: { type: "string" }, value: "Key" },
+                { type: { type: "string" }, value: "TestValue" },
+            ],
+            { type: "undefined" },
+        );
+
+        const errorRef = createRef(null);
+
+        const result = call(
+            GLIB_LIB,
+            "g_key_file_get_string",
+            [
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "string" }, value: "Section" },
+                { type: { type: "string" }, value: "Key" },
+                {
+                    type: {
+                        type: "ref",
+                        innerType: { type: "boxed", innerType: "GError", lib: GLIB_LIB },
+                    },
+                    value: errorRef,
+                },
+            ],
+            { type: "string" },
+        );
+
+        expect(result).toBe("TestValue");
+        expect(errorRef.value).toBeNull();
+    });
+
+    it("should populate GError when operation fails", () => {
+        const keyFile = call(GLIB_LIB, "g_key_file_new", [], {
+            type: "boxed",
+            borrowed: true,
+            innerType: "GKeyFile",
+            lib: GLIB_LIB,
+        });
+
+        const errorRef = createRef(null);
+
+        call(
+            GLIB_LIB,
+            "g_key_file_get_string",
+            [
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "string" }, value: "NonExistent" },
+                { type: { type: "string" }, value: "Key" },
+                {
+                    type: {
+                        type: "ref",
+                        innerType: { type: "boxed", innerType: "GError", lib: GLIB_LIB },
+                    },
+                    value: errorRef,
+                },
+            ],
+            { type: "string" },
+        );
+
+        expect(errorRef.value).not.toBeNull();
     });
 });

@@ -111,12 +111,10 @@ GTK also provides built-in CSS classes like `suggested-action`, `destructive-act
 Use `@gtkx/testing` for Testing Library-style component tests:
 
 ```tsx
-import { cleanup, render, screen, setup, userEvent } from "@gtkx/testing";
+import { cleanup, render, screen, userEvent, fireEvent } from "@gtkx/testing";
 import { AccessibleRole } from "@gtkx/ffi/gtk";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "./app.js";
-
-setup();
 
 describe("Counter", () => {
   afterEach(() => cleanup());
@@ -131,8 +129,44 @@ describe("Counter", () => {
 
     await screen.findByText("Count: 1");
   });
+
+  it("can also use fireEvent for synchronous events", async () => {
+    render(<App />);
+
+    const button = await screen.findByRole(AccessibleRole.BUTTON, {
+      name: "Increment",
+    });
+    fireEvent.click(button);
+
+    await screen.findByText("Count: 1");
+  });
 });
 ```
+
+### Available APIs
+
+**Queries** - Find elements in the rendered tree:
+- `getBy*` / `getAllBy*` - Throws if not found
+- `queryBy*` / `queryAllBy*` - Returns null/empty array if not found
+- `findBy*` / `findAllBy*` - Async, waits for element
+
+Query types: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
+
+**User Interactions**:
+- `userEvent.click(element)` - Simulate click
+- `userEvent.dblClick(element)` - Simulate double click
+- `userEvent.type(element, text)` - Type text into input
+- `userEvent.clear(element)` - Clear input text
+- `userEvent.setup()` - Create reusable instance
+
+**Low-level Events**:
+- `fireEvent(element, signalName)` - Emit any GTK signal
+- `fireEvent.click(element)` - Emit clicked signal
+- `fireEvent.activate(element)` - Emit activate signal
+
+**Utilities**:
+- `waitFor(callback)` - Wait for condition
+- `waitForElementToBeRemoved(element)` - Wait for element removal
 
 ## Examples
 

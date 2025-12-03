@@ -37,7 +37,7 @@
     "scripts": {
         "build": "tsc -b && cp index.node dist/ && cp ../../README.md .",
         "native-build": "cargo build --message-format=json-render-diagnostics --release > cargo.log && neon dist < cargo.log",
-        "test": "xvfb-run -a vitest run"
+        "test": "GDK_BACKEND=x11 xvfb-run -a vitest run"
     },
     "devDependencies": {
         "@neon-rs/cli": "0.1.82"

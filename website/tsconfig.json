@@ -1,5 +1,4 @@
 {
-    "extends": "@docusaurus/tsconfig",
     "compilerOptions": {
         "baseUrl": ".",
         "module": "ESNext",
@@ -9,5 +8,6 @@
         "strict": true,
         "skipLibCheck": true
     },
+    "extends": "@docusaurus/tsconfig",
     "include": ["src", "docs", "docusaurus.config.ts", "sidebars.ts"]
 }

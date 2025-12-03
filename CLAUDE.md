@@ -32,7 +32,7 @@ pnpm run docs                            # Start documentation site
 # Testing
 turbo test                               # Run all tests
 turbo test --filter=@gtkx/react          # Run tests for a specific package
-xvfb-run -a pnpm vitest run tests/file.test.ts  # Run a single test file (requires xvfb)
+GDK_BACKEND=x11 xvfb-run -a pnpm vitest run tests/file.test.ts  # Run a single test file (requires xvfb)
 
 # Code generation
 turbo codegen                            # Generate FFI bindings from GIR files

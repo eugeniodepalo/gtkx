@@ -2,21 +2,30 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { type Accessible, AccessibleRole } from "@gtkx/ffi/gtk";
 import { call } from "@gtkx/native";
 import { findAll } from "./traversal.js";
-import type { ByRoleOptions } from "./types.js";
+import type { ByRoleOptions, TextMatchOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
+import { getWidgetPtr } from "./widget.js";
 
 type Container = Gtk.Application | Gtk.Widget;
 
-const matchText = (actual: string | null, expected: string | RegExp): boolean => {
-    if (actual === null) return false;
-    return typeof expected === "string" ? actual === expected : expected.test(actual);
+const DEFAULT_NORMALIZER = (text: string): string => text.trim().replace(/\s+/g, " ");
+
+const normalizeText = (text: string, options?: TextMatchOptions): string => {
+    const normalizer = options?.normalizer ?? DEFAULT_NORMALIZER;
+    return normalizer(text);
 };
 
-type WidgetWithPtr = { ptr: unknown };
+const matchText = (actual: string | null, expected: string | RegExp, options?: TextMatchOptions): boolean => {
+    if (actual === null) return false;
 
-const getWidgetPtr = (widget: unknown): unknown | null => {
-    const w = widget as WidgetWithPtr;
-    return w.ptr ?? null;
+    const normalizedActual = normalizeText(actual, options);
+    const exact = options?.exact ?? true;
+
+    if (typeof expected === "string") {
+        const normalizedExpected = normalizeText(expected, options);
+        return exact ? normalizedActual === normalizedExpected : normalizedActual.includes(normalizedExpected);
+    }
+    return expected.test(normalizedActual);
 };
 
 const callGetter = (ptr: unknown, funcName: string): string | null => {
@@ -77,63 +86,291 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
     }
 };
 
+const getWidgetTestId = (widget: Gtk.Widget): string | null => {
+    const ptr = getWidgetPtr(widget);
+    if (!ptr) return null;
+
+    const result = call("libgtk-4.so.1", "gtk_widget_get_name", [{ type: { type: "gobject" }, value: ptr }], {
+        type: "string",
+        borrowed: true,
+    });
+    return result as string | null;
+};
+
+const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
+    const ptr = getWidgetPtr(widget);
+    if (!ptr) return undefined;
+
+    const accessible = widget as unknown as Accessible;
+    const role = accessible.getAccessibleRole();
+
+    if (role === AccessibleRole.CHECKBOX || role === AccessibleRole.RADIO) {
+        const result = call(
+            "libgtk-4.so.1",
+            "gtk_check_button_get_active",
+            [{ type: { type: "gobject" }, value: ptr }],
+            {
+                type: "boolean",
+            },
+        );
+        return result === true;
+    }
+
+    if (role === AccessibleRole.TOGGLE_BUTTON) {
+        const result = call(
+            "libgtk-4.so.1",
+            "gtk_toggle_button_get_active",
+            [{ type: { type: "gobject" }, value: ptr }],
+            { type: "boolean" },
+        );
+        return result === true;
+    }
+
+    return undefined;
+};
+
+const getWidgetExpandedState = (widget: Gtk.Widget): boolean | undefined => {
+    const ptr = getWidgetPtr(widget);
+    if (!ptr) return undefined;
+
+    const accessible = widget as unknown as Accessible;
+    const role = accessible.getAccessibleRole();
+
+    if (role === AccessibleRole.BUTTON) {
+        const expanderPtr = call(
+            "libgtk-4.so.1",
+            "gtk_widget_get_parent",
+            [{ type: { type: "gobject" }, value: ptr }],
+            { type: "gobject" },
+        );
+        if (!expanderPtr) return undefined;
+
+        const result = call(
+            "libgtk-4.so.1",
+            "gtk_expander_get_expanded",
+            [{ type: { type: "gobject" }, value: expanderPtr }],
+            { type: "boolean" },
+        );
+        return result === true;
+    }
+
+    return undefined;
+};
+
+const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {
+    if (!options) return true;
+
+    if (options.name !== undefined) {
+        const text = getWidgetText(widget);
+        if (!matchText(text, options.name, options)) return false;
+    }
+
+    if (options.checked !== undefined) {
+        const checked = getWidgetCheckedState(widget);
+        if (checked !== options.checked) return false;
+    }
+
+    if (options.expanded !== undefined) {
+        const expanded = getWidgetExpandedState(widget);
+        if (expanded !== options.expanded) return false;
+    }
+
+    return true;
+};
+
 const formatRole = (role: AccessibleRole): string => AccessibleRole[role] ?? String(role);
 
-export const getByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget => {
+const formatByRoleError = (role: AccessibleRole, options?: ByRoleOptions): string => {
+    const parts = [`role "${formatRole(role)}"`];
+    if (options?.name) parts.push(`name "${options.name}"`);
+    if (options?.checked !== undefined) parts.push(`checked=${options.checked}`);
+    if (options?.pressed !== undefined) parts.push(`pressed=${options.pressed}`);
+    if (options?.selected !== undefined) parts.push(`selected=${options.selected}`);
+    if (options?.expanded !== undefined) parts.push(`expanded=${options.expanded}`);
+    if (options?.level !== undefined) parts.push(`level=${options.level}`);
+    return parts.join(" and ");
+};
+
+export const getAllByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
         const accessible = node as unknown as Accessible;
         if (accessible.getAccessibleRole() !== role) return false;
-        if (options?.name) {
-            const text = getWidgetText(node);
-            return matchText(text, options.name);
-        }
-        return true;
+        return matchByRoleOptions(node, options);
     });
 
-    const nameInfo = options?.name ? ` and name "${options.name}"` : "";
-    const [match, ...rest] = matches;
-
-    if (!match) {
-        throw new Error(`Unable to find element with role "${formatRole(role)}"${nameInfo}`);
+    if (matches.length === 0) {
+        throw new Error(`Unable to find any elements with ${formatByRoleError(role, options)}`);
     }
-    if (rest.length > 0) {
-        throw new Error(`Found ${matches.length} elements with role "${formatRole(role)}"${nameInfo}`);
-    }
-    return match;
+    return matches;
 };
 
-export const getByLabelText = (container: Container, text: string | RegExp): Gtk.Widget => {
+export const getByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget => {
+    const matches = getAllByRole(container, role, options);
+
+    if (matches.length > 1) {
+        throw new Error(`Found ${matches.length} elements with ${formatByRoleError(role, options)}`);
+    }
+    return matches[0] as Gtk.Widget;
+};
+
+export const queryAllByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
+    return findAll(container, (node) => {
+        const accessible = node as unknown as Accessible;
+        if (accessible.getAccessibleRole() !== role) return false;
+        return matchByRoleOptions(node, options);
+    });
+};
+
+export const queryByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget | null => {
+    const matches = queryAllByRole(container, role, options);
+
+    if (matches.length > 1) {
+        throw new Error(`Found ${matches.length} elements with ${formatByRoleError(role, options)}`);
+    }
+    return matches[0] ?? null;
+};
+
+export const getAllByLabelText = (
+    container: Container,
+    text: string | RegExp,
+    options?: TextMatchOptions,
+): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
         const widgetText = getWidgetText(node);
-        return matchText(widgetText, text);
+        return matchText(widgetText, text, options);
     });
 
-    const [match, ...rest] = matches;
-
-    if (!match) {
-        throw new Error(`Unable to find element with label text "${text}"`);
+    if (matches.length === 0) {
+        throw new Error(`Unable to find any elements with label text "${text}"`);
     }
-    if (rest.length > 0) {
+    return matches;
+};
+
+export const getByLabelText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
+    const matches = getAllByLabelText(container, text, options);
+
+    if (matches.length > 1) {
         throw new Error(`Found ${matches.length} elements with label text "${text}"`);
     }
-    return match;
+    return matches[0] as Gtk.Widget;
 };
 
-export const getByText = (container: Container, text: string | RegExp): Gtk.Widget => {
+export const queryAllByLabelText = (
+    container: Container,
+    text: string | RegExp,
+    options?: TextMatchOptions,
+): Gtk.Widget[] => {
+    return findAll(container, (node) => {
+        const widgetText = getWidgetText(node);
+        return matchText(widgetText, text, options);
+    });
+};
+
+export const queryByLabelText = (
+    container: Container,
+    text: string | RegExp,
+    options?: TextMatchOptions,
+): Gtk.Widget | null => {
+    const matches = queryAllByLabelText(container, text, options);
+
+    if (matches.length > 1) {
+        throw new Error(`Found ${matches.length} elements with label text "${text}"`);
+    }
+    return matches[0] ?? null;
+};
+
+export const getAllByText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
         const widgetText = getWidgetText(node);
-        return matchText(widgetText, text);
+        return matchText(widgetText, text, options);
     });
 
-    const [match, ...rest] = matches;
-
-    if (!match) {
-        throw new Error(`Unable to find element with text "${text}"`);
+    if (matches.length === 0) {
+        throw new Error(`Unable to find any elements with text "${text}"`);
     }
-    if (rest.length > 0) {
+    return matches;
+};
+
+export const getByText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
+    const matches = getAllByText(container, text, options);
+
+    if (matches.length > 1) {
         throw new Error(`Found ${matches.length} elements with text "${text}"`);
     }
-    return match;
+    return matches[0] as Gtk.Widget;
+};
+
+export const queryAllByText = (
+    container: Container,
+    text: string | RegExp,
+    options?: TextMatchOptions,
+): Gtk.Widget[] => {
+    return findAll(container, (node) => {
+        const widgetText = getWidgetText(node);
+        return matchText(widgetText, text, options);
+    });
+};
+
+export const queryByText = (
+    container: Container,
+    text: string | RegExp,
+    options?: TextMatchOptions,
+): Gtk.Widget | null => {
+    const matches = queryAllByText(container, text, options);
+
+    if (matches.length > 1) {
+        throw new Error(`Found ${matches.length} elements with text "${text}"`);
+    }
+    return matches[0] ?? null;
+};
+
+export const getAllByTestId = (
+    container: Container,
+    testId: string | RegExp,
+    options?: TextMatchOptions,
+): Gtk.Widget[] => {
+    const matches = findAll(container, (node) => {
+        const widgetTestId = getWidgetTestId(node);
+        return matchText(widgetTestId, testId, options);
+    });
+
+    if (matches.length === 0) {
+        throw new Error(`Unable to find any elements with test id "${testId}"`);
+    }
+    return matches;
+};
+
+export const getByTestId = (container: Container, testId: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
+    const matches = getAllByTestId(container, testId, options);
+
+    if (matches.length > 1) {
+        throw new Error(`Found ${matches.length} elements with test id "${testId}"`);
+    }
+    return matches[0] as Gtk.Widget;
+};
+
+export const queryAllByTestId = (
+    container: Container,
+    testId: string | RegExp,
+    options?: TextMatchOptions,
+): Gtk.Widget[] => {
+    return findAll(container, (node) => {
+        const widgetTestId = getWidgetTestId(node);
+        return matchText(widgetTestId, testId, options);
+    });
+};
+
+export const queryByTestId = (
+    container: Container,
+    testId: string | RegExp,
+    options?: TextMatchOptions,
+): Gtk.Widget | null => {
+    const matches = queryAllByTestId(container, testId, options);
+
+    if (matches.length > 1) {
+        throw new Error(`Found ${matches.length} elements with test id "${testId}"`);
+    }
+    return matches[0] ?? null;
 };
 
 export const findByRole = async (
@@ -142,8 +379,44 @@ export const findByRole = async (
     options?: ByRoleOptions,
 ): Promise<Gtk.Widget> => waitFor(() => getByRole(container, role, options));
 
-export const findByLabelText = async (container: Container, text: string | RegExp): Promise<Gtk.Widget> =>
-    waitFor(() => getByLabelText(container, text));
+export const findAllByRole = async (
+    container: Container,
+    role: AccessibleRole,
+    options?: ByRoleOptions,
+): Promise<Gtk.Widget[]> => waitFor(() => getAllByRole(container, role, options));
 
-export const findByText = async (container: Container, text: string | RegExp): Promise<Gtk.Widget> =>
-    waitFor(() => getByText(container, text));
+export const findByLabelText = async (
+    container: Container,
+    text: string | RegExp,
+    options?: TextMatchOptions,
+): Promise<Gtk.Widget> => waitFor(() => getByLabelText(container, text, options));
+
+export const findAllByLabelText = async (
+    container: Container,
+    text: string | RegExp,
+    options?: TextMatchOptions,
+): Promise<Gtk.Widget[]> => waitFor(() => getAllByLabelText(container, text, options));
+
+export const findByText = async (
+    container: Container,
+    text: string | RegExp,
+    options?: TextMatchOptions,
+): Promise<Gtk.Widget> => waitFor(() => getByText(container, text, options));
+
+export const findAllByText = async (
+    container: Container,
+    text: string | RegExp,
+    options?: TextMatchOptions,
+): Promise<Gtk.Widget[]> => waitFor(() => getAllByText(container, text, options));
+
+export const findByTestId = async (
+    container: Container,
+    testId: string | RegExp,
+    options?: TextMatchOptions,
+): Promise<Gtk.Widget> => waitFor(() => getByTestId(container, testId, options));
+
+export const findAllByTestId = async (
+    container: Container,
+    testId: string | RegExp,
+    options?: TextMatchOptions,
+): Promise<Gtk.Widget[]> => waitFor(() => getAllByTestId(container, testId, options));

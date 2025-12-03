@@ -1,1 +1,1 @@
-export { teardown } from "./integration.js";
+export { teardown } from "./utils.js";

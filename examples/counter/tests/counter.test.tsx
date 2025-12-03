@@ -1,9 +1,7 @@
 import { AccessibleRole } from "@gtkx/ffi/gtk";
-import { cleanup, render, screen, setup, userEvent } from "@gtkx/testing";
+import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
-
-setup();
 
 describe("Counter", () => {
     afterEach(async () => {

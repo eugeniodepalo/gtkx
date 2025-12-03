@@ -1,13 +1,13 @@
 {
     "$schema": "https://unpkg.com/knip@5/schema.json",
     "workspaces": {
-        "{packages,examples}/*": {
-            "project": ["src/**/*", "tests/**/*"]
-        },
         "website": {
             "docusaurus": true,
             "ignore": ["build/**", ".docusaurus/**", "docs/api/**"],
-            "ignoreDependencies": ["typedoc", "@docusaurus/plugin-content-docs"]
+            "ignoreDependencies": ["typedoc", "@docusaurus/*", "@theme/*"]
+        },
+        "{packages,examples}/*": {
+            "project": ["src/**/*", "tests/**/*"]
         }
     }
 }

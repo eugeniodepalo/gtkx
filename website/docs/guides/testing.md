@@ -30,12 +30,12 @@ export default defineConfig({
 
 ### `package.json`
 
-Tests require `xvfb-run` because GTK needs a display:
+Tests require `xvfb-run` because GTK needs a display. On Wayland systems, set `GDK_BACKEND=x11` to ensure windows render offscreen:
 
 ```json
 {
   "scripts": {
-    "test": "xvfb-run -a vitest run"
+    "test": "GDK_BACKEND=x11 xvfb-run -a vitest run"
   }
 }
 ```

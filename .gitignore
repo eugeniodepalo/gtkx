@@ -6,3 +6,4 @@ generated
 dist
 node_modules
 out-tsc
+packages/**/README.md

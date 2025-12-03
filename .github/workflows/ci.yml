@@ -68,6 +68,6 @@ jobs:
         run: pnpm knip
 
       - name: Run tests
-        run: xvfb-run -a pnpm test
+        run: pnpm test
         env:
           GTK_A11Y: none

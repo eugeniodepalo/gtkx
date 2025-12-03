@@ -11,23 +11,6 @@
         "swizzle": "docusaurus swizzle",
         "write-heading-ids": "docusaurus write-heading-ids"
     },
-    "dependencies": {
-        "@docusaurus/core": "3.7.0",
-        "@docusaurus/preset-classic": "3.7.0",
-        "@mdx-js/react": "3.1.0",
-        "clsx": "2.1.1",
-        "prism-react-renderer": "2.4.1",
-        "react": "19.1.0",
-        "react-dom": "19.1.0"
-    },
-    "devDependencies": {
-        "@docusaurus/module-type-aliases": "3.7.0",
-        "@docusaurus/tsconfig": "3.7.0",
-        "@docusaurus/types": "3.7.0",
-        "docusaurus-plugin-typedoc": "1.4.2",
-        "typedoc": "0.28.15",
-        "typedoc-plugin-markdown": "4.9.0"
-    },
     "browserslist": {
         "production": [
             ">0.5%",
@@ -39,6 +22,23 @@
             "last 3 firefox version",
             "last 5 safari version"
         ]
+    },
+    "dependencies": {
+        "@mdx-js/react": "3.1.0",
+        "clsx": "2.1.1",
+        "prism-react-renderer": "2.4.1",
+        "react": "19.1.0",
+        "react-dom": "19.1.0"
+    },
+    "devDependencies": {
+        "@docusaurus/core": "3.9.2",
+        "@docusaurus/module-type-aliases": "3.9.2",
+        "@docusaurus/preset-classic": "3.9.2",
+        "@docusaurus/tsconfig": "3.9.2",
+        "@docusaurus/types": "3.9.2",
+        "docusaurus-plugin-typedoc": "1.4.2",
+        "typedoc": "0.28.15",
+        "typedoc-plugin-markdown": "4.9.0"
     },
     "engines": {
         "node": ">=18.0"

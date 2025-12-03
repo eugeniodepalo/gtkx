@@ -41,7 +41,7 @@
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",
         "codegen": "tsx scripts/codegen.ts",
-        "test": "xvfb-run -a vitest run"
+        "test": "GDK_BACKEND=x11 xvfb-run -a vitest run"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",

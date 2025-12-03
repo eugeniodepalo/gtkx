@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { alloc, call, read, write } from "../index.js";
-import { GLIB_LIB, GTK_LIB, setup } from "./integration.js";
+import { GLIB_LIB, GTK_LIB, setup } from "./utils.js";
 
 setup();
 
@@ -230,5 +230,138 @@ describe("Null and Undefined Types", () => {
             ],
             { type: "undefined" },
         );
+    });
+});
+
+describe("16-bit Integer Types", () => {
+    it("should handle i16 read/write", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "int", size: 16, unsigned: false }, 0, 12345);
+        const result = read(ptr, { type: "int", size: 16, unsigned: false }, 0);
+        expect(result).toBe(12345);
+    });
+
+    it("should handle u16 read/write", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "int", size: 16, unsigned: true }, 0, 50000);
+        const result = read(ptr, { type: "int", size: 16, unsigned: true }, 0);
+        expect(result).toBe(50000);
+    });
+
+    it("should handle i16 negative values", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "int", size: 16, unsigned: false }, 0, -1000);
+        const result = read(ptr, { type: "int", size: 16, unsigned: false }, 0);
+        expect(result).toBe(-1000);
+    });
+
+    it("should handle i16 boundary values", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "int", size: 16, unsigned: false }, 0, 32767);
+        expect(read(ptr, { type: "int", size: 16, unsigned: false }, 0)).toBe(32767);
+
+        write(ptr, { type: "int", size: 16, unsigned: false }, 0, -32768);
+        expect(read(ptr, { type: "int", size: 16, unsigned: false }, 0)).toBe(-32768);
+    });
+
+    it("should handle u16 boundary values", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "int", size: 16, unsigned: true }, 0, 65535);
+        expect(read(ptr, { type: "int", size: 16, unsigned: true }, 0)).toBe(65535);
+
+        write(ptr, { type: "int", size: 16, unsigned: true }, 0, 0);
+        expect(read(ptr, { type: "int", size: 16, unsigned: true }, 0)).toBe(0);
+    });
+});
+
+describe("Integer Boundary Values", () => {
+    it("should handle u8 boundaries", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "int", size: 8, unsigned: true }, 0, 255);
+        expect(read(ptr, { type: "int", size: 8, unsigned: true }, 0)).toBe(255);
+
+        write(ptr, { type: "int", size: 8, unsigned: true }, 0, 0);
+        expect(read(ptr, { type: "int", size: 8, unsigned: true }, 0)).toBe(0);
+    });
+
+    it("should handle i8 boundaries", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "int", size: 8, unsigned: false }, 0, 127);
+        expect(read(ptr, { type: "int", size: 8, unsigned: false }, 0)).toBe(127);
+
+        write(ptr, { type: "int", size: 8, unsigned: false }, 0, -128);
+        expect(read(ptr, { type: "int", size: 8, unsigned: false }, 0)).toBe(-128);
+    });
+
+    it("should handle u32 max value", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "int", size: 32, unsigned: true }, 0, 4294967295);
+        expect(read(ptr, { type: "int", size: 32, unsigned: true }, 0)).toBe(4294967295);
+    });
+
+    it("should handle i64 boundaries", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "int", size: 64, unsigned: false }, 0, Number.MAX_SAFE_INTEGER);
+        expect(read(ptr, { type: "int", size: 64, unsigned: false }, 0)).toBe(Number.MAX_SAFE_INTEGER);
+
+        write(ptr, { type: "int", size: 64, unsigned: false }, 0, Number.MIN_SAFE_INTEGER);
+        expect(read(ptr, { type: "int", size: 64, unsigned: false }, 0)).toBe(Number.MIN_SAFE_INTEGER);
+    });
+
+    it("should handle u64 large values", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "int", size: 64, unsigned: true }, 0, Number.MAX_SAFE_INTEGER);
+        expect(read(ptr, { type: "int", size: 64, unsigned: true }, 0)).toBe(Number.MAX_SAFE_INTEGER);
+    });
+});
+
+describe("Special Float Values", () => {
+    it("should handle positive infinity", () => {
+        const result = call(
+            GLIB_LIB,
+            "g_ascii_strtod",
+            [
+                { type: { type: "string" }, value: "inf" },
+                { type: { type: "null" }, value: null },
+            ],
+            { type: "float", size: 64 },
+        );
+        expect(result).toBe(Infinity);
+    });
+
+    it("should handle negative infinity", () => {
+        const result = call(
+            GLIB_LIB,
+            "g_ascii_strtod",
+            [
+                { type: { type: "string" }, value: "-inf" },
+                { type: { type: "null" }, value: null },
+            ],
+            { type: "float", size: 64 },
+        );
+        expect(result).toBe(-Infinity);
+    });
+
+    it("should handle NaN", () => {
+        const result = call(
+            GLIB_LIB,
+            "g_ascii_strtod",
+            [
+                { type: { type: "string" }, value: "nan" },
+                { type: { type: "null" }, value: null },
+            ],
+            { type: "float", size: 64 },
+        );
+        expect(Number.isNaN(result)).toBe(true);
+    });
+
+    it("should handle f32 special values via read/write", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+
+        write(ptr, { type: "float", size: 32 }, 0, Infinity);
+        expect(read(ptr, { type: "float", size: 32 }, 0)).toBe(Infinity);
+
+        write(ptr, { type: "float", size: 32 }, 0, -Infinity);
+        expect(read(ptr, { type: "float", size: 32 }, 0)).toBe(-Infinity);
     });
 });
