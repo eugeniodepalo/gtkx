@@ -310,9 +310,7 @@ ${widgetPropsContent}
         const namedChildPropNames = new Set(metadata.namedChildSlots.map((s) => toCamelCase(s.propertyName)));
 
         const lines: string[] = [];
-        if (widget.doc) {
-            lines.push(formatDoc(widget.doc).trimEnd());
-        }
+        lines.push(`/** Props for the {@link ${widgetName}} widget. */`);
         lines.push(`export interface ${widgetName}Props extends ${parentPropsName} {`);
 
         const requiredCtorParams = this.getRequiredConstructorParams(widget);

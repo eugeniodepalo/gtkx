@@ -198,6 +198,9 @@ const GLAreaDemo = () => {
             GL.glBindVertexArray(0);
 
             glResources.current = { program, vao, vbo, mvpLocation };
+
+            // Queue initial render now that resources are ready
+            area.queueRender();
         } catch (e) {
             setError(`GL initialization error: ${e}`);
         }
