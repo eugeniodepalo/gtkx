@@ -1,7 +1,7 @@
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "./factory.js";
-import { CONSTRUCTOR_PARAMS } from "./generated/jsx.js";
+import { CONSTRUCTOR_PARAMS, SETTER_GETTERS } from "./generated/jsx.js";
 import { isAppendable, isRemovable, isSingleChild } from "./predicates.js";
 
 type WidgetConstructor = new (...args: unknown[]) => Gtk.Widget;
@@ -19,12 +19,15 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
 
     protected signalHandlers = new Map<string, number>();
     protected widget: T;
+    protected widgetType: string;
 
     protected isVirtual(): boolean {
         return false;
     }
 
     constructor(type: string, props: Props, app: Gtk.Application, existingWidget?: Gtk.Widget) {
+        this.widgetType = type.split(".")[0] || type;
+
         if (existingWidget) {
             this.widget = existingWidget as T;
             return;
@@ -121,6 +124,9 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         const consumed = this.consumedProps();
         const allKeys = new Set([...Object.keys(oldProps), ...Object.keys(newProps)]);
 
+        const signalUpdates: { key: string; newValue: unknown }[] = [];
+        const propertyUpdates: { key: string; newValue: unknown }[] = [];
+
         for (const key of allKeys) {
             if (consumed.has(key)) continue;
 
@@ -130,36 +136,48 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
             if (oldValue === newValue) continue;
 
             if (key.startsWith("on")) {
-                this.setSignalProperty(widget, key, newValue);
-                continue;
+                signalUpdates.push({ key, newValue });
+            } else if (newValue !== undefined) {
+                propertyUpdates.push({ key, newValue });
             }
+        }
 
-            if (newValue === undefined) continue;
+        for (const { key } of signalUpdates) {
+            this.disconnectSignal(this.propKeyToEventName(key));
+        }
 
+        for (const { key, newValue } of propertyUpdates) {
             this.setProperty(widget, key, newValue);
+        }
+
+        for (const { key, newValue } of signalUpdates) {
+            if (typeof newValue === "function") {
+                this.connectSignal(widget, this.propKeyToEventName(key), newValue as (...args: unknown[]) => unknown);
+            }
         }
     }
 
-    protected setSignalProperty(widget: Gtk.Widget, key: string, handler: unknown): void {
-        const eventName = key
+    protected propKeyToEventName(key: string): string {
+        return key
             .slice(2)
             .replace(/([A-Z])/g, "-$1")
             .toLowerCase()
             .replace(/^-/, "");
+    }
 
-        const oldHandlerId = this.signalHandlers.get(eventName);
+    protected disconnectSignal(eventName: string): void {
+        const handlerId = this.signalHandlers.get(eventName);
 
-        if (oldHandlerId !== undefined) {
-            GObject.signalHandlerDisconnect(widget, oldHandlerId);
+        if (handlerId !== undefined) {
+            const widget = this.getWidget();
+            if (widget) {
+                GObject.signalHandlerDisconnect(widget, handlerId);
+            }
             this.signalHandlers.delete(eventName);
-        }
-
-        if (typeof handler === "function") {
-            this.setSignalHandler(widget, eventName, handler as (...args: unknown[]) => unknown);
         }
     }
 
-    protected setSignalHandler(widget: Gtk.Widget, eventName: string, handler: (...args: unknown[]) => unknown): void {
+    protected connectSignal(widget: Gtk.Widget, eventName: string, handler: (...args: unknown[]) => unknown): void {
         const handlerId = widget.connect(eventName, handler);
         this.signalHandlers.set(eventName, handlerId);
     }
@@ -168,9 +186,22 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         const setterName = `set${key.charAt(0).toUpperCase()}${key.slice(1)}`;
         const setter = widget[setterName as keyof typeof widget];
 
-        if (typeof setter === "function") {
-            (setter as (value: unknown) => void).call(widget, value);
+        if (typeof setter !== "function") return;
+
+        const getterName = SETTER_GETTERS[this.widgetType]?.[setterName];
+        if (getterName) {
+            const getter = widget[getterName as keyof typeof widget];
+            if (typeof getter === "function") {
+                try {
+                    const currentValue = (getter as () => unknown).call(widget);
+                    if (currentValue === value) return;
+                } catch {
+                    // Getter failed (e.g., unsupported return type) - proceed with setter
+                }
+            }
         }
+
+        (setter as (value: unknown) => void).call(widget, value);
     }
 
     mount(_app: Gtk.Application): void {}

@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/ffi",
-    "version": "0.1.26",
+    "version": "0.1.27",
     "description": "Generated TypeScript FFI bindings for GTK4 libraries",
     "keywords": [
         "gtk",

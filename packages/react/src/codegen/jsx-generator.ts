@@ -148,6 +148,7 @@ export class JsxGenerator {
             this.generateCommonTypes(widgetClass),
             widgetPropsInterfaces,
             this.generateConstructorArgsMetadata(widgets),
+            this.generateSetterGetterMap(widgets),
             this.generateExports(widgets, containerMetadata),
             this.generateJsxNamespace(widgets, containerMetadata),
             "export {};",
@@ -464,6 +465,65 @@ ${widgetPropsContent}
         }
 
         return `export const CONSTRUCTOR_PARAMS: Record<string, { name: string; hasDefault: boolean }[]> = {\n${entries.join(",\n")},\n};\n`;
+    }
+
+    private generateSetterGetterMap(widgets: GirClass[]): string {
+        const widgetEntries: string[] = [];
+
+        for (const widget of widgets) {
+            const setterGetterPairs: string[] = [];
+            const allProps = this.collectAllProperties(widget);
+
+            for (const prop of allProps) {
+                if (prop.setter && prop.getter) {
+                    const setterName = toCamelCase(prop.setter);
+                    const getterName = toCamelCase(prop.getter);
+                    setterGetterPairs.push(`"${setterName}": "${getterName}"`);
+                }
+            }
+
+            if (setterGetterPairs.length > 0) {
+                const widgetName = toPascalCase(widget.name);
+                widgetEntries.push(`\t${widgetName}: { ${setterGetterPairs.join(", ")} }`);
+            }
+        }
+
+        if (widgetEntries.length === 0) {
+            return `export const SETTER_GETTERS: Record<string, Record<string, string>> = {};\n`;
+        }
+
+        return `export const SETTER_GETTERS: Record<string, Record<string, string>> = {\n${widgetEntries.join(",\n")},\n};\n`;
+    }
+
+    private collectAllProperties(widget: GirClass): { setter?: string; getter?: string }[] {
+        const props: { setter?: string; getter?: string }[] = [];
+        const seen = new Set<string>();
+
+        let current: GirClass | undefined = widget;
+        while (current) {
+            for (const prop of current.properties) {
+                if (!seen.has(prop.name)) {
+                    seen.add(prop.name);
+                    props.push({ setter: prop.setter, getter: prop.getter });
+                }
+            }
+
+            for (const ifaceName of current.implements) {
+                const iface = this.interfaceMap.get(ifaceName);
+                if (iface) {
+                    for (const prop of iface.properties) {
+                        if (!seen.has(prop.name)) {
+                            seen.add(prop.name);
+                            props.push({ setter: prop.setter, getter: prop.getter });
+                        }
+                    }
+                }
+            }
+
+            current = current.parent ? this.classMap.get(current.parent) : undefined;
+        }
+
+        return props;
     }
 
     private getAncestorInterfaces(widget: GirClass): Set<string> {

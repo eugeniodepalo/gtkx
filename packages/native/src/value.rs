@@ -324,6 +324,43 @@ impl Value {
                     return Ok(Value::Array(values));
                 }
 
+                if let cif::Value::Ptr(ptr) = cif_value {
+                    if ptr.is_null() {
+                        return Ok(Value::Array(vec![]));
+                    }
+
+                    match &*array_type.item_type {
+                        Type::String(_) => {
+                            let mut values = Vec::new();
+                            let str_array = *ptr as *const *const i8;
+                            let mut i = 0;
+                            loop {
+                                let str_ptr = unsafe { *str_array.offset(i) };
+                                if str_ptr.is_null() {
+                                    break;
+                                }
+                                let c_str = unsafe { CStr::from_ptr(str_ptr) };
+                                values.push(Value::String(c_str.to_str().unwrap_or("").to_string()));
+                                i += 1;
+                            }
+
+                            if !array_type.is_borrowed {
+                                unsafe {
+                                    glib::ffi::g_strfreev(*ptr as *mut *mut i8);
+                                }
+                            }
+
+                            return Ok(Value::Array(values));
+                        }
+                        _ => {
+                            bail!(
+                                "Unsupported null-terminated array item type: {:?}",
+                                array_type.item_type
+                            );
+                        }
+                    }
+                }
+
                 let array_ptr = match cif_value {
                     cif::Value::OwnedPtr(ptr) => ptr,
                     _ => {

@@ -13,7 +13,7 @@ use crate::{
     arg::Arg,
     cif,
     state::GtkThreadState,
-    types::{CallbackTrampoline, FloatSize, IntegerSign, IntegerSize, ListType, Type},
+    types::{CallbackTrampoline, FloatSize, IntegerSign, IntegerSize, Type},
     value::Value,
 };
 
@@ -171,18 +171,9 @@ fn handle_call(
                 let ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
                 cif::Value::Ptr(ptr)
             }
-            Type::Array(ref array_type) => {
+            Type::Array(_) => {
                 let ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
-                if array_type.list_type == ListType::GList
-                    || array_type.list_type == ListType::GSList
-                {
-                    cif::Value::Ptr(ptr)
-                } else {
-                    bail!(
-                        "Unsupported array return type (only GList/GSList supported): {:?}",
-                        result_type
-                    )
-                }
+                cif::Value::Ptr(ptr)
             }
             Type::Null => cif::Value::Void,
             _ => bail!("Unsupported return type: {:?}", result_type),

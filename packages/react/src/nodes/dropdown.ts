@@ -66,7 +66,7 @@ export class DropDownNode extends Node<Gtk.DropDown> {
                 this.onSelectionChanged?.(item, index);
             };
 
-            this.setSignalHandler(this.widget, "notify::selected", handler);
+            this.connectSignal(this.widget, "notify::selected", handler);
         }
     }
 
