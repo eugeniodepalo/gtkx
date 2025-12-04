@@ -9,7 +9,7 @@ GTKX provides `@gtkx/css` for CSS-in-JS styling, similar to Emotion. GTK widgets
 ## Installation
 
 ```bash
-pnpm add @gtkx/css
+npm install @gtkx/css
 ```
 
 ## Basic Usage

@@ -53,9 +53,9 @@ React JSX -> @gtkx/react (Reconciler) -> @gtkx/ffi (TS wrappers) -> @gtkx/native
 ### Installation
 
 ```bash
-pnpm add @gtkx/react react
-pnpm add @gtkx/css        # For styling (optional)
-pnpm add -D @gtkx/testing # For testing (optional)
+npm install @gtkx/react react
+npm install @gtkx/css        # For styling (optional)
+npm install -D @gtkx/testing # For testing (optional)
 ```
 
 ### Minimal Example
@@ -96,7 +96,7 @@ export const App = () => {
 };
 ```
 
-Run with: `pnpm tsx index.tsx`
+Run with: `npx tsx index.tsx`
 
 ## Core Concepts
 

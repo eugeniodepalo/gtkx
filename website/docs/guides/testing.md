@@ -9,7 +9,7 @@ GTKX provides `@gtkx/testing`, a Testing Library-inspired package for testing GT
 ## Installation
 
 ```bash
-pnpm add -D @gtkx/testing
+npm install -D @gtkx/testing
 ```
 
 ## Setup

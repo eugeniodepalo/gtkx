@@ -11,7 +11,7 @@ This guide will help you set up GTKX and create your first GTK4 application with
 Before you begin, make sure you have:
 
 - **Node.js 20+** — GTKX uses modern JavaScript features
-- **pnpm, npm, or yarn** — For package management
+- **npm, yarn, or pnpm** — For package management
 - **GTK4 development libraries** — Required for native bindings
 - **Linux** — GTK4 is designed for Linux (GNOME desktop)
 
@@ -42,26 +42,26 @@ Create a new project and install GTKX:
 ```bash
 mkdir my-gtk-app
 cd my-gtk-app
-pnpm init
-pnpm add @gtkx/react @gtkx/ffi react
+npm init -y
+npm install @gtkx/react @gtkx/ffi react
 ```
 
 For TypeScript (recommended):
 
 ```bash
-pnpm add -D @types/react tsx typescript
+npm install -D @types/react tsx typescript
 ```
 
 For styling support:
 
 ```bash
-pnpm add @gtkx/css
+npm install @gtkx/css
 ```
 
 For testing support:
 
 ```bash
-pnpm add -D @gtkx/testing
+npm install -D @gtkx/testing
 ```
 
 ## Project Setup
@@ -156,7 +156,7 @@ export const App = () => {
 Start your application:
 
 ```bash
-pnpm start
+npm start
 ```
 
 You should see a native GTK4 window with your counter application!
