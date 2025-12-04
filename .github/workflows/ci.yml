@@ -12,6 +12,9 @@ concurrency:
   group: ci
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
