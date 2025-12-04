@@ -162,8 +162,8 @@ describe("Ref with GError (pointer-to-pointer)", () => {
     });
 });
 
-describe("Ref with GObject Types", () => {
-    it("should handle Ref<GObject> (out parameter returning object)", () => {
+describe("Ref with GObject Types - Borrowed", () => {
+    it("should handle borrowed Ref<GObject> (out parameter returning borrowed object)", () => {
         const display = call(GDK_LIB, "gdk_display_get_default", [], {
             type: "gobject",
             borrowed: true,
@@ -175,6 +175,62 @@ describe("Ref with GObject Types", () => {
             borrowed: true,
         });
         expect(clipboard).not.toBeNull();
+    });
+});
+
+describe("Ref with Boxed Types - Owned", () => {
+    it("should handle owned Ref<Boxed> (GError is always owned, must be freed)", () => {
+        const keyFile = call(GLIB_LIB, "g_key_file_new", [], {
+            type: "boxed",
+            borrowed: true,
+            innerType: "GKeyFile",
+            lib: GLIB_LIB,
+        });
+
+        const errorRef = createRef(null);
+
+        call(
+            GLIB_LIB,
+            "g_key_file_load_from_file",
+            [
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "string" }, value: "/nonexistent/path/file.ini" },
+                { type: { type: "int", size: 32, unsigned: false }, value: 0 },
+                {
+                    type: {
+                        type: "ref",
+                        innerType: {
+                            type: "boxed",
+                            innerType: "GError",
+                            lib: GLIB_LIB,
+                            borrowed: false,
+                        },
+                    },
+                    value: errorRef,
+                },
+            ],
+            { type: "boolean" },
+        );
+
+        expect(errorRef.value).not.toBeNull();
+    });
+
+    it("should handle owned Ref<GdkRGBA> boxed type", () => {
+        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        write(rgba, { type: "float", size: 32 }, 0, 1.0);
+        write(rgba, { type: "float", size: 32 }, 4, 0.5);
+        write(rgba, { type: "float", size: 32 }, 8, 0.25);
+        write(rgba, { type: "float", size: 32 }, 12, 1.0);
+
+        const copiedRgba = call(
+            GDK_LIB,
+            "gdk_rgba_copy",
+            [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB }, value: rgba }],
+            { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: false },
+        );
+        expect(copiedRgba).not.toBeNull();
+
+        expect(read(copiedRgba, { type: "float", size: 32 }, 0)).toBeCloseTo(1.0, 5);
     });
 });
 

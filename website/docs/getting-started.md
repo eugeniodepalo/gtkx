@@ -43,7 +43,13 @@ Create a new project and install GTKX:
 mkdir my-gtk-app
 cd my-gtk-app
 pnpm init
-pnpm add @gtkx/react react
+pnpm add @gtkx/react @gtkx/ffi react
+```
+
+For TypeScript (recommended):
+
+```bash
+pnpm add -D @types/react tsx typescript
 ```
 
 For styling support:
@@ -55,7 +61,7 @@ pnpm add @gtkx/css
 For testing support:
 
 ```bash
-pnpm add -D @gtkx/testing vitest
+pnpm add -D @gtkx/testing
 ```
 
 ## Project Setup

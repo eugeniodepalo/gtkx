@@ -28,7 +28,7 @@ impl ObjectId {
         GtkThreadState::with(|state| {
             let id = state.next_object_id;
             state.next_object_id += 1;
-            state.object_map.insert(id, object.clone());
+            state.object_map.insert(id, object);
             ObjectId(id)
         })
     }

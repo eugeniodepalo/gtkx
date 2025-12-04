@@ -79,7 +79,7 @@ fn handle_write(
             FloatSize::_64 => unsafe { *(field_ptr as *mut f64) = *n },
         },
         (Type::Boolean, Value::Boolean(b)) => {
-            unsafe { *(field_ptr as *mut u8) = if *b { 1 } else { 0 } };
+            unsafe { *(field_ptr as *mut u8) = u8::from(*b) };
         }
         _ => bail!("Unsupported field type for write: {:?}", type_),
     }

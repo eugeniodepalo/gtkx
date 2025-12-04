@@ -74,11 +74,11 @@ impl Value {
             return Ok(Value::Boolean(boolean.value(cx)));
         }
 
-        if let Ok(_) = value.downcast::<JsNull, _>(cx) {
+        if value.downcast::<JsNull, _>(cx).is_ok() {
             return Ok(Value::Null);
         }
 
-        if let Ok(_) = value.downcast::<JsUndefined, _>(cx) {
+        if value.downcast::<JsUndefined, _>(cx).is_ok() {
             return Ok(Value::Undefined);
         }
 
@@ -95,11 +95,10 @@ impl Value {
 
         if let Ok(array) = value.downcast::<JsArray, _>(cx) {
             let values = array.to_vec(cx)?;
-            let mut vec_values = Vec::with_capacity(values.len());
-
-            for item in values {
-                vec_values.push(Self::from_js_value(cx, item)?);
-            }
+            let vec_values = values
+                .into_iter()
+                .map(|item| Self::from_js_value(cx, item))
+                .collect::<NeonResult<Vec<_>>>()?;
 
             return Ok(Value::Array(vec_values));
         }
@@ -509,7 +508,7 @@ impl Value {
                             ))?;
 
                         ids.iter()
-                            .map(|id| Value::Object(id.clone()))
+                            .map(|id| Value::Object(*id))
                             .collect::<Vec<Value>>()
                     }
                     _ => bail!(
@@ -661,16 +660,12 @@ impl Value {
                 let boolean: bool = gvalue.get().unwrap();
                 Value::Boolean(boolean)
             }
-            Type::GObject(_) => {
-                let object: Option<glib::Object> = gvalue.get().unwrap();
-                match object {
-                    Some(obj) => {
-                        let object_id = ObjectId::new(Object::GObject(obj));
-                        Value::Object(object_id)
-                    }
-                    None => Value::Null,
-                }
-            }
+            Type::GObject(_) => gvalue
+                .get::<Option<glib::Object>>()
+                .unwrap()
+                .map_or(Value::Null, |obj| {
+                    Value::Object(ObjectId::new(Object::GObject(obj)))
+                }),
             Type::Boxed(boxed_type) => {
                 let boxed_ptr = gvalue.as_ptr();
 
@@ -694,7 +689,7 @@ impl Value {
         }
     }
 
-    pub fn to_glib_value_with_default(self, return_type: Option<&Type>) -> Option<glib::Value> {
+    pub fn into_glib_value_with_default(self, return_type: Option<&Type>) -> Option<glib::Value> {
         match &self {
             Value::Undefined => match return_type {
                 Some(Type::Boolean) => Some(false.into()),

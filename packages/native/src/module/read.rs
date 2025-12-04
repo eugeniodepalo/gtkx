@@ -29,7 +29,7 @@ pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
         .or_else(|err| cx.throw_error(format!("Error receiving read result: {err}")))?
         .or_else(|err| cx.throw_error(format!("Error during read: {err}")))?;
 
-    Ok(value.to_js_value(&mut cx)?)
+    value.to_js_value(&mut cx)
 }
 
 fn handle_read(object_id: ObjectId, type_: &Type, offset: usize) -> anyhow::Result<Value> {

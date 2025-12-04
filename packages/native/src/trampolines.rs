@@ -108,7 +108,7 @@ unsafe extern "C" fn source_func_trampoline(user_data: *mut c_void) -> i32 {
             gobject_ffi::g_closure_unref(closure_ptr);
         }
 
-        if result { 1 } else { 0 }
+        i32::from(result)
     }
 }
 

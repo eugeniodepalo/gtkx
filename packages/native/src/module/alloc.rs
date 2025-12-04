@@ -1,4 +1,3 @@
-use std::ffi::c_void;
 use std::sync::mpsc;
 
 use gtk4::glib::{self, ffi::g_malloc0};
@@ -37,7 +36,7 @@ fn handle_alloc(size: usize, type_name: &str, lib_name: Option<&str>) -> anyhow:
     let boxed_type = BoxedType::new(false, type_name.to_string(), lib_name.map(String::from));
     let gtype = boxed_type.get_gtype();
 
-    let ptr = unsafe { g_malloc0(size) as *mut c_void };
+    let ptr = unsafe { g_malloc0(size) };
 
     if ptr.is_null() {
         anyhow::bail!("Failed to allocate memory for {}", type_name);

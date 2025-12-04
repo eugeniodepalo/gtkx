@@ -55,15 +55,15 @@ GTK4's `AlertDialog` and file dialogs use async/await patterns:
 ### AlertDialog
 
 ```tsx
-import { ApplicationWindow, Button, Label, Box, quit } from "@gtkx/react";
-import { AlertDialog } from "@gtkx/ffi/gtk";
+import { ApplicationWindow, Button, Label, Box, quit, getApp } from "@gtkx/react";
+import { AlertDialog, Orientation } from "@gtkx/ffi/gtk";
 import { useState } from "react";
-import { Orientation } from "@gtkx/ffi/gtk";
 
 const App = () => {
   const [result, setResult] = useState<string | null>(null);
 
   const showConfirmDialog = async () => {
+    const app = getApp();
     const dialog = new AlertDialog();
     dialog.setMessage("Confirm Action");
     dialog.setDetail("Are you sure you want to proceed? This cannot be undone.");
@@ -105,7 +105,7 @@ const App = () => {
 ### File Dialogs
 
 ```tsx
-import { Button, Label } from "@gtkx/react";
+import { Button, Label, getApp } from "@gtkx/react";
 import { FileDialog, FileFilter } from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -113,6 +113,7 @@ const FilePicker = () => {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   const openFile = async () => {
+    const app = getApp();
     const dialog = new FileDialog();
     dialog.setTitle("Open File");
 
@@ -131,6 +132,7 @@ const FilePicker = () => {
   };
 
   const saveFile = async () => {
+    const app = getApp();
     const dialog = new FileDialog();
     dialog.setTitle("Save File");
     dialog.setInitialName("document.txt");
@@ -167,10 +169,12 @@ const FilePicker = () => {
 ## Color and Font Dialogs
 
 ```tsx
+import { getApp } from "@gtkx/react";
 import { ColorDialog, FontDialog } from "@gtkx/ffi/gtk";
 
 // Color picker
 const pickColor = async () => {
+  const app = getApp();
   const dialog = new ColorDialog();
   dialog.setTitle("Choose Color");
 
@@ -184,6 +188,7 @@ const pickColor = async () => {
 
 // Font picker
 const pickFont = async () => {
+  const app = getApp();
   const dialog = new FontDialog();
   dialog.setTitle("Choose Font");
 

@@ -5,7 +5,15 @@ import { GLIB_LIB, GTK_LIB, setup } from "./utils.js";
 setup();
 
 describe("Owned Strings", () => {
-    it("should handle owned strings", () => {
+    it("should handle owned strings with explicit borrowed: false", () => {
+        const result = call(GLIB_LIB, "g_strdup", [{ type: { type: "string" }, value: "owned-test" }], {
+            type: "string",
+            borrowed: false,
+        });
+        expect(result).toBe("owned-test");
+    });
+
+    it("should handle owned strings with implicit borrowed (defaults to false)", () => {
         const result = call(GLIB_LIB, "g_strdup", [{ type: { type: "string" }, value: "owned-test" }], {
             type: "string",
         });
@@ -13,7 +21,10 @@ describe("Owned Strings", () => {
     });
 
     it("should handle empty strings", () => {
-        const result = call(GLIB_LIB, "g_strdup", [{ type: { type: "string" }, value: "" }], { type: "string" });
+        const result = call(GLIB_LIB, "g_strdup", [{ type: { type: "string" }, value: "" }], {
+            type: "string",
+            borrowed: false,
+        });
         expect(result).toBe("");
     });
 
@@ -21,6 +32,7 @@ describe("Owned Strings", () => {
         const longString = "a".repeat(10000);
         const result = call(GLIB_LIB, "g_strdup", [{ type: { type: "string" }, value: longString }], {
             type: "string",
+            borrowed: false,
         });
         expect(result).toBe(longString);
     });
@@ -30,9 +42,24 @@ describe("Owned Strings", () => {
             GLIB_LIB,
             "g_strdup",
             [{ type: { type: "string" }, value: "tab\there\nnewline\r\nwindows" }],
-            { type: "string" },
+            { type: "string", borrowed: false },
         );
         expect(result).toBe("tab\there\nnewline\r\nwindows");
+    });
+
+    it("should handle owned string from g_strconcat", () => {
+        const result = call(
+            GLIB_LIB,
+            "g_strconcat",
+            [
+                { type: { type: "string" }, value: "Hello" },
+                { type: { type: "string" }, value: " " },
+                { type: { type: "string" }, value: "World" },
+                { type: { type: "null" }, value: null },
+            ],
+            { type: "string", borrowed: false },
+        );
+        expect(result).toBe("Hello World");
     });
 });
 

@@ -63,7 +63,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
         prop.set(new_js_value)?;
     }
 
-    Ok(value.to_js_value(&mut cx)?)
+    value.to_js_value(&mut cx)
 }
 
 fn handle_call(
@@ -129,50 +129,50 @@ fn handle_call(
     let result = unsafe {
         match result_type {
             Type::Undefined => {
-                cif.call::<()>(symbol_ptr, &mut ffi_args);
+                cif.call::<()>(symbol_ptr, &ffi_args);
                 cif::Value::Void
             }
             Type::Integer(type_) => match (type_.size, type_.sign) {
                 (IntegerSize::_8, IntegerSign::Unsigned) => {
-                    cif::Value::U8(cif.call::<u8>(symbol_ptr, &mut ffi_args))
+                    cif::Value::U8(cif.call::<u8>(symbol_ptr, &ffi_args))
                 }
                 (IntegerSize::_8, IntegerSign::Signed) => {
-                    cif::Value::I8(cif.call::<i8>(symbol_ptr, &mut ffi_args))
+                    cif::Value::I8(cif.call::<i8>(symbol_ptr, &ffi_args))
                 }
                 (IntegerSize::_16, IntegerSign::Unsigned) => {
-                    cif::Value::U16(cif.call::<u16>(symbol_ptr, &mut ffi_args))
+                    cif::Value::U16(cif.call::<u16>(symbol_ptr, &ffi_args))
                 }
                 (IntegerSize::_16, IntegerSign::Signed) => {
-                    cif::Value::I16(cif.call::<i16>(symbol_ptr, &mut ffi_args))
+                    cif::Value::I16(cif.call::<i16>(symbol_ptr, &ffi_args))
                 }
                 (IntegerSize::_32, IntegerSign::Unsigned) => {
-                    cif::Value::U32(cif.call::<u32>(symbol_ptr, &mut ffi_args))
+                    cif::Value::U32(cif.call::<u32>(symbol_ptr, &ffi_args))
                 }
                 (IntegerSize::_32, IntegerSign::Signed) => {
-                    cif::Value::I32(cif.call::<i32>(symbol_ptr, &mut ffi_args))
+                    cif::Value::I32(cif.call::<i32>(symbol_ptr, &ffi_args))
                 }
                 (IntegerSize::_64, IntegerSign::Unsigned) => {
-                    cif::Value::U64(cif.call::<u64>(symbol_ptr, &mut ffi_args))
+                    cif::Value::U64(cif.call::<u64>(symbol_ptr, &ffi_args))
                 }
                 (IntegerSize::_64, IntegerSign::Signed) => {
-                    cif::Value::I64(cif.call::<i64>(symbol_ptr, &mut ffi_args))
+                    cif::Value::I64(cif.call::<i64>(symbol_ptr, &ffi_args))
                 }
             },
             Type::Float(type_) => match type_.size {
-                FloatSize::_32 => cif::Value::F32(cif.call::<f32>(symbol_ptr, &mut ffi_args)),
-                FloatSize::_64 => cif::Value::F64(cif.call::<f64>(symbol_ptr, &mut ffi_args)),
+                FloatSize::_32 => cif::Value::F32(cif.call::<f32>(symbol_ptr, &ffi_args)),
+                FloatSize::_64 => cif::Value::F64(cif.call::<f64>(symbol_ptr, &ffi_args)),
             },
             Type::String(_) => {
-                let ptr = cif.call::<*const c_char>(symbol_ptr, &mut ffi_args);
+                let ptr = cif.call::<*const c_char>(symbol_ptr, &ffi_args);
                 cif::Value::Ptr(ptr as *mut c_void)
             }
-            Type::Boolean => cif::Value::U8(cif.call::<u8>(symbol_ptr, &mut ffi_args)),
+            Type::Boolean => cif::Value::U8(cif.call::<u8>(symbol_ptr, &ffi_args)),
             Type::GObject(_) | Type::Boxed(_) => {
-                let ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
+                let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
                 cif::Value::Ptr(ptr)
             }
             Type::Array(_) => {
-                let ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
+                let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
                 cif::Value::Ptr(ptr)
             }
             Type::Null => cif::Value::Void,

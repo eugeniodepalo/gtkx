@@ -436,3 +436,183 @@ describe("Callbacks with Return Values", () => {
         });
     });
 });
+
+describe("Closure Callbacks with Return Types", () => {
+    it("should register closure callback with boolean return type", () => {
+        const window = call(GTK_LIB, "gtk_window_new", [], { type: "gobject", borrowed: true });
+
+        const handlerId = call(
+            GOBJECT_LIB,
+            "g_signal_connect_closure",
+            [
+                { type: { type: "gobject" }, value: window },
+                { type: { type: "string" }, value: "close-request" },
+                {
+                    type: {
+                        type: "callback",
+                        argTypes: [{ type: "gobject", borrowed: true }],
+                        returnType: { type: "boolean" },
+                    },
+                    value: () => true,
+                },
+                { type: { type: "boolean" }, value: false },
+            ],
+            { type: "int", size: 64, unsigned: true },
+        );
+        expect(handlerId).toBeGreaterThan(0);
+    });
+
+    it("should register closure callback with integer return type", () => {
+        const adjustment = call(
+            GTK_LIB,
+            "gtk_adjustment_new",
+            [
+                { type: { type: "float", size: 64 }, value: 0 },
+                { type: { type: "float", size: 64 }, value: 0 },
+                { type: { type: "float", size: 64 }, value: 100 },
+                { type: { type: "float", size: 64 }, value: 1 },
+                { type: { type: "float", size: 64 }, value: 10 },
+                { type: { type: "float", size: 64 }, value: 0 },
+            ],
+            { type: "gobject", borrowed: true },
+        );
+
+        const handlerId = call(
+            GOBJECT_LIB,
+            "g_signal_connect_closure",
+            [
+                { type: { type: "gobject" }, value: adjustment },
+                { type: { type: "string" }, value: "value-changed" },
+                {
+                    type: {
+                        type: "callback",
+                        argTypes: [{ type: "gobject", borrowed: true }],
+                        returnType: { type: "int", size: 32 },
+                    },
+                    value: () => 42,
+                },
+                { type: { type: "boolean" }, value: false },
+            ],
+            { type: "int", size: 64, unsigned: true },
+        );
+        expect(handlerId).toBeGreaterThan(0);
+    });
+
+    it("should register multiple callbacks with return types on same signal", () => {
+        const window = call(GTK_LIB, "gtk_window_new", [], { type: "gobject", borrowed: true });
+
+        const handlerId1 = call(
+            GOBJECT_LIB,
+            "g_signal_connect_closure",
+            [
+                { type: { type: "gobject" }, value: window },
+                { type: { type: "string" }, value: "close-request" },
+                {
+                    type: {
+                        type: "callback",
+                        argTypes: [{ type: "gobject", borrowed: true }],
+                        returnType: { type: "boolean" },
+                    },
+                    value: () => false,
+                },
+                { type: { type: "boolean" }, value: false },
+            ],
+            { type: "int", size: 64, unsigned: true },
+        );
+
+        const handlerId2 = call(
+            GOBJECT_LIB,
+            "g_signal_connect_closure",
+            [
+                { type: { type: "gobject" }, value: window },
+                { type: { type: "string" }, value: "close-request" },
+                {
+                    type: {
+                        type: "callback",
+                        argTypes: [{ type: "gobject", borrowed: true }],
+                        returnType: { type: "boolean" },
+                    },
+                    value: () => true,
+                },
+                { type: { type: "boolean" }, value: false },
+            ],
+            { type: "int", size: 64, unsigned: true },
+        );
+
+        expect(handlerId1).toBeGreaterThan(0);
+        expect(handlerId2).toBeGreaterThan(0);
+        expect(handlerId2).not.toBe(handlerId1);
+    });
+
+    it("should invoke callback with return type via idle_add pattern", async () => {
+        let callbackResult: boolean | null = null;
+
+        const sourceId = call(
+            GLIB_LIB,
+            "g_idle_add",
+            [
+                {
+                    type: { type: "callback", trampoline: "sourceFunc" },
+                    value: () => {
+                        callbackResult = true;
+                        return false;
+                    },
+                },
+            ],
+            { type: "int", size: 32, unsigned: true },
+        ) as number;
+
+        expect(sourceId).toBeGreaterThan(0);
+
+        const startTime = Date.now();
+        while (callbackResult === null && Date.now() - startTime < 1000) {
+            call(
+                GLIB_LIB,
+                "g_main_context_iteration",
+                [
+                    { type: { type: "null" }, value: null },
+                    { type: { type: "boolean" }, value: false },
+                ],
+                { type: "boolean" },
+            );
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+
+        expect(callbackResult).toBe(true);
+    });
+
+    it("should handle callback return value affecting continuation", async () => {
+        let callCount = 0;
+
+        call(
+            GLIB_LIB,
+            "g_idle_add",
+            [
+                {
+                    type: { type: "callback", trampoline: "sourceFunc" },
+                    value: () => {
+                        callCount++;
+                        return callCount < 3;
+                    },
+                },
+            ],
+            { type: "int", size: 32, unsigned: true },
+        );
+
+        const startTime = Date.now();
+        while (callCount < 3 && Date.now() - startTime < 1000) {
+            call(
+                GLIB_LIB,
+                "g_main_context_iteration",
+                [
+                    { type: { type: "null" }, value: null },
+                    { type: { type: "boolean" }, value: false },
+                ],
+                { type: "boolean" },
+            );
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+
+        expect(callCount).toBe(3);
+    });
+});

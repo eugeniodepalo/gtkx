@@ -192,6 +192,31 @@ describe("Boolean Type", () => {
         });
         expect(isSelectable).toBe(false);
     });
+
+    it("should handle boolean field read/write with true", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "boolean" }, 0, true);
+        const result = read(ptr, { type: "boolean" }, 0);
+        expect(result).toBe(true);
+    });
+
+    it("should handle boolean field read/write with false", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "boolean" }, 0, false);
+        const result = read(ptr, { type: "boolean" }, 0);
+        expect(result).toBe(false);
+    });
+
+    it("should handle boolean field at different offsets", () => {
+        const ptr = alloc(16, "GdkRGBA", GTK_LIB);
+        write(ptr, { type: "boolean" }, 0, true);
+        write(ptr, { type: "boolean" }, 1, false);
+        write(ptr, { type: "boolean" }, 2, true);
+
+        expect(read(ptr, { type: "boolean" }, 0)).toBe(true);
+        expect(read(ptr, { type: "boolean" }, 1)).toBe(false);
+        expect(read(ptr, { type: "boolean" }, 2)).toBe(true);
+    });
 });
 
 describe("Null and Undefined Types", () => {

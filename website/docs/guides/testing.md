@@ -9,35 +9,19 @@ GTKX provides `@gtkx/testing`, a Testing Library-inspired package for testing GT
 ## Installation
 
 ```bash
-pnpm add -D @gtkx/testing vitest
+pnpm add -D @gtkx/testing
 ```
 
 ## Setup
 
-Create a test setup file and configure Vitest:
+`@gtkx/testing` works with any test runner (Jest, Vitest, Node's built-in test runner, etc.).
 
-### `vitest.config.ts`
-
-```typescript
-import { defineConfig } from "vitest/config";
-
-export default defineConfig({
-  test: {
-    include: ["tests/**/*.test.{ts,tsx}"],
-  },
-});
-```
-
-### `package.json`
+### Display Requirements
 
 Tests require `xvfb-run` because GTK needs a display. On Wayland systems, set `GDK_BACKEND=x11` to ensure windows render offscreen:
 
-```json
-{
-  "scripts": {
-    "test": "GDK_BACKEND=x11 xvfb-run -a vitest run"
-  }
-}
+```bash
+GDK_BACKEND=x11 xvfb-run -a <your-test-command>
 ```
 
 ## Writing Tests
@@ -46,19 +30,16 @@ Tests require `xvfb-run` because GTK needs a display. On Wayland systems, set `G
 
 ```tsx
 import { cleanup, render, screen } from "@gtkx/testing";
-import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 
-describe("App", () => {
-  // Clean up after each test
-  afterEach(() => cleanup());
+// Clean up after each test
+afterEach(() => cleanup());
 
-  it("renders the title", async () => {
-    render(<App />);
+test("renders the title", async () => {
+  render(<App />);
 
-    const title = await screen.findByText("Welcome");
-    expect(title).toBeDefined();
-  });
+  const title = await screen.findByText("Welcome");
+  expect(title).toBeDefined();
 });
 ```
 
@@ -271,61 +252,58 @@ Here's a full test for a counter component:
 ```tsx
 import { AccessibleRole } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent } from "@gtkx/testing";
-import { afterEach, describe, expect, it } from "vitest";
 import { Counter } from "../src/counter.js";
 
-describe("Counter", () => {
-  afterEach(() => cleanup());
+afterEach(() => cleanup());
 
-  it("renders initial count of zero", async () => {
-    render(<Counter />);
+test("renders initial count of zero", async () => {
+  render(<Counter />);
 
-    const label = await screen.findByText("Count: 0");
-    expect(label).toBeDefined();
+  const label = await screen.findByText("Count: 0");
+  expect(label).toBeDefined();
+});
+
+test("increments count when clicking increment button", async () => {
+  render(<Counter />);
+
+  const button = await screen.findByRole(AccessibleRole.BUTTON, {
+    name: "Increment",
   });
+  await userEvent.click(button);
 
-  it("increments count when clicking increment button", async () => {
-    render(<Counter />);
+  await screen.findByText("Count: 1");
+});
 
-    const button = await screen.findByRole(AccessibleRole.BUTTON, {
-      name: "Increment",
-    });
-    await userEvent.click(button);
+test("decrements count when clicking decrement button", async () => {
+  render(<Counter />);
 
-    await screen.findByText("Count: 1");
+  const button = await screen.findByRole(AccessibleRole.BUTTON, {
+    name: "Decrement",
   });
+  await userEvent.click(button);
 
-  it("decrements count when clicking decrement button", async () => {
-    render(<Counter />);
+  await screen.findByText("Count: -1");
+});
 
-    const button = await screen.findByRole(AccessibleRole.BUTTON, {
-      name: "Decrement",
-    });
-    await userEvent.click(button);
+test("resets count when clicking reset button", async () => {
+  render(<Counter />);
 
-    await screen.findByText("Count: -1");
+  // Increment a few times
+  const increment = await screen.findByRole(AccessibleRole.BUTTON, {
+    name: "Increment",
   });
+  await userEvent.click(increment);
+  await userEvent.click(increment);
+  await userEvent.click(increment);
+  await screen.findByText("Count: 3");
 
-  it("resets count when clicking reset button", async () => {
-    render(<Counter />);
-
-    // Increment a few times
-    const increment = await screen.findByRole(AccessibleRole.BUTTON, {
-      name: "Increment",
-    });
-    await userEvent.click(increment);
-    await userEvent.click(increment);
-    await userEvent.click(increment);
-    await screen.findByText("Count: 3");
-
-    // Reset
-    const reset = await screen.findByRole(AccessibleRole.BUTTON, {
-      name: "Reset",
-    });
-    await userEvent.click(reset);
-
-    await screen.findByText("Count: 0");
+  // Reset
+  const reset = await screen.findByRole(AccessibleRole.BUTTON, {
+    name: "Reset",
   });
+  await userEvent.click(reset);
+
+  await screen.findByText("Count: 0");
 });
 ```
 

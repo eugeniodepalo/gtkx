@@ -70,9 +70,8 @@ impl BoxedType {
 
 fn type_name_to_get_type_fn(type_name: &str) -> String {
     let mut result = String::new();
-    let mut chars = type_name.chars().peekable();
 
-    while let Some(c) = chars.next() {
+    for c in type_name.chars() {
         if c.is_uppercase() {
             if !result.is_empty() {
                 result.push('_');

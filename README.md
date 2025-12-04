@@ -30,7 +30,10 @@ GTKX bridges React's component model with GTK4's native widget system. Write fam
 
 ```bash
 # Install dependencies
-pnpm add @gtkx/react react
+pnpm add @gtkx/react @gtkx/ffi react
+
+# For TypeScript (recommended)
+pnpm add -D @types/react tsx typescript
 
 # For styling (optional)
 pnpm add @gtkx/css
@@ -113,33 +116,31 @@ Use `@gtkx/testing` for Testing Library-style component tests:
 ```tsx
 import { cleanup, render, screen, userEvent, fireEvent } from "@gtkx/testing";
 import { AccessibleRole } from "@gtkx/ffi/gtk";
-import { afterEach, describe, expect, it } from "vitest";
 import { App } from "./app.js";
 
-describe("Counter", () => {
-  afterEach(() => cleanup());
+// Clean up after each test
+afterEach(() => cleanup());
 
-  it("increments count when clicking button", async () => {
-    render(<App />);
+test("increments count when clicking button", async () => {
+  render(<App />);
 
-    const button = await screen.findByRole(AccessibleRole.BUTTON, {
-      name: "Increment",
-    });
-    await userEvent.click(button);
-
-    await screen.findByText("Count: 1");
+  const button = await screen.findByRole(AccessibleRole.BUTTON, {
+    name: "Increment",
   });
+  await userEvent.click(button);
 
-  it("can also use fireEvent for synchronous events", async () => {
-    render(<App />);
+  await screen.findByText("Count: 1");
+});
 
-    const button = await screen.findByRole(AccessibleRole.BUTTON, {
-      name: "Increment",
-    });
-    fireEvent.click(button);
+test("can also use fireEvent for synchronous events", async () => {
+  render(<App />);
 
-    await screen.findByText("Count: 1");
+  const button = await screen.findByRole(AccessibleRole.BUTTON, {
+    name: "Increment",
   });
+  fireEvent.click(button);
+
+  await screen.findByText("Count: 1");
 });
 ```
 

@@ -11,7 +11,7 @@ pub struct Boxed {
 
 impl Boxed {
     pub fn from_glib_full(type_: Option<glib::Type>, ptr: *mut c_void) -> Self {
-        Boxed {
+        Self {
             ptr,
             type_,
             is_owned: true,
@@ -20,26 +20,27 @@ impl Boxed {
 
     pub fn from_glib_none(type_: Option<glib::Type>, ptr: *mut c_void) -> Self {
         if ptr.is_null() {
-            return Boxed {
+            return Self {
                 ptr,
                 type_,
                 is_owned: false,
             };
         }
 
-        if let Some(gtype) = type_ {
-            let cloned_ptr = unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr) };
-            Boxed {
-                ptr: cloned_ptr,
-                type_,
-                is_owned: true,
+        match type_ {
+            Some(gtype) => {
+                let cloned_ptr = unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr) };
+                Self {
+                    ptr: cloned_ptr,
+                    type_,
+                    is_owned: true,
+                }
             }
-        } else {
-            Boxed {
+            None => Self {
                 ptr,
                 type_: None,
                 is_owned: false,
-            }
+            },
         }
     }
 }
@@ -52,40 +53,17 @@ impl AsRef<*mut c_void> for Boxed {
 
 impl Clone for Boxed {
     fn clone(&self) -> Self {
-        if self.ptr.is_null() {
-            return Boxed {
-                ptr: self.ptr,
-                type_: self.type_,
-                is_owned: false,
-            };
-        }
-
-        if let Some(gtype) = self.type_ {
-            let cloned_ptr =
-                unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), self.ptr) };
-            Boxed {
-                ptr: cloned_ptr,
-                type_: self.type_,
-                is_owned: true,
-            }
-        } else {
-            Boxed {
-                ptr: self.ptr,
-                type_: None,
-                is_owned: false,
-            }
-        }
+        Self::from_glib_none(self.type_, self.ptr)
     }
 }
 
 impl Drop for Boxed {
     fn drop(&mut self) {
-        if self.is_owned && !self.ptr.is_null() {
-            if let Some(gtype) = self.type_ {
+        if self.is_owned && !self.ptr.is_null()
+            && let Some(gtype) = self.type_ {
                 unsafe {
                     glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
                 }
             }
-        }
     }
 }

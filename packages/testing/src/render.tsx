@@ -179,7 +179,7 @@ export const cleanup = (): void => {
 
 /**
  * Tears down the testing environment by cleaning up and stopping GTK.
- * Used as global teardown in vitest configuration.
+ * Can be used as global teardown in your test runner configuration.
  */
 export const teardown = (): void => {
     if (app) {

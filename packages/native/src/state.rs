@@ -37,7 +37,7 @@ impl GtkThreadState {
             static STATE: RefCell<GtkThreadState> = RefCell::new(GtkThreadState::default());
         }
 
-        STATE.with(|state| f(&mut *state.borrow_mut()))
+        STATE.with(|state| f(&mut state.borrow_mut()))
     }
 
     pub fn get_library(&mut self, name: &str) -> anyhow::Result<&Library> {
@@ -78,7 +78,7 @@ impl GtkThreadState {
     }
 
     pub fn invalidate_all_closures(&mut self) {
-        for closure in self.closures.iter() {
+        for closure in &self.closures {
             unsafe {
                 let ptr: *mut gobject_ffi::GClosure = closure.to_glib_none().0;
                 gobject_ffi::g_closure_invalidate(ptr);
