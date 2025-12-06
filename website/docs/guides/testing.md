@@ -260,11 +260,11 @@ const username = await findByText("John Doe");
 ```tsx
 // Render a UI with multiple sections
 await render(
-  <Box>
-    <Box name="section-a">
+  <Box orientation={Orientation.VERTICAL} spacing={8}>
+    <Box orientation={Orientation.VERTICAL} spacing={0} name="section-a">
       <Button label="Save" />
     </Box>
-    <Box name="section-b">
+    <Box orientation={Orientation.VERTICAL} spacing={0} name="section-b">
       <Button label="Save" />
     </Box>
   </Box>

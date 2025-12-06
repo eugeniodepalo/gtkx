@@ -55,7 +55,7 @@ const Counter = () => {
   const [count, setCount] = useState(0);
 
   return (
-    <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
+    <Box orientation={Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
       <Label.Root label={`Count: ${count}`} />
       <Button label="Increment" onClicked={() => setCount(c => c + 1)} />
     </Box>

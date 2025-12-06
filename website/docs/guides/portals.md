@@ -10,9 +10,10 @@ Portals let you render React children into a different part of the GTK widget tr
 
 ```tsx
 import { createPortal, Box, Label } from "@gtkx/react";
+import { Orientation } from "@gtkx/ffi/gtk";
 
 const MyComponent = () => (
-  <Box>
+  <Box orientation={Orientation.VERTICAL} spacing={8}>
     <Label.Root label="This is in the box" />
 
     {createPortal(
@@ -91,12 +92,12 @@ const App = () => {
       />
 
       <Box orientation={Orientation.HORIZONTAL} spacing={12}>
-        <Box ref={targetRef} cssClasses={["card"]} hexpand>
+        <Box orientation={Orientation.VERTICAL} spacing={8} ref={targetRef} cssClasses={["card"]} hexpand>
           <Label.Root label="Target container" />
           {/* Portal content appears here */}
         </Box>
 
-        <Box cssClasses={["card"]} hexpand>
+        <Box orientation={Orientation.VERTICAL} spacing={8} cssClasses={["card"]} hexpand>
           <Label.Root label="Source container" />
           {showInTarget && createPortal(
             <Label.Root label="I'm rendered in the target!" />,
@@ -136,11 +137,11 @@ Render content that overlays other widgets:
 
 ```tsx
 {showPopover && createPortal(
-  <Popover pointing={buttonRef.current}>
-    <Box>
+  <Popover.Root pointing={buttonRef.current}>
+    <Popover.Child>
       <Label.Root label="Popover content" />
-    </Box>
-  </Popover>
+    </Popover.Child>
+  </Popover.Root>
 )}
 ```
 

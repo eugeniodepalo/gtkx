@@ -71,18 +71,18 @@ import { Orientation } from "@gtkx/ffi/gtk";
 ### Window with Titlebar
 
 ```tsx
-import { ApplicationWindow, HeaderBar, Button, quit } from "@gtkx/react";
+import { Window, HeaderBar, Button, quit } from "@gtkx/react";
 
-<ApplicationWindow.Root onCloseRequest={quit}>
-  <ApplicationWindow.Titlebar>
+<Window.Root onCloseRequest={quit}>
+  <Window.Titlebar>
     <HeaderBar.Root>
       <Button label="Menu" />
     </HeaderBar.Root>
-  </ApplicationWindow.Titlebar>
-  <ApplicationWindow.Child>
+  </Window.Titlebar>
+  <Window.Child>
     {/* Main content */}
-  </ApplicationWindow.Child>
-</ApplicationWindow.Root>
+  </Window.Child>
+</Window.Root>
 ```
 
 ## Root vs Slot Components

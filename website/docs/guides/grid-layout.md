@@ -73,7 +73,7 @@ Use `rowSpan` and `columnSpan` to create cells that span multiple rows or column
 
   {/* Sidebar spanning 2 rows */}
   <Grid.Child row={1} column={0} rowSpan={2}>
-    <Box cssClasses={["card"]} vexpand>
+    <Box orientation={Orientation.VERTICAL} spacing={8} cssClasses={["card"]} vexpand>
       <Label.Root label="Navigation" />
     </Box>
   </Grid.Child>
@@ -149,7 +149,7 @@ const SettingsForm = () => (
 
     {/* Row 3: Buttons */}
     <Grid.Child row={3} column={1}>
-      <Box orientation={0} spacing={8} halign={Align.END}>
+      <Box orientation={Orientation.HORIZONTAL} spacing={8} halign={Align.END}>
         <Button label="Cancel" />
         <Button label="Save" cssClasses={["suggested-action"]} />
       </Box>

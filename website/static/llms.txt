@@ -47,21 +47,52 @@ React JSX -> @gtkx/react (Reconciler) -> @gtkx/ffi (TS wrappers) -> @gtkx/native
 ### Prerequisites
 
 - Node.js 20+
-- GTK4 development libraries (`sudo dnf install gtk4-devel` on Fedora, `sudo apt install libgtk-4-dev` on Ubuntu)
+- GTK4 development libraries (`sudo dnf install gtk4-devel` on Fedora, `sudo apt install libgtk-4-dev` on Ubuntu, `sudo pacman -S gtk4` on Arch)
 - Linux (GTK4 is Linux-native)
 
 ### Installation
 
 ```bash
-npm install @gtkx/react react
-npm install @gtkx/css        # For styling (optional)
-npm install -D @gtkx/testing # For testing (optional)
+mkdir my-gtk-app && cd my-gtk-app
+npm init -y
+npm install @gtkx/react @gtkx/ffi react
+npm install -D @types/react tsx typescript  # For TypeScript
+npm install @gtkx/css                        # For styling (optional)
+npm install -D @gtkx/testing                 # For testing (optional)
+```
+
+### Project Setup
+
+tsconfig.json:
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}
+```
+
+package.json (add):
+```json
+{
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.tsx"
+  }
+}
 ```
 
 ### Minimal Example
 
 ```tsx
-// index.tsx
+// src/index.tsx
 import { render } from "@gtkx/react";
 import { App } from "./app.js";
 
@@ -69,7 +100,7 @@ render(<App />, "org.example.MyApp");
 ```
 
 ```tsx
-// app.tsx
+// src/app.tsx
 import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
 import { Orientation } from "@gtkx/ffi/gtk";
 import { useState } from "react";
@@ -84,7 +115,7 @@ export const App = () => {
       defaultHeight={300}
       onCloseRequest={quit}
     >
-      <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
+      <Box orientation={Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
         <Label.Root label={`Count: ${count}`} />
         <Button
           label="Increment"
@@ -96,7 +127,7 @@ export const App = () => {
 };
 ```
 
-Run with: `npx tsx index.tsx`
+Run with: `npm start`
 
 ## Core Concepts
 
@@ -108,6 +139,14 @@ The `render(element, appId)` function is the entry point:
 - Mounts your React element tree
 - Starts the event loop
 
+### quit()
+
+Cleanly shuts down the application by:
+1. Unmounting the React tree
+2. Stopping the GTK main loop
+
+Always use `quit()` in `onCloseRequest` to ensure proper cleanup.
+
 ### ApplicationWindow
 
 The main window component with key props:
@@ -118,26 +157,10 @@ The main window component with key props:
 ### Layout Components
 
 - **Box**: Primary layout container. Use `orientation` (HORIZONTAL/VERTICAL) and `spacing` for gaps
-- **Grid**: Two-dimensional layout with explicit row/column positioning
+- **Grid**: Two-dimensional layout with explicit row/column positioning and spanning
 - **Stack**: Shows one child at a time, useful for multi-page interfaces
-
-### Widget Slots
-
-GTK widgets often have named child properties. GTKX exposes these as slots:
-
-```tsx
-<Expander.Root label="Click to expand">
-  <Expander.Child>
-    <Label.Root label="Hidden content" />
-  </Expander.Child>
-</Expander.Root>
-
-<HeaderBar.Root>
-  <HeaderBar.TitleWidget>
-    <Label.Root label="Custom Title" />
-  </HeaderBar.TitleWidget>
-</HeaderBar.Root>
-```
+- **CenterBox**: Arranges three children with the middle one centered
+- **Paned**: Two resizable panes with a draggable separator
 
 ### Event Handling
 
@@ -146,32 +169,311 @@ GTK signals are exposed as React props with the `on` prefix:
 - `onCloseRequest`: Window close
 - `onChanged`: Text input changes
 - `onActivate`: Widget activation
+- `onToggled`: Toggle state changes
 
-### Portals
+## Widget Slots
 
-Render React children into a different part of the GTK widget tree:
+GTK widgets often have named child properties like `titleWidget`, `child`, or `label`. GTKX exposes these as slots following the pattern `<Widget.SlotName>`:
 
 ```tsx
-import { createPortal, AboutDialog } from "@gtkx/react";
+// Expander with child content
+<Expander.Root label="Click to expand">
+  <Expander.Child>
+    <Label.Root label="Hidden content" />
+  </Expander.Child>
+</Expander.Root>
 
-{showDialog && createPortal(
+// HeaderBar with custom title widget
+<HeaderBar.Root>
+  <HeaderBar.TitleWidget>
+    <Box orientation={Orientation.HORIZONTAL} spacing={8}>
+      <Label.Root label="My App" cssClasses={["heading"]} />
+    </Box>
+  </HeaderBar.TitleWidget>
+</HeaderBar.Root>
+
+// Window with custom titlebar (use Window for slots)
+<Window.Root onCloseRequest={quit}>
+  <Window.Titlebar>
+    <HeaderBar.Root />
+  </Window.Titlebar>
+  <Window.Child>
+    {/* Main content */}
+  </Window.Child>
+</Window.Root>
+
+// Frame with child
+<Frame.Root label="Settings">
+  <Frame.Child>
+    <Label.Root label="Frame content" />
+  </Frame.Child>
+</Frame.Root>
+```
+
+Every widget with slots has:
+- `Widget.Root`: The actual GTK widget (creates the widget instance)
+- `Widget.SlotName`: Named slots for specific child properties (virtual, no widget created)
+
+Slots work with React's conditional rendering and automatically swap content when conditions change.
+
+## Portals
+
+Portals render React children into a different part of the GTK widget tree. Essential for dialogs, popovers, and overlay content.
+
+```tsx
+import { createPortal, AboutDialog, ApplicationWindow, Button, quit } from "@gtkx/react";
+import { useState } from "react";
+
+const App = () => {
+  const [showDialog, setShowDialog] = useState(false);
+
+  return (
+    <ApplicationWindow title="My App" onCloseRequest={quit}>
+      <Button label="Show Dialog" onClicked={() => setShowDialog(true)} />
+
+      {showDialog && createPortal(
+        <AboutDialog
+          programName="My App"
+          version="1.0.0"
+          onCloseRequest={() => {
+            setShowDialog(false);
+            return false;
+          }}
+        />
+      )}
+    </ApplicationWindow>
+  );
+};
+```
+
+API: `createPortal(children, container?, key?)`
+- Without container: Renders at application root level
+- With container: Renders into the specified widget
+- React events bubble through the React tree, not the GTK tree
+- React context passes through portals normally
+
+### Portal vs Slot
+
+- **Slots** (`Widget.SlotName`): Place content in a widget's named property (e.g., `setChild()`)
+- **Portals** (`createPortal`): Render content in a completely different widget container
+
+## Grid Layout
+
+Two-dimensional layout with explicit row/column positioning:
+
+```tsx
+import { Grid, Label, Entry, Button } from "@gtkx/react";
+import { Align } from "@gtkx/ffi/gtk";
+
+<Grid.Root columnSpacing={12} rowSpacing={8}>
+  <Grid.Child row={0} column={0}>
+    <Label.Root label="Username:" halign={Align.END} />
+  </Grid.Child>
+  <Grid.Child row={0} column={1}>
+    <Entry hexpand />
+  </Grid.Child>
+  <Grid.Child row={1} column={0} columnSpan={2}>
+    <Button label="Login" cssClasses={["suggested-action"]} />
+  </Grid.Child>
+</Grid.Root>
+```
+
+Grid.Root props: `columnSpacing`, `rowSpacing`, `columnHomogeneous`, `rowHomogeneous`
+Grid.Child props: `row`, `column`, `rowSpan`, `columnSpan`
+
+## Lists and Data Binding
+
+GTKX provides virtualized list components for large datasets:
+
+### ListView
+
+```tsx
+import type { RefCallback } from "react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { ListView, Label, ScrolledWindow } from "@gtkx/react";
+
+interface User {
+  id: string;
+  name: string;
+}
+
+const users: User[] = [/* ... */];
+
+<ScrolledWindow vexpand>
+  <ListView.Root
+    renderItem={(user: User | null, ref: RefCallback<Gtk.Widget>) => (
+      <Label.Root
+        ref={ref}
+        label={user?.name ?? ""}
+        halign={Gtk.Align.START}
+      />
+    )}
+  >
+    {users.map(user => (
+      <ListView.Item key={user.id} item={user} />
+    ))}
+  </ListView.Root>
+</ScrolledWindow>
+```
+
+The `renderItem` function receives:
+- `item`: The data item, or `null` during setup/unbind phases
+- `ref`: A ref callback that must be attached to the root widget
+
+### GridView
+
+Grid layout with automatic wrapping:
+
+```tsx
+<GridView.Root
+  renderItem={(photo: Photo | null, ref: RefCallback<Gtk.Widget>) => (
+    <Label.Root ref={ref} label={photo?.title ?? ""} />
+  )}
+>
+  {photos.map(photo => (
+    <GridView.Item key={photo.id} item={photo} />
+  ))}
+</GridView.Root>
+```
+
+### ColumnView (Tables)
+
+Tabular data with multiple columns:
+
+```tsx
+<ColumnView.Root>
+  <ColumnView.Column
+    title="Name"
+    expand
+    renderCell={(product: Product | null, ref: RefCallback<Gtk.Widget>) => (
+      <Label.Root ref={ref} label={product?.name ?? ""} />
+    )}
+  />
+  <ColumnView.Column
+    title="Price"
+    fixedWidth={100}
+    renderCell={(product: Product | null, ref: RefCallback<Gtk.Widget>) => (
+      <Label.Root ref={ref} label={product ? `$${product.price}` : ""} />
+    )}
+  />
+  {products.map(product => (
+    <ColumnView.Item key={product.id} item={product} />
+  ))}
+</ColumnView.Root>
+```
+
+### DropDown
+
+Selection dropdown:
+
+```tsx
+<DropDown.Root
+  itemLabel={(country: Country) => country.name}
+  onSelectionChanged={(country: Country) => setSelected(country)}
+>
+  {countries.map(country => (
+    <DropDown.Item key={country.id} item={country} />
+  ))}
+</DropDown.Root>
+```
+
+### When to Use Lists vs Array Mapping
+
+Use `ListView`/`GridView` when: 100+ items, uniform sizes, need virtualization
+Use standard array mapping when: fewer than 50 items, varying sizes, complex conditional rendering
+
+## Dialogs
+
+### Declarative Dialogs with Portals
+
+```tsx
+{showAbout && createPortal(
   <AboutDialog
     programName="My App"
-    onCloseRequest={() => setShowDialog(false)}
+    version="1.0.0"
+    licenseType={License.MIT_X11}
+    onCloseRequest={() => {
+      setShowAbout(false);
+      return false;
+    }}
   />
 )}
 ```
 
-## Styling with @gtkx/css
+### Promise-Based AlertDialog
 
 ```tsx
-import { css, cx, injectGlobal } from "@gtkx/css";
+import { getCurrentApp } from "@gtkx/ffi";
+import { AlertDialog } from "@gtkx/ffi/gtk";
+
+const showConfirmDialog = async () => {
+  const app = getCurrentApp();
+  const dialog = new AlertDialog();
+  dialog.setMessage("Confirm Action");
+  dialog.setDetail("Are you sure?");
+  dialog.setButtons(["Cancel", "Delete"]);
+  dialog.setCancelButton(0);
+  dialog.setDefaultButton(1);
+
+  try {
+    const response = await dialog.choose(app.getActiveWindow() ?? undefined);
+    // response is button index (0 = Cancel, 1 = Delete)
+  } catch {
+    // Dialog was dismissed
+  }
+};
+```
+
+### FileDialog
+
+```tsx
+import { getCurrentApp } from "@gtkx/ffi";
+import { FileDialog, FileFilter } from "@gtkx/ffi/gtk";
+
+const openFile = async () => {
+  const app = getCurrentApp();
+  const dialog = new FileDialog();
+  dialog.setTitle("Open File");
+
+  try {
+    const file = await dialog.open(app.getActiveWindow() ?? undefined);
+    console.log(file.getPath());
+  } catch {
+    // User cancelled
+  }
+};
+
+const saveFile = async () => {
+  const app = getCurrentApp();
+  const dialog = new FileDialog();
+  dialog.setTitle("Save File");
+  dialog.setInitialName("document.txt");
+
+  const file = await dialog.save(app.getActiveWindow() ?? undefined);
+};
+```
+
+### ColorDialog and FontDialog
+
+```tsx
+import { ColorDialog, FontDialog } from "@gtkx/ffi/gtk";
+
+const color = await new ColorDialog().chooseRgba(window);
+const font = await new FontDialog().chooseFont(window);
+```
+
+## Styling with @gtkx/css
+
+### Basic Usage
+
+```tsx
+import { css } from "@gtkx/css";
 import { Button } from "@gtkx/react";
 
 const primaryButton = css`
   padding: 16px 32px;
   border-radius: 24px;
-  background: linear-gradient(135deg, #3584e4, #9141ac);
+  background: #3584e4;
   color: white;
   font-weight: bold;
 `;
@@ -179,82 +481,193 @@ const primaryButton = css`
 <Button label="Click me" cssClasses={[primaryButton]} />
 ```
 
+### Combining Styles
+
+```tsx
+import { css, cx } from "@gtkx/css";
+
+const baseButton = css`
+  padding: 12px 24px;
+  border-radius: 8px;
+`;
+
+const successButton = css`
+  background: #33d17a;
+  color: white;
+`;
+
+<Button cssClasses={[cx(baseButton, successButton)]} label="Success" />
+```
+
+### Global Styles
+
+```tsx
+import { injectGlobal } from "@gtkx/css";
+
+injectGlobal`
+  window {
+    background: #fafafa;
+  }
+
+  button:hover {
+    filter: brightness(1.1);
+  }
+`;
+```
+
+### GTK CSS Properties
+
+Colors: `background`, `color`, `opacity`
+Spacing: `padding`, `margin`, `min-width`, `min-height`
+Borders: `border`, `border-radius`
+Typography: `font-size`, `font-weight`, `font-family`
+Effects: `box-shadow`, `transition`
+
 ### Built-in CSS Classes
 
-GTK provides built-in classes following GNOME HIG:
-- Button variants: `suggested-action`, `destructive-action`, `flat`, `circular`
-- Typography: `title-1`, `title-2`, `heading`, `caption`, `dim-label`
-- Containers: `card`, `boxed-list`
+Button variants: `suggested-action`, `destructive-action`, `flat`, `circular`
+Typography: `title-1`, `title-2`, `heading`, `caption`, `dim-label`
+Containers: `card`, `boxed-list`
 
 ### Theme Color Variables
 
-Use GTK CSS variables for theme-aware colors:
-- `@accent_bg_color`, `@accent_fg_color`: Accent colors
-- `@window_bg_color`, `@window_fg_color`: Window colors
-- `@card_bg_color`, `@card_shade_color`: Card colors
-- `@success_color`, `@warning_color`, `@error_color`: Status colors
-
-## Lists and Data Binding
-
-GTKX provides virtualized list components for large datasets:
-
-```tsx
-import { ListView, Label } from "@gtkx/react";
-
-<ListView.Root renderItem={(user: User) => (
-  <Label.Root label={user.name} />
-)}>
-  {users.map(user => (
-    <ListView.Item key={user.id} item={user} />
-  ))}
-</ListView.Root>
+```css
+@accent_bg_color, @accent_fg_color  /* Accent colors */
+@window_bg_color, @window_fg_color  /* Window colors */
+@card_bg_color, @card_shade_color   /* Card colors */
+@success_color, @warning_color, @error_color  /* Status colors */
 ```
 
-Available list components:
-- `ListView`: Scrollable virtualized list
-- `GridView`: Grid layout with automatic wrapping
-- `ColumnView`: Tabular data with columns
-- `DropDown`: Selection dropdown
-
 ## Testing with @gtkx/testing
+
+### Setup
+
+Tests require `xvfb-run` because GTK needs a display:
+```bash
+GDK_BACKEND=x11 xvfb-run -a pnpm vitest run
+```
+
+### Basic Test
 
 ```tsx
 import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { AccessibleRole } from "@gtkx/ffi/gtk";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, test, expect } from "vitest";
 
-describe("Counter", () => {
-  afterEach(async () => {
-    await cleanup();
+afterEach(async () => {
+  await cleanup();
+});
+
+test("increments count when clicking button", async () => {
+  await render(<Counter />);
+
+  const button = await screen.findByRole(AccessibleRole.BUTTON, {
+    name: "Increment",
   });
+  await userEvent.click(button);
 
-  it("increments count when clicking button", async () => {
-    await render(<App />);
-
-    const button = await screen.findByRole(AccessibleRole.BUTTON, {
-      name: "Increment",
-    });
-    await userEvent.click(button);
-
-    await screen.findByText("Count: 1");
-  });
+  await screen.findByText("Count: 1");
 });
 ```
 
-### Query Types
+### Query Functions
 
-All queries are async and will wait for elements to appear (with a default timeout of 1000ms):
+All queries are async and will wait for elements (default timeout: 1000ms):
 
-- `findBy*` / `findAllBy*`: Waits for element, throws if not found (or if array is empty)
+| Query | Returns | Throws if not found? |
+|-------|---------|---------------------|
+| `findBy*` | Single element | Yes |
+| `findAllBy*` | Array | Yes (if empty) |
 
-Query methods: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
+Query methods:
+- `findByText(text)` / `findAllByText(text)`: By text content (supports regex)
+- `findByRole(role, options?)` / `findAllByRole`: By accessible role
+- `findByLabelText(text)` / `findAllByLabelText`: By label text
+- `findByTestId(id)` / `findAllByTestId`: By widget name prop
+
+Common roles: `AccessibleRole.BUTTON`, `AccessibleRole.LABEL`, `AccessibleRole.TEXT_BOX`, `AccessibleRole.CHECKBOX`, `AccessibleRole.SWITCH`
 
 ### User Interactions
 
-- `userEvent.click(element)`: Simulate click
-- `userEvent.dblClick(element)`: Double click
-- `userEvent.type(element, text)`: Type text
-- `userEvent.clear(element)`: Clear input
+```tsx
+import { userEvent } from "@gtkx/testing";
+
+await userEvent.click(element);
+await userEvent.dblClick(element);
+await userEvent.type(input, "Hello");
+await userEvent.clear(input);
+
+// Custom configuration
+const user = userEvent.setup({ delay: 100 });
+await user.click(button);
+```
+
+### Low-Level Events
+
+```tsx
+import { fireEvent } from "@gtkx/testing";
+
+fireEvent(button, "clicked");
+fireEvent.click(button);
+fireEvent.activate(entry);
+fireEvent.toggled(checkbox);
+```
+
+### Waiting for Changes
+
+```tsx
+import { waitFor, waitForElementToBeRemoved } from "@gtkx/testing";
+
+await waitFor(async () => {
+  const message = await screen.findByText("Success!");
+  expect(message).toBeDefined();
+}, { timeout: 2000, interval: 100 });
+
+const loader = await screen.findByText("Loading...");
+await waitForElementToBeRemoved(loader);
+```
+
+### Scoped Queries with within
+
+```tsx
+import { within } from "@gtkx/testing";
+
+const dialog = await screen.findByRole(AccessibleRole.DIALOG);
+const { findByRole, findByText } = within(dialog);
+
+const confirmButton = await findByRole(AccessibleRole.BUTTON, { name: "Confirm" });
+```
+
+### Render Options
+
+```tsx
+// Default: wraps in ApplicationWindow
+await render(<Button label="Test" />);
+
+// Custom wrapper (replaces default)
+const Wrapper = ({ children }) => (
+  <ApplicationWindow>
+    <ThemeProvider>{children}</ThemeProvider>
+  </ApplicationWindow>
+);
+await render(<MyComponent />, { wrapper: Wrapper });
+
+// Disable wrapper for multi-window tests
+await render(<>
+  <ApplicationWindow><Content1 /></ApplicationWindow>
+  <ApplicationWindow><Content2 /></ApplicationWindow>
+</>, { wrapper: ({ children }) => <>{children}</> });
+```
+
+### RenderResult
+
+```tsx
+const { container, rerender, unmount, debug, findByText, ... } = await render(<App />);
+
+await rerender(<App newProp="value" />);
+debug();  // Print widget tree
+await unmount();
+```
 
 ## Common Widgets
 
@@ -262,18 +675,25 @@ Query methods: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
 ```tsx
 <Button label="Click me" onClicked={handleClick} />
 <Button iconName="list-add" cssClasses={["circular"]} />
+<ToggleButton.Root label="Toggle" active={isActive} onToggled={() => setActive(!isActive)} />
+<CheckButton.Root label="Option" active={checked} onToggled={() => setChecked(!checked)} />
+<Switch active={enabled} onStateSet={(_self, state) => { setEnabled(state); return true; }} />
 ```
 
 ### Labels
 ```tsx
 <Label.Root label="Plain text" />
 <Label.Root label="<b>Bold</b> markup" useMarkup />
+<Label.Root label="Wrapped text" wrap />
 ```
 
 ### Text Input
 ```tsx
 <Entry placeholderText="Enter text" onChanged={handleChange} />
 <PasswordEntry placeholderText="Password" />
+<SearchEntry placeholderText="Search..." />
+<TextView />  /* Multi-line */
+<SpinButton adjustment={adj} />  /* Numeric */
 ```
 
 ### Containers
@@ -282,9 +702,35 @@ Query methods: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
   {/* children */}
 </Box>
 
-<ScrolledWindow>
+<ScrolledWindow vexpand>
   {/* scrollable content */}
 </ScrolledWindow>
+
+<Frame.Root label="Section">
+  <Frame.Child>{/* content */}</Frame.Child>
+</Frame.Root>
+
+<Expander.Root label="Details">
+  <Expander.Child>{/* content */}</Expander.Child>
+</Expander.Root>
+
+<Revealer revealChild={show} transitionType={RevealerTransitionType.SLIDE_DOWN}>
+  {/* animated content */}
+</Revealer>
+```
+
+### Navigation
+```tsx
+<Stack.Root visibleChildName={currentPage}>
+  <Box orientation={Orientation.VERTICAL} spacing={0} name="page1">{/* ... */}</Box>
+  <Box orientation={Orientation.VERTICAL} spacing={0} name="page2">{/* ... */}</Box>
+</Stack.Root>
+<StackSwitcher.Root />
+
+<Notebook.Root>
+  <Notebook.Page label="Tab 1">{/* content */}</Notebook.Page>
+  <Notebook.Page label="Tab 2">{/* content */}</Notebook.Page>
+</Notebook.Root>
 ```
 
 ### Dialogs
@@ -292,6 +738,67 @@ Query methods: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
 <AboutDialog programName="My App" version="1.0" />
 <MessageDialog heading="Confirm" body="Are you sure?" />
 ```
+
+### Media
+```tsx
+<Image iconName="dialog-information" />
+<Picture file={gioFile} />  /* file is a Gio.File */
+<Video file={gioFile} />    /* file is a Gio.File */
+<Spinner spinning />
+<ProgressBar fraction={0.5} />
+<LevelBar value={75} maxValue={100} />
+```
+
+## API Reference
+
+### @gtkx/react
+
+Functions:
+- `render(element, appId)`: Render React element as GTK application
+- `quit()`: Quit application and cleanup
+- `createPortal(children, container?, key?)`: Render into different container
+
+100+ widget components including: AboutDialog, ActionBar, ApplicationWindow, Box, Button, Calendar, CheckButton, ColumnView, DropDown, Entry, Expander, Frame, Grid, GridView, HeaderBar, Image, Label, ListView, MenuButton, Notebook, Overlay, Paned, PasswordEntry, Picture, Popover, ProgressBar, Revealer, Scale, ScrolledWindow, SearchEntry, Spinner, Stack, Switch, TextView, ToggleButton, Video, Window, and more.
+
+### @gtkx/ffi
+
+Functions:
+- `start(appId)`: Start GTK application
+- `stop()`: Stop GTK application
+- `getCurrentApp()`: Get current GTK Application instance
+- `getObject(pointer, Class)`: Wrap native pointer in class instance
+
+Variables:
+- `events`: EventEmitter for GTK lifecycle ("start", "stop")
+- `createRef`: Create refs for GTK widgets
+- `getObjectId`: Get unique ID for GTK objects
+
+Classes:
+- `NativeError`: Error wrapping GLib GError
+
+### @gtkx/css
+
+Functions:
+- `css`: Create CSS class from template literal
+- `cx(...classes)`: Merge class names
+- `injectGlobal`: Inject global CSS styles
+
+### @gtkx/testing
+
+Functions:
+- `render(element, options?)`: Render for testing
+- `cleanup()`: Unmount and reset (call in afterEach)
+- `teardown()`: Full GTK cleanup (global teardown)
+- `waitFor(callback, options?)`: Wait for condition
+- `waitForElementToBeRemoved(element)`: Wait for removal
+- `within(container)`: Scope queries to container
+
+Query functions: `findByRole`, `findByText`, `findByLabelText`, `findByTestId`, `findAllByRole`, `findAllByText`, `findAllByLabelText`, `findAllByTestId`
+
+Variables:
+- `screen`: Global query methods
+- `userEvent`: Simulate user interactions (click, dblClick, type, clear)
+- `fireEvent`: Fire GTK signals directly
 
 ## License
 

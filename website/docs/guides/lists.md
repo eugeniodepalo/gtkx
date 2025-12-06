@@ -294,7 +294,7 @@ const UserListWithRemove = () => {
 
 ```tsx
 // Standard React pattern - fine for small lists
-<Box orientation={Gtk.Orientation.VERTICAL}>
+<Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
   {items.map(item => (
     <Label.Root key={item.id} label={item.name} />
   ))}

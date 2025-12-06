@@ -168,12 +168,12 @@ GTK provides built-in CSS classes that follow the GNOME Human Interface Guidelin
 
 ```tsx
 // Card with shadow
-<Box cssClasses={["card"]}>
+<Box orientation={Orientation.VERTICAL} spacing={8} cssClasses={["card"]}>
   <Label.Root label="Card content" />
 </Box>
 
 // Boxed list (for settings-style lists)
-<Box cssClasses={["boxed-list"]}>
+<Box orientation={Orientation.VERTICAL} spacing={0} cssClasses={["boxed-list"]}>
   {/* List items */}
 </Box>
 ```

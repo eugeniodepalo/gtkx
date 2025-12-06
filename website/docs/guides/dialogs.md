@@ -83,7 +83,7 @@ const App = () => {
 
   return (
     <ApplicationWindow title="Dialogs" onCloseRequest={quit}>
-      <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
+      <Box orientation={Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
         <Button label="Delete Item" onClicked={showConfirmDialog} />
         {result && <Label.Root label={`Result: ${result}`} />}
       </Box>
