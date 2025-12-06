@@ -77,6 +77,7 @@ describe("React Reconciler", () => {
             expect(widget).toBeInstanceOf(Gtk.ApplicationWindow);
             expect(widget.getTitle()).toBe("Test Window");
         });
+
     });
 
     describe("prop updates", () => {
@@ -1396,6 +1397,30 @@ describe("React Reconciler", () => {
                 flushSync(() => setItems(["A", "B", "C"]));
                 expect(getChildLabels(assertDefined(containerRef))).toEqual(["A", "B", "C"]);
             });
+        });
+    });
+
+    describe("GObject introspection", () => {
+        it("typeNameFromInstance works with GObject ptr", async () => {
+            const GObject = await import("@gtkx/ffi/gobject");
+            const button = new Gtk.Button();
+            // The native layer now accepts GObject references where numbers are expected
+            // by extracting the raw pointer from the GObject
+            const typeName = GObject.typeNameFromInstance(button.ptr as number);
+            expect(typeName).toBe("GtkButton");
+        });
+
+        it("typeNameFromInstance returns correct type for different widgets", async () => {
+            const GObject = await import("@gtkx/ffi/gobject");
+
+            const label = new Gtk.Label("");
+            expect(GObject.typeNameFromInstance(label.ptr as number)).toBe("GtkLabel");
+
+            const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
+            expect(GObject.typeNameFromInstance(box.ptr as number)).toBe("GtkBox");
+
+            const entry = new Gtk.Entry();
+            expect(GObject.typeNameFromInstance(entry.ptr as number)).toBe("GtkEntry");
         });
     });
 });

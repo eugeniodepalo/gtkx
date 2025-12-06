@@ -1,7 +1,18 @@
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
 import { OverlayNode } from "./overlay.js";
+
+const isFlowBox = (widget: Gtk.Widget): widget is Gtk.FlowBox => widget instanceof Gtk.FlowBox;
+
+const isFlowBoxChild = (widget: Gtk.Widget): widget is Gtk.FlowBoxChild =>
+    GObject.typeNameFromInstance(widget.ptr as number) === "GtkFlowBoxChild";
+
+const isListBox = (widget: Gtk.Widget): widget is Gtk.ListBox => widget instanceof Gtk.ListBox;
+
+const isListBoxRow = (widget: Gtk.Widget): widget is Gtk.ListBoxRow =>
+    GObject.typeNameFromInstance(widget.ptr as number) === "GtkListBoxRow";
 
 type CombinedPropHandler = {
     props: string[];
@@ -48,6 +59,14 @@ export class WidgetNode extends Node<Gtk.Widget> {
             parentWidget.appendPage(this.widget);
             return;
         }
+        if (isFlowBox(parentWidget)) {
+            parentWidget.append(this.widget);
+            return;
+        }
+        if (isListBox(parentWidget)) {
+            parentWidget.append(this.widget);
+            return;
+        }
 
         super.attachToParent(parent);
     }
@@ -91,6 +110,29 @@ export class WidgetNode extends Node<Gtk.Widget> {
             return;
         }
 
+        if (isFlowBox(parentWidget)) {
+            if (beforeWidget) {
+                const beforeChild = beforeWidget.getParent();
+                if (beforeChild && isFlowBoxChild(beforeChild)) {
+                    parentWidget.insert(this.widget, beforeChild.getIndex());
+                } else {
+                    parentWidget.append(this.widget);
+                }
+            } else {
+                parentWidget.append(this.widget);
+            }
+            return;
+        }
+
+        if (isListBox(parentWidget)) {
+            if (beforeWidget && isListBoxRow(beforeWidget)) {
+                parentWidget.insert(this.widget, beforeWidget.getIndex());
+            } else {
+                parentWidget.append(this.widget);
+            }
+            return;
+        }
+
         super.attachToParentBefore(parent, before);
     }
 
@@ -125,6 +167,19 @@ export class WidgetNode extends Node<Gtk.Widget> {
                 parentWidget.removePage(pageNum);
             }
 
+            return;
+        }
+
+        if (isFlowBox(parentWidget)) {
+            const flowBoxChild = this.widget.getParent();
+            if (flowBoxChild) {
+                parentWidget.remove(flowBoxChild);
+            }
+            return;
+        }
+
+        if (isListBox(parentWidget)) {
+            parentWidget.remove(this.widget);
             return;
         }
 

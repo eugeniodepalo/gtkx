@@ -140,6 +140,7 @@ impl TryFrom<arg::Arg> for Value {
             Type::Integer(type_) => {
                 let number = match arg.value {
                     value::Value::Number(n) => n,
+                    value::Value::Object(id) => id.as_ptr() as usize as f64,
                     _ => bail!("Expected a Number for integer type, got {:?}", arg.value),
                 };
 

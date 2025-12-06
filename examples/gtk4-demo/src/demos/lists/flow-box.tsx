@@ -1,5 +1,6 @@
+import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, FlowBox, FlowBoxChild, Label, ScrolledWindow } from "@gtkx/react";
+import { Box, FlowBox, Label, ScrolledWindow } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
@@ -25,6 +26,11 @@ const colors = [
     "#cdab8f",
     "#9a9996",
 ];
+
+const colorBox = (color: string) => css`
+    background: ${color};
+    border-radius: 4px;
+`;
 
 const FlowBoxDemo = () => {
     return (
@@ -56,17 +62,16 @@ const FlowBoxDemo = () => {
                         rowSpacing={8}
                         homogeneous
                     >
-                        {colors.map((_color, index) => (
+                        {colors.map((color, index) => (
                             // biome-ignore lint/suspicious/noArrayIndexKey: demo
-                            <FlowBoxChild key={index}>
-                                <Box
-                                    orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={0}
-                                    widthRequest={48}
-                                    heightRequest={48}
-                                    cssClasses={["card"]}
-                                />
-                            </FlowBoxChild>
+                            <Box
+                                key={index}
+                                orientation={Gtk.Orientation.HORIZONTAL}
+                                spacing={0}
+                                widthRequest={100}
+                                heightRequest={80}
+                                cssClasses={[colorBox(color)]}
+                            />
                         ))}
                     </FlowBox>
                 </ScrolledWindow>
