@@ -2078,7 +2078,9 @@ ${allArgs ? `${allArgs},` : ""}
                 const jsParamName = toValidIdentifier(toCamelCase(param.name));
                 const needsPtr = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
                 const valueName = needsPtr ? `(${jsParamName} as any)?.ptr ?? ${jsParamName}` : jsParamName;
-                return `${indent}  {\n${indent}    type: ${this.generateTypeDescriptor(mapped.ffi)},\n${indent}    value: ${valueName},\n${indent}  }`;
+                const isOptional = this.typeMapper.isNullable(param);
+                const optionalPart = isOptional ? `,\n${indent}    optional: true` : "";
+                return `${indent}  {\n${indent}    type: ${this.generateTypeDescriptor(mapped.ffi)},\n${indent}    value: ${valueName}${optionalPart},\n${indent}  }`;
             })
             .join(",\n");
     }

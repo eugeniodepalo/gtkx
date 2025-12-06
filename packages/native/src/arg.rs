@@ -6,11 +6,16 @@ use crate::{types::Type, value::Value};
 pub struct Arg {
     pub type_: Type,
     pub value: Value,
+    pub optional: bool,
 }
 
 impl Arg {
     pub fn new(type_: Type, value: Value) -> Self {
-        Arg { type_, value }
+        Arg {
+            type_,
+            value,
+            optional: false,
+        }
     }
 
     pub fn from_js_array(
@@ -34,6 +39,13 @@ impl Arg {
         let type_ = Type::from_js_value(cx, type_prop)?;
         let value = Value::from_js_value(cx, value_prop)?;
 
-        Ok(Arg { type_, value })
+        let optional_prop: Option<Handle<JsBoolean>> = obj.get_opt(cx, "optional")?;
+        let optional = optional_prop.map(|h| h.value(cx)).unwrap_or(false);
+
+        Ok(Arg {
+            type_,
+            value,
+            optional,
+        })
     }
 }

@@ -415,6 +415,9 @@ impl Value {
     fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow::Result<Value> {
         let callback = match &arg.value {
             value::Value::Callback(callback) => callback,
+            value::Value::Null | value::Value::Undefined if arg.optional => {
+                return Ok(Value::Ptr(std::ptr::null_mut()));
+            }
             _ => bail!("Expected a Callback for callback type, got {:?}", arg.value),
         };
 

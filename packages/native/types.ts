@@ -66,7 +66,7 @@ export type Type =
 /**
  * Argument descriptor for FFI calls, combining a type descriptor with a value.
  */
-export type Arg = { type: Type; value: unknown };
+export type Arg = { type: Type; value: unknown; optional?: boolean };
 
 /**
  * Reference wrapper for out/inout parameters in FFI calls.

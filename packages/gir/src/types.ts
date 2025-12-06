@@ -334,6 +334,8 @@ export interface FfiTypeDescriptor {
     resultType?: FfiTypeDescriptor;
     /** Argument types for callbacks that need explicit type info (e.g., drawFunc). */
     argTypes?: FfiTypeDescriptor[];
+    /** Whether this argument is optional (can be null/undefined for pointer types). */
+    optional?: boolean;
 }
 
 /**
