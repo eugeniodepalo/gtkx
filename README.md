@@ -134,13 +134,13 @@ test("increments count when clicking button", async () => {
   await screen.findByText("Count: 1");
 });
 
-test("can also use fireEvent for low-level events", async () => {
+test("can also use fireEvent for low-level signals", async () => {
   await render(<App />);
 
   const button = await screen.findByRole(AccessibleRole.BUTTON, {
     name: "Increment",
   });
-  fireEvent.click(button);
+  fireEvent(button, "clicked");
 
   await screen.findByText("Count: 1");
 });
@@ -156,14 +156,13 @@ Query types: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
 **User Interactions**:
 - `userEvent.click(element)` - Simulate click
 - `userEvent.dblClick(element)` - Simulate double click
+- `userEvent.activate(element)` - Activate element (e.g., press Enter in input)
 - `userEvent.type(element, text)` - Type text into input
 - `userEvent.clear(element)` - Clear input text
 - `userEvent.setup()` - Create reusable instance
 
 **Low-level Events**:
-- `fireEvent(element, signalName)` - Emit any GTK signal
-- `fireEvent.click(element)` - Emit clicked signal
-- `fireEvent.activate(element)` - Emit activate signal
+- `fireEvent(element, signalName, ...args)` - Emit any GTK signal with optional arguments
 
 **Utilities**:
 - `waitFor(callback)` - Wait for condition

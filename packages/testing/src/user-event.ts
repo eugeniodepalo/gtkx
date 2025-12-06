@@ -1,20 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { call } from "@gtkx/native";
+import { fireEvent } from "./fire-event.js";
 import { hasGetText, hasSetText } from "./widget.js";
 
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
-
-const emitSignal = (widget: Gtk.Widget, signalName: string): void => {
-    call(
-        "libgobject-2.0.so.0",
-        "g_signal_emit_by_name",
-        [
-            { type: { type: "gobject" }, value: widget.ptr },
-            { type: { type: "string" }, value: signalName },
-        ],
-        { type: "undefined" },
-    );
-};
 
 /**
  * Options for configuring user event behavior.
@@ -32,6 +20,8 @@ export interface UserEventInstance {
     click: (element: Gtk.Widget) => Promise<void>;
     /** Simulates a double-click on the element */
     dblClick: (element: Gtk.Widget) => Promise<void>;
+    /** Activates the element (e.g., pressing Enter in an Entry) */
+    activate: (element: Gtk.Widget) => Promise<void>;
     /** Types text into an input element */
     type: (element: Gtk.Widget, text: string) => Promise<void>;
     /** Clears the text content of an input element */
@@ -41,14 +31,19 @@ export interface UserEventInstance {
 const createUserEventInstance = (_options?: UserEventOptions): UserEventInstance => {
     return {
         click: async (element: Gtk.Widget): Promise<void> => {
-            emitSignal(element, "clicked");
+            fireEvent(element, "clicked");
             await tick();
         },
 
         dblClick: async (element: Gtk.Widget): Promise<void> => {
-            emitSignal(element, "clicked");
+            fireEvent(element, "clicked");
             await tick();
-            emitSignal(element, "clicked");
+            fireEvent(element, "clicked");
+            await tick();
+        },
+
+        activate: async (element: Gtk.Widget): Promise<void> => {
+            element.activate();
             await tick();
         },
 
@@ -82,14 +77,19 @@ export const userEvent = {
     setup: (options?: UserEventOptions): UserEventInstance => createUserEventInstance(options),
 
     click: async (element: Gtk.Widget): Promise<void> => {
-        emitSignal(element, "clicked");
+        fireEvent(element, "clicked");
         await tick();
     },
 
     dblClick: async (element: Gtk.Widget): Promise<void> => {
-        emitSignal(element, "clicked");
+        fireEvent(element, "clicked");
         await tick();
-        emitSignal(element, "clicked");
+        fireEvent(element, "clicked");
+        await tick();
+    },
+
+    activate: async (element: Gtk.Widget): Promise<void> => {
+        element.activate();
         await tick();
     },
 

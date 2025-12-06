@@ -104,6 +104,16 @@ describe("userEvent", () => {
         });
     });
 
+    describe("activate", () => {
+        it("activates a button widget", async () => {
+            await render(<Button label="Activate Me" />);
+
+            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Activate Me" });
+            await userEvent.activate(button);
+            expect(button).toBeDefined();
+        });
+    });
+
     describe("clear", () => {
         it("throws when element has no setText method", async () => {
             await render(<Label.Root label="Not clearable" />);
@@ -128,6 +138,7 @@ describe("userEvent", () => {
 
             expect(typeof user.click).toBe("function");
             expect(typeof user.dblClick).toBe("function");
+            expect(typeof user.activate).toBe("function");
             expect(typeof user.type).toBe("function");
             expect(typeof user.clear).toBe("function");
         });

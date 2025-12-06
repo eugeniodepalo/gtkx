@@ -594,6 +594,7 @@ import { userEvent } from "@gtkx/testing";
 
 await userEvent.click(element);
 await userEvent.dblClick(element);
+await userEvent.activate(entry);  // e.g., press Enter in input
 await userEvent.type(input, "Hello");
 await userEvent.clear(input);
 
@@ -607,10 +608,13 @@ await user.click(button);
 ```tsx
 import { fireEvent } from "@gtkx/testing";
 
+// Fire any GTK signal by name
 fireEvent(button, "clicked");
-fireEvent.click(button);
-fireEvent.activate(entry);
-fireEvent.toggled(checkbox);
+fireEvent(entry, "activate");
+fireEvent(checkbox, "toggled");
+
+// Pass additional arguments to signal handlers
+fireEvent(widget, "custom-signal", { type: { type: "int", size: 32 }, value: 42 });
 ```
 
 ### Waiting for Changes
@@ -797,8 +801,8 @@ Query functions: `findByRole`, `findByText`, `findByLabelText`, `findByTestId`, 
 
 Variables:
 - `screen`: Global query methods
-- `userEvent`: Simulate user interactions (click, dblClick, type, clear)
-- `fireEvent`: Fire GTK signals directly
+- `userEvent`: Simulate user interactions (click, dblClick, activate, type, clear)
+- `fireEvent`: Fire GTK signals directly (low-level, accepts varargs)
 
 ## License
 

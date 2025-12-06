@@ -171,13 +171,14 @@ import { fireEvent } from "@gtkx/testing";
 
 // Fire any signal by name
 fireEvent(button, "clicked");
+fireEvent(entry, "activate");
+fireEvent(checkbox, "toggled");
 
-// Convenience methods
-fireEvent.click(button);
-fireEvent.activate(entry);
-fireEvent.toggled(checkbox);
-fireEvent.changed(entry);
+// Pass additional arguments to signal handlers
+fireEvent(widget, "custom-signal", { type: { type: "int", size: 32 }, value: 42 });
 ```
+
+For common user interactions like clicking or typing, prefer `userEvent` instead.
 
 ## Waiting for Changes
 
@@ -479,6 +480,7 @@ await screen.findByRole(AccessibleRole.BUTTON, {
 |----------|-------------|
 | `userEvent.click(element)` | Click an element |
 | `userEvent.dblClick(element)` | Double-click an element |
+| `userEvent.activate(element)` | Activate an element (e.g., press Enter in input) |
 | `userEvent.type(element, text)` | Type text into an input |
 | `userEvent.clear(element)` | Clear an input field |
 | `userEvent.setup(options?)` | Create instance with custom options |
@@ -487,11 +489,7 @@ await screen.findByRole(AccessibleRole.BUTTON, {
 
 | Function | Description |
 |----------|-------------|
-| `fireEvent(element, signalName)` | Fire any GTK signal |
-| `fireEvent.click(element)` | Fire "clicked" signal |
-| `fireEvent.activate(element)` | Fire "activate" signal |
-| `fireEvent.toggled(element)` | Fire "toggled" signal |
-| `fireEvent.changed(element)` | Fire "changed" signal |
+| `fireEvent(element, signalName, ...args)` | Fire any GTK signal with optional arguments |
 
 ### Scoped Queries
 
