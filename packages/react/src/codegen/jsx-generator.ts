@@ -418,6 +418,8 @@ ${widgetPropsContent}
 
         if (isTextViewWidget(widget.name)) {
             lines.push("");
+            lines.push(`\t/** The contents of the text buffer. */`);
+            lines.push(`\ttext?: string;`);
             lines.push(`\t/** Called when the text buffer content changes */`);
             lines.push(`\tonChanged?: (text: string) => void;`);
         }

@@ -14,6 +14,10 @@ const getBufferText = (buffer: Gtk.TextBuffer): string => {
     return buffer.getText(startRef.value, endRef.value, true);
 };
 
+const setBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
+    buffer.setText(text, -1);
+};
+
 export class TextViewNode extends Node<Gtk.TextView> {
     static override matches(type: string): boolean {
         return type === "TextView";
@@ -28,6 +32,10 @@ export class TextViewNode extends Node<Gtk.TextView> {
 
         this.buffer = this.widget.getBuffer();
         this.onChanged = props.onChanged as OnChangedHandler | undefined;
+
+        if (typeof props.text === "string") {
+            setBufferText(this.buffer, props.text);
+        }
 
         // Connect after a microtask to avoid signal firing during widget construction
         queueMicrotask(() => this.connectBufferSignal());
@@ -51,6 +59,7 @@ export class TextViewNode extends Node<Gtk.TextView> {
 
     protected override consumedProps(): Set<string> {
         const consumed = super.consumedProps();
+        consumed.add("text");
         consumed.add("onChanged");
         return consumed;
     }
@@ -60,6 +69,13 @@ export class TextViewNode extends Node<Gtk.TextView> {
             this.disconnectBufferSignal();
             this.onChanged = newProps.onChanged as OnChangedHandler | undefined;
             this.connectBufferSignal();
+        }
+
+        if (this.buffer && oldProps.text !== newProps.text && typeof newProps.text === "string") {
+            const currentText = getBufferText(this.buffer);
+            if (currentText !== newProps.text) {
+                setBufferText(this.buffer, newProps.text);
+            }
         }
 
         super.updateProps(oldProps, newProps);
