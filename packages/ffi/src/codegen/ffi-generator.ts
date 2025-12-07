@@ -1411,7 +1411,7 @@ ${allArgs ? `${allArgs},` : ""}
 
         const signalMetadata = signals.map((signal) => {
             const paramEntries = (signal.parameters ?? []).map((param) => {
-                const ffiType = JSON.stringify(this.typeMapper.mapType(param.type).ffi);
+                const ffiType = JSON.stringify(this.typeMapper.mapParameter(param).ffi);
                 const signalParamClass = this.extractSignalParamClass(param, classMap);
                 if (signalParamClass) {
                     this.signalClasses.add(signalParamClass);
