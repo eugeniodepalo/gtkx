@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use gtk4::{gio::ApplicationHoldGuard, glib};
+use gtk4::gio::ApplicationHoldGuard;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
 use crate::object::Object;
@@ -10,7 +10,6 @@ pub struct GtkThreadState {
     pub next_object_id: usize,
     pub libraries: HashMap<String, Library>,
     pub app_hold_guard: Option<ApplicationHoldGuard>,
-    pub closures: Vec<glib::Closure>,
 }
 
 impl Default for GtkThreadState {
@@ -20,7 +19,6 @@ impl Default for GtkThreadState {
             next_object_id: 1,
             libraries: HashMap::new(),
             app_hold_guard: None,
-            closures: Vec::new(),
         }
     }
 }
@@ -68,7 +66,4 @@ impl GtkThreadState {
             .ok_or(anyhow::anyhow!("Library '{}' not loaded", name))
     }
 
-    pub fn register_closure(&mut self, closure: glib::Closure) {
-        self.closures.push(closure);
-    }
 }

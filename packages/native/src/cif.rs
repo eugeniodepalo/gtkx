@@ -9,13 +9,7 @@ use gtk4::glib::{self, translate::IntoGlib as _};
 use libffi::middle as ffi;
 use neon::prelude::*;
 
-use crate::{
-    arg::{self, Arg},
-    callback,
-    state::GtkThreadState,
-    types::*,
-    value,
-};
+use crate::{arg::{self, Arg}, callback, types::*, value};
 
 #[derive(Debug)]
 #[repr(C)]
@@ -454,8 +448,6 @@ impl Value {
                     )
                 });
 
-                GtkThreadState::with(|state| state.register_closure(closure.clone()));
-
                 let ptr = closure.as_ptr() as *mut c_void;
                 Ok(Value::OwnedPtr(OwnedPtr::new(closure, ptr)))
             }
@@ -490,8 +482,6 @@ impl Value {
                     )
                 });
 
-                GtkThreadState::with(|state| state.register_closure(closure.clone()));
-
                 let closure_ptr = create_trampoline_closure_ptr(&closure);
                 let trampoline_ptr = callback::get_async_ready_trampoline_ptr();
 
@@ -517,8 +507,6 @@ impl Value {
                         },
                     )
                 });
-
-                GtkThreadState::with(|state| state.register_closure(closure.clone()));
 
                 let closure_ptr = create_trampoline_closure_ptr(&closure);
                 let trampoline_ptr = callback::get_destroy_trampoline_ptr();
@@ -546,8 +534,6 @@ impl Value {
                         },
                     )
                 });
-
-                GtkThreadState::with(|state| state.register_closure(closure.clone()));
 
                 let closure_ptr = create_trampoline_closure_ptr(&closure);
                 let trampoline_ptr = callback::get_source_func_trampoline_ptr();
@@ -577,8 +563,6 @@ impl Value {
                         },
                     )
                 });
-
-                GtkThreadState::with(|state| state.register_closure(closure.clone()));
 
                 let closure_ptr = create_trampoline_closure_ptr(&closure);
                 let trampoline_ptr = callback::get_draw_func_trampoline_ptr();
