@@ -1,9 +1,42 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { useState } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TextView } from "../src/index.js";
-import { render, setupTests } from "./utils.js";
+import { flushSync, render, setupTests } from "./utils.js";
+
+// Mock TextIter to avoid allocation failures in test environment
+vi.mock("@gtkx/ffi/gtk", async (importOriginal) => {
+    const original = await importOriginal<typeof Gtk>();
+    return {
+        ...original,
+        TextIter: class MockTextIter {
+            ptr = Symbol("mock-ptr");
+        },
+    };
+});
 
 setupTests();
+
+// Track setText calls
+let lastSetText: string | undefined;
+let setTextCallCount = 0;
+const originalSetText = Gtk.TextBuffer.prototype.setText;
+
+beforeEach(() => {
+    lastSetText = undefined;
+    setTextCallCount = 0;
+
+    Gtk.TextBuffer.prototype.setText = function (text: string, len: number) {
+        lastSetText = text;
+        setTextCallCount++;
+        return originalSetText.call(this, text, len);
+    };
+
+    // Mock buffer methods to avoid needing real TextIter
+    Gtk.TextBuffer.prototype.getStartIter = vi.fn();
+    Gtk.TextBuffer.prototype.getEndIter = vi.fn();
+    Gtk.TextBuffer.prototype.getText = vi.fn(() => lastSetText ?? "");
+});
 
 describe("TextView widget", () => {
     it("renders a TextView", () => {
@@ -88,5 +121,51 @@ describe("TextView widget", () => {
         render(<App />);
 
         expect(textViewRef?.getWrapMode()).toBe(Gtk.WrapMode.WORD);
+    });
+
+    it("sets initial text from text prop", () => {
+        lastSetText = undefined;
+
+        const App = () => <TextView text="Hello World" />;
+
+        render(<App />);
+
+        expect(lastSetText).toBe("Hello World");
+    });
+
+    it("updates text when prop changes", () => {
+        lastSetText = undefined;
+        let setText: (value: string) => void = () => {};
+
+        const App = () => {
+            const [text, _setText] = useState("Initial");
+            setText = _setText;
+            return <TextView text={text} />;
+        };
+
+        render(<App />);
+        expect(lastSetText).toBe("Initial");
+
+        flushSync(() => setText("Updated"));
+        expect(lastSetText).toBe("Updated");
+    });
+
+    it("does not update buffer when text prop matches current text", () => {
+        lastSetText = undefined;
+        let setText: (value: string) => void = () => {};
+
+        const App = () => {
+            const [text, _setText] = useState("Same");
+            setText = _setText;
+            return <TextView text={text} />;
+        };
+
+        render(<App />);
+
+        // Reset counter after initial render
+        const countBefore = setTextCallCount;
+
+        flushSync(() => setText("Same"));
+        expect(setTextCallCount).toBe(countBefore);
     });
 });
