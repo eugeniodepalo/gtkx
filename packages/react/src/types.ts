@@ -39,7 +39,7 @@ export interface ListViewRenderProps<T = unknown> {
  */
 export type ColumnSortFn<T, C extends string = string> = (a: T, b: T, columnId: C) => number;
 
-export interface ColumnViewColumnProps {
+export interface ColumnViewColumnProps<T = unknown> {
     title?: string;
     expand?: boolean;
     resizable?: boolean;
@@ -50,16 +50,14 @@ export interface ColumnViewColumnProps {
      * Called with null during setup (for loading state) and with the actual item during bind.
      * Always annotate your callback parameter type to include null, e.g.: `(item: MyItem | null) => ...`
      */
-    // biome-ignore lint/suspicious/noExplicitAny: Using any allows users to specify their own item type
-    renderCell: (item: any) => ReactElement;
+    renderCell: (item: T | null) => ReactElement;
 }
 
-export interface ColumnViewRootProps<C extends string = string> {
+export interface ColumnViewRootProps<T = unknown, C extends string = string> {
     sortColumn?: C | null;
     sortOrder?: SortType;
     onSortChange?: (column: C | null, order: SortType) => void;
-    // biome-ignore lint/suspicious/noExplicitAny: Using any allows users to specify their own item type
-    sortFn?: ColumnSortFn<any, C>;
+    sortFn?: ColumnSortFn<T, C>;
 }
 
 export interface NotebookPageProps extends SlotProps {

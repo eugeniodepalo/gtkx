@@ -182,15 +182,19 @@ fn handle_call(
 
     for (i, arg) in args.iter().enumerate() {
         if let Value::Ref(r#ref) = &arg.value {
-            // For Ref<Boxed> and Ref<GObject> out parameters, the original ObjectId
-            // already points to the memory that was modified by the FFI call.
-            // We don't need to update the ref - the JS side can use the original
-            // object which now contains the initialized data.
+            // For Ref<Boxed> and Ref<GObject> out parameters:
+            // - Caller-allocates (value is ObjectId): the original ObjectId already points
+            //   to the memory that was modified by the FFI call, no update needed.
+            // - GTK-allocates (value is null): GTK allocated new memory and wrote the pointer
+            //   into our OwnedPtr, we need to read it back and update the ref.
             if let Type::Ref(ref_type) = &arg.type_ {
                 match &*ref_type.inner_type {
                     Type::Boxed(_) | Type::GObject(_) => {
-                        // Skip ref update - the original ObjectId is still valid
-                        continue;
+                        if matches!(&*r#ref.value, Value::Object(_)) {
+                            // Caller-allocates: original ObjectId is still valid
+                            continue;
+                        }
+                        // GTK-allocates: fall through to update the ref with the new pointer
                     }
                     _ => {}
                 }

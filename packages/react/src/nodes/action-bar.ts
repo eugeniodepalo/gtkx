@@ -12,8 +12,7 @@ export class ActionBarNode extends Node<Gtk.ActionBar> implements ChildContainer
     }
 
     insertChildBefore(child: Gtk.Widget, _before: Gtk.Widget): void {
-        // ActionBar doesn't support ordered insertion, just pack at start
-        this.widget.packStart(child);
+        this.attachChild(child);
     }
 
     detachChild(child: Gtk.Widget): void {

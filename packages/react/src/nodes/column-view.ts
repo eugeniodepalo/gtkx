@@ -67,12 +67,11 @@ export class ColumnViewNode extends Node<Gtk.ColumnView> implements ItemContaine
     }
 
     private waitForSortComplete(callback: () => void): void {
-        const pending = this.sortListModel.getPending();
-        if (pending === 0) {
-            callback();
+        const sortingInProgress = this.sortListModel.getPending() > 0;
+        if (sortingInProgress) {
+            setTimeout(() => this.waitForSortComplete(callback), 0);
         } else {
-            // Sorting still in progress, check again after a short delay
-            setTimeout(() => this.waitForSortComplete(callback), 10);
+            callback();
         }
     }
 
@@ -96,9 +95,8 @@ export class ColumnViewNode extends Node<Gtk.ColumnView> implements ItemContaine
         const column = sorter.getPrimarySortColumn();
         const order = sorter.getPrimarySortOrder();
         const columnId = column?.getId() ?? null;
-
-        // Deduplicate: only notify if the sort state actually changed
-        if (columnId === this.lastNotifiedColumn && order === this.lastNotifiedOrder) {
+        const sortStateUnchanged = columnId === this.lastNotifiedColumn && order === this.lastNotifiedOrder;
+        if (sortStateUnchanged) {
             return;
         }
 
@@ -180,9 +178,8 @@ export class ColumnViewNode extends Node<Gtk.ColumnView> implements ItemContaine
         const newLength = this.items.length;
         if (newLength === this.committedLength) return;
 
-        // Store indices as strings so we can map back to items in the sorter
-        const indices = Array.from({ length: newLength }, (_, i) => String(i));
-        this.stringList.splice(0, this.committedLength, indices);
+        const itemIndicesForSorter = Array.from({ length: newLength }, (_, i) => String(i));
+        this.stringList.splice(0, this.committedLength, itemIndicesForSorter);
         this.committedLength = newLength;
     };
 
@@ -235,10 +232,11 @@ export class ColumnViewNode extends Node<Gtk.ColumnView> implements ItemContaine
             this.onSortChange = newOnSortChange;
             const hasCallback = this.onSortChange !== null;
 
-            // Connect or disconnect the signal handler as needed
-            if (!hadCallback && hasCallback) {
+            const callbackAdded = !hadCallback && hasCallback;
+            const callbackRemoved = hadCallback && !hasCallback;
+            if (callbackAdded) {
                 this.connectSorterChangedSignal();
-            } else if (hadCallback && !hasCallback) {
+            } else if (callbackRemoved) {
                 this.disconnectSorterChangedSignal();
             }
         }
@@ -387,12 +385,11 @@ export class ColumnViewColumnNode extends Node {
 
         const columnId = this.columnId;
         const columnView = this.columnView;
-        const wrappedSortFn = (_a: unknown, _b: unknown): number => {
+        const wrappedSortFn = (stringObjPtrA: unknown, stringObjPtrB: unknown): number => {
             const items = columnView.getItems();
 
-            // _a and _b are GtkStringObject pointers - get the string content (indices)
-            const stringObjA = getObject(_a, Gtk.StringObject);
-            const stringObjB = getObject(_b, Gtk.StringObject);
+            const stringObjA = getObject(stringObjPtrA, Gtk.StringObject);
+            const stringObjB = getObject(stringObjPtrB, Gtk.StringObject);
             const indexA = Number.parseInt(stringObjA.getString(), 10);
             const indexB = Number.parseInt(stringObjB.getString(), 10);
 

@@ -643,11 +643,14 @@ impl Value {
                     }
                     value::Value::Null | value::Value::Undefined => {
                         // GTK-allocates: need pointer-to-pointer semantics
-                        // OwnedPtr.ptr will be passed by address to FFI (&owned_ptr.ptr)
-                        // GTK writes the allocated pointer into that location
+                        // Create heap storage for the pointer, initialized to null.
+                        // FFI passes the value at &owned_ptr.ptr to C, which is the address
+                        // of this storage. C writes the allocated pointer into this storage.
+                        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
+                        let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
                         Ok(Value::OwnedPtr(OwnedPtr {
-                            ptr: std::ptr::null_mut(),
-                            value: Box::new(()), // Just need to keep OwnedPtr alive
+                            ptr,
+                            value: ptr_storage,
                         }))
                     }
                     _ => bail!(

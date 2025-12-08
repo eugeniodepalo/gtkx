@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { type ChildContainer, isPageContainer, type PageContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
-import { getStringProp } from "../prop-utils.js";
+import { getStringProp } from "../props.js";
 
 export class NotebookNode extends Node<Gtk.Notebook> implements PageContainer, ChildContainer {
     static matches(type: string): boolean {

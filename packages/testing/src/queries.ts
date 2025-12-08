@@ -161,7 +161,9 @@ const getByRole = (container: Container, role: AccessibleRole, options?: ByRoleO
     if (matches.length > 1) {
         throw new Error(`Found ${matches.length} elements with ${formatByRoleError(role, options)}`);
     }
-    return matches[0] as Gtk.Widget;
+    const [first] = matches;
+    if (!first) throw new Error(`Unable to find element with ${formatByRoleError(role, options)}`);
+    return first;
 };
 
 const getAllByLabelText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget[] => {
@@ -182,7 +184,9 @@ const getByLabelText = (container: Container, text: string | RegExp, options?: T
     if (matches.length > 1) {
         throw new Error(`Found ${matches.length} elements with label text "${text}"`);
     }
-    return matches[0] as Gtk.Widget;
+    const [first] = matches;
+    if (!first) throw new Error(`Unable to find element with label text "${text}"`);
+    return first;
 };
 
 const getAllByText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget[] => {
@@ -203,7 +207,9 @@ const getByText = (container: Container, text: string | RegExp, options?: TextMa
     if (matches.length > 1) {
         throw new Error(`Found ${matches.length} elements with text "${text}"`);
     }
-    return matches[0] as Gtk.Widget;
+    const [first] = matches;
+    if (!first) throw new Error(`Unable to find element with text "${text}"`);
+    return first;
 };
 
 const getAllByTestId = (container: Container, testId: string | RegExp, options?: TextMatchOptions): Gtk.Widget[] => {
@@ -224,7 +230,9 @@ const getByTestId = (container: Container, testId: string | RegExp, options?: Te
     if (matches.length > 1) {
         throw new Error(`Found ${matches.length} elements with test id "${testId}"`);
     }
-    return matches[0] as Gtk.Widget;
+    const [first] = matches;
+    if (!first) throw new Error(`Unable to find element with test id "${testId}"`);
+    return first;
 };
 
 /**

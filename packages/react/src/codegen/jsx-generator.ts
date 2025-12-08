@@ -26,7 +26,6 @@ const COLUMN_VIEW_WIDGET = "ColumnView";
 const DROPDOWN_WIDGETS = new Set(["DropDown"]);
 const GRID_WIDGETS = new Set(["Grid"]);
 const NOTEBOOK_WIDGET = "Notebook";
-const TEXT_VIEW_WIDGET = "TextView";
 
 const INTERNALLY_PROVIDED_PARAMS: Record<string, Set<string>> = {
     ApplicationWindow: new Set(["application"]),
@@ -61,7 +60,6 @@ const isColumnViewWidget = (widgetName: string): boolean => widgetName === COLUM
 const isDropDownWidget = (widgetName: string): boolean => DROPDOWN_WIDGETS.has(widgetName);
 const isGridWidget = (widgetName: string): boolean => GRID_WIDGETS.has(widgetName);
 const isNotebookWidget = (widgetName: string): boolean => widgetName === NOTEBOOK_WIDGET;
-const isTextViewWidget = (widgetName: string): boolean => widgetName === TEXT_VIEW_WIDGET;
 
 const sanitizeDoc = (doc: string): string => {
     let result = doc;
@@ -406,32 +404,15 @@ ${widgetPropsContent}
             lines.push(`\t * Render function for list items.`);
             lines.push(`\t * Called with null during setup (for loading state) and with the actual item during bind.`);
             lines.push(`\t */`);
-            lines.push(
-                `\t// biome-ignore lint/suspicious/noExplicitAny: Internal type, use generic ListView<T> export`,
-            );
-            lines.push(`\trenderItem: (item: any) => import("react").ReactElement;`);
+            lines.push(`\trenderItem: (item: unknown) => import("react").ReactElement;`);
         }
 
         if (isDropDownWidget(widget.name)) {
             lines.push("");
             lines.push(`\t/** Function to convert item to display label */`);
-            lines.push(
-                `\t// biome-ignore lint/suspicious/noExplicitAny: Internal type, use generic DropDown<T> export`,
-            );
-            lines.push(`\titemLabel?: (item: any) => string;`);
+            lines.push(`\titemLabel?: (item: unknown) => string;`);
             lines.push(`\t/** Called when selection changes */`);
-            lines.push(
-                `\t// biome-ignore lint/suspicious/noExplicitAny: Internal type, use generic DropDown<T> export`,
-            );
-            lines.push(`\tonSelectionChanged?: (item: any, index: number) => void;`);
-        }
-
-        if (isTextViewWidget(widget.name)) {
-            lines.push("");
-            lines.push(`\t/** The contents of the text buffer. */`);
-            lines.push(`\ttext?: string;`);
-            lines.push(`\t/** Called when the text buffer content changes */`);
-            lines.push(`\tonChanged?: (text: string) => void;`);
+            lines.push(`\tonSelectionChanged?: (item: unknown, index: number) => void;`);
         }
 
         lines.push("");
@@ -785,16 +766,9 @@ ${widgetPropsContent}
             lines.push(`\treturn createElement("${name}.Item", props);`);
             lines.push(`}`);
         } else if (isColumnViewWidget(widgetName)) {
-            // Root props type - extends with ColumnViewRootProps for sorting support
-            // Uses generics: T for item type, C for column ID union type
             lines.push(
-                `interface ${name}RootPropsExtended<T = unknown, C extends string = string> extends ${name}Props, ColumnViewRootProps<C> {`,
+                `interface ${name}RootPropsExtended<T = unknown, C extends string = string> extends ${name}Props, ColumnViewRootProps<T, C> {}`,
             );
-            lines.push(
-                `\t/** Comparison function for sorting items by column. Takes item a, item b, and column id. */`,
-            );
-            lines.push(`\tsortFn?: (a: T, b: T, columnId: C) => number;`);
-            lines.push(`}`);
             lines.push(``);
             // Root wrapper (generic)
             lines.push(

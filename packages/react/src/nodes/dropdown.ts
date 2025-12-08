@@ -76,8 +76,7 @@ export class DropDownNode extends Node<Gtk.DropDown> implements ItemContainer<un
     }
 
     insertItemBefore(item: unknown, _beforeItem: unknown): void {
-        // DropDown doesn't support ordered insertion
-        this.store.append(item);
+        this.addItem(item);
     }
 
     removeItem(item: unknown): void {

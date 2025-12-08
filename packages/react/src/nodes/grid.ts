@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { type GridContainer, isGridContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
-import { getNumberProp } from "../prop-utils.js";
+import { getNumberProp } from "../props.js";
 
 export class GridNode extends Node<Gtk.Grid> implements GridContainer {
     static matches(type: string): boolean {

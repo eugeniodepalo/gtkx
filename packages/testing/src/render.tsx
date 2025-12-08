@@ -53,8 +53,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
     if (!container) {
         const instance = reconciler.getInstance();
         container = instance.createContainer(
-            // biome-ignore lint/suspicious/noExplicitAny: testing only
-            ROOT_NODE_CONTAINER as any,
+            ROOT_NODE_CONTAINER as unknown as Gtk.Widget,
             0,
             null,
             false,

@@ -1277,9 +1277,10 @@ ${allArgs ? `${allArgs},` : ""}
         const hasReturnValue = returnTypeMapping.ts !== "void";
 
         // For records (boxed types), use "boxed" type with innerType; for classes, use "gobject"
-        const selfTypeDescriptor = isRecord && className
-            ? `{ type: "boxed", borrowed: true, innerType: "${className}", lib: "${sharedLibrary}" }`
-            : `{ type: "gobject" }`;
+        const selfTypeDescriptor =
+            isRecord && className
+                ? `{ type: "boxed", borrowed: true, innerType: "${className}", lib: "${sharedLibrary}" }`
+                : `{ type: "gobject" }`;
 
         const lines: string[] = [];
         const methodDoc = formatMethodDoc(method.doc, method.parameters);
@@ -1833,7 +1834,12 @@ ${args}
         return this.generateStaticFunctions(functions, sharedLibrary, recordName);
     }
 
-    private generateRecordMethods(methods: GirMethod[], sharedLibrary: string, recordName?: string, glibTypeName?: string): string {
+    private generateRecordMethods(
+        methods: GirMethod[],
+        sharedLibrary: string,
+        recordName?: string,
+        glibTypeName?: string,
+    ): string {
         return this.generateMethods(methods, sharedLibrary, glibTypeName ?? recordName, true);
     }
 

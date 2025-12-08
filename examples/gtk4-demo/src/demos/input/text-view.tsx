@@ -1,21 +1,39 @@
+import { createRef } from "@gtkx/ffi";
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Frame, Label, ScrolledWindow, TextView } from "@gtkx/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
+const getBufferText = (buffer: Gtk.TextBuffer): string => {
+    const startIter = new Gtk.TextIter();
+    const endIter = new Gtk.TextIter();
+    buffer.getStartIter(createRef(startIter.ptr));
+    buffer.getEndIter(createRef(endIter.ptr));
+    return buffer.getText(startIter, endIter, true);
+};
+
 const TextViewDemo = () => {
+    const [buffer] = useState(() => new Gtk.TextBuffer());
     const [charCount, setCharCount] = useState(0);
     const [wordCount, setWordCount] = useState(0);
 
-    const handleTextChanged = (text: string) => {
-        setCharCount(text.length);
-        const words = text
-            .trim()
-            .split(/\s+/)
-            .filter((w) => w.length > 0);
-        setWordCount(words.length);
-    };
+    useEffect(() => {
+        const handlerId = buffer.connect("changed", () => {
+            const text = getBufferText(buffer);
+            setCharCount(text.length);
+            const words = text
+                .trim()
+                .split(/\s+/)
+                .filter((w) => w.length > 0);
+            setWordCount(words.length);
+        });
+
+        return () => {
+            GObject.signalHandlerDisconnect(buffer, handlerId);
+        };
+    }, [buffer]);
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
@@ -31,7 +49,7 @@ const TextViewDemo = () => {
                 <Frame.Root>
                     <ScrolledWindow minContentHeight={150} hexpand vexpand>
                         <TextView
-                            onChanged={handleTextChanged}
+                            buffer={buffer}
                             leftMargin={8}
                             rightMargin={8}
                             topMargin={8}
@@ -91,8 +109,8 @@ const TextViewDemo = () => {
 export const textViewDemo: Demo = {
     id: "text-view",
     title: "TextView",
-    description: "Multi-line text editing widget with onChanged support.",
-    keywords: ["textview", "text", "editor", "multiline", "GtkTextView", "onChanged"],
+    description: "Multi-line text editing widget with TextBuffer support.",
+    keywords: ["textview", "text", "editor", "multiline", "GtkTextView", "TextBuffer"],
     component: TextViewDemo,
     sourcePath: getSourcePath(import.meta.url, "text-view.tsx"),
 };

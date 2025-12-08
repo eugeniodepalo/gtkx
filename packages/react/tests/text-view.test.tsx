@@ -6,19 +6,18 @@ import { flushSync, render, setupTests } from "./utils.js";
 
 setupTests();
 
-// Track setText calls
-let lastSetText: string | undefined;
-let setTextCallCount = 0;
-const originalSetText = Gtk.TextBuffer.prototype.setText;
+let lastSetBuffer: Gtk.TextBuffer | undefined;
+let setBufferCallCount = 0;
+const originalSetBuffer = Gtk.TextView.prototype.setBuffer;
 
 beforeEach(() => {
-    lastSetText = undefined;
-    setTextCallCount = 0;
+    lastSetBuffer = undefined;
+    setBufferCallCount = 0;
 
-    Gtk.TextBuffer.prototype.setText = function (text: string, len: number) {
-        lastSetText = text;
-        setTextCallCount++;
-        return originalSetText.call(this, text, len);
+    Gtk.TextView.prototype.setBuffer = function (buffer: Gtk.TextBuffer) {
+        lastSetBuffer = buffer;
+        setBufferCallCount++;
+        return originalSetBuffer.call(this, buffer);
     };
 });
 
@@ -107,49 +106,57 @@ describe("TextView widget", () => {
         expect(textViewRef?.getWrapMode()).toBe(Gtk.WrapMode.WORD);
     });
 
-    it("sets initial text from text prop", () => {
-        lastSetText = undefined;
+    it("sets buffer from buffer prop", () => {
+        const buffer = new Gtk.TextBuffer();
+        let textViewRef: Gtk.TextView | undefined;
 
-        const App = () => <TextView text="Hello World" />;
+        const App = () => (
+            <TextView
+                buffer={buffer}
+                ref={(ref: Gtk.TextView | null) => {
+                    textViewRef = ref ?? undefined;
+                }}
+            />
+        );
 
         render(<App />);
 
-        expect(lastSetText).toBe("Hello World");
+        expect(lastSetBuffer).toBe(buffer);
+        expect(textViewRef?.getBuffer().ptr).toStrictEqual(buffer.ptr);
     });
 
-    it("updates text when prop changes", () => {
-        lastSetText = undefined;
-        let setText: (value: string) => void = () => {};
+    it("updates buffer when prop changes", () => {
+        const buffer1 = new Gtk.TextBuffer();
+        const buffer2 = new Gtk.TextBuffer();
+        let setBuffer: (value: Gtk.TextBuffer) => void = () => {};
 
         const App = () => {
-            const [text, _setText] = useState("Initial");
-            setText = _setText;
-            return <TextView text={text} />;
+            const [buffer, _setBuffer] = useState(buffer1);
+            setBuffer = _setBuffer;
+            return <TextView buffer={buffer} />;
         };
 
         render(<App />);
-        expect(lastSetText).toBe("Initial");
+        expect(lastSetBuffer).toBe(buffer1);
 
-        flushSync(() => setText("Updated"));
-        expect(lastSetText).toBe("Updated");
+        flushSync(() => setBuffer(buffer2));
+        expect(lastSetBuffer).toBe(buffer2);
     });
 
-    it("does not update buffer when text prop matches current text", () => {
-        lastSetText = undefined;
-        let setText: (value: string) => void = () => {};
+    it("does not call setBuffer when buffer prop is the same reference", () => {
+        const buffer = new Gtk.TextBuffer();
+        let setCount: (value: number) => void = () => {};
 
         const App = () => {
-            const [text, _setText] = useState("Same");
-            setText = _setText;
-            return <TextView text={text} />;
+            const [count, _setCount] = useState(0);
+            setCount = _setCount;
+            return <TextView buffer={buffer} data-count={count} />;
         };
 
         render(<App />);
+        const countBefore = setBufferCallCount;
 
-        // Reset counter after initial render
-        const countBefore = setTextCallCount;
-
-        flushSync(() => setText("Same"));
-        expect(setTextCallCount).toBe(countBefore);
+        flushSync(() => setCount(1));
+        expect(setBufferCallCount).toBe(countBefore);
     });
 });

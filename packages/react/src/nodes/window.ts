@@ -2,7 +2,7 @@ import { getCurrentApp } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
-import { getNumberProp } from "../prop-utils.js";
+import { getNumberProp } from "../props.js";
 
 export class WindowNode extends Node<Gtk.Window> {
     static matches(type: string): boolean {
