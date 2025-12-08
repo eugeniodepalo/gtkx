@@ -335,11 +335,23 @@ Grid layout with automatic wrapping:
 
 ### ColumnView (Tables)
 
-Tabular data with multiple columns:
+Tabular data with multiple columns and optional sorting:
 
 ```tsx
-<ColumnView.Root>
+const sortFn = (a: Product, b: Product, columnId: string) => {
+  if (columnId === "name") return a.name.localeCompare(b.name);
+  if (columnId === "price") return a.price - b.price;
+  return 0;
+};
+
+<ColumnView.Root
+  sortColumn={sortColumn}
+  sortOrder={sortOrder}
+  onSortChange={(column, order) => { setSortColumn(column); setSortOrder(order); }}
+  sortFn={sortFn}
+>
   <ColumnView.Column
+    id="name"
     title="Name"
     expand
     renderCell={(product: Product | null, ref: RefCallback<Gtk.Widget>) => (
@@ -347,6 +359,7 @@ Tabular data with multiple columns:
     )}
   />
   <ColumnView.Column
+    id="price"
     title="Price"
     fixedWidth={100}
     renderCell={(product: Product | null, ref: RefCallback<Gtk.Widget>) => (
@@ -358,6 +371,14 @@ Tabular data with multiple columns:
   ))}
 </ColumnView.Root>
 ```
+
+ColumnView.Root sorting props:
+- `sortColumn`: The column id currently sorted by (controlled)
+- `sortOrder`: `Gtk.SortType.ASCENDING` or `Gtk.SortType.DESCENDING`
+- `onSortChange`: Callback when user clicks column headers to change sort
+- `sortFn`: Comparison function `(a, b, columnId) => number`
+
+ColumnView.Column requires `id` prop for sorting to work.
 
 ### DropDown
 

@@ -161,3 +161,40 @@ unsafe extern "C" fn async_ready_trampoline(
 pub fn get_async_ready_trampoline_ptr() -> *mut c_void {
     async_ready_trampoline as *mut c_void
 }
+
+unsafe extern "C" fn compare_data_func_trampoline(
+    a: *mut gobject_ffi::GObject,
+    b: *mut gobject_ffi::GObject,
+    user_data: *mut c_void,
+) -> i32 {
+    unsafe {
+        let closure_ptr = user_data as *mut gobject_ffi::GClosure;
+        if closure_ptr.is_null() {
+            return 0;
+        }
+
+        let mut args: [glib::Value; 2] = [
+            glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
+            glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
+        ];
+
+        gobject_ffi::g_value_set_object(args[0].to_glib_none_mut().0, a);
+        gobject_ffi::g_value_set_object(args[1].to_glib_none_mut().0, b);
+
+        let mut return_value = glib::Value::from_type_unchecked(glib::types::Type::I32);
+
+        gobject_ffi::g_closure_invoke(
+            closure_ptr,
+            return_value.to_glib_none_mut().0,
+            2,
+            args[0].to_glib_none_mut().0,
+            std::ptr::null_mut(),
+        );
+
+        return_value.get::<i32>().unwrap_or(0)
+    }
+}
+
+pub fn get_compare_data_func_trampoline_ptr() -> *mut c_void {
+    compare_data_func_trampoline as *mut c_void
+}

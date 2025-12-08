@@ -175,7 +175,7 @@ export class JsxGenerator {
             `import type { ReactNode, Ref } from "react";`,
             ...externalImports,
             `import type * as Gtk from "@gtkx/ffi/gtk";`,
-            `import type { ColumnViewColumnProps, GridChildProps, ListItemProps, ListViewRenderProps, NotebookPageProps, SlotProps } from "../types.js";`,
+            `import type { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, ListViewRenderProps, NotebookPageProps, SlotProps } from "../types.js";`,
             "",
         ].join("\n");
     }
@@ -184,7 +184,7 @@ export class JsxGenerator {
         const widgetPropsContent = this.generateWidgetPropsContent(widgetClass);
 
         return `
-export { ColumnViewColumnProps, GridChildProps, ListItemProps, ListViewRenderProps, NotebookPageProps, SlotProps };
+export { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, ListViewRenderProps, NotebookPageProps, SlotProps };
 
 ${widgetPropsContent}
 `;
@@ -785,8 +785,21 @@ ${widgetPropsContent}
             lines.push(`\treturn createElement("${name}.Item", props);`);
             lines.push(`}`);
         } else if (isColumnViewWidget(widgetName)) {
-            // Root wrapper (non-generic)
-            lines.push(`function ${name}Root(props: ${name}Props): import("react").ReactElement {`);
+            // Root props type - extends with ColumnViewRootProps for sorting support
+            // Uses generics: T for item type, C for column ID union type
+            lines.push(
+                `interface ${name}RootPropsExtended<T = unknown, C extends string = string> extends ${name}Props, ColumnViewRootProps<C> {`,
+            );
+            lines.push(
+                `\t/** Comparison function for sorting items by column. Takes item a, item b, and column id. */`,
+            );
+            lines.push(`\tsortFn?: (a: T, b: T, columnId: C) => number;`);
+            lines.push(`}`);
+            lines.push(``);
+            // Root wrapper (generic)
+            lines.push(
+                `function ${name}Root<T = unknown, C extends string = string>(props: ${name}RootPropsExtended<T, C>): import("react").ReactElement {`,
+            );
             lines.push(`\treturn createElement("${name}.Root", props);`);
             lines.push(`}`);
             lines.push(``);

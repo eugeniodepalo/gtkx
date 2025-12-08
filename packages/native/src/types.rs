@@ -26,6 +26,7 @@ pub enum CallbackTrampoline {
     Destroy,
     SourceFunc,
     DrawFunc,
+    CompareDataFunc,
 }
 
 #[derive(Debug, Clone)]
@@ -80,6 +81,7 @@ impl Type {
                     Some("destroy") => CallbackTrampoline::Destroy,
                     Some("sourceFunc") => CallbackTrampoline::SourceFunc,
                     Some("drawFunc") => CallbackTrampoline::DrawFunc,
+                    Some("compareDataFunc") => CallbackTrampoline::CompareDataFunc,
                     _ => CallbackTrampoline::Closure,
                 };
 

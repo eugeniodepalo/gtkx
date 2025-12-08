@@ -9,7 +9,12 @@ use gtk4::glib::{self, translate::IntoGlib as _};
 use libffi::middle as ffi;
 use neon::prelude::*;
 
-use crate::{arg::{self, Arg}, callback, types::*, value};
+use crate::{
+    arg::{self, Arg},
+    callback,
+    types::*,
+    value,
+};
 
 #[derive(Debug)]
 #[repr(C)]
@@ -137,6 +142,7 @@ impl TryFrom<arg::Arg> for Value {
             Type::Integer(type_) => {
                 let number = match arg.value {
                     value::Value::Number(n) => n,
+                    value::Value::Null | value::Value::Undefined if arg.optional => 0.0,
                     _ => bail!("Expected a Number for integer type, got {:?}", arg.value),
                 };
 
@@ -426,7 +432,14 @@ impl Value {
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
                     let args_values = convert_glib_args(args, &arg_types);
-                    let return_type = return_type.clone();
+                    let return_type = *return_type.clone().unwrap_or(Box::new(Type::Undefined));
+                    let is_void = matches!(&return_type, Type::Undefined | Type::Null);
+
+                    if is_void {
+                        invoke_js_callback(&channel, &callback, args_values, false);
+                        return None;
+                    }
+
                     let rx = invoke_js_callback(&channel, &callback, args_values, true);
 
                     wait_for_js_result(
@@ -435,13 +448,13 @@ impl Value {
                         |result| match result {
                             Ok(value) => value::Value::into_glib_value_with_default(
                                 value,
-                                return_type.as_deref(),
+                                Some(&return_type),
                             ),
                             Err(_) => {
                                 eprintln!("JS callback threw an error");
                                 value::Value::into_glib_value_with_default(
                                     value::Value::Undefined,
-                                    return_type.as_deref(),
+                                    Some(&return_type),
                                 )
                             }
                         },
@@ -566,6 +579,43 @@ impl Value {
 
                 let closure_ptr = create_trampoline_closure_ptr(&closure);
                 let trampoline_ptr = callback::get_draw_func_trampoline_ptr();
+                let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
+
+                Ok(Value::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr,
+                    closure: OwnedPtr::new(closure, closure_ptr),
+                    destroy_ptr: Some(destroy_ptr),
+                }))
+            }
+
+            CallbackTrampoline::CompareDataFunc => {
+                let arg_types = type_.arg_types.clone();
+
+                let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    let args_values = convert_glib_args(args, &arg_types);
+                    let rx = invoke_js_callback(&channel, &callback, args_values, true);
+
+                    wait_for_js_result(
+                        rx,
+                        "JS thread disconnected while waiting for compare func callback",
+                        |result| match result {
+                            Ok(value) => {
+                                let ordering = match value {
+                                    value::Value::Number(n) => n as i32,
+                                    _ => 0,
+                                };
+                                Some(ordering.into())
+                            }
+                            Err(_) => {
+                                eprintln!("JS compare func callback threw an error");
+                                Some(0i32.into())
+                            }
+                        },
+                    )
+                });
+
+                let closure_ptr = create_trampoline_closure_ptr(&closure);
+                let trampoline_ptr = callback::get_compare_data_func_trampoline_ptr();
                 let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {

@@ -75,7 +75,9 @@ fn handle_call(
                 arg_types.push(ffi::Type::pointer());
                 arg_types.push(ffi::Type::pointer());
 
-                if cb.trampoline == CallbackTrampoline::DrawFunc {
+                if cb.trampoline == CallbackTrampoline::DrawFunc
+                    || cb.trampoline == CallbackTrampoline::CompareDataFunc
+                {
                     arg_types.push(ffi::Type::pointer());
                 }
             }

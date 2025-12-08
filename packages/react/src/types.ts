@@ -1,5 +1,10 @@
+import type { SortType } from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 
+/**
+ * Props for slot components that accept children.
+ * Used by container widgets that render child elements in designated slots.
+ */
 export interface SlotProps {
     children?: ReactNode;
 }
@@ -25,11 +30,21 @@ export interface ListViewRenderProps<T = unknown> {
     renderItem: RenderItemFn<T>;
 }
 
+/**
+ * Comparison function for sorting items by column.
+ * Returns negative if a < b, 0 if a === b, positive if a > b.
+ * @param a - First item to compare
+ * @param b - Second item to compare
+ * @param columnId - The ID of the column being sorted
+ */
+export type ColumnSortFn<T, C extends string = string> = (a: T, b: T, columnId: C) => number;
+
 export interface ColumnViewColumnProps {
     title?: string;
     expand?: boolean;
     resizable?: boolean;
     fixedWidth?: number;
+    id?: string;
     /**
      * Render function for column cells.
      * Called with null during setup (for loading state) and with the actual item during bind.
@@ -37,6 +52,14 @@ export interface ColumnViewColumnProps {
      */
     // biome-ignore lint/suspicious/noExplicitAny: Using any allows users to specify their own item type
     renderCell: (item: any) => ReactElement;
+}
+
+export interface ColumnViewRootProps<C extends string = string> {
+    sortColumn?: C | null;
+    sortOrder?: SortType;
+    onSortChange?: (column: C | null, order: SortType) => void;
+    // biome-ignore lint/suspicious/noExplicitAny: Using any allows users to specify their own item type
+    sortFn?: ColumnSortFn<any, C>;
 }
 
 export interface NotebookPageProps extends SlotProps {

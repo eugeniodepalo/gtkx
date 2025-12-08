@@ -1732,7 +1732,9 @@ ${fieldWrites}
             return `  protected createPtr(_init: Record<string, unknown>): unknown {\n    return null;\n  }\n`;
         }
 
-        const filteredParams = mainConstructor.parameters.filter((p) => !isVararg(p));
+        const filteredParams = mainConstructor.parameters.filter(
+            (p, i) => !isVararg(p) && !this.typeMapper.isClosureTarget(i, mainConstructor.parameters),
+        );
         const paramTypes = filteredParams.map((p) => this.typeMapper.mapParameter(p).ts);
         const paramNames = filteredParams.map((p) => toValidIdentifier(toCamelCase(p.name)));
 

@@ -161,10 +161,84 @@ const ProductTable = () => (
 );
 ```
 
+### ColumnView.Root Sorting Props
+
+ColumnView supports sortable columns. When the user clicks a column header, the table is sorted by that column:
+
+```tsx
+import type { RefCallback } from "react";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { ColumnView, Label, ScrolledWindow } from "@gtkx/react";
+import { useState } from "react";
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+}
+
+const products: Product[] = [/* ... */];
+
+type ColumnId = "name" | "price";
+
+const sortFn = (a: Product, b: Product, columnId: ColumnId): number => {
+  if (columnId === "name") return a.name.localeCompare(b.name);
+  if (columnId === "price") return a.price - b.price;
+  return 0;
+};
+
+const SortableTable = () => {
+  const [sortColumn, setSortColumn] = useState<ColumnId | null>("name");
+  const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
+
+  return (
+    <ScrolledWindow vexpand>
+      <ColumnView.Root<Product, ColumnId>
+        sortColumn={sortColumn}
+        sortOrder={sortOrder}
+        onSortChange={(column, order) => {
+          setSortColumn(column);
+          setSortOrder(order);
+        }}
+        sortFn={sortFn}
+      >
+        <ColumnView.Column<Product>
+          id="name"
+          title="Name"
+          expand
+          renderCell={(product, ref) => (
+            <Label.Root ref={ref} label={product?.name ?? ""} />
+          )}
+        />
+        <ColumnView.Column<Product>
+          id="price"
+          title="Price"
+          fixedWidth={100}
+          renderCell={(product, ref) => (
+            <Label.Root ref={ref} label={product ? `$${product.price}` : ""} />
+          )}
+        />
+        {products.map(product => (
+          <ColumnView.Item key={product.id} item={product} />
+        ))}
+      </ColumnView.Root>
+    </ScrolledWindow>
+  );
+};
+```
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `sortColumn` | `string \| null` | The column id currently sorted by (controlled) |
+| `sortOrder` | `Gtk.SortType` | `ASCENDING` or `DESCENDING` |
+| `onSortChange` | `(column: string \| null, order: Gtk.SortType) => void` | Called when user clicks column headers |
+| `sortFn` | `(a: T, b: T, columnId: string) => number` | Comparison function for sorting |
+
 ### ColumnView.Column Props
 
 | Prop | Type | Description |
 |------|------|-------------|
+| `id` | `string` | Column identifier (required for sorting) |
 | `title` | `string` | Column header text |
 | `renderCell` | `(item: T \| null, ref: RefCallback) => ReactElement` | Renders the cell content |
 | `expand` | `boolean` | Whether the column should expand to fill space |

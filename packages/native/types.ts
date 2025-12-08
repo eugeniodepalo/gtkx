@@ -36,10 +36,11 @@ type UndefinedType = { type: "undefined" };
  * - "destroy": Use destroy notify trampoline (GDestroyNotify)
  * - "sourceFunc": Use source func trampoline (GSourceFunc)
  * - "drawFunc": Use draw func trampoline (GtkDrawingAreaDrawFunc)
+ * - "compareDataFunc": Use compare data func trampoline (GCompareDataFunc)
  */
 type CallbackType = {
     type: "callback";
-    trampoline?: "closure" | "asyncReady" | "destroy" | "sourceFunc" | "drawFunc";
+    trampoline?: "closure" | "asyncReady" | "destroy" | "sourceFunc" | "drawFunc" | "compareDataFunc";
     argTypes?: Type[];
     sourceType?: Type;
     resultType?: Type;

@@ -186,6 +186,14 @@ A comprehensive showcase of GTK4 widgets and features:
 turbo start --filter=gtk4-demo
 ```
 
+### List Example
+
+Comprehensive showcase of ListView, GridView, and ColumnView with sorting:
+
+```bash
+turbo start --filter=list-example
+```
+
 ## Packages
 
 | Package | Description |

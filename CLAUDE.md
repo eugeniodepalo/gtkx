@@ -61,17 +61,18 @@ React JSX → @gtkx/react (Reconciler) → @gtkx/ffi (TS wrappers) → @gtkx/nat
 
 ### Package Structure
 
-- **@gtkx/react** (`packages/react`) - React reconciler and JSX components. Entry: `render()` creates GTK app and mounts React tree. Key files: `reconciler.ts` (HostConfig), `node.ts` (widget wrappers), `factory.ts` (node routing)
-- **@gtkx/ffi** (`packages/ffi`) - Generated TypeScript FFI bindings. Each GTK class becomes a TS class with methods that call native FFI
+- **@gtkx/react** (`packages/react`) - React reconciler and JSX components. Key exports: `render()` creates GTK app and mounts React tree, `quit()` cleanly shuts down, `createPortal()` for dialogs. Key files: `reconciler.ts` (HostConfig), `node.ts` (widget wrappers), `factory.ts` (node routing)
+- **@gtkx/ffi** (`packages/ffi`) - Generated TypeScript FFI bindings. Each GTK class becomes a TS class with methods that call native FFI. Key exports: `start()`, `stop()`, `getCurrentApp()`, `getObject()`, `events` (EventEmitter for lifecycle), `createRef`, `getObjectId`
 - **@gtkx/native** (`packages/native`) - Rust/Neon module exposing `start()`, `stop()`, `call()`, `read()`, `write()`, `alloc()`. Uses libffi for dynamic C invocation
-- **@gtkx/css** (`packages/css`) - Emotion-style CSS-in-JS for GTK widgets
+- **@gtkx/css** (`packages/css`) - Emotion-style CSS-in-JS for GTK widgets. Key exports: `css`, `cx`, `injectGlobal`
 - **@gtkx/gir** (`packages/gir`) - GIR XML parser. Used at codegen time by ffi and react packages
-- **@gtkx/testing** (`packages/testing`) - Testing Library-inspired utilities
+- **@gtkx/testing** (`packages/testing`) - Testing Library-inspired utilities. Key exports: `render`, `cleanup`, `screen`, `userEvent`, `fireEvent`, `waitFor`, `within`
 
 ### Examples
 
 - **counter-example** (`examples/counter`) - Simple counter app demonstrating state and testing
 - **gtk4-demo** (`examples/gtk4-demo`) - Comprehensive GTK4 widget showcase
+- **list-example** (`examples/list`) - Comprehensive showcase of ListView, GridView, and ColumnView with sorting
 
 ## Coding Guidelines
 

@@ -660,6 +660,92 @@ describe("React Reconciler", () => {
             const model = widget.getModel();
             expect(model).not.toBeNull();
         });
+
+        it("sets column id via props", () => {
+            const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
+            const column = createNode(
+                "ColumnView.Column",
+                { title: "Name", id: "name-column", renderCell },
+                getCurrentApp(),
+            );
+
+            columnView.appendChild(column);
+
+            const widget = columnView.getWidget() as Gtk.ColumnView;
+            const columns = widget.getColumns();
+            const gtkColumn = getObject(columns.getObject(0)?.ptr, Gtk.ColumnViewColumn);
+            expect(gtkColumn?.getId()).toBe("name-column");
+        });
+
+        it("sets sorter on column when root sortFn is provided", () => {
+            const sortFn = (a: { name: string }, b: { name: string }, _columnId: string) =>
+                a.name.localeCompare(b.name);
+            const columnView = createNode("ColumnView.Root", { sortFn }, getCurrentApp());
+            const column = createNode(
+                "ColumnView.Column",
+                { title: "Name", id: "name-column", renderCell },
+                getCurrentApp(),
+            );
+
+            columnView.appendChild(column);
+
+            const widget = columnView.getWidget() as Gtk.ColumnView;
+            const columns = widget.getColumns();
+            const gtkColumn = getObject(columns.getObject(0)?.ptr, Gtk.ColumnViewColumn);
+            expect(gtkColumn?.getSorter()).not.toBeNull();
+        });
+
+        it("sets initial sort column from props", () => {
+            const sortFn = (a: { name: string }, b: { name: string }, _columnId: string) =>
+                a.name.localeCompare(b.name);
+            const columnView = createNode(
+                "ColumnView.Root",
+                { sortColumn: "name-column", sortOrder: Gtk.SortType.ASCENDING, sortFn },
+                getCurrentApp(),
+            );
+            const column = createNode(
+                "ColumnView.Column",
+                { title: "Name", id: "name-column", renderCell },
+                getCurrentApp(),
+            );
+
+            columnView.appendChild(column);
+
+            const widget = columnView.getWidget() as Gtk.ColumnView;
+            const sorter = getObject(widget.getSorter()?.ptr, Gtk.ColumnViewSorter);
+            const primaryColumn = sorter?.getPrimarySortColumn();
+            expect(primaryColumn?.getId()).toBe("name-column");
+        });
+
+        it("updates sort column via updateProps", () => {
+            const sortFn = (a: { name: string }, b: { name: string }, _columnId: string) =>
+                a.name.localeCompare(b.name);
+            const columnView = createNode("ColumnView.Root", { sortFn }, getCurrentApp());
+            const column1 = createNode(
+                "ColumnView.Column",
+                { title: "Name", id: "name-column", renderCell },
+                getCurrentApp(),
+            );
+            const column2 = createNode(
+                "ColumnView.Column",
+                { title: "Age", id: "age-column", renderCell },
+                getCurrentApp(),
+            );
+
+            columnView.appendChild(column1);
+            columnView.appendChild(column2);
+
+            columnView.updateProps(
+                { sortFn },
+                { sortColumn: "age-column", sortOrder: Gtk.SortType.DESCENDING, sortFn },
+            );
+
+            const widget = columnView.getWidget() as Gtk.ColumnView;
+            const sorter = getObject(widget.getSorter()?.ptr, Gtk.ColumnViewSorter);
+            const primaryColumn = sorter?.getPrimarySortColumn();
+            expect(primaryColumn?.getId()).toBe("age-column");
+            expect(sorter?.getPrimarySortOrder()).toBe(Gtk.SortType.DESCENDING);
+        });
     });
 
     describe("child management - Slots", () => {

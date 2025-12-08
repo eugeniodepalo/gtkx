@@ -10,6 +10,8 @@ interface Person {
     status: "active" | "away" | "offline";
 }
 
+type ColumnId = "name" | "email" | "department" | "status";
+
 const people: Person[] = [
     { id: 1, name: "Alice Johnson", email: "alice@example.com", department: "Engineering", status: "active" },
     { id: 2, name: "Bob Smith", email: "bob@example.com", department: "Design", status: "away" },
@@ -22,13 +24,33 @@ const people: Person[] = [
 ];
 
 const statusConfig = {
-    active: { icon: "\u25cf", text: "Active" },
-    away: { icon: "\u25cf", text: "Away" },
-    offline: { icon: "\u25cb", text: "Offline" },
+    active: { icon: "\u25cf", text: "Active", order: 0 },
+    away: { icon: "\u25cf", text: "Away", order: 1 },
+    offline: { icon: "\u25cb", text: "Offline", order: 2 },
+};
+
+const sortByColumn = (a: Person, b: Person, columnId: ColumnId): number => {
+    switch (columnId) {
+        case "name":
+            return a.name.localeCompare(b.name);
+        case "email":
+            return a.email.localeCompare(b.email);
+        case "department":
+            return a.department.localeCompare(b.department);
+        case "status":
+            return statusConfig[a.status].order - statusConfig[b.status].order;
+    }
 };
 
 export const ColumnViewDemo = () => {
     const [items] = useState(people);
+    const [sortColumn, setSortColumn] = useState<ColumnId | null>("name");
+    const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
+
+    const handleSortChange = (column: ColumnId | null, order: Gtk.SortType) => {
+        setSortColumn(column);
+        setSortOrder(order);
+    };
 
     return (
         <Box
@@ -41,17 +63,23 @@ export const ColumnViewDemo = () => {
         >
             <Label.Root label="ColumnView - Team Directory" cssClasses={["title-2"]} halign={Gtk.Align.START} />
             <Label.Root
-                label="A multi-column table view. Perfect for data tables and directories."
+                label="A sortable multi-column table view. Click column headers to sort."
                 cssClasses={["dim-label"]}
                 halign={Gtk.Align.START}
                 wrap
             />
             <ScrolledWindow vexpand>
-                <ColumnView.Root>
-                    <ColumnView.Column
+                <ColumnView.Root<Person, ColumnId>
+                    sortColumn={sortColumn}
+                    sortOrder={sortOrder}
+                    onSortChange={handleSortChange}
+                    sortFn={sortByColumn}
+                >
+                    <ColumnView.Column<Person>
+                        id="name"
                         title="Name"
                         expand
-                        renderCell={(person: Person | null) => (
+                        renderCell={(person) => (
                             <Label.Root
                                 label={person?.name ?? ""}
                                 halign={Gtk.Align.START}
@@ -62,10 +90,11 @@ export const ColumnViewDemo = () => {
                             />
                         )}
                     />
-                    <ColumnView.Column
+                    <ColumnView.Column<Person>
+                        id="email"
                         title="Email"
                         expand
-                        renderCell={(person: Person | null) => (
+                        renderCell={(person) => (
                             <Label.Root
                                 label={person?.email ?? ""}
                                 cssClasses={["dim-label"]}
@@ -77,10 +106,11 @@ export const ColumnViewDemo = () => {
                             />
                         )}
                     />
-                    <ColumnView.Column
+                    <ColumnView.Column<Person>
+                        id="department"
                         title="Department"
                         fixedWidth={120}
-                        renderCell={(person: Person | null) => (
+                        renderCell={(person) => (
                             <Label.Root
                                 label={person?.department ?? ""}
                                 halign={Gtk.Align.START}
@@ -91,10 +121,11 @@ export const ColumnViewDemo = () => {
                             />
                         )}
                     />
-                    <ColumnView.Column
+                    <ColumnView.Column<Person>
+                        id="status"
                         title="Status"
                         fixedWidth={100}
-                        renderCell={(person: Person | null) => {
+                        renderCell={(person) => {
                             const config = person ? statusConfig[person.status] : null;
                             return (
                                 <Label.Root

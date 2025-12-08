@@ -326,8 +326,8 @@ export interface FfiTypeDescriptor {
     itemType?: FfiTypeDescriptor;
     /** List type for arrays (glist, gslist) - indicates native GList/GSList iteration. */
     listType?: "glist" | "gslist";
-    /** Trampoline type for callbacks (asyncReady, destroy, sourceFunc, drawFunc). Default is "closure". */
-    trampoline?: "asyncReady" | "destroy" | "sourceFunc" | "drawFunc";
+    /** Trampoline type for callbacks (asyncReady, destroy, sourceFunc, drawFunc, compareDataFunc). Default is "closure". */
+    trampoline?: "asyncReady" | "destroy" | "sourceFunc" | "drawFunc" | "compareDataFunc";
     /** Source type for asyncReady callback (the GObject source). */
     sourceType?: FfiTypeDescriptor;
     /** Result type for asyncReady callback (the GAsyncResult). */
@@ -1048,6 +1048,20 @@ export class TypeMapper {
             };
         }
 
+        if (param.type.name === "GLib.CompareDataFunc" || param.type.name === "CompareDataFunc") {
+            return {
+                ts: "(a: unknown, b: unknown) => number",
+                ffi: {
+                    type: "callback",
+                    trampoline: "compareDataFunc",
+                    argTypes: [
+                        { type: "gobject", borrowed: true },
+                        { type: "gobject", borrowed: true },
+                    ],
+                },
+            };
+        }
+
         if (param.type.name === "GLib.Closure" || this.isCallback(param.type.name)) {
             return {
                 ts: "(...args: unknown[]) => unknown",
@@ -1089,7 +1103,13 @@ export class TypeMapper {
      * @returns True if this parameter is user_data or destroy for a trampoline callback
      */
     isClosureTarget(paramIndex: number, allParams: GirParameter[]): boolean {
-        const trampolineCallbacks = ["Gio.AsyncReadyCallback", "Gtk.DrawingAreaDrawFunc", "DrawingAreaDrawFunc"];
+        const trampolineCallbacks = [
+            "Gio.AsyncReadyCallback",
+            "Gtk.DrawingAreaDrawFunc",
+            "DrawingAreaDrawFunc",
+            "GLib.CompareDataFunc",
+            "CompareDataFunc",
+        ];
         return allParams.some(
             (p) => trampolineCallbacks.includes(p.type.name) && (p.closure === paramIndex || p.destroy === paramIndex),
         );
