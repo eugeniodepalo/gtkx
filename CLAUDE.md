@@ -24,7 +24,7 @@ GTKX is a framework for building native GTK4 desktop applications using React an
 # Build and run
 turbo build                              # Build all packages
 turbo start                              # Start example app
-turbo start --filter=counter-example     # Start specific example
+turbo start --filter=gtk4-demo           # Start specific example
 
 # Documentation
 pnpm run docs                            # Start documentation site
@@ -66,13 +66,12 @@ React JSX → @gtkx/react (Reconciler) → @gtkx/ffi (TS wrappers) → @gtkx/nat
 - **@gtkx/native** (`packages/native`) - Rust/Neon module exposing `start()`, `stop()`, `call()`, `read()`, `write()`, `alloc()`. Uses libffi for dynamic C invocation
 - **@gtkx/css** (`packages/css`) - Emotion-style CSS-in-JS for GTK widgets. Key exports: `css`, `cx`, `injectGlobal`
 - **@gtkx/gir** (`packages/gir`) - GIR XML parser. Used at codegen time by ffi and react packages
-- **@gtkx/testing** (`packages/testing`) - Testing Library-inspired utilities. Key exports: `render`, `cleanup`, `screen`, `userEvent`, `fireEvent`, `waitFor`, `within`
+- **@gtkx/testing** (`packages/testing`) - Testing Library-inspired utilities. Key exports: `render`, `cleanup`, `teardown`, `screen`, `userEvent`, `fireEvent`, `waitFor`, `waitForElementToBeRemoved`, `within`
 
 ### Examples
 
-- **counter-example** (`examples/counter`) - Simple counter app demonstrating state and testing
 - **gtk4-demo** (`examples/gtk4-demo`) - Comprehensive GTK4 widget showcase
-- **list-example** (`examples/list`) - Comprehensive showcase of ListView, GridView, and ColumnView with sorting
+- **todo** (`examples/todo`) - Todo app demonstrating @gtkx/testing with realistic component tests
 
 ## Coding Guidelines
 

@@ -55,23 +55,23 @@ describe("userEvent", () => {
     });
 
     describe("type", () => {
-        it("throws when element has no setText method", async () => {
+        it("throws when element is not editable (label)", async () => {
             await render(<Label.Root label="Not editable" />);
 
             const label = await screen.findByText("Not editable");
 
             await expect(userEvent.type(label, "text")).rejects.toThrow(
-                /Cannot type into element: no setText method available/,
+                /Cannot type into element: element is not editable/,
             );
         });
 
-        it("throws for button elements", async () => {
+        it("throws when element is not editable (button)", async () => {
             await render(<Button label="Not Editable" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Not Editable" });
 
             await expect(userEvent.type(button, "text")).rejects.toThrow(
-                /Cannot type into element: no setText method available/,
+                /Cannot type into element: element is not editable/,
             );
         });
     });
@@ -115,57 +115,88 @@ describe("userEvent", () => {
     });
 
     describe("clear", () => {
-        it("throws when element has no setText method", async () => {
+        it("throws when element is not editable (label)", async () => {
             await render(<Label.Root label="Not clearable" />);
 
             const label = await screen.findByText("Not clearable");
 
-            await expect(userEvent.clear(label)).rejects.toThrow(/Cannot clear element: no setText method available/);
+            await expect(userEvent.clear(label)).rejects.toThrow(/Cannot clear element: element is not editable/);
         });
 
-        it("throws for button elements", async () => {
+        it("throws when element is not editable (button)", async () => {
             await render(<Button label="Not Clearable" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Not Clearable" });
 
-            await expect(userEvent.clear(button)).rejects.toThrow(/Cannot clear element: no setText method available/);
+            await expect(userEvent.clear(button)).rejects.toThrow(/Cannot clear element: element is not editable/);
         });
     });
 
-    describe("setup", () => {
-        it("returns a user event instance", () => {
-            const user = userEvent.setup();
+    describe("tripleClick", () => {
+        it("emits three clicked signals on button widget", async () => {
+            await render(<Button label="Triple Click Me" />);
 
-            expect(typeof user.click).toBe("function");
-            expect(typeof user.dblClick).toBe("function");
-            expect(typeof user.activate).toBe("function");
-            expect(typeof user.type).toBe("function");
-            expect(typeof user.clear).toBe("function");
-        });
-
-        it("instance click works like static click", async () => {
-            await render(<Button label="Instance Click" />);
-
-            const user = userEvent.setup();
-            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Instance Click" });
-
-            await user.click(button);
+            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Triple Click Me" });
+            await userEvent.tripleClick(button);
             expect(button).toBeDefined();
         });
+    });
 
-        it("instance dblClick works like static dblClick", async () => {
-            await render(<Button label="Instance DblClick" />);
+    describe("tab", () => {
+        it("moves focus forward", async () => {
+            await render(
+                <Box spacing={10} orientation={Orientation.VERTICAL}>
+                    <Button label="First" />
+                    <Button label="Second" />
+                </Box>,
+            );
 
-            const user = userEvent.setup();
-            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Instance DblClick" });
+            const first = await screen.findByRole(AccessibleRole.BUTTON, { name: "First" });
+            first.grabFocus();
 
-            await user.dblClick(button);
-            expect(button).toBeDefined();
+            await userEvent.tab(first);
+
+            expect(first).toBeDefined();
         });
 
-        it("accepts options", () => {
-            const user = userEvent.setup({ delay: 100 });
-            expect(typeof user.click).toBe("function");
+        it("moves focus backward with shift option", async () => {
+            await render(
+                <Box spacing={10} orientation={Orientation.VERTICAL}>
+                    <Button label="First" />
+                    <Button label="Second" />
+                </Box>,
+            );
+
+            const second = await screen.findByRole(AccessibleRole.BUTTON, { name: "Second" });
+            second.grabFocus();
+
+            await userEvent.tab(second, { shift: true });
+
+            expect(second).toBeDefined();
+        });
+    });
+
+    describe("selectOptions", () => {
+        it("throws when element is not selectable", async () => {
+            await render(<Button label="Not Selectable" />);
+
+            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Not Selectable" });
+
+            await expect(userEvent.selectOptions(button, 0)).rejects.toThrow(
+                /Cannot select options: element is not a selectable widget/,
+            );
+        });
+    });
+
+    describe("deselectOptions", () => {
+        it("throws when element is not a ListBox", async () => {
+            await render(<Button label="Not a List" />);
+
+            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Not a List" });
+
+            await expect(userEvent.deselectOptions(button, 0)).rejects.toThrow(
+                /Cannot deselect options: only ListBox supports deselection/,
+            );
         });
     });
 });

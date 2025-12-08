@@ -6,148 +6,114 @@ setup();
 
 describe("StyleSheet", () => {
     describe("constructor", () => {
-        it("creates a StyleSheet with the given key", () => {
+        it("stores the key from options", () => {
             const sheet = new StyleSheet({ key: "test-key" });
             expect(sheet.key).toBe("test-key");
         });
 
-        it("creates StyleSheets with different keys independently", () => {
+        it("creates independent instances", () => {
             const sheet1 = new StyleSheet({ key: "key-one" });
             const sheet2 = new StyleSheet({ key: "key-two" });
 
-            expect(sheet1.key).toBe("key-one");
-            expect(sheet2.key).toBe("key-two");
             expect(sheet1).not.toBe(sheet2);
-        });
-
-        it("accepts empty string as key", () => {
-            const sheet = new StyleSheet({ key: "" });
-            expect(sheet.key).toBe("");
-        });
-
-        it("accepts key with special characters", () => {
-            const sheet = new StyleSheet({ key: "my-app_theme.v2" });
-            expect(sheet.key).toBe("my-app_theme.v2");
+            expect(sheet1.key).not.toBe(sheet2.key);
         });
     });
 
     describe("insert", () => {
-        it("accepts a CSS rule string", () => {
+        it("accepts valid CSS rule strings without throwing", () => {
             const sheet = new StyleSheet({ key: "insert-test" });
-            sheet.insert(".test { color: red; }");
-            expect(sheet.key).toBe("insert-test");
+
+            expect(() => sheet.insert(".test { color: red; }")).not.toThrow();
+            expect(() => sheet.insert("button { padding: 10px; }")).not.toThrow();
+            expect(() => sheet.insert("label.title { font-weight: bold; }")).not.toThrow();
         });
 
-        it("accepts multiple CSS rules sequentially", () => {
-            const sheet = new StyleSheet({ key: "multi-insert" });
-            sheet.insert(".rule1 { padding: 10px; }");
-            sheet.insert(".rule2 { margin: 5px; }");
-            sheet.insert(".rule3 { border: 1px solid black; }");
-            expect(sheet.key).toBe("multi-insert");
-        });
-
-        it("accepts GTK-specific CSS syntax", () => {
+        it("accepts GTK-specific CSS syntax without throwing", () => {
             const sheet = new StyleSheet({ key: "gtk-syntax" });
-            sheet.insert("button { background: @theme_bg_color; }");
-            sheet.insert("label.title { font-weight: bold; }");
-            sheet.insert("window.background { background: #ffffff; }");
-            expect(sheet.key).toBe("gtk-syntax");
+
+            expect(() => sheet.insert("button { background: @theme_bg_color; }")).not.toThrow();
+            expect(() => sheet.insert("window.background { background: #ffffff; }")).not.toThrow();
         });
 
-        it("accepts empty rule string", () => {
+        it("accepts empty rule string without throwing", () => {
             const sheet = new StyleSheet({ key: "empty-rule" });
-            sheet.insert("");
-            expect(sheet.key).toBe("empty-rule");
-        });
-
-        it("accepts complex CSS with multiple selectors", () => {
-            const sheet = new StyleSheet({ key: "complex-css" });
-            sheet.insert(`
-                button, label {
-                    padding: 10px;
-                    margin: 5px;
-                }
-            `);
-            expect(sheet.key).toBe("complex-css");
+            expect(() => sheet.insert("")).not.toThrow();
         });
     });
 
     describe("flush", () => {
-        it("resets the StyleSheet state", () => {
+        it("clears state allowing reuse", () => {
             const sheet = new StyleSheet({ key: "flush-test" });
-            sheet.insert(".flush-rule { color: blue; }");
-            sheet.flush();
-            expect(sheet.key).toBe("flush-test");
-        });
 
-        it("allows inserting new rules after flush", () => {
-            const sheet = new StyleSheet({ key: "re-insert-test" });
-            sheet.insert(".first { color: red; }");
-            sheet.flush();
-            sheet.insert(".second { color: green; }");
-            expect(sheet.key).toBe("re-insert-test");
-        });
-
-        it("can be called multiple times", () => {
-            const sheet = new StyleSheet({ key: "multi-flush" });
             sheet.insert(".rule1 { color: red; }");
+            sheet.applyQueuedRules();
             sheet.flush();
-            sheet.insert(".rule2 { color: blue; }");
-            sheet.flush();
-            sheet.insert(".rule3 { color: green; }");
-            sheet.flush();
-            expect(sheet.key).toBe("multi-flush");
+
+            expect(() => sheet.insert(".rule2 { color: blue; }")).not.toThrow();
+            expect(() => sheet.applyQueuedRules()).not.toThrow();
         });
 
-        it("can be called on empty StyleSheet", () => {
+        it("can be called on empty StyleSheet without throwing", () => {
             const sheet = new StyleSheet({ key: "empty-flush" });
-            sheet.flush();
-            expect(sheet.key).toBe("empty-flush");
+            expect(() => sheet.flush()).not.toThrow();
+        });
+
+        it("can be called multiple times without throwing", () => {
+            const sheet = new StyleSheet({ key: "multi-flush" });
+
+            sheet.insert(".rule1 { color: red; }");
+            sheet.applyQueuedRules();
+
+            expect(() => sheet.flush()).not.toThrow();
+            expect(() => sheet.flush()).not.toThrow();
         });
     });
 
     describe("hydrate", () => {
-        it("accepts an empty array", () => {
-            const sheet = new StyleSheet({ key: "hydrate-empty" });
-            sheet.hydrate([]);
-            expect(sheet.key).toBe("hydrate-empty");
-        });
+        it("is a no-op that accepts arrays without throwing", () => {
+            const sheet = new StyleSheet({ key: "hydrate-test" });
 
-        it("accepts an array with elements", () => {
-            const sheet = new StyleSheet({ key: "hydrate-elements" });
-            sheet.hydrate(["element1", "element2"]);
-            expect(sheet.key).toBe("hydrate-elements");
-        });
-
-        it("can be called after insert", () => {
-            const sheet = new StyleSheet({ key: "hydrate-after-insert" });
-            sheet.insert(".rule { color: red; }");
-            sheet.hydrate([]);
-            expect(sheet.key).toBe("hydrate-after-insert");
+            expect(() => sheet.hydrate([])).not.toThrow();
+            expect(() => sheet.hydrate(["element1", "element2"])).not.toThrow();
         });
     });
 
     describe("applyQueuedRules", () => {
-        it("can be called after inserting rules", () => {
+        it("applies queued rules without throwing", () => {
             const sheet = new StyleSheet({ key: "apply-queued" });
             sheet.insert(".queued { color: red; }");
-            sheet.applyQueuedRules();
-            expect(sheet.key).toBe("apply-queued");
+
+            expect(() => sheet.applyQueuedRules()).not.toThrow();
         });
 
-        it("can be called multiple times", () => {
-            const sheet = new StyleSheet({ key: "apply-multiple" });
-            sheet.insert(".rule1 { color: red; }");
-            sheet.applyQueuedRules();
-            sheet.insert(".rule2 { color: blue; }");
-            sheet.applyQueuedRules();
-            expect(sheet.key).toBe("apply-multiple");
-        });
-
-        it("can be called on empty StyleSheet", () => {
+        it("can be called on empty StyleSheet without throwing", () => {
             const sheet = new StyleSheet({ key: "apply-empty" });
+            expect(() => sheet.applyQueuedRules()).not.toThrow();
+        });
+
+        it("can be called multiple times without throwing", () => {
+            const sheet = new StyleSheet({ key: "apply-multiple" });
+
+            sheet.insert(".rule1 { color: red; }");
+            expect(() => sheet.applyQueuedRules()).not.toThrow();
+
+            sheet.insert(".rule2 { color: blue; }");
+            expect(() => sheet.applyQueuedRules()).not.toThrow();
+        });
+    });
+
+    describe("lifecycle", () => {
+        it("supports full insert-apply-flush-reinsert cycle", () => {
+            const sheet = new StyleSheet({ key: "lifecycle" });
+
+            sheet.insert(".initial { color: red; }");
             sheet.applyQueuedRules();
-            expect(sheet.key).toBe("apply-empty");
+            sheet.flush();
+            sheet.insert(".after-flush { color: blue; }");
+            sheet.applyQueuedRules();
+
+            expect(sheet.key).toBe("lifecycle");
         });
     });
 });

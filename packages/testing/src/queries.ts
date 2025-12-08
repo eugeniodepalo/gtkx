@@ -1,9 +1,22 @@
 import { getObject } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { type Accessible, AccessibleRole, Button, CheckButton, Expander, Label, ToggleButton } from "@gtkx/ffi/gtk";
+import {
+    AccessibleRole,
+    Button,
+    CheckButton,
+    Editable,
+    Expander,
+    Frame,
+    Label,
+    StackPage,
+    Switch,
+    ToggleButton,
+    Window,
+} from "@gtkx/ffi/gtk";
 import { findAll } from "./traversal.js";
 import type { ByRoleOptions, TextMatchOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
+import { asAccessible } from "./widget.js";
 
 type Container = Gtk.Application | Gtk.Widget;
 
@@ -27,12 +40,26 @@ const matchText = (actual: string | null, expected: string | RegExp, options?: T
     return expected.test(normalizedActual);
 };
 
-const asAccessible = (widget: Gtk.Widget): Accessible => widget as unknown as Accessible;
 const asButton = (widget: Gtk.Widget): Button => getObject(widget.ptr, Button);
 const asLabel = (widget: Gtk.Widget): Label => getObject(widget.ptr, Label);
 const asCheckButton = (widget: Gtk.Widget): CheckButton => getObject(widget.ptr, CheckButton);
 const asToggleButton = (widget: Gtk.Widget): ToggleButton => getObject(widget.ptr, ToggleButton);
 const asExpander = (widget: Gtk.Widget): Expander => getObject(widget.ptr, Expander);
+const asFrame = (widget: Gtk.Widget): Frame => getObject(widget.ptr, Frame);
+const asWindow = (widget: Gtk.Widget): Window => getObject(widget.ptr, Window);
+const asStackPage = (widget: Gtk.Widget): StackPage => getObject(widget.ptr, StackPage);
+
+const ROLES_WITH_INTERNAL_LABELS = new Set([
+    AccessibleRole.BUTTON,
+    AccessibleRole.TOGGLE_BUTTON,
+    AccessibleRole.CHECKBOX,
+    AccessibleRole.RADIO,
+    AccessibleRole.MENU_ITEM,
+    AccessibleRole.MENU_ITEM_CHECKBOX,
+    AccessibleRole.MENU_ITEM_RADIO,
+    AccessibleRole.TAB,
+    AccessibleRole.LINK,
+]);
 
 const isInternalLabel = (widget: Gtk.Widget): boolean => {
     const accessible = asAccessible(widget);
@@ -42,16 +69,7 @@ const isInternalLabel = (widget: Gtk.Widget): boolean => {
     if (!parent) return false;
 
     const parentRole = asAccessible(parent).getAccessibleRole();
-
-    return (
-        parentRole === AccessibleRole.BUTTON ||
-        parentRole === AccessibleRole.TOGGLE_BUTTON ||
-        parentRole === AccessibleRole.CHECKBOX ||
-        parentRole === AccessibleRole.RADIO ||
-        parentRole === AccessibleRole.MENU_ITEM ||
-        parentRole === AccessibleRole.MENU_ITEM_CHECKBOX ||
-        parentRole === AccessibleRole.MENU_ITEM_RADIO
-    );
+    return ROLES_WITH_INTERNAL_LABELS.has(parentRole);
 };
 
 const getWidgetText = (widget: Gtk.Widget): string | null => {
@@ -61,19 +79,38 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
 
     switch (role) {
         case AccessibleRole.BUTTON:
+        case AccessibleRole.LINK:
+        case AccessibleRole.TAB:
+            return asButton(widget).getLabel();
         case AccessibleRole.TOGGLE_BUTTON:
+            return asToggleButton(widget).getLabel();
         case AccessibleRole.CHECKBOX:
         case AccessibleRole.RADIO:
-        case AccessibleRole.MENU_ITEM:
-        case AccessibleRole.MENU_ITEM_CHECKBOX:
-        case AccessibleRole.MENU_ITEM_RADIO:
-            return asButton(widget).getLabel();
+            return asCheckButton(widget).getLabel();
         case AccessibleRole.LABEL:
             return asLabel(widget).getLabel();
         case AccessibleRole.TEXT_BOX:
         case AccessibleRole.SEARCH_BOX:
         case AccessibleRole.SPIN_BUTTON:
-            return (widget as unknown as { getText(): string }).getText();
+            return getObject(widget.ptr, Editable).getText();
+        case AccessibleRole.GROUP:
+            try {
+                return asFrame(widget).getLabel();
+            } catch {
+                return null;
+            }
+        case AccessibleRole.WINDOW:
+        case AccessibleRole.DIALOG:
+        case AccessibleRole.ALERT_DIALOG:
+            return asWindow(widget).getTitle();
+        case AccessibleRole.TAB_PANEL:
+            try {
+                return asStackPage(widget).getTitle();
+            } catch {
+                return null;
+            }
+        case AccessibleRole.SWITCH:
+            return null;
         default:
             return null;
     }
@@ -83,18 +120,22 @@ const getWidgetTestId = (widget: Gtk.Widget): string | null => {
     return widget.getName();
 };
 
+const asSwitch = (widget: Gtk.Widget): Switch => getObject(widget.ptr, Switch);
+
 const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
     const role = asAccessible(widget).getAccessibleRole();
 
-    if (role === AccessibleRole.CHECKBOX || role === AccessibleRole.RADIO) {
-        return asCheckButton(widget).getActive();
+    switch (role) {
+        case AccessibleRole.CHECKBOX:
+        case AccessibleRole.RADIO:
+            return asCheckButton(widget).getActive();
+        case AccessibleRole.TOGGLE_BUTTON:
+            return asToggleButton(widget).getActive();
+        case AccessibleRole.SWITCH:
+            return asSwitch(widget).getActive();
+        default:
+            return undefined;
     }
-
-    if (role === AccessibleRole.TOGGLE_BUTTON) {
-        return asToggleButton(widget).getActive();
-    }
-
-    return undefined;
 };
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | undefined => {
@@ -246,7 +287,7 @@ export const findByRole = async (
     container: Container,
     role: AccessibleRole,
     options?: ByRoleOptions,
-): Promise<Gtk.Widget> => waitFor(() => getByRole(container, role, options));
+): Promise<Gtk.Widget> => waitFor(() => getByRole(container, role, options), { timeout: options?.timeout });
 
 /**
  * Waits for and finds all widgets matching the specified accessible role.
@@ -259,82 +300,82 @@ export const findAllByRole = async (
     container: Container,
     role: AccessibleRole,
     options?: ByRoleOptions,
-): Promise<Gtk.Widget[]> => waitFor(() => getAllByRole(container, role, options));
+): Promise<Gtk.Widget[]> => waitFor(() => getAllByRole(container, role, options), { timeout: options?.timeout });
 
 /**
  * Waits for and finds a single widget matching the specified label text.
  * @param container - The container to search within
  * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
+ * @param options - Text matching options (exact, normalizer, timeout)
  * @returns Promise resolving to the matching widget
  */
 export const findByLabelText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget> => waitFor(() => getByLabelText(container, text, options));
+): Promise<Gtk.Widget> => waitFor(() => getByLabelText(container, text, options), { timeout: options?.timeout });
 
 /**
  * Waits for and finds all widgets matching the specified label text.
  * @param container - The container to search within
  * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
+ * @param options - Text matching options (exact, normalizer, timeout)
  * @returns Promise resolving to array of matching widgets
  */
 export const findAllByLabelText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget[]> => waitFor(() => getAllByLabelText(container, text, options));
+): Promise<Gtk.Widget[]> => waitFor(() => getAllByLabelText(container, text, options), { timeout: options?.timeout });
 
 /**
  * Waits for and finds a single widget matching the specified text content.
  * @param container - The container to search within
  * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
+ * @param options - Text matching options (exact, normalizer, timeout)
  * @returns Promise resolving to the matching widget
  */
 export const findByText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget> => waitFor(() => getByText(container, text, options));
+): Promise<Gtk.Widget> => waitFor(() => getByText(container, text, options), { timeout: options?.timeout });
 
 /**
  * Waits for and finds all widgets matching the specified text content.
  * @param container - The container to search within
  * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
+ * @param options - Text matching options (exact, normalizer, timeout)
  * @returns Promise resolving to array of matching widgets
  */
 export const findAllByText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget[]> => waitFor(() => getAllByText(container, text, options));
+): Promise<Gtk.Widget[]> => waitFor(() => getAllByText(container, text, options), { timeout: options?.timeout });
 
 /**
  * Waits for and finds a single widget matching the specified test ID.
  * @param container - The container to search within
  * @param testId - The test ID or pattern to match
- * @param options - Text matching options (exact, normalizer)
+ * @param options - Text matching options (exact, normalizer, timeout)
  * @returns Promise resolving to the matching widget
  */
 export const findByTestId = async (
     container: Container,
     testId: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget> => waitFor(() => getByTestId(container, testId, options));
+): Promise<Gtk.Widget> => waitFor(() => getByTestId(container, testId, options), { timeout: options?.timeout });
 
 /**
  * Waits for and finds all widgets matching the specified test ID.
  * @param container - The container to search within
  * @param testId - The test ID or pattern to match
- * @param options - Text matching options (exact, normalizer)
+ * @param options - Text matching options (exact, normalizer, timeout)
  * @returns Promise resolving to array of matching widgets
  */
 export const findAllByTestId = async (
     container: Container,
     testId: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget[]> => waitFor(() => getAllByTestId(container, testId, options));
+): Promise<Gtk.Widget[]> => waitFor(() => getAllByTestId(container, testId, options), { timeout: options?.timeout });

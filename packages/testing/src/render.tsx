@@ -1,5 +1,5 @@
-import { getCurrentApp, start, stop } from "@gtkx/ffi";
-import type { Accessible, AccessibleRole } from "@gtkx/ffi/gtk";
+import { getCurrentApp, getObject, start, stop } from "@gtkx/ffi";
+import type { AccessibleRole } from "@gtkx/ffi/gtk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
@@ -8,23 +8,28 @@ import * as queries from "./queries.js";
 import { setScreenRoot } from "./screen.js";
 import { tick } from "./timing.js";
 import type { ByRoleOptions, RenderOptions, RenderResult, TextMatchOptions } from "./types.js";
+import { asAccessible, hasLabel } from "./widget.js";
 
 const ROOT_NODE_CONTAINER = Symbol.for("ROOT_NODE_CONTAINER");
 const APP_ID = "com.gtkx.testing";
 
 let container: Reconciler.FiberRoot | null = null;
 
-type WidgetWithLabel = { getLabel: () => string | null };
+const getWidgetLabel = (widget: Gtk.Widget): string | null => {
+    if (!hasLabel(widget)) return null;
 
-const hasGetLabel = (widget: unknown): widget is WidgetWithLabel =>
-    typeof (widget as WidgetWithLabel).getLabel === "function";
-
-const asAccessible = (widget: Gtk.Widget): Accessible => widget as unknown as Accessible;
+    const role = asAccessible(widget).getAccessibleRole();
+    if (role === Gtk.AccessibleRole.LABEL) {
+        return getObject(widget.ptr, Gtk.Label).getLabel();
+    }
+    return getObject(widget.ptr, Gtk.Button).getLabel();
+};
 
 const printWidgetTree = (root: Gtk.Widget, indent = 0): string => {
     const prefix = "  ".repeat(indent);
     const role = Gtk.AccessibleRole[asAccessible(root).getAccessibleRole()] ?? "UNKNOWN";
-    const label = hasGetLabel(root) ? ` label="${root.getLabel()}"` : "";
+    const labelText = getWidgetLabel(root);
+    const label = labelText ? ` label="${labelText}"` : "";
     let result = `${prefix}<${root.constructor.name} role=${role}${label}>\n`;
 
     let child = root.getFirstChild();
@@ -146,5 +151,4 @@ export const cleanup = async (): Promise<void> => {
 export const teardown = async (): Promise<void> => {
     await cleanup();
     stop();
-    container = null;
 };

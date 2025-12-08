@@ -5,6 +5,7 @@ import type { ComponentType, ReactNode } from "react";
 export interface TextMatchOptions {
     exact?: boolean;
     normalizer?: (text: string) => string;
+    timeout?: number;
 }
 
 export interface ByRoleOptions extends TextMatchOptions {

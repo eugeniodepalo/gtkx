@@ -19,7 +19,7 @@ export type {
     TextMatchOptions,
     WaitForOptions,
 } from "./types.js";
-export type { UserEventInstance, UserEventOptions } from "./user-event.js";
+export type { TabOptions } from "./user-event.js";
 export { userEvent } from "./user-event.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
 export { within } from "./within.js";

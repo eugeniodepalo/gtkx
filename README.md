@@ -159,7 +159,9 @@ Query types: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
 - `userEvent.activate(element)` - Activate element (e.g., press Enter in input)
 - `userEvent.type(element, text)` - Type text into input
 - `userEvent.clear(element)` - Clear input text
-- `userEvent.setup()` - Create reusable instance
+- `userEvent.tab(element, options?)` - Simulate Tab navigation
+- `userEvent.selectOptions(element, values)` - Select options in ComboBox/ListBox
+- `userEvent.deselectOptions(element, values)` - Deselect options in ListBox
 
 **Low-level Events**:
 - `fireEvent(element, signalName, ...args)` - Emit any GTK signal with optional arguments
@@ -170,14 +172,6 @@ Query types: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
 
 ## Examples
 
-### Counter
-
-A minimal counter app demonstrating state management:
-
-```bash
-turbo start --filter=counter-example
-```
-
 ### GTK4 Demo
 
 A comprehensive showcase of GTK4 widgets and features:
@@ -186,12 +180,13 @@ A comprehensive showcase of GTK4 widgets and features:
 turbo start --filter=gtk4-demo
 ```
 
-### List Example
+### Todo App
 
-Comprehensive showcase of ListView, GridView, and ColumnView with sorting:
+A todo app demonstrating `@gtkx/testing` with realistic component tests:
 
 ```bash
-turbo start --filter=list-example
+turbo start --filter=todo
+turbo test --filter=todo
 ```
 
 ## Packages

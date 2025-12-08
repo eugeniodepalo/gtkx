@@ -1,113 +1,180 @@
+import { getObject } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
+import {
+    AccessibleRole,
+    CheckButton,
+    ComboBox,
+    DirectionType,
+    DropDown,
+    Editable,
+    ListBox,
+    ListBoxRow,
+    ToggleButton,
+    Widget,
+} from "@gtkx/ffi/gtk";
 import { fireEvent } from "./fire-event.js";
 import { tick } from "./timing.js";
-import { hasGetText, hasSetText } from "./widget.js";
+import { asAccessible, isEditable } from "./widget.js";
 
-/**
- * Options for configuring user event behavior.
- */
-export interface UserEventOptions {
-    /** Delay between events in milliseconds */
-    delay?: number;
+export interface TabOptions {
+    /** If true, navigates backwards (Shift+Tab behavior) */
+    shift?: boolean;
 }
 
-/**
- * Instance returned by userEvent.setup() with bound options.
- */
-export interface UserEventInstance {
-    /** Simulates a click on the element */
-    click: (element: Gtk.Widget) => Promise<void>;
-    /** Simulates a double-click on the element */
-    dblClick: (element: Gtk.Widget) => Promise<void>;
-    /** Activates the element (e.g., pressing Enter in an Entry) */
-    activate: (element: Gtk.Widget) => Promise<void>;
-    /** Types text into an input element */
-    type: (element: Gtk.Widget, text: string) => Promise<void>;
-    /** Clears the text content of an input element */
-    clear: (element: Gtk.Widget) => Promise<void>;
-}
+const TOGGLEABLE_ROLES = new Set([AccessibleRole.CHECKBOX, AccessibleRole.RADIO, AccessibleRole.TOGGLE_BUTTON]);
 
-const createUserEventInstance = (_options?: UserEventOptions): UserEventInstance => {
-    return {
-        click: async (element: Gtk.Widget): Promise<void> => {
-            fireEvent(element, "clicked");
-            await tick();
-        },
+const isToggleable = (widget: Gtk.Widget): boolean => {
+    const role = asAccessible(widget).getAccessibleRole();
+    return TOGGLEABLE_ROLES.has(role);
+};
 
-        dblClick: async (element: Gtk.Widget): Promise<void> => {
-            fireEvent(element, "clicked");
-            await tick();
-            fireEvent(element, "clicked");
-            await tick();
-        },
+const click = async (element: Gtk.Widget): Promise<void> => {
+    if (isToggleable(element)) {
+        const role = asAccessible(element).getAccessibleRole();
+        if (role === AccessibleRole.CHECKBOX || role === AccessibleRole.RADIO) {
+            const checkButton = getObject(element.ptr, CheckButton);
+            checkButton.setActive(!checkButton.getActive());
+        } else {
+            const toggleButton = getObject(element.ptr, ToggleButton);
+            toggleButton.setActive(!toggleButton.getActive());
+        }
+        // Note: setActive() automatically emits the "toggled" signal, so we don't need to emit it manually
+    } else {
+        fireEvent(element, "clicked");
+    }
+    await tick();
+};
 
-        activate: async (element: Gtk.Widget): Promise<void> => {
-            element.activate();
-            await tick();
-        },
+const dblClick = async (element: Gtk.Widget): Promise<void> => {
+    fireEvent(element, "clicked");
+    await tick();
+    fireEvent(element, "clicked");
+    await tick();
+};
 
-        type: async (element: Gtk.Widget, text: string): Promise<void> => {
-            if (!hasSetText(element)) {
-                throw new Error("Cannot type into element: no setText method available");
+const tripleClick = async (element: Gtk.Widget): Promise<void> => {
+    fireEvent(element, "clicked");
+    await tick();
+    fireEvent(element, "clicked");
+    await tick();
+    fireEvent(element, "clicked");
+    await tick();
+};
+
+const activate = async (element: Gtk.Widget): Promise<void> => {
+    element.activate();
+    await tick();
+};
+
+const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => {
+    const direction = options?.shift ? DirectionType.TAB_BACKWARD : DirectionType.TAB_FORWARD;
+    const root = element.getRoot();
+    if (root) {
+        const rootWidget = getObject(root.ptr, Widget);
+        rootWidget.childFocus(direction);
+    }
+    await tick();
+};
+
+const type = async (element: Gtk.Widget, text: string): Promise<void> => {
+    if (!isEditable(element)) {
+        throw new Error("Cannot type into element: element is not editable (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
+    }
+
+    const editable = getObject(element.ptr, Editable);
+    const currentText = editable.getText();
+    editable.setText(currentText + text);
+    await tick();
+};
+
+const clear = async (element: Gtk.Widget): Promise<void> => {
+    if (!isEditable(element)) {
+        throw new Error("Cannot clear element: element is not editable (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
+    }
+
+    const editable = getObject(element.ptr, Editable);
+    editable.setText("");
+    await tick();
+};
+
+const SELECTABLE_ROLES = new Set([AccessibleRole.COMBO_BOX, AccessibleRole.LIST]);
+
+const isSelectable = (widget: Gtk.Widget): boolean => {
+    const role = asAccessible(widget).getAccessibleRole();
+    return SELECTABLE_ROLES.has(role);
+};
+
+const selectOptions = async (element: Gtk.Widget, values: string | string[] | number | number[]): Promise<void> => {
+    if (!isSelectable(element)) {
+        throw new Error("Cannot select options: element is not a selectable widget (COMBO_BOX or LIST)");
+    }
+
+    const role = asAccessible(element).getAccessibleRole();
+    const valueArray = Array.isArray(values) ? values : [values];
+
+    if (role === AccessibleRole.COMBO_BOX) {
+        if (valueArray.length > 1) {
+            throw new Error("Cannot select multiple options on a ComboBox/DropDown");
+        }
+        const value = valueArray[0];
+        if (typeof value !== "number") {
+            throw new Error("ComboBox/DropDown selection requires a numeric index");
+        }
+
+        const isDropDown = element.constructor.name === "DropDown";
+        if (isDropDown) {
+            getObject(element.ptr, DropDown).setSelected(value);
+        } else {
+            getObject(element.ptr, ComboBox).setActive(value);
+        }
+    } else if (role === AccessibleRole.LIST) {
+        const listBox = getObject(element.ptr, ListBox);
+        for (const value of valueArray) {
+            if (typeof value !== "number") {
+                throw new Error("ListBox selection requires numeric indices");
             }
-
-            const currentText = hasGetText(element) ? element.getText() : "";
-            element.setText(currentText + text);
-            await tick();
-        },
-
-        clear: async (element: Gtk.Widget): Promise<void> => {
-            if (!hasSetText(element)) {
-                throw new Error("Cannot clear element: no setText method available");
+            const row = listBox.getRowAtIndex(value);
+            if (row) {
+                listBox.selectRow(row);
             }
+        }
+    }
 
-            element.setText("");
-            await tick();
-        },
-    };
+    await tick();
+};
+
+const deselectOptions = async (element: Gtk.Widget, values: number | number[]): Promise<void> => {
+    const role = asAccessible(element).getAccessibleRole();
+
+    if (role !== AccessibleRole.LIST) {
+        throw new Error("Cannot deselect options: only ListBox supports deselection");
+    }
+
+    const listBox = getObject(element.ptr, ListBox);
+    const valueArray = Array.isArray(values) ? values : [values];
+
+    for (const value of valueArray) {
+        const row = listBox.getRowAtIndex(value);
+        if (row) {
+            listBox.unselectRow(getObject(row.ptr, ListBoxRow));
+        }
+    }
+
+    await tick();
 };
 
 /**
  * Simulates user interactions with GTK widgets. Provides methods that mimic
  * real user behavior like clicking, typing, and clearing input fields.
- * Use userEvent.setup() to create an instance with custom options.
  */
 export const userEvent = {
-    setup: (options?: UserEventOptions): UserEventInstance => createUserEventInstance(options),
-
-    click: async (element: Gtk.Widget): Promise<void> => {
-        fireEvent(element, "clicked");
-        await tick();
-    },
-
-    dblClick: async (element: Gtk.Widget): Promise<void> => {
-        fireEvent(element, "clicked");
-        await tick();
-        fireEvent(element, "clicked");
-        await tick();
-    },
-
-    activate: async (element: Gtk.Widget): Promise<void> => {
-        element.activate();
-        await tick();
-    },
-
-    type: async (element: Gtk.Widget, text: string): Promise<void> => {
-        if (!hasSetText(element)) {
-            throw new Error("Cannot type into element: no setText method available");
-        }
-
-        const currentText = hasGetText(element) ? element.getText() : "";
-        element.setText(currentText + text);
-        await tick();
-    },
-
-    clear: async (element: Gtk.Widget): Promise<void> => {
-        if (!hasSetText(element)) {
-            throw new Error("Cannot clear element: no setText method available");
-        }
-
-        element.setText("");
-        await tick();
-    },
+    click,
+    dblClick,
+    tripleClick,
+    activate,
+    tab,
+    type,
+    clear,
+    selectOptions,
+    deselectOptions,
 };

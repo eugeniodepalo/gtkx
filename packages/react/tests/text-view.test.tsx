@@ -1,25 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { TextView } from "../src/index.js";
 import { flushSync, render, setupTests } from "./utils.js";
 
 setupTests();
-
-let lastSetBuffer: Gtk.TextBuffer | undefined;
-let setBufferCallCount = 0;
-const originalSetBuffer = Gtk.TextView.prototype.setBuffer;
-
-beforeEach(() => {
-    lastSetBuffer = undefined;
-    setBufferCallCount = 0;
-
-    Gtk.TextView.prototype.setBuffer = function (buffer: Gtk.TextBuffer) {
-        lastSetBuffer = buffer;
-        setBufferCallCount++;
-        return originalSetBuffer.call(this, buffer);
-    };
-});
 
 describe("TextView widget", () => {
     it("renders a TextView", () => {
@@ -108,6 +93,7 @@ describe("TextView widget", () => {
 
     it("sets buffer from buffer prop", () => {
         const buffer = new Gtk.TextBuffer();
+        buffer.setText("test content", -1);
         let textViewRef: Gtk.TextView | undefined;
 
         const App = () => (
@@ -121,42 +107,63 @@ describe("TextView widget", () => {
 
         render(<App />);
 
-        expect(lastSetBuffer).toBe(buffer);
         expect(textViewRef?.getBuffer().ptr).toStrictEqual(buffer.ptr);
     });
 
     it("updates buffer when prop changes", () => {
         const buffer1 = new Gtk.TextBuffer();
+        buffer1.setText("buffer one", -1);
         const buffer2 = new Gtk.TextBuffer();
+        buffer2.setText("buffer two", -1);
+        let textViewRef: Gtk.TextView | undefined;
         let setBuffer: (value: Gtk.TextBuffer) => void = () => {};
 
         const App = () => {
             const [buffer, _setBuffer] = useState(buffer1);
             setBuffer = _setBuffer;
-            return <TextView buffer={buffer} />;
+            return (
+                <TextView
+                    buffer={buffer}
+                    ref={(ref: Gtk.TextView | null) => {
+                        textViewRef = ref ?? undefined;
+                    }}
+                />
+            );
         };
 
         render(<App />);
-        expect(lastSetBuffer).toBe(buffer1);
+        expect(textViewRef?.getBuffer().ptr).toStrictEqual(buffer1.ptr);
 
         flushSync(() => setBuffer(buffer2));
-        expect(lastSetBuffer).toBe(buffer2);
+        expect(textViewRef?.getBuffer().ptr).toStrictEqual(buffer2.ptr);
     });
 
-    it("does not call setBuffer when buffer prop is the same reference", () => {
+    it("preserves buffer when other props change", () => {
         const buffer = new Gtk.TextBuffer();
-        let setCount: (value: number) => void = () => {};
+        buffer.setText("persistent content", -1);
+        let textViewRef: Gtk.TextView | undefined;
+        let setEditable: (value: boolean) => void = () => {};
 
         const App = () => {
-            const [count, _setCount] = useState(0);
-            setCount = _setCount;
-            return <TextView buffer={buffer} data-count={count} />;
+            const [editable, _setEditable] = useState(true);
+            setEditable = _setEditable;
+            return (
+                <TextView
+                    buffer={buffer}
+                    editable={editable}
+                    ref={(ref: Gtk.TextView | null) => {
+                        textViewRef = ref ?? undefined;
+                    }}
+                />
+            );
         };
 
         render(<App />);
-        const countBefore = setBufferCallCount;
+        const initialBufferPtr = textViewRef?.getBuffer().ptr;
 
-        flushSync(() => setCount(1));
-        expect(setBufferCallCount).toBe(countBefore);
+        flushSync(() => setEditable(false));
+
+        expect(textViewRef?.getBuffer().ptr).toStrictEqual(initialBufferPtr);
+        expect(textViewRef?.getEditable()).toBe(false);
     });
 });

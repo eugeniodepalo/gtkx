@@ -42,6 +42,13 @@ React JSX -> @gtkx/react (Reconciler) -> @gtkx/ffi (TS wrappers) -> @gtkx/native
 | @gtkx/testing | Testing utilities with a Testing Library-style API |
 | @gtkx/gir | GObject Introspection parser for code generation |
 
+## Examples
+
+| Example | Description |
+|---------|-------------|
+| gtk4-demo | Comprehensive GTK4 widget showcase |
+| todo | Todo app demonstrating @gtkx/testing with realistic component tests |
+
 ## Quick Start
 
 ### Prerequisites
@@ -612,13 +619,14 @@ import { userEvent } from "@gtkx/testing";
 
 await userEvent.click(element);
 await userEvent.dblClick(element);
+await userEvent.tripleClick(element);
 await userEvent.activate(entry);  // e.g., press Enter in input
 await userEvent.type(input, "Hello");
 await userEvent.clear(input);
-
-// Custom configuration
-const user = userEvent.setup({ delay: 100 });
-await user.click(button);
+await userEvent.tab(element);  // Tab navigation
+await userEvent.tab(element, { shift: true });  // Shift+Tab
+await userEvent.selectOptions(dropdown, 0);  // Select by index
+await userEvent.deselectOptions(listbox, [0, 1]);  // Deselect in ListBox
 ```
 
 ### Low-Level Events
@@ -819,7 +827,7 @@ Query functions: `findByRole`, `findByText`, `findByLabelText`, `findByTestId`, 
 
 Variables:
 - `screen`: Global query methods
-- `userEvent`: Simulate user interactions (click, dblClick, activate, type, clear)
+- `userEvent`: Simulate user interactions (click, dblClick, tripleClick, activate, type, clear, tab, selectOptions, deselectOptions)
 - `fireEvent`: Fire GTK signals directly (low-level, accepts varargs)
 
 ## License

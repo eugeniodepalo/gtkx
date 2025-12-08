@@ -64,6 +64,25 @@ importers:
         specifier: 19.2.7
         version: 19.2.7
 
+  examples/todo:
+    dependencies:
+      '@gtkx/ffi':
+        specifier: workspace:*
+        version: link:../../packages/ffi
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      react:
+        specifier: 19.2.1
+        version: 19.2.1
+    devDependencies:
+      '@gtkx/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
+      '@types/react':
+        specifier: 19.2.7
+        version: 19.2.7
+
   packages/css:
     dependencies:
       '@emotion/cache':
