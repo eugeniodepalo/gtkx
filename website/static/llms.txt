@@ -9,7 +9,7 @@ GTKX is a framework for building native GTK4 desktop applications using React an
 - **React Components**: Use React hooks, state, props, and component patterns
 - **Hot Module Replacement**: Edit your code and see changes instantly, powered by Vite
 - **Native Performance**: Direct FFI bindings to GTK4 via Rust and libffi (no Electron overhead)
-- **CLI & Scaffolding**: Get started in seconds with `npx @gtkx/cli create`
+- **CLI & Scaffolding**: Get started in seconds with `npx @gtkx/cli@latest create`
 - **CSS-in-JS Styling**: Emotion-style `css` template literals for GTK widgets
 - **Testing Library**: Familiar `screen`, `userEvent`, and query APIs for testing components
 
@@ -62,7 +62,7 @@ React JSX -> @gtkx/react (Reconciler) -> @gtkx/ffi (TS wrappers) -> @gtkx/native
 ### Create a New App
 
 ```bash
-npx @gtkx/cli create
+npx @gtkx/cli@latest create
 ```
 
 This launches an interactive wizard that sets up your project with TypeScript, your preferred package manager, and optional testing support.
@@ -70,7 +70,7 @@ This launches an interactive wizard that sets up your project with TypeScript, y
 You can also pass options directly:
 
 ```bash
-npx @gtkx/cli create my-app --app-id com.example.myapp --pm pnpm --testing vitest
+npx @gtkx/cli@latest create my-app --app-id com.example.myapp --pm pnpm --testing vitest
 ```
 
 Then start developing with HMR:

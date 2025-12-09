@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as p from "@clack/prompts";
@@ -234,6 +234,16 @@ const isValidAppId = (appId: string): boolean => {
     return /^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)+$/.test(appId);
 };
 
+const runCommand = (command: string, cwd: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        const proc = spawn(command, { cwd, stdio: "pipe", shell: true });
+        proc.on("close", (code) =>
+            code === 0 ? resolve() : reject(new Error(`Command failed with exit code ${code}`)),
+        );
+        proc.on("error", reject);
+    });
+};
+
 const suggestAppId = (name: string): string => {
     const sanitized = name.replace(/-/g, "");
     return `org.gtkx.${sanitized}`;
@@ -364,10 +374,10 @@ export const createApp = async (options: CreateOptions = {}): Promise<void> => {
 
     try {
         const addCmd = getAddCommand(packageManager, DEPENDENCIES, false);
-        execSync(addCmd, { cwd: projectPath, stdio: "pipe" });
+        await runCommand(addCmd, projectPath);
 
         const addDevCmd = getAddCommand(packageManager, devDeps, true);
-        execSync(addDevCmd, { cwd: projectPath, stdio: "pipe" });
+        await runCommand(addDevCmd, projectPath);
 
         installSpinner.stop("Dependencies installed!");
     } catch (error) {

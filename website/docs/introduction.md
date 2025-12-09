@@ -14,7 +14,7 @@ Building native desktop applications traditionally requires learning platform-sp
 - **Familiar React Patterns** — Use hooks, state, props, and components just like you would in a web app
 - **Hot Module Replacement** — Edit your code and see changes instantly, powered by Vite
 - **Native Performance** — Direct FFI bindings to GTK4 via Rust and libffi, no Electron overhead
-- **CLI & Scaffolding** — Get started in seconds with `npx @gtkx/cli create`
+- **CLI & Scaffolding** — Get started in seconds with `npx @gtkx/cli@latest create`
 
 ## How It Works
 
@@ -33,22 +33,29 @@ React JSX → React Reconciler → FFI Bindings → GTK4 Widgets
 
 GTKX is organized as a monorepo with the following packages:
 
-| Package | Description |
-|---------|-------------|
-| `@gtkx/cli` | CLI for creating and developing GTKX apps with HMR |
-| `@gtkx/react` | React reconciler and JSX components |
-| `@gtkx/ffi` | TypeScript FFI bindings for GTK4, GLib, GIO, Gdk, and more |
-| `@gtkx/css` | CSS-in-JS styling for GTK widgets (Emotion-style API) |
-| `@gtkx/testing` | Testing utilities with a Testing Library-style API |
-| `@gtkx/native` | Rust native module providing the FFI bridge |
-| `@gtkx/gir` | GObject Introspection parser for code generation |
+| Package         | Description                                                |
+| --------------- | ---------------------------------------------------------- |
+| `@gtkx/cli`     | CLI for creating and developing GTKX apps with HMR         |
+| `@gtkx/react`   | React reconciler and JSX components                        |
+| `@gtkx/ffi`     | TypeScript FFI bindings for GTK4, GLib, GIO, Gdk, and more |
+| `@gtkx/css`     | CSS-in-JS styling for GTK widgets (Emotion-style API)      |
+| `@gtkx/testing` | Testing utilities with a Testing Library-style API         |
+| `@gtkx/native`  | Rust native module providing the FFI bridge                |
+| `@gtkx/gir`     | GObject Introspection parser for code generation           |
 
 ## Example
 
 Here's a simple counter application:
 
 ```tsx
-import { render, ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+import {
+  render,
+  ApplicationWindow,
+  Box,
+  Button,
+  Label,
+  quit,
+} from "@gtkx/react";
 import { Orientation } from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -56,15 +63,26 @@ const Counter = () => {
   const [count, setCount] = useState(0);
 
   return (
-    <Box orientation={Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
+    <Box
+      orientation={Orientation.VERTICAL}
+      spacing={12}
+      marginStart={20}
+      marginEnd={20}
+      marginTop={20}
+    >
       <Label.Root label={`Count: ${count}`} />
-      <Button label="Increment" onClicked={() => setCount(c => c + 1)} />
+      <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
     </Box>
   );
 };
 
 const App = () => (
-  <ApplicationWindow title="Counter" defaultWidth={300} defaultHeight={150} onCloseRequest={quit}>
+  <ApplicationWindow
+    title="Counter"
+    defaultWidth={300}
+    defaultHeight={150}
+    onCloseRequest={quit}
+  >
     <Counter />
   </ApplicationWindow>
 );

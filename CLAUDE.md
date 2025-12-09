@@ -28,8 +28,8 @@ pnpm --filter=gtk4-demo dev              # Start example with HMR
 pnpm --filter=gtk4-demo start            # Start example (production mode)
 
 # Create new apps
-npx @gtkx/cli create                     # Interactive project wizard
-npx @gtkx/cli create my-app --pm pnpm    # With options
+npx @gtkx/cli@latest create                     # Interactive project wizard
+npx @gtkx/cli@latest create my-app --pm pnpm    # With options
 
 # Development server
 gtkx dev src/app.tsx                     # Start dev server with HMR

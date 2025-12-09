@@ -52,7 +52,7 @@ export const App = () => {
                 marginStart={16}
                 marginEnd={16}
             >
-                <Label.Root label="Todo App" name="app-title" />
+                <Label.Root label="Todo App Hello" name="app-title" />
                 <TodoInput onAdd={addTodo} />
                 <TodoList todos={filteredTodos} onToggle={toggleTodo} onDelete={deleteTodo} />
                 {todos.length > 0 && (

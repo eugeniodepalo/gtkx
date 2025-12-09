@@ -23,7 +23,7 @@ GTKX bridges React's component model with GTK4's native widget system. Write fam
 - **React Components** — Use React hooks, state, and component patterns you already know
 - **Hot Module Replacement** — Edit your code and see changes instantly, powered by Vite
 - **Native Performance** — Direct FFI bindings to GTK4 via Rust and libffi
-- **CLI & Scaffolding** — Get started in seconds with `npx @gtkx/cli create`
+- **CLI & Scaffolding** — Get started in seconds with `npx @gtkx/cli@latest create`
 - **CSS-in-JS Styling** — Emotion-style `css` template literals for GTK widgets
 - **Testing Library** — Familiar `screen`, `userEvent`, and query APIs for testing components
 
@@ -32,7 +32,7 @@ GTKX bridges React's component model with GTK4's native widget system. Write fam
 Create a new GTKX app with a single command:
 
 ```bash
-npx @gtkx/cli create
+npx @gtkx/cli@latest create
 ```
 
 This launches an interactive wizard that sets up your project with TypeScript, your preferred package manager, and optional testing support.
@@ -40,7 +40,7 @@ This launches an interactive wizard that sets up your project with TypeScript, y
 You can also pass options directly:
 
 ```bash
-npx @gtkx/cli create my-app --app-id com.example.myapp --pm pnpm --testing vitest
+npx @gtkx/cli@latest create my-app --app-id com.example.myapp --pm pnpm --testing vitest
 ```
 
 Then start developing with HMR:
@@ -87,12 +87,16 @@ export const App = () => {
       defaultHeight={300}
       onCloseRequest={quit}
     >
-      <Box orientation={Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
+      <Box
+        orientation={Orientation.VERTICAL}
+        spacing={12}
+        marginStart={20}
+        marginEnd={20}
+        marginTop={20}
+        marginBottom={20}
+      >
         <Label.Root label={`Count: ${count}`} />
-        <Button
-          label="Increment"
-          onClicked={() => setCount((c) => c + 1)}
-        />
+        <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
       </Box>
     </ApplicationWindow>
   );
@@ -127,9 +131,7 @@ const primaryButton = css`
   font-weight: bold;
 `;
 
-const MyButton = () => (
-  <Button label="Click me" cssClasses={[primaryButton]} />
-);
+const MyButton = () => <Button label="Click me" cssClasses={[primaryButton]} />;
 ```
 
 GTK also provides built-in CSS classes like `suggested-action`, `destructive-action`, `card`, and `heading`.
@@ -174,11 +176,13 @@ test("can also use fireEvent for low-level signals", async () => {
 ### Available APIs
 
 **Queries** - Find elements in the rendered tree (all async):
+
 - `findBy*` / `findAllBy*` - Waits for element to appear
 
 Query types: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
 
 **User Interactions**:
+
 - `userEvent.click(element)` - Simulate click
 - `userEvent.dblClick(element)` - Simulate double click
 - `userEvent.activate(element)` - Activate element (e.g., press Enter in input)
@@ -189,9 +193,11 @@ Query types: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
 - `userEvent.deselectOptions(element, values)` - Deselect options in ListBox
 
 **Low-level Events**:
+
 - `fireEvent(element, signalName, ...args)` - Emit any GTK signal with optional arguments
 
 **Utilities**:
+
 - `waitFor(callback)` - Wait for condition
 - `waitForElementToBeRemoved(element)` - Wait for element removal
 
@@ -218,15 +224,15 @@ pnpm test
 
 ## Packages
 
-| Package | Description |
-|---------|-------------|
-| [@gtkx/cli](packages/cli) | CLI for creating and developing GTKX apps with HMR |
-| [@gtkx/react](packages/react) | React reconciler and JSX components |
-| [@gtkx/ffi](packages/ffi) | TypeScript FFI bindings for GTK4 |
-| [@gtkx/native](packages/native) | Rust native module for FFI bridge |
-| [@gtkx/css](packages/css) | CSS-in-JS styling for GTK widgets |
-| [@gtkx/testing](packages/testing) | Testing utilities for GTKX components |
-| [@gtkx/gir](packages/gir) | GObject Introspection parser for codegen |
+| Package                           | Description                                        |
+| --------------------------------- | -------------------------------------------------- |
+| [@gtkx/cli](packages/cli)         | CLI for creating and developing GTKX apps with HMR |
+| [@gtkx/react](packages/react)     | React reconciler and JSX components                |
+| [@gtkx/ffi](packages/ffi)         | TypeScript FFI bindings for GTK4                   |
+| [@gtkx/native](packages/native)   | Rust native module for FFI bridge                  |
+| [@gtkx/css](packages/css)         | CSS-in-JS styling for GTK widgets                  |
+| [@gtkx/testing](packages/testing) | Testing utilities for GTKX components              |
+| [@gtkx/gir](packages/gir)         | GObject Introspection parser for codegen           |
 
 ## Requirements
 

@@ -11,7 +11,7 @@ The `@gtkx/cli` package provides the `gtkx` command for creating and developing 
 The recommended way to use the CLI is with `npx` (or `pnpx` for pnpm users):
 
 ```bash
-npx @gtkx/cli create
+npx @gtkx/cli@latest create
 ```
 
 This downloads and runs the CLI without installing it globally. After creating a project, the CLI is installed as a local dependency, so you can use `npm run dev` directly.
@@ -27,6 +27,7 @@ gtkx create
 ```
 
 The wizard prompts for:
+
 - **Project name** — lowercase letters, numbers, and hyphens (e.g., `my-app`)
 - **App ID** — reverse domain notation (e.g., `com.example.myapp`)
 - **Package manager** — pnpm, npm, yarn, or bun
@@ -40,10 +41,10 @@ gtkx create my-app --app-id com.example.myapp --pm pnpm --testing vitest
 
 #### Options
 
-| Option | Description |
-|--------|-------------|
-| `--app-id` | GTK application ID in reverse domain notation |
-| `--pm` | Package manager: `pnpm`, `npm`, `yarn`, or `bun` |
+| Option      | Description                                            |
+| ----------- | ------------------------------------------------------ |
+| `--app-id`  | GTK application ID in reverse domain notation          |
+| `--pm`      | Package manager: `pnpm`, `npm`, `yarn`, or `bun`       |
 | `--testing` | Testing framework: `vitest`, `jest`, `node`, or `none` |
 
 #### Testing Setup
@@ -115,6 +116,7 @@ Runs the compiled application without HMR. Use this for production or testing th
 ### `npm test`
 
 Runs the test suite. The test script varies based on your chosen framework:
+
 - **Vitest**: `vitest`
 - **Jest**: `jest`
 - **Node.js**: `node --import tsx --test tests/**/*.test.ts`
@@ -130,6 +132,7 @@ io.github.user.project
 ```
 
 The app ID is used by:
+
 - The desktop environment for window matching
 - D-Bus for inter-process communication
 - Flatpak/Snap for sandboxing
@@ -148,13 +151,13 @@ You don't need to install the CLI globally. Use your package manager's runner:
 
 ```bash
 # npm users
-npx @gtkx/cli create
+npx @gtkx/cli@latest create
 
 # pnpm users
-pnpx @gtkx/cli create
+pnpx @gtkx/cli@latest create
 
 # With options
-npx @gtkx/cli create my-app --app-id com.example.myapp --pm pnpm
+npx @gtkx/cli@latest create my-app --app-id com.example.myapp --pm pnpm
 ```
 
 After creating a project, the CLI is installed as a local dependency, so `npm run dev` (or `pnpm dev`) works directly.

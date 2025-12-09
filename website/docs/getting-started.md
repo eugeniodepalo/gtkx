@@ -39,7 +39,7 @@ sudo pacman -S gtk4
 The fastest way to start is with the GTKX CLI:
 
 ```bash
-npx @gtkx/cli create
+npx @gtkx/cli@latest create
 ```
 
 This launches an interactive wizard that will:
@@ -52,7 +52,7 @@ This launches an interactive wizard that will:
 You can also pass options directly:
 
 ```bash
-npx @gtkx/cli create my-app --app-id com.example.myapp --pm pnpm
+npx @gtkx/cli@latest create my-app --app-id com.example.myapp --pm pnpm
 ```
 
 ## Start Development
@@ -88,17 +88,28 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
 
 export default function App() {
-    const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0);
 
-    return (
-        <ApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginTop={40} marginStart={40} marginEnd={40}>
-                <Label.Root label="Welcome to GTKX!" />
-                <Label.Root label={`Count: ${count}`} />
-                <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
-            </Box>
-        </ApplicationWindow>
-    );
+  return (
+    <ApplicationWindow
+      title="My App"
+      defaultWidth={400}
+      defaultHeight={300}
+      onCloseRequest={quit}
+    >
+      <Box
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={20}
+        marginTop={40}
+        marginStart={40}
+        marginEnd={40}
+      >
+        <Label.Root label="Welcome to GTKX!" />
+        <Label.Root label={`Count: ${count}`} />
+        <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
+      </Box>
+    </ApplicationWindow>
+  );
 }
 
 export const appId = "com.example.myapp";
@@ -118,6 +129,7 @@ render(<App />, appId);
 ### `render(element, appId)`
 
 The entry point for GTKX applications. It:
+
 1. Initializes the GTK main loop
 2. Creates a GTK Application with the given ID
 3. Mounts your React element tree
@@ -126,6 +138,7 @@ The entry point for GTKX applications. It:
 ### `ApplicationWindow`
 
 The main window component. Key props:
+
 - `title` — Window title
 - `defaultWidth` / `defaultHeight` — Initial window size
 - `onCloseRequest` — Called when the window close button is clicked
@@ -133,6 +146,7 @@ The main window component. Key props:
 ### `quit()`
 
 Cleanly shuts down the application by:
+
 1. Unmounting the React tree
 2. Stopping the GTK main loop
 
@@ -145,6 +159,7 @@ Always use `quit()` in `onCloseRequest` to ensure proper cleanup.
 ### Handling Events
 
 GTK signals are exposed as React props with the `on` prefix:
+
 - `onClicked` — Button clicks
 - `onCloseRequest` — Window close
 - `onChanged` — Text input changes

@@ -53,7 +53,7 @@ const features: FeatureItem[] = [
         title: "CLI & Scaffolding",
         icon: "⚡",
         description:
-            "Get started in seconds with npx @gtkx/cli create. Interactive project setup with your preferred package manager.",
+            "Get started in seconds with npx @gtkx/cli@latest create. Interactive project setup with your preferred package manager.",
     },
     {
         title: "CSS-in-JS Styling",
