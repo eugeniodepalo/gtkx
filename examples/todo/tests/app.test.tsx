@@ -216,7 +216,6 @@ describe("Todo App", () => {
             const deleteButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Delete" });
             await userEvent.click(deleteButton);
 
-            // Wait for the todo to be removed by checking that we can find the empty message
             const emptyMessage = await screen.findByText("No todos to display");
             expect(emptyMessage).toBeDefined();
         });

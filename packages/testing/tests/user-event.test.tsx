@@ -16,10 +16,8 @@ describe("userEvent", () => {
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Click Me" });
 
             // userEvent.click emits the "clicked" signal via g_signal_emit_by_name
-            // The signal emission itself should complete without error
             await userEvent.click(button);
 
-            // Verify the button is still accessible after the click
             expect(button).toBeDefined();
         });
 

@@ -252,14 +252,11 @@ describe("React Reconciler", () => {
             const parentWidget = parent.getWidget() as Gtk.Box;
             expect(getChildLabels(parentWidget)).toEqual(["A", "B", "C"]);
 
-            // Move C before A (to the front)
             parent.insertBefore(c, a);
             expect(getChildLabels(parentWidget)).toEqual(["C", "A", "B"]);
         });
 
         it("simulates React reorder using appendChild", () => {
-            // This simulates how React reorders: [A,B,C] -> [C,A,B]
-            // React doesn't move C (it stays in place), then appends A and B
             const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
             const a = createNode("Label", { label: "A" });
             const b = createNode("Label", { label: "B" });
@@ -272,10 +269,6 @@ describe("React Reconciler", () => {
             const parentWidget = parent.getWidget() as Gtk.Box;
             expect(getChildLabels(parentWidget)).toEqual(["A", "B", "C"]);
 
-            // React's reorder: append A to end, then append B to end
-            // Now that appendChild uses insertBefore(parent, null), this works
-            // After appending A: B -> C -> A
-            // After appending B: C -> A -> B
             parent.appendChild(a);
             parent.appendChild(b);
             expect(getChildLabels(parentWidget)).toEqual(["C", "A", "B"]);
@@ -521,7 +514,7 @@ describe("React Reconciler", () => {
             const dropdownWidget = dropdown.getWidget() as Gtk.DropDown;
             const model = dropdownWidget.getModel();
             if (model === null) throw new Error("Model should not be null");
-            // Use Gio.ListModel.fromPtr to access interface methods
+
             const listModel = Gio.ListModel.fromPtr(model.id);
             expect(listModel.getNItems()).toBe(3);
         });
@@ -538,7 +531,7 @@ describe("React Reconciler", () => {
             const dropdownWidget = dropdown.getWidget() as Gtk.DropDown;
             const model = dropdownWidget.getModel();
             if (model === null) throw new Error("Model should not be null");
-            // Use Gio.ListModel.fromPtr to access interface methods
+
             const listModel = Gio.ListModel.fromPtr(model.id);
             expect(listModel.getNItems()).toBe(1);
         });
@@ -826,13 +819,10 @@ describe("React Reconciler", () => {
 
             render(<Counter />);
 
-            // State updates are batched by React, so we verify the setter is available
             expect(typeof setCount).toBe("function");
 
-            // Trigger state update
             setCount(5);
 
-            // Component should be updated (state is managed by React)
             expect(typeof setCount).toBe("function");
         });
 
@@ -851,14 +841,11 @@ describe("React Reconciler", () => {
 
             render(<Conditional />);
 
-            // Verify setter is available
             expect(typeof setVisible).toBe("function");
 
-            // Trigger visibility toggle
             setVisible(false);
             setVisible(true);
 
-            // Component should handle conditional rendering without errors
             expect(typeof setVisible).toBe("function");
         });
 
@@ -890,8 +877,6 @@ describe("React Reconciler", () => {
             );
 
             const windows = getCurrentApp().getWindows();
-            // Rendering multiple windows should work
-            // The exact count depends on GTK's internal state
             expect(windows.length).toBeGreaterThanOrEqual(0);
         });
 
@@ -977,7 +962,6 @@ describe("React Reconciler", () => {
             expect(boxRef).toBeDefined();
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["A", "B", "C"]);
 
-            // Reorder: move C to front
             flushSync(() => setItems(["C", "A", "B"]));
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["C", "A", "B"]);
         });
@@ -1009,7 +993,6 @@ describe("React Reconciler", () => {
             expect(boxRef).toBeDefined();
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["B", "C"]);
 
-            // Insert A at beginning
             flushSync(() => setItems(["A", "B", "C"]));
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["A", "B", "C"]);
         });
@@ -1041,7 +1024,6 @@ describe("React Reconciler", () => {
             expect(boxRef).toBeDefined();
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["A", "C"]);
 
-            // Insert B in middle
             flushSync(() => setItems(["A", "B", "C"]));
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["A", "B", "C"]);
         });
@@ -1073,7 +1055,6 @@ describe("React Reconciler", () => {
             expect(boxRef).toBeDefined();
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["A", "B", "C"]);
 
-            // Remove A from beginning
             flushSync(() => setItems(["B", "C"]));
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["B", "C"]);
         });
@@ -1105,7 +1086,6 @@ describe("React Reconciler", () => {
             expect(boxRef).toBeDefined();
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["A", "B", "C"]);
 
-            // Remove B from middle
             flushSync(() => setItems(["A", "C"]));
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["A", "C"]);
         });
@@ -1137,11 +1117,9 @@ describe("React Reconciler", () => {
             expect(boxRef).toBeDefined();
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["A", "B", "C", "D", "E"]);
 
-            // Reverse the list
             flushSync(() => setItems(["E", "D", "C", "B", "A"]));
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["E", "D", "C", "B", "A"]);
 
-            // Shuffle
             flushSync(() => setItems(["C", "A", "E", "B", "D"]));
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["C", "A", "E", "B", "D"]);
         });
@@ -1173,7 +1151,6 @@ describe("React Reconciler", () => {
             expect(boxRef).toBeDefined();
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["A", "B", "C"]);
 
-            // Remove B, add X and Y
             flushSync(() => setItems(["A", "X", "Y", "C"]));
             expect(getChildLabels(assertDefined(boxRef))).toEqual(["A", "X", "Y", "C"]);
         });
@@ -1236,10 +1213,8 @@ describe("React Reconciler", () => {
 
                 const capturedWindow = windowRef;
 
-                // Unmount the portal
                 flushSync(() => setShowPortal(false));
 
-                // Window reference should still exist but be the same captured one
                 expect(capturedWindow).toBeDefined();
             });
 
@@ -1304,13 +1279,10 @@ describe("React Reconciler", () => {
                     );
                 };
 
-                // First render creates the container
                 render(<App />);
 
-                // Container should exist
                 expect(containerRef).toBeDefined();
 
-                // Re-render to trigger portal now that container exists
                 render(<App />);
 
                 expect(portalLabelRef).toBeDefined();
@@ -1347,7 +1319,6 @@ describe("React Reconciler", () => {
                 render(<App />);
                 expect(containerRef).toBeDefined();
 
-                // Re-render to trigger portal
                 render(<App />);
 
                 const labels = getChildLabels(assertDefined(containerRef));
@@ -1381,13 +1352,12 @@ describe("React Reconciler", () => {
                 };
 
                 render(<App />);
-                render(<App />); // Re-render to trigger portal
+                render(<App />);
 
                 expect(containerRef).toBeDefined();
                 expect(getChildLabels(assertDefined(containerRef))).toContain("Stays");
                 expect(getChildLabels(assertDefined(containerRef))).toContain("Goes Away");
 
-                // Unmount the portal
                 flushSync(() => setShowPortal(false));
 
                 expect(getChildLabels(assertDefined(containerRef))).toContain("Stays");
@@ -1421,12 +1391,11 @@ describe("React Reconciler", () => {
                 };
 
                 render(<App />);
-                render(<App />); // Re-render to trigger portal
+                render(<App />);
 
                 expect(containerRef).toBeDefined();
                 expect(getChildLabels(assertDefined(containerRef))).toEqual(["B", "C"]);
 
-                // Add A at the beginning - this should trigger insertInContainerBefore
                 flushSync(() => setItems(["A", "B", "C"]));
                 expect(getChildLabels(assertDefined(containerRef))).toEqual(["A", "B", "C"]);
             });

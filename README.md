@@ -11,7 +11,8 @@
 <p align="center">
   <a href="https://eugeniodepalo.github.io/gtkx">Documentation</a> ·
   <a href="#quick-start">Quick Start</a> ·
-  <a href="#examples">Examples</a>
+  <a href="#examples">Examples</a> ·
+  <a href="#contributing">Contributing</a>
 </p>
 
 ---
@@ -128,6 +129,14 @@ cd examples/gtk4-demo && pnpm dev
 - Node.js 20+
 - GTK4 (`gtk4-devel` on Fedora, `libgtk-4-dev` on Ubuntu)
 - Linux
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+- [Report a bug](https://github.com/eugeniodepalo/gtkx/issues/new?template=bug_report.md)
+- [Request a feature](https://github.com/eugeniodepalo/gtkx/issues/new?template=feature_request.md)
+- [Read the Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## License
 

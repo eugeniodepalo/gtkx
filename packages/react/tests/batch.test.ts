@@ -23,7 +23,6 @@ describe("batch", () => {
 
             endCommit();
 
-            // Callbacks are deferred via queueMicrotask
             expect(callback).not.toHaveBeenCalled();
             await flushMicrotasks();
             expect(callback).toHaveBeenCalledOnce();

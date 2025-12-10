@@ -30,7 +30,6 @@ describe("findAll", () => {
         it("returns empty array when no widgets with MENU role exist", async () => {
             const { container } = await render(<Label.Root label="Just a label" />);
 
-            // Use MENU role which we know won't exist in a simple label window
             const menus = findAll(container, (node) => {
                 return node.getAccessibleRole() === AccessibleRole.MENU;
             });
@@ -72,7 +71,6 @@ describe("findAll", () => {
                 return node.getAccessibleRole() === AccessibleRole.WINDOW;
             });
 
-            // Should find at least 2 windows
             expect(windows.length).toBeGreaterThanOrEqual(2);
         });
 
@@ -149,7 +147,6 @@ describe("findAll", () => {
                 </Box>,
             );
 
-            // Custom criteria: find widgets that have the LABEL role
             const labels = findAll(container, (node) => {
                 return node.getAccessibleRole() === AccessibleRole.LABEL;
             });
