@@ -1,5 +1,5 @@
-import { cast } from "@gtkx/ffi";
-import { AccessibleRole, type CheckButton, type Editable, type Label } from "@gtkx/ffi/gtk";
+import { getInterface } from "@gtkx/ffi";
+import { AccessibleRole, type CheckButton, Editable, type Label } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { Fragment } from "react";
@@ -73,7 +73,7 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             await waitFor(() => {
-                const currentText = cast<Editable>(input).getText();
+                const currentText = getInterface(input, Editable).getText();
                 if (currentText !== "") throw new Error("Input not cleared");
             });
         });

@@ -168,6 +168,7 @@ export class GirParser {
         return interfaces.map((iface) => ({
             name: String(iface["@_name"] ?? ""),
             cType: String(iface["@_c:type"] ?? iface["@_glib:type-name"] ?? ""),
+            glibTypeName: iface["@_glib:type-name"] ? String(iface["@_glib:type-name"]) : undefined,
             methods: this.parseMethods(ensureArray(iface.method)),
             properties: this.parseProperties(ensureArray(iface.property)),
             signals: this.parseSignals(ensureArray(iface["glib:signal"])),

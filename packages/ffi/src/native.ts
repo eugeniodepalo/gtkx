@@ -1,7 +1,13 @@
 import { EventEmitter } from "node:events";
-import { getObjectAddr, start as nativeStart, stop as nativeStop } from "@gtkx/native";
+import { getObjectId, start as nativeStart, stop as nativeStop } from "@gtkx/native";
 import type { ApplicationFlags } from "./generated/gio/enums.js";
-import { typeFromName, typeName, typeNameFromInstance, typeParent } from "./generated/gobject/functions.js";
+import {
+    typeCheckInstanceIsA,
+    typeFromName,
+    typeName,
+    typeNameFromInstance,
+    typeParent,
+} from "./generated/gobject/functions.js";
 import type { Application } from "./generated/gtk/application.js";
 import { getClassByTypeName, type NativeObject } from "./registry.js";
 
@@ -53,7 +59,7 @@ const findRegisteredClass = (glibTypeName: string) => {
  * @throws Error if no registered class is found in the type hierarchy
  */
 export function getObject<T extends NativeObject = NativeObject>(id: unknown): T {
-    const runtimeTypeName = typeNameFromInstance(getObjectAddr(id));
+    const runtimeTypeName = typeNameFromInstance(getObjectId(id));
     const cls = findRegisteredClass(runtimeTypeName);
     if (!cls) {
         throw new Error(`Unknown GLib type: ${runtimeTypeName}. Make sure the class is registered.`);
@@ -63,14 +69,33 @@ export function getObject<T extends NativeObject = NativeObject>(id: unknown): T
     return instance;
 }
 
+type TypeWithGlibTypeName<T extends NativeObject> = {
+    glibTypeName: string;
+    prototype: T;
+};
+
 /**
- * Casts a native object to a different type without runtime validation.
- * Use this when you know the object implements an interface (like Editable or Accessible)
- * but TypeScript doesn't have that information statically.
- * @param obj - The object to cast
- * @returns The same object typed as T
+ * Gets an interface view of a native object with runtime validation.
+ * Use this when you need to access interface methods (like Editable or Accessible)
+ * that are not available on the widget's static type.
+ * @param obj - The object to get the interface from
+ * @param targetType - The interface or class type to cast to
+ * @returns The object typed as the target type
+ * @throws Error if the object does not implement the interface/class
  */
-export const cast = <T extends NativeObject>(obj: NativeObject): T => obj as T;
+export const getInterface = <T extends NativeObject>(obj: NativeObject, targetType: TypeWithGlibTypeName<T>): T => {
+    const targetGType = typeFromName(targetType.glibTypeName);
+    if (targetGType === 0) {
+        throw new Error(`Unknown type: ${targetType.glibTypeName}`);
+    }
+
+    const objId = getObjectId(obj.id);
+    if (!typeCheckInstanceIsA(objId, targetGType)) {
+        throw new Error(`Object does not implement ${targetType.glibTypeName}`);
+    }
+
+    return obj as T;
+};
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
@@ -130,5 +155,5 @@ export const stop = (): void => {
     currentApp = null;
 };
 
-export { createRef, getObjectAddr } from "@gtkx/native";
+export { createRef, getObjectId } from "@gtkx/native";
 export { type NativeObject, registerClass } from "./registry.js";

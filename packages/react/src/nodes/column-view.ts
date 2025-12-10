@@ -1,4 +1,4 @@
-import { getObject, getObjectAddr } from "@gtkx/ffi";
+import { getObject, getObjectId } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -332,7 +332,7 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
 
         factory.connect("setup", (_self, listItemObj) => {
             const listItem = getObject<Gtk.ListItem>(listItemObj.id);
-            const id = getObjectAddr(listItemObj.id);
+            const id = getObjectId(listItemObj.id);
 
             const box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
             listItem.setChild(box);
@@ -346,7 +346,7 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
 
         factory.connect("bind", (_self, listItemObj) => {
             const listItem = getObject<Gtk.ListItem>(listItemObj.id);
-            const id = getObjectAddr(listItemObj.id);
+            const id = getObjectId(listItemObj.id);
             const info = this.state.listItemCache.get(id);
 
             if (!info) return;
@@ -362,7 +362,7 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
         });
 
         factory.connect("unbind", (_self, listItemObj) => {
-            const id = getObjectAddr(listItemObj.id);
+            const id = getObjectId(listItemObj.id);
             const info = this.state.listItemCache.get(id);
 
             if (!info) return;
@@ -371,7 +371,7 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
         });
 
         factory.connect("teardown", (_self, listItemObj) => {
-            const id = getObjectAddr(listItemObj.id);
+            const id = getObjectId(listItemObj.id);
             const info = this.state.listItemCache.get(id);
 
             if (info) {

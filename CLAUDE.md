@@ -71,7 +71,7 @@ React JSX → @gtkx/react (Reconciler) → @gtkx/ffi (TS wrappers) → @gtkx/nat
 
 - **@gtkx/cli** (`packages/cli`) - CLI for creating and developing GTKX apps. Provides `gtkx create` for project scaffolding and `gtkx dev` for HMR-enabled development using Vite. Key exports: `createDevServer`, `createApp`
 - **@gtkx/react** (`packages/react`) - React reconciler and JSX components. Key exports: `render()` creates GTK app and mounts React tree, `update()` for HMR re-renders, `quit()` cleanly shuts down, `createPortal()` for dialogs. Key files: `reconciler.ts` (HostConfig), `node.ts` (widget wrappers), `factory.ts` (node routing)
-- **@gtkx/ffi** (`packages/ffi`) - Generated TypeScript FFI bindings. Each GTK class becomes a TS class with methods that call native FFI. Key exports: `start()`, `stop()`, `getCurrentApp()`, `getObject()`, `cast()`, `events` (EventEmitter for lifecycle), `createRef`, `getObjectAddr`, `NativeObject`, `registerClass`
+- **@gtkx/ffi** (`packages/ffi`) - Generated TypeScript FFI bindings. Each GTK class becomes a TS class with methods that call native FFI. Key exports: `start()`, `stop()`, `getCurrentApp()`, `getObject()`, `getInterface()`, `events` (EventEmitter for lifecycle), `createRef`, `getObjectId`, `NativeObject`, `registerClass`
 - **@gtkx/native** (`packages/native`) - Rust/Neon module exposing `start()`, `stop()`, `call()`, `read()`, `write()`, `alloc()`. Uses libffi for dynamic C invocation
 - **@gtkx/css** (`packages/css`) - Emotion-style CSS-in-JS for GTK widgets. Key exports: `css`, `cx`, `injectGlobal`
 - **@gtkx/gir** (`packages/gir`) - GIR XML parser. Used at codegen time by ffi and react packages

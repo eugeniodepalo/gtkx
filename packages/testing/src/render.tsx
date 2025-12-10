@@ -1,4 +1,4 @@
-import { cast, getCurrentApp, start, stop } from "@gtkx/ffi";
+import { getCurrentApp, getInterface, start, stop } from "@gtkx/ffi";
 import type { AccessibleRole } from "@gtkx/ffi/gtk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, reconciler } from "@gtkx/react";
@@ -18,16 +18,16 @@ let container: Reconciler.FiberRoot | null = null;
 const getWidgetLabel = (widget: Gtk.Widget): string | null => {
     if (!hasLabel(widget)) return null;
 
-    const role = cast<Gtk.Accessible>(widget).getAccessibleRole();
+    const role = getInterface(widget, Gtk.Accessible).getAccessibleRole();
     if (role === Gtk.AccessibleRole.LABEL) {
-        return cast<Gtk.Label>(widget).getLabel();
+        return getInterface(widget, Gtk.Label).getLabel();
     }
-    return cast<Gtk.Button>(widget).getLabel();
+    return getInterface(widget, Gtk.Button).getLabel();
 };
 
 const printWidgetTree = (root: Gtk.Widget, indent = 0): string => {
     const prefix = "  ".repeat(indent);
-    const role = Gtk.AccessibleRole[cast<Gtk.Accessible>(root).getAccessibleRole()] ?? "UNKNOWN";
+    const role = Gtk.AccessibleRole[getInterface(root, Gtk.Accessible).getAccessibleRole()] ?? "UNKNOWN";
     const labelText = getWidgetLabel(root);
     const label = labelText ? ` label="${labelText}"` : "";
     let result = `${prefix}<${root.constructor.name} role=${role}${label}>\n`;

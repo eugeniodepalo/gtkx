@@ -52,6 +52,8 @@ export interface GirInterface {
     name: string;
     /** The C type name. */
     cType: string;
+    /** The GLib type name. */
+    glibTypeName?: string;
     /** Methods defined on this interface. */
     methods: GirMethod[];
     /** Properties defined on this interface. */

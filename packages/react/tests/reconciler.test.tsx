@@ -1435,25 +1435,25 @@ describe("React Reconciler", () => {
 
     describe("GObject introspection", () => {
         it("typeNameFromInstance works with GObject id", async () => {
-            const { getObjectAddr } = await import("@gtkx/ffi");
+            const { getObjectId } = await import("@gtkx/ffi");
             const GObject = await import("@gtkx/ffi/gobject");
             const button = new Gtk.Button();
-            const typeName = GObject.typeNameFromInstance(getObjectAddr(button.id));
+            const typeName = GObject.typeNameFromInstance(getObjectId(button.id));
             expect(typeName).toBe("GtkButton");
         });
 
         it("typeNameFromInstance returns correct type for different widgets", async () => {
-            const { getObjectAddr } = await import("@gtkx/ffi");
+            const { getObjectId } = await import("@gtkx/ffi");
             const GObject = await import("@gtkx/ffi/gobject");
 
             const label = new Gtk.Label("");
-            expect(GObject.typeNameFromInstance(getObjectAddr(label.id))).toBe("GtkLabel");
+            expect(GObject.typeNameFromInstance(getObjectId(label.id))).toBe("GtkLabel");
 
             const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
-            expect(GObject.typeNameFromInstance(getObjectAddr(box.id))).toBe("GtkBox");
+            expect(GObject.typeNameFromInstance(getObjectId(box.id))).toBe("GtkBox");
 
             const entry = new Gtk.Entry();
-            expect(GObject.typeNameFromInstance(getObjectAddr(entry.id))).toBe("GtkEntry");
+            expect(GObject.typeNameFromInstance(getObjectId(entry.id))).toBe("GtkEntry");
         });
     });
 });

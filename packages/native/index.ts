@@ -64,13 +64,13 @@ export const write = native.write as (objectId: unknown, type: Type, offset: num
 export const alloc = native.alloc as (size: number, glibTypeName: string, lib?: string) => unknown;
 
 /**
- * Gets the raw memory address for a GObject/boxed pointer.
- * This returns the raw memory address of the underlying native object,
+ * Gets the unique identifier for a GObject/boxed pointer.
+ * This returns a unique identifier for the underlying native object,
  * which can be used as a Map key to track objects across signal callbacks.
  * @param id - The object pointer from an FFI call or signal callback
- * @returns The native pointer address as a number
+ * @returns The native object identifier as a number
  */
-export function getObjectAddr(id: unknown): number {
+export function getObjectId(id: unknown): number {
     return native.getObjectId(id);
 }
 

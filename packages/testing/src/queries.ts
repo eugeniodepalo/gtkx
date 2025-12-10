@@ -1,18 +1,18 @@
-import { cast } from "@gtkx/ffi";
+import { getInterface } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import {
-    type Accessible,
+    Accessible,
     AccessibleRole,
-    type Button,
-    type CheckButton,
-    type Editable,
-    type Expander,
-    type Frame,
-    type Label,
-    type StackPage,
-    type Switch,
-    type ToggleButton,
-    type Window,
+    Button,
+    CheckButton,
+    Editable,
+    Expander,
+    Frame,
+    Label,
+    StackPage,
+    Switch,
+    ToggleButton,
+    Window,
 } from "@gtkx/ffi/gtk";
 import { findAll } from "./traversal.js";
 import type { ByRoleOptions, TextMatchOptions } from "./types.js";
@@ -53,50 +53,50 @@ const ROLES_WITH_INTERNAL_LABELS = new Set([
 ]);
 
 const isInternalLabel = (widget: Gtk.Widget): boolean => {
-    const accessible = cast<Accessible>(widget);
+    const accessible = getInterface(widget, Accessible);
     if (accessible.getAccessibleRole() !== AccessibleRole.LABEL) return false;
 
     const parent = widget.getParent();
     if (!parent) return false;
 
-    const parentRole = cast<Accessible>(parent).getAccessibleRole();
+    const parentRole = getInterface(parent, Accessible).getAccessibleRole();
     return ROLES_WITH_INTERNAL_LABELS.has(parentRole);
 };
 
 const getWidgetText = (widget: Gtk.Widget): string | null => {
     if (isInternalLabel(widget)) return null;
 
-    const role = cast<Accessible>(widget).getAccessibleRole();
+    const role = getInterface(widget, Accessible).getAccessibleRole();
 
     switch (role) {
         case AccessibleRole.BUTTON:
         case AccessibleRole.LINK:
         case AccessibleRole.TAB:
-            return cast<Button>(widget).getLabel();
+            return getInterface(widget, Button).getLabel();
         case AccessibleRole.TOGGLE_BUTTON:
-            return cast<ToggleButton>(widget).getLabel();
+            return getInterface(widget, ToggleButton).getLabel();
         case AccessibleRole.CHECKBOX:
         case AccessibleRole.RADIO:
-            return cast<CheckButton>(widget).getLabel();
+            return getInterface(widget, CheckButton).getLabel();
         case AccessibleRole.LABEL:
-            return cast<Label>(widget).getLabel();
+            return getInterface(widget, Label).getLabel();
         case AccessibleRole.TEXT_BOX:
         case AccessibleRole.SEARCH_BOX:
         case AccessibleRole.SPIN_BUTTON:
-            return cast<Editable>(widget).getText();
+            return getInterface(widget, Editable).getText();
         case AccessibleRole.GROUP:
             try {
-                return cast<Frame>(widget).getLabel();
+                return getInterface(widget, Frame).getLabel();
             } catch {
                 return null;
             }
         case AccessibleRole.WINDOW:
         case AccessibleRole.DIALOG:
         case AccessibleRole.ALERT_DIALOG:
-            return cast<Window>(widget).getTitle();
+            return getInterface(widget, Window).getTitle();
         case AccessibleRole.TAB_PANEL:
             try {
-                return cast<StackPage>(widget).getTitle();
+                return getInterface(widget, StackPage).getTitle();
             } catch {
                 return null;
             }
@@ -112,28 +112,28 @@ const getWidgetTestId = (widget: Gtk.Widget): string | null => {
 };
 
 const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
-    const role = cast<Accessible>(widget).getAccessibleRole();
+    const role = getInterface(widget, Accessible).getAccessibleRole();
 
     switch (role) {
         case AccessibleRole.CHECKBOX:
         case AccessibleRole.RADIO:
-            return cast<CheckButton>(widget).getActive();
+            return getInterface(widget, CheckButton).getActive();
         case AccessibleRole.TOGGLE_BUTTON:
-            return cast<ToggleButton>(widget).getActive();
+            return getInterface(widget, ToggleButton).getActive();
         case AccessibleRole.SWITCH:
-            return cast<Switch>(widget).getActive();
+            return getInterface(widget, Switch).getActive();
         default:
             return undefined;
     }
 };
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | undefined => {
-    const role = cast<Accessible>(widget).getAccessibleRole();
+    const role = getInterface(widget, Accessible).getAccessibleRole();
 
     if (role === AccessibleRole.BUTTON) {
         const parent = widget.getParent();
         if (!parent) return undefined;
-        return cast<Expander>(parent).getExpanded();
+        return getInterface(parent, Expander).getExpanded();
     }
 
     return undefined;
@@ -175,7 +175,7 @@ const formatByRoleError = (role: AccessibleRole, options?: ByRoleOptions): strin
 
 const getAllByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
-        if (cast<Accessible>(node).getAccessibleRole() !== role) return false;
+        if (getInterface(node, Accessible).getAccessibleRole() !== role) return false;
         return matchByRoleOptions(node, options);
     });
 

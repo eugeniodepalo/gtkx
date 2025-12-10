@@ -1,11 +1,11 @@
-import { cast } from "@gtkx/ffi";
+import { getInterface } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { type Accessible, AccessibleRole } from "@gtkx/ffi/gtk";
+import { Accessible, AccessibleRole } from "@gtkx/ffi/gtk";
 
 const EDITABLE_ROLES = new Set([AccessibleRole.TEXT_BOX, AccessibleRole.SEARCH_BOX, AccessibleRole.SPIN_BUTTON]);
 
 export const isEditable = (widget: Gtk.Widget): boolean => {
-    const role = cast<Accessible>(widget).getAccessibleRole();
+    const role = getInterface(widget, Accessible).getAccessibleRole();
     return EDITABLE_ROLES.has(role);
 };
 
@@ -21,6 +21,6 @@ const LABEL_ROLES = new Set([
 ]);
 
 export const hasLabel = (widget: Gtk.Widget): boolean => {
-    const role = cast<Accessible>(widget).getAccessibleRole();
+    const role = getInterface(widget, Accessible).getAccessibleRole();
     return LABEL_ROLES.has(role);
 };

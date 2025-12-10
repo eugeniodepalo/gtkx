@@ -1584,6 +1584,9 @@ ${allArgs ? `${allArgs},` : ""}
             sections.push(formatDoc(iface.doc));
         }
         sections.push(`export class ${interfaceName} {`);
+        if (iface.glibTypeName) {
+            sections.push(`  static readonly glibTypeName: string = "${iface.glibTypeName}";\n`);
+        }
         sections.push(`  id: unknown;`);
         sections.push(``);
         sections.push(`  protected constructor(id: unknown) {`);
