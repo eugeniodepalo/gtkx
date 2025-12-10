@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getGtkCache } from "../src/cache.js";
-import { setup } from "./utils.js";
+import { setup } from "./test-setup.js";
 
 setup();
 

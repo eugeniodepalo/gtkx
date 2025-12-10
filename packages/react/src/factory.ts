@@ -25,7 +25,11 @@ import { TextViewNode } from "./nodes/text-view.js";
 import { WidgetNode } from "./nodes/widget.js";
 import { WindowNode } from "./nodes/window.js";
 
+/**
+ * Generic props type for React component properties passed to GTK nodes.
+ */
 export type Props = Record<string, unknown>;
+
 export { ROOT_NODE_CONTAINER } from "./nodes/root.js";
 
 interface NodeClass {
@@ -69,9 +73,12 @@ const CONTAINER_NODES = [
     StackNode,
 ] as NodeClass[];
 
-// WidgetNode must be last as it's the catch-all fallback for unknown widget types.
 const NODE_CLASSES = [RootNode, ...VIRTUAL_NODES, ...SPECIALIZED_NODES, ...CONTAINER_NODES, WidgetNode] as NodeClass[];
 
+/**
+ * Creates a Node instance for the given JSX element type.
+ * Matches the type against registered node classes and initializes with props.
+ */
 export const createNode = (
     type: string,
     props: Props,

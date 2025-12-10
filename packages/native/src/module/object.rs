@@ -1,3 +1,5 @@
+//! Object ID retrieval for native pointers.
+
 use std::sync::mpsc;
 
 use gtk4::glib;
@@ -5,6 +7,12 @@ use neon::prelude::*;
 
 use crate::object::ObjectId;
 
+/// Gets the native pointer address for an object.
+///
+/// JavaScript signature: `getObjectId(objectId: ObjectId) => number`
+///
+/// Returns the raw pointer address as a JavaScript number. Throws if the
+/// object has been garbage collected.
 pub fn get_object_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let object_id = cx.argument::<JsBox<ObjectId>>(0)?;
 

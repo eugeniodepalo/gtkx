@@ -1,0 +1,49 @@
+name: Setup Environment
+description: Setup Node.js, pnpm, Rust, and system dependencies for GTKX
+
+inputs:
+  install-xvfb:
+    description: Whether to install Xvfb for running tests
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        dnf install -y \
+          gtk4-devel \
+          gobject-introspection-devel \
+          gtksourceview5-devel \
+          mesa-libGLES \
+          ${{ inputs.install-xvfb == 'true' && 'xorg-x11-server-Xvfb' || '' }}
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: packages/native
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: 24
+        cache: pnpm
+
+    - name: Install npm packages
+      shell: bash
+      run: pnpm install
+
+    - name: Setup Turbo cache
+      uses: actions/cache@v4
+      with:
+        path: .turbo
+        key: ${{ runner.os }}-turbo-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-turbo-

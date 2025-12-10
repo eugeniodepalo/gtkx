@@ -1,3 +1,5 @@
+//! Memory allocation for boxed types.
+
 use std::sync::mpsc;
 
 use gtk4::glib::{self, ffi::g_malloc0};
@@ -9,6 +11,11 @@ use crate::{
     types::BoxedType,
 };
 
+/// Allocates memory for a boxed type.
+///
+/// JavaScript signature: `alloc(size: number, typeName: string, libName?: string) => ObjectId`
+///
+/// Allocates zero-initialized memory of the given size and wraps it as a boxed type.
 pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
     let size = cx.argument::<JsNumber>(0)?.value(&mut cx) as usize;
     let type_name = cx.argument::<JsString>(1)?.value(&mut cx);

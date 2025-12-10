@@ -1,3 +1,5 @@
+//! FFI function call handling.
+
 use std::{
     ffi::{c_char, c_void},
     ops::Deref,
@@ -20,6 +22,12 @@ use crate::{
 
 type RefUpdate = (Arc<Root<JsObject>>, Value);
 
+/// Calls a native function via FFI.
+///
+/// JavaScript signature: `call(library: string, symbol: string, args: Arg[], returnType: Type) => Value`
+///
+/// Dispatches the call to the GTK thread, waits for the result, and updates
+/// any ref (out) parameters.
 pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let library_name = cx.argument::<JsString>(0)?.value(&mut cx);
     let symbol_name = cx.argument::<JsString>(1)?.value(&mut cx);

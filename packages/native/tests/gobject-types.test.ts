@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { alloc, call, read, write } from "../index.js";
-import { GDK_LIB, GOBJECT_LIB, GTK_LIB, setup } from "./utils.js";
+import { GDK_LIB, GOBJECT_LIB, GTK_LIB, setup } from "./test-setup.js";
 
 setup();
 

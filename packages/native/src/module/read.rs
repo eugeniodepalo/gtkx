@@ -1,3 +1,5 @@
+//! Field reading from native objects.
+
 use std::ffi::{CStr, c_void};
 use std::sync::mpsc;
 
@@ -12,6 +14,12 @@ use crate::{
     value::Value,
 };
 
+/// Reads a field from a native object at the given offset.
+///
+/// JavaScript signature: `read(objectId: ObjectId, type: Type, offset: number) => Value`
+///
+/// Reads a value of the specified type from the object's memory at the given
+/// byte offset.
 pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
     let object_id = cx.argument::<JsBox<ObjectId>>(0)?;
     let js_type = cx.argument::<JsObject>(1)?;

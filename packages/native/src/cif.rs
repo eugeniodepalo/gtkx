@@ -1,3 +1,9 @@
+//! FFI Call Interface (CIF) value types and conversions.
+//!
+//! This module provides types for representing values in libffi calls,
+//! including owned pointers that manage memory lifetime and conversion
+//! from argument types to CIF-compatible representations.
+
 use std::{
     any::Any,
     ffi::{CString, c_void},
@@ -16,39 +22,77 @@ use crate::{
     value,
 };
 
+/// A pointer that owns its referenced data.
+///
+/// This struct ensures that heap-allocated data passed to FFI calls
+/// remains valid for the duration of the call. The `value` field holds
+/// the actual Rust value, while `ptr` points to its memory location.
 #[derive(Debug)]
 #[repr(C)]
 pub struct OwnedPtr {
+    /// Raw pointer to the data.
     pub ptr: *mut c_void,
+    /// Boxed value that owns the data, ensuring it lives long enough.
     pub value: Box<dyn Any>,
 }
 
+/// A value representation for libffi function calls.
+///
+/// Each variant corresponds to a C type that can be passed to or returned
+/// from FFI calls. This includes primitive types, pointers, and special
+/// callback trampolines for GTK signal handlers.
 #[derive(Debug)]
 pub enum Value {
+    /// Unsigned 8-bit integer.
     U8(u8),
+    /// Signed 8-bit integer.
     I8(i8),
+    /// Unsigned 16-bit integer.
     U16(u16),
+    /// Signed 16-bit integer.
     I16(i16),
+    /// Unsigned 32-bit integer.
     U32(u32),
+    /// Signed 32-bit integer.
     I32(i32),
+    /// Unsigned 64-bit integer.
     U64(u64),
+    /// Signed 64-bit integer.
     I64(i64),
+    /// 32-bit floating point.
     F32(f32),
+    /// 64-bit floating point.
     F64(f64),
+    /// Raw pointer (borrowed, not owned).
     Ptr(*mut c_void),
+    /// Pointer with owned data that must outlive the FFI call.
     OwnedPtr(OwnedPtr),
+    /// Callback with trampoline function for GTK signals.
     TrampolineCallback(TrampolineCallbackValue),
+    /// Void (no value).
     Void,
 }
 
+/// A callback value with a trampoline for GTK signal handling.
+///
+/// GTK callbacks require C-compatible function pointers, but we need to
+/// invoke JavaScript callbacks. This struct holds the trampoline function
+/// pointer (the C-compatible wrapper) and the closure containing the
+/// actual JavaScript callback.
 #[derive(Debug)]
 pub struct TrampolineCallbackValue {
+    /// Pointer to the C trampoline function.
     pub trampoline_ptr: *mut c_void,
+    /// The GLib closure containing the JavaScript callback.
     pub closure: OwnedPtr,
+    /// Optional destroy notify function pointer.
     pub destroy_ptr: Option<*mut c_void>,
 }
 
 impl OwnedPtr {
+    /// Creates a new owned pointer from a value and its raw pointer.
+    ///
+    /// The value is boxed to ensure it outlives the FFI call.
     pub fn new<T: 'static>(value: T, ptr: *mut c_void) -> Self {
         Self {
             value: Box::new(value),
@@ -110,7 +154,7 @@ fn invoke_js_callback(
     let callback = callback.clone();
 
     let result = channel.send(move |mut cx| {
-        let result = (|| {
+        (|| {
             let js_args: Vec<Handle<JsValue>> = args_values
                 .into_iter()
                 .map(|v| v.to_js_value(&mut cx))
@@ -126,9 +170,7 @@ fn invoke_js_callback(
                 js_callback.call(&mut cx, js_this, js_args)?;
                 Ok(value::Value::Undefined)
             }
-        })();
-
-        result
+        })()
     });
 
     unsafe { std::mem::transmute(result) }
@@ -225,13 +267,11 @@ impl TryFrom<arg::Arg> for Value {
                 let ptr = object_id.map_or(std::ptr::null_mut(), |id| id.as_ptr());
                 let is_transfer_full = !type_.is_borrowed && !ptr.is_null();
 
-                if is_transfer_full {
-                    if let Some(gtype) = type_.get_gtype() {
-                        unsafe {
-                            let copied =
-                                glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _);
-                            return Ok(Value::Ptr(copied as *mut c_void));
-                        }
+                if is_transfer_full && let Some(gtype) = type_.get_gtype() {
+                    unsafe {
+                        let copied =
+                            glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _);
+                        return Ok(Value::Ptr(copied));
                     }
                 }
 
@@ -245,6 +285,12 @@ impl TryFrom<arg::Arg> for Value {
 }
 
 impl Value {
+    /// Returns a raw pointer to this value's data.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called on a `TrampolineCallback` variant, which requires
+    /// special multi-pointer handling in the call module.
     pub fn as_ptr(&self) -> *mut c_void {
         match self {
             Value::U8(value) => value as *const u8 as *mut c_void,
@@ -260,7 +306,9 @@ impl Value {
             Value::Ptr(ptr) => ptr as *const *mut c_void as *mut c_void,
             Value::OwnedPtr(owned_ptr) => owned_ptr as *const OwnedPtr as *mut c_void,
             Value::TrampolineCallback(_) => {
-                unreachable!("TrampolineCallback should not be converted to a single pointer - it requires special handling in call.rs")
+                unreachable!(
+                    "TrampolineCallback should not be converted to a single pointer - it requires special handling in call.rs"
+                )
             }
             Value::Void => std::ptr::null_mut(),
         }

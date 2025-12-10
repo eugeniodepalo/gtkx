@@ -4,7 +4,7 @@ import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { createNode } from "../src/factory.js";
 import { ApplicationWindow, Box, Button, createPortal, Grid, Label, Notebook, Overlay } from "../src/index.js";
-import { flushSync, getCurrentApp, render, setupTests } from "./utils.js";
+import { flushSync, getCurrentApp, render, setupTests } from "./test-setup.js";
 
 setupTests();
 

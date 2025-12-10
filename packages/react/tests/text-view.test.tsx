@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { TextView } from "../src/index.js";
-import { flushSync, render, setupTests } from "./utils.js";
+import { flushSync, render, setupTests } from "./test-setup.js";
 
 setupTests();
 

@@ -20,35 +20,11 @@ jobs:
     container:
       image: fedora:43
     steps:
-      - name: Install dependencies
-        run: |
-          dnf install -y gtk4-devel gobject-introspection-devel gtksourceview5-devel mesa-libGLES
-
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install npm packages
-        run: pnpm install
-
-      - name: Setup Turbo cache
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
+      - name: Setup environment
+        uses: ./.github/actions/setup
 
       - name: Build documentation
         working-directory: website

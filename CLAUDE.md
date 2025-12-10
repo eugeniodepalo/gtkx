@@ -64,7 +64,7 @@ JSX → React Element → Reconciler → Node Factory → Node Tree → GTK Widg
 ```
 
 Key files:
-- `factory.ts` - NODE_CLASSES map, switch-based type matching
+- `factory.ts` - NODE_CLASSES array, iteration-based type matching
 - `node.ts` - Base Node class
 - `nodes/` - Specialized nodes (WindowNode, GridNode, ListViewNode, etc.)
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../index.js";
-import { GLIB_LIB, GTK_LIB, setup } from "./utils.js";
+import { GLIB_LIB, GTK_LIB, setup } from "./test-setup.js";
 
 setup();
 

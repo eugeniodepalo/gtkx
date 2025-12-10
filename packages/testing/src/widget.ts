@@ -4,6 +4,9 @@ import { Accessible, AccessibleRole } from "@gtkx/ffi/gtk";
 
 const EDITABLE_ROLES = new Set([AccessibleRole.TEXT_BOX, AccessibleRole.SEARCH_BOX, AccessibleRole.SPIN_BUTTON]);
 
+/**
+ * Checks if a widget has an editable accessible role (text box, search box, or spin button).
+ */
 export const isEditable = (widget: Gtk.Widget): boolean => {
     const role = getInterface(widget, Accessible).getAccessibleRole();
     return EDITABLE_ROLES.has(role);
@@ -20,6 +23,9 @@ const LABEL_ROLES = new Set([
     AccessibleRole.MENU_ITEM_RADIO,
 ]);
 
+/**
+ * Checks if a widget has an accessible role that supports labels.
+ */
 export const hasLabel = (widget: Gtk.Widget): boolean => {
     const role = getInterface(widget, Accessible).getAccessibleRole();
     return LABEL_ROLES.has(role);

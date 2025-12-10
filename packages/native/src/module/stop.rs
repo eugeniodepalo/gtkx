@@ -1,3 +1,5 @@
+//! GTK main loop shutdown.
+
 use std::sync::mpsc;
 
 use gtk4::glib;
@@ -5,6 +7,11 @@ use neon::prelude::*;
 
 use crate::state::GtkThreadState;
 
+/// Stops the GTK main loop.
+///
+/// JavaScript signature: `stop() => void`
+///
+/// Releases the application hold guard, allowing the GTK main loop to exit.
 pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let (tx, rx) = mpsc::channel::<()>();
 

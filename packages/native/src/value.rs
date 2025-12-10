@@ -1,3 +1,9 @@
+//! Value types for bridging JavaScript and native GLib/GTK values.
+//!
+//! This module provides the [`Value`] enum which represents all possible values
+//! that can be passed between JavaScript and native code, along with conversion
+//! methods for translating between JavaScript, libffi, and GLib value representations.
+
 use std::{
     ffi::{CStr, CString, c_void},
     sync::Arc,
@@ -17,13 +23,20 @@ use crate::{
     types::{Callback, FloatSize, IntegerSign, IntegerSize, Type},
 };
 
+/// A reference wrapper for out-parameters in FFI calls.
+///
+/// Holds a boxed value and a reference to the JavaScript object that will be
+/// updated with the result after the FFI call completes.
 #[derive(Debug, Clone)]
 pub struct Ref {
+    /// The inner value being referenced.
     pub value: Box<Value>,
+    /// Reference to the JavaScript object for updating after FFI call.
     pub js_obj: Arc<Root<JsObject>>,
 }
 
 impl Ref {
+    /// Creates a new reference wrapper.
     pub fn new(value: Value, js_obj: Arc<Root<JsObject>>) -> Self {
         Ref {
             value: Box::new(value),
@@ -31,6 +44,14 @@ impl Ref {
         }
     }
 
+    /// Converts a JavaScript value to a Ref.
+    ///
+    /// Expects a JavaScript object with a `value` property containing the
+    /// inner value to be wrapped.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `NeonResult` error if the value cannot be converted.
     pub fn from_js_value<'a, C: Context<'a>>(
         cx: &mut C,
         value: Handle<JsValue>,
@@ -44,20 +65,47 @@ impl Ref {
     }
 }
 
+/// Represents a value that can be passed between JavaScript and native code.
+///
+/// This enum covers all the value types that can cross the FFI boundary:
+/// - Primitive types (numbers, strings, booleans)
+/// - Null and undefined
+/// - Native objects (GObject instances, boxed types)
+/// - Arrays of values
+/// - Callbacks (JavaScript functions callable from native code)
+/// - References (for out-parameters)
 #[derive(Debug, Clone)]
 pub enum Value {
+    /// A numeric value (all JavaScript numbers are f64).
     Number(f64),
+    /// A UTF-8 string value.
     String(String),
+    /// A boolean value.
     Boolean(bool),
+    /// A reference to a native object by its ID.
     Object(ObjectId),
+    /// Represents JavaScript null.
     Null,
+    /// Represents JavaScript undefined.
     Undefined,
+    /// An array of values.
     Array(Vec<Value>),
+    /// A JavaScript callback function.
     Callback(Callback),
+    /// A reference wrapper for out-parameters.
     Ref(Ref),
 }
 
 impl Value {
+    /// Converts a JavaScript value to a [`Value`].
+    ///
+    /// Handles all JavaScript types including numbers, strings, booleans,
+    /// null, undefined, arrays, boxed object IDs, functions (callbacks),
+    /// and reference objects.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `NeonResult` error if the JavaScript value type is not supported.
     pub fn from_js_value<'a, C: Context<'a>>(
         cx: &mut C,
         value: Handle<JsValue>,
@@ -110,6 +158,12 @@ impl Value {
         cx.throw_type_error(format!("Unsupported JS value type: {:?}", *value))
     }
 
+    /// Converts this value to a JavaScript value.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `NeonResult` error if the value type cannot be converted to JavaScript
+    /// (e.g., Callback or Ref types).
     pub fn to_js_value<'a, C: Context<'a>>(&self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
         match self {
             Value::Number(n) => Ok(cx.number(*n).upcast()),
@@ -135,6 +189,20 @@ impl Value {
         }
     }
 
+    /// Converts a libffi CIF value to a [`Value`] based on the expected type.
+    ///
+    /// This is used to convert return values and out-parameters from FFI calls
+    /// back to JavaScript-compatible values.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the CIF value doesn't match the expected type or
+    /// if the type is not supported for conversion.
+    ///
+    /// # Safety
+    ///
+    /// This function performs unsafe pointer operations when reading string,
+    /// object, and array data from raw pointers returned by FFI calls.
     pub fn from_cif_value(cif_value: &cif::Value, type_: &Type) -> anyhow::Result<Self> {
         match type_ {
             Type::Null => Ok(Value::Null),
@@ -339,7 +407,8 @@ impl Value {
                                     break;
                                 }
                                 let c_str = unsafe { CStr::from_ptr(str_ptr) };
-                                values.push(Value::String(c_str.to_str().unwrap_or("").to_string()));
+                                values
+                                    .push(Value::String(c_str.to_str().unwrap_or("").to_string()));
                                 i += 1;
                             }
 
@@ -620,6 +689,15 @@ impl Value {
 }
 
 impl Value {
+    /// Converts a GLib Value to a [`Value`] based on the expected type.
+    ///
+    /// This is used to convert callback arguments from GLib signals to
+    /// JavaScript-compatible values.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the GLib value type doesn't match the expected type descriptor,
+    /// or if extraction from the GLib value fails.
     pub fn from_glib_value(gvalue: &glib::Value, type_: &Type) -> Self {
         match type_ {
             Type::Integer(int_type) => {
@@ -696,12 +774,11 @@ impl Value {
                 let boxed_ptr = if gvalue_type == glib::Type::VARIANT {
                     unsafe {
                         glib::gobject_ffi::g_value_get_variant(gvalue.to_glib_none().0 as *const _)
-                            as *mut c_void
+                            .cast::<c_void>()
                     }
                 } else {
                     unsafe {
                         glib::gobject_ffi::g_value_get_boxed(gvalue.to_glib_none().0 as *const _)
-                            as *mut c_void
                     }
                 };
 
@@ -709,7 +786,7 @@ impl Value {
                     return Value::Null;
                 }
 
-                let gtype = boxed_type.get_gtype().or_else(|| Some(gvalue_type));
+                let gtype = boxed_type.get_gtype().or(Some(gvalue_type));
 
                 let boxed = if boxed_type.is_borrowed {
                     Boxed::from_glib_none(gtype, boxed_ptr)
@@ -730,6 +807,11 @@ impl Value {
         }
     }
 
+    /// Converts this value to a GLib Value, providing defaults for undefined values.
+    ///
+    /// When the value is `Undefined`, returns a sensible default based on the
+    /// expected return type (false for booleans, 0 for integers). This is used
+    /// for callback return values where JavaScript may return undefined.
     pub fn into_glib_value_with_default(self, return_type: Option<&Type>) -> Option<glib::Value> {
         match &self {
             Value::Undefined => match return_type {

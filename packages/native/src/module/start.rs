@@ -1,3 +1,5 @@
+//! GTK application initialization and main loop startup.
+
 use std::sync::mpsc;
 
 use gtk4::{gio::ApplicationFlags, prelude::*};
@@ -8,6 +10,13 @@ use crate::{
     state::GtkThreadState,
 };
 
+/// Starts the GTK application and main loop.
+///
+/// JavaScript signature: `start(appId: string, flags?: number) => ObjectId`
+///
+/// Creates a GTK Application with the given ID, starts the main loop on a
+/// dedicated thread, and returns the application's ObjectId. The function
+/// blocks until the application is activated.
 pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
     let app_id = cx.argument::<JsString>(0)?.value(&mut cx);
 

@@ -1,3 +1,10 @@
+//! Callback trampolines for bridging JavaScript functions to GTK signals.
+//!
+//! GTK uses C function pointers for callbacks, but we need to invoke JavaScript
+//! functions. This module provides trampoline functions that act as C-compatible
+//! wrappers, receiving arguments from GTK and forwarding them to the appropriate
+//! GLib closure which then invokes the JavaScript callback.
+
 use std::ffi::c_void;
 
 use gtk4::{
@@ -9,6 +16,12 @@ use gtk4::{
     },
 };
 
+/// Trampoline for GTK DrawingArea draw functions.
+///
+/// # Safety
+///
+/// This function is called from C code. The `user_data` pointer must be a valid
+/// pointer to a `GClosure`, and all other pointers must be valid GTK objects.
 unsafe extern "C" fn draw_func_trampoline(
     drawing_area: *mut c_void,
     cr: *mut c_void,
@@ -48,10 +61,17 @@ unsafe extern "C" fn draw_func_trampoline(
     }
 }
 
+/// Returns the function pointer to the draw function trampoline.
 pub fn get_draw_func_trampoline_ptr() -> *mut c_void {
     draw_func_trampoline as *mut c_void
 }
 
+/// Trampoline for GDestroyNotify callbacks.
+///
+/// # Safety
+///
+/// This function is called from C code. The `user_data` pointer must be a valid
+/// pointer to a `GClosure`.
 unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
     unsafe {
         let closure_ptr = user_data as *mut gobject_ffi::GClosure;
@@ -71,10 +91,19 @@ unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
     }
 }
 
+/// Returns the function pointer to the destroy trampoline.
 pub fn get_destroy_trampoline_ptr() -> *mut c_void {
     destroy_trampoline as *mut c_void
 }
 
+/// Trampoline that simply unrefs a closure without invoking it.
+///
+/// Used as a destroy notify for closures that shouldn't be called on cleanup.
+///
+/// # Safety
+///
+/// This function is called from C code. The `user_data` pointer must be a valid
+/// pointer to a `GClosure`.
 unsafe extern "C" fn unref_closure_trampoline(user_data: *mut c_void) {
     unsafe {
         let closure_ptr = user_data as *mut gobject_ffi::GClosure;
@@ -87,10 +116,19 @@ unsafe extern "C" fn unref_closure_trampoline(user_data: *mut c_void) {
     }
 }
 
+/// Returns the function pointer to the unref closure trampoline.
 pub fn get_unref_closure_trampoline_ptr() -> *mut c_void {
     unref_closure_trampoline as *mut c_void
 }
 
+/// Trampoline for GSourceFunc callbacks (e.g., idle_add, timeout_add).
+///
+/// Returns 1 (TRUE) to keep the source active, 0 (FALSE) to remove it.
+///
+/// # Safety
+///
+/// This function is called from C code. The `user_data` pointer must be a valid
+/// pointer to a `GClosure`.
 unsafe extern "C" fn source_func_trampoline(user_data: *mut c_void) -> i32 {
     unsafe {
         let closure_ptr = user_data as *mut gobject_ffi::GClosure;
@@ -119,10 +157,17 @@ unsafe extern "C" fn source_func_trampoline(user_data: *mut c_void) -> i32 {
     }
 }
 
+/// Returns the function pointer to the source function trampoline.
 pub fn get_source_func_trampoline_ptr() -> *mut c_void {
     source_func_trampoline as *mut c_void
 }
 
+/// Trampoline for GAsyncReadyCallback (async operation completion).
+///
+/// # Safety
+///
+/// This function is called from C code. All pointers must be valid GObject
+/// instances or null, and `user_data` must be a valid `GClosure` pointer.
 unsafe extern "C" fn async_ready_trampoline(
     source_object: *mut gobject_ffi::GObject,
     res: *mut GAsyncResult,
@@ -158,10 +203,19 @@ unsafe extern "C" fn async_ready_trampoline(
     }
 }
 
+/// Returns the function pointer to the async ready trampoline.
 pub fn get_async_ready_trampoline_ptr() -> *mut c_void {
     async_ready_trampoline as *mut c_void
 }
 
+/// Trampoline for GCompareDataFunc (comparison callbacks for sorting).
+///
+/// Returns a negative value if a < b, 0 if a == b, positive if a > b.
+///
+/// # Safety
+///
+/// This function is called from C code. All pointers must be valid GObject
+/// instances, and `user_data` must be a valid `GClosure` pointer.
 unsafe extern "C" fn compare_data_func_trampoline(
     a: *mut gobject_ffi::GObject,
     b: *mut gobject_ffi::GObject,
@@ -195,6 +249,7 @@ unsafe extern "C" fn compare_data_func_trampoline(
     }
 }
 
+/// Returns the function pointer to the compare data function trampoline.
 pub fn get_compare_data_func_trampoline_ptr() -> *mut c_void {
     compare_data_func_trampoline as *mut c_void
 }

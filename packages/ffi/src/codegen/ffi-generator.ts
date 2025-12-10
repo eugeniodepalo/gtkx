@@ -690,14 +690,13 @@ export class CodeGenerator {
 
         let current = cls.parent ? classMap.get(cls.parent) : undefined;
         while (current) {
-            // Collect signals from the current parent class first
             for (const signal of current.signals) {
                 if (!seenNames.has(signal.name)) {
                     allSignals.push(signal);
                     seenNames.add(signal.name);
                 }
             }
-            // Then check if this parent has a cross-namespace grandparent
+
             if (current.parent?.includes(".")) {
                 return { signals: allSignals, hasCrossNamespaceParent: true };
             }

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createNode } from "../src/factory.js";
 import { ApplicationMenu, Menu, PopoverMenu } from "../src/index.js";
-import { flushMicrotasks, flushSync, render, setupTests } from "./utils.js";
+import { flushMicrotasks, flushSync, render, setupTests } from "./test-setup.js";
 
 setupTests();
 
