@@ -41,32 +41,41 @@ Edit your code and see changes instantly—no restart needed.
 ### Example
 
 ```tsx
-import {
-  render,
-  ApplicationWindow,
-  Box,
-  Button,
-  Label,
-  quit,
-} from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 import { useState } from "react";
+import { Orientation } from "@gtkx/ffi/gtk";
+import { render, ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
 
 const App = () => {
-  const [count, setCount] = useState(0);
+    const [count, setCount] = useState(0);
 
-  return (
-    <ApplicationWindow title="Counter" onCloseRequest={quit}>
-      <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
-        <Label.Root label={`Count: ${count}`} />
-        <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
-      </Box>
-    </ApplicationWindow>
-  );
+    return (
+        <ApplicationWindow title="Counter" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+            <Box orientation={Orientation.VERTICAL} spacing={12} marginTop={20} marginStart={20} marginEnd={20}>
+                <Label.Root label={`Count: ${count}`} />
+                <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
+            </Box>
+        </ApplicationWindow>
+    );
 };
 
-render(<App />, "org.example.Counter");
+render(<App />, "org.example.counter");
 ```
+
+## Widgets
+
+GTKX provides React components for GTK4 widgets:
+
+**Layout**: `Box`, `Grid`, `Stack`, `Notebook`, `Paned`, `FlowBox`, `Overlay`
+
+**Lists**: `ListView`, `GridView`, `ColumnView`, `DropDown`, `ListBox`
+
+**Input**: `Entry`, `TextView`, `CheckButton`, `ToggleButton`, `Switch`, `Scale`, `SpinButton`
+
+**Display**: `Label`, `Button`, `Image`, `Spinner`, `ProgressBar`, `LevelBar`
+
+**Menus**: `ApplicationMenu`, `PopoverMenu`, `MenuButton`, `Menu.Item`, `Menu.Section`, `Menu.Submenu`
+
+**Windows**: `ApplicationWindow`, `Window`, `AboutDialog`
 
 ## Styling
 
@@ -75,10 +84,10 @@ import { css } from "@gtkx/css";
 import { Button } from "@gtkx/react";
 
 const primary = css`
-  padding: 16px 32px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, #3584e4, #9141ac);
-  color: white;
+    padding: 16px 32px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #3584e4, #9141ac);
+    color: white;
 `;
 
 <Button label="Click me" cssClasses={[primary]} />;
@@ -95,14 +104,12 @@ import { AccessibleRole } from "@gtkx/ffi/gtk";
 afterEach(() => cleanup());
 
 test("increments count", async () => {
-  await render(<App />);
+    await render(<App />);
 
-  const button = await screen.findByRole(AccessibleRole.BUTTON, {
-    name: "Increment",
-  });
-  await userEvent.click(button);
+    const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Increment" });
+    await userEvent.click(button);
 
-  await screen.findByText("Count: 1");
+    await screen.findByText("Count: 1");
 });
 ```
 
@@ -123,20 +130,18 @@ cd examples/gtk4-demo && pnpm dev
 
 ## Packages
 
-| Package                           | Description                           |
-| --------------------------------- | ------------------------------------- |
-| [@gtkx/cli](packages/cli)         | CLI with HMR dev server               |
-| [@gtkx/react](packages/react)     | React reconciler and JSX components   |
-| [@gtkx/ffi](packages/ffi)         | TypeScript bindings for GTK4/GLib/GIO |
-| [@gtkx/native](packages/native)   | Rust native module (libffi bridge)    |
-| [@gtkx/css](packages/css)         | CSS-in-JS styling                     |
-| [@gtkx/testing](packages/testing) | Testing utilities                     |
-| [@gtkx/gir](packages/gir)         | GObject Introspection parser          |
+| Package                           | Description                    |
+| --------------------------------- | ------------------------------ |
+| [@gtkx/react](packages/react)     | React components for GTK4      |
+| [@gtkx/ffi](packages/ffi)         | TypeScript bindings for GTK4   |
+| [@gtkx/css](packages/css)         | CSS-in-JS styling              |
+| [@gtkx/testing](packages/testing) | Testing utilities              |
+| [@gtkx/cli](packages/cli)         | CLI with HMR dev server        |
 
 ## Requirements
 
 - Node.js 20+
-- GTK4 (`gtk4-devel` on Fedora, `libgtk-4-dev` on Ubuntu)
+- GTK4 (`gtk4` on Fedora, `libgtk-4-1` on Ubuntu)
 - Linux
 
 ## Contributing

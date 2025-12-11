@@ -7,12 +7,12 @@ use std::{
 };
 
 use anyhow::bail;
-use libffi::middle as ffi;
+use libffi::middle as libffi;
 use neon::prelude::*;
 
 use crate::{
     arg::Arg,
-    cif, ffi_source,
+    cif, ffi,
     state::GtkThreadState,
     types::{CallbackTrampoline, FloatSize, IntegerSign, IntegerSize, Type},
     uv,
@@ -43,7 +43,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     let (tx, rx) = mpsc::channel::<anyhow::Result<(Value, Vec<RefUpdate>)>>();
 
-    ffi_source::schedule(move || {
+    ffi::schedule(move || {
         let _ = tx.send(handle_call(library_name, symbol_name, args, result_type));
     });
 
@@ -71,17 +71,17 @@ fn handle_call(
     args: Vec<Arg>,
     result_type: Type,
 ) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
-    let mut arg_types: Vec<ffi::Type> = Vec::with_capacity(args.len() + 1);
+    let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(args.len() + 1);
     for arg in &args {
         match &arg.type_ {
             Type::Callback(cb) if cb.trampoline != CallbackTrampoline::Closure => {
-                arg_types.push(ffi::Type::pointer());
-                arg_types.push(ffi::Type::pointer());
+                arg_types.push(libffi::Type::pointer());
+                arg_types.push(libffi::Type::pointer());
 
                 if cb.trampoline == CallbackTrampoline::DrawFunc
                     || cb.trampoline == CallbackTrampoline::CompareDataFunc
                 {
-                    arg_types.push(ffi::Type::pointer());
+                    arg_types.push(libffi::Type::pointer());
                 }
             }
             _ => {
@@ -90,7 +90,7 @@ fn handle_call(
         }
     }
 
-    let cif = ffi::Builder::new()
+    let cif = libffi::Builder::new()
         .res((&result_type).into())
         .args(arg_types)
         .into_cif();
@@ -101,14 +101,14 @@ fn handle_call(
         .map(TryInto::<cif::Value>::try_into)
         .collect::<anyhow::Result<Vec<cif::Value>>>()?;
 
-    let mut ffi_args: Vec<ffi::Arg> = Vec::with_capacity(cif_args.len() + 1);
+    let mut ffi_args: Vec<libffi::Arg> = Vec::with_capacity(cif_args.len() + 1);
     for cif_arg in &cif_args {
         match cif_arg {
             cif::Value::TrampolineCallback(trampoline_cb) => {
-                ffi_args.push(ffi::arg(&trampoline_cb.trampoline_ptr));
-                ffi_args.push(ffi::arg(&trampoline_cb.closure.ptr));
+                ffi_args.push(libffi::arg(&trampoline_cb.trampoline_ptr));
+                ffi_args.push(libffi::arg(&trampoline_cb.closure.ptr));
                 if let Some(destroy_ptr) = &trampoline_cb.destroy_ptr {
-                    ffi_args.push(ffi::arg(destroy_ptr));
+                    ffi_args.push(libffi::arg(destroy_ptr));
                 }
             }
             other => {
@@ -118,12 +118,12 @@ fn handle_call(
     }
 
     let symbol_ptr = unsafe {
-        GtkThreadState::with::<_, anyhow::Result<ffi::CodePtr>>(|state| {
+        GtkThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
             let library = state.get_library(&library_name)?;
             let symbol = library.get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes())?;
 
             let ptr = *symbol.deref() as *mut c_void;
-            Ok(ffi::CodePtr(ptr))
+            Ok(libffi::CodePtr(ptr))
         })?
     };
 
@@ -247,7 +247,7 @@ pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
 
-    ffi_source::schedule(move || {
+    ffi::schedule(move || {
         let result = handle_batch_calls(descriptors);
         let _ = tx.send(result);
     });

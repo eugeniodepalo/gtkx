@@ -17,99 +17,284 @@ cd my-app
 npm run dev
 ```
 
-## Build Commands
+## Application Structure
 
-```bash
-pnpm install          # Install dependencies
-pnpm build            # Build all packages (turbo)
-pnpm codegen          # Regenerate FFI/JSX bindings from GIR files
-pnpm test             # Run tests (concurrency=1 due to GTK/X11 constraints)
-pnpm lint             # Run biome check
-pnpm knip             # Check for unused code
+```tsx
+import { useState } from "react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { ApplicationWindow, Box, Button, Label, render, quit } from "@gtkx/react";
 
-# Single package
-cd packages/<package> && pnpm build
-cd packages/<package> && pnpm test
+function App() {
+    const [count, setCount] = useState(0);
 
-# Run specific test file
-cd packages/react && pnpm test tests/specific.test.tsx
+    return (
+        <ApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+            <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
+                <Label.Root label={`Count: ${count}`} />
+                <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
+            </Box>
+        </ApplicationWindow>
+    );
+}
 
-# Run examples
-cd examples/gtk4-demo && pnpm dev
+render(<App />, "com.example.myapp");
 ```
 
-## Architecture
+## Container Widgets
 
-GTKX is a monorepo (pnpm workspaces + Turbo) that enables building native GTK4 desktop applications with React.
+### Box (Linear Layout)
 
-### Package Dependency Graph
-
-```
-@gtkx/cli → @gtkx/react → @gtkx/ffi → @gtkx/native (Rust/libffi)
-             ↓
-          @gtkx/css (also → @gtkx/ffi)
-
-@gtkx/testing → @gtkx/react + @gtkx/ffi + @gtkx/native
-@gtkx/gir → Used for codegen in @gtkx/ffi & @gtkx/react
+```tsx
+<Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+    <Label.Root label="First" />
+    <Label.Root label="Second" />
+</Box>
 ```
 
-### Core Packages
+### Grid (2D Layout)
 
-- @gtkx/native: Rust native module (Neon/N-API) wrapping libffi for GTK4 function calls
-- @gtkx/ffi: Auto-generated TypeScript bindings for GTK4/GDK/GLib (from GIR files)
-- @gtkx/react: React 19 reconciler implementation + JSX components for GTK widgets
-- @gtkx/cli: Vite-based dev server with HMR, project scaffolding
-- @gtkx/css: Emotion-compatible CSS-in-JS for GTK styling
-- @gtkx/testing: Testing Library-style utilities (render, screen, userEvent, queries)
-- @gtkx/gir: GObject Introspection XML parser for codegen
-
-### React Reconciler Architecture
-
-The reconciler creates a Node tree that manages GTK widgets:
-
-```
-JSX → React Element → Reconciler → Node Factory → Node Tree → GTK Widgets
+```tsx
+<Grid.Root rowSpacing={8} columnSpacing={8}>
+    <Grid.Child column={0} row={0}>
+        <Label.Root label="Top-left" />
+    </Grid.Child>
+    <Grid.Child column={1} row={0} columnSpan={2}>
+        <Label.Root label="Spans 2 columns" />
+    </Grid.Child>
+</Grid.Root>
 ```
 
-Key files:
-- packages/react/src/reconciler.ts: React reconciler implementation
-- packages/react/src/factory.ts: NODE_CLASSES map, switch-based type matching
-- packages/react/src/node.ts: Base Node class
-- packages/react/src/nodes/: Specialized nodes (WindowNode, GridNode, ListViewNode, etc.)
+### Stack (Page Container)
 
-### Codegen System
+```tsx
+<Stack.Root visibleChildName="page1">
+    <Stack.Page name="page1" title="Page 1">
+        <Label.Root label="Content 1" />
+    </Stack.Page>
+    <Stack.Page name="page2" title="Page 2">
+        <Label.Root label="Content 2" />
+    </Stack.Page>
+</Stack.Root>
+```
 
-Two generators parse GIR files to produce TypeScript:
+### Notebook (Tabbed Container)
 
-1. FFI Generator (packages/ffi/src/codegen/ffi-generator.ts) → packages/ffi/src/generated/
-2. JSX Generator (packages/react/src/codegen/jsx-generator.ts) → packages/react/src/generated/jsx.ts
+```tsx
+<Notebook.Root>
+    <Notebook.Page label="Tab 1">
+        <Content1 />
+    </Notebook.Page>
+    <Notebook.Page label="Tab 2">
+        <Content2 />
+    </Notebook.Page>
+</Notebook.Root>
+```
 
-Never edit generated code directly. Run `pnpm codegen` after modifying generators or GIR files.
+### Paned (Resizable Split)
 
-### Adding Widget Support
+```tsx
+<Paned.Root orientation={Gtk.Orientation.HORIZONTAL} position={280}>
+    <Paned.StartChild>
+        <SideBar />
+    </Paned.StartChild>
+    <Paned.EndChild>
+        <MainContent />
+    </Paned.EndChild>
+</Paned.Root>
+```
 
-1. Create a Node class in `packages/react/src/nodes/`
-2. Add it to `NODE_CLASSES` in `packages/react/src/factory.ts`
-3. Implement: `matches()`, `initialize()`, `appendChild()`, `removeChild()`
-4. Run `pnpm codegen` to regenerate JSX types
-5. Add tests in `packages/react/tests/`
+## Virtual Scrolling Lists
+
+### ListView
+
+```tsx
+<ListView.Root
+    vexpand
+    renderItem={(item: Item | null) => (
+        <Label.Root label={item?.text ?? ""} />
+    )}
+>
+    {items.map(item => (
+        <ListView.Item key={item.id} item={item} />
+    ))}
+</ListView.Root>
+```
+
+### ColumnView (Table)
+
+```tsx
+<ColumnView.Root
+    sortColumn="name"
+    sortOrder={Gtk.SortType.ASCENDING}
+    onSortChange={handleSort}
+>
+    <ColumnView.Column
+        title="Name"
+        id="name"
+        expand
+        renderCell={(item: Item | null) => (
+            <Label.Root label={item?.name ?? ""} />
+        )}
+    />
+    {items.map(item => (
+        <ColumnView.Item key={item.id} item={item} />
+    ))}
+</ColumnView.Root>
+```
+
+### DropDown
+
+```tsx
+<DropDown.Root
+    itemLabel={(opt: Option) => opt.label}
+    onSelectionChanged={(item, index) => setSelected(item.value)}
+>
+    {options.map(opt => (
+        <DropDown.Item key={opt.value} item={opt} />
+    ))}
+</DropDown.Root>
+```
+
+## Input Widgets
+
+### Entry (Controlled)
+
+Entry requires two-way binding to stay in sync:
+
+```tsx
+const [text, setText] = useState("");
+
+<Entry
+    text={text}
+    onChanged={(entry) => setText(entry.getText())}
+    placeholder="Type here..."
+/>
+```
+
+### ToggleButton
+
+```tsx
+const [active, setActive] = useState(false);
+
+<ToggleButton.Root
+    active={active}
+    onToggled={() => setActive(!active)}
+    label="Toggle me"
+/>
+```
+
+## Menus
+
+### Application Menu
+
+```tsx
+<ApplicationMenu>
+    <Menu.Submenu label="File">
+        <Menu.Item label="New" onActivate={handleNew} accels="<Control>n" />
+        <Menu.Item label="Open" onActivate={handleOpen} accels="<Control>o" />
+        <Menu.Section>
+            <Menu.Item label="Quit" onActivate={quit} accels="<Control>q" />
+        </Menu.Section>
+    </Menu.Submenu>
+</ApplicationMenu>
+```
+
+### MenuButton with PopoverMenu
+
+```tsx
+<MenuButton.Root label="Actions">
+    <MenuButton.Popover>
+        <PopoverMenu.Root>
+            <Menu.Item label="New" onActivate={handleNew} accels="<Control>n" />
+            <Menu.Section label="Clipboard">
+                <Menu.Item label="Cut" onActivate={handleCut} accels="<Control>x" />
+                <Menu.Item label="Copy" onActivate={handleCopy} accels="<Control>c" />
+            </Menu.Section>
+            <Menu.Submenu label="Export As">
+                <Menu.Item label="PDF" onActivate={exportPdf} />
+                <Menu.Item label="HTML" onActivate={exportHtml} />
+            </Menu.Submenu>
+        </PopoverMenu.Root>
+    </MenuButton.Popover>
+</MenuButton.Root>
+```
+
+## Signal Handling
+
+GTK signals map to `on<SignalName>` props:
+
+- `clicked` → `onClicked`
+- `toggled` → `onToggled`
+- `changed` → `onChanged`
+- `notify::selected` → `onNotifySelected`
+
+## Widget References
+
+```tsx
+import { createRef } from "@gtkx/ffi";
+
+const entryRef = createRef<Gtk.Entry>();
+<Entry ref={entryRef} />
+// Later: entryRef.current?.getText()
+```
+
+## Portals
+
+```tsx
+import { createPortal } from "@gtkx/react";
+
+{createPortal(<AboutDialog programName="My App" />)}
+```
+
+## Common Layout Props
+
+All widgets support:
+
+- `hexpand` / `vexpand`: Expand to fill space
+- `halign` / `valign`: `Gtk.Align.START | CENTER | END | FILL`
+- `marginStart` / `marginEnd` / `marginTop` / `marginBottom`: Spacing
+- `sensitive`: Enable/disable widget
+- `visible`: Show/hide widget
+- `cssClasses`: Array of CSS class names
+
+## Constraints
+
+- **GTK is single-threaded**: All widget operations must happen on the main thread
+- **Virtual lists need immutable data**: Use stable object references for ListView/ColumnView items
+- **Entry needs two-way binding**: Use `onChanged` to keep state in sync
+- **ToggleButton auto-prevents feedback loops**: Safe for controlled state
 
 ## Testing
 
-Tests require GTK4 and X11. On non-CI environments, tests run via xvfb:
+```tsx
+import { cleanup, render, screen } from "@gtkx/testing";
+import { AccessibleRole } from "@gtkx/ffi/gtk";
+import { afterEach, describe, it, expect } from "vitest";
 
-```bash
-GDK_BACKEND=x11 xvfb-run -a vitest run
+afterEach(async () => {
+    await cleanup();
+});
+
+describe("App", () => {
+    it("renders button", async () => {
+        await render(<App />, { wrapper: false });
+        const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Click me" });
+        expect(button).toBeDefined();
+    });
+});
 ```
 
-Tests run serially (`--concurrency=1`) because GTK is single-threaded.
+Tests require xvfb:
+
+```bash
+GDK_BACKEND=x11 xvfb-run -a vitest
+```
 
 ## Requirements
 
 - Node.js 20+
 - GTK4
-- Linux (GTK4 is Linux-native)
-- Rust (for building native module)
+- Linux
 
 ## License
 

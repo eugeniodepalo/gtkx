@@ -31,7 +31,7 @@ React JSX → React Reconciler → FFI Bindings → GTK4 Widgets
 
 ## Packages
 
-GTKX is organized as a monorepo with the following packages:
+GTKX provides the following packages:
 
 | Package         | Description                                                |
 | --------------- | ---------------------------------------------------------- |
@@ -40,8 +40,6 @@ GTKX is organized as a monorepo with the following packages:
 | `@gtkx/ffi`     | TypeScript FFI bindings for GTK4, GLib, GIO, Gdk, and more |
 | `@gtkx/css`     | CSS-in-JS styling for GTK widgets (Emotion-style API)      |
 | `@gtkx/testing` | Testing utilities with a Testing Library-style API         |
-| `@gtkx/native`  | Rust native module providing the FFI bridge                |
-| `@gtkx/gir`     | GObject Introspection parser for code generation           |
 
 ## Example
 

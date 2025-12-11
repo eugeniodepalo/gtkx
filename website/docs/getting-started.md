@@ -11,7 +11,7 @@ Get up and running with GTKX in under a minute.
 Before you begin, make sure you have:
 
 - **Node.js 20+** — GTKX uses modern JavaScript features
-- **GTK4 development libraries** — Required for native bindings
+- **GTK4** — The GTK4 runtime libraries
 - **Linux** — GTK4 is designed for Linux (GNOME desktop)
 
 ### Installing GTK4
@@ -19,13 +19,13 @@ Before you begin, make sure you have:
 On Fedora:
 
 ```bash
-sudo dnf install gtk4-devel
+sudo dnf install gtk4
 ```
 
 On Ubuntu/Debian:
 
 ```bash
-sudo apt install libgtk-4-dev
+sudo apt install libgtk-4-1
 ```
 
 On Arch Linux:
