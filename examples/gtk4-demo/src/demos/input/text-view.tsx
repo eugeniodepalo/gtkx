@@ -1,4 +1,3 @@
-import { createRef } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Frame, Label, ScrolledWindow, TextView } from "@gtkx/react";
@@ -9,8 +8,8 @@ import type { Demo } from "../types.js";
 const getBufferText = (buffer: Gtk.TextBuffer): string => {
     const startIter = new Gtk.TextIter();
     const endIter = new Gtk.TextIter();
-    buffer.getStartIter(createRef(startIter.id));
-    buffer.getEndIter(createRef(endIter.id));
+    buffer.getStartIter(startIter);
+    buffer.getEndIter(endIter);
     return buffer.getText(startIter, endIter, true);
 };
 

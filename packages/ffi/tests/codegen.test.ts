@@ -315,4 +315,66 @@ describe("Specific namespace quality checks", () => {
             expect(content).toContain("export class Variant");
         });
     });
+
+    describe("Gsk namespace", () => {
+        const gskDir = join(generatedDir, "gsk");
+
+        it("Transform.parse should have properly typed Ref<Transform> parameter", () => {
+            const transformPath = join(gskDir, "transform.ts");
+            const content = readFileSync(transformPath, "utf-8");
+
+            expect(content).toContain("static parse(string: string, outTransform: Ref<Transform>): boolean");
+            expect(content).not.toContain("Ref<unknown>");
+        });
+
+        it("Transform.parse should re-wrap GTK-allocated ref with getObject", () => {
+            const transformPath = join(gskDir, "transform.ts");
+            const content = readFileSync(transformPath, "utf-8");
+
+            expect(content).toContain("outTransform.value = getObject(outTransform.value) as Transform");
+        });
+    });
+
+    describe("Pango namespace", () => {
+        const pangoDir = join(generatedDir, "pango");
+
+        it("parseMarkup should have properly typed Ref parameters", () => {
+            const functionsPath = join(pangoDir, "functions.ts");
+            const content = readFileSync(functionsPath, "utf-8");
+
+            expect(content).toContain("Ref<AttrList>");
+            expect(content).not.toMatch(/parseMarkup[^}]+Ref<unknown>/);
+        });
+    });
+});
+
+describe("Pointer-to-pointer (Ref) type quality", () => {
+    const allFiles = getAllGeneratedFiles(generatedDir);
+
+    it("should not have Ref<unknown> types in method signatures", () => {
+        const filesWithRefUnknown: string[] = [];
+
+        for (const file of allFiles) {
+            const content = readFileSync(file, "utf-8");
+            const relativePath = file.replace(`${generatedDir}/`, "");
+
+            if (content.includes("Ref<unknown>")) {
+                filesWithRefUnknown.push(relativePath);
+            }
+        }
+
+        if (filesWithRefUnknown.length > 0) {
+            expect.fail(
+                `Found ${filesWithRefUnknown.length} files with Ref<unknown> types:\n  ${filesWithRefUnknown.slice(0, 10).join("\n  ")}`,
+            );
+        }
+    });
+
+    it("GTK-allocated boxed refs should be re-wrapped with getObject", () => {
+        const gskTransformPath = join(generatedDir, "gsk", "transform.ts");
+        const content = readFileSync(gskTransformPath, "utf-8");
+
+        expect(content).toContain("static parse(string: string, outTransform: Ref<Transform>)");
+        expect(content).toContain("outTransform.value = getObject(outTransform.value) as Transform");
+    });
 });

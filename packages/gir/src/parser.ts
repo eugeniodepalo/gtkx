@@ -248,10 +248,12 @@ export class GirParser {
             const closure = param["@_closure"] as string | undefined;
             const destroy = param["@_destroy"] as string | undefined;
             const transferOwnership = param["@_transfer-ownership"] as string | undefined;
+            const callerAllocates = param["@_caller-allocates"] as string | undefined;
             return {
                 name: String(param["@_name"] ?? ""),
                 type: this.parseType((param.type ?? param.array) as Record<string, unknown> | undefined),
                 direction: (String(param["@_direction"] ?? "in") as "in" | "out" | "inout") || "in",
+                callerAllocates: callerAllocates === "1",
                 nullable: param["@_nullable"] === "1",
                 optional: param["@_allow-none"] === "1",
                 scope: scope as "async" | "call" | "notified" | undefined,

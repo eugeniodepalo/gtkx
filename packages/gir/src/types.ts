@@ -208,6 +208,8 @@ export interface GirParameter {
     type: GirType;
     /** The parameter direction (in, out, or inout). */
     direction?: "in" | "out" | "inout";
+    /** Whether the caller allocates memory for out parameters. */
+    callerAllocates?: boolean;
     /** Whether this parameter can be null. */
     nullable?: boolean;
     /** Whether this parameter is optional. */
@@ -767,11 +769,27 @@ export class TypeMapper {
     }
 
     /**
+     * Gets the current external type usage callback.
+     * @returns The callback or null if not set
+     */
+    getExternalTypeUsageCallback(): ((usage: ExternalTypeUsage) => void) | null {
+        return this.onExternalTypeUsed ?? null;
+    }
+
+    /**
      * Sets a callback to track same-namespace class/interface usage during type mapping.
      * @param callback - Called when a same-namespace class is used, or null to clear
      */
     setSameNamespaceClassUsageCallback(callback: ((className: string, originalName: string) => void) | null): void {
         this.onSameNamespaceClassUsed = callback ?? undefined;
+    }
+
+    /**
+     * Gets the current same-namespace class usage callback.
+     * @returns The callback or null if not set
+     */
+    getSameNamespaceClassUsageCallback(): ((className: string, originalName: string) => void) | null {
+        return this.onSameNamespaceClassUsed ?? null;
     }
 
     /**
@@ -992,38 +1010,37 @@ export class TypeMapper {
      */
     mapParameter(param: GirParameter): MappedType {
         if (param.direction === "out" || param.direction === "inout") {
-            // Temporarily disable callbacks while mapping the inner type,
-            // since Ref<unknown> doesn't need the type import
-            const savedRecordCallback = this.onRecordUsed;
-            const savedExternalCallback = this.onExternalTypeUsed;
-            const savedClassCallback = this.onSameNamespaceClassUsed;
-            this.onRecordUsed = undefined;
-            this.onExternalTypeUsed = undefined;
-            this.onSameNamespaceClassUsed = undefined;
-
             const innerType = this.mapType(param.type);
-
-            // Restore callbacks
-            this.onRecordUsed = savedRecordCallback;
-            this.onExternalTypeUsed = savedExternalCallback;
-            this.onSameNamespaceClassUsed = savedClassCallback;
-
-            // For boxed/gobject types, Ref wraps the raw ptr (unknown), not the wrapper class
             const isBoxedOrGObject = innerType.ffi.type === "boxed" || innerType.ffi.type === "gobject";
-            const tsType = isBoxedOrGObject ? "unknown" : innerType.ts;
 
-            // Only trigger callbacks for non-boxed/gobject types that will actually appear in TS
+            if (param.callerAllocates && isBoxedOrGObject) {
+                return {
+                    ...innerType,
+                    ffi: {
+                        ...innerType.ffi,
+                        borrowed: true,
+                    },
+                };
+            }
+
             if (!isBoxedOrGObject) {
-                // Re-map with callbacks enabled to register the type usage
-                this.mapType(param.type);
+                return {
+                    ts: `Ref<${innerType.ts}>`,
+                    ffi: {
+                        type: "ref",
+                        innerType: innerType.ffi,
+                    },
+                };
             }
 
             return {
-                ts: `Ref<${tsType}>`,
+                ts: `Ref<${innerType.ts}>`,
                 ffi: {
                     type: "ref",
                     innerType: innerType.ffi,
                 },
+                externalType: innerType.externalType,
+                kind: innerType.kind,
             };
         }
 

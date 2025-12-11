@@ -76,13 +76,13 @@ The dialog renders as a sibling to the main window, not nested inside it.
 You can also render into a specific widget container using refs:
 
 ```tsx
-import { createPortal, createRef, Box, Label, Button } from "@gtkx/react";
+import { createPortal, Box, Label, Button } from "@gtkx/react";
 import type { Box as BoxType } from "@gtkx/ffi/gtk";
 import { Orientation } from "@gtkx/ffi/gtk";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 const App = () => {
-  const targetRef = createRef<BoxType>();
+  const targetRef = useRef<BoxType | null>(null);
   const [showInTarget, setShowInTarget] = useState(false);
 
   return (

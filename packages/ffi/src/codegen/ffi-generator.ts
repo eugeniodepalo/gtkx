@@ -251,8 +251,26 @@ const parseParentReference = (parent: string | undefined, classMap: Map<string, 
     return { hasParent: false, isCrossNamespace: false, className: "", extendsClause: "" };
 };
 
-const hasOutParameter = (params: GirParameter[]): boolean =>
-    params.some((p) => p.direction === "out" || p.direction === "inout");
+const hasRefParameter = (params: GirParameter[], typeMapper: TypeMapper): boolean => {
+    const savedSameNamespace = typeMapper.getSameNamespaceClassUsageCallback();
+    const savedExternal = typeMapper.getExternalTypeUsageCallback();
+    const savedRecord = typeMapper.getRecordUsageCallback();
+    const savedEnum = typeMapper.getEnumUsageCallback();
+
+    typeMapper.setSameNamespaceClassUsageCallback(null);
+    typeMapper.setExternalTypeUsageCallback(null);
+    typeMapper.setRecordUsageCallback(null);
+    typeMapper.setEnumUsageCallback(null);
+
+    const result = params.some((p) => typeMapper.mapParameter(p).ts.startsWith("Ref<"));
+
+    typeMapper.setSameNamespaceClassUsageCallback(savedSameNamespace);
+    typeMapper.setExternalTypeUsageCallback(savedExternal);
+    typeMapper.setRecordUsageCallback(savedRecord);
+    typeMapper.setEnumUsageCallback(savedEnum);
+
+    return result;
+};
 
 const isVararg = (param: GirParameter): boolean => param.name === "..." || param.name === "";
 
@@ -469,10 +487,10 @@ export class CodeGenerator {
         );
 
         this.usesRef =
-            syncMethods.some((m) => hasOutParameter(m.parameters)) ||
-            cls.constructors.some((c) => hasOutParameter(c.parameters)) ||
-            cls.functions.some((f) => hasOutParameter(f.parameters)) ||
-            syncInterfaceMethods.some((m) => hasOutParameter(m.parameters));
+            syncMethods.some((m) => hasRefParameter(m.parameters, this.typeMapper)) ||
+            cls.constructors.some((c) => hasRefParameter(c.parameters, this.typeMapper)) ||
+            cls.functions.some((f) => hasRefParameter(f.parameters, this.typeMapper)) ||
+            syncInterfaceMethods.some((m) => hasRefParameter(m.parameters, this.typeMapper));
         const hasNonVarargConstructor = cls.constructors.some((c) => !c.parameters.some(isVararg));
         const needsGObjectNewFallback = !hasNonVarargConstructor && !!cls.parent && !!cls.cType;
         this.usesCall =
@@ -880,6 +898,8 @@ ${args}
         const needsCast = rawReturnType !== "void" && rawReturnType !== "unknown";
         const hasReturnValue = rawReturnType !== "void";
 
+        const gtkAllocatesRefs = this.identifyGtkAllocatesRefs(func.parameters);
+
         const lines: string[] = [];
         const funcDoc = formatMethodDoc(func.doc, func.parameters);
         if (funcDoc) {
@@ -908,9 +928,12 @@ ${allArgs ? `${allArgs},` : ""}
             if (func.throws) {
                 lines.push(this.generateErrorCheck());
             }
+            lines.push(...this.generateRefRewrapCode(gtkAllocatesRefs));
             lines.push(`    return getObject(ptr) as ${className};`);
         } else {
-            const callPrefix = func.throws
+            const hasRefRewrap = gtkAllocatesRefs.length > 0;
+            const needsResultVar = func.throws || hasRefRewrap;
+            const callPrefix = needsResultVar
                 ? hasReturnValue
                     ? `const ${resultVarName} = `
                     : ""
@@ -929,9 +952,12 @@ ${allArgs ? `${allArgs},` : ""}
 
             if (func.throws) {
                 lines.push(this.generateErrorCheck());
-                if (hasReturnValue) {
-                    lines.push(`    return ${resultVarName};`);
-                }
+            }
+
+            lines.push(...this.generateRefRewrapCode(gtkAllocatesRefs));
+
+            if (needsResultVar && hasReturnValue) {
+                lines.push(`    return ${resultVarName};`);
             }
         }
 
@@ -991,12 +1017,6 @@ ${allArgs ? `${allArgs},` : ""}
         const finishMethod = this.findFinishMethod(method, allMethods);
         if (!finishMethod) return null;
 
-        let methodName = toCamelCase(method.name);
-        if (className) {
-            const renamed = getRenamedMethod(this.options.namespace, className, methodName);
-            if (renamed) methodName = renamed;
-        }
-
         const paramsWithoutCallback = method.parameters.filter(
             (p, i) =>
                 !isVararg(p) &&
@@ -1013,6 +1033,12 @@ ${allArgs ? `${allArgs},` : ""}
         }
         if (hasRequiredAfterOptional) {
             return null;
+        }
+
+        let methodName = toCamelCase(method.name);
+        if (className) {
+            const renamed = getRenamedMethod(this.options.namespace, className, methodName);
+            if (renamed) methodName = renamed;
         }
 
         const params = paramsWithoutCallback
@@ -1287,6 +1313,8 @@ ${allArgs ? `${allArgs},` : ""}
             baseReturnType.endsWith("[]");
         const hasReturnValue = returnTypeMapping.ts !== "void";
 
+        const gtkAllocatesRefs = this.identifyGtkAllocatesRefs(method.parameters);
+
         const selfTypeDescriptor =
             isRecord && className
                 ? `{ type: "boxed", borrowed: true, innerType: "${className}", lib: "${sharedLibrary}" }`
@@ -1324,6 +1352,7 @@ ${allArgs ? `${allArgs},` : ""}
             if (method.throws) {
                 lines.push(this.generateErrorCheck());
             }
+            lines.push(...this.generateRefRewrapCode(gtkAllocatesRefs));
             if (isNullable) {
                 lines.push(`    if (ptr === null) return null;`);
             }
@@ -1351,9 +1380,12 @@ ${allArgs ? `${allArgs},` : ""}
             if (method.throws) {
                 lines.push(this.generateErrorCheck());
             }
+            lines.push(...this.generateRefRewrapCode(gtkAllocatesRefs));
             lines.push(`    return ptrs.map(ptr => getObject(ptr) as ${elementType});`);
         } else {
-            const callPrefix = method.throws
+            const hasRefRewrap = gtkAllocatesRefs.length > 0;
+            const needsResultVar = method.throws || hasRefRewrap;
+            const callPrefix = needsResultVar
                 ? hasReturnValue
                     ? `const ${resultVarName} = `
                     : ""
@@ -1378,9 +1410,10 @@ ${allArgs ? `${allArgs},` : ""}
 
             if (method.throws) {
                 lines.push(this.generateErrorCheck());
-                if (hasReturnValue) {
-                    lines.push(`    return ${resultVarName};`);
-                }
+            }
+            lines.push(...this.generateRefRewrapCode(gtkAllocatesRefs));
+            if (needsResultVar && hasReturnValue) {
+                lines.push(`    return ${resultVarName};`);
             }
         }
 
@@ -1574,7 +1607,7 @@ ${allArgs ? `${allArgs},` : ""}
         const sections: string[] = [];
 
         this.usesCall = iface.methods.length > 0;
-        this.usesRef = iface.methods.some((m) => hasOutParameter(m.parameters));
+        this.usesRef = iface.methods.some((m) => hasRefParameter(m.parameters, this.typeMapper));
 
         if (iface.doc) {
             sections.push(formatDoc(iface.doc));
@@ -1607,9 +1640,9 @@ ${allArgs ? `${allArgs},` : ""}
         this.resetState();
 
         this.usesRef =
-            record.methods.some((m) => hasOutParameter(m.parameters)) ||
-            record.constructors.some((c) => hasOutParameter(c.parameters)) ||
-            record.functions.some((f) => hasOutParameter(f.parameters));
+            record.methods.some((m) => hasRefParameter(m.parameters, this.typeMapper)) ||
+            record.constructors.some((c) => hasRefParameter(c.parameters, this.typeMapper)) ||
+            record.functions.some((f) => hasRefParameter(f.parameters, this.typeMapper));
         this.usesCall = record.methods.length > 0 || record.constructors.length > 0 || record.functions.length > 0;
 
         const hasReadableFields = record.fields.some((f) => f.readable !== false && !f.private);
@@ -1993,7 +2026,7 @@ ${args}
     private async generateFunctions(functions: GirFunction[], sharedLibrary: string): Promise<string> {
         this.resetState();
 
-        this.usesRef = functions.some((f) => hasOutParameter(f.parameters));
+        this.usesRef = functions.some((f) => hasRefParameter(f.parameters, this.typeMapper));
         this.usesCall = functions.length > 0;
 
         const sections: string[] = [];
@@ -2024,6 +2057,8 @@ ${args}
             returnTypeMapping.kind !== "interface";
         const hasReturnValue = returnTypeMapping.ts !== "void";
 
+        const gtkAllocatesRefs = this.identifyGtkAllocatesRefs(func.parameters);
+
         const lines: string[] = [];
         const funcDoc = formatMethodDoc(func.doc, func.parameters, "");
         if (funcDoc) {
@@ -2039,6 +2074,8 @@ ${args}
         const errorArg = func.throws ? this.generateErrorArgument("  ") : "";
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
 
+        const refRewrapCode = this.generateRefRewrapCode(gtkAllocatesRefs).map((line) => line.replace(/^ {4}/, "  "));
+
         if (needsObjectWrap && hasReturnValue) {
             this.usesGetObject = true;
             lines.push(`  const ptr = call("${sharedLibrary}", "${func.cIdentifier}", [
@@ -2047,12 +2084,15 @@ ${allArgs ? `${allArgs},` : ""}
             if (func.throws) {
                 lines.push(this.generateErrorCheck(""));
             }
+            lines.push(...refRewrapCode);
             if (isNullable) {
                 lines.push(`  if (ptr === null) return null;`);
             }
             lines.push(`  return getObject(ptr) as ${baseReturnType};`);
         } else {
-            const callPrefix = func.throws
+            const hasRefRewrap = gtkAllocatesRefs.length > 0;
+            const needsResultVar = func.throws || hasRefRewrap;
+            const callPrefix = needsResultVar
                 ? hasReturnValue
                     ? `const ${resultVarName} = `
                     : ""
@@ -2068,9 +2108,10 @@ ${allArgs ? `${allArgs},` : ""}
 
             if (func.throws) {
                 lines.push(this.generateErrorCheck(""));
-                if (hasReturnValue) {
-                    lines.push(`  return ${resultVarName};`);
-                }
+            }
+            lines.push(...refRewrapCode);
+            if (needsResultVar && hasReturnValue) {
+                lines.push(`  return ${resultVarName};`);
             }
         }
 
@@ -2135,6 +2176,45 @@ ${allArgs ? `${allArgs},` : ""}
                 return `${indent}  {\n${indent}    type: ${this.generateTypeDescriptor(mapped.ffi)},\n${indent}    value: ${valueName}${optionalPart},\n${indent}  }`;
             })
             .join(",\n");
+    }
+
+    private identifyGtkAllocatesRefs(
+        parameters: GirParameter[],
+    ): { paramName: string; innerType: string; nullable: boolean }[] {
+        return parameters
+            .filter((p, i) => !isVararg(p) && !this.typeMapper.isClosureTarget(i, parameters))
+            .map((param) => {
+                const mapped = this.typeMapper.mapParameter(param);
+                if (
+                    mapped.ffi.type === "ref" &&
+                    typeof mapped.ffi.innerType === "object" &&
+                    (mapped.ffi.innerType.type === "boxed" || mapped.ffi.innerType.type === "gobject")
+                ) {
+                    const innerTsType = mapped.ts.slice(4, -1);
+                    return {
+                        paramName: toValidIdentifier(toCamelCase(param.name)),
+                        innerType: innerTsType,
+                        nullable: this.typeMapper.isNullable(param),
+                    };
+                }
+                return null;
+            })
+            .filter((x): x is { paramName: string; innerType: string; nullable: boolean } => x !== null);
+    }
+
+    private generateRefRewrapCode(
+        gtkAllocatesRefs: { paramName: string; innerType: string; nullable: boolean }[],
+    ): string[] {
+        if (gtkAllocatesRefs.length === 0) {
+            return [];
+        }
+
+        this.usesGetObject = true;
+        return gtkAllocatesRefs.map((ref) =>
+            ref.nullable
+                ? `    if (${ref.paramName}) ${ref.paramName}.value = getObject(${ref.paramName}.value) as ${ref.innerType};`
+                : `    ${ref.paramName}.value = getObject(${ref.paramName}.value) as ${ref.innerType};`,
+        );
     }
 
     private generateErrorArgument(indent = "      "): string {

@@ -318,9 +318,9 @@ GTK signals map to \`on<SignalName>\` props:
 ## Widget References
 
 \`\`\`tsx
-import { createRef } from "@gtkx/ffi";
+import { useRef } from "react";
 
-const entryRef = createRef<Gtk.Entry>();
+const entryRef = useRef<Gtk.Entry | null>(null);
 <Entry ref={entryRef} />
 // Later: entryRef.current?.getText()
 \`\`\`
