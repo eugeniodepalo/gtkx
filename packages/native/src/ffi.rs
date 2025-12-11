@@ -1,6 +1,6 @@
-//! Custom callback queue for FFI operations.
+//! Queue for FFI operations.
 //!
-//! This module provides a cross-thread callback queue for FFI operations.
+//! This module provides a cross-thread queue for FFI operations.
 //! Callbacks scheduled from the JS thread are dispatched on the GTK thread.
 //! During signal handling, `dispatch_pending()` can process queued callbacks
 //! without triggering the full GTK main loop iteration.
@@ -13,12 +13,12 @@ use gtk4::glib;
 
 type Callback = Box<dyn FnOnce() + Send + 'static>;
 
-struct FfiCallbackQueue {
+struct Queue {
     queue: Mutex<VecDeque<Callback>>,
     dispatch_scheduled: AtomicBool,
 }
 
-impl FfiCallbackQueue {
+impl Queue {
     const fn new() -> Self {
         Self {
             queue: Mutex::new(VecDeque::new()),
@@ -39,7 +39,7 @@ impl FfiCallbackQueue {
     }
 }
 
-static FFI_QUEUE: FfiCallbackQueue = FfiCallbackQueue::new();
+static FFI_QUEUE: Queue = Queue::new();
 
 /// Schedules a callback to be executed on the GTK thread.
 ///
@@ -52,7 +52,6 @@ where
 {
     FFI_QUEUE.push(Box::new(callback));
 
-    // Schedule an idle callback if one isn't already scheduled
     if FFI_QUEUE
         .dispatch_scheduled
         .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
@@ -65,12 +64,10 @@ where
 fn dispatch_batch() {
     FFI_QUEUE.dispatch_scheduled.store(false, Ordering::Release);
 
-    // Dispatch all pending callbacks
     while let Some(callback) = FFI_QUEUE.pop() {
         callback();
     }
 
-    // If more were added during dispatch, schedule another batch
     if !FFI_QUEUE.is_empty()
         && FFI_QUEUE
             .dispatch_scheduled

@@ -21,6 +21,8 @@ export interface CreateOptions {
     packageManager?: PackageManager;
     /** Testing framework to set up. */
     testing?: TestingFramework;
+    /** Whether to include Claude Code skills for AI assistance. */
+    claudeSkills?: boolean;
 }
 
 const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
@@ -135,6 +137,688 @@ const generateGitignore = (): string => {
 dist/
 *.log
 .DS_Store
+`;
+};
+
+const generateSkillMd = (): string => {
+    return `---
+name: developing-gtkx-apps
+description: Build GTK4 desktop applications with GTKX React framework. Use when creating GTKX components, working with GTK widgets, handling signals, or building Linux desktop UIs with React.
+---
+
+# Developing GTKX Applications
+
+GTKX is a React framework for building native GTK4 desktop applications on Linux. It uses a custom React reconciler to render React components as native GTK widgets.
+
+## Quick Start
+
+\`\`\`tsx
+import { ApplicationWindow, render, quit } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+
+const App = () => (
+    <ApplicationWindow title="My App" defaultWidth={800} defaultHeight={600}>
+        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+            <Label.Root label="Hello, GTKX!" />
+            <Button label="Quit" onClicked={quit} />
+        </Box>
+    </ApplicationWindow>
+);
+
+render(<App />, "com.example.myapp");
+\`\`\`
+
+## Widget Patterns
+
+### Container Widgets
+
+**Box** - Linear layout:
+\`\`\`tsx
+<Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+    <Label.Root label="First" />
+    <Label.Root label="Second" />
+</Box>
+\`\`\`
+
+**Grid** - 2D positioning:
+\`\`\`tsx
+<Grid.Root spacing={10}>
+    <Grid.Child column={0} row={0}>
+        <Label.Root label="Top-left" />
+    </Grid.Child>
+    <Grid.Child column={1} row={0} columnSpan={2}>
+        <Label.Root label="Spans 2 columns" />
+    </Grid.Child>
+</Grid.Root>
+\`\`\`
+
+**Stack** - Page-based container:
+\`\`\`tsx
+<Stack.Root visibleChildName="page1">
+    <Stack.Page name="page1" title="Page 1">
+        <Label.Root label="Content 1" />
+    </Stack.Page>
+    <Stack.Page name="page2" title="Page 2">
+        <Label.Root label="Content 2" />
+    </Stack.Page>
+</Stack.Root>
+\`\`\`
+
+**Notebook** - Tabbed container:
+\`\`\`tsx
+<Notebook.Root>
+    <Notebook.Page label="Tab 1">
+        <Content1 />
+    </Notebook.Page>
+    <Notebook.Page label="Tab 2">
+        <Content2 />
+    </Notebook.Page>
+</Notebook.Root>
+\`\`\`
+
+**Paned** - Resizable split:
+\`\`\`tsx
+<Paned.Root orientation={Gtk.Orientation.HORIZONTAL} position={280}>
+    <Paned.StartChild>
+        <SideBar />
+    </Paned.StartChild>
+    <Paned.EndChild>
+        <MainContent />
+    </Paned.EndChild>
+</Paned.Root>
+\`\`\`
+
+### Virtual Scrolling Lists
+
+**ListView** - High-performance scrollable list:
+\`\`\`tsx
+<ListView.Root
+    vexpand
+    renderItem={(item: Item | null) => (
+        <Label.Root label={item?.text ?? ""} />
+    )}
+>
+    {items.map(item => (
+        <ListView.Item key={item.id} item={item} />
+    ))}
+</ListView.Root>
+\`\`\`
+
+**ColumnView** - Table with columns:
+\`\`\`tsx
+<ColumnView.Root
+    sortColumn="name"
+    sortOrder={Gtk.SortType.ASCENDING}
+    onSortChange={handleSort}
+>
+    <ColumnView.Column
+        title="Name"
+        id="name"
+        expand
+        renderCell={(item: Item | null) => (
+            <Label.Root label={item?.name ?? ""} />
+        )}
+    />
+    {items.map(item => (
+        <ColumnView.Item key={item.id} item={item} />
+    ))}
+</ColumnView.Root>
+\`\`\`
+
+**DropDown** - Selection widget:
+\`\`\`tsx
+<DropDown.Root
+    itemLabel={(opt: Option) => opt.label}
+    onSelectionChanged={(item, index) => setSelected(item.value)}
+>
+    {options.map(opt => (
+        <DropDown.Item key={opt.value} item={opt} />
+    ))}
+</DropDown.Root>
+\`\`\`
+
+### Controlled Input
+
+Entry requires two-way binding:
+\`\`\`tsx
+const [text, setText] = useState("");
+
+<Entry
+    text={text}
+    onChanged={(entry) => setText(entry.getText())}
+    placeholder="Type here..."
+/>
+\`\`\`
+
+### Declarative Menus
+
+\`\`\`tsx
+<ApplicationMenu>
+    <Menu.Submenu label="File">
+        <Menu.Item
+            label="New"
+            onActivate={handleNew}
+            accels="<Control>n"
+        />
+        <Menu.Section>
+            <Menu.Item label="Quit" onActivate={quit} accels="<Control>q" />
+        </Menu.Section>
+    </Menu.Submenu>
+</ApplicationMenu>
+\`\`\`
+
+## Signal Handling
+
+GTK signals map to \`on<SignalName>\` props:
+- \`clicked\` → \`onClicked\`
+- \`toggled\` → \`onToggled\`
+- \`changed\` → \`onChanged\`
+- \`notify::selected\` → \`onNotifySelected\`
+
+## Widget References
+
+\`\`\`tsx
+import { createRef } from "@gtkx/ffi";
+
+const entryRef = createRef<Gtk.Entry>();
+<Entry ref={entryRef} />
+// Later: entryRef.current?.getText()
+\`\`\`
+
+## Portals
+
+\`\`\`tsx
+import { createPortal } from "@gtkx/react";
+
+{createPortal(<AboutDialog programName="My App" />)}
+\`\`\`
+
+## Constraints
+
+- **GTK is single-threaded**: All widget operations on main thread
+- **Virtual lists need immutable data**: Use stable object references
+- **ToggleButton auto-prevents feedback loops**: Safe for controlled state
+- **Entry needs two-way binding**: Use \`onChanged\` to sync state
+
+For detailed widget reference, see [WIDGETS.md](WIDGETS.md).
+For code examples, see [EXAMPLES.md](EXAMPLES.md).
+`;
+};
+
+const generateWidgetsMd = (): string => {
+    return `# GTKX Widget Reference
+
+## Container Widgets
+
+### Box
+Linear layout container.
+
+\`\`\`tsx
+<Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+    <Label.Root label="Child 1" />
+    <Label.Root label="Child 2" />
+</Box>
+\`\`\`
+
+Props:
+- \`orientation\`: \`Gtk.Orientation.HORIZONTAL\` | \`Gtk.Orientation.VERTICAL\`
+- \`spacing\`: number (pixels between children)
+- \`homogeneous\`: boolean (equal child sizes)
+
+### Grid
+2D grid layout with explicit positioning.
+
+\`\`\`tsx
+<Grid.Root spacing={10} rowSpacing={5} columnSpacing={5}>
+    <Grid.Child column={0} row={0}>
+        <Label.Root label="Top-left" />
+    </Grid.Child>
+    <Grid.Child column={1} row={0} columnSpan={2}>
+        <Label.Root label="Spans 2 columns" />
+    </Grid.Child>
+</Grid.Root>
+\`\`\`
+
+Grid.Child props (consumed, not passed to GTK):
+- \`column\`: number (0-indexed)
+- \`row\`: number (0-indexed)
+- \`columnSpan\`: number (default 1)
+- \`rowSpan\`: number (default 1)
+
+### Stack
+Shows one child at a time, switchable by name.
+
+\`\`\`tsx
+<Stack.Root visibleChildName="page1">
+    <Stack.Page name="page1" title="First" iconName="document-new">
+        <Content1 />
+    </Stack.Page>
+    <Stack.Page name="page2" title="Second">
+        <Content2 />
+    </Stack.Page>
+</Stack.Root>
+\`\`\`
+
+Stack.Page props (consumed):
+- \`name\`: string (required, unique identifier)
+- \`title\`: string (display title)
+- \`iconName\`: string (icon name)
+
+### Notebook
+Tabbed container with visible tabs.
+
+\`\`\`tsx
+<Notebook.Root>
+    <Notebook.Page label="Tab 1">
+        <Content1 />
+    </Notebook.Page>
+    <Notebook.Page label="Tab 2">
+        <Content2 />
+    </Notebook.Page>
+</Notebook.Root>
+\`\`\`
+
+Notebook.Page props (consumed):
+- \`label\`: string (tab label)
+
+### Paned
+Resizable split container with draggable divider.
+
+\`\`\`tsx
+<Paned.Root
+    orientation={Gtk.Orientation.HORIZONTAL}
+    position={280}
+    shrinkStartChild={false}
+    shrinkEndChild={false}
+>
+    <Paned.StartChild>
+        <SidePanel />
+    </Paned.StartChild>
+    <Paned.EndChild>
+        <MainContent />
+    </Paned.EndChild>
+</Paned.Root>
+\`\`\`
+
+Props:
+- \`orientation\`: \`Gtk.Orientation.HORIZONTAL\` | \`Gtk.Orientation.VERTICAL\`
+- \`position\`: number (divider position in pixels)
+- \`shrinkStartChild\`: boolean
+- \`shrinkEndChild\`: boolean
+
+## Virtual Scrolling Widgets
+
+### ListView
+High-performance scrollable list with virtual rendering.
+
+\`\`\`tsx
+<ListView.Root
+    vexpand
+    renderItem={(item: Item | null) => (
+        <Label.Root label={item?.text ?? ""} />
+    )}
+>
+    {items.map(item => (
+        <ListView.Item key={item.id} item={item} />
+    ))}
+</ListView.Root>
+\`\`\`
+
+Props:
+- \`renderItem\`: \`(item: T | null) => ReactElement\` (required)
+- Standard scrollable props
+
+### ColumnView
+Table with sortable columns.
+
+\`\`\`tsx
+<ColumnView.Root
+    sortColumn="name"
+    sortOrder={Gtk.SortType.ASCENDING}
+    onSortChange={(column, order) => handleSort(column, order)}
+>
+    <ColumnView.Column
+        title="Name"
+        id="name"
+        expand
+        resizable
+        renderCell={(item: Item | null) => (
+            <Label.Root label={item?.name ?? ""} />
+        )}
+    />
+    {items.map(item => (
+        <ColumnView.Item key={item.id} item={item} />
+    ))}
+</ColumnView.Root>
+\`\`\`
+
+### DropDown
+Selection dropdown with custom rendering.
+
+\`\`\`tsx
+<DropDown.Root
+    itemLabel={(opt: Option) => opt.label}
+    onSelectionChanged={(item, index) => setSelected(item.value)}
+>
+    {options.map(opt => (
+        <DropDown.Item key={opt.value} item={opt} />
+    ))}
+</DropDown.Root>
+\`\`\`
+
+## Input Widgets
+
+### Entry
+Single-line text input. Requires two-way binding for controlled behavior.
+
+\`\`\`tsx
+const [text, setText] = useState("");
+
+<Entry
+    text={text}
+    onChanged={(entry) => setText(entry.getText())}
+    placeholder="Enter text..."
+/>
+\`\`\`
+
+### ToggleButton
+Toggle button with controlled state. Auto-prevents signal feedback loops.
+
+\`\`\`tsx
+const [active, setActive] = useState(false);
+
+<ToggleButton.Root
+    active={active}
+    onToggled={() => setActive(!active)}
+    label="Toggle me"
+/>
+\`\`\`
+
+## Display Widgets
+
+### Label.Root
+\`\`\`tsx
+<Label.Root label="Hello World" halign={Gtk.Align.START} wrap useMarkup />
+\`\`\`
+
+### Button
+\`\`\`tsx
+<Button label="Click me" onClicked={() => handleClick()} iconName="document-new" />
+\`\`\`
+
+### MenuButton
+\`\`\`tsx
+<MenuButton.Root label="Options" iconName="open-menu">
+    <MenuButton.Popover>
+        <PopoverMenu.Root>
+            <Menu.Item label="Action" onActivate={handle} />
+        </PopoverMenu.Root>
+    </MenuButton.Popover>
+</MenuButton.Root>
+\`\`\`
+
+## Menu Widgets
+
+### ApplicationMenu
+\`\`\`tsx
+<ApplicationMenu>
+    <Menu.Submenu label="File">
+        <Menu.Item label="New" onActivate={handleNew} accels="<Control>n" />
+        <Menu.Section>
+            <Menu.Item label="Quit" onActivate={quit} accels="<Control>q" />
+        </Menu.Section>
+    </Menu.Submenu>
+</ApplicationMenu>
+\`\`\`
+
+### Menu.Item
+Props:
+- \`label\`: string
+- \`onActivate\`: \`() => void\`
+- \`accels\`: string | string[] (e.g., "<Control>n")
+
+### Menu.Section
+Groups menu items with optional label.
+
+### Menu.Submenu
+Nested submenu.
+
+## Window Widgets
+
+### ApplicationWindow
+\`\`\`tsx
+<ApplicationWindow
+    title="My App"
+    defaultWidth={800}
+    defaultHeight={600}
+    showMenubar
+    onCloseRequest={() => false}
+>
+    <MainContent />
+</ApplicationWindow>
+\`\`\`
+
+## Common Props
+
+All widgets support:
+- \`hexpand\` / \`vexpand\`: boolean (expand to fill space)
+- \`halign\` / \`valign\`: \`Gtk.Align.START\` | \`CENTER\` | \`END\` | \`FILL\`
+- \`marginStart\` / \`marginEnd\` / \`marginTop\` / \`marginBottom\`: number
+- \`sensitive\`: boolean (enabled/disabled)
+- \`visible\`: boolean
+- \`cssClasses\`: string[]
+`;
+};
+
+const generateExamplesMd = (): string => {
+    return `# GTKX Code Examples
+
+## Application Structure
+
+### Basic App with State
+
+\`\`\`tsx
+import { Orientation } from "@gtkx/ffi/gtk";
+import { ApplicationWindow, Box, Label, quit } from "@gtkx/react";
+import { useCallback, useState } from "react";
+
+interface Todo {
+    id: number;
+    text: string;
+    completed: boolean;
+}
+
+let nextId = 1;
+
+export const App = () => {
+    const [todos, setTodos] = useState<Todo[]>([]);
+
+    const addTodo = useCallback((text: string) => {
+        setTodos((prev) => [...prev, { id: nextId++, text, completed: false }]);
+    }, []);
+
+    const toggleTodo = useCallback((id: number) => {
+        setTodos((prev) =>
+            prev.map((todo) =>
+                todo.id === id ? { ...todo, completed: !todo.completed } : todo
+            )
+        );
+    }, []);
+
+    return (
+        <ApplicationWindow title="Todo App" defaultWidth={400} defaultHeight={500} onCloseRequest={quit}>
+            <Box orientation={Orientation.VERTICAL} spacing={16} marginTop={16} marginStart={16} marginEnd={16}>
+                <Label.Root label="Todo App" />
+            </Box>
+        </ApplicationWindow>
+    );
+};
+
+export const appId = "com.gtkx.todo";
+\`\`\`
+
+## Layout Patterns
+
+### Grid for Forms
+
+\`\`\`tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { Button, Entry, Grid, Label } from "@gtkx/react";
+import { useState } from "react";
+
+const FormLayout = () => {
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+
+    return (
+        <Grid.Root rowSpacing={8} columnSpacing={12}>
+            <Grid.Child column={0} row={0}>
+                <Label.Root label="Name:" halign={Gtk.Align.END} />
+            </Grid.Child>
+            <Grid.Child column={1} row={0}>
+                <Entry text={name} onChanged={(e) => setName(e.getText())} hexpand />
+            </Grid.Child>
+            <Grid.Child column={0} row={1}>
+                <Label.Root label="Email:" halign={Gtk.Align.END} />
+            </Grid.Child>
+            <Grid.Child column={1} row={1}>
+                <Entry text={email} onChanged={(e) => setEmail(e.getText())} hexpand />
+            </Grid.Child>
+            <Grid.Child column={0} row={2} columnSpan={2}>
+                <Button label="Submit" halign={Gtk.Align.END} marginTop={8} />
+            </Grid.Child>
+        </Grid.Root>
+    );
+};
+\`\`\`
+
+### Stack with StackSwitcher
+
+\`\`\`tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { Box, Label, Stack, StackSwitcher } from "@gtkx/react";
+
+const TabContainer = () => (
+    <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+        <StackSwitcher.Root
+            ref={(switcher: Gtk.StackSwitcher | null) => {
+                if (switcher) {
+                    const stack = switcher.getParent()?.getLastChild() as Gtk.Stack | null;
+                    if (stack) switcher.setStack(stack);
+                }
+            }}
+        />
+        <Stack.Root transitionType={Gtk.StackTransitionType.SLIDE_LEFT_RIGHT} transitionDuration={200}>
+            <Stack.Page name="page1" title="First">
+                <Label.Root label="First Page Content" />
+            </Stack.Page>
+            <Stack.Page name="page2" title="Second">
+                <Label.Root label="Second Page Content" />
+            </Stack.Page>
+        </Stack.Root>
+    </Box>
+);
+\`\`\`
+
+## Virtual Scrolling Lists
+
+### ListView with Custom Rendering
+
+\`\`\`tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { Box, Label, ListView } from "@gtkx/react";
+
+interface Task {
+    id: string;
+    title: string;
+    completed: boolean;
+}
+
+const tasks: Task[] = [
+    { id: "1", title: "Learn GTK4", completed: true },
+    { id: "2", title: "Build React app", completed: false },
+];
+
+const TaskList = () => (
+    <Box cssClasses={["card"]} heightRequest={250}>
+        <ListView.Root
+            vexpand
+            renderItem={(task: Task | null) => (
+                <Label.Root
+                    label={task?.title ?? ""}
+                    cssClasses={task?.completed ? ["dim-label"] : []}
+                    halign={Gtk.Align.START}
+                    marginStart={12}
+                    marginTop={8}
+                    marginBottom={8}
+                />
+            )}
+        >
+            {tasks.map((task) => (
+                <ListView.Item key={task.id} item={task} />
+            ))}
+        </ListView.Root>
+    </Box>
+);
+\`\`\`
+
+## Menus
+
+### MenuButton with PopoverMenu
+
+\`\`\`tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { Box, Label, Menu, MenuButton, PopoverMenu } from "@gtkx/react";
+import { useState } from "react";
+
+const MenuDemo = () => {
+    const [lastAction, setLastAction] = useState<string | null>(null);
+
+    return (
+        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+            <Label.Root label={\`Last action: \${lastAction ?? "(none)"}\`} />
+            <MenuButton.Root label="Actions">
+                <MenuButton.Popover>
+                    <PopoverMenu.Root>
+                        <Menu.Item label="New" onActivate={() => setLastAction("New")} accels="<Control>n" />
+                        <Menu.Item label="Open" onActivate={() => setLastAction("Open")} accels="<Control>o" />
+                        <Menu.Item label="Save" onActivate={() => setLastAction("Save")} accels="<Control>s" />
+                    </PopoverMenu.Root>
+                </MenuButton.Popover>
+            </MenuButton.Root>
+        </Box>
+    );
+};
+\`\`\`
+
+## Component Props Pattern
+
+### List Item Component
+
+\`\`\`tsx
+import { Box, Button, CheckButton, Label } from "@gtkx/react";
+import { Orientation } from "@gtkx/ffi/gtk";
+
+interface Todo {
+    id: number;
+    text: string;
+    completed: boolean;
+}
+
+interface TodoItemProps {
+    todo: Todo;
+    onToggle: (id: number) => void;
+    onDelete: (id: number) => void;
+}
+
+export const TodoItem = ({ todo, onToggle, onDelete }: TodoItemProps) => (
+    <Box orientation={Orientation.HORIZONTAL} spacing={8}>
+        <CheckButton active={todo.completed} onToggled={() => onToggle(todo.id)} />
+        <Label.Root label={todo.text} hexpand cssClasses={todo.completed ? ["dim-label"] : []} />
+        <Button iconName="edit-delete-symbolic" onClicked={() => onDelete(todo.id)} cssClasses={["flat"]} />
+    </Box>
+);
+\`\`\`
 `;
 };
 
@@ -347,6 +1031,18 @@ export const createApp = async (options: CreateOptions = {}): Promise<void> => {
         process.exit(0);
     }
 
+    const claudeSkills =
+        options.claudeSkills ??
+        ((await p.confirm({
+            message: "Include Claude Code skills?",
+            initialValue: true,
+        })) as boolean);
+
+    if (p.isCancel(claudeSkills)) {
+        p.cancel("Operation cancelled");
+        process.exit(0);
+    }
+
     const projectPath = resolve(process.cwd(), name);
 
     const s = p.spinner();
@@ -364,6 +1060,14 @@ export const createApp = async (options: CreateOptions = {}): Promise<void> => {
     writeFileSync(join(projectPath, "src", "app.tsx"), generateAppTsx(name, appId));
     writeFileSync(join(projectPath, "src", "index.tsx"), generateIndexTsx());
     writeFileSync(join(projectPath, ".gitignore"), generateGitignore());
+
+    if (claudeSkills) {
+        const skillsDir = join(projectPath, ".claude", "skills", "developing-gtkx-apps");
+        mkdirSync(skillsDir, { recursive: true });
+        writeFileSync(join(skillsDir, "SKILL.md"), generateSkillMd());
+        writeFileSync(join(skillsDir, "WIDGETS.md"), generateWidgetsMd());
+        writeFileSync(join(skillsDir, "EXAMPLES.md"), generateExamplesMd());
+    }
 
     if (testing === "vitest") {
         writeFileSync(join(projectPath, "vitest.config.ts"), generateVitestConfig());

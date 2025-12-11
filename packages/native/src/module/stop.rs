@@ -4,7 +4,7 @@ use std::sync::mpsc;
 
 use neon::prelude::*;
 
-use crate::{ffi_source, state::GtkThreadState};
+use crate::{ffi, state::GtkThreadState};
 
 /// Stops the GTK main loop.
 ///
@@ -14,7 +14,7 @@ use crate::{ffi_source, state::GtkThreadState};
 pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let (tx, rx) = mpsc::channel::<()>();
 
-    ffi_source::schedule(move || {
+    ffi::schedule(move || {
         GtkThreadState::with(|state| {
             // Release the hold guard to allow GTK's main loop to exit
             state.app_hold_guard.take();

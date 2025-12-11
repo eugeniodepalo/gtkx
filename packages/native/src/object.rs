@@ -9,7 +9,7 @@ use std::ffi::c_void;
 use gtk4::glib::{self, object::ObjectType as _};
 use neon::prelude::*;
 
-use crate::{boxed::Boxed, ffi_source, state::GtkThreadState};
+use crate::{boxed::Boxed, ffi, state::GtkThreadState};
 
 /// A native object that can be tracked across the FFI boundary.
 ///
@@ -71,7 +71,7 @@ impl ObjectId {
 
 impl Finalize for ObjectId {
     fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {
-        ffi_source::schedule(move || {
+        ffi::schedule(move || {
             GtkThreadState::with(|state| {
                 state.object_map.remove(&self.0);
             });

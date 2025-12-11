@@ -2,25 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
-
-GTKX is a React-based framework for building native GTK4 desktop applications on Linux. It uses a custom React reconciler to render React components as native GTK widgets via FFI bindings generated from GObject Introspection (GIR) files.
-
 ## Commands
 
 ```bash
 pnpm install          # Install dependencies
-pnpm build            # Build all packages (uses Turbo)
+pnpm build            # Build all packages (excludes website)
 pnpm test             # Run all tests (serial due to GTK's single-threaded nature)
 pnpm lint             # Run Biome linter
 pnpm codegen          # Regenerate FFI/JSX bindings from GIR files
 pnpm knip             # Check for unused code
 
-# Single package
+# Run a single package
 cd packages/<package> && pnpm build
 cd packages/<package> && pnpm test
 
-# Run specific test file
+# Run a specific test file
 cd packages/react && pnpm test tests/specific.test.tsx
 
 # Run examples
@@ -29,61 +25,54 @@ cd examples/gtk4-demo && pnpm dev
 
 ## Architecture
 
-### Package Dependency Graph
+GTKX is a React renderer for GTK4. It allows building native Linux desktop apps with React and TypeScript.
+
+### Package Dependencies
 
 ```
-@gtkx/cli ─────────────────┬──────────────────┐
-                           │                  │
-@gtkx/testing ─────────────┤                  │
-                           │                  ▼
-@gtkx/css ─────────────────┼───────────> @gtkx/react
-                           │                  │
-                           │                  ▼
-                           └──────────> @gtkx/ffi
-                                              │
-                                              ▼
-                                        @gtkx/native (Rust)
+@gtkx/native (Rust/Neon)
+    ↓
+@gtkx/ffi (TypeScript FFI bindings)
+    ↓
+@gtkx/react (React reconciler)
+    ↓
+@gtkx/css, @gtkx/testing, @gtkx/cli
 ```
 
-- **@gtkx/native**: Rust crate using Neon for Node.js bindings. Provides raw FFI calls to GTK4 via libffi.
-- **@gtkx/ffi**: TypeScript FFI bindings auto-generated from GIR files. Wraps native calls with type-safe APIs.
-- **@gtkx/react**: Custom React reconciler (`packages/react/src/reconciler.ts`) that maps React elements to GTK widgets.
-- **@gtkx/gir**: GIR file parser used during codegen (not published).
+### Core Flow
 
-### React Reconciler
+1. **Native Module** (`packages/native/src/`) - Rust crate using Neon and libffi to call GTK4 functions dynamically. Handles FFI calls, GObject lifecycle, signal callbacks, and libuv integration.
 
-The reconciler in `packages/react/src/reconciler.ts` implements React's host config interface. Key files:
+2. **FFI Package** (`packages/ffi/src/`) - Auto-generated TypeScript bindings for GTK4 from GIR files. `native.ts` provides `start()`, `stop()`, `getObject()` for application lifecycle.
 
-- `factory.ts`: Node class registry and creation logic
-- `nodes/*.ts`: Node implementations for specific GTK widgets
-- `generated/jsx.ts`: Auto-generated JSX type definitions
+3. **React Package** (`packages/react/src/`) - Custom React reconciler using react-reconciler. Key files:
+   - `reconciler.ts`: Implements React's HostConfig, batches FFI calls in commits
+   - `node.ts`: Base `Node` class wrapping GTK widgets with signal/prop management
+   - `factory.ts`: Maps JSX types to Node subclasses
+   - `nodes/`: Specialized node implementations for complex widgets (menus, lists, column views)
+
+### Generated Code
+
+Files in `packages/ffi/src/generated/` and `packages/react/src/generated/` are auto-generated from GIR files. Modify generators in `packages/*/src/codegen/` and run `pnpm codegen`.
+
+### Node Class Hierarchy
+
+Virtual nodes (no GTK widget): `ColumnViewItemNode`, `ListItemNode`, `MenuItemNode`, etc.
+Specialized nodes (custom behavior): `WindowNode`, `ApplicationMenuNode`, `ToggleButtonNode`
+Container nodes (child management): `GridNode`, `ListViewNode`, `ColumnViewNode`
+Default: `WidgetNode` (generic GTK widget wrapper)
 
 ### Adding Widget Support
 
 1. Create a Node class in `packages/react/src/nodes/`
-2. Add it to `NODE_CLASSES` in `packages/react/src/factory.ts`
-3. Implement: `matches()`, `initialize()`, `appendChild()`, `removeChild()`
+2. Add to appropriate array in `packages/react/src/factory.ts`
+3. Implement `matches()`, `initialize()`, `appendChild()`, `removeChild()`
 4. Run `pnpm codegen` to regenerate JSX types
 5. Add tests in `packages/react/tests/`
 
-### Generated Code
+## Requirements
 
-Files in `packages/ffi/src/generated/` and `packages/react/src/generated/` are auto-generated. Modify the generators instead:
-
-- FFI generator: `packages/ffi/src/codegen/ffi-generator.ts`
-- JSX generator: `packages/react/src/codegen/jsx-generator.ts`
-
-## Testing
-
-Tests require GTK4 and X11. On non-CI environments, tests run via xvfb:
-
-```bash
-GDK_BACKEND=x11 xvfb-run -a vitest run
-```
-
-Tests run serially (`--concurrency=1`) because GTK is single-threaded.
-
-## Code Style
-
-- Biome for formatting/linting (4-space indent, 120 line width)
-- TypeScript strict mode
+- Node.js 20+, pnpm 9+
+- Rust toolchain (for native module)
+- GTK4 dev libraries: `gtk4-devel` (Fedora) or `libgtk-4-dev` (Ubuntu)
+- Tests require X11 (CI uses Xvfb)

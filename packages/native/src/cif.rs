@@ -12,12 +12,12 @@ use std::{
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::IntoGlib as _};
-use libffi::middle as ffi;
+use libffi::middle as libffi;
 use neon::prelude::*;
 
 use crate::{
     arg::{self, Arg},
-    callback, ffi_source,
+    callback, ffi,
     types::*,
     value,
 };
@@ -115,7 +115,7 @@ where
             Err(std::sync::mpsc::TryRecvError::Empty) => {
                 // Only dispatch our FFI callbacks, not the entire main loop.
                 // This prevents re-entrancy issues during signal handling.
-                ffi_source::dispatch_pending();
+                ffi::dispatch_pending();
 
                 // Small yield to avoid busy-spinning
                 std::thread::yield_now();
@@ -734,25 +734,25 @@ impl Value {
     }
 }
 
-impl<'a> From<&'a Value> for ffi::Arg<'a> {
+impl<'a> From<&'a Value> for libffi::Arg<'a> {
     fn from(arg: &'a Value) -> Self {
         match arg {
-            Value::U8(value) => ffi::arg(value),
-            Value::I8(value) => ffi::arg(value),
-            Value::U16(value) => ffi::arg(value),
-            Value::I16(value) => ffi::arg(value),
-            Value::U32(value) => ffi::arg(value),
-            Value::I32(value) => ffi::arg(value),
-            Value::U64(value) => ffi::arg(value),
-            Value::I64(value) => ffi::arg(value),
-            Value::F32(value) => ffi::arg(value),
-            Value::F64(value) => ffi::arg(value),
-            Value::Ptr(ptr) => ffi::arg(ptr),
-            Value::OwnedPtr(owned_ptr) => ffi::arg(&owned_ptr.ptr),
+            Value::U8(value) => libffi::arg(value),
+            Value::I8(value) => libffi::arg(value),
+            Value::U16(value) => libffi::arg(value),
+            Value::I16(value) => libffi::arg(value),
+            Value::U32(value) => libffi::arg(value),
+            Value::I32(value) => libffi::arg(value),
+            Value::U64(value) => libffi::arg(value),
+            Value::I64(value) => libffi::arg(value),
+            Value::F32(value) => libffi::arg(value),
+            Value::F64(value) => libffi::arg(value),
+            Value::Ptr(ptr) => libffi::arg(ptr),
+            Value::OwnedPtr(owned_ptr) => libffi::arg(&owned_ptr.ptr),
             Value::TrampolineCallback(_) => {
                 unreachable!("TrampolineCallback should be handled specially in call.rs")
             }
-            Value::Void => ffi::arg(&()),
+            Value::Void => libffi::arg(&()),
         }
     }
 }

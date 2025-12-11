@@ -4,7 +4,7 @@ use std::sync::mpsc;
 
 use neon::prelude::*;
 
-use crate::{ffi_source, object::ObjectId};
+use crate::{ffi, object::ObjectId};
 
 /// Gets the native pointer address for an object.
 ///
@@ -18,7 +18,7 @@ pub fn get_object_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let (tx, rx) = mpsc::channel::<Option<usize>>();
     let id = *object_id.as_inner();
 
-    ffi_source::schedule(move || {
+    ffi::schedule(move || {
         let _ = tx.send(id.try_as_ptr());
     });
 
