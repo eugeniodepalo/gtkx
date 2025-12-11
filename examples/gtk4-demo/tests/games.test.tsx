@@ -1,5 +1,5 @@
 import { AccessibleRole, type Button } from "@gtkx/ffi/gtk";
-import { cleanup, render, screen, userEvent } from "@gtkx/testing";
+import { cleanup, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { fifteenPuzzleDemo } from "../src/demos/games/fifteen-puzzle.js";
 import { memoryGameDemo } from "../src/demos/games/memory-game.js";
@@ -62,10 +62,10 @@ describe("Games Demos", () => {
                 return isNumbered && btn.getSensitive();
             });
 
-            if (movableTiles.length === 0) throw new Error("No movable tiles found");
+            expect(movableTiles.length).toBeGreaterThan(0);
 
-            const firstMovable = movableTiles[0];
-            if (!firstMovable) throw new Error("First movable tile not found");
+            const firstMovable = movableTiles[0] as Button;
+            expect(firstMovable).toBeDefined();
 
             await userEvent.click(firstMovable);
 
@@ -95,6 +95,48 @@ describe("Games Demos", () => {
 
             const movesLabel = await screen.findByText("Moves: 0");
             expect(movesLabel).toBeDefined();
+        });
+
+        it("increments moves multiple times", async () => {
+            await render(<FifteenPuzzleDemo />);
+
+            for (let i = 0; i < 3; i++) {
+                const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
+                const movableTiles = buttons.filter((btn) => {
+                    const label = (btn as Button).getLabel();
+                    const isNumbered = Number(label) >= 1 && Number(label) <= 15;
+                    return isNumbered && btn.getSensitive();
+                });
+
+                if (movableTiles.length === 0) break;
+
+                const firstMovable = movableTiles[0];
+                if (firstMovable) {
+                    await userEvent.click(firstMovable);
+                }
+            }
+
+            await waitFor(async () => {
+                const movesLabel = await screen.findByText(/Moves: [1-3]/);
+                expect(movesLabel).toBeDefined();
+            });
+        });
+
+        it("only allows moving tiles adjacent to empty space", async () => {
+            await render(<FifteenPuzzleDemo />);
+
+            const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
+            const tileButtons = buttons.filter((btn) => {
+                const label = (btn as Button).getLabel();
+                return label === "" || (Number(label) >= 1 && Number(label) <= 15);
+            });
+
+            const disabledTiles = tileButtons.filter((btn) => {
+                const label = (btn as Button).getLabel();
+                return label !== "" && !btn.getSensitive();
+            });
+
+            expect(disabledTiles.length).toBeGreaterThan(0);
         });
     });
 
@@ -162,18 +204,17 @@ describe("Games Demos", () => {
 
             const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
             const hiddenCards = buttons.filter((btn) => (btn as Button).getLabel() === "?");
+            expect(hiddenCards.length).toBeGreaterThan(0);
 
-            if (hiddenCards.length === 0) throw new Error("No hidden cards found");
-
-            const firstCard = hiddenCards[0];
-            if (!firstCard) throw new Error("First card not found");
+            const firstCard = hiddenCards[0] as Button;
+            expect(firstCard).toBeDefined();
 
             await userEvent.click(firstCard);
 
             const movesLabel = await screen.findByText("Moves: 1");
             expect(movesLabel).toBeDefined();
 
-            const flippedCard = (firstCard as Button).getLabel();
+            const flippedCard = firstCard.getLabel();
             expect(flippedCard).not.toBe("?");
         });
 
@@ -205,13 +246,12 @@ describe("Games Demos", () => {
 
             const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
             const hiddenCards = buttons.filter((btn) => (btn as Button).getLabel() === "?");
+            expect(hiddenCards.length).toBeGreaterThanOrEqual(2);
 
-            if (hiddenCards.length < 2) throw new Error("Not enough hidden cards");
-
-            const firstCard = hiddenCards[0];
-            const secondCard = hiddenCards[1];
-
-            if (!firstCard || !secondCard) throw new Error("Cards not found");
+            const firstCard = hiddenCards[0] as Button;
+            const secondCard = hiddenCards[1] as Button;
+            expect(firstCard).toBeDefined();
+            expect(secondCard).toBeDefined();
 
             await userEvent.click(firstCard);
             await userEvent.click(secondCard);
@@ -225,15 +265,14 @@ describe("Games Demos", () => {
 
             const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
             const hiddenCards = buttons.filter((btn) => (btn as Button).getLabel() === "?");
+            expect(hiddenCards.length).toBeGreaterThan(0);
 
-            if (hiddenCards.length === 0) throw new Error("No hidden cards found");
-
-            const firstCard = hiddenCards[0];
-            if (!firstCard) throw new Error("First card not found");
+            const firstCard = hiddenCards[0] as Button;
+            expect(firstCard).toBeDefined();
 
             await userEvent.click(firstCard);
 
-            const label = (firstCard as Button).getLabel();
+            const label = firstCard.getLabel();
             expect(label).toMatch(/^[A-H]$/);
         });
 
@@ -242,15 +281,55 @@ describe("Games Demos", () => {
 
             const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
             const hiddenCards = buttons.filter((btn) => (btn as Button).getLabel() === "?");
+            expect(hiddenCards.length).toBeGreaterThan(0);
 
-            if (hiddenCards.length === 0) throw new Error("No hidden cards found");
-
-            const firstCard = hiddenCards[0];
-            if (!firstCard) throw new Error("First card not found");
+            const firstCard = hiddenCards[0] as Button;
+            expect(firstCard).toBeDefined();
 
             await userEvent.click(firstCard);
 
             expect(firstCard.getSensitive()).toBe(false);
+        });
+
+        it("shows both flipped cards' symbols", async () => {
+            await render(<MemoryGameDemo />);
+
+            const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
+            const hiddenCards = buttons.filter((btn) => (btn as Button).getLabel() === "?");
+            expect(hiddenCards.length).toBeGreaterThanOrEqual(2);
+
+            const firstCard = hiddenCards[0] as Button;
+            const secondCard = hiddenCards[1] as Button;
+            expect(firstCard).toBeDefined();
+            expect(secondCard).toBeDefined();
+
+            await userEvent.click(firstCard);
+            await userEvent.click(secondCard);
+
+            const firstLabel = firstCard.getLabel();
+            const secondLabel = secondCard.getLabel();
+
+            expect(firstLabel).toMatch(/^[A-H]$/);
+            expect(secondLabel).toMatch(/^[A-H]$/);
+        });
+
+        it("cards become insensitive after flipping", async () => {
+            await render(<MemoryGameDemo />);
+
+            const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
+            const hiddenCards = buttons.filter((btn) => (btn as Button).getLabel() === "?");
+            expect(hiddenCards.length).toBeGreaterThanOrEqual(2);
+
+            const firstCard = hiddenCards[0] as Button;
+            const secondCard = hiddenCards[1] as Button;
+            expect(firstCard).toBeDefined();
+            expect(secondCard).toBeDefined();
+
+            await userEvent.click(firstCard);
+            expect(firstCard.getSensitive()).toBe(false);
+
+            await userEvent.click(secondCard);
+            expect(secondCard.getSensitive()).toBe(false);
         });
     });
 });

@@ -3,13 +3,23 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as p from "@clack/prompts";
 
+/** Supported package managers for project scaffolding. */
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun";
+
+/** Supported testing frameworks for project scaffolding. */
 export type TestingFramework = "vitest" | "jest" | "node" | "none";
 
+/**
+ * Options for creating a new GTKX application.
+ */
 export interface CreateOptions {
+    /** Project name (lowercase letters, numbers, and hyphens only). */
     name?: string;
+    /** Application ID in reverse domain notation (e.g., com.example.myapp). */
     appId?: string;
+    /** Package manager to use for installing dependencies. */
     packageManager?: PackageManager;
+    /** Testing framework to set up. */
     testing?: TestingFramework;
 }
 
@@ -250,6 +260,11 @@ const suggestAppId = (name: string): string => {
     return `org.gtkx.${sanitized}`;
 };
 
+/**
+ * Creates a new GTKX application with interactive prompts.
+ * Scaffolds project structure, installs dependencies, and sets up configuration.
+ * @param options - Pre-filled options to skip interactive prompts
+ */
 export const createApp = async (options: CreateOptions = {}): Promise<void> => {
     p.intro("Create GTKX App");
 

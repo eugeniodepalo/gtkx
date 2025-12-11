@@ -14,8 +14,11 @@ export { screen } from "./screen.js";
 export type {
     BoundQueries,
     ByRoleOptions,
+    NormalizerOptions,
     RenderOptions,
     RenderResult,
+    TextMatch,
+    TextMatchFunction,
     TextMatchOptions,
     WaitForOptions,
 } from "./types.js";

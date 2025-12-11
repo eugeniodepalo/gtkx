@@ -1,5 +1,5 @@
 import { getInterface } from "@gtkx/ffi";
-import { AccessibleRole, type CheckButton, Editable, type Label } from "@gtkx/ffi/gtk";
+import { AccessibleRole, Editable, type Label, type Widget } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
@@ -70,7 +70,7 @@ describe("Todo App", () => {
 
             await waitFor(() => {
                 const currentText = getInterface(input, Editable)?.getText() ?? "";
-                if (currentText !== "") throw new Error("Input not cleared");
+                expect(currentText).toBe("");
             });
         });
 
@@ -150,10 +150,11 @@ describe("Todo App", () => {
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
             await userEvent.click(addButton);
 
-            const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX);
+            const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: false });
             await userEvent.click(checkbox);
 
-            expect((checkbox as CheckButton).getActive()).toBe(true);
+            const checkedCheckbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: true });
+            expect(checkedCheckbox).toBeDefined();
         });
 
         it("can toggle a completed todo back to active", async () => {
@@ -165,11 +166,14 @@ describe("Todo App", () => {
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
             await userEvent.click(addButton);
 
-            const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX);
-            await userEvent.click(checkbox);
+            const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: false });
             await userEvent.click(checkbox);
 
-            expect((checkbox as CheckButton).getActive()).toBe(false);
+            const checkedCheckbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: true });
+            await userEvent.click(checkedCheckbox);
+
+            const uncheckedCheckbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: false });
+            expect(uncheckedCheckbox).toBeDefined();
         });
 
         it("updates item count when completing todos", async () => {
@@ -187,8 +191,9 @@ describe("Todo App", () => {
             expect((itemsLeft as Label).getLabel()).toContain("2");
 
             const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
-            const firstCheckbox = checkboxes[0];
-            if (!firstCheckbox) throw new Error("Expected at least one checkbox");
+            expect(checkboxes.length).toBeGreaterThanOrEqual(1);
+            const firstCheckbox = checkboxes[0] as Widget;
+            expect(firstCheckbox).toBeDefined();
             await userEvent.click(firstCheckbox);
 
             itemsLeft = await screen.findByTestId("items-left");
@@ -228,8 +233,9 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             const deleteButtons = await screen.findAllByRole(AccessibleRole.BUTTON, { name: "Delete" });
-            const secondDeleteButton = deleteButtons[1];
-            if (!secondDeleteButton) throw new Error("Expected at least two delete buttons");
+            expect(deleteButtons.length).toBeGreaterThanOrEqual(2);
+            const secondDeleteButton = deleteButtons[1] as Widget;
+            expect(secondDeleteButton).toBeDefined();
             await userEvent.click(secondDeleteButton);
 
             const kept = await screen.findByText("Keep this");
@@ -252,8 +258,9 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
-            const secondCheckbox = checkboxes[1];
-            if (!secondCheckbox) throw new Error("Expected at least two checkboxes");
+            expect(checkboxes.length).toBeGreaterThanOrEqual(2);
+            const secondCheckbox = checkboxes[1] as Widget;
+            expect(secondCheckbox).toBeDefined();
             await userEvent.click(secondCheckbox);
         };
 
@@ -335,10 +342,12 @@ describe("Todo App", () => {
             await userEvent.type(input, "Also complete");
             await userEvent.click(addButton);
 
-            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
-            const secondCheckbox = checkboxes[1];
-            const thirdCheckbox = checkboxes[2];
-            if (!secondCheckbox || !thirdCheckbox) throw new Error("Expected at least three checkboxes");
+            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX, { checked: false });
+            expect(checkboxes.length).toBeGreaterThanOrEqual(3);
+            const secondCheckbox = checkboxes[1] as Widget;
+            const thirdCheckbox = checkboxes[2] as Widget;
+            expect(secondCheckbox).toBeDefined();
+            expect(thirdCheckbox).toBeDefined();
             await userEvent.click(secondCheckbox);
             await userEvent.click(thirdCheckbox);
 
@@ -443,9 +452,11 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             const todoItems = await screen.findAllByTestId(/^todo-\d+$/);
-            const firstTodoItem = todoItems[0];
-            const secondTodoItem = todoItems[1];
-            if (!firstTodoItem || !secondTodoItem) throw new Error("Expected at least two todo items");
+            expect(todoItems.length).toBeGreaterThanOrEqual(2);
+            const firstTodoItem = todoItems[0] as Widget;
+            const secondTodoItem = todoItems[1] as Widget;
+            expect(firstTodoItem).toBeDefined();
+            expect(secondTodoItem).toBeDefined();
 
             const { findByRole } = within(firstTodoItem);
 

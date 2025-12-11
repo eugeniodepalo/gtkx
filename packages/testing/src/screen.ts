@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { AccessibleRole } from "@gtkx/ffi/gtk";
 import * as queries from "./queries.js";
-import type { ByRoleOptions, TextMatchOptions } from "./types.js";
+import type { ByRoleOptions, TextMatch, TextMatchOptions } from "./types.js";
 
 let currentRoot: Gtk.Application | null = null;
 
@@ -17,6 +17,7 @@ const getRoot = (): Gtk.Application => {
     if (!currentRoot) {
         throw new Error("No render has been performed. Call render() before using screen queries.");
     }
+
     return currentRoot;
 };
 
@@ -27,18 +28,15 @@ const getRoot = (): Gtk.Application => {
  */
 export const screen = {
     findByRole: (role: AccessibleRole, options?: ByRoleOptions) => queries.findByRole(getRoot(), role, options),
-    findByLabelText: (text: string | RegExp, options?: TextMatchOptions) =>
-        queries.findByLabelText(getRoot(), text, options),
-    findByText: (text: string | RegExp, options?: TextMatchOptions) => queries.findByText(getRoot(), text, options),
-    findByTestId: (testId: string | RegExp, options?: TextMatchOptions) =>
-        queries.findByTestId(getRoot(), testId, options),
+    findByLabelText: (text: TextMatch, options?: TextMatchOptions) => queries.findByLabelText(getRoot(), text, options),
+    findByText: (text: TextMatch, options?: TextMatchOptions) => queries.findByText(getRoot(), text, options),
+    findByTestId: (testId: TextMatch, options?: TextMatchOptions) => queries.findByTestId(getRoot(), testId, options),
 
     findAllByRole: (role: AccessibleRole, options?: ByRoleOptions) => queries.findAllByRole(getRoot(), role, options),
-    findAllByLabelText: (text: string | RegExp, options?: TextMatchOptions) =>
+    findAllByLabelText: (text: TextMatch, options?: TextMatchOptions) =>
         queries.findAllByLabelText(getRoot(), text, options),
-    findAllByText: (text: string | RegExp, options?: TextMatchOptions) =>
-        queries.findAllByText(getRoot(), text, options),
-    findAllByTestId: (testId: string | RegExp, options?: TextMatchOptions) =>
+    findAllByText: (text: TextMatch, options?: TextMatchOptions) => queries.findAllByText(getRoot(), text, options),
+    findAllByTestId: (testId: TextMatch, options?: TextMatchOptions) =>
         queries.findAllByTestId(getRoot(), testId, options),
 
     debug: () => {

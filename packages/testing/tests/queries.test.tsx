@@ -222,5 +222,60 @@ describe("Queries", () => {
             const result = await screen.findByText(/Count: \d+/);
             expect(result).toBeDefined();
         });
+
+        it("supports function matcher", async () => {
+            await render(<Label.Root label="Hello World" />);
+
+            const result = await screen.findByText((content) => content.startsWith("Hello"));
+            expect(result).toBeDefined();
+        });
+
+        it("function matcher receives normalized text", async () => {
+            await render(<Label.Root label="  Spaced  Text  " />);
+
+            const result = await screen.findByText((content) => content === "Spaced Text");
+            expect(result).toBeDefined();
+        });
+
+        it("supports trim: false to preserve leading/trailing whitespace", async () => {
+            await render(<Label.Root label="  Hello  " />);
+
+            await expect(screen.findByText("Hello", { trim: false })).rejects.toThrow(/Unable to find any elements/);
+        });
+
+        it("supports collapseWhitespace: false to preserve multiple spaces", async () => {
+            await render(<Label.Root label="Hello   World" />);
+
+            await expect(screen.findByText("Hello World", { collapseWhitespace: false })).rejects.toThrow(
+                /Unable to find any elements/,
+            );
+        });
+
+        it("trims and collapses whitespace by default", async () => {
+            await render(<Label.Root label="  Hello   World  " />);
+
+            const result = await screen.findByText("Hello World");
+            expect(result).toBeDefined();
+        });
+    });
+
+    describe("findByRole with function name matcher", () => {
+        it("supports function matcher for name option", async () => {
+            await render(<Button label="Click Me" />);
+
+            const button = await screen.findByRole(AccessibleRole.BUTTON, {
+                name: (content) => content.includes("Click"),
+            });
+            expect(button).toBeDefined();
+        });
+
+        it("function matcher receives normalized text", async () => {
+            await render(<Button label="  Click  Me  " />);
+
+            const button = await screen.findByRole(AccessibleRole.BUTTON, {
+                name: (content) => content === "Click Me",
+            });
+            expect(button).toBeDefined();
+        });
     });
 });

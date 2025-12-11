@@ -1,7 +1,6 @@
 import { start } from "@gtkx/ffi";
 import type { ApplicationFlags } from "@gtkx/ffi/gio";
 import type { ReactNode } from "react";
-import type Reconciler from "react-reconciler";
 import { ROOT_NODE_CONTAINER } from "./factory.js";
 import { reconciler } from "./reconciler.js";
 
@@ -37,11 +36,13 @@ export const render = (element: ReactNode, appId: string, flags?: ApplicationFla
         false,
         null,
         "",
-        (error: Error, info: Reconciler.BaseErrorInfo) => {
-            console.error("Uncaught error in GTKX application:", error, info);
+        (error: Error) => {
+            throw error;
         },
-        (_error: Error, _info: Reconciler.BaseErrorInfo) => {},
-        (_error: Error, _info: Reconciler.BaseErrorInfo) => {},
+        (error: Error) => {
+            console.error("Error caught by ErrorBoundary:", error);
+        },
+        () => {},
         () => {},
         null,
     );

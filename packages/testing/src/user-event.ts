@@ -156,6 +156,7 @@ const selectOptions = async (element: Gtk.Widget, values: string | string[] | nu
 
             if (row) {
                 listBox.selectRow(row);
+                row.activate();
             }
         }
     }

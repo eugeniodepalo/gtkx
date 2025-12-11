@@ -3,10 +3,13 @@ import { update } from "@gtkx/react";
 import react from "@vitejs/plugin-react";
 import { createServer, type InlineConfig, type ViteDevServer } from "vite";
 
+/**
+ * Options for creating a GTKX development server.
+ */
 export interface DevServerOptions {
-    /** Path to the app entry file (e.g., "./src/app.tsx") */
+    /** Path to the app entry file (e.g., "./src/app.tsx"). */
     entry: string;
-    /** Vite configuration overrides */
+    /** Vite configuration overrides for customizing the dev server. */
     vite?: InlineConfig;
 }
 

@@ -3,13 +3,42 @@ import type { AccessibleRole } from "@gtkx/ffi/gtk";
 import type { ComponentType, ReactNode } from "react";
 
 /**
+ * A function that receives the text content and widget, returning true for a match.
+ * Matches React Testing Library's function matcher signature.
+ */
+export type TextMatchFunction = (content: string, widget: Gtk.Widget) => boolean;
+
+/**
+ * Flexible text matching: string for exact/partial, RegExp for patterns, or function for custom logic.
+ * Matches React Testing Library's TextMatch type.
+ */
+export type TextMatch = string | RegExp | TextMatchFunction;
+
+/**
+ * Options for normalizing text before comparison.
+ */
+export interface NormalizerOptions {
+    /** Whether to trim whitespace from text. Defaults to true. */
+    trim?: boolean;
+    /** Whether to collapse multiple whitespace into single spaces. Defaults to true. */
+    collapseWhitespace?: boolean;
+}
+
+/**
  * Options for text matching in queries.
  */
 export interface TextMatchOptions {
     /** Whether to match the entire string exactly. Defaults to true. */
     exact?: boolean;
-    /** Custom function to normalize text before comparison. */
+    /**
+     * Custom function to normalize text before comparison.
+     * Cannot be used with trim/collapseWhitespace options.
+     */
     normalizer?: (text: string) => string;
+    /** Whether to trim whitespace from text. Defaults to true. */
+    trim?: boolean;
+    /** Whether to collapse multiple whitespace into single spaces. Defaults to true. */
+    collapseWhitespace?: boolean;
     /** Maximum time in milliseconds to wait for a match. */
     timeout?: number;
 }
@@ -18,8 +47,8 @@ export interface TextMatchOptions {
  * Options for querying elements by their accessible role.
  */
 export interface ByRoleOptions extends TextMatchOptions {
-    /** Filter by the element's accessible name. */
-    name?: string | RegExp;
+    /** Filter by the element's accessible name. Supports string, RegExp, or function matcher. */
+    name?: TextMatch;
     /** Filter checkboxes/switches by checked state. */
     checked?: boolean;
     /** Filter toggle buttons by pressed state. */
@@ -65,20 +94,20 @@ export interface BoundQueries {
     /** Find a single element by its accessible role. */
     findByRole: (role: AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget>;
     /** Find a single element by its associated label text. */
-    findByLabelText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget>;
+    findByLabelText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
     /** Find a single element by its text content. */
-    findByText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget>;
+    findByText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
     /** Find a single element by its test ID. */
-    findByTestId: (testId: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget>;
+    findByTestId: (testId: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
 
     /** Find all elements matching an accessible role. */
     findAllByRole: (role: AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget[]>;
     /** Find all elements with matching label text. */
-    findAllByLabelText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
+    findAllByLabelText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
     /** Find all elements with matching text content. */
-    findAllByText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
+    findAllByText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
     /** Find all elements with matching test ID. */
-    findAllByTestId: (testId: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
+    findAllByTestId: (testId: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
 }
 
 /**

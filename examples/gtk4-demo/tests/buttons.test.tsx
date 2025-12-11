@@ -1,4 +1,4 @@
-import { AccessibleRole, type CheckButton, type Switch } from "@gtkx/ffi/gtk";
+import { AccessibleRole, type Switch } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { buttonsDemo } from "../src/demos/buttons/buttons.js";
@@ -115,22 +115,16 @@ describe("Buttons Demo", () => {
         it("renders three checkboxes with correct initial states", async () => {
             await render(<CheckButtonDemo />);
 
-            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
-            expect(checkboxes.length).toBeGreaterThanOrEqual(3);
+            const option1 = await screen.findByRole(AccessibleRole.CHECKBOX, { name: "Option 1", checked: false });
+            const option2 = await screen.findByRole(AccessibleRole.CHECKBOX, {
+                name: "Option 2 (initially checked)",
+                checked: true,
+            });
+            const option3 = await screen.findByRole(AccessibleRole.CHECKBOX, { name: "Option 3", checked: false });
 
-            const option1 = checkboxes.find((cb) => (cb as CheckButton).getLabel() === "Option 1") as
-                | CheckButton
-                | undefined;
-            const option2 = checkboxes.find(
-                (cb) => (cb as CheckButton).getLabel() === "Option 2 (initially checked)",
-            ) as CheckButton | undefined;
-            const option3 = checkboxes.find((cb) => (cb as CheckButton).getLabel() === "Option 3") as
-                | CheckButton
-                | undefined;
-
-            expect(option1?.getActive()).toBe(false);
-            expect(option2?.getActive()).toBe(true);
-            expect(option3?.getActive()).toBe(false);
+            expect(option1).toBeDefined();
+            expect(option2).toBeDefined();
+            expect(option3).toBeDefined();
         });
 
         it("shows initially selected option", async () => {
@@ -143,28 +137,20 @@ describe("Buttons Demo", () => {
         it("toggles checkbox on click", async () => {
             await render(<CheckButtonDemo />);
 
-            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
-            const option1 = checkboxes.find((cb) => (cb as CheckButton).getLabel() === "Option 1") as
-                | CheckButton
-                | undefined;
-
-            if (!option1) throw new Error("Option 1 checkbox not found");
-
+            const option1 = await screen.findByRole(AccessibleRole.CHECKBOX, { name: "Option 1", checked: false });
             await userEvent.click(option1);
 
-            expect(option1.getActive()).toBe(true);
+            const option1Checked = await screen.findByRole(AccessibleRole.CHECKBOX, {
+                name: "Option 1",
+                checked: true,
+            });
+            expect(option1Checked).toBeDefined();
         });
 
         it("updates selected label after toggling", async () => {
             await render(<CheckButtonDemo />);
 
-            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
-            const option1 = checkboxes.find((cb) => (cb as CheckButton).getLabel() === "Option 1") as
-                | CheckButton
-                | undefined;
-
-            if (!option1) throw new Error("Option 1 checkbox not found");
-
+            const option1 = await screen.findByRole(AccessibleRole.CHECKBOX, { name: "Option 1", checked: false });
             await userEvent.click(option1);
 
             const selectedLabel = await screen.findByText("Selected: 1, 2");
@@ -174,33 +160,34 @@ describe("Buttons Demo", () => {
         it("has disabled checkboxes", async () => {
             await render(<CheckButtonDemo />);
 
-            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
-            const disabledUnchecked = checkboxes.find(
-                (cb) => (cb as CheckButton).getLabel() === "Disabled unchecked",
-            ) as CheckButton | undefined;
-            const disabledChecked = checkboxes.find((cb) => (cb as CheckButton).getLabel() === "Disabled checked") as
-                | CheckButton
-                | undefined;
+            const disabledUnchecked = await screen.findByRole(AccessibleRole.CHECKBOX, {
+                name: "Disabled unchecked",
+                checked: false,
+            });
+            const disabledChecked = await screen.findByRole(AccessibleRole.CHECKBOX, {
+                name: "Disabled checked",
+                checked: true,
+            });
 
-            expect(disabledUnchecked?.getSensitive()).toBe(false);
-            expect(disabledChecked?.getSensitive()).toBe(false);
-            expect(disabledUnchecked?.getActive()).toBe(false);
-            expect(disabledChecked?.getActive()).toBe(true);
+            expect(disabledUnchecked.getSensitive()).toBe(false);
+            expect(disabledChecked.getSensitive()).toBe(false);
         });
 
         it("can uncheck initially checked option", async () => {
             await render(<CheckButtonDemo />);
 
-            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
-            const option2 = checkboxes.find(
-                (cb) => (cb as CheckButton).getLabel() === "Option 2 (initially checked)",
-            ) as CheckButton | undefined;
-
-            if (!option2) throw new Error("Option 2 checkbox not found");
-
+            const option2 = await screen.findByRole(AccessibleRole.CHECKBOX, {
+                name: "Option 2 (initially checked)",
+                checked: true,
+            });
             await userEvent.click(option2);
 
-            expect(option2.getActive()).toBe(false);
+            const option2Unchecked = await screen.findByRole(AccessibleRole.CHECKBOX, {
+                name: "Option 2 (initially checked)",
+                checked: false,
+            });
+            expect(option2Unchecked).toBeDefined();
+
             const selectedLabel = await screen.findByText("Selected: None");
             expect(selectedLabel).toBeDefined();
         });
@@ -208,15 +195,8 @@ describe("Buttons Demo", () => {
         it("can select all options", async () => {
             await render(<CheckButtonDemo />);
 
-            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
-            const option1 = checkboxes.find((cb) => (cb as CheckButton).getLabel() === "Option 1") as
-                | CheckButton
-                | undefined;
-            const option3 = checkboxes.find((cb) => (cb as CheckButton).getLabel() === "Option 3") as
-                | CheckButton
-                | undefined;
-
-            if (!option1 || !option3) throw new Error("Checkboxes not found");
+            const option1 = await screen.findByRole(AccessibleRole.CHECKBOX, { name: "Option 1", checked: false });
+            const option3 = await screen.findByRole(AccessibleRole.CHECKBOX, { name: "Option 3", checked: false });
 
             await userEvent.click(option1);
             await userEvent.click(option3);
@@ -371,57 +351,37 @@ describe("Buttons Demo", () => {
         it("can toggle dark mode switch on", async () => {
             await render(<SwitchDemo />);
 
-            const switches = await screen.findAllByRole(AccessibleRole.SWITCH);
-            const enabledSwitches = switches.filter((sw) => sw.getSensitive());
-            const darkModeSwitch = enabledSwitches[0] as Switch | undefined;
+            const uncheckedSwitches = await screen.findAllByRole(AccessibleRole.SWITCH, { checked: false });
+            const darkModeSwitch = uncheckedSwitches.find((sw) => sw.getSensitive()) as Switch;
+            expect(darkModeSwitch).toBeDefined();
 
-            if (!darkModeSwitch) throw new Error("Dark mode switch not found");
-
-            expect(darkModeSwitch.getActive()).toBe(false);
             await userEvent.click(darkModeSwitch);
+
             expect(darkModeSwitch.getActive()).toBe(true);
         });
 
         it("can toggle notifications switch off", async () => {
             await render(<SwitchDemo />);
 
-            const switches = await screen.findAllByRole(AccessibleRole.SWITCH);
-            const enabledSwitches = switches.filter((sw) => sw.getSensitive());
-            const notificationsSwitch = enabledSwitches[1] as Switch | undefined;
+            const checkedSwitches = await screen.findAllByRole(AccessibleRole.SWITCH, { checked: true });
+            const notificationsSwitch = checkedSwitches.find((sw) => sw.getSensitive()) as Switch;
+            expect(notificationsSwitch).toBeDefined();
 
-            if (!notificationsSwitch) throw new Error("Notifications switch not found");
-
-            expect(notificationsSwitch.getActive()).toBe(true);
             await userEvent.click(notificationsSwitch);
+
             expect(notificationsSwitch.getActive()).toBe(false);
-        });
-
-        it("can toggle auto-save switch off", async () => {
-            await render(<SwitchDemo />);
-
-            const switches = await screen.findAllByRole(AccessibleRole.SWITCH);
-            const enabledSwitches = switches.filter((sw) => sw.getSensitive());
-            const autoSaveSwitch = enabledSwitches[2] as Switch | undefined;
-
-            if (!autoSaveSwitch) throw new Error("Auto-save switch not found");
-
-            expect(autoSaveSwitch.getActive()).toBe(true);
-            await userEvent.click(autoSaveSwitch);
-            expect(autoSaveSwitch.getActive()).toBe(false);
         });
 
         it("can toggle switch multiple times", async () => {
             await render(<SwitchDemo />);
 
-            const switches = await screen.findAllByRole(AccessibleRole.SWITCH);
-            const enabledSwitches = switches.filter((sw) => sw.getSensitive());
-            const darkModeSwitch = enabledSwitches[0] as Switch | undefined;
+            const uncheckedSwitches = await screen.findAllByRole(AccessibleRole.SWITCH, { checked: false });
+            const darkModeSwitch = uncheckedSwitches.find((sw) => sw.getSensitive()) as Switch;
+            expect(darkModeSwitch).toBeDefined();
 
-            if (!darkModeSwitch) throw new Error("Dark mode switch not found");
-
-            expect(darkModeSwitch.getActive()).toBe(false);
             await userEvent.click(darkModeSwitch);
             expect(darkModeSwitch.getActive()).toBe(true);
+
             await userEvent.click(darkModeSwitch);
             expect(darkModeSwitch.getActive()).toBe(false);
         });

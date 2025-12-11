@@ -25,6 +25,17 @@ pnpm build            # Build all packages (turbo)
 pnpm codegen          # Regenerate FFI/JSX bindings from GIR files
 pnpm test             # Run tests (concurrency=1 due to GTK/X11 constraints)
 pnpm lint             # Run biome check
+pnpm knip             # Check for unused code
+
+# Single package
+cd packages/<package> && pnpm build
+cd packages/<package> && pnpm test
+
+# Run specific test file
+cd packages/react && pnpm test tests/specific.test.tsx
+
+# Run examples
+cd examples/gtk4-demo && pnpm dev
 ```
 
 ## Architecture
@@ -75,10 +86,23 @@ Two generators parse GIR files to produce TypeScript:
 
 Never edit generated code directly. Run `pnpm codegen` after modifying generators or GIR files.
 
+### Adding Widget Support
+
+1. Create a Node class in `packages/react/src/nodes/`
+2. Add it to `NODE_CLASSES` in `packages/react/src/factory.ts`
+3. Implement: `matches()`, `initialize()`, `appendChild()`, `removeChild()`
+4. Run `pnpm codegen` to regenerate JSX types
+5. Add tests in `packages/react/tests/`
+
 ## Testing
 
-- Tests require GTK4/X11. CI uses Xvfb on Fedora.
-- Tests run serially due to GTK's single-threaded nature.
+Tests require GTK4 and X11. On non-CI environments, tests run via xvfb:
+
+```bash
+GDK_BACKEND=x11 xvfb-run -a vitest run
+```
+
+Tests run serially (`--concurrency=1`) because GTK is single-threaded.
 
 ## Requirements
 

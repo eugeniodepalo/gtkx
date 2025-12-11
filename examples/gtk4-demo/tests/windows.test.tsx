@@ -1,5 +1,5 @@
-import { AccessibleRole } from "@gtkx/ffi/gtk";
-import { cleanup, render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { AccessibleRole, type Widget } from "@gtkx/ffi/gtk";
+import { cleanup, render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { headerBarDemo } from "../src/demos/windows/header-bar.js";
 import { revealerDemo } from "../src/demos/windows/revealer.js";
@@ -87,13 +87,14 @@ describe("Windows Demos", () => {
             const showSearchBtn = await screen.findByRole(AccessibleRole.BUTTON, { name: "Show Search" });
             await userEvent.click(showSearchBtn);
 
+            const searchBox = await screen.findByRole(AccessibleRole.SEARCH_BOX);
             const hideSearchBtn = await screen.findByRole(AccessibleRole.BUTTON, { name: "Hide Search" });
             await userEvent.click(hideSearchBtn);
 
+            await waitForElementToBeRemoved(searchBox);
+
             const showSearchBtnAgain = await screen.findByRole(AccessibleRole.BUTTON, { name: "Show Search" });
             expect(showSearchBtnAgain).toBeDefined();
-
-            await expect(screen.findByRole(AccessibleRole.SEARCH_BOX, { timeout: 100 })).rejects.toThrow();
         });
     });
 
@@ -227,8 +228,9 @@ describe("Windows Demos", () => {
             await render(<RevealerDemo />);
 
             const buttons = await screen.findAllByRole(AccessibleRole.BUTTON, { name: "Show" });
-            const slideDownShowBtn = buttons[0];
-            if (!slideDownShowBtn) throw new Error("Slide down Show button not found");
+            expect(buttons.length).toBeGreaterThan(0);
+            const slideDownShowBtn = buttons[0] as Widget;
+            expect(slideDownShowBtn).toBeDefined();
 
             await userEvent.click(slideDownShowBtn);
 
@@ -240,8 +242,9 @@ describe("Windows Demos", () => {
             await render(<RevealerDemo />);
 
             const buttons = await screen.findAllByRole(AccessibleRole.BUTTON, { name: "Show" });
-            const slideDownShowBtn = buttons[0];
-            if (!slideDownShowBtn) throw new Error("Slide down Show button not found");
+            expect(buttons.length).toBeGreaterThan(0);
+            const slideDownShowBtn = buttons[0] as Widget;
+            expect(slideDownShowBtn).toBeDefined();
 
             await userEvent.click(slideDownShowBtn);
 
@@ -260,8 +263,9 @@ describe("Windows Demos", () => {
             await render(<RevealerDemo />);
 
             const buttons = await screen.findAllByRole(AccessibleRole.BUTTON, { name: "Show" });
-            const slideUpShowBtn = buttons[1];
-            if (!slideUpShowBtn) throw new Error("Slide up Show button not found");
+            expect(buttons.length).toBeGreaterThanOrEqual(2);
+            const slideUpShowBtn = buttons[1] as Widget;
+            expect(slideUpShowBtn).toBeDefined();
 
             await userEvent.click(slideUpShowBtn);
 
@@ -327,8 +331,9 @@ describe("Windows Demos", () => {
             await render(<RevealerDemo />);
 
             const buttons = await screen.findAllByRole(AccessibleRole.BUTTON, { name: "Show" });
-            const crossfadeShowBtn = buttons[2];
-            if (!crossfadeShowBtn) throw new Error("Crossfade Show button not found");
+            expect(buttons.length).toBeGreaterThanOrEqual(3);
+            const crossfadeShowBtn = buttons[2] as Widget;
+            expect(crossfadeShowBtn).toBeDefined();
 
             await userEvent.click(crossfadeShowBtn);
 
@@ -340,8 +345,9 @@ describe("Windows Demos", () => {
             await render(<RevealerDemo />);
 
             const buttons = await screen.findAllByRole(AccessibleRole.BUTTON, { name: "Show" });
-            const slideDownShowBtn = buttons[0];
-            if (!slideDownShowBtn) throw new Error("Slide down Show button not found");
+            expect(buttons.length).toBeGreaterThan(0);
+            const slideDownShowBtn = buttons[0] as Widget;
+            expect(slideDownShowBtn).toBeDefined();
 
             await userEvent.click(slideDownShowBtn);
             const content = await screen.findByText("This content slides down when revealed.");

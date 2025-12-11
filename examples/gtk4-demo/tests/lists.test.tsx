@@ -1,4 +1,4 @@
-import { AccessibleRole } from "@gtkx/ffi/gtk";
+import { AccessibleRole, type DropDown, type Widget } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { dropDownDemo } from "../src/demos/lists/drop-down.js";
@@ -49,10 +49,10 @@ describe("Lists Demos", () => {
             await render(<ListBoxDemo />);
 
             const listRows = await screen.findAllByRole(AccessibleRole.LIST_ITEM);
-            if (listRows.length === 0) throw new Error("No list items found");
+            expect(listRows.length).toBeGreaterThan(0);
 
-            const firstRow = listRows[0];
-            if (!firstRow) throw new Error("First row not found");
+            const firstRow = listRows[0] as Widget;
+            expect(firstRow).toBeDefined();
 
             await userEvent.activate(firstRow);
 
@@ -64,10 +64,10 @@ describe("Lists Demos", () => {
             await render(<ListBoxDemo />);
 
             const listRows = await screen.findAllByRole(AccessibleRole.LIST_ITEM);
-            if (listRows.length === 0) throw new Error("No list items found");
+            expect(listRows.length).toBeGreaterThan(0);
 
-            const firstRow = listRows[0];
-            if (!firstRow) throw new Error("First row not found");
+            const firstRow = listRows[0] as Widget;
+            expect(firstRow).toBeDefined();
 
             await userEvent.activate(firstRow);
 
@@ -79,10 +79,10 @@ describe("Lists Demos", () => {
             await render(<ListBoxDemo />);
 
             const listRows = await screen.findAllByRole(AccessibleRole.LIST_ITEM);
-            if (listRows.length < 2) throw new Error("Not enough list items found");
+            expect(listRows.length).toBeGreaterThanOrEqual(2);
 
-            const secondRow = listRows[1];
-            if (!secondRow) throw new Error("Second row not found");
+            const secondRow = listRows[1] as Widget;
+            expect(secondRow).toBeDefined();
 
             await userEvent.activate(secondRow);
 
@@ -94,12 +94,12 @@ describe("Lists Demos", () => {
             await render(<ListBoxDemo />);
 
             const listRows = await screen.findAllByRole(AccessibleRole.LIST_ITEM);
-            if (listRows.length < 3) throw new Error("Not enough list items found");
+            expect(listRows.length).toBeGreaterThanOrEqual(3);
 
-            const firstRow = listRows[0];
-            const thirdRow = listRows[2];
-
-            if (!firstRow || !thirdRow) throw new Error("Rows not found");
+            const firstRow = listRows[0] as Widget;
+            const thirdRow = listRows[2] as Widget;
+            expect(firstRow).toBeDefined();
+            expect(thirdRow).toBeDefined();
 
             await userEvent.activate(firstRow);
             const inboxSelected = await screen.findByText("Selected: Inbox");
@@ -115,6 +115,30 @@ describe("Lists Demos", () => {
 
             const selectionModes = await screen.findByText(/NONE, SINGLE, BROWSE, and MULTIPLE/);
             expect(selectionModes).toBeDefined();
+        });
+
+        it("selects item using selectOptions", async () => {
+            await render(<ListBoxDemo />);
+
+            const listBox = await screen.findByRole(AccessibleRole.LIST);
+            await userEvent.selectOptions(listBox, 2);
+
+            const selectedLabel = await screen.findByText("Selected: Sent");
+            expect(selectedLabel).toBeDefined();
+        });
+
+        it("can select multiple items sequentially with selectOptions", async () => {
+            await render(<ListBoxDemo />);
+
+            const listBox = await screen.findByRole(AccessibleRole.LIST);
+
+            await userEvent.selectOptions(listBox, 0);
+            const firstSelected = await screen.findByText("Selected: Inbox");
+            expect(firstSelected).toBeDefined();
+
+            await userEvent.selectOptions(listBox, 4);
+            const secondSelected = await screen.findByText("Selected: Archive");
+            expect(secondSelected).toBeDefined();
         });
     });
 
@@ -154,6 +178,40 @@ describe("Lists Demos", () => {
 
             const featuresDescription = await screen.findByText(/custom item rendering, search\/filter/);
             expect(featuresDescription).toBeDefined();
+        });
+
+        it("selects country using selectOptions and shows selection details", async () => {
+            await render(<DropDownDemo />);
+
+            const dropdown = await screen.findByRole(AccessibleRole.COMBO_BOX);
+            await userEvent.selectOptions(dropdown, 2);
+
+            const capital = await screen.findByText("Capital: Paris");
+            expect(capital).toBeDefined();
+        });
+
+        it("can change selection between countries", async () => {
+            await render(<DropDownDemo />);
+
+            const dropdown = await screen.findByRole(AccessibleRole.COMBO_BOX);
+
+            await userEvent.selectOptions(dropdown, 1);
+            const ukSelected = await screen.findByText("Capital: London");
+            expect(ukSelected).toBeDefined();
+
+            await userEvent.selectOptions(dropdown, 4);
+            const japanSelected = await screen.findByText("Capital: Tokyo");
+            expect(japanSelected).toBeDefined();
+        });
+
+        it("updates selected index correctly", async () => {
+            await render(<DropDownDemo />);
+
+            const dropdown = (await screen.findByRole(AccessibleRole.COMBO_BOX)) as DropDown;
+
+            await userEvent.selectOptions(dropdown, 5);
+
+            expect(dropdown.getSelected()).toBe(5);
         });
     });
 });
