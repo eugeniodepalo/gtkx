@@ -142,11 +142,7 @@ const Screenshot = () => {
                 <h2>Native Desktop Apps</h2>
                 <p>Build beautiful, native GTK4 applications that feel right at home on Linux</p>
                 <div className={styles.screenshotWrapper}>
-                    <img
-                        src="/gtkx/img/screenshot.png"
-                        alt="GTKX Demo Application"
-                        className={styles.screenshotImage}
-                    />
+                    <img src="/gtkx/img/demo.gif" alt="GTKX Demo Application" className={styles.screenshotImage} />
                 </div>
             </div>
         </section>
