@@ -49,7 +49,7 @@ import {
   Label,
   quit,
 } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const App = () => {
@@ -57,7 +57,7 @@ const App = () => {
 
   return (
     <ApplicationWindow title="Counter" onCloseRequest={quit}>
-      <Box orientation={Orientation.VERTICAL} spacing={12}>
+      <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
         <Label.Root label={`Count: ${count}`} />
         <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
       </Box>
@@ -90,44 +90,22 @@ GTK also provides built-in classes like `suggested-action`, `destructive-action`
 
 ```tsx
 import { cleanup, render, screen, userEvent } from "@gtkx/testing";
-import { AccessibleRole } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 
 afterEach(() => cleanup());
 
 test("increments count", async () => {
   await render(<App />);
 
-  const button = await screen.findByRole(AccessibleRole.BUTTON, {
+  const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
     name: "Increment",
   });
+
   await userEvent.click(button);
 
   await screen.findByText("Count: 1");
 });
 ```
-
-Queries: `findByRole`, `findByText`, `findByLabelText`, `findByTestId`
-
-User events: `click`, `dblClick`, `type`, `clear`, `tab`, `selectOptions`
-
-## Examples
-
-| Example                         | Description         |
-| ------------------------------- | ------------------- |
-| [gtk4-demo](examples/gtk4-demo) | Widget showcase     |
-| [todo](examples/todo)           | Todo app with tests |
-
-## Packages
-
-| Package                           | Description                           |
-| --------------------------------- | ------------------------------------- |
-| [@gtkx/cli](packages/cli)         | CLI with HMR dev server               |
-| [@gtkx/react](packages/react)     | React reconciler and JSX components   |
-| [@gtkx/ffi](packages/ffi)         | TypeScript bindings for GTK4/GLib/GIO |
-| [@gtkx/native](packages/native)   | Rust native module (libffi bridge)    |
-| [@gtkx/css](packages/css)         | CSS-in-JS styling                     |
-| [@gtkx/testing](packages/testing) | Testing utilities                     |
-| [@gtkx/gir](packages/gir)         | GObject Introspection parser          |
 
 ## Requirements
 
