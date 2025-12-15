@@ -60,6 +60,7 @@ export type ItemContainer<T> = {
     addItem(item: T): void;
     insertItemBefore(item: T, beforeItem: T): void;
     removeItem(item: T): void;
+    updateItem(oldItem: T, newItem: T): void;
 };
 
 /**
@@ -87,7 +88,7 @@ export const isGridContainer = (node: Node): node is Node & GridContainer =>
     "attachToGrid" in node && "removeFromGrid" in node;
 
 export const isItemContainer = <T>(node: Node): node is Node & ItemContainer<T> =>
-    "addItem" in node && "insertItemBefore" in node && "removeItem" in node;
+    "addItem" in node && "insertItemBefore" in node && "removeItem" in node && "updateItem" in node;
 
 export const isColumnContainer = (node: Node): node is Node & ColumnContainer =>
     "addColumn" in node && "removeColumn" in node && "getSortFn" in node;

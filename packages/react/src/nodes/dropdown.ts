@@ -32,6 +32,19 @@ class DropDownStore {
         this.items.push(item);
     }
 
+    insertBefore(item: unknown, beforeItem: unknown): void {
+        const beforeIndex = this.items.indexOf(beforeItem);
+
+        if (beforeIndex === -1) {
+            this.append(item);
+            return;
+        }
+
+        const label = this.labelFn(item);
+        this.stringList.splice(beforeIndex, 0, [label]);
+        this.items.splice(beforeIndex, 0, item);
+    }
+
     remove(item: unknown): void {
         const index = this.items.indexOf(item);
 
@@ -41,12 +54,18 @@ class DropDownStore {
         }
     }
 
-    getItem(index: number): unknown {
-        return this.items[index];
+    update(oldItem: unknown, newItem: unknown): void {
+        const index = this.items.indexOf(oldItem);
+
+        if (index !== -1) {
+            const label = this.labelFn(newItem);
+            this.stringList.splice(index, 1, [label]);
+            this.items[index] = newItem;
+        }
     }
 
-    get length(): number {
-        return this.items.length;
+    getItem(index: number): unknown {
+        return this.items[index];
     }
 }
 
@@ -81,12 +100,16 @@ export class DropDownNode extends Node<Gtk.DropDown, DropDownState> implements I
         this.state.store.append(item);
     }
 
-    insertItemBefore(item: unknown, _beforeItem: unknown): void {
-        this.addItem(item);
+    insertItemBefore(item: unknown, beforeItem: unknown): void {
+        this.state.store.insertBefore(item, beforeItem);
     }
 
     removeItem(item: unknown): void {
         this.state.store.remove(item);
+    }
+
+    updateItem(oldItem: unknown, newItem: unknown): void {
+        this.state.store.update(oldItem, newItem);
     }
 
     protected override consumedProps(): Set<string> {
@@ -132,8 +155,31 @@ export class DropDownItemNode extends Node<never> {
         parent.addItem(this.item);
     }
 
+    override attachToParentBefore(parent: Node, before: Node): void {
+        if (isItemContainer(parent) && before instanceof DropDownItemNode) {
+            parent.insertItemBefore(this.item, before.getItem());
+        } else {
+            this.attachToParent(parent);
+        }
+    }
+
     override detachFromParent(parent: Node): void {
         if (!isItemContainer(parent)) return;
         parent.removeItem(this.item);
+    }
+
+    protected override consumedProps(): Set<string> {
+        const consumed = super.consumedProps();
+        consumed.add("item");
+        return consumed;
+    }
+
+    override updateProps(oldProps: Props, newProps: Props): void {
+        if (oldProps.item !== newProps.item && this.parent && isItemContainer(this.parent)) {
+            this.parent.updateItem(this.item, newProps.item);
+            this.item = newProps.item;
+        }
+
+        super.updateProps(oldProps, newProps);
     }
 }

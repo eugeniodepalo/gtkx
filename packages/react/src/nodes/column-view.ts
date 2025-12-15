@@ -229,6 +229,14 @@ export class ColumnViewNode
         }
     }
 
+    updateItem(oldItem: unknown, newItem: unknown): void {
+        const index = this.state.items.indexOf(oldItem);
+
+        if (index !== -1) {
+            this.state.items[index] = newItem;
+        }
+    }
+
     protected override consumedProps(): Set<string> {
         const consumed = super.consumedProps();
         consumed.add("sortColumn");
@@ -529,5 +537,20 @@ export class ColumnViewItemNode extends Node {
         if (isItemContainer(parent)) {
             parent.removeItem(this.item);
         }
+    }
+
+    protected override consumedProps(): Set<string> {
+        const consumed = super.consumedProps();
+        consumed.add("item");
+        return consumed;
+    }
+
+    override updateProps(oldProps: Props, newProps: Props): void {
+        if (oldProps.item !== newProps.item && this.parent && isItemContainer(this.parent)) {
+            this.parent.updateItem(this.item, newProps.item);
+            this.item = newProps.item;
+        }
+
+        super.updateProps(oldProps, newProps);
     }
 }

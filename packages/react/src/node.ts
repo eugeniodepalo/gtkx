@@ -49,6 +49,7 @@ export abstract class Node<
     protected widget: T = undefined as T;
     protected widgetType: string;
     protected nodeType: string;
+    protected parent: Node | null = null;
     private _state: S | null = null;
 
     protected get state(): S {
@@ -114,6 +115,8 @@ export abstract class Node<
     }
 
     attachToParent(parent: Node): void {
+        this.parent = parent;
+
         if (isChildContainer(parent)) {
             const widget = this.getWidget();
             if (widget) parent.attachChild(widget);
@@ -135,6 +138,8 @@ export abstract class Node<
     }
 
     detachFromParent(parent: Node): void {
+        this.parent = null;
+
         if (isChildContainer(parent)) {
             const widget = this.getWidget();
             if (widget) parent.detachChild(widget);
@@ -154,6 +159,8 @@ export abstract class Node<
     }
 
     attachToParentBefore(parent: Node, before: Node): void {
+        this.parent = parent;
+
         if (isChildContainer(parent)) {
             const widget = this.getWidget();
             const beforeWidget = before.getWidget();
