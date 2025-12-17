@@ -8,11 +8,8 @@ export default mergeConfig(baseConfig, {
             tsconfig: "tsconfig.test.json",
         },
         pool: "forks",
-        poolOptions: {
-            forks: {
-                singleFork: true,
-            },
-        },
+        maxWorkers: 1,
+        isolate: false,
         fileParallelism: false,
         sequence: {
             hooks: "list",

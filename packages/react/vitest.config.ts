@@ -5,15 +5,13 @@ export default mergeConfig(baseConfig, {
     test: {
         include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
         pool: "forks",
-        poolOptions: {
-            forks: {
-                singleFork: true,
-            },
-        },
+        maxWorkers: 1,
+        isolate: false,
         fileParallelism: false,
         sequence: {
             hooks: "list",
         },
         globalSetup: "./tests/setup.ts",
+        setupFiles: ["./tests/vitest-setup.ts"],
     },
 });
