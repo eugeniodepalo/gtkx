@@ -25,7 +25,6 @@ static JS_WAIT_DEPTH: AtomicUsize = AtomicUsize::new(0);
 ///
 /// When true, signal handlers should use `js_dispatch::queue()` for synchronous
 /// processing. When false, they should use the Neon channel for async processing.
-#[must_use]
 pub fn is_js_waiting() -> bool {
     JS_WAIT_DEPTH.load(Ordering::Acquire) > 0
 }
@@ -92,26 +91,6 @@ fn dispatch_batch() {
     {
         glib::idle_add_once(dispatch_batch);
     }
-}
-
-/// Schedules a task and waits for its result.
-///
-/// This is a convenience wrapper for the common pattern of dispatching a task
-/// to the GTK thread and waiting for the result synchronously. It handles
-/// channel creation and error handling.
-pub fn schedule_and_wait<T, F>(task: F) -> anyhow::Result<T>
-where
-    T: Send + 'static,
-    F: FnOnce() -> anyhow::Result<T> + Send + 'static,
-{
-    let (tx, rx) = std::sync::mpsc::channel();
-
-    schedule(move || {
-        let _ = tx.send(task());
-    });
-
-    rx.recv()
-        .map_err(|_| anyhow::anyhow!("GTK thread channel disconnected"))?
 }
 
 /// Dispatches all pending tasks without processing other GTK events.

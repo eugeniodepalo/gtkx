@@ -171,37 +171,11 @@ impl Type {
     }
 }
 
-impl Type {
-    /// Returns the libffi types for this type.
-    ///
-    /// Most types return a single-element vector, but callbacks with non-Closure
-    /// trampolines return multiple pointer types (for the trampoline function,
-    /// user data, and optionally destroy notify).
-    pub fn ffi_types(&self) -> Vec<ffi::Type> {
-        match self {
-            Type::Callback(cb_type) => match cb_type.trampoline {
-                CallbackTrampoline::Closure => vec![ffi::Type::pointer()],
-                CallbackTrampoline::AsyncReady | CallbackTrampoline::Destroy => {
-                    vec![ffi::Type::pointer(), ffi::Type::pointer()]
-                }
-                CallbackTrampoline::DrawFunc => {
-                    vec![
-                        ffi::Type::pointer(),
-                        ffi::Type::pointer(),
-                        ffi::Type::pointer(),
-                    ]
-                }
-            },
-            other => vec![other.into()],
-        }
-    }
-}
-
 impl From<&Type> for ffi::Type {
     fn from(value: &Type) -> Self {
         match value {
-            Type::Integer(type_) => (*type_).into(),
-            Type::Float(type_) => (*type_).into(),
+            Type::Integer(type_) => type_.into(),
+            Type::Float(type_) => type_.into(),
             Type::String(type_) => type_.into(),
             Type::Boolean => ffi::Type::u8(),
             Type::Null => ffi::Type::pointer(),

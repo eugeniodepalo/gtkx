@@ -17,38 +17,10 @@ use neon::prelude::*;
 
 use crate::{
     arg::{self, Arg},
-    gtk_dispatch, js_dispatch,
-    object::ObjectId,
-    trampolines,
+    callback, gtk_dispatch, js_dispatch,
     types::*,
     value,
 };
-
-fn type_mismatch(expected: &str, type_name: &str, actual: &value::Value) -> anyhow::Error {
-    anyhow::anyhow!(
-        "Expected {} for {} type, got {:?}",
-        expected,
-        type_name,
-        actual
-    )
-}
-
-fn extract_object_ptr(
-    value: &value::Value,
-    type_name: &str,
-    gc_error_msg: &str,
-) -> anyhow::Result<*mut c_void> {
-    let object_id = match value {
-        value::Value::Object(id) => Some(id),
-        value::Value::Null | value::Value::Undefined => None,
-        _ => return Err(type_mismatch("an Object", type_name, value)),
-    };
-
-    match object_id {
-        Some(id) => id.as_ptr().ok_or_else(|| anyhow::anyhow!("{}", gc_error_msg)),
-        None => Ok(std::ptr::null_mut()),
-    }
-}
 
 /// A pointer that owns its referenced data.
 ///
@@ -104,51 +76,20 @@ pub enum Value {
 /// A callback value with a trampoline for GTK signal handling.
 ///
 /// GTK callbacks require C-compatible function pointers, but we need to
-/// invoke JavaScript callbacks. This struct holds the FFI arguments
-/// in the correct order for the specific trampoline type.
+/// invoke JavaScript callbacks. This struct holds the trampoline function
+/// pointer (the C-compatible wrapper) and the closure containing the
+/// actual JavaScript callback.
 #[derive(Debug)]
 pub struct TrampolineCallbackValue {
-    /// The GLib closure containing the JavaScript callback (kept alive for FFI call).
-    #[allow(dead_code)]
-    closure: OwnedPtr,
-    /// FFI arguments in the correct order for this trampoline type.
-    ffi_args: Vec<*mut c_void>,
-}
-
-impl TrampolineCallbackValue {
-    /// Creates a new trampoline callback with FFI args in the correct order.
-    fn new(
-        trampoline_type: CallbackTrampoline,
-        trampoline_ptr: *mut c_void,
-        closure_ptr: *mut c_void,
-    ) -> Self {
-        let ffi_args = match trampoline_type {
-            CallbackTrampoline::Closure => vec![],
-            CallbackTrampoline::AsyncReady => {
-                vec![trampoline_ptr, closure_ptr]
-            }
-            CallbackTrampoline::Destroy => {
-                vec![closure_ptr, trampoline_ptr]
-            }
-            CallbackTrampoline::DrawFunc => {
-                vec![
-                    trampoline_ptr,
-                    closure_ptr,
-                    trampolines::get_unref_closure_trampoline_ptr(),
-                ]
-            }
-        };
-
-        Self {
-            closure: OwnedPtr::new((), closure_ptr),
-            ffi_args,
-        }
-    }
-
-    /// Returns references to the FFI arguments for use with libffi.
-    pub fn ffi_arg_refs(&self) -> impl Iterator<Item = &*mut c_void> {
-        self.ffi_args.iter()
-    }
+    /// Pointer to the C trampoline function.
+    pub trampoline_ptr: *mut c_void,
+    /// The GLib closure containing the JavaScript callback.
+    pub closure: OwnedPtr,
+    /// Optional destroy notify function pointer.
+    pub destroy_ptr: Option<*mut c_void>,
+    /// Whether to emit closure pointer before trampoline pointer.
+    /// Used for GDestroyNotify-style callbacks where data precedes the function.
+    pub data_first: bool,
 }
 
 impl OwnedPtr {
@@ -256,21 +197,6 @@ fn convert_glib_args(
     }
 }
 
-fn build_trampoline_callback(
-    trampoline_type: CallbackTrampoline,
-    closure: glib::Closure,
-    get_trampoline: fn() -> *mut c_void,
-) -> Value {
-    let closure_ptr = closure_ptr_for_transfer(closure);
-    let trampoline_ptr = get_trampoline();
-
-    Value::TrampolineCallback(TrampolineCallbackValue::new(
-        trampoline_type,
-        trampoline_ptr,
-        closure_ptr,
-    ))
-}
-
 impl TryFrom<arg::Arg> for Value {
     type Error = anyhow::Error;
 
@@ -280,18 +206,21 @@ impl TryFrom<arg::Arg> for Value {
                 let number = match arg.value {
                     value::Value::Number(n) => n,
                     value::Value::Null | value::Value::Undefined if arg.optional => 0.0,
-                    _ => return Err(type_mismatch("a Number", "integer", &arg.value)),
+                    _ => bail!("Expected a Number for integer type, got {:?}", arg.value),
                 };
 
-                Ok(type_.to_cif_value(number))
+                dispatch_integer_to_cif!(type_, number)
             }
             Type::Float(type_) => {
                 let number = match arg.value {
                     value::Value::Number(n) => n,
-                    _ => return Err(type_mismatch("a Number", "float", &arg.value)),
+                    _ => bail!("Expected a Number for float type, got {:?}", arg.value),
                 };
 
-                Ok(type_.to_cif_value(number))
+                match type_.size {
+                    FloatSize::_32 => Ok(Value::F32(number as f32)),
+                    FloatSize::_64 => Ok(Value::F64(number)),
+                }
             }
             Type::String(_) => match &arg.value {
                 value::Value::String(s) => {
@@ -302,12 +231,12 @@ impl TryFrom<arg::Arg> for Value {
                 value::Value::Null | value::Value::Undefined => {
                     Ok(Value::Ptr(std::ptr::null_mut()))
                 }
-                _ => Err(type_mismatch("a String", "string", &arg.value)),
+                _ => bail!("Expected a String for string type, got {:?}", arg.value),
             },
             Type::Boolean => {
                 let boolean = match arg.value {
                     value::Value::Boolean(b) => b,
-                    _ => return Err(type_mismatch("a Boolean", "boolean", &arg.value)),
+                    _ => bail!("Expected a Boolean for boolean type, got {:?}", arg.value),
                 };
 
                 Ok(Value::U8(u8::from(boolean)))
@@ -315,19 +244,34 @@ impl TryFrom<arg::Arg> for Value {
             Type::Null => Ok(Value::Ptr(std::ptr::null_mut())),
             Type::Undefined => Ok(Value::Ptr(std::ptr::null_mut())),
             Type::GObject(_) => {
-                let ptr = extract_object_ptr(
-                    &arg.value,
-                    "gobject",
-                    "GObject has been garbage collected",
-                )?;
+                let object_id = match &arg.value {
+                    value::Value::Object(id) => Some(id),
+                    value::Value::Null | value::Value::Undefined => None,
+                    _ => bail!("Expected an Object for gobject type, got {:?}", arg.value),
+                };
+
+                let ptr = match object_id {
+                    Some(id) => id
+                        .as_ptr()
+                        .ok_or_else(|| anyhow::anyhow!("GObject has been garbage collected"))?,
+                    None => std::ptr::null_mut(),
+                };
+
                 Ok(Value::Ptr(ptr))
             }
             Type::Boxed(type_) => {
-                let ptr = extract_object_ptr(
-                    &arg.value,
-                    "boxed",
-                    "Boxed object has been garbage collected",
-                )?;
+                let object_id = match &arg.value {
+                    value::Value::Object(id) => Some(id),
+                    value::Value::Null | value::Value::Undefined => None,
+                    _ => bail!("Expected an Object for boxed type, got {:?}", arg.value),
+                };
+
+                let ptr = match object_id {
+                    Some(id) => id.as_ptr().ok_or_else(|| {
+                        anyhow::anyhow!("Boxed object has been garbage collected")
+                    })?,
+                    None => std::ptr::null_mut(),
+                };
 
                 let is_transfer_full = !type_.is_borrowed && !ptr.is_null();
 
@@ -381,7 +325,7 @@ impl Value {
     fn try_from_array(arg: &arg::Arg, type_: &ArrayType) -> anyhow::Result<Value> {
         let array = match &arg.value {
             value::Value::Array(arr) => arr,
-            _ => return Err(type_mismatch("an Array", "array", &arg.value)),
+            _ => bail!("Expected an Array for array type, got {:?}", arg.value),
         };
 
         match *type_.item_type {
@@ -391,7 +335,7 @@ impl Value {
                 for value in array {
                     match value {
                         value::Value::Number(n) => values.push(n),
-                        _ => return Err(type_mismatch("a Number", "integer item", value)),
+                        _ => bail!("Expected a Number for integer item type, got {:?}", value),
                     }
                 }
 
@@ -436,7 +380,7 @@ impl Value {
                 for value in array {
                     match value {
                         value::Value::Number(n) => values.push(n),
-                        _ => return Err(type_mismatch("a Number", "float item", value)),
+                        _ => bail!("Expected a Number for float item type, got {:?}", value),
                     }
                 }
 
@@ -459,7 +403,7 @@ impl Value {
                         value::Value::String(s) => {
                             cstrings.push(CString::new(s.as_bytes())?);
                         }
-                        _ => return Err(type_mismatch("a String", "string item", v)),
+                        _ => bail!("Expected a String for string item type, got {:?}", v),
                     }
                 }
 
@@ -468,10 +412,9 @@ impl Value {
 
                 ptrs.push(std::ptr::null_mut());
 
-                let boxed: Box<(Vec<CString>, Vec<*mut c_void>)> = Box::new((cstrings, ptrs));
-                let ptr = boxed.1.as_ptr() as *mut c_void;
+                let ptr = ptrs.as_ptr() as *mut c_void;
 
-                Ok(Value::OwnedPtr(OwnedPtr { value: boxed, ptr }))
+                Ok(Value::OwnedPtr(OwnedPtr::new((cstrings, ptrs), ptr)))
             }
             Type::GObject(_) | Type::Boxed(_) => {
                 let mut ids = Vec::new();
@@ -479,7 +422,7 @@ impl Value {
                 for value in array {
                     match value {
                         value::Value::Object(id) => ids.push(*id),
-                        _ => return Err(type_mismatch("an Object", "object item", value)),
+                        _ => bail!("Expected an Object for gobject item type, got {:?}", value),
                     }
                 }
 
@@ -490,11 +433,9 @@ impl Value {
                         None => bail!("GObject in array has been garbage collected"),
                     }
                 }
+                let ptr = ptrs.as_ptr() as *mut c_void;
 
-                let boxed: Box<(Vec<ObjectId>, Vec<*mut c_void>)> = Box::new((ids, ptrs));
-                let ptr = boxed.1.as_ptr() as *mut c_void;
-
-                Ok(Value::OwnedPtr(OwnedPtr { value: boxed, ptr }))
+                Ok(Value::OwnedPtr(OwnedPtr::new((ids, ptrs), ptr)))
             }
             Type::Boolean => {
                 let mut values = Vec::new();
@@ -502,7 +443,7 @@ impl Value {
                 for value in array {
                     match value {
                         value::Value::Boolean(b) => values.push(u8::from(*b)),
-                        _ => return Err(type_mismatch("a Boolean", "boolean item", value)),
+                        _ => bail!("Expected a Boolean for boolean item type, got {:?}", value),
                     }
                 }
 
@@ -518,7 +459,7 @@ impl Value {
             value::Value::Null | value::Value::Undefined if arg.optional => {
                 return Ok(Value::Ptr(std::ptr::null_mut()));
             }
-            _ => return Err(type_mismatch("a Callback", "callback", &arg.value)),
+            _ => bail!("Expected a Callback for callback type, got {:?}", arg.value),
         };
 
         let channel = cb.channel.clone();
@@ -530,17 +471,9 @@ impl Value {
                 let return_type = type_.return_type.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let return_type_inner = *return_type.clone().unwrap_or(Box::new(Type::Undefined));
-
-                    let args_values = match convert_glib_args(args, &arg_types) {
-                        Ok(v) => v,
-                        Err(_) => {
-                            return value::Value::into_glib_value_with_default(
-                                value::Value::Undefined,
-                                Some(&return_type_inner),
-                            );
-                        }
-                    };
+                    let args_values = convert_glib_args(args, &arg_types)
+                        .expect("Failed to convert GLib callback arguments");
+                    let return_type = *return_type.clone().unwrap_or(Box::new(Type::Undefined));
 
                     invoke_and_wait_for_js_result(
                         &channel,
@@ -550,11 +483,11 @@ impl Value {
                         |result| match result {
                             Ok(value) => value::Value::into_glib_value_with_default(
                                 value,
-                                Some(&return_type_inner),
+                                Some(&return_type),
                             ),
                             Err(_) => value::Value::into_glib_value_with_default(
                                 value::Value::Undefined,
-                                Some(&return_type_inner),
+                                Some(&return_type),
                             ),
                         },
                     )
@@ -571,12 +504,18 @@ impl Value {
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
                     let source_value = args
                         .first()
-                        .and_then(|gval| value::Value::from_glib_value(gval, &source_type).ok())
+                        .map(|gval| {
+                            value::Value::from_glib_value(gval, &source_type)
+                                .expect("Failed to convert async source value")
+                        })
                         .unwrap_or(value::Value::Null);
 
                     let result_value = args
                         .get(1)
-                        .and_then(|gval| value::Value::from_glib_value(gval, &result_type).ok())
+                        .map(|gval| {
+                            value::Value::from_glib_value(gval, &result_type)
+                                .expect("Failed to convert async result value")
+                        })
                         .unwrap_or(value::Value::Null);
 
                     let args_values = vec![source_value, result_value];
@@ -590,11 +529,15 @@ impl Value {
                     )
                 });
 
-                Ok(build_trampoline_callback(
-                    CallbackTrampoline::AsyncReady,
-                    closure,
-                    trampolines::get_async_ready_trampoline_ptr,
-                ))
+                let closure_ptr = closure_ptr_for_transfer(closure);
+                let trampoline_ptr = callback::get_async_ready_trampoline_ptr();
+
+                Ok(Value::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr,
+                    closure: OwnedPtr::new((), closure_ptr),
+                    destroy_ptr: None,
+                    data_first: false,
+                }))
             }
 
             CallbackTrampoline::Destroy => {
@@ -608,21 +551,23 @@ impl Value {
                     )
                 });
 
-                Ok(build_trampoline_callback(
-                    CallbackTrampoline::Destroy,
-                    closure,
-                    trampolines::get_destroy_trampoline_ptr,
-                ))
+                let closure_ptr = closure_ptr_for_transfer(closure);
+                let trampoline_ptr = callback::get_destroy_trampoline_ptr();
+
+                Ok(Value::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr,
+                    closure: OwnedPtr::new((), closure_ptr),
+                    destroy_ptr: None,
+                    data_first: true,
+                }))
             }
 
             CallbackTrampoline::DrawFunc => {
                 let arg_types = type_.arg_types.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let args_values = match convert_glib_args(args, &arg_types) {
-                        Ok(v) => v,
-                        Err(_) => return None,
-                    };
+                    let args_values = convert_glib_args(args, &arg_types)
+                        .expect("Failed to convert GLib draw callback arguments");
 
                     invoke_and_wait_for_js_result(
                         &channel,
@@ -633,11 +578,16 @@ impl Value {
                     )
                 });
 
-                Ok(build_trampoline_callback(
-                    CallbackTrampoline::DrawFunc,
-                    closure,
-                    trampolines::get_draw_func_trampoline_ptr,
-                ))
+                let closure_ptr = closure_ptr_for_transfer(closure);
+                let trampoline_ptr = callback::get_draw_func_trampoline_ptr();
+                let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
+
+                Ok(Value::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr,
+                    closure: OwnedPtr::new((), closure_ptr),
+                    destroy_ptr: Some(destroy_ptr),
+                    data_first: false,
+                }))
             }
         }
     }
@@ -648,7 +598,7 @@ impl Value {
             value::Value::Null | value::Value::Undefined => {
                 return Ok(Value::Ptr(std::ptr::null_mut()));
             }
-            _ => return Err(type_mismatch("a Ref", "ref", &arg.value)),
+            _ => bail!("Expected a Ref for ref type, got {:?}", arg.value),
         };
 
         // For Boxed and GObject types, check if caller allocated the memory.
@@ -676,11 +626,10 @@ impl Value {
                             value: ptr_storage,
                         }))
                     }
-                    _ => Err(type_mismatch(
-                        "an Object or Null",
-                        "Ref<Boxed/GObject>",
-                        &r#ref.value,
-                    ))
+                    _ => bail!(
+                        "Expected an Object or Null for Ref<Boxed/GObject>, got {:?}",
+                        r#ref.value
+                    ),
                 }
             }
             _ => {

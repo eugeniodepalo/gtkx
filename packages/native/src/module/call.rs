@@ -14,7 +14,7 @@ use crate::{
     arg::Arg,
     cif, gtk_dispatch, js_dispatch,
     state::GtkThreadState,
-    types::{FloatSize, IntegerSign, IntegerSize, Type},
+    types::{CallbackTrampoline, FloatSize, IntegerSign, IntegerSize, Type},
     value::Value,
 };
 
@@ -77,7 +77,8 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     gtk_dispatch::enter_js_wait();
     gtk_dispatch::schedule(move || {
-        let _ = tx.send(handle_call(library_name, symbol_name, args, result_type));
+        tx.send(handle_call(library_name, symbol_name, args, result_type))
+            .expect("FFI call result channel disconnected");
     });
 
     let (value, ref_updates) = wait_for_result(&mut cx, &rx)
@@ -100,25 +101,47 @@ fn handle_call(
     args: Vec<Arg>,
     result_type: Type,
 ) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
-    let cif_args = args
-        .clone()
-        .into_iter()
-        .map(TryInto::<cif::Value>::try_into)
-        .collect::<anyhow::Result<Vec<cif::Value>>>()?;
+    let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(args.len() + 1);
+    for arg in &args {
+        match &arg.type_ {
+            Type::Callback(cb) if cb.trampoline != CallbackTrampoline::Closure => {
+                arg_types.push(libffi::Type::pointer());
+                arg_types.push(libffi::Type::pointer());
 
-    let arg_types: Vec<libffi::Type> = args.iter().flat_map(|arg| arg.type_.ffi_types()).collect();
+                if cb.trampoline == CallbackTrampoline::DrawFunc {
+                    arg_types.push(libffi::Type::pointer());
+                }
+            }
+            _ => {
+                arg_types.push((&arg.type_).into());
+            }
+        }
+    }
 
     let cif = libffi::Builder::new()
         .res((&result_type).into())
         .args(arg_types)
         .into_cif();
 
+    let cif_args = args
+        .clone()
+        .into_iter()
+        .map(TryInto::<cif::Value>::try_into)
+        .collect::<anyhow::Result<Vec<cif::Value>>>()?;
+
     let mut ffi_args: Vec<libffi::Arg> = Vec::with_capacity(cif_args.len() + 1);
     for cif_arg in &cif_args {
         match cif_arg {
             cif::Value::TrampolineCallback(trampoline_cb) => {
-                for ptr_ref in trampoline_cb.ffi_arg_refs() {
-                    ffi_args.push(libffi::arg(ptr_ref));
+                if trampoline_cb.data_first {
+                    ffi_args.push(libffi::arg(&trampoline_cb.closure.ptr));
+                    ffi_args.push(libffi::arg(&trampoline_cb.trampoline_ptr));
+                } else {
+                    ffi_args.push(libffi::arg(&trampoline_cb.trampoline_ptr));
+                    ffi_args.push(libffi::arg(&trampoline_cb.closure.ptr));
+                }
+                if let Some(destroy_ptr) = &trampoline_cb.destroy_ptr {
+                    ffi_args.push(libffi::arg(destroy_ptr));
                 }
             }
             other => {
@@ -259,7 +282,8 @@ pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     gtk_dispatch::enter_js_wait();
     gtk_dispatch::schedule(move || {
-        let _ = tx.send(handle_batch_calls(descriptors));
+        let result = handle_batch_calls(descriptors);
+        tx.send(result).expect("Batch FFI call result channel disconnected");
     });
 
     wait_for_result(&mut cx, &rx)

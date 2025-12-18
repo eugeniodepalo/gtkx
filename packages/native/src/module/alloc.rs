@@ -1,5 +1,7 @@
 //! Memory allocation for boxed types.
 
+use std::sync::mpsc;
+
 use gtk4::glib::ffi::g_malloc0;
 use neon::prelude::*;
 
@@ -23,9 +25,17 @@ pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
         .and_then(|v| v.downcast::<JsString, _>(&mut cx).ok())
         .map(|s| s.value(&mut cx));
 
-    let object_id =
-        gtk_dispatch::schedule_and_wait(move || handle_alloc(size, &type_name, lib_name.as_deref()))
-            .or_else(|err| cx.throw_error(format!("Error during alloc: {err}")))?;
+    let (tx, rx) = mpsc::channel::<anyhow::Result<ObjectId>>();
+
+    gtk_dispatch::schedule(move || {
+        tx.send(handle_alloc(size, &type_name, lib_name.as_deref()))
+            .expect("Alloc result channel disconnected");
+    });
+
+    let object_id = rx
+        .recv()
+        .or_else(|err| cx.throw_error(format!("Error receiving alloc result: {err}")))?
+        .or_else(|err| cx.throw_error(format!("Error during alloc: {err}")))?;
 
     Ok(cx.boxed(object_id).upcast())
 }

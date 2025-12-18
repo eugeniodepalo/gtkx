@@ -1,7 +1,8 @@
 use std::sync::Once;
 
-use gtk4::gdk::{self, prelude::StaticType as _};
+use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
+use gtk4::prelude::StaticType as _;
 
 static GTK_INIT: Once = Once::new();
 

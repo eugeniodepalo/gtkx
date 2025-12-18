@@ -3,7 +3,6 @@
 use libffi::middle as ffi;
 use neon::prelude::*;
 
-use crate::js_ext::JsObjectExt;
 use crate::types::Type;
 
 /// The underlying list implementation for an array type.
@@ -49,14 +48,15 @@ impl ArrayType {
         let item_type_value: Handle<'_, JsValue> = obj.prop(cx, "itemType").get()?;
         let item_type = Type::from_js_value(cx, item_type_value)?;
 
-        let list_type_str = obj.get_optional_string(cx, "listType")?;
-        let list_type = match list_type_str.as_deref() {
+        let list_type_str: Option<Handle<JsString>> = obj.get_opt(cx, "listType")?;
+        let list_type = match list_type_str.map(|s| s.value(cx)).as_deref() {
             Some("glist") => ListType::GList,
             Some("gslist") => ListType::GSList,
             _ => ListType::Array,
         };
 
-        let is_borrowed = obj.get_bool_or_default(cx, "borrowed", false)?;
+        let is_borrowed: Option<Handle<JsBoolean>> = obj.get_opt(cx, "borrowed")?;
+        let is_borrowed = is_borrowed.map(|b| b.value(cx)).unwrap_or(false);
 
         Ok(ArrayType {
             item_type: Box::new(item_type),

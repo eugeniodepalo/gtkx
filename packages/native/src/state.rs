@@ -23,7 +23,7 @@ pub fn set_gtk_thread_handle(handle: JoinHandle<()>) {
     GTK_THREAD_HANDLE
         .get_or_init(|| Mutex::new(None))
         .lock()
-        .unwrap_or_else(|e| e.into_inner())
+        .expect("GTK thread handle mutex poisoned")
         .replace(handle);
 }
 
@@ -42,11 +42,16 @@ pub fn join_gtk_thread() {
 /// FFI calls on the GTK thread.
 pub struct GtkThreadState {
     /// Map from ObjectId values to their corresponding native objects.
-    /// Wrapped in ManuallyDrop to prevent automatic dropping during TLS destruction.
+    ///
+    /// Wrapped in ManuallyDrop to prevent automatic dropping during TLS
+    /// destruction. Objects must be explicitly drained via `clear_objects()`
+    /// before the GTK main loop exits. This avoids panics from signal emissions
+    /// during TLS destruction trying to access already-destroyed TLS state.
     pub object_map: ManuallyDrop<HashMap<usize, Object>>,
     /// Counter for generating unique ObjectId values.
     pub next_object_id: usize,
     /// Cache of loaded dynamic libraries by name.
+    ///
     /// Wrapped in ManuallyDrop to prevent unloading libraries when the thread
     /// exits. This avoids crashes from TLS destructors in unloaded libraries.
     libraries: ManuallyDrop<HashMap<String, Library>>,
@@ -175,17 +180,11 @@ mod tests {
         GtkThreadState::with(|state| {
             let _ = state.get_library("libglib-2.0.so.0");
 
-            let lib1_ptr = state
-                .libraries
-                .get("libglib-2.0.so.0")
-                .map(|l| l as *const _);
+            let lib1_ptr = state.libraries.get("libglib-2.0.so.0").map(|l| l as *const _);
 
             let _ = state.get_library("libglib-2.0.so.0");
 
-            let lib2_ptr = state
-                .libraries
-                .get("libglib-2.0.so.0")
-                .map(|l| l as *const _);
+            let lib2_ptr = state.libraries.get("libglib-2.0.so.0").map(|l| l as *const _);
 
             assert_eq!(lib1_ptr, lib2_ptr);
         });

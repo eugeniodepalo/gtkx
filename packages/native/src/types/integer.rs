@@ -91,30 +91,19 @@ impl IntegerType {
 
         Ok(Self::new(size, sign))
     }
-
-    /// Reads an integer value from a raw pointer and returns it as f64.
-    ///
-    /// # Safety
-    ///
-    /// The pointer must be valid and properly aligned for the integer type.
-    pub unsafe fn read_from_ptr(self, ptr: *const u8) -> f64 {
-        use crate::numeric::ReadFromPtr;
-        self.dispatch(ReadFromPtr::new(ptr))
-    }
-
-    /// Writes an f64 value to a raw pointer as the appropriate integer type.
-    ///
-    /// # Safety
-    ///
-    /// The pointer must be valid and properly aligned for the integer type.
-    pub unsafe fn write_to_ptr(self, ptr: *mut u8, value: f64) {
-        use crate::numeric::WriteToPtr;
-        self.dispatch(WriteToPtr::new(ptr, value))
-    }
 }
 
-impl From<IntegerType> for ffi::Type {
-    fn from(value: IntegerType) -> Self {
-        value.ffi_type()
+impl From<&IntegerType> for ffi::Type {
+    fn from(value: &IntegerType) -> Self {
+        match (value.size, value.sign) {
+            (IntegerSize::_8, IntegerSign::Unsigned) => ffi::Type::u8(),
+            (IntegerSize::_8, IntegerSign::Signed) => ffi::Type::i8(),
+            (IntegerSize::_16, IntegerSign::Unsigned) => ffi::Type::u16(),
+            (IntegerSize::_16, IntegerSign::Signed) => ffi::Type::i16(),
+            (IntegerSize::_32, IntegerSign::Unsigned) => ffi::Type::u32(),
+            (IntegerSize::_32, IntegerSign::Signed) => ffi::Type::i32(),
+            (IntegerSize::_64, IntegerSign::Unsigned) => ffi::Type::u64(),
+            (IntegerSize::_64, IntegerSign::Signed) => ffi::Type::i64(),
+        }
     }
 }

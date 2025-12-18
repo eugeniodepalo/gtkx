@@ -20,6 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: fedora:43
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6

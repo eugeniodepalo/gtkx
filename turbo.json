@@ -1,20 +1,26 @@
 {
     "$schema": "https://turborepo.com/schema.json",
+    "globalDependencies": ["tsconfig.json", "biome.json"],
     "tasks": {
         "lint": {
+            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "scripts/**/*.ts"],
             "outputs": []
         },
         "codegen": {
+            "inputs": ["src/codegen/**", "scripts/**", "$TURBO_ROOT$/girs/**", "$TURBO_ROOT$/packages/gir/src/**"],
             "outputs": ["src/generated/**"]
         },
         "build": {
             "dependsOn": ["^build", "codegen", "native-build"],
-            "outputs": ["dist/**", "build/**", "*.tsbuildinfo", "README.md"]
+            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json", "tsconfig.test.json"],
+            "outputs": ["dist/**", "out-tsc/**", "build/**", "*.tsbuildinfo"]
         },
         "native-build": {
-            "outputs": ["target/**", "index.node", "cargo.log"]
+            "inputs": ["Cargo.toml", "Cargo.lock", "src/**/*.rs"],
+            "outputs": ["index.node"]
         },
         "native-test": {
+            "inputs": ["Cargo.toml", "src/**/*.rs"],
             "outputs": []
         },
         "start": {
@@ -23,7 +29,15 @@
             "cache": false
         },
         "test": {
-            "dependsOn": ["build", "native-test"]
+            "dependsOn": ["build", "native-test"],
+            "inputs": [
+                "src/**/*.ts",
+                "src/**/*.tsx",
+                "tests/**/*.ts",
+                "tests/**/*.tsx",
+                "$TURBO_ROOT$/vitest.config.ts",
+                "$TURBO_ROOT$/vitest.setup.ts"
+            ]
         },
         "website#build": {
             "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],

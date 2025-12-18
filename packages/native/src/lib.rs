@@ -4,18 +4,18 @@
 //! It handles value conversion between JavaScript and C/GLib types, callback
 //! trampolines for GTK signals, and memory management for GObject instances.
 
+#[macro_use]
+mod macros;
 mod arg;
 mod boxed;
+mod callback;
 mod cif;
 mod gtk_dispatch;
 mod js_dispatch;
-mod js_ext;
 mod module;
-mod numeric;
 mod object;
 mod queue;
 mod state;
-mod trampolines;
 mod types;
 mod value;
 

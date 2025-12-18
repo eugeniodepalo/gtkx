@@ -54,20 +54,13 @@ impl FloatType {
 
         Ok(Self::new(size))
     }
-
-    pub unsafe fn read_from_ptr(self, ptr: *const u8) -> f64 {
-        use crate::numeric::ReadFromPtr;
-        self.dispatch(ReadFromPtr::new(ptr))
-    }
-
-    pub unsafe fn write_to_ptr(self, ptr: *mut u8, value: f64) {
-        use crate::numeric::WriteToPtr;
-        self.dispatch(WriteToPtr::new(ptr, value))
-    }
 }
 
-impl From<FloatType> for ffi::Type {
-    fn from(value: FloatType) -> Self {
-        value.ffi_type()
+impl From<&FloatType> for ffi::Type {
+    fn from(value: &FloatType) -> Self {
+        match value.size {
+            FloatSize::_32 => ffi::Type::f32(),
+            FloatSize::_64 => ffi::Type::f64(),
+        }
     }
 }

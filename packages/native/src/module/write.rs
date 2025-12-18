@@ -1,12 +1,14 @@
 //! Field writing to native objects.
 
+use std::sync::mpsc;
+
 use anyhow::bail;
 use neon::prelude::*;
 
 use crate::{
     gtk_dispatch,
     object::ObjectId,
-    types::Type,
+    types::{FloatSize, IntegerSign, IntegerSize, Type},
     value::Value,
 };
 
@@ -24,8 +26,15 @@ pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let type_ = Type::from_js_value(&mut cx, js_type.upcast())?;
     let value = Value::from_js_value(&mut cx, js_value)?;
     let object_id = *object_id.as_inner();
+    let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
 
-    gtk_dispatch::schedule_and_wait(move || handle_write(object_id, &type_, offset, &value))
+    gtk_dispatch::schedule(move || {
+        tx.send(handle_write(object_id, &type_, offset, &value))
+            .expect("Write result channel disconnected");
+    });
+
+    rx.recv()
+        .or_else(|err| cx.throw_error(format!("Error receiving write result: {err}")))?
         .or_else(|err| cx.throw_error(format!("Error during write: {err}")))?;
 
     Ok(cx.undefined())
@@ -49,11 +58,12 @@ fn handle_write(
 
     match (type_, value) {
         (Type::Integer(int_type), Value::Number(n)) => {
-            unsafe { int_type.write_to_ptr(field_ptr, *n) };
+            dispatch_integer_write!(int_type, field_ptr, *n);
         }
-        (Type::Float(float_type), Value::Number(n)) => {
-            unsafe { float_type.write_to_ptr(field_ptr, *n) };
-        }
+        (Type::Float(float_type), Value::Number(n)) => match float_type.size {
+            FloatSize::_32 => unsafe { field_ptr.cast::<f32>().write_unaligned(*n as f32) },
+            FloatSize::_64 => unsafe { field_ptr.cast::<f64>().write_unaligned(*n) },
+        },
         (Type::Boolean, Value::Boolean(b)) => unsafe {
             field_ptr.cast::<u8>().write_unaligned(u8::from(*b));
         },

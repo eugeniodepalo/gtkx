@@ -4,7 +4,9 @@
         "**/src/generated/**": ["enumMembers"],
         "examples/*/src/app.tsx": ["exports", "duplicates"],
         "packages/cli/src/create.ts": ["exports", "types"],
-        "packages/cli/src/dev-server.tsx": ["exports", "types"]
+        "packages/cli/src/dev-server.tsx": ["exports", "types"],
+        "packages/ffi/src/codegen/**": ["types"],
+        "packages/react/src/codegen/**": ["types"]
     },
     "workspaces": {
         "packages/gir": {
@@ -33,8 +35,12 @@
             "entry": ["src/app.tsx", "src/index.tsx"]
         },
         "packages/ffi": {
-            "project": ["src/**/*", "tests/**/*"],
-            "entry": ["src/generated/*/index.ts", "src/index.ts", "src/*/index.ts"]
+            "project": ["src/**/*", "tests/**/*", "scripts/**/*"],
+            "entry": ["src/generated/*/index.ts", "src/index.ts", "src/*/index.ts", "scripts/codegen.ts"]
+        },
+        "packages/react": {
+            "project": ["src/**/*", "tests/**/*", "scripts/**/*"],
+            "entry": ["src/index.ts", "scripts/codegen.ts"]
         }
     }
 }

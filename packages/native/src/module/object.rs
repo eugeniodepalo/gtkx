@@ -19,7 +19,8 @@ pub fn get_object_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let id = *object_id.as_inner();
 
     gtk_dispatch::schedule(move || {
-        let _ = tx.send(id.try_as_ptr());
+        tx.send(id.try_as_ptr())
+            .expect("Object pointer result channel disconnected");
     });
 
     let ptr = rx

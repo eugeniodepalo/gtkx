@@ -12,26 +12,15 @@ impl<T> Queue<T> {
     }
 
     pub fn push(&self, item: T) {
-        self.items
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .push_back(item);
+        self.items.lock().unwrap().push_back(item);
     }
 
-    #[must_use]
     pub fn pop(&self) -> Option<T> {
-        self.items
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .pop_front()
+        self.items.lock().unwrap().pop_front()
     }
 
-    #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.items
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .is_empty()
+        self.items.lock().unwrap().is_empty()
     }
 }
 
