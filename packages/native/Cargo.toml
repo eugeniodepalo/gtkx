@@ -1,6 +1,6 @@
 [package]
 name = "native"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Eugenio Depalo <eugeniodepalo@gmail.com>"]
 license = "MPL-2.0"
 edition = "2024"
@@ -8,7 +8,6 @@ exclude = ["index.node"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-
 
 [dependencies]
 neon = "1.1.1"

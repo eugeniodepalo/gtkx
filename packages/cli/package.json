@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/cli",
-    "version": "0.8.0",
+    "version": "0.9.0",
     "description": "CLI for GTKX - create and develop GTK4 React applications",
     "keywords": [
         "gtk",
