@@ -156,7 +156,7 @@ export class ColumnViewNode extends SelectableListNode<Gtk.ColumnView, ColumnVie
 
     private applySortIndicator(): void {
         if (this.state.sortColumn === null) {
-            this.widget.sortByColumn(this.state.sortOrder, null);
+            this.widget.sortByColumn(this.state.sortOrder);
             return;
         }
 
@@ -203,9 +203,9 @@ type ColumnViewColumnState = {
     factory: Gtk.SignalListItemFactory;
     factoryHandlers: ListItemFactoryHandlers | null;
     renderCell: RenderItemFn<unknown>;
-    columnId: string | null;
+    columnId?: string;
     listItemCache: Map<number, ListItemInfo>;
-    sorter: StringSorter | null;
+    sorter?: StringSorter;
 };
 
 export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
@@ -224,10 +224,10 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
     override initialize(props: Props): void {
         const factory = new Gtk.SignalListItemFactory();
         const column = new Gtk.ColumnViewColumn(props.title as string | undefined, factory);
-        const columnId = (props.id as string | null) ?? null;
+        const columnId = (props.id as string | undefined) ?? undefined;
 
         const sortable = props.sortable as boolean | undefined;
-        const sorter = sortable ? new StringSorter() : null;
+        const sorter = sortable ? new StringSorter() : undefined;
 
         this.state = {
             column,
@@ -273,7 +273,7 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
         return this.state.column;
     }
 
-    getId(): string | null {
+    getId(): string | undefined {
         return this.state.columnId;
     }
 
@@ -304,7 +304,7 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
             this.state.column.setFixedWidth(newProps.fixedWidth as number);
         }
         if (oldProps.id !== newProps.id) {
-            this.state.columnId = (newProps.id as string | null) ?? null;
+            this.state.columnId = (newProps.id as string | undefined) ?? undefined;
             this.state.column.setId(this.state.columnId);
         }
         if (oldProps.sortable !== newProps.sortable) {
@@ -313,8 +313,8 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
                 this.state.sorter = new StringSorter();
                 this.state.column.setSorter(this.state.sorter);
             } else if (!sortable && this.state.sorter) {
-                this.state.column.setSorter(null);
-                this.state.sorter = null;
+                this.state.column.setSorter(undefined);
+                this.state.sorter = undefined;
             }
         }
     }

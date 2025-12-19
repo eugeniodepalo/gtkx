@@ -43,16 +43,16 @@ export class NotebookNode extends Node<Gtk.Notebook> implements PageContainer, C
     }
 
     attachChild(child: Gtk.Widget): void {
-        this.widget.appendPage(child, null);
+        this.widget.appendPage(child);
     }
 
     insertChildBefore(child: Gtk.Widget, before: Gtk.Widget): void {
         const beforePageNum = this.widget.pageNum(before);
 
         if (beforePageNum >= 0) {
-            this.widget.insertPage(child, beforePageNum, null);
+            this.widget.insertPage(child, beforePageNum);
         } else {
-            this.widget.appendPage(child, null);
+            this.widget.appendPage(child);
         }
     }
 

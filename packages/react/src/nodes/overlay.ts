@@ -46,7 +46,7 @@ export class OverlayNode extends Node<Gtk.Overlay> implements ChildContainer {
 
     detachChild(childWidget: Gtk.Widget): void {
         if (this.mainChild === childWidget) {
-            this.widget.setChild(null);
+            this.widget.setChild(undefined);
             this.mainChild = null;
         } else {
             const index = this.overlayChildren.indexOf(childWidget);

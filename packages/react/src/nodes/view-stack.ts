@@ -14,9 +14,9 @@ export class ViewStackNode extends PagedStackNode<Adw.ViewStack> {
         let page: Adw.ViewStackPage;
 
         if (title !== undefined && iconName !== undefined) {
-            page = this.widget.addTitledWithIcon(child, title, iconName, name ?? null);
+            page = this.widget.addTitledWithIcon(child, title, iconName, name);
         } else if (title !== undefined) {
-            page = this.widget.addTitled(child, title, name ?? null);
+            page = this.widget.addTitled(child, title, name);
         } else if (name !== undefined) {
             page = this.widget.addNamed(child, name);
         } else {

@@ -20,7 +20,7 @@ export class FlowBoxNode extends IndexedChildContainerNode<Gtk.FlowBox> {
         const parent = child.getParent();
         if (parent && isFlowBoxChild(parent)) {
             beginBatch();
-            parent.setChild(null);
+            parent.setChild(undefined);
             this.widget.remove(parent);
             endBatch();
         }

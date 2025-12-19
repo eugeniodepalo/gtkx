@@ -119,7 +119,7 @@ export abstract class Node<
         if (isChildContainer(this)) {
             this.attachChild(childWidget);
         } else if (this.widget && isAppendable(this.widget)) {
-            childWidget.insertBefore(this.widget, null);
+            childWidget.insertBefore(this.widget);
         } else if (this.widget && isAddable(this.widget)) {
             this.widget.add(childWidget);
         } else if (this.widget && isSingleChild(this.widget)) {

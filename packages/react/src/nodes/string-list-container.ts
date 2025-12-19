@@ -17,7 +17,7 @@ type StringListContainerState = {
 };
 
 type StringListWidget = Gtk.Widget & {
-    setModel(model: Gio.ListModel | null): void;
+    setModel(model?: Gio.ListModel): void;
     getSelected(): number;
     setSelected(position: number): void;
 };
@@ -72,7 +72,7 @@ export abstract class StringListContainerNode<T extends StringListWidget>
 
         super.initialize(props);
 
-        this.widget.setModel(getObject(store.getModel().id, Gio.ListModel));
+        this.widget.setModel(getObject(store.getModel().id, Gio.ListModel) ?? undefined);
     }
 
     private connectSelectionHandler(): void {

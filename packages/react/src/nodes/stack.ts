@@ -19,7 +19,7 @@ export class StackNode extends PagedStackNode<Gtk.Stack> {
         let stackPage: Gtk.StackPage;
 
         if (title !== undefined) {
-            stackPage = this.widget.addTitled(child, title, name ?? null);
+            stackPage = this.widget.addTitled(child, title, name);
         } else if (name !== undefined) {
             stackPage = this.widget.addNamed(child, name);
         } else {

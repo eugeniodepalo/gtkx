@@ -103,11 +103,11 @@ abstract class MenuContainerNode<T extends Gtk.Widget | undefined> extends NodeC
 
         for (const entry of this.entries) {
             if (entry.type === "item") {
-                this.menu.append(entry.label ?? null, entry.action ?? null);
+                this.menu.append(entry.label, entry.action);
             } else if (entry.type === "section" && entry.menu) {
-                this.menu.appendSection(entry.menu, entry.label ?? null);
+                this.menu.appendSection(entry.menu, entry.label);
             } else if (entry.type === "submenu" && entry.menu) {
-                this.menu.appendSubmenu(entry.menu, entry.label ?? null);
+                this.menu.appendSubmenu(entry.menu, entry.label);
             }
         }
 
@@ -118,7 +118,7 @@ abstract class MenuContainerNode<T extends Gtk.Widget | undefined> extends NodeC
 }
 
 type MenuWidget = Gtk.Widget & {
-    setMenuModel(model: Gio.MenuModel | null): void;
+    setMenuModel(model?: Gio.MenuModel): void;
 };
 
 abstract class MenuWidgetNode<T extends MenuWidget> extends MenuContainerNode<T> {
@@ -171,7 +171,7 @@ export class ApplicationMenuNode extends MenuContainerNode<never> {
     }
 
     override unmount(): void {
-        getCurrentApp().setMenubar(null);
+        getCurrentApp().setMenubar(undefined);
         super.unmount();
     }
 

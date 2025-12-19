@@ -68,7 +68,7 @@ export abstract class SelectableListNode<T extends SelectableListWidget, S exten
     protected initializeSelectionState(props: Props): SelectableListState {
         const selectionMode = (props.selectionMode as Gtk.SelectionMode | undefined) ?? Gtk.SelectionMode.SINGLE;
         const stringList = new Gtk.StringList([]);
-        const listModel = getObject(stringList.id, Gio.ListModel);
+        const listModel = getObject(stringList.id, Gio.ListModel) ?? undefined;
         const selectionModel =
             selectionMode === Gtk.SelectionMode.MULTIPLE
                 ? new Gtk.MultiSelection(listModel)
@@ -140,7 +140,7 @@ export abstract class SelectableListNode<T extends SelectableListWidget, S exten
 
         this.disconnectSelectionHandler();
 
-        const listModel = getObject(this.state.stringList.id, Gio.ListModel);
+        const listModel = getObject(this.state.stringList.id, Gio.ListModel) ?? undefined;
         const newSelectionModel =
             newSelectionMode === Gtk.SelectionMode.MULTIPLE
                 ? new Gtk.MultiSelection(listModel)

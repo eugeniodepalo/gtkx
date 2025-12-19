@@ -20,7 +20,7 @@ export class ListBoxNode extends IndexedChildContainerNode<Gtk.ListBox> {
         const parent = child.getParent();
         if (parent && isListBoxRow(parent)) {
             beginBatch();
-            parent.setChild(null);
+            parent.setChild(undefined);
             this.widget.remove(parent);
             endBatch();
         }
@@ -45,7 +45,7 @@ export class ListBoxNode extends IndexedChildContainerNode<Gtk.ListBox> {
     detachChild(child: Gtk.Widget): void {
         if (isListBoxRow(child)) {
             beginBatch();
-            child.setChild(null);
+            child.setChild(undefined);
             this.widget.remove(child);
             endBatch();
             return;

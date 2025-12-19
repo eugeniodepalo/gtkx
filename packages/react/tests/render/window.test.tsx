@@ -86,7 +86,7 @@ describe("render - Window", () => {
             await render(<Window.Root ref={ref} defaultWidth={300} />);
 
             const widthRef = createNativeRef(0);
-            ref.current?.getDefaultSize(widthRef, null);
+            ref.current?.getDefaultSize(widthRef);
             expect(widthRef.value).toBeGreaterThanOrEqual(300);
         });
 
@@ -96,7 +96,7 @@ describe("render - Window", () => {
             await render(<Window.Root ref={ref} defaultHeight={200} />);
 
             const heightRef = createNativeRef(0);
-            ref.current?.getDefaultSize(null, heightRef);
+            ref.current?.getDefaultSize(undefined, heightRef);
             expect(heightRef.value).toBeGreaterThanOrEqual(200);
         });
     });
