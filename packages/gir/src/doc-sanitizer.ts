@@ -311,6 +311,40 @@ function cleanupWhitespace(text: string): string {
     return result.trim();
 }
 
+interface CodeBlockProtection {
+    text: string;
+    restore: (formatted: string, linePrefix: string) => string;
+}
+
+function protectCodeBlocks(text: string): CodeBlockProtection {
+    const codeBlockPattern = /```[\s\S]*?```/g;
+    const codeBlocks: string[] = [];
+
+    const processed = text.replace(codeBlockPattern, (match) => {
+        codeBlocks.push(match);
+        return `__PROTECTED_CODE_BLOCK_${codeBlocks.length - 1}__`;
+    });
+
+    const restore = (formatted: string, linePrefix: string): string => {
+        let result = formatted;
+        for (let i = 0; i < codeBlocks.length; i++) {
+            const placeholder = `__PROTECTED_CODE_BLOCK_${i}__`;
+            const codeBlock = codeBlocks[i];
+            if (codeBlock === undefined) continue;
+
+            const codeLines = codeBlock.split("\n");
+            const prefixedCodeLines = codeLines.map((line, index) => {
+                if (index === 0) return line;
+                return `${linePrefix}${line}`;
+            });
+            result = result.replace(placeholder, prefixedCodeLines.join("\n"));
+        }
+        return result;
+    };
+
+    return { text: processed, restore };
+}
+
 export interface SanitizeDocOptions {
     escapeXmlTags?: boolean;
     namespace?: string;
@@ -352,15 +386,19 @@ export function formatDoc(doc: string | undefined, indent: string = "", options:
         return "";
     }
 
-    const lines = sanitized.split("\n").map((line) => line.trim());
+    const { text: protectedText, restore } = protectCodeBlocks(sanitized);
+
+    const lines = protectedText.split("\n").map((line) => line.trim());
     const firstLine = lines[0] ?? "";
 
     if (lines.length === 1 && firstLine.length < 80) {
-        return `${indent}/** ${firstLine} */\n`;
+        const result = `${indent}/** ${firstLine} */\n`;
+        return restore(result, `${indent} * `);
     }
 
     const formattedLines = lines.map((line) => `${indent} * ${line}`);
-    return `${indent}/**\n${formattedLines.join("\n")}\n${indent} */\n`;
+    const result = `${indent}/**\n${formattedLines.join("\n")}\n${indent} */\n`;
+    return restore(result, `${indent} * `);
 }
 
 interface DocParameter {
@@ -382,9 +420,11 @@ export function formatMethodDoc(
     }
 
     const lines: string[] = [];
+    let protection: CodeBlockProtection | undefined;
 
     if (sanitizedDoc) {
-        for (const line of sanitizedDoc.split("\n")) {
+        protection = protectCodeBlocks(sanitizedDoc);
+        for (const line of protection.text.split("\n")) {
             lines.push(` * ${line.trim()}`);
         }
     }
@@ -401,5 +441,6 @@ export function formatMethodDoc(
         return "";
     }
 
-    return `${indent}/**\n${indent}${lines.join(`\n${indent}`)}\n${indent} */\n`;
+    const result = `${indent}/**\n${indent}${lines.join(`\n${indent}`)}\n${indent} */\n`;
+    return protection ? protection.restore(result, `${indent} * `) : result;
 }
