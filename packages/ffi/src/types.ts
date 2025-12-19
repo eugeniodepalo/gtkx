@@ -1,8 +1,9 @@
-type SignalParam = { type: import("@gtkx/native").Type; getCls?: () => { prototype: object } };
-
 /**
  * Signal parameter metadata for type-safe signal connections.
  * Used by generated connect methods to wrap signal handler arguments.
- * @internal
+ * @private
  */
-export type SignalMeta = Record<string, { params: SignalParam[]; returnType?: import("@gtkx/native").Type }>;
+export type SignalMeta = Record<
+    string,
+    { params: import("@gtkx/native").Type[]; returnType?: import("@gtkx/native").Type }
+>;

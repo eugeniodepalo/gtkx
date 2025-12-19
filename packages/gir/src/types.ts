@@ -178,6 +178,8 @@ export type GirMethod = {
     throws?: boolean;
     /** Documentation for the method. */
     doc?: string;
+    /** Documentation for the return value. */
+    returnDoc?: string;
 };
 
 /**
@@ -196,6 +198,8 @@ export type GirConstructor = {
     throws?: boolean;
     /** Documentation for the constructor. */
     doc?: string;
+    /** Documentation for the return value. */
+    returnDoc?: string;
 };
 
 /**
@@ -214,6 +218,8 @@ export type GirFunction = {
     throws?: boolean;
     /** Documentation for the function. */
     doc?: string;
+    /** Documentation for the return value. */
+    returnDoc?: string;
 };
 
 /**
@@ -441,7 +447,7 @@ export class TypeRegistry {
      * @param namespace - The namespace containing the class
      * @param name - The class name
      */
-    registerType(namespace: string, name: string): void {
+    registerNativeClass(namespace: string, name: string): void {
         const transformedName = normalizeTypeName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
             kind: "class",
@@ -557,7 +563,7 @@ export class TypeRegistry {
         const registry = new TypeRegistry();
         for (const ns of namespaces) {
             for (const cls of ns.classes) {
-                registry.registerType(ns.name, cls.name);
+                registry.registerNativeClass(ns.name, cls.name);
             }
             for (const iface of ns.interfaces) {
                 registry.registerInterface(ns.name, iface.name);

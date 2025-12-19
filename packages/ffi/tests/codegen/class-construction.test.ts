@@ -16,7 +16,7 @@ describe("class construction", () => {
 
     it("creates instance with optional constructor parameter", () => {
         const labelWithText = new Gtk.Label("Text");
-        const labelWithNull = new Gtk.Label(null);
+        const labelWithNull = new Gtk.Label(undefined);
         expect(labelWithText.getText()).toBe("Text");
         expect(labelWithNull.getText()).toBe("");
     });

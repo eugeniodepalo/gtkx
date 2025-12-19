@@ -1,23 +1,15 @@
-/**
- * Base type for all native GLib/GTK objects.
- * All generated classes implement this type.
- */
-export type NativeObject = {
-    /** The native pointer/handle to the underlying GLib object */
-    id: unknown;
-};
+import { typeFromName, typeName, typeParent } from "./generated/gobject/functions.js";
+import type { NativeClass } from "./native/object.js";
 
-type GObjectClass = { glibTypeName: string; prototype: NativeObject };
-
-const classRegistry = new Map<string, GObjectClass>();
+const registry = new Map<string, NativeClass>();
 
 /**
  * Registers a class in the global GObject type registry.
  * Called by generated code at module load time.
  * @param cls - The class to register
  */
-export function registerType(cls: GObjectClass): void {
-    classRegistry.set(cls.glibTypeName, cls);
+export function registerNativeClass(cls: NativeClass): void {
+    registry.set(cls.glibTypeName, cls);
 }
 
 /**
@@ -25,6 +17,30 @@ export function registerType(cls: GObjectClass): void {
  * @param glibTypeName - The GLib type name (e.g., "GtkButton")
  * @returns The class constructor, or undefined if not found
  */
-export function getClassByTypeName(glibTypeName: string): GObjectClass | undefined {
-    return classRegistry.get(glibTypeName);
+export function getNativeClass(glibTypeName: string): NativeClass | undefined {
+    return registry.get(glibTypeName);
 }
+
+/**
+ * Finds the nearest registered class by walking up the type hierarchy.
+ * @param glibTypeName - The GLib type name to start from
+ * @returns The registered class, or undefined if none found
+ */
+export const findNativeClass = (glibTypeName: string) => {
+    let currentTypeName: string | null = glibTypeName;
+
+    while (currentTypeName) {
+        const cls = getNativeClass(currentTypeName);
+        if (cls) return cls;
+
+        const gtype = typeFromName(currentTypeName);
+        if (gtype === 0) break;
+
+        const parentGtype = typeParent(gtype);
+        if (parentGtype === 0) break;
+
+        currentTypeName = typeName(parentGtype);
+    }
+
+    return undefined;
+};

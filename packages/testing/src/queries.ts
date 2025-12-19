@@ -1,4 +1,4 @@
-import { getInterface } from "@gtkx/ffi";
+import { getObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { findAll } from "./traversal.js";
 import type { ByRoleOptions, TextMatch, TextMatchOptions } from "./types.js";
@@ -70,13 +70,13 @@ const ROLES_WITH_INTERNAL_LABELS = new Set([
 ]);
 
 const isInternalLabel = (widget: Gtk.Widget): boolean => {
-    const accessible = getInterface(widget.id, Gtk.Accessible);
+    const accessible = getObject(widget.id, Gtk.Accessible);
     if (!accessible || accessible.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) return false;
 
     const parent = widget.getParent();
     if (!parent) return false;
 
-    const parentAccessible = getInterface(parent.id, Gtk.Accessible);
+    const parentAccessible = getObject(parent.id, Gtk.Accessible);
     if (!parentAccessible) return false;
 
     return ROLES_WITH_INTERNAL_LABELS.has(parentAccessible.getAccessibleRole());
@@ -93,7 +93,7 @@ const collectChildLabels = (widget: Gtk.Widget): string[] => {
     let child = widget.getFirstChild();
 
     while (child) {
-        const childAccessible = getInterface(child.id, Gtk.Accessible);
+        const childAccessible = getObject(child.id, Gtk.Accessible);
         if (childAccessible?.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
             const labelText = getLabelText(child);
             if (labelText) labels.push(labelText);
@@ -109,7 +109,7 @@ const collectChildLabels = (widget: Gtk.Widget): string[] => {
 const getWidgetText = (widget: Gtk.Widget): string | null => {
     if (isInternalLabel(widget)) return null;
 
-    const role = getInterface(widget.id, Gtk.Accessible)?.getAccessibleRole();
+    const role = getObject(widget.id, Gtk.Accessible)?.getAccessibleRole();
     if (role === undefined) return null;
 
     switch (role) {
@@ -135,7 +135,7 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
         case Gtk.AccessibleRole.TEXT_BOX:
         case Gtk.AccessibleRole.SEARCH_BOX:
         case Gtk.AccessibleRole.SPIN_BUTTON:
-            return getInterface(widget.id, Gtk.Editable)?.getText() ?? null;
+            return getObject(widget.id, Gtk.Editable)?.getText() ?? null;
         case Gtk.AccessibleRole.GROUP:
             return (widget as Gtk.Frame).getLabel?.() ?? null;
         case Gtk.AccessibleRole.WINDOW:
@@ -163,7 +163,7 @@ const getWidgetTestId = (widget: Gtk.Widget): string | null => {
 };
 
 const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
-    const accessible = getInterface(widget.id, Gtk.Accessible);
+    const accessible = getObject(widget.id, Gtk.Accessible);
     if (!accessible) return undefined;
 
     const role = accessible.getAccessibleRole();
@@ -182,7 +182,7 @@ const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
 };
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | undefined => {
-    const accessible = getInterface(widget.id, Gtk.Accessible);
+    const accessible = getObject(widget.id, Gtk.Accessible);
     if (!accessible) return undefined;
 
     const role = accessible.getAccessibleRole();
@@ -232,7 +232,7 @@ const formatByRoleError = (role: Gtk.AccessibleRole, options?: ByRoleOptions): s
 
 const getAllByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
-        const accessible = getInterface(node.id, Gtk.Accessible);
+        const accessible = getObject(node.id, Gtk.Accessible);
         if (!accessible || accessible.getAccessibleRole() !== role) return false;
         return matchByRoleOptions(node, options);
     });

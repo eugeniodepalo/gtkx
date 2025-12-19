@@ -1,4 +1,4 @@
-import { registerType, start, stop } from "@gtkx/ffi";
+import { registerNativeClass, start, stop } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { afterAll, beforeAll } from "vitest";
 
@@ -7,7 +7,7 @@ const toAppId = (name: string) => {
 };
 
 beforeAll((context) => {
-    registerType(Gtk.Application);
+    registerNativeClass(Gtk.Application);
     start(toAppId(context.name));
 });
 

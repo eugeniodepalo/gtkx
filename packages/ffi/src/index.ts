@@ -1,2 +1,8 @@
-export * from "./native.js";
-export { NativeError } from "./native-error.js";
+export { createRef, getObjectId } from "@gtkx/native";
+export * from "./batch.js";
+export * from "./native/base.js";
+export * from "./native/error.js";
+export * from "./native/events.js";
+export * from "./native/lifecycle.js";
+export * from "./native/object.js";
+export * from "./registry.js";

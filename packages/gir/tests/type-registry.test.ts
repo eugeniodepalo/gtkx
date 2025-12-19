@@ -5,7 +5,7 @@ import { TypeRegistry } from "../src/index.js";
 describe("TypeRegistry", () => {
     it("registers and resolves class types", () => {
         const registry = new TypeRegistry();
-        registry.registerType("Gtk", "Widget");
+        registry.registerNativeClass("Gtk", "Widget");
 
         const result = registry.resolve("Gtk.Widget");
 
@@ -80,7 +80,7 @@ describe("TypeRegistry", () => {
     describe("type name normalization", () => {
         it("renames Error to GError", () => {
             const registry = new TypeRegistry();
-            registry.registerType("GLib", "Error");
+            registry.registerNativeClass("GLib", "Error");
 
             const result = registry.resolve("GLib.Error");
 
@@ -89,7 +89,7 @@ describe("TypeRegistry", () => {
 
         it("prefixes Object in GObject namespace", () => {
             const registry = new TypeRegistry();
-            registry.registerType("GObject", "Object");
+            registry.registerNativeClass("GObject", "Object");
 
             const result = registry.resolve("GObject.Object");
 
@@ -98,7 +98,7 @@ describe("TypeRegistry", () => {
 
         it("prefixes Object in other namespaces with namespace name", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Pango", "Object");
+            registry.registerNativeClass("Pango", "Object");
 
             const result = registry.resolve("Pango.Object");
 
@@ -107,7 +107,7 @@ describe("TypeRegistry", () => {
 
         it("converts snake_case names to PascalCase", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "text_view");
+            registry.registerNativeClass("Gtk", "text_view");
 
             const result = registry.resolve("Gtk.text_view");
 
@@ -118,7 +118,7 @@ describe("TypeRegistry", () => {
     describe("resolveInNamespace", () => {
         it("resolves qualified names directly", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "Widget");
+            registry.registerNativeClass("Gtk", "Widget");
 
             const result = registry.resolveInNamespace("Gtk.Widget", "Gdk");
 
@@ -128,8 +128,8 @@ describe("TypeRegistry", () => {
 
         it("resolves unqualified names in current namespace first", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "Button");
-            registry.registerType("Custom", "Button");
+            registry.registerNativeClass("Gtk", "Button");
+            registry.registerNativeClass("Custom", "Button");
 
             const result = registry.resolveInNamespace("Button", "Gtk");
 
@@ -139,7 +139,7 @@ describe("TypeRegistry", () => {
 
         it("searches all namespaces if not in current namespace", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "Widget");
+            registry.registerNativeClass("Gtk", "Widget");
 
             const result = registry.resolveInNamespace("Widget", "Gdk");
 
@@ -149,7 +149,7 @@ describe("TypeRegistry", () => {
 
         it("matches by transformed name", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "text_view");
+            registry.registerNativeClass("Gtk", "text_view");
 
             const result = registry.resolveInNamespace("TextView", "Gdk");
 
@@ -160,7 +160,7 @@ describe("TypeRegistry", () => {
 
         it("returns undefined if not found anywhere", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "Widget");
+            registry.registerNativeClass("Gtk", "Widget");
 
             const result = registry.resolveInNamespace("NonExistent", "Gtk");
 

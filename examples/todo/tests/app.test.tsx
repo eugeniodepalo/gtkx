@@ -1,4 +1,4 @@
-import { getInterface } from "@gtkx/ffi";
+import { getObject } from "@gtkx/ffi";
 import { AccessibleRole, Editable, type Label, type ToggleButton, type Widget } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
@@ -69,7 +69,7 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             await waitFor(() => {
-                const currentText = getInterface(input.id, Editable)?.getText() ?? "";
+                const currentText = getObject(input.id, Editable)?.getText() ?? "";
                 expect(currentText).toBe("");
             });
         });

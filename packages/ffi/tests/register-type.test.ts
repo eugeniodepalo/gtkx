@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import * as Gtk from "../src/generated/gtk/index.js";
-import { getObject, registerType } from "../src/index.js";
+import { getObject, type NativeClass, NativeObject, registerNativeClass } from "../src/index.js";
 
-describe("registerType", () => {
-    it("registers a class with glibTypeName", () => {
-        class TestClass {
+describe("registerNativeClass", () => {
+    it("registers a class with glibTypeName and objectType", () => {
+        class TestClass extends NativeObject {
             static glibTypeName = "TestType";
-            id: unknown;
+            static objectType = "gobject" as const;
         }
-        registerType(TestClass);
+        registerNativeClass(TestClass as NativeClass);
     });
 
     it("allows getObject to find registered types", () => {

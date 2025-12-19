@@ -1,4 +1,4 @@
-import { getInterface } from "@gtkx/ffi";
+import { getObject } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -68,7 +68,7 @@ export abstract class SelectableListNode<T extends SelectableListWidget, S exten
     protected initializeSelectionState(props: Props): SelectableListState {
         const selectionMode = (props.selectionMode as Gtk.SelectionMode | undefined) ?? Gtk.SelectionMode.SINGLE;
         const stringList = new Gtk.StringList([]);
-        const listModel = getInterface(stringList.id, Gio.ListModel);
+        const listModel = getObject(stringList.id, Gio.ListModel);
         const selectionModel =
             selectionMode === Gtk.SelectionMode.MULTIPLE
                 ? new Gtk.MultiSelection(listModel)
@@ -140,7 +140,7 @@ export abstract class SelectableListNode<T extends SelectableListWidget, S exten
 
         this.disconnectSelectionHandler();
 
-        const listModel = getInterface(this.state.stringList.id, Gio.ListModel);
+        const listModel = getObject(this.state.stringList.id, Gio.ListModel);
         const newSelectionModel =
             newSelectionMode === Gtk.SelectionMode.MULTIPLE
                 ? new Gtk.MultiSelection(listModel)

@@ -1,4 +1,4 @@
-import { getObject, getObjectId } from "@gtkx/ffi";
+import { getObjectId } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type Reconciler from "react-reconciler";
@@ -28,7 +28,7 @@ export function connectListItemFactorySignals(config: ListItemFactoryConfig): Li
     const handlerIds: number[] = [];
 
     const setupId = factory.connect("setup", (_self, listItemObj) => {
-        const listItem = getObject<Gtk.ListItem>(listItemObj.id);
+        const listItem = listItemObj as Gtk.ListItem;
         const id = getObjectId(listItemObj.id);
 
         const box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
@@ -43,7 +43,7 @@ export function connectListItemFactorySignals(config: ListItemFactoryConfig): Li
     handlerIds.push(setupId);
 
     const bindId = factory.connect("bind", (_self, listItemObj) => {
-        const listItem = getObject<Gtk.ListItem>(listItemObj.id);
+        const listItem = listItemObj as Gtk.ListItem;
         const id = getObjectId(listItemObj.id);
         const info = listItemCache.get(id);
 

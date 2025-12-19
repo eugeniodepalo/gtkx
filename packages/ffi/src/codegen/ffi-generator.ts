@@ -194,7 +194,7 @@ const parseParentReference = (
     currentNamespace: string,
 ): ParentInfo => {
     if (!parent) {
-        return { hasParent: false, isCrossNamespace: false, className: "", extendsClause: "" };
+        return { hasParent: false, isCrossNamespace: false, className: "", extendsClause: " extends NativeObject" };
     }
 
     if (parent.includes(".")) {
@@ -270,10 +270,10 @@ export class CodeGenerator {
     private usesWrite = false;
     private usesAlloc = false;
     private usesNativeError = false;
+    private usesNativeObject = false;
     private usesGetObject = false;
-    private usesGetBoxed = false;
-    private usesGetInterface = false;
-    private usesRegisterType = false;
+    private usesRegisterNativeClass = false;
+    private usesGetClassByTypeName = false;
     private usesSignalMeta = false;
     private usedEnums = new Set<string>();
     private usedRecords = new Set<string>();
@@ -421,10 +421,10 @@ export class CodeGenerator {
         this.usesWrite = false;
         this.usesAlloc = false;
         this.usesNativeError = false;
+        this.usesNativeObject = false;
         this.usesGetObject = false;
-        this.usesGetBoxed = false;
-        this.usesGetInterface = false;
-        this.usesRegisterType = false;
+        this.usesRegisterNativeClass = false;
+        this.usesGetClassByTypeName = false;
         this.usesSignalMeta = false;
         this.usedEnums.clear();
         this.usedRecords.clear();
@@ -558,11 +558,12 @@ export class CodeGenerator {
 
         if (cls.glibTypeName) {
             const override = parentInfo.hasParent ? "override " : "";
-            sections.push(`  static ${override}readonly glibTypeName: string = "${cls.glibTypeName}";\n`);
+            sections.push(`  static ${override}readonly glibTypeName: string = "${cls.glibTypeName}";`);
+            sections.push(`  static ${override}readonly objectType = "gobject" as const;\n`);
         }
 
         if (!parentInfo.hasParent) {
-            sections.push(`  id: unknown;\n`);
+            this.usesNativeObject = true;
         }
 
         sections.push(this.generateConstructors(cls, sharedLibrary, parentInfo.hasParent));
@@ -590,8 +591,8 @@ export class CodeGenerator {
         sections.push("}");
 
         if (cls.glibTypeName) {
-            this.usesRegisterType = true;
-            sections.push(`\nregisterType(${className});`);
+            this.usesRegisterNativeClass = true;
+            sections.push(`\nregisterNativeClass(${className});`);
         }
 
         if (signalMetaConstant) {
@@ -818,7 +819,7 @@ export class CodeGenerator {
             } else if (hasParent) {
                 sections.push(`  constructor() {\n    super();\n  }\n`);
             } else {
-                sections.push(`  constructor() {\n    this.create();\n  }\n`);
+                sections.push(`  constructor() {\n    super();\n    this.create();\n  }\n`);
                 sections.push(`  protected create() {}\n`);
             }
         }
@@ -1264,18 +1265,12 @@ ${allArgs ? `${allArgs},` : ""}
 
         if (outputParams.length === 0) {
             if (hasMainReturn) {
-                if (needsBoxedWrap) {
-                    this.usesGetBoxed = true;
+                if (needsBoxedWrap || needsInterfaceWrap) {
+                    this.usesGetObject = true;
                     if (isNullable) {
                         lines.push(`          if (ptr === null) { resolve(null); return; }`);
                     }
-                    lines.push(`          resolve(getBoxed(ptr, ${finishReturnType.ts}));`);
-                } else if (needsInterfaceWrap) {
-                    this.usesGetInterface = true;
-                    if (isNullable) {
-                        lines.push(`          if (ptr === null) { resolve(null); return; }`);
-                    }
-                    lines.push(`          resolve(getInterface(ptr, ${finishReturnType.ts})!);`);
+                    lines.push(`          resolve(getObject(ptr, ${finishReturnType.ts})!);`);
                 } else if (needsGObjectWrap) {
                     this.usesGetObject = true;
                     if (isNullable) {
@@ -1291,23 +1286,14 @@ ${allArgs ? `${allArgs},` : ""}
         } else {
             const resolveFields: string[] = [];
             if (hasMainReturn) {
-                if (needsBoxedWrap) {
-                    this.usesGetBoxed = true;
+                if (needsBoxedWrap || needsInterfaceWrap) {
+                    this.usesGetObject = true;
                     if (isNullable) {
                         lines.push(
-                            `          const result = ptr === null ? null : getBoxed(ptr, ${finishReturnType.ts});`,
+                            `          const result = ptr === null ? null : getObject(ptr, ${finishReturnType.ts})!;`,
                         );
                     } else {
-                        lines.push(`          const result = getBoxed(ptr, ${finishReturnType.ts});`);
-                    }
-                } else if (needsInterfaceWrap) {
-                    this.usesGetInterface = true;
-                    if (isNullable) {
-                        lines.push(
-                            `          const result = ptr === null ? null : getInterface(ptr, ${finishReturnType.ts});`,
-                        );
-                    } else {
-                        lines.push(`          const result = getInterface(ptr, ${finishReturnType.ts})!;`);
+                        lines.push(`          const result = getObject(ptr, ${finishReturnType.ts})!;`);
                     }
                 } else if (needsGObjectWrap) {
                     this.usesGetObject = true;
@@ -1461,12 +1447,9 @@ ${allArgs ? `${allArgs},` : ""}
             }
             if (isCyclic) {
                 lines.push(this.generateCyclicTypeReturn(baseReturnType));
-            } else if (needsBoxedWrap) {
-                this.usesGetBoxed = true;
-                lines.push(`    return getBoxed(ptr, ${baseReturnType});`);
-            } else if (needsInterfaceWrap) {
-                this.usesGetInterface = true;
-                lines.push(`    return getInterface(ptr, ${baseReturnType})!;`);
+            } else if (needsBoxedWrap || needsInterfaceWrap) {
+                this.usesGetObject = true;
+                lines.push(`    return getObject(ptr, ${baseReturnType})!;`);
             } else {
                 this.usesGetObject = true;
                 lines.push(`    return getObject(ptr) as ${baseReturnType};`);
@@ -1579,28 +1562,14 @@ ${allArgs ? `${allArgs},` : ""}
         this.typeMapper.setExternalTypeUsageCallback(null);
         this.typeMapper.setSameNamespaceClassUsageCallback(null);
 
+        let hasBoxedSignalParams = false;
         const signalMetadata = signals.map((signal) => {
             const paramEntries = (signal.parameters ?? []).map((param) => {
-                const ffiType = JSON.stringify(this.typeMapper.mapParameter(param).ffi);
-                const signalParamClass = this.extractSignalParamClass(param, classMap);
-                if (signalParamClass) {
-                    const { transformedName, originalName } = signalParamClass;
-                    const dotIndex = transformedName.indexOf(".");
-                    if (dotIndex !== -1) {
-                        const ns = transformedName.slice(0, dotIndex);
-                        const clsName = transformedName.slice(dotIndex + 1);
-                        this.usedExternalTypes.set(transformedName, {
-                            namespace: ns,
-                            name: originalName,
-                            transformedName: clsName,
-                            kind: "class",
-                        });
-                    } else {
-                        this.signalClasses.set(transformedName, originalName);
-                    }
-                    return `{ type: ${ffiType}, getCls: () => ${transformedName} }`;
+                const ffiType = this.typeMapper.mapParameter(param).ffi;
+                if (ffiType.type === "boxed") {
+                    hasBoxedSignalParams = true;
                 }
-                return `{ type: ${ffiType} }`;
+                return JSON.stringify(ffiType);
             });
             const returnTypeFfi = signal.returnType
                 ? JSON.stringify(this.typeMapper.mapType(signal.returnType).ffi)
@@ -1625,6 +1594,22 @@ ${allArgs ? `${allArgs},` : ""}
             for (const param of signalParams) {
                 const paramName = toValidIdentifier(toCamelCase(param.name));
                 const signalParamClass = this.extractSignalParamClass(param, classMap);
+                if (signalParamClass) {
+                    const { transformedName, originalName } = signalParamClass;
+                    const dotIndex = transformedName.indexOf(".");
+                    if (dotIndex !== -1) {
+                        const ns = transformedName.slice(0, dotIndex);
+                        const clsName = transformedName.slice(dotIndex + 1);
+                        this.usedExternalTypes.set(transformedName, {
+                            namespace: ns,
+                            name: originalName,
+                            transformedName: clsName,
+                            kind: "class",
+                        });
+                    } else {
+                        this.signalClasses.set(transformedName, originalName);
+                    }
+                }
                 const paramType = signalParamClass?.transformedName ?? this.typeMapper.mapType(param.type).ts;
                 handlerParams.push(`${paramName}: ${paramType}`);
             }
@@ -1652,6 +1637,9 @@ ${allArgs ? `${allArgs},` : ""}
         if (signalMetadata.length > 0) {
             this.usesSignalMeta = true;
         }
+        if (hasBoxedSignalParams) {
+            this.usesGetClassByTypeName = true;
+        }
 
         const moduleLevel =
             signalMetadata.length > 0 ? `const SIGNAL_META: SignalMeta = {\n${signalMetadata.join(",\n")}\n};\n` : "";
@@ -1660,9 +1648,17 @@ ${allArgs ? `${allArgs},` : ""}
             signalMetadata.length > 0
                 ? `const meta = SIGNAL_META[signal];
     const selfType: Type = { type: "gobject", borrowed: true };
-    const argTypes = meta ? [selfType, ...meta.params.map((m) => m.type)] : [selfType];
+    const argTypes = meta ? [selfType, ...meta.params] : [selfType];
     const returnType = meta?.returnType;`
                 : `const selfType: Type = { type: "gobject", borrowed: true };\n    const argTypes = [selfType];\n    const returnType = undefined;`;
+
+        const boxedHandling = hasBoxedSignalParams
+            ? `
+        if (m.type === "boxed" && signalArgs[i] != null) {
+          const cls = getNativeClass(m.innerType);
+          return cls ? getObject(signalArgs[i], cls) : signalArgs[i];
+        }`
+            : "";
 
         const wrapperCode =
             signalMetadata.length > 0
@@ -1671,9 +1667,9 @@ ${allArgs ? `${allArgs},` : ""}
       const signalArgs = args.slice(1);
       if (!meta) return handler(self, ...signalArgs);
       const wrapped = meta.params.map((m, i) => {
-        if (m.getCls && signalArgs[i] != null) {
+        if (m.type === "gobject" && signalArgs[i] != null) {
           return getObject(signalArgs[i]);
-        }
+        }${boxedHandling}
         return signalArgs[i];
       });
       return handler(self, ...wrapped);
@@ -1725,19 +1721,12 @@ ${allArgs ? `${allArgs},` : ""}
         if (iface.doc) {
             sections.push(formatDoc(iface.doc));
         }
-        sections.push(`export class ${interfaceName} {`);
+        this.usesNativeObject = true;
+        sections.push(`export class ${interfaceName} extends NativeObject {`);
         if (iface.glibTypeName) {
-            sections.push(`  static readonly glibTypeName: string = "${iface.glibTypeName}";\n`);
+            sections.push(`  static readonly glibTypeName: string = "${iface.glibTypeName}";`);
+            sections.push(`  static readonly objectType = "interface" as const;\n`);
         }
-        sections.push(`  id: unknown;`);
-        sections.push(``);
-        sections.push(`  protected constructor(id: unknown) {`);
-        sections.push(`    this.id = id;`);
-        sections.push(`  }`);
-        sections.push(``);
-        sections.push(`  static fromPtr(id: unknown): ${interfaceName} {`);
-        sections.push(`    return new ${interfaceName}(id);`);
-        sections.push(`  }`);
 
         if (iface.methods.length > 0) {
             sections.push(this.generateMethods(iface.methods, sharedLibrary, interfaceName));
@@ -1774,11 +1763,12 @@ ${allArgs ? `${allArgs},` : ""}
         if (record.doc) {
             sections.push(formatDoc(record.doc));
         }
-        sections.push(`export class ${recordName} {`);
+        this.usesNativeObject = true;
+        sections.push(`export class ${recordName} extends NativeObject {`);
         if (record.glibTypeName) {
-            sections.push(`  static readonly glibTypeName: string = "${record.glibTypeName}";\n`);
+            sections.push(`  static readonly glibTypeName: string = "${record.glibTypeName}";`);
+            sections.push(`  static readonly objectType = "boxed" as const;\n`);
         }
-        sections.push(`  id: unknown;\n`);
 
         sections.push(this.generateRecordConstructors(record, sharedLibrary));
         sections.push(this.generateRecordFromPtr(recordName));
@@ -1789,8 +1779,8 @@ ${allArgs ? `${allArgs},` : ""}
         sections.push("}");
 
         if (record.glibTypeName) {
-            this.usesRegisterType = true;
-            sections.push(`\nregisterType(${recordName});`);
+            this.usesRegisterNativeClass = true;
+            sections.push(`\nregisterNativeClass(${recordName});`);
         }
 
         const imports = this.generateImports(recordName);
@@ -1824,7 +1814,7 @@ ${allArgs ? `${allArgs},` : ""}
             const filteredParams = mainConstructor.parameters.filter((p) => !isVararg(p));
 
             if (filteredParams.length === 0) {
-                sections.push(`${ctorDoc}  constructor() {\n    this.id = this.createPtr([]);\n  }\n`);
+                sections.push(`${ctorDoc}  constructor() {\n    super();\n    this.id = this.createPtr([]);\n  }\n`);
             } else {
                 const typedParams = this.generateParameterList(mainConstructor.parameters, false);
                 const paramNames = filteredParams.map((p) => toValidIdentifier(toCamelCase(p.name)));
@@ -1833,6 +1823,7 @@ ${allArgs ? `${allArgs},` : ""}
 
                 if (isFirstParamArray) {
                     sections.push(`${ctorDoc}  constructor(${typedParams}) {
+    super();
     const _args = [${paramNames.join(", ")}];
     this.id = this.createPtr(_args);
   }
@@ -1841,6 +1832,7 @@ ${allArgs ? `${allArgs},` : ""}
                     sections.push(`${ctorDoc}  constructor(${typedParams});
   constructor(_args: unknown[]);
   constructor(...args: unknown[]) {
+    super();
     const _args = args.length === 1 && Array.isArray(args[0]) ? args[0] : args;
     this.id = this.createPtr(_args);
   }
@@ -1857,10 +1849,10 @@ ${allArgs ? `${allArgs},` : ""}
             const initFields = this.getWritableFields(record.fields);
             if (initFields.length > 0) {
                 sections.push(
-                    `  constructor(init: ${recordName}Init = {}) {\n    this.id = this.createPtr(init);\n  }\n`,
+                    `  constructor(init: ${recordName}Init = {}) {\n    super();\n    this.id = this.createPtr(init);\n  }\n`,
                 );
             } else {
-                sections.push(`  constructor() {\n    this.id = this.createPtr({});\n  }\n`);
+                sections.push(`  constructor() {\n    super();\n    this.id = this.createPtr({});\n  }\n`);
             }
         }
 
@@ -2233,12 +2225,9 @@ ${allArgs ? `${allArgs},` : ""}
             if (isNullable) {
                 lines.push(`  if (ptr === null) return null;`);
             }
-            if (needsBoxedWrap) {
-                this.usesGetBoxed = true;
-                lines.push(`  return getBoxed(ptr, ${baseReturnType});`);
-            } else if (needsInterfaceWrap) {
-                this.usesGetInterface = true;
-                lines.push(`  return getInterface(ptr, ${baseReturnType})!;`);
+            if (needsBoxedWrap || needsInterfaceWrap) {
+                this.usesGetObject = true;
+                lines.push(`  return getObject(ptr, ${baseReturnType})!;`);
             } else {
                 this.usesGetObject = true;
                 lines.push(`  return getObject(ptr) as ${baseReturnType};`);
@@ -2329,7 +2318,7 @@ ${allArgs ? `${allArgs},` : ""}
             const mapped = this.typeMapper.mapParameter(param);
             const paramName = toValidIdentifier(toCamelCase(param.name));
             const isOptional = makeAllOptional || this.typeMapper.isNullable(param);
-            const typeStr = isOptional ? `${mapped.ts} | null` : mapped.ts;
+            const typeStr = mapped.ts;
             const paramStr = `${paramName}${isOptional ? "?" : ""}: ${typeStr}`;
             (isOptional ? optional : required).push(paramStr);
         }
@@ -2401,15 +2390,15 @@ ${allArgs ? `${allArgs},` : ""}
 
         return gtkAllocatesRefs.map((ref) => {
             if (ref.isBoxed) {
-                this.usesGetBoxed = true;
+                this.usesGetObject = true;
                 return ref.nullable
-                    ? `    if (${ref.paramName}) ${ref.paramName}.value = getBoxed(${ref.paramName}.value, ${ref.innerType});`
-                    : `    ${ref.paramName}.value = getBoxed(${ref.paramName}.value, ${ref.innerType});`;
+                    ? `    if (${ref.paramName}) ${ref.paramName}.value = getObject(${ref.paramName}.value, ${ref.innerType})!;`
+                    : `    ${ref.paramName}.value = getObject(${ref.paramName}.value, ${ref.innerType})!;`;
             }
             this.usesGetObject = true;
             return ref.nullable
-                ? `    if (${ref.paramName}) ${ref.paramName}.value = getObject(${ref.paramName}.value) as ${ref.innerType};`
-                : `    ${ref.paramName}.value = getObject(${ref.paramName}.value) as ${ref.innerType};`;
+                ? `    if (${ref.paramName}) ${ref.paramName}.value = getObject(${ref.paramName}.value)! as ${ref.innerType};`
+                : `    ${ref.paramName}.value = getObject(${ref.paramName}.value)! as ${ref.innerType};`;
         });
     }
 
@@ -2493,18 +2482,22 @@ ${indent}  }`;
             lines.push(`import { call } from "../../batch.js";`);
         }
         if (this.usesNativeError) {
-            lines.push(`import { NativeError } from "../../native-error.js";`);
+            lines.push(`import { NativeError } from "../../native/error.js";`);
         }
-        const nativeJsImports: string[] = [];
-        if (this.usesGetObject) nativeJsImports.push("getObject");
-        if (this.usesGetBoxed) nativeJsImports.push("getBoxed");
-        if (this.usesGetInterface) nativeJsImports.push("getInterface");
-        if (this.usesInstantiating) nativeJsImports.push("isInstantiating", "setInstantiating");
-        if (nativeJsImports.length > 0) {
-            lines.push(`import { ${nativeJsImports.join(", ")} } from "../../native.js";`);
+        if (this.usesGetObject) {
+            lines.push(`import { getObject } from "../../native/object.js";`);
         }
-        if (this.usesRegisterType) {
-            lines.push(`import { registerType } from "../../registry.js";`);
+        const baseImports: string[] = [];
+        if (this.usesInstantiating) baseImports.push("isInstantiating", "setInstantiating");
+        if (this.usesNativeObject) baseImports.push("NativeObject");
+        if (baseImports.length > 0) {
+            lines.push(`import { ${baseImports.join(", ")} } from "../../native/base.js";`);
+        }
+        const registryImports: string[] = [];
+        if (this.usesRegisterNativeClass) registryImports.push("registerNativeClass");
+        if (this.usesGetClassByTypeName) registryImports.push("getNativeClass");
+        if (registryImports.length > 0) {
+            lines.push(`import { ${registryImports.join(", ")} } from "../../registry.js";`);
         }
         if (this.usesSignalMeta) {
             lines.push(`import type { SignalMeta } from "../../types.js";`);

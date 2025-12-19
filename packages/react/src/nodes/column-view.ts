@@ -1,4 +1,3 @@
-import { getObject } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { StringSorter } from "@gtkx/ffi/gtk";
@@ -76,10 +75,9 @@ export class ColumnViewNode extends SelectableListNode<Gtk.ColumnView, ColumnVie
     private notifySortChange(): void {
         if (!this.state.onSortChange) return;
 
-        const baseSorter = this.widget.getSorter();
-        if (!baseSorter) return;
+        const sorter = this.widget.getSorter() as Gtk.ColumnViewSorter | null;
+        if (!sorter) return;
 
-        const sorter = getObject<Gtk.ColumnViewSorter>(baseSorter.id);
         const column = sorter.getPrimarySortColumn();
         const order = sorter.getPrimarySortOrder();
         const columnId = column?.getId() ?? null;

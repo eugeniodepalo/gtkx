@@ -1,4 +1,4 @@
-import { getCurrentApp, getInterface } from "@gtkx/ffi";
+import { getCurrentApp, getObject } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -273,7 +273,7 @@ export class MenuItemNode extends NodeClass<never> implements MenuEntryNode {
         this.signalHandlerId = this.action.connect("activate", () => this.invokeCurrentCallback());
 
         const app = getCurrentApp();
-        const action = getInterface(this.action.id, Gio.Action);
+        const action = getObject(this.action.id, Gio.Action);
 
         if (!action) {
             throw new Error("Failed to get Gio.Action interface from SimpleAction");

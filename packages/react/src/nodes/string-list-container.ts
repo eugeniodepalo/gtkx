@@ -1,4 +1,4 @@
-import { getInterface } from "@gtkx/ffi";
+import { getObject } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { StringListContainer } from "../containers.js";
@@ -72,7 +72,7 @@ export abstract class StringListContainerNode<T extends StringListWidget>
 
         super.initialize(props);
 
-        this.widget.setModel(getInterface(store.getModel().id, Gio.ListModel));
+        this.widget.setModel(getObject(store.getModel().id, Gio.ListModel));
     }
 
     private connectSelectionHandler(): void {

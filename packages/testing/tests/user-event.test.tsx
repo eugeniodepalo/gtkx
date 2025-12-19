@@ -1,4 +1,4 @@
-import { getInterface } from "@gtkx/ffi";
+import { getObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     Box,
@@ -101,7 +101,7 @@ describe("userEvent.type", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.type(entry, "Hello World");
 
-        const editable = getInterface(entry.id, Gtk.Editable);
+        const editable = getObject(entry.id, Gtk.Editable);
         expect(editable?.getText()).toBe("Hello World");
     });
 
@@ -111,7 +111,7 @@ describe("userEvent.type", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.type(entry, "appended");
 
-        const editable = getInterface(entry.id, Gtk.Editable);
+        const editable = getObject(entry.id, Gtk.Editable);
         expect(editable?.getText()).toBe("Initial appended");
     });
 
@@ -132,7 +132,7 @@ describe("userEvent.clear", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.clear(entry);
 
-        const editable = getInterface(entry.id, Gtk.Editable);
+        const editable = getObject(entry.id, Gtk.Editable);
         expect(editable?.getText()).toBe("");
     });
 

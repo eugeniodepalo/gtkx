@@ -5,7 +5,7 @@ import { getCurrentApp, getObject } from "../src/index.js";
 describe("getObject", () => {
     it("wraps a native pointer in a class instance", () => {
         const label = new Gtk.Label("Test");
-        const wrapped = getObject<Gtk.Label>(label.id);
+        const wrapped = getObject(label.id);
         expect(wrapped).toBeInstanceOf(Gtk.Label);
     });
 
@@ -21,13 +21,21 @@ describe("getObject", () => {
         expect(wrapped).toBeInstanceOf(Gtk.Application);
     });
 
-    describe("error handling", () => {
-        it("throws when id is null", () => {
-            expect(() => getObject(null)).toThrow("getObject: id cannot be null or undefined");
+    it("wraps with specific type when targetType is provided", () => {
+        const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
+        const wrapped = getObject(box.id, Gtk.Box);
+        expect(wrapped).toBeInstanceOf(Gtk.Box);
+    });
+
+    describe("null handling", () => {
+        it("returns null when id is null", () => {
+            const result = getObject(null);
+            expect(result).toBeNull();
         });
 
-        it("throws when id is undefined", () => {
-            expect(() => getObject(undefined)).toThrow("getObject: id cannot be null or undefined");
+        it("returns null when id is undefined", () => {
+            const result = getObject(undefined);
+            expect(result).toBeNull();
         });
     });
 });

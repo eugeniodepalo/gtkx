@@ -243,7 +243,7 @@ describe("TypeMapper", () => {
     describe("type registry integration", () => {
         it("resolves types from registry", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "Widget");
+            registry.registerNativeClass("Gtk", "Widget");
             const mapper = new TypeMapper();
             mapper.setTypeRegistry(registry, "Gtk");
 
@@ -255,7 +255,7 @@ describe("TypeMapper", () => {
 
         it("resolves external namespace types", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gdk", "Display");
+            registry.registerNativeClass("Gdk", "Display");
             const mapper = new TypeMapper();
             mapper.setTypeRegistry(registry, "Gtk");
 
@@ -268,7 +268,7 @@ describe("TypeMapper", () => {
 
         it("calls external type usage callback", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gdk", "Display");
+            registry.registerNativeClass("Gdk", "Display");
             const mapper = new TypeMapper();
             mapper.setTypeRegistry(registry, "Gtk");
             const callback = vi.fn();
@@ -286,7 +286,7 @@ describe("TypeMapper", () => {
 
         it("calls same-namespace class usage callback", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "Widget");
+            registry.registerNativeClass("Gtk", "Widget");
             const mapper = new TypeMapper();
             mapper.setTypeRegistry(registry, "Gtk");
             const callback = vi.fn();
@@ -418,7 +418,7 @@ describe("TypeMapper", () => {
 
         it("handles transfer-ownership full for gobject params", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "Widget");
+            registry.registerNativeClass("Gtk", "Widget");
             const mapper = new TypeMapper();
             mapper.setTypeRegistry(registry, "Gtk");
             const param: GirParameter = {
@@ -434,7 +434,7 @@ describe("TypeMapper", () => {
 
         it("handles transfer-ownership none for gobject params", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "Widget");
+            registry.registerNativeClass("Gtk", "Widget");
             const mapper = new TypeMapper();
             mapper.setTypeRegistry(registry, "Gtk");
             const param: GirParameter = {
@@ -461,7 +461,7 @@ describe("TypeMapper", () => {
 
         it("returns false for non-callback type", () => {
             const registry = new TypeRegistry();
-            registry.registerType("Gtk", "Widget");
+            registry.registerNativeClass("Gtk", "Widget");
             const mapper = new TypeMapper();
             mapper.setTypeRegistry(registry, "Gtk");
 

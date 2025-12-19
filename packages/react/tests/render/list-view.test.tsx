@@ -1,4 +1,4 @@
-import { getInterface } from "@gtkx/ffi";
+import { getObject } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { createRef } from "react";
@@ -9,7 +9,7 @@ import { render } from "../utils.js";
 const getModelItemCount = (listView: Gtk.ListView): number => {
     const model = listView.getModel();
     if (!model) return 0;
-    const listModel = getInterface(model.id, Gio.ListModel);
+    const listModel = getObject(model.id, Gio.ListModel);
     return listModel?.getNItems() ?? 0;
 };
 
