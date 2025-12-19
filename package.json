@@ -20,7 +20,7 @@
         "@types/node": "^25.0.2",
         "@types/react": "^19.2.7",
         "@types/react-reconciler": "^0.32.3",
-        "knip": "^5.74.0",
+        "knip": "^5.75.2",
         "prettier": "^3.7.4",
         "react": "^19.2.3",
         "tsx": "^4.21.0",
