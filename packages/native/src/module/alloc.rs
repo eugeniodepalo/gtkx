@@ -41,7 +41,7 @@ pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
 }
 
 fn handle_alloc(size: usize, type_name: &str, lib_name: Option<&str>) -> anyhow::Result<ObjectId> {
-    let boxed_type = BoxedType::new(false, type_name.to_string(), lib_name.map(String::from));
+    let boxed_type = BoxedType::new(false, type_name.to_string(), lib_name.map(String::from), None);
     let gtype = boxed_type.get_gtype();
 
     let ptr = unsafe { g_malloc0(size) };

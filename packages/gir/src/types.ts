@@ -350,6 +350,10 @@ export type FfiTypeDescriptor = {
     borrowed?: boolean;
     /** Inner type for ref types (as descriptor) or boxed types (as GLib type name string). */
     innerType?: FfiTypeDescriptor | string;
+    /** Library name for boxed types that need dynamic type lookup. */
+    lib?: string;
+    /** Explicit get_type function name for boxed types (when naive transformation doesn't work). */
+    getTypeFn?: string;
     /** Item type for array types. */
     itemType?: FfiTypeDescriptor;
     /** List type for arrays (glist, gslist) - indicates native GList/GSList iteration. */
@@ -1201,7 +1205,13 @@ export class TypeMapper {
                     trampoline: "drawFunc",
                     argTypes: [
                         { type: "gobject", borrowed: true },
-                        { type: "boxed", borrowed: true, innerType: "CairoContext" },
+                        {
+                            type: "boxed",
+                            borrowed: true,
+                            innerType: "CairoContext",
+                            lib: "libcairo-gobject.so.2",
+                            getTypeFn: "cairo_gobject_context_get_type",
+                        },
                         { type: "int", size: 32, unsigned: false },
                         { type: "int", size: 32, unsigned: false },
                     ],

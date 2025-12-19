@@ -2428,10 +2428,15 @@ ${indent}  }`;
         }
         if (type.type === "boxed") {
             const innerType = typeof type.innerType === "string" ? type.innerType : "";
-            const lib = this.currentSharedLibrary;
-            return type.borrowed
-                ? `{ type: "boxed", borrowed: true, innerType: "${innerType}", lib: "${lib}" }`
-                : `{ type: "boxed", innerType: "${innerType}", lib: "${lib}" }`;
+            const lib = type.lib ?? this.currentSharedLibrary;
+            const parts = [`type: "boxed"`, `innerType: "${innerType}"`, `lib: "${lib}"`];
+            if (type.borrowed) {
+                parts.splice(1, 0, `borrowed: true`);
+            }
+            if (type.getTypeFn) {
+                parts.push(`getTypeFn: "${type.getTypeFn}"`);
+            }
+            return `{ ${parts.join(", ")} }`;
         }
         if (type.type === "ref" && type.innerType && typeof type.innerType !== "string") {
             return `{ type: "ref", innerType: ${this.generateTypeDescriptor(type.innerType)} }`;

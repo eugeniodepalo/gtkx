@@ -410,7 +410,13 @@ describe("TypeMapper", () => {
             expect(result.ffi.trampoline).toBe("drawFunc");
             expect(result.ffi.argTypes).toEqual([
                 { type: "gobject", borrowed: true },
-                { type: "boxed", borrowed: true, innerType: "CairoContext" },
+                {
+                    type: "boxed",
+                    borrowed: true,
+                    innerType: "CairoContext",
+                    lib: "libcairo-gobject.so.2",
+                    getTypeFn: "cairo_gobject_context_get_type",
+                },
                 { type: "int", size: 32, unsigned: false },
                 { type: "int", size: 32, unsigned: false },
             ]);

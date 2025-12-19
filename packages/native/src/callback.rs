@@ -11,10 +11,12 @@ use gtk4::{
     gio::ffi::GAsyncResult,
     glib::{
         self, gobject_ffi,
-        translate::{FromGlibPtrNone as _, ToGlibPtrMut as _},
+        translate::{FromGlib as _, FromGlibPtrNone as _, ToGlibPtrMut as _},
         value::ToValue as _,
     },
 };
+
+use crate::state::GtkThreadState;
 
 /// Trampoline for GTK DrawingArea draw functions.
 ///
@@ -35,10 +37,25 @@ unsafe extern "C" fn draw_func_trampoline(
         return;
     }
 
+    let cairo_context_type = GtkThreadState::with(|state| {
+        let library = state
+            .get_library("libcairo-gobject.so.2")
+            .expect("Failed to load libcairo-gobject.so.2");
+        let symbol = unsafe {
+            library
+                .get::<unsafe extern "C" fn() -> glib::ffi::GType>(
+                    b"cairo_gobject_context_get_type",
+                )
+                .expect("Failed to find cairo_gobject_context_get_type")
+        };
+        let gtype_raw = unsafe { symbol() };
+        unsafe { glib::Type::from_glib(gtype_raw) }
+    });
+
     unsafe {
         let mut args: [glib::Value; 4] = [
             glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
-            glib::Value::from_type_unchecked(glib::types::Type::POINTER),
+            glib::Value::from_type_unchecked(cairo_context_type),
             glib::Value::from_type_unchecked(glib::types::Type::I32),
             glib::Value::from_type_unchecked(glib::types::Type::I32),
         ];
@@ -48,7 +65,7 @@ unsafe extern "C" fn draw_func_trampoline(
             drawing_area as *mut gobject_ffi::GObject,
         );
 
-        gobject_ffi::g_value_set_pointer(args[1].to_glib_none_mut().0, cr as *mut c_void);
+        gobject_ffi::g_value_set_boxed(args[1].to_glib_none_mut().0, cr);
         gobject_ffi::g_value_set_int(args[2].to_glib_none_mut().0, width);
         gobject_ffi::g_value_set_int(args[3].to_glib_none_mut().0, height);
 

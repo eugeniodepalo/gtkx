@@ -14,7 +14,7 @@ type StringType = { type: "string"; borrowed?: boolean };
 type GObjectType = { type: "gobject"; borrowed?: boolean };
 
 /** Boxed type descriptor for FFI calls. */
-type BoxedType = { type: "boxed"; borrowed?: boolean; innerType: string; lib?: string };
+type BoxedType = { type: "boxed"; borrowed?: boolean; innerType: string; lib?: string; getTypeFn?: string };
 
 /** Array type descriptor for FFI calls. Supports regular arrays and GList/GSList. */
 type ArrayType = { type: "array"; itemType: Type; listType?: "glist" | "gslist"; borrowed?: boolean };

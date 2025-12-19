@@ -18,15 +18,23 @@ pub struct BoxedType {
     pub type_: String,
     /// Optional library name for dynamic type lookup.
     pub lib: Option<String>,
+    /// Optional explicit get_type function name (when naive transformation doesn't work).
+    pub get_type_fn: Option<String>,
 }
 
 impl BoxedType {
     /// Creates a new boxed type descriptor.
-    pub fn new(is_borrowed: bool, type_: String, lib: Option<String>) -> Self {
+    pub fn new(
+        is_borrowed: bool,
+        type_: String,
+        lib: Option<String>,
+        get_type_fn: Option<String>,
+    ) -> Self {
         BoxedType {
             is_borrowed,
             type_,
             lib,
+            get_type_fn,
         }
     }
 
@@ -58,7 +66,14 @@ impl BoxedType {
             .map(|s| s.value(cx))
             .ok();
 
-        Ok(Self::new(is_borrowed, type_, lib))
+        let get_type_fn_prop: Handle<'_, JsValue> = obj.prop(cx, "getTypeFn").get()?;
+
+        let get_type_fn = get_type_fn_prop
+            .downcast::<JsString, _>(cx)
+            .map(|s| s.value(cx))
+            .ok();
+
+        Ok(Self::new(is_borrowed, type_, lib, get_type_fn))
     }
 
     /// Gets the GLib type for this boxed type.
@@ -71,7 +86,10 @@ impl BoxedType {
         }
 
         let lib_name = self.lib.as_ref()?;
-        let get_type_fn = type_name_to_get_type_fn(&self.type_);
+        let get_type_fn = self
+            .get_type_fn
+            .clone()
+            .unwrap_or_else(|| type_name_to_get_type_fn(&self.type_));
 
         GtkThreadState::with(|state| {
             let library = state.get_library(lib_name).ok()?;

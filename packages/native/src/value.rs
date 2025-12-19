@@ -737,14 +737,15 @@ impl Value {
                         .get::<u8>()
                         .map_err(|e| anyhow::anyhow!("Failed to get u8 from GValue: {}", e))?
                         as f64,
-                    (IntegerSize::_16, IntegerSign::Signed) => gvalue
-                        .get::<i32>()
-                        .map_err(|e| anyhow::anyhow!("Failed to get i32 (as i16) from GValue: {}", e))?
-                        as i16 as f64,
-                    (IntegerSize::_16, IntegerSign::Unsigned) => gvalue
-                        .get::<u32>()
-                        .map_err(|e| anyhow::anyhow!("Failed to get u32 (as u16) from GValue: {}", e))?
-                        as u16 as f64,
+                    (IntegerSize::_16, IntegerSign::Signed) => gvalue.get::<i32>().map_err(|e| {
+                        anyhow::anyhow!("Failed to get i32 (as i16) from GValue: {}", e)
+                    })? as i16
+                        as f64,
+                    (IntegerSize::_16, IntegerSign::Unsigned) => {
+                        gvalue.get::<u32>().map_err(|e| {
+                            anyhow::anyhow!("Failed to get u32 (as u16) from GValue: {}", e)
+                        })? as u16 as f64
+                    }
                     (IntegerSize::_32, IntegerSign::Signed) => {
                         if is_enum {
                             let enum_value = unsafe {
@@ -754,10 +755,9 @@ impl Value {
                             };
                             enum_value as f64
                         } else {
-                            gvalue
-                                .get::<i32>()
-                                .map_err(|e| anyhow::anyhow!("Failed to get i32 from GValue: {}", e))?
-                                as f64
+                            gvalue.get::<i32>().map_err(|e| {
+                                anyhow::anyhow!("Failed to get i32 from GValue: {}", e)
+                            })? as f64
                         }
                     }
                     (IntegerSize::_32, IntegerSign::Unsigned) => {
@@ -769,10 +769,9 @@ impl Value {
                             };
                             flags_value as f64
                         } else {
-                            gvalue
-                                .get::<u32>()
-                                .map_err(|e| anyhow::anyhow!("Failed to get u32 from GValue: {}", e))?
-                                as f64
+                            gvalue.get::<u32>().map_err(|e| {
+                                anyhow::anyhow!("Failed to get u32 from GValue: {}", e)
+                            })? as f64
                         }
                     }
                     (IntegerSize::_64, IntegerSign::Signed) => gvalue
@@ -1077,8 +1076,7 @@ mod tests {
             glib::gobject_ffi::g_object_force_floating(obj_ptr);
         }
 
-        let is_floating_before =
-            unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 };
+        let is_floating_before = unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 };
         assert!(is_floating_before);
 
         let gobject_type = GObjectType { is_borrowed: false };
@@ -1089,8 +1087,7 @@ mod tests {
 
         assert!(result.is_ok());
 
-        let is_floating_after =
-            unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 };
+        let is_floating_after = unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 };
         assert!(!is_floating_after);
     }
 
@@ -1166,6 +1163,7 @@ mod tests {
             is_borrowed: true,
             type_: "GdkRGBA".to_string(),
             lib: None,
+            get_type_fn: None,
         };
         let type_ = Type::Boxed(boxed_type);
 
@@ -1192,6 +1190,7 @@ mod tests {
             is_borrowed: false,
             type_: "GdkRGBA".to_string(),
             lib: None,
+            get_type_fn: None,
         };
         let type_ = Type::Boxed(boxed_type);
 
@@ -1209,6 +1208,7 @@ mod tests {
             is_borrowed: false,
             type_: "GdkRGBA".to_string(),
             lib: None,
+            get_type_fn: None,
         };
         let type_ = Type::Boxed(boxed_type);
 
@@ -1230,9 +1230,7 @@ mod tests {
             unsafe {
                 glib::gobject_ffi::g_object_ref(obj.as_ptr());
             }
-            list = unsafe {
-                glib::ffi::g_list_append(list, obj.as_ptr() as *mut c_void)
-            };
+            list = unsafe { glib::ffi::g_list_append(list, obj.as_ptr() as *mut c_void) };
         }
 
         let gobject_type = GObjectType { is_borrowed: true };
@@ -1281,9 +1279,7 @@ mod tests {
             unsafe {
                 glib::gobject_ffi::g_object_ref(obj.as_ptr());
             }
-            list = unsafe {
-                glib::ffi::g_list_append(list, obj.as_ptr() as *mut c_void)
-            };
+            list = unsafe { glib::ffi::g_list_append(list, obj.as_ptr() as *mut c_void) };
         }
 
         let gobject_type = GObjectType { is_borrowed: true };
