@@ -9,7 +9,7 @@ export abstract class NativeObject {
     /** The object type category. Must be overridden by subclasses. */
     static readonly objectType: "gobject" | "interface" | "boxed";
 
-    /** The native pointer/handle to the underlying GLib object */
+    /** The native object id for the underlying GLib object */
     id: unknown;
 
     // biome-ignore lint/complexity/noUselessConstructor: required for subclassing

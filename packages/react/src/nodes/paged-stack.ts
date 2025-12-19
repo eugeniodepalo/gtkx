@@ -13,10 +13,6 @@ type StackWidget = Gtk.Widget & {
     getPage(child: Gtk.Widget): StackPageLike;
 };
 
-/**
- * Abstract node for paged stack widgets (Gtk.Stack, Adw.ViewStack).
- * Handles visible child deferral and common page operations.
- */
 export abstract class PagedStackNode<T extends StackWidget>
     extends NodeClass<T>
     implements StackPageContainer, ChildContainer
@@ -25,16 +21,8 @@ export abstract class PagedStackNode<T extends StackWidget>
 
     private pendingVisibleChildName: string | null = null;
 
-    /**
-     * Add a page to the stack widget. Must be implemented by subclasses
-     * due to API differences between Gtk.Stack and Adw.ViewStack.
-     */
     abstract addStackPage(child: Gtk.Widget, props: StackPageProps): void;
 
-    /**
-     * Add a child directly to the stack widget (without page props).
-     * Must be implemented by subclasses due to API differences.
-     */
     protected abstract addChildToWidget(child: Gtk.Widget): void;
 
     protected applyPendingVisibleChild(): void {

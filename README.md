@@ -22,7 +22,7 @@ GTKX lets you build native Linux desktop applications using React and TypeScript
 ## Features
 
 - **React** — Hooks, state, props, and components you already know
-- **Hot Reload** — Edit code and see changes instantly via Vite
+- **HMR** — Edit code and see changes instantly via Vite
 - **Native** — Direct FFI bindings to GTK4 via Rust and libffi
 - **CLI** — `npx @gtkx/cli@latest create` scaffolds a ready-to-go project
 - **CSS-in-JS** — Emotion-style `css` template literals for GTK styling

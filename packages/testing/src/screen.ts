@@ -4,10 +4,6 @@ import type { ByRoleOptions, TextMatch, TextMatchOptions } from "./types.js";
 
 let currentRoot: Gtk.Application | null = null;
 
-/**
- * Sets the root application for screen queries. Called internally by render().
- * @param root - The GTK application to use as query root, or null to clear
- */
 export const setScreenRoot = (root: Gtk.Application | null): void => {
     currentRoot = root;
 };

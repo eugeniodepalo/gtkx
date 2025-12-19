@@ -25,19 +25,11 @@ import {
 } from "@gtkx/gir";
 import { format } from "prettier";
 
-/**
- * Configuration options for the FFI code generator.
- */
 type GeneratorOptions = {
-    /** Output directory for generated files. */
     outputDir: string;
-    /** The namespace being generated (e.g., "Gtk"). */
     namespace: string;
-    /** Optional Prettier configuration for formatting output. */
     prettierConfig?: unknown;
-    /** Optional type registry for cross-namespace type resolution. */
     typeRegistry?: TypeRegistry;
-    /** All parsed namespaces for cross-namespace parent method lookup. */
     allNamespaces?: Map<string, GirNamespace>;
 };
 
@@ -213,11 +205,6 @@ const hasUnsupportedCallbacks = (params: GirParameter[], typeMapper: TypeMapper)
     return params.some((p) => typeMapper.hasUnsupportedCallback(p));
 };
 
-/**
- * Generates TypeScript FFI bindings from GIR namespace definitions.
- * Creates classes, methods, properties, and signal handlers that call
- * native GTK functions through the FFI bridge.
- */
 export class CodeGenerator {
     private typeMapper: TypeMapper;
     private usesRef = false;
@@ -246,10 +233,6 @@ export class CodeGenerator {
     private cyclicReturnTypes = new Set<string>();
     private methodRenames = new Map<string, string>();
 
-    /**
-     * Creates a new code generator with the given options.
-     * @param options - Generator configuration
-     */
     constructor(private options: GeneratorOptions) {
         this.typeMapper = new TypeMapper();
         if (options.typeRegistry) {
@@ -275,11 +258,6 @@ export class CodeGenerator {
         return formatMethodDocBase(doc, formattedParams, indent, { namespace: this.options.namespace });
     }
 
-    /**
-     * Generates TypeScript files for all types in a GIR namespace.
-     * @param namespace - The parsed GIR namespace
-     * @returns Map of filename to generated TypeScript code
-     */
     async generateNamespace(namespace: GirNamespace): Promise<Map<string, string>> {
         const files = new Map<string, string>();
 
@@ -2579,13 +2557,6 @@ ${indent}  }`;
         return `    return { id: ptr } as unknown as ${baseReturnType};`;
     }
 
-    /**
-     * Adds a catch-all signal handler overload for unknown signal types.
-     *
-     * Uses `any` because TypeScript overload resolution requires the catch-all
-     * signature to be compatible with all typed overloads. Using `unknown` would
-     * prevent passing typed handlers to this overload.
-     */
     private addSignalCatchAllOverload(signalOverloads: string[], methodName: string): void {
         signalOverloads.push(
             `  ${methodName}(signal: string, handler: (...args: any[]) => any, after?: boolean): number;`,

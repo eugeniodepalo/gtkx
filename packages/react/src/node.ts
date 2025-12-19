@@ -85,10 +85,6 @@ export abstract class Node<
         }
     }
 
-    /**
-     * Initializes the node with props. Called by the reconciler after construction.
-     * Subclasses can override to perform custom initialization.
-     */
     initialize(props: Props): void {
         if (!this.widget && !this.isVirtual()) {
             this.widget = this.createWidget(this.nodeType, props) as T;

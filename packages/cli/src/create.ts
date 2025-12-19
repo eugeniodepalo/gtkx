@@ -3,25 +3,15 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as p from "@clack/prompts";
 
-/** Supported package managers for project scaffolding. */
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun";
 
-/** Supported testing frameworks for project scaffolding. */
 export type TestingFramework = "vitest" | "jest" | "node" | "none";
 
-/**
- * Options for creating a new GTKX application.
- */
 export type CreateOptions = {
-    /** Project name (lowercase letters, numbers, and hyphens only). */
     name?: string;
-    /** Application ID in reverse domain notation (e.g., com.example.myapp). */
     appId?: string;
-    /** Package manager to use for installing dependencies. */
     packageManager?: PackageManager;
-    /** Testing framework to set up. */
     testing?: TestingFramework;
-    /** Whether to include Claude Code skills for AI assistance. */
     claudeSkills?: boolean;
 };
 

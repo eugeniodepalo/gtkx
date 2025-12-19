@@ -6,8 +6,8 @@ use neon::prelude::*;
 /// Type descriptor for GObject references.
 ///
 /// GObjects are reference-counted objects. The `is_borrowed` flag indicates
-/// whether ownership is transferred (the caller must unref) or borrowed
-/// (the callee owns the reference).
+/// whether the reference is borrowed from the callee (who retains ownership)
+/// or ownership is transferred to us (requiring us to unref when done).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GObjectType {
     /// Whether the reference is borrowed from the callee.

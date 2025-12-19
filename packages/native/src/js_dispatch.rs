@@ -1,12 +1,12 @@
-//! Dispatching callbacks to the JS thread.
+//! Dispatching callbacks to the JavaScript thread.
 //!
 //! This module provides a mechanism for invoking JavaScript callbacks from GTK signal handlers.
 //!
 //! Callbacks are always queued and can be processed in two ways:
-//! - **Synchronous**: When JS is in a wait loop (e.g., waiting for FFI results), `process_pending()`
-//!   is called repeatedly and processes the queue.
-//! - **Asynchronous**: When JS is idle, a wake-up message is sent via a Neon channel, which
-//!   triggers `process_pending()` on the UV event loop.
+//! - **Synchronous**: When JavaScript is in a wait loop (e.g., waiting for FFI results),
+//!   `process_pending()` is called repeatedly and processes the queue.
+//! - **Asynchronous**: When JavaScript is idle, a wake-up message is sent via a Neon channel,
+//!   which triggers `process_pending()` on the UV event loop.
 
 use std::sync::{Arc, mpsc};
 

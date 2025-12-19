@@ -34,12 +34,6 @@ events.once("start", flushPendingStyles);
 // Handle stop to reset state and prepare for potential restart
 events.on("stop", resetGtkState);
 
-/**
- * Custom StyleSheet implementation for Emotion that outputs to GTK's CssProvider.
- * Implements Emotion's StyleSheet interface to enable CSS-in-JS with GTK widgets.
- *
- * Rules are queued until GTK is initialized, then applied automatically.
- */
 export class StyleSheet {
     key: string;
     private rules: string[] = [];

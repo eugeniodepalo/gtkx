@@ -46,7 +46,7 @@ export function batchCall(calls: CallDescriptor[]): void {
  * Starts the GTK application main loop.
  * @param appId - The application ID (e.g., "com.example.myapp")
  * @param flags - Optional GIO application flags
- * @returns The GTK Application instance pointer
+ * @returns The GTK Application instance id
  */
 export function start(appId: string, flags?: number): unknown {
     return native.start(appId, flags);
@@ -61,7 +61,7 @@ export function stop(): void {
 
 /**
  * Reads a field from a boxed record at the specified offset.
- * @param objectId - The boxed object pointer
+ * @param objectId - The boxed object id
  * @param type - Type descriptor for the field
  * @param offset - Memory offset in bytes from the start of the struct
  * @returns The field value
@@ -72,7 +72,7 @@ export function read(objectId: unknown, type: Type, offset: number): unknown {
 
 /**
  * Writes a value to a field in a boxed record at the specified offset.
- * @param objectId - The boxed object pointer
+ * @param objectId - The boxed object id
  * @param type - Type descriptor for the field
  * @param offset - Memory offset in bytes from the start of the struct
  * @param value - The value to write
@@ -86,18 +86,18 @@ export function write(objectId: unknown, type: Type, offset: number, value: unkn
  * @param size - Size of the struct in bytes
  * @param glibTypeName - The GLib type name (e.g., "GdkRGBA")
  * @param lib - Optional library name to look up the type registration function
- * @returns The allocated boxed object pointer
+ * @returns The allocated boxed object id
  */
 export function alloc(size: number, glibTypeName: string, lib?: string): unknown {
     return native.alloc(size, glibTypeName, lib);
 }
 
 /**
- * Gets the unique identifier for a GObject/boxed pointer.
- * This returns a unique identifier for the underlying native object,
+ * Gets the unique numeric identifier for a native object id.
+ * This returns a stable numeric identifier for the underlying GLib object,
  * which can be used as a Map key to track objects across signal callbacks.
- * @param id - The object pointer from an FFI call or signal callback
- * @returns The native object identifier as a number
+ * @param id - The native object id from an FFI call or signal callback
+ * @returns A stable numeric identifier for the native object
  */
 export function getObjectId(id: unknown): number {
     return native.getObjectId(id);

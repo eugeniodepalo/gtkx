@@ -5,7 +5,7 @@ import { read } from "@gtkx/native";
  * Extends the native JavaScript Error with GError-specific properties.
  */
 export class NativeError extends Error {
-    /** The raw GError pointer */
+    /** The GError object id */
     readonly id: unknown;
 
     /** The GLib error domain (GQuark) */
@@ -15,8 +15,8 @@ export class NativeError extends Error {
     readonly code: number;
 
     /**
-     * Creates a NativeError from a GError pointer.
-     * @param id - The GError pointer from a failed FFI call
+     * Creates a NativeError from a GError object id.
+     * @param id - The GError object id from a failed FFI call
      */
     constructor(id: unknown) {
         const message = read(id, { type: "string" }, 8) as string;

@@ -12,7 +12,7 @@ GTKX is a framework for building native GTK4 desktop applications using React an
 Building native desktop applications traditionally requires learning platform-specific toolkits and languages. GTKX changes this by letting you use the React skills you already have:
 
 - **Familiar React Patterns** — Use hooks, state, props, and components just like you would in a web app
-- **Hot Module Replacement** — Edit your code and see changes instantly, powered by Vite
+- **HMR** — Edit your code and see changes instantly, powered by Vite
 - **Native Performance** — Direct FFI bindings to GTK4 via Rust and libffi, no Electron overhead
 - **CLI & Scaffolding** — Get started in seconds with `npx @gtkx/cli@latest create`
 

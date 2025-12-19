@@ -4,11 +4,6 @@ import type { Node } from "../node.js";
 import { Node as NodeClass } from "../node.js";
 import { isItemContainer } from "../predicates.js";
 
-/**
- * Base class for virtual item nodes used in list-based containers.
- * Virtual nodes don't create GTK widgets directly but represent items
- * in list models (ListView, GridView, ColumnView).
- */
 export abstract class VirtualItemNode extends NodeClass<never> {
     static override consumedPropNames = ["id", "item"];
 

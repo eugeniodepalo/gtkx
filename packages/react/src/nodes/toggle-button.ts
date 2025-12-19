@@ -6,14 +6,6 @@ type ToggleButtonState = {
     lastPropsActive: boolean | undefined;
 };
 
-/**
- * Specialized node for GtkToggleButton that prevents signal feedback loops.
- *
- * When multiple ToggleButtons share the same state (controlled components),
- * React syncing the `active` prop via setActive() triggers the `toggled` signal.
- * This node guards against that by tracking the expected active state and
- * suppressing callbacks when the signal was caused by a programmatic update.
- */
 export class ToggleButtonNode extends Node<Gtk.ToggleButton, ToggleButtonState> {
     static override consumedPropNames = ["active"];
 

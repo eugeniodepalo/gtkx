@@ -60,7 +60,7 @@ All options install `@gtkx/testing` which provides Testing Library-style utiliti
 
 ### `gtkx dev`
 
-Starts the development server with Hot Module Replacement.
+Starts the development server with HMR (Hot Module Replacement).
 
 ```bash
 gtkx dev src/app.tsx
@@ -119,7 +119,7 @@ Compiles TypeScript to JavaScript in the `dist/` directory.
 
 ### `npm start`
 
-Runs the compiled application without HMR. Use this for production or testing the built app.
+Runs the compiled application without HMR (no hot reloading). Use this for production or testing the built app.
 
 ### `npm test`
 

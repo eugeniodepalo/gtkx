@@ -45,7 +45,7 @@ cd my-app
 npm run dev
 ```
 
-This starts the GTKX development server with **Hot Module Replacement** — edit your code and see changes instantly without restarting the app!
+This starts the GTKX development server with **HMR** (Hot Module Replacement) — edit your code and see changes instantly without restarting the app!
 
 ## Project Structure
 

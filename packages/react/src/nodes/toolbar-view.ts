@@ -4,10 +4,6 @@ import { Node } from "../node.js";
 
 type ToolbarViewSlotType = "Top" | "Bottom";
 
-/**
- * Virtual node for AdwToolbarView Top and Bottom slots.
- * These slots use addTopBar/addBottomBar instead of setChild.
- */
 export class ToolbarViewSlotNode extends Node<never> {
     static matches(type: string): boolean {
         if (!type.startsWith("AdwToolbarView.")) return false;

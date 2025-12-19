@@ -2,21 +2,12 @@ import type { GirClass, GirInterface, GirNamespace, GirSignal, TypeMapper, TypeR
 import { formatDoc as formatDocBase, toCamelCase, toPascalCase } from "@gtkx/gir";
 import { format } from "prettier";
 
-/**
- * Configuration options for the JSX type generator.
- */
 type JsxGeneratorOptions = {
-    /** Optional Prettier configuration for formatting output. */
     prettierConfig?: unknown;
 };
 
-/**
- * Result of the JSX generation containing both public and internal files.
- */
 type JsxGeneratorResult = {
-    /** Public JSX types and components for user consumption. */
     jsx: string;
-    /** Internal metadata for reconciler use (not exported to users). */
     internal: string;
 };
 
@@ -100,10 +91,6 @@ const isWidgetSubclass = (
     return cls.parent ? isWidgetSubclass(cls.parent, classMap, visited) : false;
 };
 
-/**
- * Generates JSX type definitions for React components from GTK widget classes.
- * Creates TypeScript interfaces for props and augments React's JSX namespace.
- */
 export class JsxGenerator {
     private interfaceMap: Map<string, GirInterface> = new Map();
     private usedNamespaces: Set<string> = new Set();
@@ -112,13 +99,6 @@ export class JsxGenerator {
     private currentNamespace = "";
     private widgetNamespaceMap: Map<string, string> = new Map();
 
-    /**
-     * Creates a new JSX generator.
-     * @param typeMapper - TypeMapper for converting GIR types to TypeScript
-     * @param typeRegistry - TypeRegistry for cross-namespace type resolution
-     * @param classMap - Combined class map with fully qualified names
-     * @param options - Generator configuration options
-     */
     constructor(
         private typeMapper: TypeMapper,
         private typeRegistry: TypeRegistry,
@@ -133,11 +113,6 @@ export class JsxGenerator {
         });
     }
 
-    /**
-     * Generates JSX type definitions for all widgets in the given namespaces.
-     * @param namespaces - The parsed GIR namespaces (GTK must be first)
-     * @returns Generated TypeScript code as public jsx.ts and internal.ts files
-     */
     async generate(namespaces: GirNamespace[]): Promise<JsxGeneratorResult> {
         for (const ns of namespaces) {
             for (const iface of ns.interfaces) {

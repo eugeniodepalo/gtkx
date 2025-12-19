@@ -22,8 +22,13 @@ npm install -D @gtkx/testing
 Tests require a display. Use `xvfb-run` to run tests in a virtual framebuffer:
 
 ```bash
-GDK_BACKEND=x11 GSK_RENDERER=cairo xvfb-run -a <your-test-command>
+GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a <your-test-command>
 ```
+
+The environment variables configure GTK for headless testing:
+- `GDK_BACKEND=x11` — Forces the X11 backend (required for xvfb)
+- `GSK_RENDERER=cairo` — Uses the Cairo software renderer
+- `LIBGL_ALWAYS_SOFTWARE=1` — Forces software rendering, avoiding EGL/DRI3 warnings
 
 ## Writing Tests
 

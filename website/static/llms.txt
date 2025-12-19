@@ -1,301 +1,47 @@
 # GTKX
 
-> Build native GTK4 desktop applications with React and TypeScript
+> GTKX is a framework for building native GTK4 desktop applications using React and TypeScript. It bridges React's component model with GTK4's native widget system, allowing you to write familiar React code that renders as native Linux desktop applications.
 
-GTKX bridges React's component model with GTK4's native widget system. Write familiar React code and render it as native Linux desktop applications.
+GTKX uses a custom React Reconciler to translate React's virtual DOM operations into GTK4 widget operations. You write React components using JSX, the GTKX reconciler converts React elements into GTK widget nodes, and TypeScript FFI bindings marshal calls to native GTK4 via Rust. GTK4 then renders native widgets on Linux.
+
+Key features:
+
+- Familiar React patterns: hooks, state, props, and components
+- Hot Module Replacement (HMR) powered by Vite for instant code updates
+- Native performance through direct FFI bindings to GTK4 via Rust and libffi
+- CLI scaffolding with `npx @gtkx/cli@latest create`
+- CSS-in-JS styling with Emotion-style API
+- Testing utilities with Testing Library-style API
+
+Packages:
+
+- `@gtkx/cli`: CLI for creating and developing GTKX apps with HMR
+- `@gtkx/react`: React reconciler and JSX components for GTK4 widgets
+- `@gtkx/ffi`: TypeScript FFI bindings for GTK4, libadwaita, GLib, GIO, and more
+- `@gtkx/css`: CSS-in-JS styling for GTK widgets
+- `@gtkx/testing`: Testing utilities with queries, userEvent, and screen helpers
+
+Prerequisites: Node.js 20+, GTK4, Linux, and optionally libadwaita for modern GNOME-style apps.
 
 ## Documentation
 
-- [Documentation](https://eugeniodepalo.github.io/gtkx)
-- [GitHub](https://github.com/eugeniodepalo/gtkx)
+- [Introduction](https://eugeniodepalo.github.io/gtkx/docs/introduction): Overview of GTKX and how it works
+- [Getting Started](https://eugeniodepalo.github.io/gtkx/docs/getting-started): Create your first app with the CLI
+- [Styling](https://eugeniodepalo.github.io/gtkx/docs/styling): CSS-in-JS styling for GTK widgets
+- [Dialogs](https://eugeniodepalo.github.io/gtkx/docs/dialogs): Working with GTK dialogs
+- [Lists](https://eugeniodepalo.github.io/gtkx/docs/lists): Rendering lists with ListBox and ListView
+- [Menus](https://eugeniodepalo.github.io/gtkx/docs/menus): Building menus and popovers
+- [Slots](https://eugeniodepalo.github.io/gtkx/docs/slots): Named child slots in container widgets
+- [Portals](https://eugeniodepalo.github.io/gtkx/docs/portals): Rendering children outside the parent hierarchy
+- [Grid Layout](https://eugeniodepalo.github.io/gtkx/docs/grid-layout): Two-dimensional layouts with Grid
 
-## Quick Start
+## API Reference
 
-```bash
-npx @gtkx/cli@latest create
-cd my-app
-npm run dev
-```
+- [@gtkx/react API](https://eugeniodepalo.github.io/gtkx/docs/api/react): React components, render function, and utilities
+- [@gtkx/css API](https://eugeniodepalo.github.io/gtkx/docs/api/css): CSS-in-JS template literals and styling functions
+- [@gtkx/testing API](https://eugeniodepalo.github.io/gtkx/docs/api/testing): Testing queries, userEvent, and waitFor utilities
+- [@gtkx/ffi API](https://eugeniodepalo.github.io/gtkx/docs/api/ffi): FFI bindings for GTK4, libadwaita, and GNOME libraries
 
-## Application Structure
+## Optional
 
-```tsx
-import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Box, Button, Label, render, quit } from "@gtkx/react";
-
-function App() {
-    const [count, setCount] = useState(0);
-
-    return (
-        <ApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-                <Label label={`Count: ${count}`} />
-                <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
-            </Box>
-        </ApplicationWindow>
-    );
-}
-
-render(<App />, "com.example.myapp");
-```
-
-## Container Widgets
-
-### Box (Linear Layout)
-
-```tsx
-<Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-    First
-    Second
-</Box>
-```
-
-### Grid (2D Layout)
-
-```tsx
-<Grid.Root rowSpacing={8} columnSpacing={8}>
-    <Grid.Child column={0} row={0}>
-        Top-left
-    </Grid.Child>
-    <Grid.Child column={1} row={0} columnSpan={2}>
-        Spans 2 columns
-    </Grid.Child>
-</Grid.Root>
-```
-
-### Stack (Page Container)
-
-```tsx
-<Stack.Root visibleChildName="page1">
-    <Stack.Page name="page1" title="Page 1">
-        Content 1
-    </Stack.Page>
-    <Stack.Page name="page2" title="Page 2">
-        Content 2
-    </Stack.Page>
-</Stack.Root>
-```
-
-### Notebook (Tabbed Container)
-
-```tsx
-<Notebook.Root>
-    <Notebook.Page label="Tab 1">
-        <Content1 />
-    </Notebook.Page>
-    <Notebook.Page label="Tab 2">
-        <Content2 />
-    </Notebook.Page>
-</Notebook.Root>
-```
-
-### Paned (Resizable Split)
-
-```tsx
-<Paned.Root orientation={Gtk.Orientation.HORIZONTAL} position={280}>
-    <Paned.StartChild>
-        <SideBar />
-    </Paned.StartChild>
-    <Paned.EndChild>
-        <MainContent />
-    </Paned.EndChild>
-</Paned.Root>
-```
-
-## Virtual Scrolling Lists
-
-### ListView
-
-```tsx
-<ListView.Root
-    vexpand
-    renderItem={(item: Item | null) => (
-        <Label label={item?.text ?? ""} />
-    )}
->
-    {items.map(item => (
-        <ListView.Item key={item.id} id={item.id} item={item} />
-    ))}
-</ListView.Root>
-```
-
-### ColumnView (Table)
-
-```tsx
-<ColumnView.Root
-    sortColumn="name"
-    sortOrder={Gtk.SortType.ASCENDING}
-    onSortChange={handleSort}
->
-    <ColumnView.Column
-        title="Name"
-        id="name"
-        expand
-        renderCell={(item: Item | null) => (
-            <Label label={item?.name ?? ""} />
-        )}
-    />
-    {items.map(item => (
-        <ColumnView.Item key={item.id} id={item.id} item={item} />
-    ))}
-</ColumnView.Root>
-```
-
-### DropDown
-
-```tsx
-<DropDown.Root
-    selectedId={selectedId}
-    onSelectionChanged={(id) => setSelectedId(id)}
->
-    {options.map(opt => (
-        <DropDown.Item key={opt.id} id={opt.id} label={opt.label} />
-    ))}
-</DropDown.Root>
-```
-
-## Input Widgets
-
-### Entry (Controlled)
-
-Entry requires two-way binding to stay in sync:
-
-```tsx
-const [text, setText] = useState("");
-
-<Entry
-    text={text}
-    onChanged={(entry) => setText(entry.getText())}
-    placeholder="Type here..."
-/>
-```
-
-### ToggleButton
-
-```tsx
-const [active, setActive] = useState(false);
-
-<ToggleButton.Root
-    active={active}
-    onToggled={() => setActive(!active)}
-    label="Toggle me"
-/>
-```
-
-## Menus
-
-### Application Menu
-
-```tsx
-<ApplicationMenu>
-    <Menu.Submenu label="File">
-        <Menu.Item label="New" onActivate={handleNew} accels="<Control>n" />
-        <Menu.Item label="Open" onActivate={handleOpen} accels="<Control>o" />
-        <Menu.Section>
-            <Menu.Item label="Quit" onActivate={quit} accels="<Control>q" />
-        </Menu.Section>
-    </Menu.Submenu>
-</ApplicationMenu>
-```
-
-### MenuButton with PopoverMenu
-
-```tsx
-<MenuButton.Root label="Actions">
-    <MenuButton.Popover>
-        <PopoverMenu.Root>
-            <Menu.Item label="New" onActivate={handleNew} accels="<Control>n" />
-            <Menu.Section label="Clipboard">
-                <Menu.Item label="Cut" onActivate={handleCut} accels="<Control>x" />
-                <Menu.Item label="Copy" onActivate={handleCopy} accels="<Control>c" />
-            </Menu.Section>
-            <Menu.Submenu label="Export As">
-                <Menu.Item label="PDF" onActivate={exportPdf} />
-                <Menu.Item label="HTML" onActivate={exportHtml} />
-            </Menu.Submenu>
-        </PopoverMenu.Root>
-    </MenuButton.Popover>
-</MenuButton.Root>
-```
-
-## Signal Handling
-
-GTK signals map to `on<SignalName>` props:
-
-- `clicked` → `onClicked`
-- `toggled` → `onToggled`
-- `changed` → `onChanged`
-- `notify::selected` → `onNotifySelected`
-
-## Widget References
-
-```tsx
-import { useRef } from "react";
-
-const entryRef = useRef<Gtk.Entry | null>(null);
-<Entry ref={entryRef} />
-// Later: entryRef.current?.getText()
-```
-
-## Portals
-
-```tsx
-import { createPortal } from "@gtkx/react";
-
-{createPortal(<AboutDialog programName="My App" />)}
-```
-
-## Common Layout Props
-
-All widgets support:
-
-- `hexpand` / `vexpand`: Expand to fill space
-- `halign` / `valign`: `Gtk.Align.START | CENTER | END | FILL`
-- `marginStart` / `marginEnd` / `marginTop` / `marginBottom`: Spacing
-- `sensitive`: Enable/disable widget
-- `visible`: Show/hide widget
-- `cssClasses`: Array of CSS class names
-
-## Constraints
-
-- **GTK is single-threaded**: All widget operations must happen on the main thread
-- **Virtual lists need immutable data**: Use stable object references for ListView/ColumnView items
-- **Entry needs two-way binding**: Use `onChanged` to keep state in sync
-- **ToggleButton auto-prevents feedback loops**: Safe for controlled state
-
-## Testing
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { cleanup, render, screen } from "@gtkx/testing";
-import { afterEach, describe, it, expect } from "vitest";
-
-afterEach(async () => {
-    await cleanup();
-});
-
-describe("App", () => {
-    it("renders button", async () => {
-        await render(<App />, { wrapper: false });
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
-        expect(button).toBeDefined();
-    });
-});
-```
-
-Tests require xvfb:
-
-```bash
-GDK_BACKEND=x11 GSK_RENDERER=cairo xvfb-run -a vitest
-```
-
-## Requirements
-
-- Node.js 20+
-- GTK4
-- Linux
-
-## License
-
-MPL-2.0
+- [GitHub Repository](https://github.com/eugeniodepalo/gtkx): Source code, issues, and contributions
