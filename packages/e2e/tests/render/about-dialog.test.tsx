@@ -24,7 +24,7 @@ describe("render - AboutDialog", () => {
             { wrapper: false },
         );
 
-        expect(dialogRef.current?.getParent()).toBeNull();
+        expect(dialogRef.current?.getParent() ?? null).toBeNull();
     });
 
     it("presents on mount", async () => {
