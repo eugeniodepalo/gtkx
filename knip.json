@@ -4,15 +4,9 @@
         "**/src/generated/**": ["enumMembers"],
         "examples/*/src/app.tsx": ["exports", "duplicates"],
         "packages/cli/src/create.ts": ["exports", "types"],
-        "packages/cli/src/dev-server.tsx": ["exports", "types"],
-        "packages/ffi/src/codegen/**": ["types"],
-        "packages/react/src/codegen/**": ["types"]
+        "packages/cli/src/dev-server.tsx": ["exports", "types"]
     },
     "workspaces": {
-        "packages/gir": {
-            "entry": [],
-            "project": ["src/**/*", "tests/**/*"]
-        },
         "packages/native": {
             "entry": [],
             "project": ["src/**/*", "tests/**/*"]
@@ -24,23 +18,32 @@
         },
         "website": {
             "docusaurus": true,
-            "ignore": ["build/**", ".docusaurus/**", "docs/api/**"],
+            "ignore": ["build/**", ".docusaurus/**", "docs/api/**", "sidebars.ts"],
             "ignoreDependencies": ["typedoc", "@docusaurus/*", "@theme/*"]
         },
         "packages/*": {
-            "project": ["src/**/*", "tests/**/*"]
+            "project": ["src/**/*", "tests/**/*"],
+            "entry": ["src/index.ts"]
         },
         "examples/*": {
             "project": ["src/**/*", "tests/**/*"],
             "entry": ["src/app.tsx", "src/index.tsx"]
         },
+        "packages/cli": {
+            "entry": ["src/cli.tsx", "src/index.ts"],
+            "project": ["src/**/*", "tests/**/*"]
+        },
+        "packages/codegen": {
+            "entry": ["src/cli.ts", "src/index.ts"],
+            "project": ["src/**/*", "tests/**/*"]
+        },
         "packages/ffi": {
-            "project": ["src/**/*", "tests/**/*", "scripts/**/*"],
-            "entry": ["src/generated/*/index.ts", "src/index.ts", "src/*/index.ts", "scripts/codegen.ts"]
+            "project": ["src/**/*", "tests/**/*"],
+            "ignore": ["src/generated/**"],
+            "entry": ["src/index.ts", "src/*/index.ts"]
         },
         "packages/react": {
-            "project": ["src/**/*", "tests/**/*", "scripts/**/*"],
-            "entry": ["src/index.ts", "scripts/codegen.ts"]
+            "project": ["src/**/*", "tests/**/*"]
         }
     }
 }

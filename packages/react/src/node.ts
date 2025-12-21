@@ -38,7 +38,7 @@ const extractConstructorArgs = (type: string, props: Props): unknown[] => {
     return params.map((p: { name: string; hasDefault: boolean }) => props[p.name]);
 };
 
-type NodeClass = typeof Node & { consumedPropNames?: string[] };
+type NodeClass = typeof Node & { consumedPropNames?: readonly string[] };
 
 export abstract class Node<
     T extends Gtk.Widget | undefined = Gtk.Widget | undefined,
@@ -48,7 +48,7 @@ export abstract class Node<
         return false;
     }
 
-    static consumedPropNames: string[] = [];
+    static consumedPropNames: readonly string[] = [];
 
     protected signalHandlers = new Map<string, number>();
     protected widget: T = undefined as T;

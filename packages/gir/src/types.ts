@@ -1,3 +1,8 @@
+import { normalizeClassName } from "./class-names.js";
+import { toCamelCase, toPascalCase } from "./naming.js";
+
+export { toCamelCase, toPascalCase };
+
 /**
  * Represents a parsed GIR namespace containing all type definitions.
  */
@@ -373,23 +378,6 @@ export type FfiTypeDescriptor = {
 };
 
 /**
- * Converts a snake_case or kebab-case string to camelCase.
- * @param str - The input string
- * @returns The camelCase version
- */
-export const toCamelCase = (str: string): string => str.replace(/[-_]([a-z])/g, (_, letter) => letter.toUpperCase());
-
-/**
- * Converts a snake_case or kebab-case string to PascalCase.
- * @param str - The input string
- * @returns The PascalCase version
- */
-export const toPascalCase = (str: string): string => {
-    const camel = toCamelCase(str);
-    return camel.charAt(0).toUpperCase() + camel.slice(1);
-};
-
-/**
  * Builds a map of class names to class definitions for quick lookup.
  * @param classes - Array of GIR class definitions
  * @returns Map from class name to class definition
@@ -430,19 +418,6 @@ export type RegisteredType = {
     glibGetType?: string;
 };
 
-const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
-
-const normalizeTypeName = (name: string, namespace: string): string => {
-    const pascalName = toPascalCase(name);
-    if (CLASS_RENAMES.has(pascalName)) {
-        return CLASS_RENAMES.get(pascalName) as string;
-    }
-    if (pascalName === "Object") {
-        return namespace === "GObject" ? "GObject" : `${namespace}Object`;
-    }
-    return pascalName;
-};
-
 /**
  * Registry for tracking all types across GIR namespaces.
  * Used for cross-namespace type resolution during code generation.
@@ -456,7 +431,7 @@ export class TypeRegistry {
      * @param name - The class name
      */
     registerNativeClass(namespace: string, name: string): void {
-        const transformedName = normalizeTypeName(name, namespace);
+        const transformedName = normalizeClassName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
             kind: "class",
             name,
@@ -471,7 +446,7 @@ export class TypeRegistry {
      * @param name - The interface name
      */
     registerInterface(namespace: string, name: string): void {
-        const transformedName = normalizeTypeName(name, namespace);
+        const transformedName = normalizeClassName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
             kind: "interface",
             name,
@@ -510,7 +485,7 @@ export class TypeRegistry {
         sharedLibrary?: string,
         glibGetType?: string,
     ): void {
-        const transformedName = normalizeTypeName(name, namespace);
+        const transformedName = normalizeClassName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
             kind: "record",
             name,

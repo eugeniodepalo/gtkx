@@ -7,7 +7,7 @@ import { PagedStackNode } from "./paged-stack.js";
 import { applyStackPageProps } from "./stack-page-props.js";
 import { VirtualSlotNode } from "./virtual-slot.js";
 
-const STACK_PAGE_PROP_KEYS = ["name", "title", "iconName", "needsAttention", "visible", "useUnderline", "badgeNumber"];
+const STACK_PAGE_PROPS = ["name", "title", "iconName", "needsAttention", "visible", "useUnderline", "badgeNumber"];
 
 export class StackNode extends PagedStackNode<Gtk.Stack> {
     static matches(type: string): boolean {
@@ -36,7 +36,7 @@ export class StackNode extends PagedStackNode<Gtk.Stack> {
 }
 
 export class StackPageNode extends VirtualSlotNode<StackPageContainer, StackPageProps> {
-    static override consumedPropNames = STACK_PAGE_PROP_KEYS;
+    static override consumedPropNames = STACK_PAGE_PROPS;
 
     static matches(type: string): boolean {
         return type === "Stack.Page" || type === "AdwViewStack.Page";
@@ -80,7 +80,7 @@ export class StackPageNode extends VirtualSlotNode<StackPageContainer, StackPage
     }
 
     override updateProps(oldProps: Props, newProps: Props): void {
-        this.updateSlotPropsIfChanged(oldProps, newProps, STACK_PAGE_PROP_KEYS);
+        this.updateSlotPropsIfChanged(oldProps, newProps, STACK_PAGE_PROPS);
         super.updateProps(oldProps, newProps);
     }
 }

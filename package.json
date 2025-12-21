@@ -12,6 +12,7 @@
         "docs": "turbo build --filter=website",
         "knip": "knip --no-gitignore --no-config-hints",
         "lint": "biome check . && turbo lint",
+        "prepare": "turbo build --filter=@gtkx/cli",
         "test": "turbo test --filter=!website"
     },
     "devDependencies": {
@@ -19,12 +20,9 @@
         "@gtkx/ffi": "workspace:*",
         "@types/node": "^25.0.2",
         "@types/react": "^19.2.7",
-        "@types/react-reconciler": "^0.32.3",
         "knip": "^5.75.2",
-        "prettier": "^3.7.4",
         "react": "^19.2.3",
-        "tsx": "^4.21.0",
-        "turbo": "^2.6.3",
+        "turbo": "^2.7.1",
         "typescript": "^5.9.3",
         "vitest": "^4.0.16"
     },

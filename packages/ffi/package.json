@@ -47,13 +47,13 @@
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",
-        "codegen": "tsx scripts/codegen.ts",
+        "codegen": "gtkx-codegen ffi --girs-dir ../../girs --output-dir src/generated",
         "test": "../../scripts/run-tests.sh"
     },
     "dependencies": {
         "@gtkx/native": "workspace:*"
     },
     "devDependencies": {
-        "@gtkx/gir": "workspace:*"
+        "@gtkx/codegen": "workspace:*"
     }
 }

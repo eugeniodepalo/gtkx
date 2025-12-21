@@ -1,3 +1,15 @@
+import {
+    COLUMN_VIEW_WIDGET,
+    DROPDOWN_WIDGETS,
+    GRID_WIDGETS,
+    HIDDEN_PROPS,
+    LIST_WIDGETS,
+    NOTEBOOK_WIDGET,
+    POPOVER_MENU_WIDGET,
+    STACK_WIDGETS,
+    TOOLBAR_VIEW_WIDGET,
+    WIDGET_REFERENCE_PROPERTIES,
+} from "@gtkx/config";
 import type { GirClass, GirInterface, GirNamespace, GirSignal, TypeMapper, TypeRegistry } from "@gtkx/gir";
 import { formatDoc as formatDocBase, toCamelCase, toPascalCase } from "@gtkx/gir";
 import { format } from "prettier";
@@ -26,21 +38,6 @@ type WidgetInfo = {
     widget: GirClass;
     namespace: string;
 };
-
-const LIST_WIDGETS = new Set(["ListView", "GridView"]);
-const COLUMN_VIEW_WIDGET = "ColumnView";
-const DROPDOWN_WIDGETS = new Set(["DropDown"]);
-const GRID_WIDGETS = new Set(["Grid"]);
-const NOTEBOOK_WIDGET = "Notebook";
-const STACK_WIDGETS = new Set(["Stack", "ViewStack", "AdwViewStack"]);
-const POPOVER_MENU_WIDGET = "PopoverMenu";
-const TOOLBAR_VIEW_WIDGET = "ToolbarView";
-
-const INTERNALLY_PROVIDED_PARAMS: Record<string, Set<string>> = {
-    ApplicationWindow: new Set(["application"]),
-};
-
-const WIDGET_REFERENCE_PROPERTIES = new Set(["mnemonic-widget"]);
 
 const isPrimitive = (tsType: string): boolean => {
     const primitives = new Set(["boolean", "number", "string", "void", "unknown", "null", "undefined"]);
@@ -172,11 +169,12 @@ export class JsxGenerator {
             .map((ns) => `import type * as ${ns} from "@gtkx/ffi/${ns.toLowerCase()}";`);
 
         return [
-            `import "react";`,
             `import { createElement } from "react";`,
             `import type { ReactNode, Ref } from "react";`,
             ...namespaceImports,
-            `import type { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, ListViewRenderProps, MenuItemProps, MenuRootProps, MenuSectionProps, MenuSubmenuProps, NotebookPageProps, SlotProps, StackPageProps, StackRootProps, StringListItemProps } from "../types.js";`,
+            `import type { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, MenuItemProps, MenuRootProps, MenuSectionProps, MenuSubmenuProps, NotebookPageProps, SlotProps, StackPageProps, StackRootProps, StringListItemProps } from "../jsx-base.js";`,
+            `export { ApplicationMenu, Menu } from "../jsx-base.js";`,
+            `export type { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, ListViewRenderProps, MenuItemProps, MenuRootProps, MenuSectionProps, MenuSubmenuProps, NotebookPageProps, SlotProps, StackPageProps, StackRootProps, StringListItemProps } from "../jsx-base.js";`,
             "",
         ].join("\n");
     }
@@ -190,11 +188,7 @@ export class JsxGenerator {
         this.typeMapper.setTypeRegistry(this.typeRegistry, "Gtk");
         const widgetPropsContent = this.generateWidgetPropsContent(widgetClass);
 
-        return `
-export { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, ListViewRenderProps, MenuItemProps, MenuRootProps, MenuSectionProps, MenuSubmenuProps, NotebookPageProps, SlotProps, StackPageProps, StackRootProps, StringListItemProps };
-
-${widgetPropsContent}
-`;
+        return `\n${widgetPropsContent}\n`;
     }
 
     private generateWidgetPropsContent(widgetClass: GirClass | undefined): string {
@@ -381,9 +375,15 @@ ${widgetPropsContent}
             }
         }
 
+        const hiddenProps = new Set(HIDDEN_PROPS[widget.name] ?? []);
+
         const specificProps = allProps.filter((prop) => {
             const propName = toCamelCase(prop.name);
-            return !this.widgetPropertyNames.has(propName) && !namedChildPropNames.has(propName);
+            return (
+                !this.widgetPropertyNames.has(propName) &&
+                !namedChildPropNames.has(propName) &&
+                !hiddenProps.has(propName)
+            );
         });
 
         const emittedProps = new Set<string>();
@@ -401,8 +401,8 @@ ${widgetPropsContent}
         }
 
         for (const paramName of requiredCtorParams) {
-            if (emittedProps.has(paramName)) continue;
             const propName = toCamelCase(paramName);
+            if (emittedProps.has(paramName) || hiddenProps.has(propName)) continue;
             const inheritedProp = this.findInheritedProperty(widget, paramName);
             if (inheritedProp) {
                 const typeMapping = this.typeMapper.mapType(inheritedProp.type);
@@ -486,13 +486,10 @@ ${widgetPropsContent}
         const mainCtor = widget.constructors.find((c) => c.name === "new");
         if (!mainCtor) return required;
 
-        const internallyProvided = INTERNALLY_PROVIDED_PARAMS[widget.name] ?? new Set();
         for (const param of mainCtor.parameters) {
             if (!param.nullable && !param.optional) {
                 const normalizedName = param.name.replace(/_/g, "-");
-                if (!internallyProvided.has(normalizedName)) {
-                    required.add(normalizedName);
-                }
+                required.add(normalizedName);
             }
         }
         return required;
@@ -920,41 +917,7 @@ ${widgetPropsContent}
             }
         }
 
-        lines.push(this.generateApplicationMenuComponents());
-
         return `${lines.join("\n")}\n`;
-    }
-
-    private generateApplicationMenuComponents(): string {
-        return `/**
- * Sets the application-wide menu bar.
- * The menu will appear in the window's title bar on supported platforms.
- * Use Menu.Item, Menu.Section, and Menu.Submenu as children.
- */
-export const ApplicationMenu = "ApplicationMenu" as const;
-
-function MenuItem(props: MenuItemProps): import("react").ReactElement {
-\treturn createElement("Menu.Item", props);
-}
-
-function MenuSection(props: MenuSectionProps): import("react").ReactElement {
-\treturn createElement("Menu.Section", props);
-}
-
-function MenuSubmenu(props: MenuSubmenuProps): import("react").ReactElement {
-\treturn createElement("Menu.Submenu", props);
-}
-
-/**
- * Declarative menu builder for use with PopoverMenu and ApplicationMenu.
- * Use Menu.Item for action items, Menu.Section for groups, Menu.Submenu for nested menus.
- */
-export const Menu = {
-\tItem: MenuItem,
-\tSection: MenuSection,
-\tSubmenu: MenuSubmenu,
-};
-`;
     }
 
     private getWrapperExportMembers(widgetName: string, metadata: ContainerMetadata): string[] {

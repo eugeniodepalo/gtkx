@@ -8,7 +8,8 @@
             "outputs": []
         },
         "codegen": {
-            "inputs": ["src/codegen/**", "scripts/**", "$TURBO_ROOT$/girs/**", "$TURBO_ROOT$/packages/gir/src/**"],
+            "dependsOn": ["@gtkx/codegen#build"],
+            "inputs": ["$TURBO_ROOT$/girs/**", "$TURBO_ROOT$/packages/gir/src/**"],
             "outputs": ["src/generated/**"]
         },
         "build": {
@@ -40,12 +41,21 @@
                 "$TURBO_ROOT$/vitest.setup.ts"
             ]
         },
+        "@gtkx/config#build": {
+            "dependsOn": ["^build"]
+        },
+        "@gtkx/gir#build": {
+            "dependsOn": ["^build"]
+        },
+        "@gtkx/codegen#build": {
+            "dependsOn": ["@gtkx/gir#build", "@gtkx/config#build"]
+        },
         "website#build": {
-            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
+            "dependsOn": ["@gtkx/config#build", "@gtkx/ffi#build", "@gtkx/react#build"],
             "outputs": ["build/**", ".docusaurus/**", "docs/api/**"]
         },
         "website#start": {
-            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
+            "dependsOn": ["@gtkx/config#build", "@gtkx/ffi#build", "@gtkx/react#build"],
             "persistent": true,
             "cache": false
         }

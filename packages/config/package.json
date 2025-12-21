@@ -1,15 +1,11 @@
 {
-    "name": "@gtkx/gir",
-    "version": "0.0.0",
-    "private": true,
-    "description": "GObject Introspection file parser for GTKX",
+    "name": "@gtkx/config",
+    "version": "0.9.4",
+    "description": "Shared configuration constants for GTKX",
     "keywords": [
         "gtk",
-        "gtk4",
-        "gir",
-        "gobject",
-        "introspection",
-        "parser"
+        "react",
+        "config"
     ],
     "homepage": "https://eugeniodepalo.github.io/gtkx",
     "bugs": {
@@ -18,7 +14,7 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/eugeniodepalo/gtkx.git",
-        "directory": "packages/gir"
+        "directory": "packages/config"
     },
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
@@ -34,10 +30,6 @@
         "dist"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json",
-        "test": "vitest run"
-    },
-    "dependencies": {
-        "fast-xml-parser": "^5.3.3"
+        "build": "tsc -b tsconfig.lib.json"
     }
 }

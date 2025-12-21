@@ -1,10 +1,9 @@
+import { WINDOW_TYPES } from "@gtkx/config";
 import { getApplication } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import { Node, normalizeWidgetType } from "../node.js";
-
-const WINDOW_TYPES = new Set(["Window", "ApplicationWindow", "AdwWindow", "AdwApplicationWindow"]);
 
 export class WindowNode extends Node<Gtk.Window> {
     static override consumedPropNames = ["defaultWidth", "defaultHeight"];

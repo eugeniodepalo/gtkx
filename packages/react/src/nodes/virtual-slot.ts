@@ -70,7 +70,7 @@ export abstract class VirtualSlotNode<TContainer, TProps> extends Node<never> {
         super.unmount();
     }
 
-    protected updateSlotPropsIfChanged(oldProps: Props, newProps: Props, propKeys: string[]): boolean {
+    protected updateSlotPropsIfChanged(oldProps: Props, newProps: Props, propKeys: readonly string[]): boolean {
         const changed = propKeys.some((key) => oldProps[key] !== newProps[key]);
 
         if (changed) {

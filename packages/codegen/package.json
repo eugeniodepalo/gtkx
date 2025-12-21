@@ -1,16 +1,14 @@
 {
-    "name": "@gtkx/react",
-    "version": "0.9.4",
-    "description": "Build GTK4 desktop applications with React and TypeScript",
+    "name": "@gtkx/codegen",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Code generation tools for GTKX",
     "keywords": [
         "gtk",
-        "gtk4",
         "react",
-        "typescript",
-        "linux",
-        "desktop",
-        "gui",
-        "native"
+        "codegen",
+        "gir",
+        "bindings"
     ],
     "homepage": "https://eugeniodepalo.github.io/gtkx",
     "bugs": {
@@ -19,7 +17,7 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/eugeniodepalo/gtkx.git",
-        "directory": "packages/react"
+        "directory": "packages/codegen"
     },
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
@@ -31,23 +29,21 @@
             "default": "./dist/index.js"
         }
     },
+    "bin": {
+        "gtkx-codegen": "bin/gtkx-codegen.js"
+    },
     "files": [
+        "bin",
         "dist"
     ],
     "scripts": {
-        "build": "tsc -b && cp ../../README.md .",
-        "codegen": "gtkx-codegen jsx --girs-dir ../../girs --output-dir src/generated"
+        "build": "tsc -b"
     },
     "dependencies": {
+        "@clack/prompts": "^0.11.0",
         "@gtkx/config": "workspace:*",
-        "@gtkx/ffi": "workspace:*",
-        "react-reconciler": "^0.33.0"
-    },
-    "devDependencies": {
-        "@gtkx/codegen": "workspace:*",
-        "@types/react-reconciler": "^0.32.3"
-    },
-    "peerDependencies": {
-        "react": "^19"
+        "@gtkx/gir": "workspace:*",
+        "citty": "^0.1.6",
+        "prettier": "^3.5.3"
     }
 }

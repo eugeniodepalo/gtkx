@@ -36,9 +36,10 @@
         }
     },
     "bin": {
-        "gtkx": "dist/cli.js"
+        "gtkx": "bin/gtkx.js"
     },
     "files": [
+        "bin",
         "dist",
         "templates"
     ],
