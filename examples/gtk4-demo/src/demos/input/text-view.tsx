@@ -45,7 +45,7 @@ const TextViewDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Multi-line Text Editor" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="<GtkTextView is a multi-line text editing widget. Type in the text area below to see the character and word count update."
+                    label="GtkTextView is a multi-line text editing widget. Type in the text area below to see the character and word count update."
                     wrap
                     cssClasses={["dim-label"]}
                 />

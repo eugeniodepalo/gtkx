@@ -13,7 +13,7 @@ const PopoverMenuBarDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <GtkLabel label="<GtkPopover Menu Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="GtkPopover Menu Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="About PopoverMenuBar" cssClasses={["heading"]} halign={Gtk.Align.START} />
@@ -148,7 +148,7 @@ const PopoverMenuBarDemo = () => {
 
 export const popoverMenuBarDemo: Demo = {
     id: "popovermenubar",
-    title: "<GtkPopover Menu Bar",
+    title: "GtkPopover Menu Bar",
     description: "Traditional horizontal menu bar as an inline widget using <GtkPopoverMenuBar.",
     keywords: ["menu", "menubar", "horizontal", "GtkPopoverMenuBar", "inline"],
     component: PopoverMenuBarDemo,

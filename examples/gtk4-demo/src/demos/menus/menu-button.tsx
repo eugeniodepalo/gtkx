@@ -18,7 +18,7 @@ const MenuButtonDemo = () => {
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <GtkLabel label="<GtkButton Styles" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel label="GtkButton Styles" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
                     <GtkMenuButton.Root label="Text Only">
                         <GtkMenuButton.Popover>
@@ -171,7 +171,7 @@ const MenuButtonDemo = () => {
 export const menuButtonDemo: Demo = {
     id: "menubutton",
     title: "Menu GtkButton",
-    description: "<GtkButton that shows a popover menu when clicked.",
+    description: "GtkButton that shows a popover menu when clicked.",
     keywords: ["menu", "button", "popover", "dropdown", "GtkMenuButton"],
     component: MenuButtonDemo,
     sourcePath: getSourcePath(import.meta.url, "menu-button.tsx"),

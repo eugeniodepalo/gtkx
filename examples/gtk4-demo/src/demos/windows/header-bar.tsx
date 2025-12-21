@@ -24,7 +24,7 @@ const HeaderBarDemo = () => {
                         halign={Gtk.Align.CENTER}
                         valign={Gtk.Align.CENTER}
                     >
-                        <GtkLabel label="<GtkWindow content" cssClasses={["dim-label"]} />
+                        <GtkLabel label="GtkWindow content" cssClasses={["dim-label"]} />
                     </GtkBox>
                 </GtkBox>
             </GtkBox>
@@ -98,7 +98,7 @@ const HeaderBarDemo = () => {
 export const headerBarDemo: Demo = {
     id: "headerbar",
     title: "Header Bar",
-    description: "<GtkWindow header bar with title and action buttons.",
+    description: "GtkWindow header bar with title and action buttons.",
     keywords: ["header", "bar", "title", "toolbar", "GtkHeaderBar"],
     component: HeaderBarDemo,
     sourcePath: getSourcePath(import.meta.url, "header-bar.tsx"),

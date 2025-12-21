@@ -181,7 +181,7 @@ importers:
         version: 4.51.1
 
   packages/codegen:
-    dependencies:
+    devDependencies:
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
@@ -250,6 +250,9 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
+      '@gtkx/gir':
+        specifier: workspace:*
+        version: link:../gir
       react:
         specifier: ^19
         version: 19.2.3

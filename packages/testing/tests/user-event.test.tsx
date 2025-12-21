@@ -24,7 +24,7 @@ describe("userEvent.click", () => {
         const handleClick = vi.fn();
         await render(<GtkButton label="Click me" onClicked={handleClick} />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
         await userEvent.click(button);
 
         expect(handleClick).toHaveBeenCalledTimes(1);
@@ -66,7 +66,7 @@ describe("userEvent.dblClick", () => {
         const handleClick = vi.fn();
         await render(<GtkButton label="Double click me" onClicked={handleClick} />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Double click me" });
         await userEvent.dblClick(button);
 
         expect(handleClick).toHaveBeenCalledTimes(2);
@@ -78,7 +78,7 @@ describe("userEvent.tripleClick", () => {
         const handleClick = vi.fn();
         await render(<GtkButton label="Triple click me" onClicked={handleClick} />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Triple click me" });
         await userEvent.tripleClick(button);
 
         expect(handleClick).toHaveBeenCalledTimes(3);
@@ -89,7 +89,7 @@ describe("userEvent.activate", () => {
     it("calls activate on the widget", async () => {
         await render(<GtkButton label="Test" />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
         await expect(userEvent.activate(button)).resolves.toBeUndefined();
     });
 });
@@ -119,7 +119,7 @@ describe("userEvent.type", () => {
         it("throws when element is not editable", async () => {
             await render(<GtkButton label="Test" />);
 
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
             await expect(userEvent.type(button, "text")).rejects.toThrow("element is not editable");
         });
     });
@@ -140,7 +140,7 @@ describe("userEvent.clear", () => {
         it("throws when element is not editable", async () => {
             await render(<GtkButton label="Test" />);
 
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
             await expect(userEvent.clear(button)).rejects.toThrow("element is not editable");
         });
     });
@@ -208,7 +208,7 @@ describe("userEvent.selectOptions", () => {
         it("throws when element is not selectable", async () => {
             await render(<GtkButton label="Test" />);
 
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
             await expect(userEvent.selectOptions(button, 0)).rejects.toThrow("element is not a selectable widget");
         });
 

@@ -1,4 +1,4 @@
-import { createRef as createNativeRef, getApplication } from "@gtkx/ffi";
+import { createRef as createNativeRef } from "@gtkx/ffi";
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { AdwApplicationWindow, AdwWindow, GtkApplicationWindow, GtkLabel, GtkWindow } from "@gtkx/react";
@@ -20,10 +20,12 @@ describe("render - Window", () => {
         it("creates Gtk.ApplicationWindow with current app", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
 
-            await render(<GtkApplicationWindow ref={ref} title="App Window" />, { wrapper: false });
+            const { container } = await render(<GtkApplicationWindow ref={ref} title="App Window" />, {
+                wrapper: false,
+            });
 
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getApplication()?.id).toEqual(getApplication().id);
+            expect(ref.current?.getApplication()?.id).toEqual(container.id);
         });
 
         it("creates Adw.Window", async () => {
@@ -37,10 +39,10 @@ describe("render - Window", () => {
         it("creates Adw.ApplicationWindow with current app", async () => {
             const ref = createRef<Adw.ApplicationWindow>();
 
-            await render(<AdwApplicationWindow.Root ref={ref} />, { wrapper: false });
+            const { container } = await render(<AdwApplicationWindow.Root ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getApplication()?.id).toEqual(getApplication().id);
+            expect(ref.current?.getApplication()?.id).toEqual(container.id);
         });
     });
 

@@ -34,7 +34,7 @@ const PopoverDemo = () => {
                                     marginTop={12}
                                     marginBottom={12}
                                 >
-                                    <GtkLabel label="<GtkPopover Content" cssClasses={["heading"]} />
+                                    <GtkLabel label="GtkPopover Content" cssClasses={["heading"]} />
                                     <GtkLabel label="This is inside a popover!" cssClasses={["dim-label"]} />
                                     <GtkButton
                                         label={`Clicked ${clicks} times`}

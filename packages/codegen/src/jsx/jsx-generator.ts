@@ -150,9 +150,8 @@ export class JsxGenerator {
 
         const internalSections = [
             this.generateInternalImports(),
-            this.generateConstructorArgsMetadata(allWidgets),
-            this.generatePropSettersMap(allWidgets),
-            this.generateSetterGetterMap(allWidgets),
+            this.generateConstructorPropsMetadata(allWidgets),
+            this.generatePropsMap(allWidgets),
             this.generateSignalNamesMap(allWidgets),
         ];
 
@@ -177,9 +176,7 @@ export class JsxGenerator {
             `import { createElement } from "react";`,
             `import type { ReactNode, Ref } from "react";`,
             ...namespaceImports,
-            `import type { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, MenuItemProps, MenuRootProps, MenuSectionProps, MenuSubmenuProps, NotebookPageProps, SlotProps, StackPageProps, StackRootProps, StringListItemProps } from "../jsx-base.js";`,
-            `export { ApplicationMenu, Menu } from "../jsx-base.js";`,
-            `export type { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, ListViewRenderProps, MenuItemProps, MenuRootProps, MenuSectionProps, MenuSubmenuProps, NotebookPageProps, SlotProps, StackPageProps, StackRootProps, StringListItemProps } from "../jsx-base.js";`,
+            `import type { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, MenuItemProps, MenuRootProps, MenuSectionProps, MenuSubmenuProps, NotebookPageProps, SlotProps, StackPageProps, StackRootProps, StringListItemProps } from "../jsx.js";`,
             "",
         ].join("\n");
     }
@@ -518,21 +515,21 @@ export class JsxGenerator {
         return required;
     }
 
-    private getConstructorParams(widget: GirClass): { name: string; hasDefault: boolean }[] {
+    private getConstructorParams(widget: GirClass): string[] {
         const mainCtor = widget.constructors.find((c) => c.name === "new");
         if (!mainCtor) return [];
 
         const params = mainCtor.parameters.map((param) => ({
             name: toCamelCase(param.name),
-            hasDefault: param.nullable || param.optional || false,
+            isOptional: param.nullable || param.optional || false,
         }));
 
-        const required = params.filter((p) => !p.hasDefault);
-        const optional = params.filter((p) => p.hasDefault);
+        const required = params.filter((p) => !p.isOptional).map((p) => p.name);
+        const optional = params.filter((p) => p.isOptional).map((p) => p.name);
         return [...required, ...optional];
     }
 
-    private generateConstructorArgsMetadata(widgets: WidgetInfo[]): string {
+    private generateConstructorPropsMetadata(widgets: WidgetInfo[]): string {
         const entries: string[] = [];
 
         for (const { widget, namespace } of widgets) {
@@ -541,80 +538,56 @@ export class JsxGenerator {
 
             this.currentNamespace = namespace;
             const widgetName = this.getWidgetExportName(widget);
-            const paramStrs = params.map((p) => `{ name: "${p.name}", hasDefault: ${p.hasDefault} }`);
+            const paramStrs = params.map((p) => `"${p}"`);
             entries.push(`\t${widgetName}: [${paramStrs.join(", ")}]`);
         }
 
         if (entries.length === 0) {
-            return `export const CONSTRUCTOR_PARAMS: Record<string, { name: string; hasDefault: boolean }[]> = {};\n`;
+            return `export const CONSTRUCTOR_PROPS: Record<string, string[]> = {};\n`;
         }
 
-        return `export const CONSTRUCTOR_PARAMS: Record<string, { name: string; hasDefault: boolean }[]> = {\n${entries.join(",\n")},\n};\n`;
+        return `export const CONSTRUCTOR_PROPS: Record<string, string[]> = {\n${entries.join(",\n")},\n};\n`;
     }
 
-    private generatePropSettersMap(widgets: WidgetInfo[]): string {
+    private generatePropsMap(widgets: WidgetInfo[]): string {
         const widgetEntries: string[] = [];
 
         for (const { widget, namespace } of widgets) {
             this.currentNamespace = namespace;
-            const propSetterPairs: string[] = [];
-            const allProps = this.collectAllProperties(widget);
-
-            for (const prop of allProps) {
-                if (prop.setter) {
-                    const propName = toCamelCase(prop.name);
-                    const setterName = toCamelCase(prop.setter);
-                    propSetterPairs.push(`"${propName}": "${setterName}"`);
-                }
-            }
-
-            if (propSetterPairs.length > 0) {
-                const widgetName = this.getWidgetExportName(widget);
-                widgetEntries.push(`\t${widgetName}: { ${propSetterPairs.join(", ")} }`);
-            }
-        }
-
-        if (widgetEntries.length === 0) {
-            return `export const PROP_SETTERS: Record<string, Record<string, string>> = {};\n`;
-        }
-
-        return `export const PROP_SETTERS: Record<string, Record<string, string>> = {\n${widgetEntries.join(",\n")},\n};\n`;
-    }
-
-    private generateSetterGetterMap(widgets: WidgetInfo[]): string {
-        const widgetEntries: string[] = [];
-
-        for (const { widget, namespace } of widgets) {
-            this.currentNamespace = namespace;
-            const setterGetterPairs: string[] = [];
+            const propEntries: string[] = [];
             const allProps = this.collectAllProperties(widget);
             const parentMethodNames = this.collectParentMethodNames(widget);
             const widgetClassName = toPascalCase(widget.name);
 
             for (const prop of allProps) {
-                if (prop.setter && prop.getter) {
+                if (prop.setter) {
+                    const propName = toCamelCase(prop.name);
                     const setterName = toCamelCase(prop.setter);
-                    let getterName = toCamelCase(prop.getter);
 
-                    if (parentMethodNames.has(prop.getter)) {
-                        getterName = `${getterName}${widgetClassName}`;
+                    let getterName: string | null = null;
+                    if (prop.getter) {
+                        getterName = toCamelCase(prop.getter);
+                        if (parentMethodNames.has(prop.getter)) {
+                            getterName = `${getterName}${widgetClassName}`;
+                        }
                     }
 
-                    setterGetterPairs.push(`"${setterName}": "${getterName}"`);
+                    const getterStr = getterName ? `"${getterName}"` : "null";
+                    propEntries.push(`"${propName}": [${getterStr}, "${setterName}"]`);
                 }
             }
 
-            if (setterGetterPairs.length > 0) {
+            if (propEntries.length > 0) {
                 const widgetName = this.getWidgetExportName(widget);
-                widgetEntries.push(`\t${widgetName}: { ${setterGetterPairs.join(", ")} }`);
+                widgetEntries.push(`\t${widgetName}: { ${propEntries.join(", ")} }`);
             }
         }
 
         if (widgetEntries.length === 0) {
-            return `export const SETTER_GETTERS: Record<string, Record<string, string>> = {};\n`;
+            return `export const PROPS: Record<string, Record<string, [string | null, string]>> = {};\n`;
         }
 
-        return `export const SETTER_GETTERS: Record<string, Record<string, string>> = {\n${widgetEntries.join(",\n")},\n};\n`;
+        return `export const PROPS: Record<string, Record<string, [string | null, string]>> = {\n${widgetEntries.join(",\n")},\n};\n`;
     }
 
     private generateSignalNamesMap(widgets: WidgetInfo[]): string {
@@ -781,7 +754,6 @@ export class JsxGenerator {
                 if (ifaceProp) return ifaceProp;
             }
         }
-        return undefined;
     }
 
     private generateSignalHandler(signal: GirSignal, widgetName: string): string {
@@ -803,7 +775,6 @@ export class JsxGenerator {
                     return `${ns}.${registered.transformedName}`;
                 }
             }
-            return undefined;
         }
 
         const registered = this.typeRegistry.resolveInNamespace(typeName, this.currentNamespace);
@@ -814,8 +785,6 @@ export class JsxGenerator {
             }
             return `${registered.namespace}.${registered.transformedName}`;
         }
-
-        return undefined;
     }
 
     private addNamespacePrefix(tsType: string): string {

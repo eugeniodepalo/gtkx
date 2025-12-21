@@ -13,7 +13,7 @@ const PopoverMenuDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <GtkLabel label="<GtkPopover Menu" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="GtkPopover Menu" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="About PopoverMenu" cssClasses={["heading"]} halign={Gtk.Align.START} />
@@ -134,7 +134,7 @@ const PopoverMenuDemo = () => {
 
 export const popoverMenuDemo: Demo = {
     id: "popovermenu",
-    title: "<GtkPopover Menu",
+    title: "GtkPopover Menu",
     description: "Declarative menu building with GtkPopoverMenu, Menu.Item, Menu.Section, and Menu.Submenu.",
     keywords: ["menu", "popover", "section", "submenu", "GtkPopoverMenu", "declarative"],
     component: PopoverMenuDemo,

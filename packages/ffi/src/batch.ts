@@ -48,8 +48,24 @@ export const call = (library: string, symbol: string, args: Arg[], returnType: T
 
     if (currentQueue && returnType.type === "undefined") {
         currentQueue.push({ library, symbol, args });
-        return undefined;
     }
 
     return nativeCall(library, symbol, args, returnType);
+};
+
+/**
+ * Executes a function within its own batch scope.
+ * Since batching is nestable, this creates a new batch level that executes
+ * immediately when the function completes, regardless of any outer batch.
+ * Use this for operations that must execute synchronously.
+ * @param fn - The function to execute within a batch scope
+ */
+export const batch = <T extends (...args: unknown[]) => unknown>(fn: T): ReturnType<T> => {
+    beginBatch();
+
+    try {
+        return fn() as ReturnType<T>;
+    } finally {
+        endBatch();
+    }
 };
