@@ -98,7 +98,7 @@ export class GirParser {
         const repository = parsed.repository;
 
         if (!repository?.namespace) {
-            throw new Error("Invalid GIR file: missing repository or namespace");
+            throw new Error("Failed to parse GIR file: missing repository or namespace element");
         }
 
         const namespace = repository.namespace;

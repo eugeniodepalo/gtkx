@@ -17,7 +17,7 @@ export class ToolbarChildNode extends SlotNode {
 
     private getToolbar(): Adw.ToolbarView {
         if (!this.parent) {
-            throw new Error("ToolbarView is not set on ToolbarChildNode");
+            throw new Error("Expected ToolbarView reference to be set on ToolbarChildNode");
         }
 
         return this.parent as Adw.ToolbarView;

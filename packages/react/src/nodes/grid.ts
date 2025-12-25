@@ -15,7 +15,7 @@ class GridNode extends WidgetNode<Gtk.Grid> {
 
     public override appendChild(child: Node): void {
         if (!(child instanceof GridChildNode)) {
-            throw new Error(`Cannot append child of type ${child.typeName} to Grid`);
+            throw new Error(`Cannot append '${child.typeName}' to 'Grid': expected GridChild`);
         }
 
         child.setGrid(this.container);
@@ -27,7 +27,7 @@ class GridNode extends WidgetNode<Gtk.Grid> {
 
     public override removeChild(child: Node): void {
         if (!(child instanceof GridChildNode)) {
-            throw new Error(`Cannot remove child of type ${child.typeName} from Grid`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'Grid': expected GridChild`);
         }
 
         child.setGrid(undefined);

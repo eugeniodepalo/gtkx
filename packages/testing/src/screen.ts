@@ -10,7 +10,7 @@ export const setScreenRoot = (root: Gtk.Application | null): void => {
 
 const getRoot = (): Gtk.Application => {
     if (!currentRoot) {
-        throw new Error("No render has been performed. Call render() before using screen queries.");
+        throw new Error("No render has been performed: call render() before using screen queries");
     }
 
     return currentRoot;

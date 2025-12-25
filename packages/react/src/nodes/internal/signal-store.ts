@@ -1,6 +1,6 @@
 import { getObjectId } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
-import { scheduleAfterCommit } from "../../scheduler.js";
+import { isCommitting } from "../../host-config.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: ignore
 export type SignalHandler = (...args: any[]) => any;
@@ -8,7 +8,7 @@ export type SignalHandler = (...args: any[]) => any;
 export class SignalStore {
     private signalHandlers: Map<string, { obj: GObject.GObject; handlerId: number }> = new Map();
 
-    public disconnect(obj: GObject.GObject, signal: string): void {
+    private disconnect(obj: GObject.GObject, signal: string): void {
         const objectId = getObjectId(obj.id);
         const key = `${objectId}:${signal}`;
         const existing = this.signalHandlers.get(key);
@@ -19,10 +19,16 @@ export class SignalStore {
         }
     }
 
-    public connect(obj: GObject.GObject, signal: string, handler: SignalHandler): void {
+    private connect(obj: GObject.GObject, signal: string, handler: SignalHandler): void {
         const objectId = getObjectId(obj.id);
         const key = `${objectId}:${signal}`;
-        const handlerId = obj.connect(signal, handler);
+        const wrappedHandler: SignalHandler = (...args) => {
+            if (isCommitting()) {
+                return;
+            }
+            return handler(...args);
+        };
+        const handlerId = obj.connect(signal, wrappedHandler);
         this.signalHandlers.set(key, { obj, handlerId });
     }
 
@@ -40,24 +46,5 @@ export class SignalStore {
         }
 
         this.signalHandlers.clear();
-    }
-
-    public block(fn: () => void): void {
-        const handlers = new Map(this.signalHandlers);
-
-        for (const [, { obj, handlerId }] of handlers) {
-            GObject.signalHandlerBlock(obj, handlerId);
-        }
-
-        fn();
-
-        scheduleAfterCommit(() => {
-            for (const [key, { obj, handlerId }] of handlers) {
-                const current = this.signalHandlers.get(key);
-                if (current && current.handlerId === handlerId) {
-                    GObject.signalHandlerUnblock(obj, handlerId);
-                }
-            }
-        });
     }
 }

@@ -21,7 +21,7 @@ export class StackPageNode extends SlotNode<Props> {
 
     private getStack(): Gtk.Stack | Adw.ViewStack {
         if (!this.parent) {
-            throw new Error("Stack is not set on StackPageNode");
+            throw new Error("Expected Stack reference to be set on StackPageNode");
         }
 
         return this.parent as Gtk.Stack | Adw.ViewStack;

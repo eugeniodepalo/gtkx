@@ -18,7 +18,7 @@ class OverlaySlotNode extends SlotNode<Props> {
 
     private getOverlay(): Gtk.Overlay {
         if (!this.parent) {
-            throw new Error("Parent is not set on OverlaySlotNode");
+            throw new Error("Expected parent widget to be set on OverlaySlotNode");
         }
 
         return this.parent as Gtk.Overlay;
@@ -84,7 +84,7 @@ class OverlayNode extends WidgetNode<Gtk.Overlay> {
         }
 
         if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append child of type ${child.typeName} to Overlay`);
+            throw new Error(`Cannot append '${child.typeName}' to 'Overlay': expected Widget`);
         }
 
         if (!this.mainChild) {
@@ -107,7 +107,7 @@ class OverlayNode extends WidgetNode<Gtk.Overlay> {
         }
 
         if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot insert child of type ${child.typeName} to Overlay`);
+            throw new Error(`Cannot insert '${child.typeName}' to 'Overlay': expected Widget`);
         }
 
         if (!this.mainChild) {
@@ -130,7 +130,7 @@ class OverlayNode extends WidgetNode<Gtk.Overlay> {
         }
 
         if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot remove child of type ${child.typeName} from Overlay`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'Overlay': expected Widget`);
         }
 
         if (this.mainChild === child.container) {

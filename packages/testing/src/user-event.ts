@@ -75,7 +75,7 @@ const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => 
 
 const type = async (element: Gtk.Widget, text: string): Promise<void> => {
     if (!isEditable(element)) {
-        throw new Error("Cannot type into element: element is not editable (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
+        throw new Error("Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
     }
 
     const editable = getNativeObject(element.id, Gtk.Editable);
@@ -89,7 +89,7 @@ const type = async (element: Gtk.Widget, text: string): Promise<void> => {
 
 const clear = async (element: Gtk.Widget): Promise<void> => {
     if (!isEditable(element)) {
-        throw new Error("Cannot clear element: element is not editable (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
+        throw new Error("Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
     }
 
     getNativeObject(element.id, Gtk.Editable)?.setText("");
@@ -142,14 +142,14 @@ const selectOptions = async (element: Gtk.Widget, values: number | number[]): Pr
     }
 
     if (!isSelectable(element)) {
-        throw new Error("Cannot select options: element is not a selectable widget");
+        throw new Error("Cannot select options: expected selectable widget (COMBO_BOX or LIST)");
     }
 
     const role = getNativeObject(element.id, Gtk.Accessible)?.getAccessibleRole();
 
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
         if (Array.isArray(values) && values.length > 1) {
-            throw new Error("Cannot select multiple options on a ComboBox");
+            throw new Error("Cannot select multiple options: ComboBox only supports single selection");
         }
         if (element instanceof Gtk.DropDown) {
             (element as Gtk.DropDown).setSelected(valueArray[0] as number);

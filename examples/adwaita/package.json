@@ -4,9 +4,12 @@
     "private": true,
     "description": "Adwaita Demo - A showcase of libadwaita widgets in GTKX",
     "type": "module",
+    "gtkx": {
+        "appId": "org.gtkx.adwaita"
+    },
     "scripts": {
         "build": "tsc -b",
-        "dev": "gtkx dev src/app.tsx",
+        "dev": "gtkx dev src/dev.tsx",
         "start": "node dist/index.js"
     },
     "dependencies": {

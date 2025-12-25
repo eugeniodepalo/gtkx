@@ -18,7 +18,7 @@ export class GridChildNode extends SlotNode<Props> {
 
     private getGrid(): Gtk.Grid {
         if (!this.parent) {
-            throw new Error("Grid is not set on GridChildNode");
+            throw new Error("Expected Grid reference to be set on GridChildNode");
         }
 
         return this.parent as Gtk.Grid;

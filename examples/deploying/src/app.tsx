@@ -2,8 +2,6 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
 import { useState } from "react";
 
-export const appId = "org.gtkx.flatpak";
-
 export const App = () => {
     const [count, setCount] = useState(0);
 

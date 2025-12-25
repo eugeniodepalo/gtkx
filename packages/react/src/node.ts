@@ -9,7 +9,7 @@ export class Node<T = unknown, P = Props> {
     }
 
     public static createContainer(_props: Props, _containerClass: ContainerClass, _rootContainer?: Container): unknown {
-        throw new Error("Attempted to create container for unsupported node type");
+        throw new Error("Cannot create container: unsupported node type");
     }
 
     container: T;

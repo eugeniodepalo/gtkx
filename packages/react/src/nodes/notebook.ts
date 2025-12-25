@@ -15,7 +15,7 @@ class NotebookNode extends WidgetNode<Gtk.Notebook> {
 
     public override appendChild(child: Node): void {
         if (!(child instanceof NotebookPageNode)) {
-            throw new Error(`Cannot append child of type ${child.typeName} to Notebook`);
+            throw new Error(`Cannot append '${child.typeName}' to 'Notebook': expected NotebookPage`);
         }
 
         child.setNotebook(this.container);
@@ -23,7 +23,7 @@ class NotebookNode extends WidgetNode<Gtk.Notebook> {
 
     public override insertBefore(child: Node, before: Node): void {
         if (!(child instanceof NotebookPageNode) || !(before instanceof NotebookPageNode)) {
-            throw new Error(`Cannot insert child of type ${child.typeName} to Notebook`);
+            throw new Error(`Cannot insert '${child.typeName}' to 'Notebook': expected NotebookPage`);
         }
 
         const beforePosition = this.container.pageNum(before.getChild());
@@ -33,7 +33,7 @@ class NotebookNode extends WidgetNode<Gtk.Notebook> {
 
     public override removeChild(child: Node): void {
         if (!(child instanceof NotebookPageNode)) {
-            throw new Error(`Cannot remove child of type ${child.typeName} from Notebook`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'Notebook': expected NotebookPage`);
         }
 
         child.setNotebook(undefined);

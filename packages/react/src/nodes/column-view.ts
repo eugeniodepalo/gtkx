@@ -43,7 +43,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         if (!(child instanceof ColumnViewColumnNode)) {
-            throw new Error(`Cannot append child of type ${child.typeName} to ColumnView`);
+            throw new Error(`Cannot append '${child.typeName}' to 'ColumnView': expected ColumnViewColumn`);
         }
 
         this.container.appendColumn(child.column);
@@ -57,7 +57,9 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         if (!(child instanceof ColumnViewColumnNode) || !(before instanceof ColumnViewColumnNode)) {
-            throw new Error(`Cannot insert child of type ${child.typeName} before ${before.typeName} in ColumnView`);
+            throw new Error(
+                `Cannot insert '${child.typeName}' before '${before.typeName}' in 'ColumnView': expected ColumnViewColumn`,
+            );
         }
 
         const beforeIndex = this.getColumnIndex(before.column);
@@ -72,7 +74,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         if (!(child instanceof ColumnViewColumnNode)) {
-            throw new Error(`Cannot remove child of type ${child.typeName} from ColumnView`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'ColumnView': expected ColumnViewColumn`);
         }
 
         this.container.removeColumn(child.column);
@@ -94,16 +96,14 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         if (!oldProps || oldProps.sortColumn !== newProps.sortColumn || oldProps.sortOrder !== newProps.sortOrder) {
-            this.signalStore.block(() => {
-                const sortColumn = newProps.sortColumn;
-                const sortOrder = newProps.sortOrder ?? Gtk.SortType.ASCENDING;
+            const sortColumn = newProps.sortColumn;
+            const sortOrder = newProps.sortOrder ?? Gtk.SortType.ASCENDING;
 
-                if (!sortColumn) {
-                    this.container.sortByColumn(sortOrder);
-                } else {
-                    this.container.sortByColumn(sortOrder, this.getColumn(sortColumn));
-                }
-            });
+            if (!sortColumn) {
+                this.container.sortByColumn(sortOrder);
+            } else {
+                this.container.sortByColumn(sortOrder, this.getColumn(sortColumn));
+            }
         }
 
         this.list.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
@@ -121,7 +121,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             }
         }
 
-        throw new Error(`Column ${columnId} not found in ColumnView`);
+        throw new Error(`Unable to find column '${columnId}' in ColumnView`);
     }
 
     private getColumnIndex(column: Gtk.ColumnViewColumn): number {
@@ -135,7 +135,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             }
         }
 
-        throw new Error(`Column ${column.getId()} not found in ColumnView`);
+        throw new Error(`Unable to find column '${column.getId()}' in ColumnView`);
     }
 }
 

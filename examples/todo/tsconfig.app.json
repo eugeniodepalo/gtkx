@@ -5,6 +5,6 @@
         "emitDeclarationOnly": false
     },
     "extends": "../../tsconfig.base.json",
-    "include": ["src/**/*"],
+    "include": ["src/**/*", "package.json"],
     "references": []
 }

@@ -37,7 +37,7 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
     protected getId(): string {
         const id = (this.props as SlotProps).id;
         if (!id) {
-            throw new Error(`Slot id is not set on SlotNode`);
+            throw new Error("Expected 'id' prop to be present on Slot");
         }
 
         return toCamelCase(id);
@@ -45,7 +45,7 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
 
     private getParent(): Gtk.Widget {
         if (!this.parent) {
-            throw new Error(`Parent is not set on ${this.getId()} SlotNode`);
+            throw new Error(`Expected parent widget to be set on '${this.getId()}' SlotNode`);
         }
 
         return this.parent;
@@ -53,7 +53,7 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
 
     public getChild(): Gtk.Widget {
         if (!this.child) {
-            throw new Error(`Child is not set on ${this.getId()} SlotNode`);
+            throw new Error(`Expected child widget to be set on '${this.getId()}' SlotNode`);
         }
 
         return this.child;
@@ -61,7 +61,7 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
 
     public override appendChild(child: Node): void {
         if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append child of type ${child.typeName} to Slot`);
+            throw new Error(`Cannot append '${child.typeName}' to 'Slot': expected Widget`);
         }
 
         const oldChild = this.child;
@@ -83,13 +83,13 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
         const [_, setterName] = PROPS[parentType]?.[this.getId()] ?? [];
 
         if (!setterName) {
-            throw new Error(`No property found for Slot ${this.getId()} on parent type ${parentType}`);
+            throw new Error(`Unable to find property for Slot '${this.getId()}' on type '${parentType}'`);
         }
 
         const setter = parent[setterName as keyof Gtk.Widget];
 
         if (typeof setter !== "function") {
-            throw new Error(`Setter is not a function for Slot ${this.getId()} on parent type ${parentType}`);
+            throw new Error(`Expected setter function for Slot '${this.getId()}' on type '${parentType}'`);
         }
 
         setter.call(parent, this.child);

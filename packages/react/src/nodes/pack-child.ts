@@ -18,7 +18,7 @@ export class PackChild extends SlotNode {
 
     private getPackableWidget(): PackableWidget {
         if (!this.parent) {
-            throw new Error(`packableWidget is not set on ${this.typeName}`);
+            throw new Error(`Expected packable widget reference to be set on '${this.typeName}'`);
         }
 
         return this.parent as PackableWidget;

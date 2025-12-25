@@ -15,7 +15,8 @@
         "examples/deploying": {
             "project": ["src/**/*", "scripts/**/*"],
             "ignoreDependencies": ["postject", "@gtkx/cli"],
-            "ignoreBinaries": ["gtkx"]
+            "ignoreBinaries": ["gtkx"],
+            "entry": ["src/app.tsx", "src/index.tsx", "src/dev.tsx"]
         },
         "website": {
             "docusaurus": true,

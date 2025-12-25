@@ -56,5 +56,3 @@ export const App = () => {
 };
 
 export default App;
-
-export const appId = "org.gtkx.lists";

@@ -84,7 +84,7 @@ export class List extends VirtualNode<ListProps> {
         }
 
         if (!oldProps || oldProps.selected !== newProps.selected || oldProps.selectionMode !== newProps.selectionMode) {
-            this.signalStore.block(() => this.setSelection(newProps.selected));
+            this.setSelection(newProps.selected);
         }
     }
 

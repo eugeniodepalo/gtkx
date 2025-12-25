@@ -45,13 +45,11 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
         }
 
         if (!oldProps || oldProps.selectedId !== newProps.selectedId) {
-            this.signalStore.block(() => {
-                const index =
-                    newProps.selectedId !== undefined ? this.store.getIndexById(newProps.selectedId) : undefined;
-                if (index !== undefined) {
-                    this.container.setSelected(index);
-                }
-            });
+            const index = newProps.selectedId !== undefined ? this.store.getIndexById(newProps.selectedId) : undefined;
+
+            if (index !== undefined) {
+                this.container.setSelected(index);
+            }
         }
 
         super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
@@ -59,12 +57,12 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
 
     public override appendChild(child: Node): void {
         if (!(child instanceof SimpleListItemNode)) {
-            throw new Error(`Cannot append child of type ${child.typeName} to SimpleListView`);
+            throw new Error(`Cannot append '${child.typeName}' to 'SimpleListView': expected SimpleListItem`);
         }
 
         const { id, value } = child.props;
         if (!id || value === undefined) {
-            throw new Error("SimpleListItem requires id and value props");
+            throw new Error("Expected 'id' and 'value' props to be present on SimpleListItem");
         }
 
         child.setStore(this.store);
@@ -73,13 +71,13 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
 
     public override insertBefore(child: Node, before: Node): void {
         if (!(child instanceof SimpleListItemNode) || !(before instanceof SimpleListItemNode)) {
-            throw new Error(`Cannot insert child of type ${child.typeName} in SimpleListView`);
+            throw new Error(`Cannot insert '${child.typeName}' to 'SimpleListView': expected SimpleListItem`);
         }
 
         const { id, value } = child.props;
         const beforeId = before.props.id;
         if (!id || value === undefined || !beforeId) {
-            throw new Error("SimpleListItem requires id and value props");
+            throw new Error("Expected 'id' and 'value' props to be present on SimpleListItem");
         }
 
         child.setStore(this.store);
@@ -88,12 +86,12 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
 
     public override removeChild(child: Node): void {
         if (!(child instanceof SimpleListItemNode)) {
-            throw new Error(`Cannot remove child of type ${child.typeName} from SimpleListView`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'SimpleListView': expected SimpleListItem`);
         }
 
         const { id } = child.props;
         if (!id) {
-            throw new Error("SimpleListItem requires id prop");
+            throw new Error("Expected 'id' prop to be present on SimpleListItem");
         }
 
         this.store.removeItem(id);

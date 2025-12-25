@@ -24,7 +24,7 @@ export class NotebookPageNode extends SlotNode<Props> {
 
     private getNotebook(): Gtk.Notebook {
         if (!this.parent) {
-            throw new Error("Notebook is not set on NotebookPageNode");
+            throw new Error("Expected Notebook reference to be set on NotebookPageNode");
         }
 
         return this.parent as Gtk.Notebook;

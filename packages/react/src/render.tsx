@@ -21,7 +21,7 @@ export const useApplication = (): Gtk.Application => {
     const context = useContext(ApplicationContext);
 
     if (!context) {
-        throw new Error("useApplication must be used within an ApplicationContext.Provider");
+        throw new Error("Expected ApplicationContext: useApplication must be called within Application");
     }
 
     return context;

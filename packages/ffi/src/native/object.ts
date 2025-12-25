@@ -45,7 +45,7 @@ export function getNativeObject<T extends NativeObject = NativeObject>(
     const cls = findNativeClass(runtimeTypeName);
 
     if (!cls) {
-        throw new Error(`Unknown GLib type: ${runtimeTypeName}. Make sure the class is registered.`);
+        throw new Error(`Expected registered GLib type, got '${runtimeTypeName}'`);
     }
 
     const instance = Object.create(cls.prototype) as T;

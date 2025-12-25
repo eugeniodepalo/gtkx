@@ -35,7 +35,7 @@ class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
             isContainerType(Adw.ApplicationWindow, WindowClass)
         ) {
             if (!(rootContainer instanceof Gtk.Application)) {
-                throw new Error("ApplicationWindow can only be created inside an Application");
+                throw new Error("Expected ApplicationWindow to be created within Application");
             }
 
             if (isContainerType(Adw.ApplicationWindow, WindowClass)) {

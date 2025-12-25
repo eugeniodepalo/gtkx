@@ -23,7 +23,7 @@ class StackNode extends WidgetNode<Gtk.Stack | Adw.ViewStack, StackProps> {
 
     public override appendChild(child: Node): void {
         if (!(child instanceof StackPageNode)) {
-            throw new Error(`Cannot append child of type ${child.typeName} to PagedStack`);
+            throw new Error(`Cannot append '${child.typeName}' to 'Stack': expected StackPage`);
         }
 
         child.setStack(this.container);
@@ -35,7 +35,7 @@ class StackNode extends WidgetNode<Gtk.Stack | Adw.ViewStack, StackProps> {
 
     public override removeChild(child: Node): void {
         if (!(child instanceof StackPageNode)) {
-            throw new Error(`Cannot remove child of type ${child.typeName} from PagedStack`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'Stack': expected StackPage`);
         }
 
         child.setStack(undefined);

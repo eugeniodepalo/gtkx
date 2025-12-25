@@ -45,7 +45,7 @@ export class Menu extends VirtualNode<MenuProps> {
 
     private getId(): string {
         if (!this.props.id) {
-            throw new Error("Menu item must have an id");
+            throw new Error("Expected 'id' prop to be present on MenuItem");
         }
 
         return this.props.id;
@@ -53,7 +53,7 @@ export class Menu extends VirtualNode<MenuProps> {
 
     private getParent(): Gio.Menu {
         if (!this.parent) {
-            throw new Error("MenuNode has no parent menu");
+            throw new Error("Expected parent menu to be set on MenuNode");
         }
 
         return this.parent;
@@ -61,7 +61,7 @@ export class Menu extends VirtualNode<MenuProps> {
 
     private getActionMap(): Gio.ActionMap {
         if (!this.actionMap) {
-            throw new Error("MenuNode has no ActionMap");
+            throw new Error("Expected ActionMap to be set on MenuNode");
         }
 
         return this.actionMap;
@@ -112,7 +112,7 @@ export class Menu extends VirtualNode<MenuProps> {
             }
         }
 
-        throw new Error("MenuNode not found in parent menu");
+        throw new Error("Unable to find menu item in parent menu");
     }
 
     private setParent(parent: Gio.Menu | undefined): void {

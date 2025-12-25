@@ -20,7 +20,7 @@ class ToolbarNode extends WidgetNode<Adw.ToolbarView> {
         }
 
         if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append child of type ${child.typeName} to ToolbarView`);
+            throw new Error(`Cannot append '${child.typeName}' to 'ToolbarView': expected Widget`);
         }
 
         this.container.setContent(child.container);
@@ -33,7 +33,7 @@ class ToolbarNode extends WidgetNode<Adw.ToolbarView> {
         }
 
         if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot insert child of type ${child.typeName} in ToolbarView`);
+            throw new Error(`Cannot insert '${child.typeName}' to 'ToolbarView': expected Widget`);
         }
 
         this.container.setContent(child.container);
@@ -46,7 +46,7 @@ class ToolbarNode extends WidgetNode<Adw.ToolbarView> {
         }
 
         if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot remove child of type ${child.typeName} from ToolbarView`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'ToolbarView': expected Widget`);
         }
 
         this.container.setContent(undefined);

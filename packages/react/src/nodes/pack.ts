@@ -43,7 +43,7 @@ class PackNode extends WidgetNode<PackableWidget> {
             return;
         }
 
-        throw new Error(`Cannot append child of type ${child.typeName} to PackedContainer`);
+        throw new Error(`Cannot append '${child.typeName}' to 'PackedContainer': expected PackChild or Widget`);
     }
 
     public override insertBefore(child: Node): void {
@@ -66,7 +66,7 @@ class PackNode extends WidgetNode<PackableWidget> {
             return;
         }
 
-        throw new Error(`Cannot remove child of type ${child.typeName} from PackableNode`);
+        throw new Error(`Cannot remove '${child.typeName}' from 'PackedContainer': expected PackChild or Widget`);
     }
 }
 

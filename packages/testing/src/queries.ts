@@ -217,8 +217,8 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
 const formatRole = (role: Gtk.AccessibleRole): string => Gtk.AccessibleRole[role] ?? String(role);
 
 const formatByRoleError = (role: Gtk.AccessibleRole, options?: ByRoleOptions): string => {
-    const parts = [`role "${formatRole(role)}"`];
-    if (options?.name) parts.push(`name "${options.name}"`);
+    const parts = [`role '${formatRole(role)}'`];
+    if (options?.name) parts.push(`name '${options.name}'`);
     if (options?.checked !== undefined) parts.push(`checked=${options.checked}`);
     if (options?.pressed !== undefined) parts.push(`pressed=${options.pressed}`);
     if (options?.selected !== undefined) parts.push(`selected=${options.selected}`);
@@ -244,7 +244,7 @@ const getByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByR
     const matches = getAllByRole(container, role, options);
 
     if (matches.length > 1) {
-        throw new Error(`Found ${matches.length} elements with ${formatByRoleError(role, options)}`);
+        throw new Error(`Expected 1 element with ${formatByRoleError(role, options)}, found ${matches.length}`);
     }
     const [first] = matches;
     if (!first) throw new Error(`Unable to find element with ${formatByRoleError(role, options)}`);
@@ -258,7 +258,7 @@ const getAllByLabelText = (container: Container, text: TextMatch, options?: Text
     });
 
     if (matches.length === 0) {
-        throw new Error(`Unable to find any elements with label text "${text}"`);
+        throw new Error(`Unable to find any elements with label text '${text}'`);
     }
 
     return matches;
@@ -268,11 +268,11 @@ const getByLabelText = (container: Container, text: TextMatch, options?: TextMat
     const matches = getAllByLabelText(container, text, options);
 
     if (matches.length > 1) {
-        throw new Error(`Found ${matches.length} elements with label text "${text}"`);
+        throw new Error(`Expected 1 element with label text '${text}', found ${matches.length}`);
     }
 
     const [first] = matches;
-    if (!first) throw new Error(`Unable to find element with label text "${text}"`);
+    if (!first) throw new Error(`Unable to find element with label text '${text}'`);
     return first;
 };
 
@@ -283,7 +283,7 @@ const getAllByText = (container: Container, text: TextMatch, options?: TextMatch
     });
 
     if (matches.length === 0) {
-        throw new Error(`Unable to find any elements with text "${text}"`);
+        throw new Error(`Unable to find any elements with text '${text}'`);
     }
 
     return matches;
@@ -293,11 +293,11 @@ const getByText = (container: Container, text: TextMatch, options?: TextMatchOpt
     const matches = getAllByText(container, text, options);
 
     if (matches.length > 1) {
-        throw new Error(`Found ${matches.length} elements with text "${text}"`);
+        throw new Error(`Expected 1 element with text '${text}', found ${matches.length}`);
     }
 
     const [first] = matches;
-    if (!first) throw new Error(`Unable to find element with text "${text}"`);
+    if (!first) throw new Error(`Unable to find element with text '${text}'`);
     return first;
 };
 
@@ -308,7 +308,7 @@ const getAllByTestId = (container: Container, testId: TextMatch, options?: TextM
     });
 
     if (matches.length === 0) {
-        throw new Error(`Unable to find any elements with test id "${testId}"`);
+        throw new Error(`Unable to find any elements with test id '${testId}'`);
     }
 
     return matches;
@@ -318,11 +318,11 @@ const getByTestId = (container: Container, testId: TextMatch, options?: TextMatc
     const matches = getAllByTestId(container, testId, options);
 
     if (matches.length > 1) {
-        throw new Error(`Found ${matches.length} elements with test id "${testId}"`);
+        throw new Error(`Expected 1 element with test id '${testId}', found ${matches.length}`);
     }
 
     const [first] = matches;
-    if (!first) throw new Error(`Unable to find element with test id "${testId}"`);
+    if (!first) throw new Error(`Unable to find element with test id '${testId}'`);
     return first;
 };
 

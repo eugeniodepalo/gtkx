@@ -313,7 +313,7 @@ describe("generatePackageJson", () => {
         const result = generatePackageJson("app", "org.app", "none");
         const parsed = JSON.parse(result);
 
-        expect(parsed.scripts.dev).toBe("gtkx dev src/app.tsx");
+        expect(parsed.scripts.dev).toBe("gtkx dev src/dev.tsx");
         expect(parsed.scripts.build).toBe("tsc -b");
         expect(parsed.scripts.start).toBe("node dist/index.js");
     });
@@ -435,10 +435,28 @@ describe("createApp", () => {
         const content = vol.readFileSync(`${testDir}/my-cool-app/src/app.tsx`, "utf-8") as string;
 
         expect(content).toContain('title="My Cool App"');
-        expect(content).toContain('appId = "org.test.app"');
+        expect(content).toContain("export default function App");
+        expect(content).not.toContain("appId");
     });
 
-    it("creates index.tsx entry point", async () => {
+    it("creates dev.tsx that exports App and reads appId from package.json", async () => {
+        const { createApp } = await import("../src/create.js");
+        await createApp({
+            name: "test-app",
+            appId: "org.test.app",
+            packageManager: "pnpm",
+            testing: "none",
+            claudeSkills: false,
+        });
+
+        const content = vol.readFileSync(`${testDir}/test-app/src/dev.tsx`, "utf-8") as string;
+
+        expect(content).toContain('import pkg from "../package.json"');
+        expect(content).toContain("export { default } from");
+        expect(content).toContain("export const appId = pkg.gtkx.appId");
+    });
+
+    it("creates index.tsx entry point with hardcoded appId", async () => {
         const { createApp } = await import("../src/create.js");
         await createApp({
             name: "test-app",
@@ -451,7 +469,8 @@ describe("createApp", () => {
         const content = vol.readFileSync(`${testDir}/test-app/src/index.tsx`, "utf-8") as string;
 
         expect(content).toContain("import { render }");
-        expect(content).toContain("render(<App />, appId)");
+        expect(content).toContain("import App from");
+        expect(content).toContain('render(<App />, "org.test.app")');
     });
 
     it("creates .gitignore", async () => {

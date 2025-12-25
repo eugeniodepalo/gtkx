@@ -4,6 +4,9 @@
     "private": true,
     "description": "Todo App - A realistic example with comprehensive testing",
     "type": "module",
+    "gtkx": {
+        "appId": "com.gtkx.todo"
+    },
     "scripts": {
         "build": "tsc -b",
         "dev": "gtkx dev src/dev.tsx",

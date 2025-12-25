@@ -40,7 +40,7 @@ export class ListItemRenderer {
 
     private getStore(): ListStore {
         if (!this.store) {
-            throw new Error("ListItemRenderer: List store is not set");
+            throw new Error("Expected list store to be set on ListItemRenderer");
         }
 
         return this.store;

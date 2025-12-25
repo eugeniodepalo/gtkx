@@ -30,5 +30,5 @@ export const createNode = (
         }
     }
 
-    throw new Error(`No matching node class for type: ${typeName}`);
+    throw new Error(`Unable to find node class for type '${typeName}'`);
 };

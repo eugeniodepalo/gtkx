@@ -19,7 +19,7 @@ export class MenuNode extends Menu {
             return "submenu";
         }
 
-        throw new Error(`Unknown menu type: ${typeName}`);
+        throw new Error(`Unable to find menu type '${typeName}'`);
     }
 
     constructor(typeName: string, _props: MenuProps, _container: undefined, rootContainer?: Container) {

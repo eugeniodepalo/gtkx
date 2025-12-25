@@ -42,7 +42,7 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar> {
 
     public override appendChild(child: Node): void {
         if (!(child instanceof MenuNode)) {
-            throw new Error(`Cannot append child of type ${child.typeName} to PopoverMenu`);
+            throw new Error(`Cannot append '${child.typeName}' to 'PopoverMenu': expected MenuItem`);
         }
 
         this.menu.appendChild(child);
@@ -50,7 +50,7 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar> {
 
     public override insertBefore(child: Node, before: Node): void {
         if (!(child instanceof MenuNode)) {
-            throw new Error(`Cannot insert child of type ${child.typeName} in PopoverMenu`);
+            throw new Error(`Cannot insert '${child.typeName}' to 'PopoverMenu': expected MenuItem`);
         }
 
         this.menu.insertBefore(child, before);
@@ -58,7 +58,7 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar> {
 
     public override removeChild(child: Node): void {
         if (!(child instanceof MenuNode)) {
-            throw new Error(`Cannot remove child of type ${child.typeName} from PopoverMenu`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'PopoverMenu': expected MenuItem`);
         }
 
         this.menu.removeChild(child);

@@ -7,6 +7,10 @@ import type { Node } from "./node.js";
 import { flushAfterCommit } from "./scheduler.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
+let committing = false;
+
+export const isCommitting = (): boolean => committing;
+
 const containerNodeCache = new Map<number, Node>();
 
 type TextInstance = Node;
@@ -112,12 +116,14 @@ export function createHostConfig(): HostConfig {
             parent.insertBefore(child, beforeChild);
         },
         prepareForCommit: () => {
+            committing = true;
             beginBatch();
             return null;
         },
         resetAfterCommit: () => {
             endBatch();
             flushAfterCommit();
+            committing = false;
         },
         commitTextUpdate: (textInstance, oldText, newText) => {
             textInstance.updateProps({ label: oldText }, { label: newText });
