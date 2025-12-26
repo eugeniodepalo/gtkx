@@ -41,3 +41,21 @@ export const isInsertable = (
         typeof obj.getFirstChild === "function"
     );
 };
+
+export const isEditable = (
+    obj: unknown,
+): obj is Gtk.Widget & {
+    getPosition: () => number;
+    setPosition: (position: number) => void;
+    getText: () => string;
+} => {
+    return (
+        obj instanceof Gtk.Widget &&
+        "getPosition" in obj &&
+        typeof obj.getPosition === "function" &&
+        "setPosition" in obj &&
+        typeof obj.setPosition === "function" &&
+        "getText" in obj &&
+        typeof obj.getText === "function"
+    );
+};

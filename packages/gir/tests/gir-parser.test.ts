@@ -687,7 +687,9 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const invalidGir = `<?xml version="1.0"?><repository version="1.2"></repository>`;
 
-            expect(() => parser.parse(invalidGir)).toThrow("Invalid GIR file: missing repository or namespace");
+            expect(() => parser.parse(invalidGir)).toThrow(
+                "Failed to parse GIR file: missing repository or namespace element",
+            );
         });
 
         it("throws on completely invalid XML", () => {
