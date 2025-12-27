@@ -1,9 +1,9 @@
-import { getObjectId } from "@gtkx/ffi";
+import { batch, getObjectId } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
-import { isSingleChild } from "./internal/predicates.js";
+import { isRemovable, isSingleChild } from "./internal/predicates.js";
 import { isContainerType } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
@@ -27,15 +27,18 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             return;
         }
 
-        if (isAutowrappedChild(child.container)) {
-            if (child.container.getParent() !== null) {
-                this.container.remove(child.container);
+        batch(() => {
+            if (isAutowrappedChild(child.container)) {
+                const currentParent = child.container.getParent();
+                if (currentParent !== null && isRemovable(currentParent)) {
+                    currentParent.remove(child.container);
+                }
+            } else {
+                this.removeExistingWrapper(child.container);
             }
-        } else {
-            this.removeExistingWrapper(child.container);
-        }
 
-        this.container.append(child.container);
+            this.container.append(child.container);
+        });
     }
 
     public override removeChild(child: Node): void {
@@ -44,16 +47,18 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             return;
         }
 
-        if (!isAutowrappedChild(child.container)) {
-            const wrapper = child.container.getParent();
-            if (wrapper && isSingleChild(wrapper)) {
-                wrapper.setChild(null);
-                this.container.remove(wrapper);
-                return;
+        batch(() => {
+            if (!isAutowrappedChild(child.container)) {
+                const wrapper = child.container.getParent();
+                if (wrapper && isSingleChild(wrapper)) {
+                    wrapper.setChild(null);
+                    this.container.remove(wrapper);
+                    return;
+                }
             }
-        }
 
-        this.container.remove(child.container);
+            this.container.remove(child.container);
+        });
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -62,24 +67,28 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             return;
         }
 
-        const isExistingChild = child.container.getParent() !== null;
+        batch(() => {
+            const currentParent = child.container.getParent();
 
-        if (isExistingChild) {
-            if (isAutowrappedChild(child.container)) {
-                this.container.remove(child.container);
-            } else {
+            if (currentParent !== null) {
+                if (isAutowrappedChild(child.container)) {
+                    if (isRemovable(currentParent)) {
+                        currentParent.remove(child.container);
+                    }
+                } else {
+                    this.removeExistingWrapper(child.container);
+                }
+            } else if (!isAutowrappedChild(child.container)) {
                 this.removeExistingWrapper(child.container);
             }
-        } else if (!isAutowrappedChild(child.container)) {
-            this.removeExistingWrapper(child.container);
-        }
 
-        const position = this.findChildPosition(before);
-        if (position !== undefined) {
-            this.container.insert(child.container, position);
-        } else {
-            this.container.append(child.container);
-        }
+            const position = this.findChildPosition(before);
+            if (position !== undefined) {
+                this.container.insert(child.container, position);
+            } else {
+                this.container.append(child.container);
+            }
+        });
     }
 
     private removeExistingWrapper(childWidget: Gtk.Widget): void {
@@ -87,7 +96,10 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
 
         if (existingWrapper && isSingleChild(existingWrapper)) {
             existingWrapper.setChild(null);
-            this.container.remove(existingWrapper);
+            const wrapperParent = existingWrapper.getParent();
+            if (wrapperParent !== null && isRemovable(wrapperParent)) {
+                wrapperParent.remove(existingWrapper);
+            }
         }
     }
 

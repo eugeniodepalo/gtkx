@@ -46,6 +46,11 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             throw new Error(`Cannot append '${child.typeName}' to 'ColumnView': expected ColumnViewColumn`);
         }
 
+        const existingColumn = this.findColumnInView(child.column);
+        if (existingColumn) {
+            this.container.removeColumn(existingColumn);
+        }
+
         this.container.appendColumn(child.column);
         child.setStore(this.list.getStore());
     }
@@ -56,14 +61,22 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             return;
         }
 
-        if (!(child instanceof ColumnViewColumnNode) || !(before instanceof ColumnViewColumnNode)) {
-            throw new Error(
-                `Cannot insert '${child.typeName}' before '${before.typeName}' in 'ColumnView': expected ColumnViewColumn`,
-            );
+        if (!(child instanceof ColumnViewColumnNode)) {
+            throw new Error(`Cannot insert '${child.typeName}' to 'ColumnView': expected ColumnViewColumn`);
         }
 
-        const beforeIndex = this.getColumnIndex(before.column);
-        this.container.insertColumn(beforeIndex, child.column);
+        const existingColumn = this.findColumnInView(child.column);
+        if (existingColumn) {
+            this.container.removeColumn(existingColumn);
+        }
+
+        if (before instanceof ColumnViewColumnNode) {
+            const beforeIndex = this.getColumnIndex(before.column);
+            this.container.insertColumn(beforeIndex, child.column);
+        } else {
+            this.container.appendColumn(child.column);
+        }
+
         child.setStore(this.list.getStore());
     }
 
@@ -77,7 +90,10 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             throw new Error(`Cannot remove '${child.typeName}' from 'ColumnView': expected ColumnViewColumn`);
         }
 
-        this.container.removeColumn(child.column);
+        const existingColumn = this.findColumnInView(child.column);
+        if (existingColumn) {
+            this.container.removeColumn(existingColumn);
+        }
         child.setStore(undefined);
     }
 
@@ -125,6 +141,14 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
     }
 
     private getColumnIndex(column: Gtk.ColumnViewColumn): number {
+        const index = this.findColumnIndex(column);
+        if (index === -1) {
+            throw new Error(`Unable to find column '${column.getId()}' in ColumnView`);
+        }
+        return index;
+    }
+
+    private findColumnIndex(column: Gtk.ColumnViewColumn): number {
         const columns = this.container.getColumns();
 
         for (let i = 0; i < columns.getNItems(); i++) {
@@ -135,7 +159,22 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             }
         }
 
-        throw new Error(`Unable to find column '${column.getId()}' in ColumnView`);
+        return -1;
+    }
+
+    private findColumnInView(column: Gtk.ColumnViewColumn): Gtk.ColumnViewColumn | null {
+        const columns = this.container.getColumns();
+        const targetId = column.getId();
+
+        for (let i = 0; i < columns.getNItems(); i++) {
+            const col = columns.getObject(i) as Gtk.ColumnViewColumn;
+
+            if (col.getId() === targetId) {
+                return col;
+            }
+        }
+
+        return null;
     }
 }
 

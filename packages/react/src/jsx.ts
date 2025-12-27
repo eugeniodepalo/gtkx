@@ -64,8 +64,8 @@ export type ColumnViewColumnProps<T = unknown> = {
     resizable?: boolean;
     /** Fixed width in pixels. Overrides automatic sizing. */
     fixedWidth?: number;
-    /** Unique identifier for the column. Used for sorting. */
-    id?: string;
+    /** Unique identifier for the column. Required for sorting and column management. */
+    id: string;
     /** Whether this column header can be clicked to trigger sorting. */
     sortable?: boolean;
     /**
@@ -145,7 +145,7 @@ export type MenuSubmenuProps = {
 };
 
 /**
- * Props for Overlay.Overlay components.
+ * Props for Overlay child components.
  * Controls how an overlay widget is measured and clipped.
  */
 export type OverlayChildProps = SlotProps & {
@@ -328,7 +328,7 @@ declare global {
                 "Toolbar.Bottom": SlotProps;
 
                 // Overlay (GtkOverlay) - main child is just a regular child
-                Overlay: OverlayChildProps;
+                OverlayChild: OverlayChildProps;
 
                 // Menu
                 "Menu.Item": MenuItemProps;

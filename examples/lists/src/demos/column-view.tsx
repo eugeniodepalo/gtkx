@@ -262,6 +262,7 @@ export const ColumnViewDemo = () => {
                             )}
                         />
                         <ColumnViewColumn
+                            id="status"
                             title="Status"
                             fixedWidth={100}
                             renderCell={(emp: Employee | null) => (
