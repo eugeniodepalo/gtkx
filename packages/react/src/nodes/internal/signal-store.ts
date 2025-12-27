@@ -15,6 +15,10 @@ const LIFECYCLE_SIGNALS = new Set([
     "destroy",
     "resize",
     "render",
+    "setup",
+    "bind",
+    "unbind",
+    "teardown",
 ]);
 
 export class SignalStore {

@@ -64,8 +64,8 @@ export type ColumnViewColumnProps<T = unknown> = {
     resizable?: boolean;
     /** Fixed width in pixels. Overrides automatic sizing. */
     fixedWidth?: number;
-    /** Unique identifier for the column. Used for sorting. */
-    id?: string;
+    /** Unique identifier for the column. Required for sorting and column management. */
+    id: string;
     /** Whether this column header can be clicked to trigger sorting. */
     sortable?: boolean;
     /**

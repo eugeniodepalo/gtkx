@@ -1,4 +1,4 @@
-import { getObjectId, NativeObject } from "@gtkx/ffi";
+import { batch, getObjectId, NativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS, PROPS, SIGNALS } from "../generated/internal.js";
 import { Node } from "../node.js";
@@ -45,18 +45,21 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             throw new Error(`Cannot append 'Window' to '${this.typeName}': windows must be top-level containers`);
         }
 
-        if (isAppendable(this.container)) {
-            if (isRemovable(this.container) && child.container.getParent() !== null) {
-                this.container.remove(child.container);
+        batch(() => {
+            if (isAppendable(this.container)) {
+                const currentParent = child.container.getParent();
+                if (currentParent !== null && isRemovable(currentParent)) {
+                    currentParent.remove(child.container);
+                }
+                this.container.append(child.container);
+            } else if (isSingleChild(this.container)) {
+                this.container.setChild(child.container);
+            } else {
+                throw new Error(
+                    `Cannot append '${child.typeName}' to '${this.container.constructor.name}': container does not support children`,
+                );
             }
-            this.container.append(child.container);
-        } else if (isSingleChild(this.container)) {
-            this.container.setChild(child.container);
-        } else {
-            throw new Error(
-                `Cannot append '${child.typeName}' to '${this.container.constructor.name}': container does not support children`,
-            );
-        }
+        });
     }
 
     public removeChild(child: Node): void {
@@ -73,15 +76,17 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             throw new Error(`Cannot remove 'Window' from '${this.typeName}': windows must be top-level containers`);
         }
 
-        if (isRemovable(this.container)) {
-            this.container.remove(child.container);
-        } else if (isSingleChild(this.container)) {
-            this.container.setChild(null);
-        } else {
-            throw new Error(
-                `Cannot remove '${child.typeName}' from '${this.container.constructor.name}': container does not support child removal`,
-            );
-        }
+        batch(() => {
+            if (isRemovable(this.container)) {
+                this.container.remove(child.container);
+            } else if (isSingleChild(this.container)) {
+                this.container.setChild(null);
+            } else {
+                throw new Error(
+                    `Cannot remove '${child.typeName}' from '${this.container.constructor.name}': container does not support child removal`,
+                );
+            }
+        });
     }
 
     public insertBefore(child: Node, before: Node): void {
@@ -100,54 +105,62 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             throw new Error(`Cannot insert 'Window' into '${this.typeName}': windows must be top-level containers`);
         }
 
-        if (isReorderable(this.container)) {
-            let beforeChild = this.container.getFirstChild();
+        batch(() => {
+            if (isReorderable(this.container)) {
+                let beforeChild = this.container.getFirstChild();
 
-            while (beforeChild) {
-                if (getObjectId(beforeChild.id) === getObjectId(before.container.id)) {
-                    break;
+                while (beforeChild) {
+                    if (getObjectId(beforeChild.id) === getObjectId(before.container.id)) {
+                        break;
+                    }
+
+                    beforeChild = beforeChild.getNextSibling();
                 }
 
-                beforeChild = beforeChild.getNextSibling();
-            }
+                if (!beforeChild) {
+                    throw new Error(`Cannot insert '${child.typeName}': 'before' child not found in container`);
+                }
 
-            if (!beforeChild) {
-                throw new Error(`Cannot insert '${child.typeName}': 'before' child not found in container`);
-            }
+                const previousSibling = beforeChild.getPrevSibling() ?? undefined;
+                const currentParent = child.container.getParent();
+                const isChildOfThisContainer =
+                    currentParent !== null && getObjectId(currentParent.id) === getObjectId(this.container.id);
 
-            const previousSibling = beforeChild.getPrevSibling() ?? undefined;
-            const isExistingChild = child.container.getParent() !== null;
+                if (isChildOfThisContainer) {
+                    this.container.reorderChildAfter(child.container, previousSibling);
+                } else {
+                    if (currentParent !== null && isRemovable(currentParent)) {
+                        currentParent.remove(child.container);
+                    }
+                    this.container.insertChildAfter(child.container, previousSibling);
+                }
+            } else if (isInsertable(this.container)) {
+                const currentParent = child.container.getParent();
+                if (currentParent !== null && isRemovable(currentParent)) {
+                    currentParent.remove(child.container);
+                }
 
-            if (isExistingChild) {
-                this.container.reorderChildAfter(child.container, previousSibling);
+                let position = 0;
+                let currentChild = this.container.getFirstChild();
+
+                while (currentChild) {
+                    if (getObjectId(currentChild.id) === getObjectId(before.container.id)) {
+                        break;
+                    }
+
+                    position++;
+                    currentChild = currentChild.getNextSibling();
+                }
+
+                if (!currentChild) {
+                    throw new Error(`Cannot insert '${child.typeName}': 'before' child not found in container`);
+                }
+
+                this.container.insert(child.container, position);
             } else {
-                this.container.insertChildAfter(child.container, previousSibling);
+                this.appendChild(child);
             }
-        } else if (isInsertable(this.container)) {
-            if (isRemovable(this.container) && child.container.getParent()) {
-                this.container.remove(child.container);
-            }
-
-            let position = 0;
-            let currentChild = this.container.getFirstChild();
-
-            while (currentChild) {
-                if (getObjectId(currentChild.id) === getObjectId(before.container.id)) {
-                    break;
-                }
-
-                position++;
-                currentChild = currentChild.getNextSibling();
-            }
-
-            if (!currentChild) {
-                throw new Error(`Cannot insert '${child.typeName}': 'before' child not found in container`);
-            }
-
-            this.container.insert(child.container, position);
-        } else {
-            this.appendChild(child);
-        }
+        });
     }
 
     public updateProps(oldProps: P | null, newProps: P): void {
