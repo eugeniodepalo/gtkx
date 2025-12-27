@@ -80,7 +80,7 @@ render(<App />, "com.example.counter");
 
 Explore complete applications in the [`examples/`](./examples) directory:
 
-- **[gtk4-demo](./examples/gtk4-demo)** — Full replica of the official GTK4 demo app
+- **[gtk-demo](./examples/gtk-demo)** — Full replica of the official GTK4 demo app
 - **[hello-world](./examples/hello-world)** — Minimal application showing a counter
 - **[todo](./examples/todo)** — Full-featured todo application with Adwaita styling and testing
 - **[deploying](./examples/deploying)** — Example of packaging and distributing a GTKX app

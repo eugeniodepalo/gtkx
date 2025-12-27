@@ -43,7 +43,7 @@ GTK4 Widgets
 When you write:
 
 ```tsx
-<GtkButton label="Click me" onClicked={() => console.log('clicked')} />
+<GtkButton label="Click me" onClicked={() => console.log("clicked")} />
 ```
 
 GTKX creates a native `GtkButton` widget, sets its label property, and connects a signal handler for the `clicked` signal. The React reconciler handles updates efficiently, only changing properties that actually changed.
@@ -67,4 +67,4 @@ GTKX may not be the best choice if you:
 
 Ready to get started? Head to the [Getting Started](./getting-started.md) guide to create your first GTKX application.
 
-Want to see what's possible? Check out the [gtk4-demo example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/gtk4-demo) for a comprehensive widget gallery.
+Want to see what's possible? Check out the [gtk-demo example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/gtk-demo) for a comprehensive widget gallery.

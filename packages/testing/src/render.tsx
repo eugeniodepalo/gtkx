@@ -81,7 +81,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
             null,
             "",
             handleError,
-            () => {},
+            handleError,
             () => {},
             () => {},
             null,

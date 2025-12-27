@@ -30,16 +30,10 @@
             "path": "examples/todo/tsconfig.json"
         },
         {
-            "path": "examples/gtk4-demo/tsconfig.json"
+            "path": "examples/gtk-demo/tsconfig.json"
         },
         {
             "path": "examples/deploying/tsconfig.json"
-        },
-        {
-            "path": "examples/adwaita/tsconfig.json"
-        },
-        {
-            "path": "examples/lists/tsconfig.json"
         }
     ]
 }

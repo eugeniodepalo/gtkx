@@ -56,6 +56,42 @@ export type GridChildProps = SlotProps & {
 };
 
 /**
+ * Props for positioning children within a GtkFixed.
+ *
+ * @see {@link FixedChild} for usage
+ */
+export type FixedChildProps = SlotProps & {
+    /** X coordinate in pixels */
+    x?: number;
+    /** Y coordinate in pixels */
+    y?: number;
+};
+
+/**
+ * Props for declarative toast notifications.
+ *
+ * @see {@link Toast} for usage
+ */
+export type ToastProps = {
+    /** The toast message text */
+    title: string;
+    /** Timeout in seconds (0 for indefinite) */
+    timeout?: number;
+    /** Priority level for interrupting other toasts */
+    priority?: import("@gtkx/ffi/adw").ToastPriority;
+    /** Label for the action button */
+    buttonLabel?: string;
+    /** Action name to trigger when button is clicked */
+    actionName?: string;
+    /** Whether to use Pango markup in the title */
+    useMarkup?: boolean;
+    /** Callback when the toast button is clicked */
+    onButtonClicked?: () => void;
+    /** Callback when the toast is dismissed */
+    onDismissed?: () => void;
+};
+
+/**
  * Props for custom list view rendering.
  *
  * @typeParam T - The type of items in the list
@@ -259,6 +295,47 @@ export const StackPage = "StackPage" as const;
  * ```
  */
 export const GridChild = "GridChild" as const;
+
+/**
+ * Element type for positioning children within a GtkFixed.
+ *
+ * @example
+ * ```tsx
+ * <GtkFixed>
+ *   <FixedChild x={20} y={30}>
+ *     <GtkLabel label="Positioned at (20, 30)" />
+ *   </FixedChild>
+ *   <FixedChild x={100} y={50}>
+ *     <GtkButton label="At (100, 50)" />
+ *   </FixedChild>
+ * </GtkFixed>
+ * ```
+ */
+export const FixedChild = "FixedChild" as const;
+
+/**
+ * Element type for declarative toast notifications within an AdwToastOverlay.
+ *
+ * When mounted, shows the toast. When unmounted, the toast auto-dismisses.
+ * Toasts can have an optional action button and callbacks.
+ *
+ * @example
+ * ```tsx
+ * <AdwToastOverlay>
+ *   <MyContent />
+ *   {showToast && (
+ *     <Toast
+ *       title="File saved"
+ *       timeout={3}
+ *       buttonLabel="Undo"
+ *       onButtonClicked={handleUndo}
+ *       onDismissed={() => setShowToast(false)}
+ *     />
+ *   )}
+ * </AdwToastOverlay>
+ * ```
+ */
+export const Toast = "Toast" as const;
 
 /**
  * Element type for pages within a GtkNotebook (tabbed interface).
@@ -523,6 +600,10 @@ declare global {
                 StackPage: StackPageProps;
 
                 GridChild: GridChildProps;
+
+                FixedChild: FixedChildProps;
+
+                Toast: ToastProps;
 
                 NotebookPage: NotebookPageProps;
 

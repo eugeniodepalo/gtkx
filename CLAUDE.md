@@ -79,7 +79,7 @@ pnpm run docs        # Build documentation website
 ```
 examples/
 ├── todo/          # Complete todo app - state, lists, Adwaita styling
-├── gtk4-demo/     # Widget showcase - buttons, lists, dialogs, menus
+├── gtk-demo/     # Widget showcase - buttons, lists, dialogs, menus
 ├── lists/         # List widgets and virtualization
 ├── adwaita/       # Libadwaita components
 └── deploying/     # Flatpak packaging

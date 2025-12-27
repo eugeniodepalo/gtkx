@@ -20,9 +20,6 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
-        "@gtkx/testing": "workspace:*",
-        "@types/react": "^19",
-        "typescript": "^5.9",
-        "vitest": "^3"
+        "@gtkx/testing": "workspace:*"
     }
 }

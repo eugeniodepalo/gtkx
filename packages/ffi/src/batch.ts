@@ -56,6 +56,7 @@ export const endBatch = (): void => {
  */
 export const discardAllBatches = (): void => {
     batchStack.length = 0;
+    endBatch();
 };
 
 /**

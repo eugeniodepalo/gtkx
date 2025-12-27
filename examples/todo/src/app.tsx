@@ -1,4 +1,3 @@
-import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     AdwApplicationWindow,
@@ -12,9 +11,10 @@ import {
     GtkScrolledWindow,
     quit,
     Slot,
+    Toast,
     Toolbar,
 } from "@gtkx/react";
-import { useRef } from "react";
+import { useState } from "react";
 import { FilterBar } from "./components/filter-bar.js";
 import { TodoInput } from "./components/todo-input.js";
 import { TodoRow } from "./components/todo-row.js";
@@ -64,6 +64,11 @@ const Footer = ({
     </GtkBox>
 );
 
+interface ToastMessage {
+    id: number;
+    message: string;
+}
+
 export const App = () => {
     const {
         todos,
@@ -78,13 +83,14 @@ export const App = () => {
         completedCount,
     } = useTodos();
 
-    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
+    const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
     const showToast = (message: string) => {
-        if (toastOverlayRef.current) {
-            const toast = new Adw.Toast(message);
-            toastOverlayRef.current.addToast(toast);
-        }
+        setToasts((prev) => [...prev, { id: Date.now(), message }]);
+    };
+
+    const dismissToast = (id: number) => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
     };
 
     const handleAdd = (text: string) => {
@@ -108,7 +114,7 @@ export const App = () => {
                     </AdwHeaderBar>
                 </Toolbar.Top>
 
-                <AdwToastOverlay ref={toastOverlayRef}>
+                <AdwToastOverlay>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
                         spacing={12}
@@ -146,6 +152,16 @@ export const App = () => {
                             />
                         )}
                     </GtkBox>
+
+                    {/* Declarative toasts */}
+                    {toasts.map((toast) => (
+                        <Toast
+                            key={toast.id}
+                            title={toast.message}
+                            timeout={2}
+                            onDismissed={() => dismissToast(toast.id)}
+                        />
+                    ))}
                 </AdwToastOverlay>
             </AdwToolbarView>
         </AdwApplicationWindow>
