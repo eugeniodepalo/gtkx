@@ -48,9 +48,11 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         batch(() => {
             if (isAppendable(this.container)) {
                 const currentParent = child.container.getParent();
+
                 if (currentParent !== null && isRemovable(currentParent)) {
                     currentParent.remove(child.container);
                 }
+
                 this.container.append(child.container);
             } else if (isSingleChild(this.container)) {
                 this.container.setChild(child.container);
@@ -64,7 +66,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
     public removeChild(child: Node): void {
         if (child instanceof SlotNode) {
-            child.setParent(undefined);
             return;
         }
 

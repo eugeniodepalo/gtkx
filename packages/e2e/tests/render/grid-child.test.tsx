@@ -119,23 +119,24 @@ describe("render - GridChild", () => {
 
         it("removes child from grid", async () => {
             const gridRef = createRef<Gtk.Grid>();
+            const labelRef = createRef<Gtk.Label>();
 
             function App({ showChild }: { showChild: boolean }) {
                 return (
                     <GtkGrid ref={gridRef}>
                         {showChild && (
                             <GridChild column={0} row={0}>
-                                Removable
+                                <GtkLabel ref={labelRef} label="Removable" />
                             </GridChild>
                         )}
                     </GtkGrid>
                 );
             }
 
-            await render(<App showChild={true} />, { wrapper: false });
+            await render(<App showChild={true} />);
             expect(gridRef.current?.getChildAt(0, 0)).not.toBeNull();
 
-            await render(<App showChild={false} />, { wrapper: false });
+            await render(<App showChild={false} />);
             expect(gridRef.current?.getChildAt(0, 0)).toBeNull();
         });
     });

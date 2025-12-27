@@ -2,11 +2,16 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { scheduleAfterCommit } from "../scheduler.js";
-import type { PackableWidget } from "./pack.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
 type PackChildPosition = "start" | "end";
+
+type PackableWidget = Gtk.Widget & {
+    packStart(child: Gtk.Widget): void;
+    packEnd(child: Gtk.Widget): void;
+    remove(child: Gtk.Widget): void;
+};
 
 export class PackChild extends VirtualNode {
     public static override priority = 1;
@@ -23,18 +28,24 @@ export class PackChild extends VirtualNode {
     }
 
     public setParent(newParent?: PackableWidget): void {
-        const oldParent = this.parent;
         this.parent = newParent;
+    }
 
-        if (!newParent && oldParent) {
-            const childrenToRemove = [...this.children];
+    public override unmount(): void {
+        const parent = this.parent;
+        const childrenToRemove = [...this.children];
+
+        if (parent && childrenToRemove.length > 0) {
             scheduleAfterCommit(() => {
                 for (const widget of childrenToRemove) {
-                    oldParent.remove(widget);
+                    parent.remove(widget);
                 }
             });
-            this.children = [];
         }
+
+        this.children = [];
+        this.parent = undefined;
+        super.unmount();
     }
 
     public override appendChild(child: Node): void {
@@ -66,15 +77,15 @@ export class PackChild extends VirtualNode {
         }
 
         const widget = child.container;
-        const parent = this.parent;
         const index = this.children.indexOf(widget);
+
         if (index !== -1) {
             this.children.splice(index, 1);
         }
 
         scheduleAfterCommit(() => {
-            if (parent) {
-                parent.remove(widget);
+            if (this.parent) {
+                this.parent.remove(widget);
             }
         });
     }

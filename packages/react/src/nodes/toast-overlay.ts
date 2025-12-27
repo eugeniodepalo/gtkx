@@ -13,22 +13,14 @@ class ToastOverlayNode extends WidgetNode<Adw.ToastOverlay> {
         return isContainerType(Adw.ToastOverlay, containerOrClass);
     }
 
-    private hasChild = false;
-
     public override appendChild(child: Node): void {
         if (child instanceof ToastNode) {
-            child.setToastOverlay(this.container);
+            child.setParent(this.container);
             return;
         }
 
         if (child instanceof WidgetNode) {
-            if (this.hasChild) {
-                throw new Error(
-                    "ToastOverlay can only have one widget child. Use Toast elements for additional toasts.",
-                );
-            }
             this.container.setChild(child.container);
-            this.hasChild = true;
             return;
         }
 
@@ -41,14 +33,11 @@ class ToastOverlayNode extends WidgetNode<Adw.ToastOverlay> {
 
     public override removeChild(child: Node): void {
         if (child instanceof ToastNode) {
-            child.setToastOverlay(undefined);
             return;
         }
 
         if (child instanceof WidgetNode) {
             this.container.setChild(undefined);
-            this.hasChild = false;
-            return;
         }
     }
 }

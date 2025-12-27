@@ -5,6 +5,22 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
+/**
+ * Helper to get child position from transform.
+ * Note: getChildPosition only works after widget realization,
+ * but getChildTransform().toTranslate() works immediately.
+ */
+function getChildPosition(fixed: Gtk.Fixed, child: Gtk.Widget): { x: number; y: number } {
+    const transform = fixed.getChildTransform(child);
+    if (!transform) {
+        return { x: 0, y: 0 };
+    }
+    const xRef = createNativeRef(0);
+    const yRef = createNativeRef(0);
+    transform.toTranslate(xRef, yRef);
+    return { x: xRef.value, y: yRef.value };
+}
+
 describe("render - FixedChild", () => {
     describe("FixedChildNode", () => {
         it("positions child at specified x/y coordinates", async () => {
@@ -17,18 +33,15 @@ describe("render - FixedChild", () => {
                         <GtkLabel ref={labelRef} label="Positioned" />
                     </FixedChild>
                 </GtkFixed>,
-                { wrapper: false },
             );
 
-            const xRef = createNativeRef(0);
-            const yRef = createNativeRef(0);
-            const label = labelRef.current;
-            if (label) {
-                fixedRef.current?.getChildPosition(label, xRef, yRef);
+            if (!fixedRef.current || !labelRef.current) {
+                throw new Error("Refs should be set after render");
             }
+            const pos = getChildPosition(fixedRef.current, labelRef.current);
 
-            expect(xRef.value).toBe(100);
-            expect(yRef.value).toBe(50);
+            expect(pos.x).toBe(100);
+            expect(pos.y).toBe(50);
         });
 
         it("positions child at default (0,0) when no position specified", async () => {
@@ -41,18 +54,15 @@ describe("render - FixedChild", () => {
                         <GtkLabel ref={labelRef} label="Default" />
                     </FixedChild>
                 </GtkFixed>,
-                { wrapper: false },
             );
 
-            const xRef = createNativeRef(0);
-            const yRef = createNativeRef(0);
-            const label = labelRef.current;
-            if (label) {
-                fixedRef.current?.getChildPosition(label, xRef, yRef);
+            if (!fixedRef.current || !labelRef.current) {
+                throw new Error("Refs should be set after render");
             }
+            const pos = getChildPosition(fixedRef.current, labelRef.current);
 
-            expect(xRef.value).toBe(0);
-            expect(yRef.value).toBe(0);
+            expect(pos.x).toBe(0);
+            expect(pos.y).toBe(0);
         });
 
         it("updates position on prop change", async () => {
@@ -71,25 +81,19 @@ describe("render - FixedChild", () => {
 
             await render(<App x={0} y={0} />);
 
-            const xRef1 = createNativeRef(0);
-            const yRef1 = createNativeRef(0);
-            const label1 = labelRef.current;
-            if (label1) {
-                fixedRef.current?.getChildPosition(label1, xRef1, yRef1);
+            if (!fixedRef.current || !labelRef.current) {
+                throw new Error("Refs should be set after render");
             }
-            expect(xRef1.value).toBe(0);
-            expect(yRef1.value).toBe(0);
+
+            const pos1 = getChildPosition(fixedRef.current, labelRef.current);
+            expect(pos1.x).toBe(0);
+            expect(pos1.y).toBe(0);
 
             await render(<App x={200} y={150} />);
 
-            const xRef2 = createNativeRef(0);
-            const yRef2 = createNativeRef(0);
-            const label2 = labelRef.current;
-            if (label2) {
-                fixedRef.current?.getChildPosition(label2, xRef2, yRef2);
-            }
-            expect(xRef2.value).toBe(200);
-            expect(yRef2.value).toBe(150);
+            const pos2 = getChildPosition(fixedRef.current, labelRef.current);
+            expect(pos2.x).toBe(200);
+            expect(pos2.y).toBe(150);
         });
 
         it("places multiple children in fixed", async () => {
@@ -106,37 +110,31 @@ describe("render - FixedChild", () => {
                         <GtkLabel ref={label2Ref} label="Second" />
                     </FixedChild>
                 </GtkFixed>,
-                { wrapper: false },
             );
 
-            const x1Ref = createNativeRef(0);
-            const y1Ref = createNativeRef(0);
-            const firstLabel = label1Ref.current;
-            if (firstLabel) {
-                fixedRef.current?.getChildPosition(firstLabel, x1Ref, y1Ref);
+            if (!fixedRef.current || !label1Ref.current || !label2Ref.current) {
+                throw new Error("Refs should be set after render");
             }
-            expect(x1Ref.value).toBe(10);
-            expect(y1Ref.value).toBe(20);
 
-            const x2Ref = createNativeRef(0);
-            const y2Ref = createNativeRef(0);
-            const secondLabel = label2Ref.current;
-            if (secondLabel) {
-                fixedRef.current?.getChildPosition(secondLabel, x2Ref, y2Ref);
-            }
-            expect(x2Ref.value).toBe(100);
-            expect(y2Ref.value).toBe(80);
+            const pos1 = getChildPosition(fixedRef.current, label1Ref.current);
+            expect(pos1.x).toBe(10);
+            expect(pos1.y).toBe(20);
+
+            const pos2 = getChildPosition(fixedRef.current, label2Ref.current);
+            expect(pos2.x).toBe(100);
+            expect(pos2.y).toBe(80);
         });
 
         it("removes child from fixed", async () => {
             const fixedRef = createRef<Gtk.Fixed>();
+            const labelRef = createRef<Gtk.Label>();
 
             function App({ showChild }: { showChild: boolean }) {
                 return (
                     <GtkFixed ref={fixedRef}>
                         {showChild && (
                             <FixedChild x={0} y={0}>
-                                Removable
+                                <GtkLabel ref={labelRef} label="Removable" />
                             </FixedChild>
                         )}
                     </GtkFixed>

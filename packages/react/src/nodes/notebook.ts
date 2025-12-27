@@ -36,7 +36,6 @@ class NotebookNode extends WidgetNode<Gtk.Notebook> {
             throw new Error(`Cannot remove '${child.typeName}' from 'Notebook': expected NotebookPage`);
         }
 
-        child.setNotebook(undefined);
         child.setPosition(undefined);
     }
 }

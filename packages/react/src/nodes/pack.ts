@@ -5,7 +5,7 @@ import type { Container, ContainerClass } from "../types.js";
 import { PackChild } from "./pack-child.js";
 import { WidgetNode } from "./widget.js";
 
-export type PackableWidget = Gtk.Widget & {
+type PackableWidget = Gtk.Widget & {
     packStart(child: Gtk.Widget): void;
     packEnd(child: Gtk.Widget): void;
     remove(child: Gtk.Widget): void;
@@ -41,7 +41,6 @@ class PackNode extends WidgetNode<PackableWidget> {
 
     public override removeChild(child: Node): void {
         if (child instanceof PackChild) {
-            child.setParent(undefined);
             return;
         }
 

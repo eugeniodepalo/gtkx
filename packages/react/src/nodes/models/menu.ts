@@ -161,7 +161,13 @@ export class Menu extends VirtualNode<MenuProps> {
     }
 
     public removeFromParent(): void {
-        batch(() => this.getParent().remove(this.getPosition()));
+        if (!this.parent) return;
+
+        const position = this.getPosition();
+        const parent = this.parent;
+        this.parent = undefined;
+
+        batch(() => parent.remove(position));
     }
 
     public insertInParentBefore(before: Menu): void {
@@ -231,6 +237,7 @@ export class Menu extends VirtualNode<MenuProps> {
         }
 
         const beforeIndex = this.children.indexOf(before);
+
         if (beforeIndex >= 0) {
             this.children.splice(beforeIndex, 0, child);
         } else {
@@ -251,12 +258,12 @@ export class Menu extends VirtualNode<MenuProps> {
         }
 
         const index = this.children.indexOf(child);
+
         if (index >= 0) {
             this.children.splice(index, 1);
         }
 
         child.removeFromParent();
-        child.setParent(undefined);
     }
 
     public override updateProps(oldProps: MenuProps | null, newProps: MenuProps): void {
@@ -279,8 +286,10 @@ export class Menu extends VirtualNode<MenuProps> {
         }
 
         if (oldProps.id !== newProps.id || oldProps.label !== newProps.label) {
+            const parent = this.parent;
             this.removeAction();
             this.removeFromParent();
+            this.parent = parent;
             this.createAction();
             this.appendToParent();
             return;
@@ -304,19 +313,26 @@ export class Menu extends VirtualNode<MenuProps> {
 
         if (!oldProps || oldProps.label !== newProps.label) {
             const position = this.getPosition();
+            const parent = this.parent;
 
             this.removeFromParent();
 
             if (this.type === "section") {
-                this.parent.insertSection(position, this.menu, newProps.label);
+                parent.insertSection(position, this.menu, newProps.label);
             } else if (this.type === "submenu") {
-                this.parent.insertSubmenu(position, this.menu, newProps.label);
+                parent.insertSubmenu(position, this.menu, newProps.label);
             }
         }
     }
 
     public override unmount(): void {
         this.removeAction();
+
+        if (this.parent) {
+            this.removeFromParent();
+            this.parent = undefined;
+        }
+
         super.unmount();
     }
 }

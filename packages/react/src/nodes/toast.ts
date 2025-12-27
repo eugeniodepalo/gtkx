@@ -1,6 +1,7 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { ToastProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
+import { scheduleAfterCommit } from "../scheduler.js";
 import { VirtualNode } from "./virtual.js";
 
 type Props = ToastProps;
@@ -12,22 +13,11 @@ export class ToastNode extends VirtualNode<Props> {
         return type === "Toast";
     }
 
-    private toast: Adw.Toast | null = null;
-    private overlay: Adw.ToastOverlay | null = null;
-    private isShown = false;
+    private toast?: Adw.Toast;
+    private parent?: Adw.ToastOverlay;
 
-    public setToastOverlay(overlay?: Adw.ToastOverlay): void {
-        if (!overlay) {
-            if (this.toast && this.isShown) {
-                this.toast.dismiss();
-            }
-            this.cleanup();
-            this.overlay = null;
-            return;
-        }
-
-        this.overlay = overlay;
-        this.showToast();
+    public setParent(parent?: Adw.ToastOverlay): void {
+        this.parent = parent;
     }
 
     private createToast(): Adw.Toast {
@@ -57,9 +47,8 @@ export class ToastNode extends VirtualNode<Props> {
     }
 
     private showToast(): void {
-        if (!this.overlay || this.isShown) return;
+        if (!this.parent) return;
 
-        this.cleanup();
         this.toast = this.createToast();
 
         if (this.props.onButtonClicked) {
@@ -69,40 +58,46 @@ export class ToastNode extends VirtualNode<Props> {
         }
 
         this.signalStore.set(this.toast, "dismissed", () => {
-            this.isShown = false;
             this.props.onDismissed?.();
         });
 
-        this.overlay.addToast(this.toast);
-        this.isShown = true;
-    }
-
-    private cleanup(): void {
-        this.signalStore.clear();
-        this.toast = null;
-        this.isShown = false;
+        this.parent.addToast(this.toast);
     }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
 
-        if (!this.toast || !this.isShown) return;
+        if (!oldProps) {
+            scheduleAfterCommit(() => this.showToast());
+            return;
+        }
 
-        if (oldProps?.title !== newProps.title) {
+        if (!this.toast) return;
+
+        if (oldProps.title !== newProps.title) {
             this.toast.setTitle(newProps.title);
         }
 
-        if (oldProps?.buttonLabel !== newProps.buttonLabel) {
+        if (oldProps.buttonLabel !== newProps.buttonLabel) {
             this.toast.setButtonLabel(newProps.buttonLabel);
         }
 
-        if (oldProps?.actionName !== newProps.actionName) {
+        if (oldProps.actionName !== newProps.actionName) {
             this.toast.setActionName(newProps.actionName);
         }
 
-        if (oldProps?.useMarkup !== newProps.useMarkup && newProps.useMarkup !== undefined) {
+        if (oldProps.useMarkup !== newProps.useMarkup && newProps.useMarkup !== undefined) {
             this.toast.setUseMarkup(newProps.useMarkup);
         }
+    }
+
+    public override unmount(): void {
+        if (this.toast) {
+            this.toast.dismiss();
+        }
+
+        this.parent = undefined;
+        super.unmount();
     }
 }
 

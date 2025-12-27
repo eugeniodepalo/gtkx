@@ -5,7 +5,7 @@ import type { Container, ContainerClass } from "../types.js";
 import { ActionRowChild } from "./action-row-child.js";
 import { WidgetNode } from "./widget.js";
 
-export type PrefixSuffixWidget = Gtk.Widget & {
+type PrefixSuffixWidget = Gtk.Widget & {
     addPrefix(child: Gtk.Widget): void;
     addSuffix(child: Gtk.Widget): void;
     remove(child: Gtk.Widget): void;
@@ -41,7 +41,6 @@ class ActionRowNode extends WidgetNode<PrefixSuffixWidget> {
 
     public override removeChild(child: Node): void {
         if (child instanceof ActionRowChild) {
-            child.setParent(undefined);
             return;
         }
 

@@ -50,6 +50,7 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         batch(() => {
             if (!isAutowrappedChild(child.container)) {
                 const wrapper = child.container.getParent();
+
                 if (wrapper && isSingleChild(wrapper)) {
                     wrapper.setChild(null);
                     this.container.remove(wrapper);
@@ -83,6 +84,7 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             }
 
             const position = this.findChildPosition(before);
+
             if (position !== undefined) {
                 this.container.insert(child.container, position);
             } else {
@@ -97,6 +99,7 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         if (existingWrapper && isSingleChild(existingWrapper)) {
             existingWrapper.setChild(null);
             const wrapperParent = existingWrapper.getParent();
+
             if (wrapperParent !== null && isRemovable(wrapperParent)) {
                 wrapperParent.remove(existingWrapper);
             }
@@ -118,14 +121,13 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             position++;
             currentChild = currentChild.getNextSibling();
         }
-
-        return undefined;
     }
 
     private unwrapChild(child: Gtk.Widget): Gtk.Widget | null {
         if ("getChild" in child && typeof child.getChild === "function") {
             return child.getChild() as Gtk.Widget | null;
         }
+
         return child;
     }
 }

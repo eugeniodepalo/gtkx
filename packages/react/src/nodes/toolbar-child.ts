@@ -1,4 +1,5 @@
 import type * as Adw from "@gtkx/ffi/adw";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
 import { SlotNode } from "./slot.js";
 
@@ -9,10 +10,6 @@ export class ToolbarChildNode extends SlotNode {
 
     public static override matches(type: string): boolean {
         return type === "Toolbar.Top" || type === "Toolbar.Bottom";
-    }
-
-    public setToolbar(toolbar?: Adw.ToolbarView): void {
-        this.setParent(toolbar);
     }
 
     private getToolbar(): Adw.ToolbarView {
@@ -27,18 +24,21 @@ export class ToolbarChildNode extends SlotNode {
         return this.typeName === "Toolbar.Top" ? "top" : "bottom";
     }
 
-    protected override onChildChange(): void {
-        if (!this.child) {
-            return;
+    protected override onChildChange(oldChild: Gtk.Widget | undefined): void {
+        const toolbar = this.getToolbar();
+
+        if (oldChild) {
+            toolbar.remove(oldChild);
         }
 
-        const toolbar = this.getToolbar();
-        const position = this.getPosition();
+        if (this.child) {
+            const position = this.getPosition();
 
-        if (position === "top") {
-            toolbar.addTopBar(this.child);
-        } else {
-            toolbar.addBottomBar(this.child);
+            if (position === "top") {
+                toolbar.addTopBar(this.child);
+            } else {
+                toolbar.addBottomBar(this.child);
+            }
         }
     }
 }

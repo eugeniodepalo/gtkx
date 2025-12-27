@@ -5,7 +5,7 @@ import { SlotNode } from "./slot.js";
 
 type Props = Partial<FixedChildProps>;
 
-export class FixedChildNode extends SlotNode<Props> {
+class FixedChildNode extends SlotNode<Props> {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
@@ -36,11 +36,15 @@ export class FixedChildNode extends SlotNode<Props> {
         const y = this.props.y ?? 0;
 
         if (this.child) {
-            const currentParent = this.child.getParent();
+            const child = this.child;
+
+            const currentParent = child.getParent();
+
             if (currentParent?.equals(fixed)) {
-                fixed.remove(this.child);
+                fixed.remove(child);
             }
-            fixed.put(this.child, x, y);
+
+            fixed.put(child, x, y);
         }
     }
 
@@ -48,10 +52,7 @@ export class FixedChildNode extends SlotNode<Props> {
         const fixed = this.getFixed();
 
         if (oldChild) {
-            const oldParent = oldChild.getParent();
-            if (oldParent?.equals(fixed)) {
-                fixed.remove(oldChild);
-            }
+            fixed.remove(oldChild);
         }
 
         if (this.child) {

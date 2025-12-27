@@ -15,7 +15,7 @@ class ToolbarNode extends WidgetNode<Adw.ToolbarView> {
 
     public override appendChild(child: Node): void {
         if (child instanceof ToolbarChildNode) {
-            child.setToolbar(this.container);
+            child.setParent(this.container);
             return;
         }
 
@@ -28,7 +28,7 @@ class ToolbarNode extends WidgetNode<Adw.ToolbarView> {
 
     public override insertBefore(child: Node): void {
         if (child instanceof ToolbarChildNode) {
-            child.setToolbar(this.container);
+            child.setParent(this.container);
             return;
         }
 
@@ -41,7 +41,6 @@ class ToolbarNode extends WidgetNode<Adw.ToolbarView> {
 
     public override removeChild(child: Node): void {
         if (child instanceof ToolbarChildNode) {
-            child.setToolbar(undefined);
             return;
         }
 

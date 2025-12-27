@@ -18,6 +18,7 @@ export class SimpleListStore {
                 this.model.remove(existingIndex);
                 this.ids.splice(existingIndex, 1);
             }
+
             this.ids.push(id);
             this.model.append(label);
         });

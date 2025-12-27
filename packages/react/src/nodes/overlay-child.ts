@@ -5,7 +5,7 @@ import { SlotNode } from "./slot.js";
 
 type Props = Partial<OverlayChildProps>;
 
-export class OverlayChildNode extends SlotNode<Props> {
+class OverlayChildNode extends SlotNode<Props> {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {

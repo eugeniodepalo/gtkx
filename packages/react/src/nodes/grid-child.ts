@@ -5,23 +5,11 @@ import { SlotNode } from "./slot.js";
 
 type Props = Partial<GridChildProps>;
 
-export class GridChildNode extends SlotNode<Props> {
+class GridChildNode extends SlotNode<Props> {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
         return type === "GridChild";
-    }
-
-    public setGrid(grid?: Gtk.Grid): void {
-        this.setParent(grid);
-    }
-
-    private getGrid(): Gtk.Grid {
-        if (!this.parent) {
-            throw new Error("Expected Grid reference to be set on GridChildNode");
-        }
-
-        return this.parent as Gtk.Grid;
     }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
@@ -40,6 +28,14 @@ export class GridChildNode extends SlotNode<Props> {
         }
     }
 
+    private getGrid(): Gtk.Grid {
+        if (!this.parent) {
+            throw new Error("Expected Grid reference to be set on GridChildNode");
+        }
+
+        return this.parent as Gtk.Grid;
+    }
+
     private attachChild(): void {
         const grid = this.getGrid();
         const column = this.props.column ?? 0;
@@ -54,15 +50,25 @@ export class GridChildNode extends SlotNode<Props> {
 
         if (this.child) {
             const currentParent = this.child.getParent();
+
             if (currentParent?.equals(grid)) {
                 grid.remove(this.child);
             }
+
             grid.attach(this.child, column, row, columnSpan, rowSpan);
         }
     }
 
-    protected override onChildChange(): void {
-        this.attachChild();
+    protected override onChildChange(oldChild: Gtk.Widget | undefined): void {
+        const grid = this.getGrid();
+
+        if (oldChild) {
+            grid.remove(oldChild);
+        }
+
+        if (this.child) {
+            this.attachChild();
+        }
     }
 }
 

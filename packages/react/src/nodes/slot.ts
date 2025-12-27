@@ -22,12 +22,18 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
     child?: Gtk.Widget;
 
     public setParent(parent?: Gtk.Widget): void {
-        if (!parent && this.parent && this.child) {
+        this.parent = parent;
+    }
+
+    public override unmount(): void {
+        if (this.parent && this.child) {
             const oldChild = this.child;
             this.child = undefined;
             this.onChildChange(oldChild);
         }
-        this.parent = parent;
+
+        this.parent = undefined;
+        super.unmount();
     }
 
     protected getId(): string {
@@ -73,9 +79,12 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
 
     public override removeChild(): void {
         const oldChild = this.child;
-        this.child = undefined;
 
         scheduleAfterCommit(() => {
+            if (oldChild === this.child) {
+                this.child = undefined;
+            }
+
             if (this.parent) {
                 this.onChildChange(oldChild);
             }

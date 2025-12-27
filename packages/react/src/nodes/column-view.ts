@@ -47,6 +47,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         const existingColumn = this.findColumnInView(child.column);
+
         if (existingColumn) {
             this.container.removeColumn(existingColumn);
         }
@@ -66,6 +67,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         const existingColumn = this.findColumnInView(child.column);
+
         if (existingColumn) {
             this.container.removeColumn(existingColumn);
         }
@@ -91,9 +93,11 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         const existingColumn = this.findColumnInView(child.column);
+
         if (existingColumn) {
             this.container.removeColumn(existingColumn);
         }
+
         child.setStore(undefined);
     }
 

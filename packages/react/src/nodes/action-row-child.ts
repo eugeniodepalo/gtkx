@@ -2,9 +2,14 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { scheduleAfterCommit } from "../scheduler.js";
-import type { PrefixSuffixWidget } from "./action-row.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
+
+type PrefixSuffixWidget = Gtk.Widget & {
+    addPrefix(child: Gtk.Widget): void;
+    addSuffix(child: Gtk.Widget): void;
+    remove(child: Gtk.Widget): void;
+};
 
 type ActionRowChildPosition = "prefix" | "suffix";
 
@@ -23,18 +28,7 @@ export class ActionRowChild extends VirtualNode {
     }
 
     public setParent(newParent?: PrefixSuffixWidget): void {
-        const oldParent = this.parent;
         this.parent = newParent;
-
-        if (!newParent && oldParent) {
-            const childrenToRemove = [...this.children];
-            scheduleAfterCommit(() => {
-                for (const widget of childrenToRemove) {
-                    oldParent.remove(widget);
-                }
-            });
-            this.children = [];
-        }
     }
 
     public override appendChild(child: Node): void {
@@ -68,6 +62,7 @@ export class ActionRowChild extends VirtualNode {
         const widget = child.container;
         const parent = this.parent;
         const index = this.children.indexOf(widget);
+
         if (index !== -1) {
             this.children.splice(index, 1);
         }
@@ -77,6 +72,23 @@ export class ActionRowChild extends VirtualNode {
                 parent.remove(widget);
             }
         });
+    }
+
+    public override unmount(): void {
+        const parent = this.parent;
+        const childrenToRemove = [...this.children];
+
+        if (parent && childrenToRemove.length > 0) {
+            scheduleAfterCommit(() => {
+                for (const widget of childrenToRemove) {
+                    parent.remove(widget);
+                }
+            });
+        }
+
+        this.children = [];
+        this.parent = undefined;
+        super.unmount();
     }
 }
 
