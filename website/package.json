@@ -35,9 +35,9 @@
         "@docusaurus/preset-classic": "^3.9.2",
         "@docusaurus/tsconfig": "^3.9.2",
         "@docusaurus/types": "^3.9.2",
-        "docusaurus-plugin-typedoc": "^1.4.0",
-        "typedoc": "^0.28.0",
-        "typedoc-plugin-markdown": "^4.6.0"
+        "docusaurus-plugin-typedoc": "^1.4.2",
+        "typedoc": "^0.28.15",
+        "typedoc-plugin-markdown": "^4.9.0"
     },
     "engines": {
         "node": ">=18.0"
