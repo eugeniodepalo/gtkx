@@ -1,17 +1,21 @@
 #!/bin/bash
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$(dirname "$0")/.."
 
-cd "$PROJECT_DIR"
+echo "Building GTKX Example Snap..."
 
+# Ensure the app is built
+pnpm bundle
 pnpm build:sea
 
-mkdir -p dist/snap
+# Build the Snap
+snapcraft
 
-snapcraft -v pack --output ./dist/snap/gtkx-demo_0.1_amd64.snap
-
-snapcraft clean
-
-echo "Snap package created at: dist/snap/gtkx-demo_0.1_amd64.snap"
+echo "Snap built successfully!"
+echo ""
+echo "To install (devmode):"
+echo "  sudo snap install --devmode gtkx-example_*.snap"
+echo ""
+echo "To run:"
+echo "  gtkx-example"

@@ -1,11 +1,11 @@
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 import type { Category, Demo } from "../demos/types.js";
 
 interface DemoContextValue {
     categories: Category[];
     currentDemo: Demo | null;
     currentCategory: Category | null;
-    selectDemo: (categoryId: string, demoId: string) => void;
+    setCurrentDemo: (demo: Demo | null) => void;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
     filteredCategories: Category[];
@@ -13,69 +13,52 @@ interface DemoContextValue {
 
 const DemoContext = createContext<DemoContextValue | null>(null);
 
+export const useDemo = () => {
+    const context = useContext(DemoContext);
+    if (!context) {
+        throw new Error("useDemo must be used within a DemoProvider");
+    }
+    return context;
+};
+
 interface DemoProviderProps {
     categories: Category[];
     children: ReactNode;
 }
 
 export const DemoProvider = ({ categories, children }: DemoProviderProps) => {
-    const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(categories[0]?.id ?? null);
-    const [currentDemoId, setCurrentDemoId] = useState<string | null>(categories[0]?.demos[0]?.id ?? null);
+    const [currentDemo, setCurrentDemo] = useState<Demo | null>(categories[0]?.demos[0] ?? null);
     const [searchQuery, setSearchQuery] = useState("");
 
-    const currentCategory = useMemo(
-        () => categories.find((c) => c.id === currentCategoryId) ?? null,
-        [categories, currentCategoryId],
+    const currentCategory = categories.find((cat) => cat.demos.some((d) => d.id === currentDemo?.id)) ?? null;
+
+    const filteredCategories = searchQuery.trim()
+        ? categories
+              .map((cat) => ({
+                  ...cat,
+                  demos: cat.demos.filter(
+                      (demo) =>
+                          demo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          demo.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          demo.keywords.some((kw) => kw.toLowerCase().includes(searchQuery.toLowerCase())),
+                  ),
+              }))
+              .filter((cat) => cat.demos.length > 0)
+        : categories;
+
+    return (
+        <DemoContext.Provider
+            value={{
+                categories,
+                currentDemo,
+                currentCategory,
+                setCurrentDemo,
+                searchQuery,
+                setSearchQuery,
+                filteredCategories,
+            }}
+        >
+            {children}
+        </DemoContext.Provider>
     );
-
-    const currentDemo = useMemo(
-        () => currentCategory?.demos.find((d) => d.id === currentDemoId) ?? null,
-        [currentCategory, currentDemoId],
-    );
-
-    const selectDemo = useCallback((categoryId: string, demoId: string) => {
-        setCurrentCategoryId(categoryId);
-        setCurrentDemoId(demoId);
-    }, []);
-
-    const filteredCategories = useMemo(() => {
-        if (!searchQuery.trim()) {
-            return categories;
-        }
-        const query = searchQuery.toLowerCase();
-        return categories
-            .map((category) => ({
-                ...category,
-                demos: category.demos.filter(
-                    (demo) =>
-                        demo.title.toLowerCase().includes(query) ||
-                        demo.description.toLowerCase().includes(query) ||
-                        demo.keywords.some((k) => k.toLowerCase().includes(query)),
-                ),
-            }))
-            .filter((category) => category.demos.length > 0);
-    }, [categories, searchQuery]);
-
-    const value = useMemo(
-        () => ({
-            categories,
-            currentDemo,
-            currentCategory,
-            selectDemo,
-            searchQuery,
-            setSearchQuery,
-            filteredCategories,
-        }),
-        [categories, currentDemo, currentCategory, selectDemo, searchQuery, filteredCategories],
-    );
-
-    return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;
-};
-
-export const useDemo = (): DemoContextValue => {
-    const context = useContext(DemoContext);
-    if (!context) {
-        throw new Error("useDemo must be used within a DemoProvider");
-    }
-    return context;
 };

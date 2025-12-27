@@ -1,16 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
-import { useState } from "react";
+import { GtkApplicationWindow, GtkBox, GtkLabel, quit } from "@gtkx/react";
 
 export const App = () => {
-    const [count, setCount] = useState(0);
-
-    const increment = () => {
-        setCount((c) => c + 1);
-    };
-
     return (
-        <GtkApplicationWindow title="GTKX Flatpak Demo" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+        <GtkApplicationWindow title="GTKX Example" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={20}
@@ -21,9 +14,13 @@ export const App = () => {
                 valign={Gtk.Align.CENTER}
                 halign={Gtk.Align.CENTER}
             >
-                <GtkLabel label="Hello from Flatpak!" cssClasses={["title-1"]} />
-                <GtkLabel label={`Count: ${count}`} cssClasses={["title-2"]} name="count-label" />
-                <GtkButton label="Increment" onClicked={increment} cssClasses={["suggested-action", "pill"]} />
+                <GtkLabel label="GTKX Example App" cssClasses={["title-1"]} />
+                <GtkLabel
+                    label="This app demonstrates GTKX packaging for Linux distribution."
+                    cssClasses={["dim-label"]}
+                    wrap
+                    justify={Gtk.Justification.CENTER}
+                />
             </GtkBox>
         </GtkApplicationWindow>
     );

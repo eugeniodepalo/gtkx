@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import type { Demo } from "../demos/types.js";
 
 interface DemoPanelProps {
@@ -12,12 +12,12 @@ export const DemoPanel = ({ demo }: DemoPanelProps) => {
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={0}
-                halign={Gtk.Align.CENTER}
                 valign={Gtk.Align.CENTER}
+                halign={Gtk.Align.CENTER}
                 vexpand
                 hexpand
             >
-                <GtkLabel label="Select a demo from the sidebar" cssClasses={["dim-label"]} />
+                <GtkLabel label="Select a demo" cssClasses={["dim-label", "title-2"]} />
             </GtkBox>
         );
     }
@@ -28,34 +28,27 @@ export const DemoPanel = ({ demo }: DemoPanelProps) => {
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
-                spacing={0}
-                marginStart={16}
-                marginEnd={16}
-                marginTop={16}
-                marginBottom={8}
+                spacing={4}
+                marginTop={12}
+                marginBottom={12}
+                marginStart={12}
+                marginEnd={12}
             >
-                <GtkLabel label={demo.title} cssClasses={["title-1"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label={demo.description}
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                    marginTop={4}
-                    wrap
-                />
+                <GtkLabel label={demo.title} halign={Gtk.Align.START} cssClasses={["title-1"]} />
+                <GtkLabel label={demo.description} halign={Gtk.Align.START} cssClasses={["dim-label"]} wrap />
             </GtkBox>
+
             <GtkScrolledWindow vexpand hexpand>
-                <GtkFrame marginStart={16} marginEnd={16} marginTop={8} marginBottom={16}>
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
-                        marginStart={16}
-                        marginEnd={16}
-                        marginTop={16}
-                        marginBottom={16}
-                    >
-                        <DemoComponent />
-                    </GtkBox>
-                </GtkFrame>
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={0}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <DemoComponent />
+                </GtkBox>
             </GtkScrolledWindow>
         </GtkBox>
     );

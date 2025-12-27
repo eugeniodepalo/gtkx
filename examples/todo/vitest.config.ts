@@ -1,8 +1,12 @@
-import { mergeConfig } from "vitest/config";
-import baseConfig from "../../vitest.config.js";
+import { defineConfig } from "vitest/config";
 
-export default mergeConfig(baseConfig, {
+export default defineConfig({
     test: {
-        setupFiles: ["./tests/setup.ts"],
+        include: ["tests/**/*.test.{ts,tsx}"],
+        globals: false,
+        testTimeout: 30000,
+    },
+    esbuild: {
+        jsx: "automatic",
     },
 });

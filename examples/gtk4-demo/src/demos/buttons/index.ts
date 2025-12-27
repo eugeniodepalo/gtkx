@@ -1,8 +1,7 @@
 import type { Demo } from "../types.js";
-import { buttonsDemo } from "./buttons.js";
-import { checkButtonDemo } from "./check-button.js";
-import { linkButtonDemo } from "./link-button.js";
-import { switchDemo } from "./switch.js";
-import { toggleButtonDemo } from "./toggle-button.js";
+import { expanderDemo } from "./expander.js";
+import { scaleDemo } from "./scale.js";
+import { spinbuttonDemo } from "./spinbutton.js";
+import { spinnerDemo } from "./spinner.js";
 
-export const buttonsDemos: Demo[] = [buttonsDemo, checkButtonDemo, toggleButtonDemo, linkButtonDemo, switchDemo];
+export const buttonsDemos: Demo[] = [spinbuttonDemo, scaleDemo, spinnerDemo, expanderDemo];

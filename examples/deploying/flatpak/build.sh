@@ -1,21 +1,33 @@
 #!/bin/bash
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$(dirname "$0")/.."
 
-cd "$PROJECT_DIR"
+echo "Building GTKX Example Flatpak..."
 
+# Ensure the app is built
+pnpm bundle
 pnpm build:sea
 
-mkdir -p dist/flatpak
+# Build the Flatpak
+flatpak-builder \
+    --force-clean \
+    --user \
+    --install-deps-from=flathub \
+    --repo=flatpak-repo \
+    build-dir \
+    flatpak/org.gtkx.example.yaml
 
-TEMP_REPO=$(mktemp -d)
+# Create the bundle
+flatpak build-bundle \
+    flatpak-repo \
+    dist/org.gtkx.example.flatpak \
+    org.gtkx.example
 
-flatpak-builder --user --install --force-clean --repo="$TEMP_REPO" build-dir flatpak/org.gtkx.flatpak.yaml
-
-flatpak build-bundle "$TEMP_REPO" dist/flatpak/org.gtkx.flatpak.flatpak org.gtkx.flatpak
-
-rm -rf "$TEMP_REPO"
-
-echo "Flatpak bundle created at: dist/flatpak/org.gtkx.flatpak.flatpak"
+echo "Flatpak built: dist/org.gtkx.example.flatpak"
+echo ""
+echo "To install:"
+echo "  flatpak install --user dist/org.gtkx.example.flatpak"
+echo ""
+echo "To run:"
+echo "  flatpak run org.gtkx.example"

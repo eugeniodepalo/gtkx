@@ -62,6 +62,15 @@ class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         }
 
         this.menu.appendChild(child);
+
+        if (
+            child instanceof WidgetNode &&
+            (this.container instanceof Adw.ApplicationWindow || this.container instanceof Adw.Window)
+        ) {
+            this.container.setContent(child.container);
+            return;
+        }
+
         super.appendChild(child);
     }
 
@@ -72,6 +81,15 @@ class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         }
 
         this.menu.removeChild(child);
+
+        if (
+            child instanceof WidgetNode &&
+            (this.container instanceof Adw.ApplicationWindow || this.container instanceof Adw.Window)
+        ) {
+            this.container.setContent(undefined);
+            return;
+        }
+
         super.removeChild(child);
     }
 
@@ -86,7 +104,7 @@ class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     }
 
     public override unmount(): void {
-        this.container.destroy();
+        this.container.close();
         super.unmount();
     }
 

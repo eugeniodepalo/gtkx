@@ -6,11 +6,12 @@ export interface Demo {
     description: string;
     keywords: string[];
     component: ComponentType;
-    sourcePath: string;
+    sourceCode: string;
 }
 
 export interface Category {
     id: string;
     title: string;
+    icon: string;
     demos: Demo[];
 }

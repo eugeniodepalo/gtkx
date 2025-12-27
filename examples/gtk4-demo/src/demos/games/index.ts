@@ -1,6 +1,5 @@
 import type { Demo } from "../types.js";
-import { fifteenPuzzleDemo } from "./fifteen-puzzle.js";
-import { memoryGameDemo } from "./memory-game.js";
-import { gamesPlaceholderDemo } from "./placeholder.js";
+import { pegSolitaireDemo } from "./peg-solitaire.js";
+import { slidingPuzzleDemo } from "./sliding-puzzle.js";
 
-export const gamesDemos: Demo[] = [gamesPlaceholderDemo, fifteenPuzzleDemo, memoryGameDemo];
+export const gamesDemos: Demo[] = [slidingPuzzleDemo, pegSolitaireDemo];

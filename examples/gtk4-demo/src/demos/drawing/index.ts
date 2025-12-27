@@ -1,5 +1,6 @@
 import type { Demo } from "../types.js";
-import { drawingAreaDemo } from "./drawing-area.js";
-import { drawingOverviewDemo } from "./overview.js";
+import { drawingAreaDemo } from "./drawingarea.js";
+import { imagesDemo } from "./images.js";
+import { progressDemo } from "./progress.js";
 
-export const drawingDemos: Demo[] = [drawingOverviewDemo, drawingAreaDemo];
+export const drawingDemos: Demo[] = [drawingAreaDemo, imagesDemo, progressDemo];

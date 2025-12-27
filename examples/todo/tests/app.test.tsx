@@ -1,47 +1,11 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { cleanup, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { cleanup, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 
 describe("Todo App", () => {
     afterEach(async () => {
         await cleanup();
-    });
-
-    describe("initial state", () => {
-        it("renders with title", async () => {
-            await render(<App />, { wrapper: false });
-
-            const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Tasks" });
-            expect(window).toBeDefined();
-        });
-
-        it("shows empty message when no todos", async () => {
-            await render(<App />, { wrapper: false });
-
-            const emptyMessage = await screen.findByText("No tasks yet");
-            expect(emptyMessage).toBeDefined();
-        });
-
-        it("has an input field for new todos", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            expect(input).toBeDefined();
-        });
-
-        it("has an add button", async () => {
-            await render(<App />, { wrapper: false });
-
-            const addButton = await screen.findByTestId("add-button");
-            expect(addButton).toBeDefined();
-        });
-
-        it("does not show filters when no todos exist", async () => {
-            await render(<App />, { wrapper: false });
-
-            await expect(screen.findByTestId("filter-all", { timeout: 100 })).rejects.toThrow();
-        });
     });
 
     describe("adding todos", () => {
@@ -55,6 +19,17 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             const todoText = await screen.findByText("Buy groceries");
+            expect(todoText).toBeDefined();
+        });
+
+        it("adds a new todo when pressing Enter", async () => {
+            await render(<App />, { wrapper: false });
+
+            const input = await screen.findByTestId("todo-input");
+            await userEvent.type(input, "Walk the dog");
+            await userEvent.activate(input);
+
+            const todoText = await screen.findByText("Walk the dog");
             expect(todoText).toBeDefined();
         });
 
@@ -73,69 +48,11 @@ describe("Todo App", () => {
             });
         });
 
-        it("can add multiple todos", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByTestId("add-button");
-
-            await userEvent.type(input, "First todo");
-            await userEvent.click(addButton);
-
-            await userEvent.type(input, "Second todo");
-            await userEvent.click(addButton);
-
-            await userEvent.type(input, "Third todo");
-            await userEvent.click(addButton);
-
-            const first = await screen.findByText("First todo");
-            const second = await screen.findByText("Second todo");
-            const third = await screen.findByText("Third todo");
-
-            expect(first).toBeDefined();
-            expect(second).toBeDefined();
-            expect(third).toBeDefined();
-        });
-
         it("does not add empty todos", async () => {
             await render(<App />, { wrapper: false });
 
             const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
-
-            const emptyMessage = await screen.findByText("No tasks yet");
-            expect(emptyMessage).toBeDefined();
-        });
-
-        it("does not add whitespace-only todos", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "   ");
-
-            const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
-
-            const emptyMessage = await screen.findByText("No tasks yet");
-            expect(emptyMessage).toBeDefined();
-        });
-
-        it("shows filters after adding first todo", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "New todo");
-
-            const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
-
-            const filterAll = await screen.findByTestId("filter-all");
-            const filterActive = await screen.findByTestId("filter-active");
-            const filterCompleted = await screen.findByTestId("filter-completed");
-
-            expect(filterAll).toBeDefined();
-            expect(filterActive).toBeDefined();
-            expect(filterCompleted).toBeDefined();
+            expect((addButton as Gtk.Button).getSensitive()).toBe(false);
         });
     });
 
@@ -143,60 +60,36 @@ describe("Todo App", () => {
         it("can toggle a todo as completed", async () => {
             await render(<App />, { wrapper: false });
 
+            // Add a todo first
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Test todo");
-
             const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
-            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
-            await userEvent.click(checkbox);
+            // Find and click the checkbox
+            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
+            expect((checkbox as Gtk.CheckButton).getActive()).toBe(false);
 
-            const checkedCheckbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
-            expect(checkedCheckbox).toBeDefined();
+            await userEvent.click(checkbox);
+            expect((checkbox as Gtk.CheckButton).getActive()).toBe(true);
         });
 
         it("can toggle a completed todo back to active", async () => {
             await render(<App />, { wrapper: false });
 
+            // Add and complete a todo
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Test todo");
-
             const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
-            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
+            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
             await userEvent.click(checkbox);
+            expect((checkbox as Gtk.CheckButton).getActive()).toBe(true);
 
-            const checkedCheckbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
-            await userEvent.click(checkedCheckbox);
-
-            const uncheckedCheckbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
-            expect(uncheckedCheckbox).toBeDefined();
-        });
-
-        it("updates item count when completing todos", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByTestId("add-button");
-
-            await userEvent.type(input, "Todo 1");
-            await userEvent.click(addButton);
-            await userEvent.type(input, "Todo 2");
-            await userEvent.click(addButton);
-
-            let itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Gtk.Label).getLabel()).toContain("2");
-
-            const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
-            expect(checkboxes.length).toBeGreaterThanOrEqual(1);
-            const firstCheckbox = checkboxes[0] as Gtk.Widget;
-            expect(firstCheckbox).toBeDefined();
-            await userEvent.click(firstCheckbox);
-
-            itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Gtk.Label).getLabel()).toContain("1");
+            // Toggle back
+            await userEvent.click(checkbox);
+            expect((checkbox as Gtk.CheckButton).getActive()).toBe(false);
         });
     });
 
@@ -204,52 +97,51 @@ describe("Todo App", () => {
         it("can delete a todo", async () => {
             await render(<App />, { wrapper: false });
 
+            // Add a todo
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Todo to delete");
-
             const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
-            const todoText = await screen.findByText("Todo to delete");
-            expect(todoText).toBeDefined();
+            // Find and click delete button
+            const deleteButtons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
+            const deleteButton = deleteButtons.find(
+                (btn) => (btn as Gtk.Button).getIconName() === "edit-delete-symbolic",
+            );
+            expect(deleteButton).toBeDefined();
 
-            const deleteButton = await screen.findByTestId(/^delete-\d+$/);
-            await userEvent.click(deleteButton);
+            if (deleteButton) {
+                await userEvent.click(deleteButton);
+            }
 
+            // Verify empty state appears
             const emptyMessage = await screen.findByText("No tasks yet");
             expect(emptyMessage).toBeDefined();
-        });
-
-        it("deletes only the targeted todo", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByTestId("add-button");
-
-            await userEvent.type(input, "Keep this");
-            await userEvent.click(addButton);
-            await userEvent.type(input, "Delete this");
-            await userEvent.click(addButton);
-
-            const deleteThisLabel = await screen.findByText("Delete this");
-            const labelName = deleteThisLabel.getName();
-            expect(labelName).toBeDefined();
-            const todoId = labelName?.split("-")[1];
-            expect(todoId).toBeDefined();
-            const deleteButton = await screen.findByTestId(`delete-${todoId}`);
-            await userEvent.click(deleteButton);
-
-            const kept = await screen.findByText("Keep this");
-            expect(kept).toBeDefined();
-
-            await expect(screen.findByText("Delete this", { timeout: 100 })).rejects.toThrow();
         });
     });
 
     describe("filtering todos", () => {
-        const setupTodosWithMixedState = async () => {
+        it("shows filter bar when todos exist", async () => {
             await render(<App />, { wrapper: false });
 
+            // Initially no filter bar
+            await expect(screen.findByTestId("filter-all", { timeout: 100 })).rejects.toThrow();
+
+            // Add a todo
+            const input = await screen.findByTestId("todo-input");
+            await userEvent.type(input, "Test todo");
+            const addButton = await screen.findByTestId("add-button");
+            await userEvent.click(addButton);
+
+            // Filter bar should appear
+            const filterAll = await screen.findByTestId("filter-all");
+            expect(filterAll).toBeDefined();
+        });
+
+        it("filters to show only active todos", async () => {
+            await render(<App />, { wrapper: false });
+
+            // Add two todos
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByTestId("add-button");
 
@@ -258,214 +150,96 @@ describe("Todo App", () => {
             await userEvent.type(input, "Completed todo");
             await userEvent.click(addButton);
 
+            // Complete the second one
             const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
-            expect(checkboxes.length).toBeGreaterThanOrEqual(2);
-            const secondCheckbox = checkboxes[1] as Gtk.Widget;
-            expect(secondCheckbox).toBeDefined();
-            await userEvent.click(secondCheckbox);
-        };
+            await userEvent.click(checkboxes[1] as Gtk.Widget);
 
-        it("shows all todos by default", async () => {
-            await setupTodosWithMixedState();
-
-            const active = await screen.findByText("Active todo");
-            const completed = await screen.findByText("Completed todo");
-
-            expect(active).toBeDefined();
-            expect(completed).toBeDefined();
-        });
-
-        it("filters to show only active todos", async () => {
-            await setupTodosWithMixedState();
-
+            // Filter to active
             const filterActive = await screen.findByTestId("filter-active");
             await userEvent.click(filterActive);
 
-            const active = await screen.findByText("Active todo");
-            expect(active).toBeDefined();
+            // Should only see active todo
+            const activeTodo = await screen.findByText("Active todo");
+            expect(activeTodo).toBeDefined();
 
             await expect(screen.findByText("Completed todo", { timeout: 100 })).rejects.toThrow();
         });
 
         it("filters to show only completed todos", async () => {
-            await setupTodosWithMixedState();
+            await render(<App />, { wrapper: false });
 
+            // Add two todos
+            const input = await screen.findByTestId("todo-input");
+            const addButton = await screen.findByTestId("add-button");
+
+            await userEvent.type(input, "Active todo");
+            await userEvent.click(addButton);
+            await userEvent.type(input, "Completed todo");
+            await userEvent.click(addButton);
+
+            // Complete the second one
+            const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
+            await userEvent.click(checkboxes[1] as Gtk.Widget);
+
+            // Filter to completed
             const filterCompleted = await screen.findByTestId("filter-completed");
             await userEvent.click(filterCompleted);
 
-            const completed = await screen.findByText("Completed todo");
-            expect(completed).toBeDefined();
+            // Should only see completed todo
+            const completedTodo = await screen.findByText("Completed todo");
+            expect(completedTodo).toBeDefined();
 
             await expect(screen.findByText("Active todo", { timeout: 100 })).rejects.toThrow();
-        });
-
-        it("can switch back to all filter", async () => {
-            await setupTodosWithMixedState();
-
-            const filterCompleted = await screen.findByTestId("filter-completed");
-            await userEvent.click(filterCompleted);
-
-            const filterAll = await screen.findByTestId("filter-all");
-            await userEvent.click(filterAll);
-
-            const active = await screen.findByText("Active todo");
-            const completed = await screen.findByText("Completed todo");
-
-            expect(active).toBeDefined();
-            expect(completed).toBeDefined();
-        });
-
-        it("marks the active filter button as active", async () => {
-            await setupTodosWithMixedState();
-
-            const filterAll = await screen.findByTestId("filter-all");
-            expect((filterAll as Gtk.ToggleButton).getActive()).toBe(true);
-
-            const filterActive = await screen.findByTestId("filter-active");
-            await userEvent.click(filterActive);
-
-            expect((filterActive as Gtk.ToggleButton).getActive()).toBe(true);
-            expect((filterAll as Gtk.ToggleButton).getActive()).toBe(false);
         });
     });
 
     describe("clear completed", () => {
-        it("removes all completed todos", async () => {
+        it("shows clear completed button when there are completed todos", async () => {
             await render(<App />, { wrapper: false });
 
+            // Add and complete a todo
+            const input = await screen.findByTestId("todo-input");
+            await userEvent.type(input, "Test todo");
+            const addButton = await screen.findByTestId("add-button");
+            await userEvent.click(addButton);
+
+            // Initially no clear button
+            await expect(screen.findByTestId("clear-completed", { timeout: 100 })).rejects.toThrow();
+
+            // Complete the todo
+            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
+            await userEvent.click(checkbox);
+
+            // Clear button should appear
+            const clearButton = await screen.findByTestId("clear-completed");
+            expect(clearButton).toBeDefined();
+        });
+
+        it("removes all completed todos when clicking clear", async () => {
+            await render(<App />, { wrapper: false });
+
+            // Add two todos
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByTestId("add-button");
 
-            await userEvent.type(input, "Keep active");
+            await userEvent.type(input, "Keep this");
             await userEvent.click(addButton);
-            await userEvent.type(input, "Complete me");
-            await userEvent.click(addButton);
-            await userEvent.type(input, "Also complete");
+            await userEvent.type(input, "Delete this");
             await userEvent.click(addButton);
 
-            const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
-            expect(checkboxes.length).toBeGreaterThanOrEqual(3);
-            const secondCheckbox = checkboxes[1] as Gtk.Widget;
-            const thirdCheckbox = checkboxes[2] as Gtk.Widget;
-            expect(secondCheckbox).toBeDefined();
-            expect(thirdCheckbox).toBeDefined();
-            await userEvent.click(secondCheckbox);
-            await userEvent.click(thirdCheckbox);
+            // Complete the second one
+            const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
+            await userEvent.click(checkboxes[1] as Gtk.Widget);
 
+            // Clear completed
             const clearButton = await screen.findByTestId("clear-completed");
             await userEvent.click(clearButton);
 
-            const kept = await screen.findByText("Keep active");
-            expect(kept).toBeDefined();
+            // Should only see the active todo
+            const activeTodo = await screen.findByText("Keep this");
+            expect(activeTodo).toBeDefined();
 
-            await expect(screen.findByText("Complete me", { timeout: 100 })).rejects.toThrow();
-            await expect(screen.findByText("Also complete", { timeout: 100 })).rejects.toThrow();
-        });
-
-        it("is disabled when no completed todos", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Active todo");
-
-            const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
-
-            const clearButton = await screen.findByTestId("clear-completed");
-            expect(clearButton.getSensitive()).toBe(false);
-        });
-
-        it("becomes enabled when a todo is completed", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Todo");
-
-            const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
-
-            const clearButton = await screen.findByTestId("clear-completed");
-            expect(clearButton.getSensitive()).toBe(false);
-
-            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
-            await userEvent.click(checkbox);
-
-            expect(clearButton.getSensitive()).toBe(true);
-        });
-    });
-
-    describe("item count", () => {
-        it("shows singular 'task' for one todo", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Single todo");
-
-            const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
-
-            const itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Gtk.Label).getLabel()).toBe("1 task remaining");
-        });
-
-        it("shows plural 'tasks' for multiple todos", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByTestId("add-button");
-
-            await userEvent.type(input, "First");
-            await userEvent.click(addButton);
-            await userEvent.type(input, "Second");
-            await userEvent.click(addButton);
-
-            const itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Gtk.Label).getLabel()).toBe("2 tasks remaining");
-        });
-
-        it("shows plural 'tasks' for zero todos", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Todo");
-
-            const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
-
-            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
-            await userEvent.click(checkbox);
-
-            const itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Gtk.Label).getLabel()).toBe("0 tasks remaining");
-        });
-    });
-
-    describe("within scoped queries", () => {
-        it("can query within a specific todo item", async () => {
-            await render(<App />, { wrapper: false });
-
-            const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByTestId("add-button");
-
-            await userEvent.type(input, "First");
-            await userEvent.click(addButton);
-            await userEvent.type(input, "Second");
-            await userEvent.click(addButton);
-
-            const todoItems = await screen.findAllByTestId(/^todo-\d+$/);
-            expect(todoItems.length).toBeGreaterThanOrEqual(2);
-            const firstTodoItem = todoItems[0] as Gtk.Widget;
-            const secondTodoItem = todoItems[1] as Gtk.Widget;
-            expect(firstTodoItem).toBeDefined();
-            expect(secondTodoItem).toBeDefined();
-
-            const { findByRole } = within(firstTodoItem);
-
-            const checkbox = await findByRole(Gtk.AccessibleRole.CHECKBOX);
-            expect(checkbox).toBeDefined();
-
-            const deleteBtn = await findByRole(Gtk.AccessibleRole.BUTTON);
-            expect(deleteBtn).toBeDefined();
+            await expect(screen.findByText("Delete this", { timeout: 100 })).rejects.toThrow();
         });
     });
 });

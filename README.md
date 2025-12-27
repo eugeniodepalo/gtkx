@@ -76,26 +76,18 @@ render(<App />, "com.example.counter");
 - **CSS-in-JS styling** — Familiar styling patterns adapted for GTK
 - **Testing utilities** — Component testing similar to Testing Library
 
-## Platform Support
-
-| Platform | GTK Version | Status |
-| -------- | ----------- | ------ |
-| Linux    | 4.x         | Stable |
-| Fedora   | 38+         | Tested |
-| Ubuntu   | 22.04+      | Tested |
-
 ## Examples
 
 Explore complete applications in the [`examples/`](./examples) directory:
 
-- **[gtk4-demo](./examples/gtk4-demo)** — Widget gallery showcasing buttons, lists, dialogs, and menus
-- **[todo](./examples/todo)** — Task management app with filtering and Adwaita styling
-- **[adwaita](./examples/adwaita)** — Libadwaita components and modern GNOME patterns
-- **[deploying](./examples/deploying)** — Flatpak packaging example
+- **[gtk4-demo](./examples/gtk4-demo)** — Full replica of the official GTK4 demo app
+- **[hello-world](./examples/hello-world)** — Minimal application showing a counter
+- **[todo](./examples/todo)** — Full-featured todo application with Adwaita styling and testing
+- **[deploying](./examples/deploying)** — Example of packaging and distributing a GTKX app
 
 ## Documentation
 
-Visit [eugeniodepalo.github.io/gtkx](https://eugeniodepalo.github.io/gtkx/) for the full documentation.
+Visit [https://eugeniodepalo.github.io/gtkx](https://eugeniodepalo.github.io/gtkx/) for the full documentation.
 
 ## Contributing
 

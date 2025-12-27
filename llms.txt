@@ -1,83 +1,125 @@
 # GTKX
 
-> React framework for building native GTK4 desktop applications on Linux
+> Build native GTK4 desktop apps for Linux using React and TypeScript. Not a webview - real native widgets.
 
-## What it does
+## Getting Started
 
-Write React components in TypeScript that render as native GTK4 widgets.
-Not a webview - actual native widgets through Rust FFI.
+Create a new project with the CLI:
 
-## Tech stack
+```bash
+npx gtkx create my-app
+cd my-app
+npm install
+npm run dev
+```
 
-- Frontend: React 19, TypeScript
-- Native: Rust, Neon (Node.js native modules)
-- Target: GTK4, Adwaita (Libadwaita)
-- Build: pnpm, Turbo, Vite
-- Test: Vitest
+## Core Concepts
 
-## Packages
-
-@gtkx/react - React reconciler and component system
-@gtkx/ffi - Generated FFI bindings to native module
-@gtkx/native - Rust/Neon native module
-@gtkx/cli - CLI tools and dev server
-@gtkx/css - CSS-in-JS styling
-@gtkx/testing - Test utilities
-@gtkx/codegen - FFI code generator
-@gtkx/gir - GIR file parser
-
-## Architecture
-
-React JSX → @gtkx/react reconciler → @gtkx/ffi → @gtkx/native (Rust) → GTK4 C API
-
-Props: React state → FFI call() → GTK properties
-Events: GTK signals → FFI callbacks → React handlers
-
-## Entry points
-
-render() from @gtkx/react - Mount React app to GTK
-gtkx CLI - Create projects, run dev server
-
-## File layout
-
-packages/react/src/render.tsx - render() function
-packages/react/src/host-config.ts - React reconciler
-packages/react/src/nodes/*.ts - Widget implementations
-packages/native/src/lib.rs - Rust FFI exports
-packages/ffi/src/index.ts - JS FFI wrapper
-girs/*.gir - GObject Introspection files
-
-## Commands
-
-npm run build - Build all packages
-npm run codegen - Generate FFI from GIR
-npm run test - Run tests
-npm run dev - (in example) Start dev server
-
-## Examples
-
-examples/todo - Task management app
-examples/gtk4-demo - Widget gallery
-examples/lists - List components
-examples/adwaita - Libadwaita components
-examples/deploying - Flatpak packaging
-
-## Basic usage
+Every GTKX app uses `render()` to mount a React component tree as native GTK widgets:
 
 ```tsx
 import { render, GtkApplicationWindow, GtkButton, quit } from "@gtkx/react";
 
-const App = () => (
-  <GtkApplicationWindow title="App" onCloseRequest={quit}>
-    <GtkButton label="Click" onClicked={() => console.log("clicked")} />
-  </GtkApplicationWindow>
-);
+function App() {
+  return (
+    <GtkApplicationWindow title="My App" onCloseRequest={quit}>
+      <GtkButton label="Click me" onClicked={() => console.log("clicked")} />
+    </GtkApplicationWindow>
+  );
+}
 
-render(<App />, "com.example.app");
+render(<App />, "com.example.myapp");
 ```
 
-## Links
+## Widgets
 
-Repo: https://github.com/eugeniodepalo/gtkx
-Docs: https://eugeniodepalo.github.io/gtkx/
-License: MPL-2.0
+GTK widgets are React components prefixed with `Gtk` or `Adw` (for Libadwaita):
+
+- `GtkButton`, `GtkLabel`, `GtkEntry`, `GtkSwitch`, `GtkCheckButton`
+- `GtkBox`, `GtkGrid`, `GtkStack`, `GtkPaned`, `GtkScrolledWindow`
+- `GtkListView`, `GtkGridView`, `GtkColumnView`, `GtkDropDown`
+- `GtkHeaderBar`, `GtkPopover`, `GtkDialog`, `GtkAlertDialog`
+- `AdwApplicationWindow`, `AdwHeaderBar`, `AdwToastOverlay`, `AdwNavigationView`
+
+Props map to GTK properties. Events use `on` prefix: `onClicked`, `onActivate`, `onCloseRequest`.
+
+## Slots
+
+Some widgets have named child positions. Use `Slot` to target them:
+
+```tsx
+import { Slot } from "@gtkx/react";
+
+<GtkHeaderBar>
+  <Slot for={GtkHeaderBar} id="titleWidget">
+    <GtkLabel label="Custom Title" />
+  </Slot>
+</GtkHeaderBar>
+```
+
+## Styling
+
+Use GTK CSS classes via the `cssClasses` prop:
+
+```tsx
+<GtkLabel label="Important" cssClasses={["title-1", "accent"]} />
+<GtkButton label="Save" cssClasses={["suggested-action"]} />
+```
+
+Common Adwaita classes: `title-1` through `title-4`, `heading`, `body`, `caption`, `dim-label`, `accent`, `success`, `warning`, `error`, `suggested-action`, `destructive-action`.
+
+For custom CSS, use `@gtkx/css`:
+
+```tsx
+import { css } from "@gtkx/css";
+
+<GtkBox css={css`background: #333; padding: 12px;`}>
+  {children}
+</GtkBox>
+```
+
+## Enums
+
+GTK enums are available from `@gtkx/ffi/gtk`:
+
+```tsx
+import { Gtk } from "@gtkx/ffi/gtk";
+
+<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+  {children}
+</GtkBox>
+```
+
+## Testing
+
+Use `@gtkx/testing` for component tests:
+
+```tsx
+import { render, screen } from "@gtkx/testing";
+
+test("button works", async () => {
+  render(<MyComponent />);
+  await screen.findByName("submit-btn").click();
+  expect(await screen.findByName("status")).toHaveLabel("Done");
+});
+```
+
+## Packages
+
+- `@gtkx/react`: Core framework - components, render(), hooks
+- `@gtkx/ffi`: GTK type definitions and enums
+- `@gtkx/css`: CSS-in-JS styling
+- `@gtkx/testing`: Test utilities
+
+## Documentation
+
+- [Getting Started](https://eugeniodepalo.github.io/gtkx/getting-started)
+- [Components Reference](https://eugeniodepalo.github.io/gtkx/components)
+- [Styling Guide](https://eugeniodepalo.github.io/gtkx/styling)
+- [Deploying Apps](https://eugeniodepalo.github.io/gtkx/deploying)
+
+## Optional
+
+- [GitHub Repository](https://github.com/eugeniodepalo/gtkx)
+- [GTK4 Documentation](https://docs.gtk.org/gtk4/)
+- [Libadwaita Documentation](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/)

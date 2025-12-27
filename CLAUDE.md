@@ -17,6 +17,7 @@ Native GTK4 Widgets
 ```
 
 **Data flow:**
+
 - Props flow down: React state → reconciler → call() → GTK widget properties
 - Events flow up: GTK signals → FFI callbacks → React event handlers
 
@@ -37,40 +38,40 @@ packages/
 
 ## Key Entry Points
 
-| File | Purpose |
-|------|---------|
-| `packages/react/src/render.tsx` | `render()` function, `ApplicationContext` |
-| `packages/react/src/host-config.ts` | React reconciler implementation |
-| `packages/react/src/nodes/*.ts` | Widget node handlers (30+ widgets) |
-| `packages/native/src/lib.rs` | Rust FFI exports |
-| `packages/ffi/src/index.ts` | JavaScript FFI wrapper |
-| `packages/cli/src/create.ts` | Project scaffolding |
-| `packages/cli/src/dev-server.tsx` | Development server with HMR |
+| File                                | Purpose                                   |
+| ----------------------------------- | ----------------------------------------- |
+| `packages/react/src/render.tsx`     | `render()` function, `ApplicationContext` |
+| `packages/react/src/host-config.ts` | React reconciler implementation           |
+| `packages/react/src/nodes/*.ts`     | Widget node handlers (30+ widgets)        |
+| `packages/native/src/lib.rs`        | Rust FFI exports                          |
+| `packages/ffi/src/index.ts`         | JavaScript FFI wrapper                    |
+| `packages/cli/src/create.ts`        | Project scaffolding                       |
+| `packages/cli/src/dev-server.tsx`   | Development server with HMR               |
 
 ## Native FFI Functions
 
 Exported from `@gtkx/native`:
 
-| Function | Purpose |
-|----------|---------|
-| `start(appId)` | Initialize GTK application |
-| `stop()` | Shutdown GTK application |
-| `call(method, args)` | Invoke a GTK method |
-| `batchCall(calls)` | Multiple operations in one FFI round-trip |
-| `alloc(type)` | Allocate a boxed type |
-| `read(objectId, field)` | Read boxed type field |
-| `write(objectId, field, value)` | Write boxed type field |
-| `getObjectId(object)` | Get internal object ID |
-| `poll()` | Process GTK events |
+| Function                        | Purpose                                   |
+| ------------------------------- | ----------------------------------------- |
+| `start(appId)`                  | Initialize GTK application                |
+| `stop()`                        | Shutdown GTK application                  |
+| `call(method, args)`            | Invoke a GTK method                       |
+| `batchCall(calls)`              | Multiple operations in one FFI round-trip |
+| `alloc(type)`                   | Allocate a boxed type                     |
+| `read(objectId, field)`         | Read boxed type field                     |
+| `write(objectId, field, value)` | Write boxed type field                    |
+| `getObjectId(object)`           | Get internal object ID                    |
+| `poll()`                        | Process GTK events                        |
 
 ## Commands
 
 ```bash
-npm run build       # Build all packages
-npm run codegen     # Regenerate FFI bindings from GIR files
-npm run test        # Run test suite
-npm run lint        # Lint with Biome
-npm run docs        # Build documentation website
+pnpm run build       # Build all packages
+pnpm run codegen     # Regenerate FFI bindings from GIR files
+pnpm run test        # Run test suite
+pnpm run lint        # Lint with Biome
+pnpm run docs        # Build documentation website
 ```
 
 ## Examples
@@ -85,16 +86,19 @@ examples/
 ```
 
 Run an example:
+
 ```bash
 cd examples/todo
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ## Key Concepts
 
 ### Widgets
+
 GTK widgets map to React components prefixed with `Gtk` or `Adw`:
+
 ```tsx
 <GtkButton label="Click" onClicked={() => {}} />
 <GtkLabel label="Text" cssClasses={["title-1"]} />
@@ -102,7 +106,9 @@ GTK widgets map to React components prefixed with `Gtk` or `Adw`:
 ```
 
 ### Slots
+
 Named child positions for GTK's slot-based layout:
+
 ```tsx
 <GtkHeaderBar>
   <Slot for={GtkHeaderBar} id="titleWidget">
@@ -112,7 +118,9 @@ Named child positions for GTK's slot-based layout:
 ```
 
 ### Application Window
+
 Every app needs a window with close handling:
+
 ```tsx
 <GtkApplicationWindow title="App" onCloseRequest={quit}>
   {children}
@@ -120,7 +128,9 @@ Every app needs a window with close handling:
 ```
 
 ### Rendering
+
 Mount your app with `render()`:
+
 ```tsx
 import { render } from "@gtkx/react";
 render(<App />, "com.example.app");
@@ -136,6 +146,7 @@ render(<App />, "com.example.app");
 ## Testing
 
 Use `@gtkx/testing` for component tests:
+
 ```tsx
 import { render, screen } from "@gtkx/testing";
 
@@ -149,18 +160,20 @@ test("button click", async () => {
 ## Code Generation
 
 FFI bindings are auto-generated from GObject Introspection files:
+
 ```
 girs/*.gir  →  @gtkx/codegen  →  packages/ffi/src/generated/
 ```
 
 Regenerate after updating GIR files:
+
 ```bash
-npm run codegen
+pnpm run codegen
 ```
 
 ## Tech Stack
 
-- **Frontend:** React 19, TypeScript 5.9
+- **Frontend:** React 19, TypeScript
 - **Native:** Rust, Neon (Node.js native modules)
 - **Target:** GTK4, Adwaita (Libadwaita)
 - **Build:** pnpm, Turbo, Vite

@@ -1,0 +1,403 @@
+import * as Gdk from "@gtkx/ffi/gdk";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkMenuButton, Menu } from "@gtkx/react";
+import { useState } from "react";
+import type { Demo } from "../types.js";
+
+const ShortcutsDemo = () => {
+    const [_lastKey, setLastKey] = useState<string | null>(null);
+    const [_lastModifiers, setLastModifiers] = useState<string[]>([]);
+    const [_keyPressCount, setKeyPressCount] = useState(0);
+    const [menuActionTriggered, setMenuActionTriggered] = useState<string | null>(null);
+
+    const _formatModifiers = (state: Gdk.ModifierType): string[] => {
+        const mods: string[] = [];
+        if (state & Gdk.ModifierType.CONTROL_MASK) mods.push("Ctrl");
+        if (state & Gdk.ModifierType.SHIFT_MASK) mods.push("Shift");
+        if (state & Gdk.ModifierType.ALT_MASK) mods.push("Alt");
+        if (state & Gdk.ModifierType.SUPER_MASK) mods.push("Super");
+        return mods;
+    };
+
+    const _formatKeyName = (keyval: number): string => {
+        // Common key mappings
+        const keyNames: Record<number, string> = {
+            [Gdk.KEY_Return]: "Enter",
+            [Gdk.KEY_Escape]: "Escape",
+            [Gdk.KEY_Tab]: "Tab",
+            [Gdk.KEY_BackSpace]: "Backspace",
+            [Gdk.KEY_Delete]: "Delete",
+            [Gdk.KEY_space]: "Space",
+            [Gdk.KEY_Up]: "Up",
+            [Gdk.KEY_Down]: "Down",
+            [Gdk.KEY_Left]: "Left",
+            [Gdk.KEY_Right]: "Right",
+            [Gdk.KEY_Home]: "Home",
+            [Gdk.KEY_End]: "End",
+            [Gdk.KEY_Page_Up]: "Page Up",
+            [Gdk.KEY_Page_Down]: "Page Down",
+            [Gdk.KEY_F1]: "F1",
+            [Gdk.KEY_F2]: "F2",
+            [Gdk.KEY_F3]: "F3",
+            [Gdk.KEY_F4]: "F4",
+            [Gdk.KEY_F5]: "F5",
+            [Gdk.KEY_F6]: "F6",
+            [Gdk.KEY_F7]: "F7",
+            [Gdk.KEY_F8]: "F8",
+            [Gdk.KEY_F9]: "F9",
+            [Gdk.KEY_F10]: "F10",
+            [Gdk.KEY_F11]: "F11",
+            [Gdk.KEY_F12]: "F12",
+        };
+
+        if (keyNames[keyval]) {
+            return keyNames[keyval];
+        }
+
+        // For printable characters
+        const char = String.fromCharCode(keyval);
+        if (keyval >= 32 && keyval <= 126) {
+            return char.toUpperCase();
+        }
+
+        return `Key(${keyval})`;
+    };
+
+    const handleMenuAction = (action: string) => {
+        setMenuActionTriggered(action);
+        setTimeout(() => setMenuActionTriggered(null), 2000);
+    };
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Keyboard Shortcuts" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+
+            <GtkLabel
+                label="GTK provides comprehensive keyboard shortcut support through GtkShortcutController. Shortcuts can be defined with accelerator strings like '<Control>s' for common actions."
+                wrap
+                halign={Gtk.Align.START}
+                cssClasses={["dim-label"]}
+            />
+
+            {/* Menu with Accelerators */}
+            <GtkFrame label="Menu with Keyboard Accelerators">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="Menu items can have keyboard accelerators that activate them directly. These are displayed next to the menu item text."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkMenuButton label="File Menu" iconName="open-menu-symbolic">
+                            <Menu.Section>
+                                <Menu.Item
+                                    id="new"
+                                    label="New"
+                                    onActivate={() => handleMenuAction("New file")}
+                                    accels="<Control>n"
+                                />
+                                <Menu.Item
+                                    id="open"
+                                    label="Open"
+                                    onActivate={() => handleMenuAction("Open file")}
+                                    accels="<Control>o"
+                                />
+                                <Menu.Item
+                                    id="save"
+                                    label="Save"
+                                    onActivate={() => handleMenuAction("Save file")}
+                                    accels="<Control>s"
+                                />
+                                <Menu.Item
+                                    id="save-as"
+                                    label="Save As..."
+                                    onActivate={() => handleMenuAction("Save As...")}
+                                    accels="<Control><Shift>s"
+                                />
+                            </Menu.Section>
+                            <Menu.Section>
+                                <Menu.Item
+                                    id="close"
+                                    label="Close"
+                                    onActivate={() => handleMenuAction("Close")}
+                                    accels="<Control>w"
+                                />
+                            </Menu.Section>
+                        </GtkMenuButton>
+
+                        <GtkMenuButton label="Edit Menu" iconName="edit-symbolic">
+                            <Menu.Section>
+                                <Menu.Item
+                                    id="undo"
+                                    label="Undo"
+                                    onActivate={() => handleMenuAction("Undo")}
+                                    accels="<Control>z"
+                                />
+                                <Menu.Item
+                                    id="redo"
+                                    label="Redo"
+                                    onActivate={() => handleMenuAction("Redo")}
+                                    accels="<Control><Shift>z"
+                                />
+                            </Menu.Section>
+                            <Menu.Section>
+                                <Menu.Item
+                                    id="cut"
+                                    label="Cut"
+                                    onActivate={() => handleMenuAction("Cut")}
+                                    accels="<Control>x"
+                                />
+                                <Menu.Item
+                                    id="copy"
+                                    label="Copy"
+                                    onActivate={() => handleMenuAction("Copy")}
+                                    accels="<Control>c"
+                                />
+                                <Menu.Item
+                                    id="paste"
+                                    label="Paste"
+                                    onActivate={() => handleMenuAction("Paste")}
+                                    accels="<Control>v"
+                                />
+                            </Menu.Section>
+                            <Menu.Section>
+                                <Menu.Item
+                                    id="select-all"
+                                    label="Select All"
+                                    onActivate={() => handleMenuAction("Select All")}
+                                    accels="<Control>a"
+                                />
+                            </Menu.Section>
+                        </GtkMenuButton>
+                    </GtkBox>
+
+                    {menuActionTriggered && (
+                        <GtkLabel
+                            label={`Action triggered: ${menuActionTriggered}`}
+                            cssClasses={["dim-label"]}
+                            halign={Gtk.Align.START}
+                        />
+                    )}
+                </GtkBox>
+            </GtkFrame>
+
+            {/* Common Accelerator Syntax */}
+            <GtkFrame label="Accelerator Syntax">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="GTK uses a string format to define keyboard accelerators. Modifiers are wrapped in angle brackets."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="<Control>s" widthChars={20} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="Ctrl+S" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="<Control><Shift>s" widthChars={20} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="Ctrl+Shift+S" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="<Alt>F4" widthChars={20} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="Alt+F4" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="<Primary>q" widthChars={20} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="Primary+Q (Ctrl on Linux, Cmd on macOS)" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="F5" widthChars={20} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="F5 (no modifier)" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                    </GtkBox>
+                </GtkBox>
+            </GtkFrame>
+
+            {/* Available Modifiers */}
+            <GtkFrame label="Available Modifiers">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="These modifiers can be combined in accelerator strings:"
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="<Control>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="Control key" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="<Shift>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="Shift key" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="<Alt>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="Alt key" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="<Super>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="Super/Windows key" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="<Primary>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="Platform-specific (Ctrl/Cmd)" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkLabel label="<Meta>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel label="Meta key" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                    </GtkBox>
+                </GtkBox>
+            </GtkFrame>
+
+            {/* Button Mnemonics */}
+            <GtkFrame label="Button Mnemonics">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="Buttons and labels can have mnemonics - underlined letters that activate the widget when pressed with Alt. Use an underscore before the mnemonic character."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkButton label="_Save" useUnderline onClicked={() => handleMenuAction("Save (Alt+S)")} />
+                        <GtkButton label="_Open" useUnderline onClicked={() => handleMenuAction("Open (Alt+O)")} />
+                        <GtkButton label="_Quit" useUnderline onClicked={() => handleMenuAction("Quit (Alt+Q)")} />
+                    </GtkBox>
+
+                    <GtkLabel
+                        label="Press Alt to see the mnemonic underlines, then press the letter to activate."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+                </GtkBox>
+            </GtkFrame>
+
+            {/* Reset button */}
+            <GtkButton
+                label="Clear Status"
+                onClicked={() => {
+                    setLastKey(null);
+                    setLastModifiers([]);
+                    setKeyPressCount(0);
+                    setMenuActionTriggered(null);
+                }}
+                halign={Gtk.Align.START}
+            />
+        </GtkBox>
+    );
+};
+
+const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkBox, GtkButton, GtkMenuButton, Menu } from "@gtkx/react";
+
+const ShortcutsDemo = () => {
+  const handleAction = (action: string) => {
+    console.log("Action:", action);
+  };
+
+  return (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+      {/* Menu with keyboard accelerators */}
+      <GtkMenuButton label="File">
+        <Menu.Section>
+          <Menu.Item
+            id="new"
+            label="New"
+            onActivate={() => handleAction("New")}
+            accels="<Control>n"
+          />
+          <Menu.Item
+            id="open"
+            label="Open"
+            onActivate={() => handleAction("Open")}
+            accels="<Control>o"
+          />
+          <Menu.Item
+            id="save"
+            label="Save"
+            onActivate={() => handleAction("Save")}
+            accels="<Control>s"
+          />
+          <Menu.Item
+            id="save-as"
+            label="Save As..."
+            onActivate={() => handleAction("Save As")}
+            accels="<Control><Shift>s"
+          />
+        </Menu.Section>
+      </GtkMenuButton>
+
+      {/* Button with mnemonic (Alt+S activates) */}
+      <GtkButton
+        label="_Save"
+        useUnderline
+        onClicked={() => handleAction("Save")}
+      />
+
+      {/* Accelerator syntax examples:
+       * <Control>s       -> Ctrl+S
+       * <Control><Shift>s -> Ctrl+Shift+S
+       * <Alt>F4          -> Alt+F4
+       * <Primary>q       -> Ctrl+Q (Linux) or Cmd+Q (macOS)
+       * F5               -> F5 key alone
+       */}
+    </GtkBox>
+  );
+};`;
+
+export const shortcutsDemo: Demo = {
+    id: "shortcuts",
+    title: "Keyboard Shortcuts",
+    description: "Keyboard accelerators and mnemonics",
+    keywords: [
+        "keyboard",
+        "shortcut",
+        "accelerator",
+        "mnemonic",
+        "hotkey",
+        "keybinding",
+        "GtkShortcutController",
+        "key",
+        "binding",
+    ],
+    component: ShortcutsDemo,
+    sourceCode,
+};

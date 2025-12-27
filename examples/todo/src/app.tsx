@@ -1,130 +1,155 @@
+import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
-    GtkApplicationWindow,
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwToastOverlay,
+    AdwToolbarView,
     GtkBox,
     GtkButton,
-    GtkHeaderBar,
     GtkLabel,
     GtkListBox,
     GtkScrolledWindow,
     quit,
     Slot,
+    Toolbar,
 } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
-import { TodoInput } from "./todo-input.js";
-import { TodoRow } from "./todo-row.js";
-import type { Filter, Todo } from "./types.js";
-import { ViewSwitcher } from "./view-switcher.js";
+import { useRef } from "react";
+import { FilterBar } from "./components/filter-bar.js";
+import { TodoInput } from "./components/todo-input.js";
+import { TodoRow } from "./components/todo-row.js";
+import { useTodos } from "./hooks/use-todos.js";
 
-let nextId = 1;
+const EmptyState = ({ hasTodos }: { hasTodos: boolean }) => (
+    <GtkBox
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={12}
+        valign={Gtk.Align.CENTER}
+        vexpand
+        marginTop={40}
+        marginBottom={40}
+    >
+        <GtkLabel label={hasTodos ? "No matching tasks" : "No tasks yet"} cssClasses={["title-2", "dim-label"]} />
+        <GtkLabel
+            label={hasTodos ? "Try a different filter" : "Add a task to get started"}
+            cssClasses={["dim-label"]}
+        />
+    </GtkBox>
+);
+
+const Footer = ({
+    activeCount,
+    completedCount,
+    onClearCompleted,
+}: {
+    activeCount: number;
+    completedCount: number;
+    onClearCompleted: () => void;
+}) => (
+    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} marginTop={8}>
+        <GtkLabel
+            label={`${activeCount} item${activeCount !== 1 ? "s" : ""} left`}
+            cssClasses={["dim-label"]}
+            hexpand
+            halign={Gtk.Align.START}
+        />
+        {completedCount > 0 && (
+            <GtkButton
+                label="Clear completed"
+                cssClasses={["flat"]}
+                onClicked={onClearCompleted}
+                name="clear-completed"
+            />
+        )}
+    </GtkBox>
+);
 
 export const App = () => {
-    const [todos, setTodos] = useState<Todo[]>([]);
-    const [filter, setFilter] = useState<Filter>("all");
+    const {
+        todos,
+        filter,
+        filteredTodos,
+        addTodo,
+        toggleTodo,
+        deleteTodo,
+        clearCompleted,
+        setFilter,
+        activeCount,
+        completedCount,
+    } = useTodos();
 
-    const addTodo = useCallback((text: string) => {
-        setTodos((prev) => [...prev, { id: nextId++, text, completed: false }]);
-    }, []);
+    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
 
-    const toggleTodo = useCallback((id: number) => {
-        setTodos((prev) => prev.map((todo) => (todo.id === id ? { ...todo, completed: !todo.completed } : todo)));
-    }, []);
-
-    const deleteTodo = useCallback((id: number) => {
-        setTodos((prev) => prev.filter((todo) => todo.id !== id));
-    }, []);
-
-    const clearCompleted = useCallback(() => {
-        setTodos((prev) => prev.filter((todo) => !todo.completed));
-    }, []);
-
-    const filteredTodos = useMemo(() => {
-        switch (filter) {
-            case "active":
-                return todos.filter((todo) => !todo.completed);
-            case "completed":
-                return todos.filter((todo) => todo.completed);
-            default:
-                return todos;
+    const showToast = (message: string) => {
+        if (toastOverlayRef.current) {
+            const toast = new Adw.Toast(message);
+            toastOverlayRef.current.addToast(toast);
         }
-    }, [todos, filter]);
+    };
 
-    const activeCount = useMemo(() => todos.filter((todo) => !todo.completed).length, [todos]);
+    const handleAdd = (text: string) => {
+        addTodo(text);
+        showToast("Task added");
+    };
 
-    const completedCount = useMemo(() => todos.filter((todo) => todo.completed).length, [todos]);
-
-    const itemText = activeCount === 1 ? "task" : "tasks";
+    const handleDelete = (id: number) => {
+        deleteTodo(id);
+        showToast("Task deleted");
+    };
 
     return (
-        <GtkApplicationWindow title="Tasks" defaultWidth={400} defaultHeight={500} onCloseRequest={quit}>
-            <GtkHeaderBar>
-                <Slot for={GtkHeaderBar} id="titleWidget">
-                    <GtkLabel label="Tasks" cssClasses={["title"]} />
-                </Slot>
-            </GtkHeaderBar>
+        <AdwApplicationWindow title="Tasks" defaultWidth={450} defaultHeight={600} onCloseRequest={quit}>
+            <AdwToolbarView>
+                <Toolbar.Top>
+                    <AdwHeaderBar>
+                        <Slot for={AdwHeaderBar} id="titleWidget">
+                            <GtkLabel label="Tasks" cssClasses={["title"]} />
+                        </Slot>
+                    </AdwHeaderBar>
+                </Toolbar.Top>
 
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={12}
-                marginTop={12}
-                marginBottom={12}
-                marginStart={12}
-                marginEnd={12}
-            >
-                <TodoInput onAdd={addTodo} />
-
-                {todos.length > 0 && <ViewSwitcher filter={filter} onFilterChange={setFilter} />}
-
-                {filteredTodos.length === 0 ? (
+                <AdwToastOverlay ref={toastOverlayRef}>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
-                        vexpand
-                        valign={Gtk.Align.CENTER}
-                        halign={Gtk.Align.CENTER}
                         spacing={12}
+                        marginTop={12}
+                        marginBottom={12}
+                        marginStart={12}
+                        marginEnd={12}
                     >
-                        <GtkLabel
-                            label={todos.length === 0 ? "No tasks yet" : "No tasks to display"}
-                            cssClasses={["dim-label", "title-3"]}
-                            name="empty-message"
-                        />
-                        {todos.length === 0 && (
-                            <GtkLabel label="Add a task above to get started" cssClasses={["dim-label"]} />
+                        <TodoInput onAdd={handleAdd} />
+
+                        {todos.length > 0 && <FilterBar filter={filter} onFilterChange={setFilter} />}
+
+                        {filteredTodos.length === 0 ? (
+                            <EmptyState hasTodos={todos.length > 0} />
+                        ) : (
+                            <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER} name="todo-list">
+                                <GtkListBox cssClasses={["boxed-list"]} selectionMode={Gtk.SelectionMode.NONE}>
+                                    {filteredTodos.map((todo) => (
+                                        <TodoRow
+                                            key={todo.id}
+                                            todo={todo}
+                                            onToggle={toggleTodo}
+                                            onDelete={handleDelete}
+                                        />
+                                    ))}
+                                </GtkListBox>
+                            </GtkScrolledWindow>
+                        )}
+
+                        {todos.length > 0 && (
+                            <Footer
+                                activeCount={activeCount}
+                                completedCount={completedCount}
+                                onClearCompleted={clearCompleted}
+                            />
                         )}
                     </GtkBox>
-                ) : (
-                    <GtkScrolledWindow vexpand hscrollbarPolicy={2} name="todo-list">
-                        <GtkListBox cssClasses={["boxed-list"]} selectionMode={Gtk.SelectionMode.NONE}>
-                            {filteredTodos.map((todo) => (
-                                <TodoRow key={todo.id} todo={todo} onToggle={toggleTodo} onDelete={deleteTodo} />
-                            ))}
-                        </GtkListBox>
-                    </GtkScrolledWindow>
-                )}
-
-                {todos.length > 0 && (
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                        <GtkLabel
-                            label={`${activeCount} ${itemText} remaining`}
-                            cssClasses={["dim-label"]}
-                            halign={Gtk.Align.START}
-                            hexpand
-                            name="items-left"
-                        />
-                        <GtkButton
-                            label="Clear Completed"
-                            cssClasses={["flat"]}
-                            sensitive={completedCount > 0}
-                            onClicked={clearCompleted}
-                            name="clear-completed"
-                        />
-                    </GtkBox>
-                )}
-            </GtkBox>
-        </GtkApplicationWindow>
+                </AdwToastOverlay>
+            </AdwToolbarView>
+        </AdwApplicationWindow>
     );
 };
 
 export default App;
-
-export const appId = "com.gtkx.todo";
