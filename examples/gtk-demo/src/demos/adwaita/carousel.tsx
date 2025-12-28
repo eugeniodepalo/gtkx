@@ -186,7 +186,7 @@ const CarouselDemo = () => {
 };
 
 const CarouselWithLines = () => {
-    const carouselRef = useRef<Adw.Carousel | null>(null);
+    const [carousel, setCarousel] = useState<Adw.Carousel | null>(null);
 
     const colors = ["#e01b24", "#ff7800", "#f6d32d", "#33d17a", "#3584e4"];
 

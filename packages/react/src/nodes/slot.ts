@@ -91,7 +91,7 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
         });
     }
 
-    protected onChildChange(_oldChild: Gtk.Widget | undefined): void {
+    protected onChildChange(oldChild: Gtk.Widget | undefined): void {
         const parent = this.getParent();
         const parentType = (parent.constructor as ContainerClass).glibTypeName;
         const [_, setterName] = PROPS[parentType]?.[this.getId()] ?? [];
@@ -106,7 +106,30 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
             throw new Error(`Expected setter function for Slot '${this.getId()}' on type '${parentType}'`);
         }
 
+        if (oldChild && !this.child) {
+            const root = oldChild.getRoot();
+            const focusWidget = root?.getFocus?.();
+
+            if (focusWidget && this.isDescendantOf(focusWidget, oldChild)) {
+                parent.grabFocus();
+            }
+        }
+
         setter.call(parent, this.child);
+    }
+
+    private isDescendantOf(widget: Gtk.Widget, ancestor: Gtk.Widget): boolean {
+        let current: Gtk.Widget | null = widget;
+
+        while (current) {
+            if (current.equals(ancestor)) {
+                return true;
+            }
+
+            current = current.getParent();
+        }
+
+        return false;
     }
 }
 

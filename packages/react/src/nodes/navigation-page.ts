@@ -102,11 +102,7 @@ export class NavigationPageNode extends VirtualNode<Props> {
         let page: Adw.NavigationPage;
 
         if (this.props.tag) {
-            page = Adw.NavigationPage.pageNewWithTag(
-                this.child,
-                this.props.title ?? "",
-                this.props.tag,
-            );
+            page = Adw.NavigationPage.pageNewWithTag(this.child, this.props.title ?? "", this.props.tag);
         } else {
             page = new Adw.NavigationPage(this.child, this.props.title ?? "");
         }

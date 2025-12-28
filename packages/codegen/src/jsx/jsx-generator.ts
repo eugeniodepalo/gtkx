@@ -887,10 +887,13 @@ declare global {
         for (const { widget, namespace } of widgets) {
             this.currentNamespace = namespace;
             const widgetName = this.getWidgetExportName(widget);
+            const hiddenProps = new Set(HIDDEN_PROPS[widget.name] ?? []);
 
             const slotNames = widget.properties
                 .filter((prop) => {
                     if (!prop.writable) return false;
+                    const propName = toCamelCase(prop.name);
+                    if (hiddenProps.has(propName)) return false;
                     const typeName = prop.type.name;
                     return (
                         typeName === "Gtk.Widget" || typeName === "Widget" || isWidgetSubclass(typeName, this.classMap)

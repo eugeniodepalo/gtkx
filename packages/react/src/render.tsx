@@ -50,6 +50,19 @@ export const useApplication = (): Gtk.Application => {
 };
 
 let container: unknown = null;
+let isHotReloading = false;
+
+/**
+ * Sets the hot reloading state.
+ *
+ * Used internally by the dev server to prevent quit() from closing
+ * the application during HMR updates.
+ *
+ * @internal
+ */
+export const setHotReloading = (value: boolean): void => {
+    isHotReloading = value;
+};
 
 /**
  * Renders a React element tree into a GTK4 application window.
@@ -158,6 +171,10 @@ export const update = (element: ReactNode): void => {
  * @see {@link render} for starting the application
  */
 export const quit = () => {
+    if (isHotReloading) {
+        return true;
+    }
+
     reconciler.getInstance().updateContainer(null, container, null, () => {
         setTimeout(() => {
             stop();

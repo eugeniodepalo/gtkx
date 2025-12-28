@@ -1,13 +1,12 @@
 export const HIDDEN_PROPS: Record<string, readonly string[]> = {
-    GtkListView: ["factory", "model"],
-    GtkGridView: ["factory", "model"],
-    GtkColumnView: ["model"],
-    GtkDropDown: ["model"],
-    AdwComboRow: ["model"],
-    GtkWindow: ["application"],
-    GtkApplicationWindow: ["application"],
-    AdwWindow: ["application"],
-    AdwApplicationWindow: ["application"],
+    ListView: ["factory", "model"],
+    GridView: ["factory", "model"],
+    ColumnView: ["model"],
+    DropDown: ["model"],
+    ComboRow: ["model"],
+    Window: ["application"],
+    ApplicationWindow: ["application"],
+    NavigationPage: ["child"],
 };
 
 export const LIST_WIDGETS = new Set(["GtkListView", "GtkGridView"]);

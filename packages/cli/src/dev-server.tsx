@@ -1,5 +1,5 @@
 import { events } from "@gtkx/ffi";
-import { update } from "@gtkx/react";
+import { setHotReloading, update } from "@gtkx/react";
 import { createServer, type InlineConfig, type ViteDevServer } from "vite";
 import { isReactRefreshBoundary, performRefresh } from "./refresh-runtime.js";
 import { gtkxRefresh } from "./vite-plugin-gtkx-refresh.js";
@@ -140,7 +140,12 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
                 return;
             }
 
-            update(<App />);
+            setHotReloading(true);
+            try {
+                update(<App />);
+            } finally {
+                setHotReloading(false);
+            }
             console.log("[gtkx] Full reload complete");
         } catch (error) {
             console.error("[gtkx] Hot reload failed:", error);

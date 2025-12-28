@@ -110,8 +110,8 @@ const config: Config = {
         image: "/logo.svg",
         colorMode: {
             defaultMode: "dark",
-            disableSwitch: false,
-            respectPrefersColorScheme: true,
+            disableSwitch: true,
+            respectPrefersColorScheme: false,
         },
         navbar: {
             title: "GTKX",
