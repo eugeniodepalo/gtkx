@@ -16,7 +16,7 @@ import {
     Slot,
     StackPage,
 } from "@gtkx/react";
-import { createRef, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sidebar.tsx?raw";
 
@@ -30,7 +30,7 @@ interface NavItem {
 const SidebarDemo = () => {
     const [selectedItem, setSelectedItem] = useState("inbox");
     const [sidebarVisible, setSidebarVisible] = useState(true);
-    const stackRef = createRef<Gtk.Stack>();
+    const [stack, setStack] = useState<Gtk.Stack | null>(null);
 
     const navItems: NavItem[] = [
         { id: "inbox", title: "Inbox", icon: "mail-inbox-symbolic", description: "Your incoming messages" },
@@ -84,11 +84,11 @@ const SidebarDemo = () => {
                     />
                     <GtkBox orientation={GtkEnum.Orientation.HORIZONTAL} spacing={0} heightRequest={200}>
                         <GtkFrame cssClasses={["card"]} widthRequest={150}>
-                            <GtkStackSidebar stack={stackRef.current ?? undefined} />
+                            <GtkStackSidebar stack={stack ?? undefined} />
                         </GtkFrame>
                         <GtkFrame cssClasses={["card"]} hexpand>
                             <GtkStack
-                                ref={stackRef}
+                                ref={setStack}
                                 transitionType={GtkEnum.StackTransitionType.CROSSFADE}
                                 transitionDuration={200}
                             >

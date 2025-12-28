@@ -9,6 +9,8 @@ import "./grid-child.js";
 import "./list-item.js";
 import "./list-view.js";
 import "./menu.js";
+import "./navigation-page.js";
+import "./navigation-view.js";
 import "./notebook-page-tab.js";
 import "./notebook-page.js";
 import "./notebook.js";

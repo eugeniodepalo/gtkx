@@ -16,7 +16,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("ok");
         dialog.setCloseResponse("ok");
 
-        const response = await dialog.choose(app.activeWindow ?? undefined);
+        const response = await dialog.choose(app.getActiveWindow() ?? undefined);
         setLastResponse(response);
     };
 
@@ -31,7 +31,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("confirm");
         dialog.setCloseResponse("cancel");
 
-        const response = await dialog.choose(app.activeWindow ?? undefined);
+        const response = await dialog.choose(app.getActiveWindow() ?? undefined);
         setConfirmResult(response === "confirm" ? "Confirmed" : "Cancelled");
     };
 
@@ -46,7 +46,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("cancel");
         dialog.setCloseResponse("cancel");
 
-        const response = await dialog.choose(app.activeWindow ?? undefined);
+        const response = await dialog.choose(app.getActiveWindow() ?? undefined);
         setLastResponse(response === "delete" ? "Item deleted" : "Delete cancelled");
     };
 
@@ -60,7 +60,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("save");
         dialog.setCloseResponse("cancel");
 
-        const response = await dialog.choose(app.activeWindow ?? undefined);
+        const response = await dialog.choose(app.getActiveWindow() ?? undefined);
         const messages: Record<string, string> = {
             save: "Changes saved",
             discard: "Changes discarded",

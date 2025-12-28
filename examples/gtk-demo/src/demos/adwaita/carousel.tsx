@@ -11,7 +11,7 @@ import {
     GtkImage,
     GtkLabel,
 } from "@gtkx/react";
-import { useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./carousel.tsx?raw";
 
@@ -28,19 +28,22 @@ const carouselPages = [
 ];
 
 const CarouselDemo = () => {
-    const carouselRef = useRef<Adw.Carousel | null>(null);
+    const [carousel, setCarousel] = useState<Adw.Carousel | null>(null);
     const [currentPage, setCurrentPage] = useState(0);
     const [allowMouseDrag, setAllowMouseDrag] = useState(true);
     const [allowLongSwipes, setAllowLongSwipes] = useState(false);
 
-    const scrollTo = (index: number) => {
-        if (carouselRef.current && index >= 0 && index < carouselPages.length) {
-            const page = carouselRef.current.getNthPage(index);
-            if (page) {
-                carouselRef.current.scrollTo(page, true);
+    const scrollTo = useCallback(
+        (index: number) => {
+            if (carousel && index >= 0 && index < carouselPages.length) {
+                const page = carousel.getNthPage(index);
+                if (page) {
+                    carousel.scrollTo(page, true);
+                }
             }
-        }
-    };
+        },
+        [carousel],
+    );
 
     const goNext = () => {
         if (currentPage < carouselPages.length - 1) {
@@ -78,7 +81,7 @@ const CarouselDemo = () => {
                     <GtkLabel label="Carousel with Dots" cssClasses={["heading"]} halign={Gtk.Align.START} />
 
                     <AdwCarousel
-                        ref={carouselRef}
+                        ref={setCarousel}
                         allowMouseDrag={allowMouseDrag}
                         allowLongSwipes={allowLongSwipes}
                         onPageChanged={(_self, index) => {
@@ -109,7 +112,7 @@ const CarouselDemo = () => {
                         ))}
                     </AdwCarousel>
 
-                    <AdwCarouselIndicatorDots carousel={carouselRef.current ?? undefined} />
+                    <AdwCarouselIndicatorDots carousel={carousel ?? undefined} />
                 </GtkBox>
             </GtkFrame>
 
@@ -189,7 +192,7 @@ const CarouselWithLines = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-            <AdwCarousel ref={carouselRef} allowMouseDrag>
+            <AdwCarousel ref={setCarousel} allowMouseDrag>
                 {colors.map((color, index) => (
                     <GtkBox
                         key={color}
@@ -210,7 +213,7 @@ const CarouselWithLines = () => {
                     </GtkBox>
                 ))}
             </AdwCarousel>
-            <AdwCarouselIndicatorLines carousel={carouselRef.current ?? undefined} />
+            <AdwCarouselIndicatorLines carousel={carousel ?? undefined} />
         </GtkBox>
     );
 };

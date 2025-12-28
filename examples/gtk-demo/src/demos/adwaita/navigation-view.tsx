@@ -1,6 +1,5 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { AdwNavigationPageProps } from "@gtkx/react";
 import {
     AdwHeaderBar,
     AdwNavigationPage,
@@ -8,20 +7,15 @@ import {
     AdwToolbarView,
     GtkBox,
     GtkButton,
+    GtkImage,
     GtkLabel,
     GtkListBox,
     GtkListBoxRow,
-    Slot,
     Toolbar,
 } from "@gtkx/react";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./navigation-view.tsx?raw";
-
-// AdwNavigationPage requires child prop in TypeScript types, but Slot handles it at runtime
-const NavigationPage = AdwNavigationPage as unknown as React.FC<
-    Omit<AdwNavigationPageProps, "child"> & { children?: React.ReactNode }
->;
 
 const pages = [
     {
@@ -76,8 +70,61 @@ const NavigationViewDemo = () => {
                     }}
                 >
                     {/* Home Page */}
-                    <NavigationPage tag="home" title="Home">
-                        <Slot for={AdwNavigationPage} id="child">
+                    <AdwNavigationPage tag="home" title="Home">
+                        <AdwToolbarView>
+                            <Toolbar.Top>
+                                <AdwHeaderBar />
+                            </Toolbar.Top>
+
+                            <GtkBox
+                                orientation={Gtk.Orientation.VERTICAL}
+                                spacing={12}
+                                marginStart={12}
+                                marginEnd={12}
+                                marginTop={12}
+                                marginBottom={12}
+                            >
+                                <GtkLabel
+                                    label="Choose a folder to explore"
+                                    cssClasses={["dim-label"]}
+                                    halign={Gtk.Align.START}
+                                />
+                                <GtkListBox cssClasses={["boxed-list"]}>
+                                    {pages.map((page) => (
+                                        <GtkListBoxRow key={page.tag} onActivate={() => navigateTo(page.tag)}>
+                                            <GtkBox
+                                                orientation={Gtk.Orientation.HORIZONTAL}
+                                                spacing={12}
+                                                marginStart={12}
+                                                marginEnd={12}
+                                                marginTop={12}
+                                                marginBottom={12}
+                                            >
+                                                <GtkImage iconName={page.icon} />
+                                                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
+                                                    <GtkLabel label={page.title} halign={Gtk.Align.START} />
+                                                    <GtkLabel
+                                                        label={page.description}
+                                                        cssClasses={["dim-label", "caption"]}
+                                                        halign={Gtk.Align.START}
+                                                    />
+                                                </GtkBox>
+                                                <GtkImage
+                                                    iconName="go-next-symbolic"
+                                                    cssClasses={["dim-label"]}
+                                                    valign={Gtk.Align.CENTER}
+                                                />
+                                            </GtkBox>
+                                        </GtkListBoxRow>
+                                    ))}
+                                </GtkListBox>
+                            </GtkBox>
+                        </AdwToolbarView>
+                    </AdwNavigationPage>
+
+                    {/* Detail Pages */}
+                    {pages.map((page) => (
+                        <AdwNavigationPage key={page.tag} tag={page.tag} title={page.title}>
                             <AdwToolbarView>
                                 <Toolbar.Top>
                                     <AdwHeaderBar />
@@ -85,88 +132,30 @@ const NavigationViewDemo = () => {
 
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={12}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                    marginTop={12}
-                                    marginBottom={12}
+                                    spacing={24}
+                                    marginStart={24}
+                                    marginEnd={24}
+                                    marginTop={48}
+                                    marginBottom={48}
+                                    valign={Gtk.Align.CENTER}
                                 >
+                                    <GtkImage iconName={page.icon} iconSize={Gtk.IconSize.LARGE} />
+                                    <GtkLabel label={page.title} cssClasses={["title-1"]} />
                                     <GtkLabel
-                                        label="Choose a folder to explore"
+                                        label={page.description}
                                         cssClasses={["dim-label"]}
-                                        halign={Gtk.Align.START}
+                                        wrap
+                                        halign={Gtk.Align.CENTER}
                                     />
-                                    <GtkListBox cssClasses={["boxed-list"]}>
-                                        {pages.map((page) => (
-                                            <GtkListBoxRow key={page.tag} onActivate={() => navigateTo(page.tag)}>
-                                                <GtkBox
-                                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                                    spacing={12}
-                                                    marginStart={12}
-                                                    marginEnd={12}
-                                                    marginTop={12}
-                                                    marginBottom={12}
-                                                >
-                                                    <GtkLabel label={page.icon} useMarkup={false} />
-                                                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
-                                                        <GtkLabel label={page.title} halign={Gtk.Align.START} />
-                                                        <GtkLabel
-                                                            label={page.description}
-                                                            cssClasses={["dim-label", "caption"]}
-                                                            halign={Gtk.Align.START}
-                                                        />
-                                                    </GtkBox>
-                                                    <GtkLabel
-                                                        label="go-next-symbolic"
-                                                        cssClasses={["dim-label"]}
-                                                        valign={Gtk.Align.CENTER}
-                                                        useMarkup={false}
-                                                    />
-                                                </GtkBox>
-                                            </GtkListBoxRow>
-                                        ))}
-                                    </GtkListBox>
+                                    <GtkButton
+                                        label="Go Back"
+                                        cssClasses={["pill"]}
+                                        onClicked={goBack}
+                                        halign={Gtk.Align.CENTER}
+                                    />
                                 </GtkBox>
                             </AdwToolbarView>
-                        </Slot>
-                    </NavigationPage>
-
-                    {/* Detail Pages */}
-                    {pages.map((page) => (
-                        <NavigationPage key={page.tag} tag={page.tag} title={page.title}>
-                            <Slot for={AdwNavigationPage} id="child">
-                                <AdwToolbarView>
-                                    <Toolbar.Top>
-                                        <AdwHeaderBar />
-                                    </Toolbar.Top>
-
-                                    <GtkBox
-                                        orientation={Gtk.Orientation.VERTICAL}
-                                        spacing={24}
-                                        marginStart={24}
-                                        marginEnd={24}
-                                        marginTop={48}
-                                        marginBottom={48}
-                                        valign={Gtk.Align.CENTER}
-                                    >
-                                        <GtkLabel label={page.icon} cssClasses={["title-1"]} useMarkup={false} />
-                                        <GtkLabel label={page.title} cssClasses={["title-1"]} />
-                                        <GtkLabel
-                                            label={page.description}
-                                            cssClasses={["dim-label"]}
-                                            wrap
-                                            halign={Gtk.Align.CENTER}
-                                        />
-                                        <GtkButton
-                                            label="Go Back"
-                                            cssClasses={["pill"]}
-                                            onClicked={goBack}
-                                            halign={Gtk.Align.CENTER}
-                                        />
-                                    </GtkBox>
-                                </AdwToolbarView>
-                            </Slot>
-                        </NavigationPage>
+                        </AdwNavigationPage>
                     ))}
                 </AdwNavigationView>
             </GtkBox>

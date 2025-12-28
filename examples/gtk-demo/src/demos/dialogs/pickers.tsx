@@ -26,7 +26,7 @@ const PickersDemo = () => {
             colorDialog.setTitle("Choose a Color");
             colorDialog.setModal(true);
 
-            const rgba = await colorDialog.chooseRgba(app.activeWindow ?? undefined);
+            const rgba = await colorDialog.chooseRgba(app.getActiveWindow() ?? undefined);
             const colorStr = `rgba(${Math.round(rgba.red * 255)}, ${Math.round(rgba.green * 255)}, ${Math.round(rgba.blue * 255)}, ${rgba.alpha.toFixed(2)})`;
             setSelectedColor(colorStr);
         } catch {
@@ -40,7 +40,7 @@ const PickersDemo = () => {
             fontDialog.setTitle("Choose a Font");
             fontDialog.setModal(true);
 
-            const fontDesc = await fontDialog.chooseFont(app.activeWindow ?? undefined);
+            const fontDesc = await fontDialog.chooseFont(app.getActiveWindow() ?? undefined);
             setSelectedFont(fontDesc.toString());
         } catch {
             // User cancelled
@@ -53,7 +53,7 @@ const PickersDemo = () => {
             fileDialog.setTitle("Open File");
             fileDialog.setModal(true);
 
-            const file = await fileDialog.open(app.activeWindow ?? undefined);
+            const file = await fileDialog.open(app.getActiveWindow() ?? undefined);
             setSelectedFile(file.getPath() ?? file.getUri());
         } catch {
             // User cancelled
@@ -66,7 +66,7 @@ const PickersDemo = () => {
             fileDialog.setTitle("Select Folder");
             fileDialog.setModal(true);
 
-            const folder = await fileDialog.selectFolder(app.activeWindow ?? undefined);
+            const folder = await fileDialog.selectFolder(app.getActiveWindow() ?? undefined);
             setSelectedFolder(folder.getPath() ?? folder.getUri());
         } catch {
             // User cancelled
@@ -80,7 +80,7 @@ const PickersDemo = () => {
             fileDialog.setModal(true);
             fileDialog.setInitialName("untitled.txt");
 
-            const file = await fileDialog.save(app.activeWindow ?? undefined);
+            const file = await fileDialog.save(app.getActiveWindow() ?? undefined);
             setSaveLocation(file.getPath() ?? file.getUri());
         } catch {
             // User cancelled
@@ -93,7 +93,7 @@ const PickersDemo = () => {
             fileDialog.setTitle("Select Multiple Files");
             fileDialog.setModal(true);
 
-            const files = await fileDialog.openMultiple(app.activeWindow ?? undefined);
+            const files = await fileDialog.openMultiple(app.getActiveWindow() ?? undefined);
             const count = files.getNItems();
             setSelectedFile(`${count} file(s) selected`);
         } catch {

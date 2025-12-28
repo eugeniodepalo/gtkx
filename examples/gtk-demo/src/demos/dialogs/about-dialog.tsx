@@ -17,7 +17,7 @@ const AboutDialogDemo = () => {
         dialog.setDeveloperName("Example Developer");
         dialog.setCopyright("Copyright 2024 Example Developer");
 
-        dialog.present(app.activeWindow ?? undefined);
+        dialog.present(app.getActiveWindow() ?? undefined);
         setDialogShown(true);
     };
 
@@ -78,7 +78,7 @@ Node.js: ${process.version}`,
         );
         dialog.setDebugInfoFilename("gtkx-debug-info.txt");
 
-        dialog.present(app.activeWindow ?? undefined);
+        dialog.present(app.getActiveWindow() ?? undefined);
         setDialogShown(true);
     };
 
@@ -86,7 +86,7 @@ Node.js: ${process.version}`,
         const dialog = new Adw.AboutDialog();
         dialog.setApplicationName("Minimal App");
         dialog.setVersion("0.1.0");
-        dialog.present(app.activeWindow ?? undefined);
+        dialog.present(app.getActiveWindow() ?? undefined);
         setDialogShown(true);
     };
 

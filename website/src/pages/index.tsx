@@ -147,11 +147,13 @@ function CTASection() {
                 <h2 className={styles.ctaTitle}>Ready to build?</h2>
                 <p className={styles.ctaSubtitle}>Get started with GTKX in under a minute</p>
                 <pre className={styles.ctaCode}>
-                    <code>npx @gtkx/cli create my-app && cd my-app && npm run dev</code>
+                    <code>npx @gtkx/cli create my-app</code>
                 </pre>
-                <Link className={styles.heroButtonPrimary} to="/docs/getting-started">
-                    Read the Docs
-                </Link>
+                <div>
+                    <Link className={styles.heroButtonPrimary} to="/docs/getting-started">
+                        Read the Docs
+                    </Link>
+                </div>
             </div>
         </section>
     );

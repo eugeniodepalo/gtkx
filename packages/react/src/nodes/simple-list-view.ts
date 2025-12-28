@@ -16,7 +16,7 @@ type SimpleListViewProps = Props & {
 };
 
 class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleListViewProps> {
-    public static override priority = 1;
+    public static override priority = -1;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
         return isContainerType(Gtk.DropDown, containerOrClass) || isContainerType(Adw.ComboRow, containerOrClass);
