@@ -48,6 +48,7 @@ import {
     GtkPaned,
     GtkScrolledWindow,
     GtkSourceView,
+    Slot,
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
@@ -486,59 +487,68 @@ const ShadertoyDemo = () => {
 
                     <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} shrinkStartChild={false} shrinkEndChild={false}>
                         {/* Editor */}
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} widthRequest={400}>
-                            <GtkScrolledWindow vexpand hexpand heightRequest={300}>
-                                <GtkSourceView
-                                    buffer={buffer}
-                                    showLineNumbers
-                                    highlightCurrentLine
-                                    tabWidth={4}
-                                    leftMargin={8}
-                                    rightMargin={8}
-                                    topMargin={8}
-                                    bottomMargin={8}
-                                    monospace
-                                />
-                            </GtkScrolledWindow>
+                        <Slot for={GtkPaned} id="startChild">
+                            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} widthRequest={400}>
+                                <GtkScrolledWindow vexpand hexpand heightRequest={300}>
+                                    <GtkSourceView
+                                        buffer={buffer}
+                                        showLineNumbers
+                                        highlightCurrentLine
+                                        tabWidth={4}
+                                        leftMargin={8}
+                                        rightMargin={8}
+                                        topMargin={8}
+                                        bottomMargin={8}
+                                        monospace
+                                    />
+                                </GtkScrolledWindow>
 
-                            {compileError && (
-                                <GtkLabel label={compileError} cssClasses={["error"]} halign={Gtk.Align.START} wrap />
-                            )}
+                                {compileError && (
+                                    <GtkLabel
+                                        label={compileError}
+                                        cssClasses={["error"]}
+                                        halign={Gtk.Align.START}
+                                        wrap
+                                    />
+                                )}
 
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                                <GtkButton
-                                    label="Compile"
-                                    onClicked={handleCompile}
-                                    cssClasses={["suggested-action"]}
-                                />
-                                <GtkButton
-                                    label={isAnimating ? "Pause" : "Play"}
-                                    onClicked={() => setIsAnimating(!isAnimating)}
-                                />
-                                <GtkButton label="Reset Time" onClicked={handleReset} />
+                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                    <GtkButton
+                                        label="Compile"
+                                        onClicked={handleCompile}
+                                        cssClasses={["suggested-action"]}
+                                    />
+                                    <GtkButton
+                                        label={isAnimating ? "Pause" : "Play"}
+                                        onClicked={() => setIsAnimating(!isAnimating)}
+                                    />
+                                    <GtkButton label="Reset Time" onClicked={handleReset} />
+                                </GtkBox>
                             </GtkBox>
-                        </GtkBox>
+                        </Slot>
 
                         {/* Preview */}
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} hexpand>
-                            <GtkGLArea
-                                ref={glAreaRef}
-                                onRealize={handleRealize}
-                                onUnrealize={handleUnrealize}
-                                onRender={handleRender}
-                                onResize={handleResize}
-                                hexpand
-                                vexpand
-                                widthRequest={400}
-                                heightRequest={300}
-                                cssClasses={["card"]}
-                            />
-                            <GtkLabel
-                                label={`Time: ${time.toFixed(2)}s | Resolution: ${resolution.x}x${resolution.y}`}
-                                cssClasses={["dim-label", "caption"]}
-                                halign={Gtk.Align.CENTER}
-                            />
-                        </GtkBox>
+                        <Slot for={GtkPaned} id="endChild">
+                            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} hexpand>
+                                <GtkGLArea
+                                    ref={glAreaRef}
+                                    onRealize={handleRealize}
+                                    onUnrealize={handleUnrealize}
+                                    onRender={handleRender}
+                                    onResize={handleResize}
+                                    hexpand
+                                    vexpand
+                                    widthRequest={400}
+                                    heightRequest={300}
+                                    cssClasses={["card"]}
+                                />
+                                <GtkLabel
+                                    label={`Time: ${time.toFixed(2)}s | Resolution: ${resolution.x}x${resolution.y}`}
+                                    cssClasses={["dim-label", "caption"]}
+                                    halign={Gtk.Align.CENTER}
+                                />
+                            </GtkBox>
+                        </Slot>
                     </GtkPaned>
                 </GtkBox>
             </GtkFrame>

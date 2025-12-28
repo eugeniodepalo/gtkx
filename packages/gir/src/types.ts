@@ -669,11 +669,7 @@ export class TypeRegistry {
                         ns.sharedLibrary,
                         record.glibGetType,
                     );
-                } else if (
-                    record.fields.length > 0 &&
-                    !record.opaque &&
-                    hasOnlyPrimitiveFields(record.fields)
-                ) {
+                } else if (record.fields.length > 0 && !record.opaque && hasOnlyPrimitiveFields(record.fields)) {
                     const { size, fields } = calculateStructLayout(record.fields);
                     registry.registerRecord(
                         ns.name,
@@ -742,24 +738,13 @@ const getFieldSizeAndAlignment = (type: GirType): { size: number; alignment: num
     if (["gint16", "guint16", "gshort", "gushort"].includes(typeName)) {
         return { size: 2, alignment: 2 };
     }
-    if (
-        ["gint", "guint", "gint32", "guint32", "gfloat", "float", "Quark", "GQuark"].includes(typeName)
-    ) {
+    if (["gint", "guint", "gint32", "guint32", "gfloat", "float", "Quark", "GQuark"].includes(typeName)) {
         return { size: 4, alignment: 4 };
     }
     if (
-        [
-            "gint64",
-            "guint64",
-            "gdouble",
-            "double",
-            "glong",
-            "gulong",
-            "gsize",
-            "gssize",
-            "GType",
-            "gpointer",
-        ].includes(typeName)
+        ["gint64", "guint64", "gdouble", "double", "glong", "gulong", "gsize", "gssize", "GType", "gpointer"].includes(
+            typeName,
+        )
     ) {
         return { size: 8, alignment: 8 };
     }
@@ -1405,9 +1390,7 @@ export class TypeMapper {
         if (param.direction === "out" || param.direction === "inout") {
             const innerType = this.mapType(param.type);
             const isBoxedOrGObjectOrStruct =
-                innerType.ffi.type === "boxed" ||
-                innerType.ffi.type === "gobject" ||
-                innerType.ffi.type === "struct";
+                innerType.ffi.type === "boxed" || innerType.ffi.type === "gobject" || innerType.ffi.type === "struct";
 
             if (param.callerAllocates && isBoxedOrGObjectOrStruct) {
                 return {

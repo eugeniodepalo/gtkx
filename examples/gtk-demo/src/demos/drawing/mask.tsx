@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, FontSlant, FontWeight, Operator, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -6,7 +6,7 @@ import type { Demo } from "../types.js";
 import sourceCode from "./mask.tsx?raw";
 
 // Draw a circular alpha mask
-const drawCircularMask = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawCircularMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) / 2 - 20;
@@ -16,41 +16,37 @@ const drawCircularMask = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numb
     for (let y = 0; y < height; y += checkSize) {
         for (let x = 0; x < width; x += checkSize) {
             const isLight = (x / checkSize + y / checkSize) % 2 === 0;
-            cairo.setSourceRgb(cr, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7);
-            cairo.rectangle(cr, x, y, checkSize, checkSize);
-            cairo.fill(cr);
+            cr.setSourceRgb(isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7)
+                .rectangle(x, y, checkSize, checkSize)
+                .fill();
         }
     }
 
     // Create a colorful background pattern
-    const bgGradient = cairo.patternCreateLinear(0, 0, width, height);
-    cairo.patternAddColorStopRgb(bgGradient, 0, 0.9, 0.2, 0.2);
-    cairo.patternAddColorStopRgb(bgGradient, 0.5, 0.2, 0.9, 0.2);
-    cairo.patternAddColorStopRgb(bgGradient, 1, 0.2, 0.2, 0.9);
+    const bgGradient = Pattern.createLinear(0, 0, width, height)
+        .addColorStopRgb(0, 0.9, 0.2, 0.2)
+        .addColorStopRgb(0.5, 0.2, 0.9, 0.2)
+        .addColorStopRgb(1, 0.2, 0.2, 0.9);
 
     // Draw the gradient as a rectangle
-    cairo.save(cr);
-    cairo.setSource(cr, bgGradient);
-    cairo.rectangle(cr, 0, 0, width, height);
-
-    // Create circular mask using clip
-    cairo.arc(cr, centerX, centerY, radius, 0, 2 * Math.PI);
-    cairo.clip(cr);
-    cairo.paint(cr);
-    cairo.restore(cr);
-
-    cairo.patternDestroy(bgGradient);
+    cr.save()
+        .setSource(bgGradient)
+        .rectangle(0, 0, width, height)
+        .arc(centerX, centerY, radius, 0, 2 * Math.PI)
+        .clip()
+        .paint()
+        .restore();
 
     // Draw mask outline
-    cairo.setSourceRgba(cr, 0, 0, 0, 0.3);
-    cairo.setLineWidth(cr, 2);
-    cairo.arc(cr, centerX, centerY, radius, 0, 2 * Math.PI);
-    cairo.stroke(cr);
+    cr.setSourceRgba(0, 0, 0, 0.3)
+        .setLineWidth(2)
+        .arc(centerX, centerY, radius, 0, 2 * Math.PI)
+        .stroke();
 };
 
 // Draw a radial gradient mask (soft edges)
 const drawGradientMask = (feather: number) => {
-    return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
         const centerY = height / 2;
         const innerRadius = 20;
@@ -61,36 +57,29 @@ const drawGradientMask = (feather: number) => {
         for (let y = 0; y < height; y += checkSize) {
             for (let x = 0; x < width; x += checkSize) {
                 const isLight = (x / checkSize + y / checkSize) % 2 === 0;
-                cairo.setSourceRgb(cr, isLight ? 0.9 : 0.75, isLight ? 0.9 : 0.75, isLight ? 0.9 : 0.75);
-                cairo.rectangle(cr, x, y, checkSize, checkSize);
-                cairo.fill(cr);
+                cr.setSourceRgb(isLight ? 0.9 : 0.75, isLight ? 0.9 : 0.75, isLight ? 0.9 : 0.75)
+                    .rectangle(x, y, checkSize, checkSize)
+                    .fill();
             }
         }
 
         // Draw colored pattern that will be masked
-        cairo.setSourceRgb(cr, 0.2, 0.6, 0.9);
-        cairo.rectangle(cr, 0, 0, width, height);
-        cairo.fill(cr);
+        cr.setSourceRgb(0.2, 0.6, 0.9).rectangle(0, 0, width, height).fill();
 
         // Create radial gradient for mask (using alpha)
         const maskRadius = innerRadius + (outerRadius - innerRadius) * (1 - feather);
-        const mask = cairo.patternCreateRadial(centerX, centerY, 0, centerX, centerY, outerRadius);
-        cairo.patternAddColorStopRgba(mask, 0, 0, 0, 0, 1); // Opaque center
-        cairo.patternAddColorStopRgba(mask, maskRadius / outerRadius, 0, 0, 0, 1); // Inner edge
-        cairo.patternAddColorStopRgba(mask, 1, 0, 0, 0, 0); // Transparent edge
+        const mask = Pattern.createRadial(centerX, centerY, 0, centerX, centerY, outerRadius)
+            .addColorStopRgba(0, 0, 0, 0, 1) // Opaque center
+            .addColorStopRgba(maskRadius / outerRadius, 0, 0, 0, 1) // Inner edge
+            .addColorStopRgba(1, 0, 0, 0, 0); // Transparent edge
 
         // Apply mask using DEST_IN operator
-        cairo.setOperator(cr, cairo.Operator.DEST_IN);
-        cairo.setSource(cr, mask);
-        cairo.paint(cr);
-        cairo.setOperator(cr, cairo.Operator.OVER);
-
-        cairo.patternDestroy(mask);
+        cr.setOperator(Operator.DEST_IN).setSource(mask).paint().setOperator(Operator.OVER);
     };
 };
 
 // Draw a star-shaped mask
-const drawStarMask = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawStarMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const outerRadius = Math.min(width, height) / 2 - 15;
@@ -102,20 +91,18 @@ const drawStarMask = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, 
     for (let y = 0; y < height; y += checkSize) {
         for (let x = 0; x < width; x += checkSize) {
             const isLight = (x / checkSize + y / checkSize) % 2 === 0;
-            cairo.setSourceRgb(cr, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7);
-            cairo.rectangle(cr, x, y, checkSize, checkSize);
-            cairo.fill(cr);
+            cr.setSourceRgb(isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7)
+                .rectangle(x, y, checkSize, checkSize)
+                .fill();
         }
     }
 
     // Create gradient background
-    const bgGradient = cairo.patternCreateLinear(0, 0, width, height);
-    cairo.patternAddColorStopRgb(bgGradient, 0, 0.95, 0.8, 0.2);
-    cairo.patternAddColorStopRgb(bgGradient, 1, 0.9, 0.4, 0.1);
+    const bgGradient = Pattern.createLinear(0, 0, width, height)
+        .addColorStopRgb(0, 0.95, 0.8, 0.2)
+        .addColorStopRgb(1, 0.9, 0.4, 0.1);
 
-    cairo.save(cr);
-    cairo.setSource(cr, bgGradient);
-    cairo.rectangle(cr, 0, 0, width, height);
+    cr.save().setSource(bgGradient).rectangle(0, 0, width, height);
 
     // Create star path for clipping
     for (let i = 0; i < points * 2; i++) {
@@ -125,92 +112,70 @@ const drawStarMask = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, 
         const y = centerY + Math.sin(angle) * radius;
 
         if (i === 0) {
-            cairo.moveTo(cr, x, y);
+            cr.moveTo(x, y);
         } else {
-            cairo.lineTo(cr, x, y);
+            cr.lineTo(x, y);
         }
     }
-    cairo.closePath(cr);
-    cairo.clip(cr);
-    cairo.paint(cr);
-    cairo.restore(cr);
-
-    cairo.patternDestroy(bgGradient);
+    cr.closePath().clip().paint().restore();
 };
 
 // Draw horizontal gradient mask
-const drawHorizontalGradientMask = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawHorizontalGradientMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     // Draw checkerboard
     const checkSize = 8;
     for (let y = 0; y < height; y += checkSize) {
         for (let x = 0; x < width; x += checkSize) {
             const isLight = (x / checkSize + y / checkSize) % 2 === 0;
-            cairo.setSourceRgb(cr, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7);
-            cairo.rectangle(cr, x, y, checkSize, checkSize);
-            cairo.fill(cr);
+            cr.setSourceRgb(isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7)
+                .rectangle(x, y, checkSize, checkSize)
+                .fill();
         }
     }
 
     // Draw image (solid color for demo)
-    cairo.setSourceRgb(cr, 0.6, 0.2, 0.8);
-    cairo.rectangle(cr, 0, 0, width, height);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.6, 0.2, 0.8).rectangle(0, 0, width, height).fill();
 
     // Create horizontal gradient mask
-    const mask = cairo.patternCreateLinear(0, 0, width, 0);
-    cairo.patternAddColorStopRgba(mask, 0, 0, 0, 0, 0);
-    cairo.patternAddColorStopRgba(mask, 0.3, 0, 0, 0, 1);
-    cairo.patternAddColorStopRgba(mask, 0.7, 0, 0, 0, 1);
-    cairo.patternAddColorStopRgba(mask, 1, 0, 0, 0, 0);
+    const mask = Pattern.createLinear(0, 0, width, 0)
+        .addColorStopRgba(0, 0, 0, 0, 0)
+        .addColorStopRgba(0.3, 0, 0, 0, 1)
+        .addColorStopRgba(0.7, 0, 0, 0, 1)
+        .addColorStopRgba(1, 0, 0, 0, 0);
 
-    cairo.setOperator(cr, cairo.Operator.DEST_IN);
-    cairo.setSource(cr, mask);
-    cairo.paint(cr);
-    cairo.setOperator(cr, cairo.Operator.OVER);
-
-    cairo.patternDestroy(mask);
+    cr.setOperator(Operator.DEST_IN).setSource(mask).paint().setOperator(Operator.OVER);
 };
 
 // Draw text as mask
-const drawTextMask = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawTextMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     // Draw checkerboard
     const checkSize = 8;
     for (let y = 0; y < height; y += checkSize) {
         for (let x = 0; x < width; x += checkSize) {
             const isLight = (x / checkSize + y / checkSize) % 2 === 0;
-            cairo.setSourceRgb(cr, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7);
-            cairo.rectangle(cr, x, y, checkSize, checkSize);
-            cairo.fill(cr);
+            cr.setSourceRgb(isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7, isLight ? 0.85 : 0.7)
+                .rectangle(x, y, checkSize, checkSize)
+                .fill();
         }
     }
 
     // Create colorful background
-    const gradient = cairo.patternCreateLinear(0, 0, width, height);
-    cairo.patternAddColorStopRgb(gradient, 0, 0.9, 0.2, 0.5);
-    cairo.patternAddColorStopRgb(gradient, 0.5, 0.5, 0.2, 0.9);
-    cairo.patternAddColorStopRgb(gradient, 1, 0.2, 0.9, 0.9);
+    const gradient = Pattern.createLinear(0, 0, width, height)
+        .addColorStopRgb(0, 0.9, 0.2, 0.5)
+        .addColorStopRgb(0.5, 0.5, 0.2, 0.9)
+        .addColorStopRgb(1, 0.2, 0.9, 0.9);
 
-    cairo.save(cr);
+    cr.save();
 
     // Draw text path as clip mask
-    cairo.selectFontFace(cr, "Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD);
-    cairo.setFontSize(cr, 48);
+    cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.BOLD).setFontSize(48);
 
     const text = "MASK";
-    const extents = cairo.textExtents(cr, text);
+    const extents = cr.textExtents(text);
     const x = (width - extents.width) / 2 - extents.xBearing;
     const y = (height - extents.height) / 2 - extents.yBearing;
 
-    cairo.moveTo(cr, x, y);
-    cairo.textPath(cr, text);
-    cairo.clip(cr);
-
-    // Fill with gradient through the text mask
-    cairo.setSource(cr, gradient);
-    cairo.paint(cr);
-
-    cairo.restore(cr);
-    cairo.patternDestroy(gradient);
+    cr.moveTo(x, y).textPath(text).clip().setSource(gradient).paint().restore();
 };
 
 const MaskDemo = () => {
@@ -273,203 +238,199 @@ const MaskDemo = () => {
             marginTop={20}
             marginBottom={20}
         >
-                <GtkLabel label="Masking Effects" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="Masking Effects" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-                <GtkLabel
-                    label="Cairo provides powerful masking capabilities through clipping paths, alpha gradients, and compositing operators. Masks control which parts of content are visible."
-                    wrap
-                    halign={Gtk.Align.START}
-                    cssClasses={["dim-label"]}
-                />
+            <GtkLabel
+                label="Cairo provides powerful masking capabilities through clipping paths, alpha gradients, and compositing operators. Masks control which parts of content are visible."
+                wrap
+                halign={Gtk.Align.START}
+                cssClasses={["dim-label"]}
+            />
 
-                {/* Alpha mask types */}
-                <GtkFrame label="Mask Types">
-                    <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
-                        spacing={24}
-                        marginStart={16}
-                        marginEnd={16}
-                        marginTop={16}
-                        marginBottom={16}
-                        halign={Gtk.Align.CENTER}
-                    >
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
-                            <GtkDrawingArea
-                                ref={circularMaskRef}
-                                contentWidth={150}
-                                contentHeight={150}
-                                cssClasses={["card"]}
-                            />
-                            <GtkLabel label="Circular Clip" cssClasses={["dim-label", "caption"]} />
-                        </GtkBox>
-
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
-                            <GtkDrawingArea
-                                ref={starMaskRef}
-                                contentWidth={150}
-                                contentHeight={150}
-                                cssClasses={["card"]}
-                            />
-                            <GtkLabel label="Star Clip" cssClasses={["dim-label", "caption"]} />
-                        </GtkBox>
-
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
-                            <GtkDrawingArea
-                                ref={textMaskRef}
-                                contentWidth={150}
-                                contentHeight={150}
-                                cssClasses={["card"]}
-                            />
-                            <GtkLabel label="Text Mask" cssClasses={["dim-label", "caption"]} />
-                        </GtkBox>
-                    </GtkBox>
-                </GtkFrame>
-
-                {/* Gradient mask with feather control */}
-                <GtkFrame label="Gradient Mask (Soft Edges)">
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={16}
-                        marginStart={16}
-                        marginEnd={16}
-                        marginTop={16}
-                        marginBottom={16}
-                    >
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
-                            <GtkDrawingArea
-                                ref={gradientMaskRef}
-                                contentWidth={200}
-                                contentHeight={200}
-                                cssClasses={["card"]}
-                            />
-                            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
-                                <GtkLabel
-                                    label="Radial gradient masks create soft, feathered edges. Adjust the feather amount to control edge softness."
-                                    wrap
-                                    widthRequest={200}
-                                    cssClasses={["dim-label"]}
-                                />
-                            </GtkBox>
-                        </GtkBox>
-
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                            <GtkLabel label="Feather:" widthRequest={60} halign={Gtk.Align.START} />
-                            <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
-                                adjustment={featherAdjustment}
-                                drawValue
-                                digits={2}
-                                valuePos={Gtk.PositionType.RIGHT}
-                                hexpand
-                                onValueChanged={(scale: Gtk.Range) => setFeather(scale.getValue())}
-                            />
-                        </GtkBox>
-                    </GtkBox>
-                </GtkFrame>
-
-                {/* Horizontal gradient mask */}
-                <GtkFrame label="Linear Gradient Mask">
-                    <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
-                        spacing={24}
-                        marginStart={16}
-                        marginEnd={16}
-                        marginTop={16}
-                        marginBottom={16}
-                    >
+            {/* Alpha mask types */}
+            <GtkFrame label="Mask Types">
+                <GtkBox
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    spacing={24}
+                    marginStart={16}
+                    marginEnd={16}
+                    marginTop={16}
+                    marginBottom={16}
+                    halign={Gtk.Align.CENTER}
+                >
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkDrawingArea
-                            ref={horizontalMaskRef}
-                            contentWidth={250}
-                            contentHeight={120}
+                            ref={circularMaskRef}
+                            contentWidth={150}
+                            contentHeight={150}
+                            cssClasses={["card"]}
+                        />
+                        <GtkLabel label="Circular Clip" cssClasses={["dim-label", "caption"]} />
+                    </GtkBox>
+
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
+                        <GtkDrawingArea
+                            ref={starMaskRef}
+                            contentWidth={150}
+                            contentHeight={150}
+                            cssClasses={["card"]}
+                        />
+                        <GtkLabel label="Star Clip" cssClasses={["dim-label", "caption"]} />
+                    </GtkBox>
+
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
+                        <GtkDrawingArea
+                            ref={textMaskRef}
+                            contentWidth={150}
+                            contentHeight={150}
+                            cssClasses={["card"]}
+                        />
+                        <GtkLabel label="Text Mask" cssClasses={["dim-label", "caption"]} />
+                    </GtkBox>
+                </GtkBox>
+            </GtkFrame>
+
+            {/* Gradient mask with feather control */}
+            <GtkFrame label="Gradient Mask (Soft Edges)">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={16}
+                    marginStart={16}
+                    marginEnd={16}
+                    marginTop={16}
+                    marginBottom={16}
+                >
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                        <GtkDrawingArea
+                            ref={gradientMaskRef}
+                            contentWidth={200}
+                            contentHeight={200}
                             cssClasses={["card"]}
                         />
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
                             <GtkLabel
-                                label="Linear gradient masks can create fade-in/fade-out effects, useful for content that scrolls or transitions."
+                                label="Radial gradient masks create soft, feathered edges. Adjust the feather amount to control edge softness."
                                 wrap
                                 widthRequest={200}
                                 cssClasses={["dim-label"]}
                             />
                         </GtkBox>
                     </GtkBox>
-                </GtkFrame>
 
-                {/* Masking techniques */}
-                <GtkFrame label="Masking Techniques">
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={12}
-                        marginStart={12}
-                        marginEnd={12}
-                        marginTop={12}
-                        marginBottom={12}
-                    >
-                        <GtkLabel
-                            label="1. Clipping (clip/clipPreserve):"
-                            cssClasses={["heading"]}
-                            halign={Gtk.Align.START}
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkLabel label="Feather:" widthRequest={60} halign={Gtk.Align.START} />
+                        <GtkScale
+                            orientation={Gtk.Orientation.HORIZONTAL}
+                            adjustment={featherAdjustment}
+                            drawValue
+                            digits={2}
+                            valuePos={Gtk.PositionType.RIGHT}
+                            hexpand
+                            onValueChanged={(scale: Gtk.Range) => setFeather(scale.getValue())}
                         />
-                        <GtkLabel
-                            label="Define a path, then clip(). Only content inside the path is visible. Hard edges."
-                            wrap
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
+                    </GtkBox>
+                </GtkBox>
+            </GtkFrame>
 
+            {/* Horizontal gradient mask */}
+            <GtkFrame label="Linear Gradient Mask">
+                <GtkBox
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    spacing={24}
+                    marginStart={16}
+                    marginEnd={16}
+                    marginTop={16}
+                    marginBottom={16}
+                >
+                    <GtkDrawingArea
+                        ref={horizontalMaskRef}
+                        contentWidth={250}
+                        contentHeight={120}
+                        cssClasses={["card"]}
+                    />
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
                         <GtkLabel
-                            label="2. Alpha Masking (DEST_IN operator):"
-                            cssClasses={["heading"]}
-                            halign={Gtk.Align.START}
-                            marginTop={8}
-                        />
-                        <GtkLabel
-                            label="Draw content, then use setOperator(DEST_IN) with a gradient pattern. Alpha values control transparency for soft edges."
+                            label="Linear gradient masks can create fade-in/fade-out effects, useful for content that scrolls or transitions."
                             wrap
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-
-                        <GtkLabel
-                            label="3. Text Path Masking:"
-                            cssClasses={["heading"]}
-                            halign={Gtk.Align.START}
-                            marginTop={8}
-                        />
-                        <GtkLabel
-                            label="Use textPath() to create a path from text, then clip() to use text as a mask shape."
-                            wrap
-                            halign={Gtk.Align.START}
+                            widthRequest={200}
                             cssClasses={["dim-label"]}
                         />
                     </GtkBox>
-                </GtkFrame>
+                </GtkBox>
+            </GtkFrame>
 
-                {/* Cairo operators info */}
-                <GtkFrame label="Cairo Compositing Operators">
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={8}
-                        marginStart={12}
-                        marginEnd={12}
-                        marginTop={12}
-                        marginBottom={12}
-                    >
-                        <GtkLabel
-                            label="Key operators for masking:"
-                            cssClasses={["heading"]}
-                            halign={Gtk.Align.START}
-                        />
-                        <GtkLabel
-                            label={`OVER - Default, draws source over destination
+            {/* Masking techniques */}
+            <GtkFrame label="Masking Techniques">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginStart={12}
+                    marginEnd={12}
+                    marginTop={12}
+                    marginBottom={12}
+                >
+                    <GtkLabel
+                        label="1. Clipping (clip/clipPreserve):"
+                        cssClasses={["heading"]}
+                        halign={Gtk.Align.START}
+                    />
+                    <GtkLabel
+                        label="Define a path, then clip(). Only content inside the path is visible. Hard edges."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkLabel
+                        label="2. Alpha Masking (DEST_IN operator):"
+                        cssClasses={["heading"]}
+                        halign={Gtk.Align.START}
+                        marginTop={8}
+                    />
+                    <GtkLabel
+                        label="Draw content, then use setOperator(DEST_IN) with a gradient pattern. Alpha values control transparency for soft edges."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkLabel
+                        label="3. Text Path Masking:"
+                        cssClasses={["heading"]}
+                        halign={Gtk.Align.START}
+                        marginTop={8}
+                    />
+                    <GtkLabel
+                        label="Use textPath() to create a path from text, then clip() to use text as a mask shape."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+                </GtkBox>
+            </GtkFrame>
+
+            {/* Cairo operators info */}
+            <GtkFrame label="Cairo Compositing Operators">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={8}
+                    marginStart={12}
+                    marginEnd={12}
+                    marginTop={12}
+                    marginBottom={12}
+                >
+                    <GtkLabel label="Key operators for masking:" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                    <GtkLabel
+                        label={`OVER - Default, draws source over destination
 DEST_IN - Keep destination where source is opaque
 DEST_OUT - Remove destination where source is opaque
 SOURCE - Replace destination with source
 XOR - Combine non-overlapping regions`}
-                            halign={Gtk.Align.START}
-                            cssClasses={["monospace"]}
-                        />
-                    </GtkBox>
-                </GtkFrame>
+                        halign={Gtk.Align.START}
+                        cssClasses={["monospace"]}
+                    />
+                </GtkBox>
+            </GtkFrame>
         </GtkBox>
     );
 };

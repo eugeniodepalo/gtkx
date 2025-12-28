@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, FillRule, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useEffect, useRef } from "react";
@@ -6,143 +6,128 @@ import type { Demo } from "../types.js";
 import sourceCode from "./path-fill.tsx?raw";
 
 // Draw a complex path with solid fill
-const drawSolidFill = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawSolidFill = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const size = Math.min(width, height) * 0.4;
 
     // Create a heart shape using bezier curves
-    cairo.save(cr);
-    cairo.translate(cr, centerX, centerY);
-
-    cairo.moveTo(cr, 0, -size * 0.3);
-    cairo.curveTo(cr, -size * 0.8, -size, -size * 0.8, size * 0.2, 0, size * 0.6);
-    cairo.curveTo(cr, size * 0.8, size * 0.2, size * 0.8, -size, 0, -size * 0.3);
-    cairo.closePath(cr);
+    cr.save()
+        .translate(centerX, centerY)
+        .moveTo(0, -size * 0.3)
+        .curveTo(-size * 0.8, -size, -size * 0.8, size * 0.2, 0, size * 0.6)
+        .curveTo(size * 0.8, size * 0.2, size * 0.8, -size, 0, -size * 0.3)
+        .closePath();
 
     // Fill with solid color
-    cairo.setSourceRgb(cr, 0.9, 0.2, 0.3);
-    cairo.fillPreserve(cr);
+    cr.setSourceRgb(0.9, 0.2, 0.3).fillPreserve();
 
     // Stroke outline
-    cairo.setSourceRgb(cr, 0.7, 0.1, 0.2);
-    cairo.setLineWidth(cr, 3);
-    cairo.stroke(cr);
-
-    cairo.restore(cr);
+    cr.setSourceRgb(0.7, 0.1, 0.2).setLineWidth(3).stroke().restore();
 };
 
 // Draw with linear gradient fill
-const drawLinearGradient = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawLinearGradient = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const padding = 20;
     const rectWidth = width - padding * 2;
     const rectHeight = height - padding * 2;
 
     // Create linear gradient
-    const gradient = cairo.patternCreateLinear(padding, padding, padding + rectWidth, padding + rectHeight);
-    cairo.patternAddColorStopRgb(gradient, 0, 0.2, 0.4, 0.8);
-    cairo.patternAddColorStopRgb(gradient, 0.5, 0.5, 0.2, 0.7);
-    cairo.patternAddColorStopRgb(gradient, 1, 0.9, 0.3, 0.5);
+    const gradient = Pattern.createLinear(padding, padding, padding + rectWidth, padding + rectHeight)
+        .addColorStopRgb(0, 0.2, 0.4, 0.8)
+        .addColorStopRgb(0.5, 0.5, 0.2, 0.7)
+        .addColorStopRgb(1, 0.9, 0.3, 0.5);
 
     // Draw rounded rectangle path
     const radius = 20;
-    cairo.moveTo(cr, padding + radius, padding);
-    cairo.lineTo(cr, padding + rectWidth - radius, padding);
-    cairo.arc(cr, padding + rectWidth - radius, padding + radius, radius, -Math.PI / 2, 0);
-    cairo.lineTo(cr, padding + rectWidth, padding + rectHeight - radius);
-    cairo.arc(cr, padding + rectWidth - radius, padding + rectHeight - radius, radius, 0, Math.PI / 2);
-    cairo.lineTo(cr, padding + radius, padding + rectHeight);
-    cairo.arc(cr, padding + radius, padding + rectHeight - radius, radius, Math.PI / 2, Math.PI);
-    cairo.lineTo(cr, padding, padding + radius);
-    cairo.arc(cr, padding + radius, padding + radius, radius, Math.PI, (3 * Math.PI) / 2);
-    cairo.closePath(cr);
-
-    cairo.setSource(cr, gradient);
-    cairo.fill(cr);
-
-    cairo.patternDestroy(gradient);
+    cr.moveTo(padding + radius, padding)
+        .lineTo(padding + rectWidth - radius, padding)
+        .arc(padding + rectWidth - radius, padding + radius, radius, -Math.PI / 2, 0)
+        .lineTo(padding + rectWidth, padding + rectHeight - radius)
+        .arc(padding + rectWidth - radius, padding + rectHeight - radius, radius, 0, Math.PI / 2)
+        .lineTo(padding + radius, padding + rectHeight)
+        .arc(padding + radius, padding + rectHeight - radius, radius, Math.PI / 2, Math.PI)
+        .lineTo(padding, padding + radius)
+        .arc(padding + radius, padding + radius, radius, Math.PI, (3 * Math.PI) / 2)
+        .closePath()
+        .setSource(gradient)
+        .fill();
 };
 
 // Draw with radial gradient fill
-const drawRadialGradient = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawRadialGradient = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) / 2 - 10;
 
     // Create radial gradient
-    const gradient = cairo.patternCreateRadial(
+    const gradient = Pattern.createRadial(
         centerX - radius * 0.3,
         centerY - radius * 0.3,
         radius * 0.1,
         centerX,
         centerY,
         radius,
-    );
-    cairo.patternAddColorStopRgb(gradient, 0, 1, 1, 0.8);
-    cairo.patternAddColorStopRgb(gradient, 0.5, 0.9, 0.6, 0.1);
-    cairo.patternAddColorStopRgb(gradient, 1, 0.8, 0.3, 0);
+    )
+        .addColorStopRgb(0, 1, 1, 0.8)
+        .addColorStopRgb(0.5, 0.9, 0.6, 0.1)
+        .addColorStopRgb(1, 0.8, 0.3, 0);
 
     // Draw circle
-    cairo.arc(cr, centerX, centerY, radius, 0, 2 * Math.PI);
-    cairo.setSource(cr, gradient);
-    cairo.fill(cr);
-
-    cairo.patternDestroy(gradient);
+    cr.arc(centerX, centerY, radius, 0, 2 * Math.PI)
+        .setSource(gradient)
+        .fill();
 };
 
 // Draw demonstrating even-odd fill rule (creates holes)
-const drawEvenOddFill = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawEvenOddFill = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const outerRadius = Math.min(width, height) / 2 - 10;
     const innerRadius = outerRadius * 0.5;
 
     // Outer circle (clockwise)
-    cairo.arc(cr, centerX, centerY, outerRadius, 0, 2 * Math.PI);
+    cr.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
 
     // Inner circle (also clockwise - with even-odd, this creates a hole)
-    cairo.newSubPath(cr);
-    cairo.arc(cr, centerX, centerY, innerRadius, 0, 2 * Math.PI);
+    cr.newSubPath().arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
 
     // Use even-odd fill rule
-    cairo.setFillRule(cr, cairo.FillRule.EVEN_ODD);
-    cairo.setSourceRgb(cr, 0.3, 0.6, 0.9);
-    cairo.fillPreserve(cr);
-
-    cairo.setSourceRgb(cr, 0.1, 0.3, 0.6);
-    cairo.setLineWidth(cr, 2);
-    cairo.stroke(cr);
+    cr.setFillRule(FillRule.EVEN_ODD)
+        .setSourceRgb(0.3, 0.6, 0.9)
+        .fillPreserve()
+        .setSourceRgb(0.1, 0.3, 0.6)
+        .setLineWidth(2)
+        .stroke();
 
     // Reset to default
-    cairo.setFillRule(cr, cairo.FillRule.WINDING);
+    cr.setFillRule(FillRule.WINDING);
 };
 
 // Draw demonstrating winding fill rule (no holes with same direction)
-const drawWindingFill = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawWindingFill = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const outerRadius = Math.min(width, height) / 2 - 10;
     const innerRadius = outerRadius * 0.5;
 
     // Outer circle (clockwise)
-    cairo.arc(cr, centerX, centerY, outerRadius, 0, 2 * Math.PI);
+    cr.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
 
     // Inner circle (counter-clockwise - with winding, this creates a hole)
-    cairo.newSubPath(cr);
-    cairo.arcNegative(cr, centerX, centerY, innerRadius, 2 * Math.PI, 0);
+    cr.newSubPath().arcNegative(centerX, centerY, innerRadius, 2 * Math.PI, 0);
 
     // Use winding fill rule (default)
-    cairo.setFillRule(cr, cairo.FillRule.WINDING);
-    cairo.setSourceRgb(cr, 0.9, 0.5, 0.2);
-    cairo.fillPreserve(cr);
-
-    cairo.setSourceRgb(cr, 0.6, 0.3, 0.1);
-    cairo.setLineWidth(cr, 2);
-    cairo.stroke(cr);
+    cr.setFillRule(FillRule.WINDING)
+        .setSourceRgb(0.9, 0.5, 0.2)
+        .fillPreserve()
+        .setSourceRgb(0.6, 0.3, 0.1)
+        .setLineWidth(2)
+        .stroke();
 };
 
 // Draw complex polygon with gradient
-const drawComplexPolygon = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawComplexPolygon = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) / 2 - 15;
@@ -154,26 +139,19 @@ const drawComplexPolygon = (_self: Gtk.DrawingArea, cr: cairo.Context, width: nu
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
         if (i === 0) {
-            cairo.moveTo(cr, x, y);
+            cr.moveTo(x, y);
         } else {
-            cairo.lineTo(cr, x, y);
+            cr.lineTo(x, y);
         }
     }
-    cairo.closePath(cr);
+    cr.closePath();
 
     // Create gradient
-    const gradient = cairo.patternCreateLinear(0, 0, width, height);
-    cairo.patternAddColorStopRgb(gradient, 0, 0.4, 0.8, 0.4);
-    cairo.patternAddColorStopRgb(gradient, 1, 0.2, 0.5, 0.3);
+    const gradient = Pattern.createLinear(0, 0, width, height)
+        .addColorStopRgb(0, 0.4, 0.8, 0.4)
+        .addColorStopRgb(1, 0.2, 0.5, 0.3);
 
-    cairo.setSource(cr, gradient);
-    cairo.fillPreserve(cr);
-
-    cairo.setSourceRgb(cr, 0.1, 0.4, 0.2);
-    cairo.setLineWidth(cr, 3);
-    cairo.stroke(cr);
-
-    cairo.patternDestroy(gradient);
+    cr.setSource(gradient).fillPreserve().setSourceRgb(0.1, 0.4, 0.2).setLineWidth(3).stroke();
 };
 
 // Component to display a drawing canvas with label
@@ -185,7 +163,7 @@ const DrawingCanvas = ({
 }: {
     width: number;
     height: number;
-    drawFunc: (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
+    drawFunc: (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => void;
     label: string;
 }) => {
     const ref = useRef<Gtk.DrawingArea | null>(null);

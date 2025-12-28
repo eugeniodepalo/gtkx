@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, FontSlant, FontWeight, LineCap, LineJoin } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -89,15 +89,14 @@ const PathExplorerDemo = () => {
 
     // Draw the path
     const drawPath = useCallback(
-        (_self: Gtk.DrawingArea, cr: cairo.Context, _width: number, _height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, _width: number, _height: number) => {
             // Draw the main path
             if (showPath) {
-                cairo.setSourceRgb(cr, 0.2, 0.5, 0.8);
-                cairo.setLineWidth(cr, strokeWidth);
-                cairo.setLineCap(cr, cairo.LineCap.ROUND);
-                cairo.setLineJoin(cr, cairo.LineJoin.ROUND);
-
-                cairo.moveTo(cr, path.start.x, path.start.y);
+                cr.setSourceRgb(0.2, 0.5, 0.8)
+                    .setLineWidth(strokeWidth)
+                    .setLineCap(LineCap.ROUND)
+                    .setLineJoin(LineJoin.ROUND)
+                    .moveTo(path.start.x, path.start.y);
 
                 let currentPoint = path.start;
                 for (const segment of path.segments) {
@@ -105,7 +104,7 @@ const PathExplorerDemo = () => {
                         case "line": {
                             const endpoint = segment.points[0];
                             if (endpoint) {
-                                cairo.lineTo(cr, endpoint.x, endpoint.y);
+                                cr.lineTo(endpoint.x, endpoint.y);
                                 currentPoint = endpoint;
                             }
                             break;
@@ -119,7 +118,7 @@ const PathExplorerDemo = () => {
                                 const cp1y = currentPoint.y + (2 / 3) * (ctrl.y - currentPoint.y);
                                 const cp2x = end.x + (2 / 3) * (ctrl.x - end.x);
                                 const cp2y = end.y + (2 / 3) * (ctrl.y - end.y);
-                                cairo.curveTo(cr, cp1x, cp1y, cp2x, cp2y, end.x, end.y);
+                                cr.curveTo(cp1x, cp1y, cp2x, cp2y, end.x, end.y);
                                 currentPoint = end;
                             }
                             break;
@@ -129,21 +128,20 @@ const PathExplorerDemo = () => {
                             const p1 = segment.points[1];
                             const p2 = segment.points[2];
                             if (p0 && p1 && p2) {
-                                cairo.curveTo(cr, p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
+                                cr.curveTo(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
                                 currentPoint = p2;
                             }
                             break;
                         }
                     }
                 }
-                cairo.stroke(cr);
+                cr.stroke();
             }
 
             // Draw control handles
             if (showHandles) {
                 // Draw handle lines
-                cairo.setSourceRgba(cr, 0.8, 0.4, 0.4, 0.6);
-                cairo.setLineWidth(cr, 1);
+                cr.setSourceRgba(0.8, 0.4, 0.4, 0.6).setLineWidth(1);
 
                 let prevPoint = path.start;
                 for (const segment of path.segments) {
@@ -151,10 +149,7 @@ const PathExplorerDemo = () => {
                         const p0 = segment.points[0];
                         const p1 = segment.points[1];
                         if (p0 && p1) {
-                            cairo.moveTo(cr, prevPoint.x, prevPoint.y);
-                            cairo.lineTo(cr, p0.x, p0.y);
-                            cairo.lineTo(cr, p1.x, p1.y);
-                            cairo.stroke(cr);
+                            cr.moveTo(prevPoint.x, prevPoint.y).lineTo(p0.x, p0.y).lineTo(p1.x, p1.y).stroke();
                             prevPoint = p1;
                         }
                     } else if (segment.type === "cubic") {
@@ -162,12 +157,8 @@ const PathExplorerDemo = () => {
                         const p1 = segment.points[1];
                         const p2 = segment.points[2];
                         if (p0 && p1 && p2) {
-                            cairo.moveTo(cr, prevPoint.x, prevPoint.y);
-                            cairo.lineTo(cr, p0.x, p0.y);
-                            cairo.stroke(cr);
-                            cairo.moveTo(cr, p1.x, p1.y);
-                            cairo.lineTo(cr, p2.x, p2.y);
-                            cairo.stroke(cr);
+                            cr.moveTo(prevPoint.x, prevPoint.y).lineTo(p0.x, p0.y).stroke();
+                            cr.moveTo(p1.x, p1.y).lineTo(p2.x, p2.y).stroke();
                             prevPoint = p2;
                         }
                     } else {
@@ -196,40 +187,39 @@ const PathExplorerDemo = () => {
                     // Draw point
                     if (isEndpoint) {
                         // Square for endpoints
-                        cairo.setSourceRgb(cr, isSelected ? 0.9 : 0.3, isSelected ? 0.3 : 0.6, isSelected ? 0.3 : 0.9);
-                        cairo.rectangle(cr, point.x - 6, point.y - 6, 12, 12);
-                        cairo.fill(cr);
-                        cairo.setSourceRgb(cr, 0.1, 0.1, 0.1);
-                        cairo.setLineWidth(cr, 1.5);
-                        cairo.rectangle(cr, point.x - 6, point.y - 6, 12, 12);
-                        cairo.stroke(cr);
+                        cr.setSourceRgb(isSelected ? 0.9 : 0.3, isSelected ? 0.3 : 0.6, isSelected ? 0.3 : 0.9)
+                            .rectangle(point.x - 6, point.y - 6, 12, 12)
+                            .fill();
+                        cr.setSourceRgb(0.1, 0.1, 0.1)
+                            .setLineWidth(1.5)
+                            .rectangle(point.x - 6, point.y - 6, 12, 12)
+                            .stroke();
                     } else {
                         // Circle for control points
-                        cairo.setSourceRgb(cr, isSelected ? 0.9 : 0.9, isSelected ? 0.3 : 0.6, isSelected ? 0.3 : 0.3);
-                        cairo.arc(cr, point.x, point.y, 6, 0, 2 * Math.PI);
-                        cairo.fill(cr);
-                        cairo.setSourceRgb(cr, 0.1, 0.1, 0.1);
-                        cairo.setLineWidth(cr, 1.5);
-                        cairo.arc(cr, point.x, point.y, 6, 0, 2 * Math.PI);
-                        cairo.stroke(cr);
+                        cr.setSourceRgb(isSelected ? 0.9 : 0.9, isSelected ? 0.3 : 0.6, isSelected ? 0.3 : 0.3)
+                            .arc(point.x, point.y, 6, 0, 2 * Math.PI)
+                            .fill();
+                        cr.setSourceRgb(0.1, 0.1, 0.1)
+                            .setLineWidth(1.5)
+                            .arc(point.x, point.y, 6, 0, 2 * Math.PI)
+                            .stroke();
                     }
                 }
             }
 
             // Draw info
-            cairo.selectFontFace(cr, "Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL);
-            cairo.setFontSize(cr, 11);
-            cairo.setSourceRgb(cr, 0.5, 0.5, 0.5);
-            cairo.moveTo(cr, 10, 20);
-            cairo.showText(cr, `Segments: ${path.segments.length}`);
+            cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
+                .setFontSize(11)
+                .setSourceRgb(0.5, 0.5, 0.5)
+                .moveTo(10, 20)
+                .showText(`Segments: ${path.segments.length}`);
 
             if (selectedPoint) {
                 const pointInfo =
                     selectedPoint === "start"
                         ? `Start (${Math.round(path.start.x)}, ${Math.round(path.start.y)})`
                         : `Segment ${selectedPoint.segmentIdx + 1}, Point ${selectedPoint.pointIdx + 1}`;
-                cairo.moveTo(cr, 10, 35);
-                cairo.showText(cr, `Selected: ${pointInfo}`);
+                cr.moveTo(10, 35).showText(`Selected: ${pointInfo}`);
             }
         },
         [path, selectedPoint, showHandles, showPath, strokeWidth, getAllPoints],

@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import type { Context } from "@gtkx/ffi/cairo";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkSpinButton, useApplication } from "@gtkx/react";
@@ -71,11 +71,9 @@ const PageSetupDemo = () => {
 
     // Draw page preview
     const drawPreview = useCallback(
-        (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             // Background
-            cairo.setSourceRgb(cr, 0.9, 0.9, 0.9);
-            cairo.rectangle(cr, 0, 0, width, height);
-            cairo.fill(cr);
+            cr.setSourceRgb(0.9, 0.9, 0.9).rectangle(0, 0, width, height).fill();
 
             // Calculate scale to fit page in preview
             const scale = Math.min((width - 20) / effectiveWidth, (height - 20) / effectiveHeight);
@@ -85,20 +83,18 @@ const PageSetupDemo = () => {
             const offsetY = (height - pageHeight) / 2;
 
             // Draw paper shadow
-            cairo.setSourceRgba(cr, 0, 0, 0, 0.2);
-            cairo.rectangle(cr, offsetX + 3, offsetY + 3, pageWidth, pageHeight);
-            cairo.fill(cr);
+            cr.setSourceRgba(0, 0, 0, 0.2)
+                .rectangle(offsetX + 3, offsetY + 3, pageWidth, pageHeight)
+                .fill();
 
             // Draw paper
-            cairo.setSourceRgb(cr, 1, 1, 1);
-            cairo.rectangle(cr, offsetX, offsetY, pageWidth, pageHeight);
-            cairo.fill(cr);
+            cr.setSourceRgb(1, 1, 1).rectangle(offsetX, offsetY, pageWidth, pageHeight).fill();
 
             // Draw paper border
-            cairo.setSourceRgb(cr, 0.7, 0.7, 0.7);
-            cairo.setLineWidth(cr, 1);
-            cairo.rectangle(cr, offsetX + 0.5, offsetY + 0.5, pageWidth - 1, pageHeight - 1);
-            cairo.stroke(cr);
+            cr.setSourceRgb(0.7, 0.7, 0.7)
+                .setLineWidth(1)
+                .rectangle(offsetX + 0.5, offsetY + 0.5, pageWidth - 1, pageHeight - 1)
+                .stroke();
 
             // Draw margins
             const marginTop = topMargin * scale;
@@ -107,53 +103,46 @@ const PageSetupDemo = () => {
             const marginRight = rightMargin * scale;
 
             // Margin area (light blue tint)
-            cairo.setSourceRgba(cr, 0.7, 0.85, 1, 0.3);
+            cr.setSourceRgba(0.7, 0.85, 1, 0.3);
             // Top margin
-            cairo.rectangle(cr, offsetX, offsetY, pageWidth, marginTop);
-            cairo.fill(cr);
+            cr.rectangle(offsetX, offsetY, pageWidth, marginTop).fill();
             // Bottom margin
-            cairo.rectangle(cr, offsetX, offsetY + pageHeight - marginBottom, pageWidth, marginBottom);
-            cairo.fill(cr);
+            cr.rectangle(offsetX, offsetY + pageHeight - marginBottom, pageWidth, marginBottom).fill();
             // Left margin
-            cairo.rectangle(cr, offsetX, offsetY + marginTop, marginLeft, pageHeight - marginTop - marginBottom);
-            cairo.fill(cr);
+            cr.rectangle(offsetX, offsetY + marginTop, marginLeft, pageHeight - marginTop - marginBottom).fill();
             // Right margin
-            cairo.rectangle(
-                cr,
+            cr.rectangle(
                 offsetX + pageWidth - marginRight,
                 offsetY + marginTop,
                 marginRight,
                 pageHeight - marginTop - marginBottom,
-            );
-            cairo.fill(cr);
+            ).fill();
 
             // Draw margin lines
-            cairo.setSourceRgba(cr, 0.4, 0.6, 0.9, 0.5);
-            cairo.setLineWidth(cr, 1);
             const [dashOn, dashOff] = [4, 4];
-            cairo.setDash(cr, [dashOn, dashOff], 0);
+            cr.setSourceRgba(0.4, 0.6, 0.9, 0.5).setLineWidth(1).setDash([dashOn, dashOff], 0);
 
             // Top margin line
-            cairo.moveTo(cr, offsetX, offsetY + marginTop);
-            cairo.lineTo(cr, offsetX + pageWidth, offsetY + marginTop);
-            cairo.stroke(cr);
+            cr.moveTo(offsetX, offsetY + marginTop)
+                .lineTo(offsetX + pageWidth, offsetY + marginTop)
+                .stroke();
 
             // Bottom margin line
-            cairo.moveTo(cr, offsetX, offsetY + pageHeight - marginBottom);
-            cairo.lineTo(cr, offsetX + pageWidth, offsetY + pageHeight - marginBottom);
-            cairo.stroke(cr);
+            cr.moveTo(offsetX, offsetY + pageHeight - marginBottom)
+                .lineTo(offsetX + pageWidth, offsetY + pageHeight - marginBottom)
+                .stroke();
 
             // Left margin line
-            cairo.moveTo(cr, offsetX + marginLeft, offsetY);
-            cairo.lineTo(cr, offsetX + marginLeft, offsetY + pageHeight);
-            cairo.stroke(cr);
+            cr.moveTo(offsetX + marginLeft, offsetY)
+                .lineTo(offsetX + marginLeft, offsetY + pageHeight)
+                .stroke();
 
             // Right margin line
-            cairo.moveTo(cr, offsetX + pageWidth - marginRight, offsetY);
-            cairo.lineTo(cr, offsetX + pageWidth - marginRight, offsetY + pageHeight);
-            cairo.stroke(cr);
+            cr.moveTo(offsetX + pageWidth - marginRight, offsetY)
+                .lineTo(offsetX + pageWidth - marginRight, offsetY + pageHeight)
+                .stroke();
 
-            cairo.setDash(cr, [], 0);
+            cr.setDash([], 0);
 
             // Draw content area indicator
             const contentX = offsetX + marginLeft;
@@ -163,28 +152,27 @@ const PageSetupDemo = () => {
 
             if (contentWidth > 0 && contentHeight > 0) {
                 // Sample lines to indicate text area
-                cairo.setSourceRgba(cr, 0.6, 0.6, 0.6, 0.4);
+                cr.setSourceRgba(0.6, 0.6, 0.6, 0.4);
                 const lineSpacing = 8;
                 const lineCount = Math.floor(contentHeight / lineSpacing);
                 for (let i = 0; i < Math.min(lineCount, 20); i++) {
                     const y = contentY + 10 + i * lineSpacing;
                     const lineWidth = contentWidth * (0.7 + Math.random() * 0.25);
-                    cairo.rectangle(cr, contentX + 5, y, lineWidth - 10, 3);
+                    cr.rectangle(contentX + 5, y, lineWidth - 10, 3);
                 }
-                cairo.fill(cr);
+                cr.fill();
             }
 
             // Draw orientation indicator
-            cairo.setSourceRgb(cr, 0.3, 0.5, 0.8);
-            cairo.setLineWidth(cr, 2);
+            cr.setSourceRgb(0.3, 0.5, 0.8).setLineWidth(2);
             const arrowX = offsetX + 15;
             const arrowY = offsetY + 15;
-            cairo.moveTo(cr, arrowX, arrowY + 15);
-            cairo.lineTo(cr, arrowX, arrowY);
-            cairo.lineTo(cr, arrowX + 5, arrowY + 5);
-            cairo.moveTo(cr, arrowX, arrowY);
-            cairo.lineTo(cr, arrowX - 5, arrowY + 5);
-            cairo.stroke(cr);
+            cr.moveTo(arrowX, arrowY + 15)
+                .lineTo(arrowX, arrowY)
+                .lineTo(arrowX + 5, arrowY + 5)
+                .moveTo(arrowX, arrowY)
+                .lineTo(arrowX - 5, arrowY + 5)
+                .stroke();
         },
         [effectiveWidth, effectiveHeight, topMargin, bottomMargin, leftMargin, rightMargin],
     );

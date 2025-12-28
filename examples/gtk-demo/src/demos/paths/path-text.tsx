@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, FontSlant, FontWeight, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useEffect, useRef } from "react";
@@ -32,7 +32,7 @@ const getQuadraticBezierTangent = (
 };
 
 // Draw text along a curved path
-const drawTextOnCurve = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawTextOnCurve = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const text = "Hello Curved World!";
     const fontSize = 24;
 
@@ -42,24 +42,22 @@ const drawTextOnCurve = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numbe
     const p2 = { x: width - 30, y: height * 0.7 };
 
     // Draw the path for reference
-    cairo.setSourceRgba(cr, 0.6, 0.6, 0.6, 0.5);
-    cairo.setLineWidth(cr, 2);
-    cairo.setLineCap(cr, cairo.LineCap.ROUND);
-    cairo.moveTo(cr, p0.x, p0.y);
-    cairo.curveTo(
-        cr,
-        p0.x + (p1.x - p0.x) * 0.66,
-        p0.y + (p1.y - p0.y) * 0.66,
-        p1.x + (p2.x - p1.x) * 0.33,
-        p1.y + (p2.y - p1.y) * 0.33,
-        p2.x,
-        p2.y,
-    );
-    cairo.stroke(cr);
+    cr.setSourceRgba(0.6, 0.6, 0.6, 0.5)
+        .setLineWidth(2)
+        .setLineCap(LineCap.ROUND)
+        .moveTo(p0.x, p0.y)
+        .curveTo(
+            p0.x + (p1.x - p0.x) * 0.66,
+            p0.y + (p1.y - p0.y) * 0.66,
+            p1.x + (p2.x - p1.x) * 0.33,
+            p1.y + (p2.y - p1.y) * 0.33,
+            p2.x,
+            p2.y,
+        )
+        .stroke();
 
     // Set up font
-    cairo.selectFontFace(cr, "Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD);
-    cairo.setFontSize(cr, fontSize);
+    cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.BOLD).setFontSize(fontSize);
 
     // Calculate approximate path length for character spacing
     const numSamples = 100;
@@ -76,7 +74,7 @@ const drawTextOnCurve = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numbe
     const charWidth = pathLength / (text.length + 2);
     let currentLength = charWidth;
 
-    cairo.setSourceRgb(cr, 0.2, 0.4, 0.8);
+    cr.setSourceRgb(0.2, 0.4, 0.8);
 
     for (let i = 0; i < text.length; i++) {
         // Find the t parameter for the current length
@@ -100,40 +98,39 @@ const drawTextOnCurve = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numbe
         const pos = getQuadraticBezierPoint(t, p0, p1, p2);
         const angle = getQuadraticBezierTangent(t, p0, p1, p2);
 
-        cairo.save(cr);
-        cairo.translate(cr, pos.x, pos.y);
-        cairo.rotate(cr, angle);
-        cairo.moveTo(cr, -charWidth / 4, fontSize / 3);
-        cairo.showText(cr, text.charAt(i));
-        cairo.restore(cr);
+        cr.save()
+            .translate(pos.x, pos.y)
+            .rotate(angle)
+            .moveTo(-charWidth / 4, fontSize / 3)
+            .showText(text.charAt(i));
+        cr.restore();
 
         currentLength += charWidth;
     }
 };
 
 // Draw text along a wave path
-const drawTextOnWave = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawTextOnWave = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const text = "Wavy Text Animation";
     const fontSize = 20;
     const amplitude = 30;
     const frequency = 2;
 
     // Draw wave path for reference
-    cairo.setSourceRgba(cr, 0.6, 0.6, 0.6, 0.4);
-    cairo.setLineWidth(cr, 1);
-    cairo.moveTo(cr, 20, height / 2);
+    cr.setSourceRgba(0.6, 0.6, 0.6, 0.4)
+        .setLineWidth(1)
+        .moveTo(20, height / 2);
     for (let x = 20; x < width - 20; x++) {
         const y = height / 2 + Math.sin(((x - 20) / (width - 40)) * frequency * Math.PI * 2) * amplitude;
-        cairo.lineTo(cr, x, y);
+        cr.lineTo(x, y);
     }
-    cairo.stroke(cr);
+    cr.stroke();
 
     // Set up font
-    cairo.selectFontFace(cr, "Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL);
-    cairo.setFontSize(cr, fontSize);
+    cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL).setFontSize(fontSize);
 
     // Draw each character
-    cairo.setSourceRgb(cr, 0.8, 0.3, 0.5);
+    cr.setSourceRgb(0.8, 0.3, 0.5);
     const charSpacing = (width - 60) / text.length;
 
     for (let i = 0; i < text.length; i++) {
@@ -145,17 +142,17 @@ const drawTextOnWave = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number
             1,
         );
 
-        cairo.save(cr);
-        cairo.translate(cr, x, y);
-        cairo.rotate(cr, angle);
-        cairo.moveTo(cr, 0, fontSize / 3);
-        cairo.showText(cr, text.charAt(i));
-        cairo.restore(cr);
+        cr.save()
+            .translate(x, y)
+            .rotate(angle)
+            .moveTo(0, fontSize / 3)
+            .showText(text.charAt(i));
+        cr.restore();
     }
 };
 
 // Draw text along a circular path
-const drawTextOnCircle = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawTextOnCircle = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const text = "Circular Path Text - Goes Around - ";
     const fontSize = 16;
     const centerX = width / 2;
@@ -163,36 +160,35 @@ const drawTextOnCircle = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numb
     const radius = Math.min(width, height) / 2 - 30;
 
     // Draw circle for reference
-    cairo.setSourceRgba(cr, 0.6, 0.6, 0.6, 0.4);
-    cairo.setLineWidth(cr, 1);
-    cairo.arc(cr, centerX, centerY, radius, 0, 2 * Math.PI);
-    cairo.stroke(cr);
+    cr.setSourceRgba(0.6, 0.6, 0.6, 0.4)
+        .setLineWidth(1)
+        .arc(centerX, centerY, radius, 0, 2 * Math.PI)
+        .stroke();
 
     // Set up font
-    cairo.selectFontFace(cr, "Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL);
-    cairo.setFontSize(cr, fontSize);
+    cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL).setFontSize(fontSize);
 
     // Calculate angle step per character
     const angleStep = (2 * Math.PI) / text.length;
 
-    cairo.setSourceRgb(cr, 0.3, 0.7, 0.4);
+    cr.setSourceRgb(0.3, 0.7, 0.4);
 
     for (let i = 0; i < text.length; i++) {
         const angle = -Math.PI / 2 + i * angleStep;
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
 
-        cairo.save(cr);
-        cairo.translate(cr, x, y);
-        cairo.rotate(cr, angle + Math.PI / 2);
-        cairo.moveTo(cr, -fontSize / 4, 0);
-        cairo.showText(cr, text.charAt(i));
-        cairo.restore(cr);
+        cr.save()
+            .translate(x, y)
+            .rotate(angle + Math.PI / 2)
+            .moveTo(-fontSize / 4, 0)
+            .showText(text.charAt(i));
+        cr.restore();
     }
 };
 
 // Draw spiral text
-const drawTextOnSpiral = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawTextOnSpiral = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const text = "Spiral text winds inward towards the center...";
     const fontSize = 12;
     const centerX = width / 2;
@@ -202,8 +198,7 @@ const drawTextOnSpiral = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numb
     const totalRotations = 2.5;
 
     // Draw spiral for reference
-    cairo.setSourceRgba(cr, 0.6, 0.6, 0.6, 0.3);
-    cairo.setLineWidth(cr, 1);
+    cr.setSourceRgba(0.6, 0.6, 0.6, 0.3).setLineWidth(1);
     for (let i = 0; i <= 200; i++) {
         const t = i / 200;
         const angle = t * totalRotations * 2 * Math.PI;
@@ -211,18 +206,15 @@ const drawTextOnSpiral = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numb
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
         if (i === 0) {
-            cairo.moveTo(cr, x, y);
+            cr.moveTo(x, y);
         } else {
-            cairo.lineTo(cr, x, y);
+            cr.lineTo(x, y);
         }
     }
-    cairo.stroke(cr);
+    cr.stroke();
 
     // Set up font
-    cairo.selectFontFace(cr, "Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL);
-    cairo.setFontSize(cr, fontSize);
-
-    cairo.setSourceRgb(cr, 0.6, 0.4, 0.8);
+    cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL).setFontSize(fontSize).setSourceRgb(0.6, 0.4, 0.8);
 
     for (let i = 0; i < text.length; i++) {
         const t = i / text.length;
@@ -231,12 +223,12 @@ const drawTextOnSpiral = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numb
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
 
-        cairo.save(cr);
-        cairo.translate(cr, x, y);
-        cairo.rotate(cr, angle + Math.PI / 2);
-        cairo.moveTo(cr, 0, fontSize / 3);
-        cairo.showText(cr, text.charAt(i));
-        cairo.restore(cr);
+        cr.save()
+            .translate(x, y)
+            .rotate(angle + Math.PI / 2)
+            .moveTo(0, fontSize / 3)
+            .showText(text.charAt(i));
+        cr.restore();
     }
 };
 
@@ -249,7 +241,7 @@ const DrawingCanvas = ({
 }: {
     width: number;
     height: number;
-    drawFunc: (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
+    drawFunc: (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => void;
     label: string;
 }) => {
     const ref = useRef<Gtk.DrawingArea | null>(null);

@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, useApplication } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -44,63 +44,58 @@ const PrintingDemo = () => {
 
     // Draw preview of what will be printed
     const drawPreview = useCallback(
-        (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             // White paper background
-            cairo.setSourceRgb(cr, 1, 1, 1);
-            cairo.rectangle(cr, 0, 0, width, height);
-            cairo.fill(cr);
+            cr.setSourceRgb(1, 1, 1).rectangle(0, 0, width, height).fill();
 
             // Draw border
-            cairo.setSourceRgb(cr, 0.8, 0.8, 0.8);
-            cairo.setLineWidth(cr, 1);
-            cairo.rectangle(cr, 0.5, 0.5, width - 1, height - 1);
-            cairo.stroke(cr);
+            cr.setSourceRgb(0.8, 0.8, 0.8)
+                .setLineWidth(1)
+                .rectangle(0.5, 0.5, width - 1, height - 1)
+                .stroke();
 
             // Calculate scale to fit content
             const scale = Math.min(width / 612, height / 792); // US Letter in points
             const offsetX = (width - 612 * scale) / 2;
             const offsetY = (height - 792 * scale) / 2;
 
-            cairo.save(cr);
-            cairo.translate(cr, offsetX, offsetY);
-            cairo.scale(cr, scale, scale);
+            cr.save().translate(offsetX, offsetY).scale(scale, scale);
 
             // Draw margin indicators
-            cairo.setSourceRgba(cr, 0.9, 0.9, 0.9, 0.5);
-            cairo.rectangle(cr, 0, 0, MARGIN, 792);
-            cairo.fill(cr);
-            cairo.rectangle(cr, 612 - MARGIN, 0, MARGIN, 792);
-            cairo.fill(cr);
-            cairo.rectangle(cr, 0, 0, 612, MARGIN);
-            cairo.fill(cr);
-            cairo.rectangle(cr, 0, 792 - MARGIN, 612, MARGIN);
-            cairo.fill(cr);
+            cr.setSourceRgba(0.9, 0.9, 0.9, 0.5)
+                .rectangle(0, 0, MARGIN, 792)
+                .fill()
+                .rectangle(612 - MARGIN, 0, MARGIN, 792)
+                .fill()
+                .rectangle(0, 0, 612, MARGIN)
+                .fill()
+                .rectangle(0, 792 - MARGIN, 612, MARGIN)
+                .fill();
 
             // Draw text content
-            cairo.setSourceRgb(cr, 0, 0, 0);
+            cr.setSourceRgb(0, 0, 0);
             const startLine = previewPage * LINES_PER_PAGE;
             const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
 
             for (let i = startLine; i < endLine; i++) {
                 const y = MARGIN + (i - startLine) * LINE_HEIGHT + 15;
-                cairo.moveTo(cr, MARGIN, y);
+                cr.moveTo(MARGIN, y);
 
                 // Simple text rendering (in real app, use Pango)
                 const line = SAMPLE_LINES[i];
                 void line; // Text rendering would use this line
                 if (i === 0) {
                     // Title - larger
-                    cairo.setSourceRgb(cr, 0.2, 0.4, 0.8);
+                    cr.setSourceRgb(0.2, 0.4, 0.8);
                 } else {
-                    cairo.setSourceRgb(cr, 0, 0, 0);
+                    cr.setSourceRgb(0, 0, 0);
                 }
             }
 
             // Page number
-            cairo.setSourceRgb(cr, 0.5, 0.5, 0.5);
-            cairo.moveTo(cr, 306, 792 - 30);
+            cr.setSourceRgb(0.5, 0.5, 0.5).moveTo(306, 792 - 30);
 
-            cairo.restore(cr);
+            cr.restore();
         },
         [previewPage],
     );
@@ -140,22 +135,22 @@ const PrintingDemo = () => {
                 const width = context.getWidth();
 
                 // Draw page content
-                cairo.setSourceRgb(cr, 0, 0, 0);
+                cr.setSourceRgb(0, 0, 0);
                 const startLine = pageNr * LINES_PER_PAGE;
                 const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
 
                 for (let i = startLine; i < endLine; i++) {
                     const y = MARGIN + (i - startLine) * LINE_HEIGHT;
-                    cairo.moveTo(cr, MARGIN, y);
+                    cr.moveTo(MARGIN, y);
                     // In a real app, use Pango for text rendering
                 }
 
                 // Draw a decorative header line
-                cairo.setSourceRgb(cr, 0.2, 0.4, 0.8);
-                cairo.setLineWidth(cr, 2);
-                cairo.moveTo(cr, MARGIN, MARGIN - 10);
-                cairo.lineTo(cr, width - MARGIN, MARGIN - 10);
-                cairo.stroke(cr);
+                cr.setSourceRgb(0.2, 0.4, 0.8)
+                    .setLineWidth(2)
+                    .moveTo(MARGIN, MARGIN - 10)
+                    .lineTo(width - MARGIN, MARGIN - 10)
+                    .stroke();
             });
 
             // Handle end-print signal
@@ -224,20 +219,20 @@ const PrintingDemo = () => {
                     const width = context.getWidth();
 
                     // Draw header
-                    cairo.setSourceRgb(cr, 0.2, 0.4, 0.8);
-                    cairo.setLineWidth(cr, 2);
-                    cairo.moveTo(cr, MARGIN, MARGIN - 10);
-                    cairo.lineTo(cr, width - MARGIN, MARGIN - 10);
-                    cairo.stroke(cr);
+                    cr.setSourceRgb(0.2, 0.4, 0.8)
+                        .setLineWidth(2)
+                        .moveTo(MARGIN, MARGIN - 10)
+                        .lineTo(width - MARGIN, MARGIN - 10)
+                        .stroke();
 
                     // Draw content
-                    cairo.setSourceRgb(cr, 0, 0, 0);
+                    cr.setSourceRgb(0, 0, 0);
                     const startLine = pageNr * LINES_PER_PAGE;
                     const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
 
                     for (let i = startLine; i < endLine; i++) {
                         const y = MARGIN + (i - startLine) * LINE_HEIGHT;
-                        cairo.moveTo(cr, MARGIN, y);
+                        cr.moveTo(MARGIN, y);
                     }
                 });
 

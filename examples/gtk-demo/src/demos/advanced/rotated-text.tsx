@@ -1,4 +1,4 @@
-import * as Cairo from "@gtkx/ffi/cairo";
+import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -23,10 +23,9 @@ const RotatedTextDemo = () => {
         const drawingArea = drawingAreaRef.current;
         if (!drawingArea) return;
 
-        const drawFunc = (_area: Gtk.DrawingArea, cr: Cairo.Context, width: number, height: number) => {
+        const drawFunc = (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             // Clear background
-            Cairo.setSourceRgba(cr, 0.1, 0.1, 0.1, 1);
-            Cairo.paint(cr);
+            cr.setSourceRgba(0.1, 0.1, 0.1, 1).paint();
 
             // Center of the drawing area
             const centerX = width / 2;
@@ -43,12 +42,12 @@ const RotatedTextDemo = () => {
 
                 const angle = baseAngle + i * angleStep;
 
-                Cairo.save(cr);
+                cr.save();
 
                 // Move to center, rotate, then offset
-                Cairo.translate(cr, centerX, centerY);
-                Cairo.rotate(cr, angle);
-                Cairo.translate(cr, 0, -80 - spacing);
+                cr.translate(centerX, centerY)
+                    .rotate(angle)
+                    .translate(0, -80 - spacing);
 
                 // Create Pango layout
                 const layout = PangoCairo.createLayout(cr);
@@ -59,27 +58,26 @@ const RotatedTextDemo = () => {
                 // Center the text
                 const logicalRect = new Pango.Rectangle();
                 layout.getPixelExtents(undefined, logicalRect);
-                Cairo.translate(cr, -logicalRect.width / 2, -logicalRect.height / 2);
+                cr.translate(-logicalRect.width / 2, -logicalRect.height / 2);
 
                 // Draw text shadow
-                Cairo.setSourceRgba(cr, 0, 0, 0, 0.5);
-                Cairo.translate(cr, 2, 2);
+                cr.setSourceRgba(0, 0, 0, 0.5).translate(2, 2);
                 PangoCairo.showLayout(cr, layout);
-                Cairo.translate(cr, -2, -2);
+                cr.translate(-2, -2);
 
                 // Draw text with gradient color based on angle
                 const hue = (i / numTexts + rotation / 360) % 1;
                 const [r, g, b] = hslToRgb(hue, 0.7, 0.6);
-                Cairo.setSourceRgba(cr, r, g, b, 1);
+                cr.setSourceRgba(r, g, b, 1);
                 PangoCairo.showLayout(cr, layout);
 
-                Cairo.restore(cr);
+                cr.restore();
             }
 
             // Draw center decoration
-            Cairo.arc(cr, centerX, centerY, 10, 0, 2 * Math.PI);
-            Cairo.setSourceRgba(cr, 1, 1, 1, 0.3);
-            Cairo.fill(cr);
+            cr.arc(centerX, centerY, 10, 0, 2 * Math.PI)
+                .setSourceRgba(1, 1, 1, 0.3)
+                .fill();
         };
 
         drawingArea.setDrawFunc(drawFunc);
@@ -160,7 +158,7 @@ const RotatedTextDemo = () => {
             </GtkFrame>
 
             <GtkLabel
-                label="Uses Cairo.translate() and Cairo.rotate() for transformations, Pango.Layout for text measurement and rendering, and PangoCairo.showLayout() for drawing."
+                label="Uses cr.translate() and cr.rotate() for transformations, Pango.Layout for text measurement and rendering, and PangoCairo.showLayout() for drawing."
                 wrap
                 cssClasses={["dim-label", "caption"]}
                 halign={Gtk.Align.START}

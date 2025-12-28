@@ -1,4 +1,4 @@
-import * as Cairo from "@gtkx/ffi/cairo";
+import { Antialias, type Context, FontOptions, HintMetrics, HintStyle, SubpixelOrder } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -11,42 +11,42 @@ const SAMPLE_TEXT = "Handgloves";
 const SAMPLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 interface FontRenderingOptions {
-    hintStyle: Cairo.HintStyle;
-    antialias: Cairo.Antialias;
-    hintMetrics: Cairo.HintMetrics;
-    subpixelOrder: Cairo.SubpixelOrder;
+    hintStyle: HintStyle;
+    antialias: Antialias;
+    hintMetrics: HintMetrics;
+    subpixelOrder: SubpixelOrder;
 }
 
-const hintStyleLabels: Record<Cairo.HintStyle, string> = {
-    [Cairo.HintStyle.DEFAULT]: "Default",
-    [Cairo.HintStyle.NONE]: "None",
-    [Cairo.HintStyle.SLIGHT]: "Slight",
-    [Cairo.HintStyle.MEDIUM]: "Medium",
-    [Cairo.HintStyle.FULL]: "Full",
+const hintStyleLabels: Record<HintStyle, string> = {
+    [HintStyle.DEFAULT]: "Default",
+    [HintStyle.NONE]: "None",
+    [HintStyle.SLIGHT]: "Slight",
+    [HintStyle.MEDIUM]: "Medium",
+    [HintStyle.FULL]: "Full",
 };
 
-const antialiasLabels: Record<Cairo.Antialias, string> = {
-    [Cairo.Antialias.DEFAULT]: "Default",
-    [Cairo.Antialias.NONE]: "None",
-    [Cairo.Antialias.GRAY]: "Gray",
-    [Cairo.Antialias.SUBPIXEL]: "Subpixel",
-    [Cairo.Antialias.FAST]: "Fast",
-    [Cairo.Antialias.GOOD]: "Good",
-    [Cairo.Antialias.BEST]: "Best",
+const antialiasLabels: Record<Antialias, string> = {
+    [Antialias.DEFAULT]: "Default",
+    [Antialias.NONE]: "None",
+    [Antialias.GRAY]: "Gray",
+    [Antialias.SUBPIXEL]: "Subpixel",
+    [Antialias.FAST]: "Fast",
+    [Antialias.GOOD]: "Good",
+    [Antialias.BEST]: "Best",
 };
 
-const hintMetricsLabels: Record<Cairo.HintMetrics, string> = {
-    [Cairo.HintMetrics.DEFAULT]: "Default",
-    [Cairo.HintMetrics.OFF]: "Off",
-    [Cairo.HintMetrics.ON]: "On",
+const hintMetricsLabels: Record<HintMetrics, string> = {
+    [HintMetrics.DEFAULT]: "Default",
+    [HintMetrics.OFF]: "Off",
+    [HintMetrics.ON]: "On",
 };
 
-const subpixelOrderLabels: Record<Cairo.SubpixelOrder, string> = {
-    [Cairo.SubpixelOrder.DEFAULT]: "Default",
-    [Cairo.SubpixelOrder.RGB]: "RGB",
-    [Cairo.SubpixelOrder.BGR]: "BGR",
-    [Cairo.SubpixelOrder.VRGB]: "Vertical RGB",
-    [Cairo.SubpixelOrder.VBGR]: "Vertical BGR",
+const subpixelOrderLabels: Record<SubpixelOrder, string> = {
+    [SubpixelOrder.DEFAULT]: "Default",
+    [SubpixelOrder.RGB]: "RGB",
+    [SubpixelOrder.BGR]: "BGR",
+    [SubpixelOrder.VRGB]: "Vertical RGB",
+    [SubpixelOrder.VBGR]: "Vertical BGR",
 };
 
 /**
@@ -68,40 +68,36 @@ const FontRenderPreview = ({
     const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
 
     const drawFunc = useCallback(
-        (_area: Gtk.DrawingArea, cr: Cairo.Context, width: number, height: number) => {
+        (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             // Clear background
-            Cairo.setSourceRgb(cr, 1, 1, 1);
-            Cairo.paint(cr);
+            cr.setSourceRgb(1, 1, 1).paint();
 
             // Draw pixel grid if enabled and scale > 1
             if (showGrid && scale > 1) {
-                Cairo.setSourceRgba(cr, 0.8, 0.8, 0.8, 0.5);
-                Cairo.setLineWidth(cr, 0.5);
+                cr.setSourceRgba(0.8, 0.8, 0.8, 0.5).setLineWidth(0.5);
                 const gridStep = scale;
                 for (let x = 0; x <= width; x += gridStep) {
-                    Cairo.moveTo(cr, x, 0);
-                    Cairo.lineTo(cr, x, height);
+                    cr.moveTo(x, 0).lineTo(x, height);
                 }
                 for (let y = 0; y <= height; y += gridStep) {
-                    Cairo.moveTo(cr, 0, y);
-                    Cairo.lineTo(cr, width, y);
+                    cr.moveTo(0, y).lineTo(width, y);
                 }
-                Cairo.stroke(cr);
+                cr.stroke();
             }
 
             // Create font options
-            const fontOptions = Cairo.fontOptionsCreate();
-            Cairo.fontOptionsSetHintStyle(fontOptions, options.hintStyle);
-            Cairo.fontOptionsSetAntialias(fontOptions, options.antialias);
-            Cairo.fontOptionsSetHintMetrics(fontOptions, options.hintMetrics);
-            Cairo.fontOptionsSetSubpixelOrder(fontOptions, options.subpixelOrder);
+            const fontOptions = new FontOptions();
+            fontOptions
+                .setHintStyle(options.hintStyle)
+                .setAntialias(options.antialias)
+                .setHintMetrics(options.hintMetrics)
+                .setSubpixelOrder(options.subpixelOrder);
 
             // Apply scale transformation
-            Cairo.save(cr);
-            Cairo.scale(cr, scale, scale);
+            cr.save().scale(scale, scale);
 
             // Set font options on context
-            Cairo.setFontOptions(cr, fontOptions);
+            cr.setFontOptions(fontOptions);
 
             // Create Pango layout with the font options
             const context = PangoCairo.createContext(cr);
@@ -120,13 +116,13 @@ const FontRenderPreview = ({
             const x = (scaledWidth - logicalRect.width) / 2;
             const y = (scaledHeight - logicalRect.height) / 2;
 
-            Cairo.translate(cr, x, y);
+            cr.translate(x, y);
 
             // Draw text
-            Cairo.setSourceRgb(cr, 0, 0, 0);
+            cr.setSourceRgb(0, 0, 0);
             PangoCairo.showLayout(cr, layout);
 
-            Cairo.restore(cr);
+            cr.restore();
         },
         [options, fontSize, scale, showGrid, text],
     );
@@ -189,10 +185,10 @@ const ComparisonView = ({
 };
 
 const FontRenderingDemo = () => {
-    const [hintStyle, setHintStyle] = useState<Cairo.HintStyle>(Cairo.HintStyle.DEFAULT);
-    const [antialias, setAntialias] = useState<Cairo.Antialias>(Cairo.Antialias.DEFAULT);
-    const [hintMetrics, setHintMetrics] = useState<Cairo.HintMetrics>(Cairo.HintMetrics.DEFAULT);
-    const [subpixelOrder, setSubpixelOrder] = useState<Cairo.SubpixelOrder>(Cairo.SubpixelOrder.DEFAULT);
+    const [hintStyle, setHintStyle] = useState<HintStyle>(HintStyle.DEFAULT);
+    const [antialias, setAntialias] = useState<Antialias>(Antialias.DEFAULT);
+    const [hintMetrics, setHintMetrics] = useState<HintMetrics>(HintMetrics.DEFAULT);
+    const [subpixelOrder, setSubpixelOrder] = useState<SubpixelOrder>(SubpixelOrder.DEFAULT);
     const [fontSize, setFontSize] = useState(24);
     const [scale, setScale] = useState(4);
 
@@ -208,31 +204,31 @@ const FontRenderingDemo = () => {
 
     // Preset comparisons
     const noHintingOptions: FontRenderingOptions = {
-        hintStyle: Cairo.HintStyle.NONE,
-        antialias: Cairo.Antialias.GRAY,
-        hintMetrics: Cairo.HintMetrics.OFF,
-        subpixelOrder: Cairo.SubpixelOrder.DEFAULT,
+        hintStyle: HintStyle.NONE,
+        antialias: Antialias.GRAY,
+        hintMetrics: HintMetrics.OFF,
+        subpixelOrder: SubpixelOrder.DEFAULT,
     };
 
     const fullHintingOptions: FontRenderingOptions = {
-        hintStyle: Cairo.HintStyle.FULL,
-        antialias: Cairo.Antialias.GRAY,
-        hintMetrics: Cairo.HintMetrics.ON,
-        subpixelOrder: Cairo.SubpixelOrder.DEFAULT,
+        hintStyle: HintStyle.FULL,
+        antialias: Antialias.GRAY,
+        hintMetrics: HintMetrics.ON,
+        subpixelOrder: SubpixelOrder.DEFAULT,
     };
 
     const grayAAOptions: FontRenderingOptions = {
-        hintStyle: Cairo.HintStyle.SLIGHT,
-        antialias: Cairo.Antialias.GRAY,
-        hintMetrics: Cairo.HintMetrics.ON,
-        subpixelOrder: Cairo.SubpixelOrder.DEFAULT,
+        hintStyle: HintStyle.SLIGHT,
+        antialias: Antialias.GRAY,
+        hintMetrics: HintMetrics.ON,
+        subpixelOrder: SubpixelOrder.DEFAULT,
     };
 
     const subpixelAAOptions: FontRenderingOptions = {
-        hintStyle: Cairo.HintStyle.SLIGHT,
-        antialias: Cairo.Antialias.SUBPIXEL,
-        hintMetrics: Cairo.HintMetrics.ON,
-        subpixelOrder: Cairo.SubpixelOrder.RGB,
+        hintStyle: HintStyle.SLIGHT,
+        antialias: Antialias.SUBPIXEL,
+        hintMetrics: HintMetrics.ON,
+        subpixelOrder: SubpixelOrder.RGB,
     };
 
     const hintStyleOptions = Object.entries(hintStyleLabels) as [string, string][];
@@ -299,7 +295,7 @@ const FontRenderingDemo = () => {
                         <GtkLabel label="Hint Style:" widthRequest={120} halign={Gtk.Align.START} />
                         <GtkDropDown
                             selectedId={String(hintStyle)}
-                            onSelectionChanged={(id) => setHintStyle(Number(id) as Cairo.HintStyle)}
+                            onSelectionChanged={(id) => setHintStyle(Number(id) as HintStyle)}
                             hexpand
                         >
                             {hintStyleOptions.map(([value, label]) => (
@@ -312,7 +308,7 @@ const FontRenderingDemo = () => {
                         <GtkLabel label="Antialiasing:" widthRequest={120} halign={Gtk.Align.START} />
                         <GtkDropDown
                             selectedId={String(antialias)}
-                            onSelectionChanged={(id) => setAntialias(Number(id) as Cairo.Antialias)}
+                            onSelectionChanged={(id) => setAntialias(Number(id) as Antialias)}
                             hexpand
                         >
                             {antialiasOptions.map(([value, label]) => (
@@ -325,7 +321,7 @@ const FontRenderingDemo = () => {
                         <GtkLabel label="Hint Metrics:" widthRequest={120} halign={Gtk.Align.START} />
                         <GtkDropDown
                             selectedId={String(hintMetrics)}
-                            onSelectionChanged={(id) => setHintMetrics(Number(id) as Cairo.HintMetrics)}
+                            onSelectionChanged={(id) => setHintMetrics(Number(id) as HintMetrics)}
                             hexpand
                         >
                             {hintMetricsOptions.map(([value, label]) => (
@@ -338,7 +334,7 @@ const FontRenderingDemo = () => {
                         <GtkLabel label="Subpixel Order:" widthRequest={120} halign={Gtk.Align.START} />
                         <GtkDropDown
                             selectedId={String(subpixelOrder)}
-                            onSelectionChanged={(id) => setSubpixelOrder(Number(id) as Cairo.SubpixelOrder)}
+                            onSelectionChanged={(id) => setSubpixelOrder(Number(id) as SubpixelOrder)}
                             hexpand
                         >
                             {subpixelOrderOptions.map(([value, label]) => (

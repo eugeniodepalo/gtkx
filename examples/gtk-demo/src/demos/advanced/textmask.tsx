@@ -1,4 +1,4 @@
-import * as Cairo from "@gtkx/ffi/cairo";
+import { type Context, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -42,10 +42,9 @@ const TextmaskDemo = () => {
         const drawingArea = drawingAreaRef.current;
         if (!drawingArea) return;
 
-        const drawFunc = (_area: Gtk.DrawingArea, cr: Cairo.Context, width: number, height: number) => {
+        const drawFunc = (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             // Clear background
-            Cairo.setSourceRgba(cr, 0.12, 0.12, 0.12, 1);
-            Cairo.paint(cr);
+            cr.setSourceRgba(0.12, 0.12, 0.12, 1).paint();
 
             if (!text.trim()) return;
 
@@ -65,11 +64,10 @@ const TextmaskDemo = () => {
             const x = (width - textWidth) / 2;
             const y = (height - textHeight) / 2;
 
-            Cairo.save(cr);
-            Cairo.translate(cr, x, y);
+            cr.save().translate(x, y);
 
             // Create gradient pattern
-            const gradient = Cairo.patternCreateLinear(
+            const gradient = Pattern.createLinear(
                 animationOffset * textWidth - textWidth * 0.5,
                 0,
                 animationOffset * textWidth + textWidth * 0.5,
@@ -83,29 +81,22 @@ const TextmaskDemo = () => {
                 if (!color) continue;
                 const stop = i / (colorCount - 1);
                 const [r, g, b] = hexToRgb(color);
-                Cairo.patternAddColorStopRgba(gradient, stop, r, g, b, 1);
+                gradient.addColorStopRgba(stop, r, g, b, 1);
             }
 
             // Use text as a clip mask
             PangoCairo.layoutPath(cr, layout);
-            Cairo.clip(cr);
+            cr.clip();
 
             // Fill with gradient
-            Cairo.setSource(cr, gradient);
-            Cairo.paint(cr);
+            cr.setSource(gradient).paint();
 
-            Cairo.restore(cr);
+            cr.restore();
 
             // Draw outline around text
-            Cairo.save(cr);
-            Cairo.translate(cr, x, y);
+            cr.save().translate(x, y);
             PangoCairo.layoutPath(cr, layout);
-            Cairo.setSourceRgba(cr, 1, 1, 1, 0.3);
-            Cairo.setLineWidth(cr, 1);
-            Cairo.stroke(cr);
-            Cairo.restore(cr);
-
-            Cairo.patternDestroy(gradient);
+            cr.setSourceRgba(1, 1, 1, 0.3).setLineWidth(1).stroke().restore();
         };
 
         drawingArea.setDrawFunc(drawFunc);
@@ -205,7 +196,7 @@ const TextmaskDemo = () => {
             </GtkFrame>
 
             <GtkLabel
-                label="Uses PangoCairo.layoutPath() to create a path from text, then Cairo.clip() to use it as a mask. The gradient is drawn with Cairo.patternCreateLinear()."
+                label="Uses PangoCairo.layoutPath() to create a path from text, then cr.clip() to use it as a mask. The gradient is drawn with Pattern.createLinear()."
                 wrap
                 cssClasses={["dim-label", "caption"]}
                 halign={Gtk.Align.START}

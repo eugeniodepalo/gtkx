@@ -84,7 +84,8 @@ export abstract class BaseGenerator {
             .map((param) => {
                 const mapped = this.typeMapper.mapParameter(param);
                 const jsParamName = toValidIdentifier(toCamelCase(param.name));
-                const needsPtr = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
+                const needsPtr =
+                    mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed" || mapped.ffi.type === "struct";
                 const effectiveName = paramMappings?.get(jsParamName) ?? jsParamName;
                 const valueName = needsPtr ? `(${effectiveName} as any)?.id ?? ${effectiveName}` : effectiveName;
                 const isOptional = this.typeMapper.isNullable(param);
@@ -192,6 +193,14 @@ export abstract class BaseGenerator {
             }
             if (type.resultType) {
                 parts.push(`resultType: ${this.generateTypeDescriptor(type.resultType)}`);
+            }
+            return `{ ${parts.join(", ")} }`;
+        }
+        if (type.type === "struct") {
+            const innerType = typeof type.innerType === "string" ? type.innerType : "";
+            const parts = [`type: "struct"`, `innerType: "${innerType}"`];
+            if (type.borrowed) {
+                parts.splice(1, 0, `borrowed: true`);
             }
             return `{ ${parts.join(", ")} }`;
         }

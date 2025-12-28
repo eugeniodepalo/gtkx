@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -135,7 +135,7 @@ const applySepia = (data: number[][]): number[][] => {
 };
 
 // Draw pixel data to cairo context
-const drawPixelData = (cr: cairo.Context, data: number[][], x: number, y: number, scale: number) => {
+const drawPixelData = (cr: Context, data: number[][], x: number, y: number, scale: number) => {
     const height = data.length;
     const firstRow = data[0];
     if (!firstRow) return;
@@ -147,9 +147,9 @@ const drawPixelData = (cr: cairo.Context, data: number[][], x: number, y: number
             const r = dataRow?.[px * 3] ?? 0;
             const g = dataRow?.[px * 3 + 1] ?? 0;
             const b = dataRow?.[px * 3 + 2] ?? 0;
-            cairo.setSourceRgb(cr, r, g, b);
-            cairo.rectangle(cr, x + px * scale, y + py * scale, scale, scale);
-            cairo.fill(cr);
+            cr.setSourceRgb(r, g, b)
+                .rectangle(x + px * scale, y + py * scale, scale, scale)
+                .fill();
         }
     }
 };
@@ -170,11 +170,9 @@ const FilterPreview = ({
     const imageData = useRef(generateSampleImage(20, 20));
 
     const drawFunc = useCallback(
-        (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             // Background
-            cairo.setSourceRgb(cr, 0.1, 0.1, 0.1);
-            cairo.rectangle(cr, 0, 0, width, height);
-            cairo.fill(cr);
+            cr.setSourceRgb(0.1, 0.1, 0.1).rectangle(0, 0, width, height).fill();
 
             let data = imageData.current;
 
@@ -206,10 +204,10 @@ const FilterPreview = ({
 
             // Active indicator
             if (isActive) {
-                cairo.setSourceRgb(cr, 0.3, 0.6, 1);
-                cairo.setLineWidth(cr, 3);
-                cairo.rectangle(cr, 1.5, 1.5, width - 3, height - 3);
-                cairo.stroke(cr);
+                cr.setSourceRgb(0.3, 0.6, 1)
+                    .setLineWidth(3)
+                    .rectangle(1.5, 1.5, width - 3, height - 3)
+                    .stroke();
             }
         },
         [filter, isActive],
@@ -237,11 +235,9 @@ const MainPreview = ({ filter, intensity }: { filter: FilterType; intensity: num
     const imageData = useRef(generateSampleImage(40, 40));
 
     const drawFunc = useCallback(
-        (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             // Background
-            cairo.setSourceRgb(cr, 0.05, 0.05, 0.05);
-            cairo.rectangle(cr, 0, 0, width, height);
-            cairo.fill(cr);
+            cr.setSourceRgb(0.05, 0.05, 0.05).rectangle(0, 0, width, height).fill();
 
             let data = imageData.current;
 

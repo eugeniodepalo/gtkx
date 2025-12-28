@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkPicture } from "@gtkx/react";
 import { useCallback, useEffect, useRef } from "react";
@@ -31,7 +31,7 @@ const CONTENT_FIT_MODES = [
 
 // Draw a sample image pattern for demonstration
 const drawSampleImage = (
-    cr: cairo.Context,
+    cr: Context,
     width: number,
     height: number,
     sourceWidth: number,
@@ -81,55 +81,42 @@ const drawSampleImage = (
     }
 
     // Draw background to show letterboxing/cropping
-    cairo.setSourceRgb(cr, 0.15, 0.15, 0.15);
-    cairo.rectangle(cr, 0, 0, width, height);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.15, 0.15, 0.15).rectangle(0, 0, width, height).fill();
 
     // Clip to container (for COVER mode)
-    cairo.save(cr);
-    cairo.rectangle(cr, 0, 0, width, height);
-    cairo.clip(cr);
+    cr.save().rectangle(0, 0, width, height).clip();
 
     // Draw the "image" content
-    cairo.save(cr);
-    cairo.translate(cr, offsetX, offsetY);
+    cr.save().translate(offsetX, offsetY);
 
     // Gradient background
-    const pattern = cairo.patternCreateLinear(0, 0, drawWidth, drawHeight);
-    cairo.patternAddColorStopRgb(pattern, 0, 0.2, 0.5, 0.8);
-    cairo.patternAddColorStopRgb(pattern, 1, 0.8, 0.3, 0.5);
-    cairo.setSource(cr, pattern);
-    cairo.rectangle(cr, 0, 0, drawWidth, drawHeight);
-    cairo.fill(cr);
+    const pattern = Pattern.createLinear(0, 0, drawWidth, drawHeight);
+    pattern.addColorStopRgb(0, 0.2, 0.5, 0.8);
+    pattern.addColorStopRgb(1, 0.8, 0.3, 0.5);
+    cr.setSource(pattern).rectangle(0, 0, drawWidth, drawHeight).fill();
 
     // Draw a grid to show scaling
-    cairo.setSourceRgba(cr, 1, 1, 1, 0.3);
-    cairo.setLineWidth(cr, 1);
+    cr.setSourceRgba(1, 1, 1, 0.3).setLineWidth(1);
     const gridSize = drawWidth / 5;
     for (let i = 0; i <= 5; i++) {
         const x = i * gridSize;
-        cairo.moveTo(cr, x, 0);
-        cairo.lineTo(cr, x, drawHeight);
-        cairo.stroke(cr);
+        cr.moveTo(x, 0).lineTo(x, drawHeight).stroke();
         const y = i * (drawHeight / 5);
-        cairo.moveTo(cr, 0, y);
-        cairo.lineTo(cr, drawWidth, y);
-        cairo.stroke(cr);
+        cr.moveTo(0, y).lineTo(drawWidth, y).stroke();
     }
 
     // Draw center circle
-    cairo.setSourceRgba(cr, 1, 1, 1, 0.7);
-    cairo.arc(cr, drawWidth / 2, drawHeight / 2, Math.min(drawWidth, drawHeight) / 4, 0, 2 * Math.PI);
-    cairo.fill(cr);
+    cr.setSourceRgba(1, 1, 1, 0.7)
+        .arc(drawWidth / 2, drawHeight / 2, Math.min(drawWidth, drawHeight) / 4, 0, 2 * Math.PI)
+        .fill();
 
     // Draw border
-    cairo.setSourceRgb(cr, 1, 1, 1);
-    cairo.setLineWidth(cr, 2);
-    cairo.rectangle(cr, 1, 1, drawWidth - 2, drawHeight - 2);
-    cairo.stroke(cr);
+    cr.setSourceRgb(1, 1, 1)
+        .setLineWidth(2)
+        .rectangle(1, 1, drawWidth - 2, drawHeight - 2)
+        .stroke();
 
-    cairo.restore(cr);
-    cairo.restore(cr);
+    cr.restore().restore();
 };
 
 // Component for each content fit demo
@@ -137,7 +124,7 @@ const ContentFitDemo = ({ mode, name, description }: { mode: Gtk.ContentFit; nam
     const ref = useRef<Gtk.DrawingArea | null>(null);
 
     const drawFunc = useCallback(
-        (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             // Source image is 100x60 (wide)
             drawSampleImage(cr, width, height, 100, 60, mode);
         },
@@ -172,7 +159,7 @@ const AspectRatioDemo = ({
     const ref = useRef<Gtk.DrawingArea | null>(null);
 
     const drawFunc = useCallback(
-        (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             drawSampleImage(cr, width, height, sourceWidth, sourceHeight, Gtk.ContentFit.CONTAIN);
         },
         [sourceWidth, sourceHeight],

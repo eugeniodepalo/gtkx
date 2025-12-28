@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, FontSlant, FontWeight, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -38,70 +38,49 @@ type EasingName = keyof typeof easings;
 
 // Path sweep with dash animation
 const createDashSweepDrawFunc = (progress: number, dashLength: number = 20) => {
-    return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const padding = 30;
         const w = width - padding * 2;
         const h = height - padding * 2;
 
         // Draw full path in gray
-        cairo.setSourceRgba(cr, 0.5, 0.5, 0.5, 0.3);
-        cairo.setLineWidth(cr, 4);
-        cairo.setLineCap(cr, cairo.LineCap.ROUND);
-
-        cairo.moveTo(cr, padding, padding + h / 2);
-        cairo.curveTo(
-            cr,
-            padding + w * 0.25,
-            padding,
-            padding + w * 0.25,
-            padding + h,
-            padding + w * 0.5,
-            padding + h / 2,
-        );
-        cairo.curveTo(cr, padding + w * 0.75, padding, padding + w * 0.75, padding + h, padding + w, padding + h / 2);
-        cairo.stroke(cr);
+        cr.setSourceRgba(0.5, 0.5, 0.5, 0.3)
+            .setLineWidth(4)
+            .setLineCap(LineCap.ROUND)
+            .moveTo(padding, padding + h / 2)
+            .curveTo(padding + w * 0.25, padding, padding + w * 0.25, padding + h, padding + w * 0.5, padding + h / 2)
+            .curveTo(padding + w * 0.75, padding, padding + w * 0.75, padding + h, padding + w, padding + h / 2)
+            .stroke();
 
         // Calculate approximate path length
         const pathLength = w * 2;
 
         // Draw animated dash
-        cairo.setSourceRgb(cr, 0.2, 0.6, 0.9);
-        cairo.setLineWidth(cr, 6);
+        cr.setSourceRgb(0.2, 0.6, 0.9).setLineWidth(6);
 
         // Use dash offset to create sweep effect
         const dashOffset = -progress * pathLength;
-        cairo.setDash(cr, [dashLength, pathLength - dashLength], dashOffset);
-
-        cairo.moveTo(cr, padding, padding + h / 2);
-        cairo.curveTo(
-            cr,
-            padding + w * 0.25,
-            padding,
-            padding + w * 0.25,
-            padding + h,
-            padding + w * 0.5,
-            padding + h / 2,
-        );
-        cairo.curveTo(cr, padding + w * 0.75, padding, padding + w * 0.75, padding + h, padding + w, padding + h / 2);
-        cairo.stroke(cr);
+        cr.setDash([dashLength, pathLength - dashLength], dashOffset)
+            .moveTo(padding, padding + h / 2)
+            .curveTo(padding + w * 0.25, padding, padding + w * 0.25, padding + h, padding + w * 0.5, padding + h / 2)
+            .curveTo(padding + w * 0.75, padding, padding + w * 0.75, padding + h, padding + w, padding + h / 2)
+            .stroke();
 
         // Reset dash
-        cairo.setDash(cr, [], 0);
+        cr.setDash([], 0);
     };
 };
 
 // Path reveal animation (drawing the path progressively)
 const createPathRevealDrawFunc = (progress: number) => {
-    return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const padding = 30;
         const w = width - padding * 2;
         const h = height - padding * 2;
         const pathLength = w * 2.5;
 
         // Draw background path
-        cairo.setSourceRgba(cr, 0.5, 0.5, 0.5, 0.2);
-        cairo.setLineWidth(cr, 3);
-        cairo.setLineCap(cr, cairo.LineCap.ROUND);
+        cr.setSourceRgba(0.5, 0.5, 0.5, 0.2).setLineWidth(3).setLineCap(LineCap.ROUND);
 
         // Star shape
         const centerX = width / 2;
@@ -116,20 +95,18 @@ const createPathRevealDrawFunc = (progress: number) => {
             const x = centerX + Math.cos(angle) * radius;
             const y = centerY + Math.sin(angle) * radius;
             if (i === 0) {
-                cairo.moveTo(cr, x, y);
+                cr.moveTo(x, y);
             } else {
-                cairo.lineTo(cr, x, y);
+                cr.lineTo(x, y);
             }
         }
-        cairo.closePath(cr);
-        cairo.stroke(cr);
+        cr.closePath().stroke();
 
         // Draw revealed portion
-        cairo.setSourceRgb(cr, 0.9, 0.4, 0.3);
-        cairo.setLineWidth(cr, 5);
+        cr.setSourceRgb(0.9, 0.4, 0.3).setLineWidth(5);
 
         const visibleLength = progress * pathLength * 1.2;
-        cairo.setDash(cr, [visibleLength, pathLength * 2], 0);
+        cr.setDash([visibleLength, pathLength * 2], 0);
 
         for (let i = 0; i < points * 2; i++) {
             const radius = i % 2 === 0 ? outerRadius : innerRadius;
@@ -137,21 +114,20 @@ const createPathRevealDrawFunc = (progress: number) => {
             const x = centerX + Math.cos(angle) * radius;
             const y = centerY + Math.sin(angle) * radius;
             if (i === 0) {
-                cairo.moveTo(cr, x, y);
+                cr.moveTo(x, y);
             } else {
-                cairo.lineTo(cr, x, y);
+                cr.lineTo(x, y);
             }
         }
-        cairo.closePath(cr);
-        cairo.stroke(cr);
+        cr.closePath().stroke();
 
-        cairo.setDash(cr, [], 0);
+        cr.setDash([], 0);
     };
 };
 
 // Multiple dash sweep
 const createMultiDashSweepDrawFunc = (progress: number) => {
-    return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const padding = 30;
         const w = width - padding * 2;
         const h = height - padding * 2;
@@ -164,8 +140,7 @@ const createMultiDashSweepDrawFunc = (progress: number) => {
         const numPoints = 100;
 
         // Background
-        cairo.setSourceRgba(cr, 0.5, 0.5, 0.5, 0.2);
-        cairo.setLineWidth(cr, 2);
+        cr.setSourceRgba(0.5, 0.5, 0.5, 0.2).setLineWidth(2);
 
         for (let i = 0; i <= numPoints; i++) {
             const t = i / numPoints;
@@ -174,12 +149,12 @@ const createMultiDashSweepDrawFunc = (progress: number) => {
             const x = centerX + Math.cos(angle) * radius;
             const y = centerY + Math.sin(angle) * radius;
             if (i === 0) {
-                cairo.moveTo(cr, x, y);
+                cr.moveTo(x, y);
             } else {
-                cairo.lineTo(cr, x, y);
+                cr.lineTo(x, y);
             }
         }
-        cairo.stroke(cr);
+        cr.stroke();
 
         // Animated dashes
         const pathLength = spiralTurns * Math.PI * maxRadius;
@@ -187,10 +162,10 @@ const createMultiDashSweepDrawFunc = (progress: number) => {
         const gapLength = dashLength;
         const dashOffset = -progress * pathLength * 2;
 
-        cairo.setSourceRgb(cr, 0.4, 0.8, 0.5);
-        cairo.setLineWidth(cr, 4);
-        cairo.setLineCap(cr, cairo.LineCap.ROUND);
-        cairo.setDash(cr, [dashLength, gapLength], dashOffset);
+        cr.setSourceRgb(0.4, 0.8, 0.5)
+            .setLineWidth(4)
+            .setLineCap(LineCap.ROUND)
+            .setDash([dashLength, gapLength], dashOffset);
 
         for (let i = 0; i <= numPoints; i++) {
             const t = i / numPoints;
@@ -199,14 +174,14 @@ const createMultiDashSweepDrawFunc = (progress: number) => {
             const x = centerX + Math.cos(angle) * radius;
             const y = centerY + Math.sin(angle) * radius;
             if (i === 0) {
-                cairo.moveTo(cr, x, y);
+                cr.moveTo(x, y);
             } else {
-                cairo.lineTo(cr, x, y);
+                cr.lineTo(x, y);
             }
         }
-        cairo.stroke(cr);
+        cr.stroke();
 
-        cairo.setDash(cr, [], 0);
+        cr.setDash([], 0);
     };
 };
 
@@ -224,7 +199,7 @@ const AnimatedSweep = ({
     createDrawFunc: (
         progress: number,
         extra?: number,
-    ) => (self: Gtk.DrawingArea, cr: cairo.Context, w: number, h: number) => void;
+    ) => (self: Gtk.DrawingArea, cr: Context, w: number, h: number) => void;
     label: string;
     speed?: number;
     easing?: EasingName;
@@ -269,22 +244,21 @@ const EasingVisualizer = () => {
 
     const drawEasing = useCallback(
         (progress: number) => {
-            return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+            return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
                 const padding = 30;
                 const w = width - padding * 2;
                 const h = height - padding * 2;
 
                 // Draw axes
-                cairo.setSourceRgba(cr, 0.5, 0.5, 0.5, 0.5);
-                cairo.setLineWidth(cr, 1);
-                cairo.moveTo(cr, padding, padding);
-                cairo.lineTo(cr, padding, padding + h);
-                cairo.lineTo(cr, padding + w, padding + h);
-                cairo.stroke(cr);
+                cr.setSourceRgba(0.5, 0.5, 0.5, 0.5)
+                    .setLineWidth(1)
+                    .moveTo(padding, padding)
+                    .lineTo(padding, padding + h)
+                    .lineTo(padding + w, padding + h)
+                    .stroke();
 
                 // Draw easing curve
-                cairo.setSourceRgba(cr, 0.5, 0.5, 0.5, 0.3);
-                cairo.setLineWidth(cr, 2);
+                cr.setSourceRgba(0.5, 0.5, 0.5, 0.3).setLineWidth(2);
                 const easingFn = easings[selectedEasing];
 
                 for (let i = 0; i <= 100; i++) {
@@ -292,46 +266,41 @@ const EasingVisualizer = () => {
                     const x = padding + t * w;
                     const y = padding + h - easingFn(t) * h;
                     if (i === 0) {
-                        cairo.moveTo(cr, x, y);
+                        cr.moveTo(x, y);
                     } else {
-                        cairo.lineTo(cr, x, y);
+                        cr.lineTo(x, y);
                     }
                 }
-                cairo.stroke(cr);
+                cr.stroke();
 
                 // Draw current position
                 const x = padding + progress * w;
                 const y = padding + h - easingFn(progress) * h;
 
                 // Vertical line
-                cairo.setSourceRgba(cr, 0.2, 0.6, 0.9, 0.5);
-                cairo.setLineWidth(cr, 1);
-                cairo.moveTo(cr, x, padding + h);
-                cairo.lineTo(cr, x, y);
-                cairo.stroke(cr);
+                cr.setSourceRgba(0.2, 0.6, 0.9, 0.5)
+                    .setLineWidth(1)
+                    .moveTo(x, padding + h)
+                    .lineTo(x, y)
+                    .stroke();
 
                 // Horizontal line
-                cairo.moveTo(cr, padding, y);
-                cairo.lineTo(cr, x, y);
-                cairo.stroke(cr);
+                cr.moveTo(padding, y).lineTo(x, y).stroke();
 
                 // Point
-                cairo.setSourceRgb(cr, 0.9, 0.3, 0.3);
-                cairo.arc(cr, x, y, 6, 0, 2 * Math.PI);
-                cairo.fill(cr);
+                cr.setSourceRgb(0.9, 0.3, 0.3)
+                    .arc(x, y, 6, 0, 2 * Math.PI)
+                    .fill();
 
                 // Labels
-                cairo.selectFontFace(cr, "Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL);
-                cairo.setFontSize(cr, 10);
-                cairo.setSourceRgb(cr, 0.5, 0.5, 0.5);
-                cairo.moveTo(cr, padding - 5, padding + h + 15);
-                cairo.showText(cr, "0");
-                cairo.moveTo(cr, padding + w - 5, padding + h + 15);
-                cairo.showText(cr, "1");
-                cairo.moveTo(cr, padding - 20, padding + h);
-                cairo.showText(cr, "0");
-                cairo.moveTo(cr, padding - 20, padding + 5);
-                cairo.showText(cr, "1");
+                cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
+                    .setFontSize(10)
+                    .setSourceRgb(0.5, 0.5, 0.5)
+                    .moveTo(padding - 5, padding + h + 15)
+                    .showText("0");
+                cr.moveTo(padding + w - 5, padding + h + 15).showText("1");
+                cr.moveTo(padding - 20, padding + h).showText("0");
+                cr.moveTo(padding - 20, padding + 5).showText("1");
             };
         },
         [selectedEasing],

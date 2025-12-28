@@ -390,7 +390,7 @@ ${allArgs ? `${allArgs},` : ""}
                 lines.push(this.generateErrorCheck());
             }
             lines.push(...this.generateRefRewrapCode(gtkAllocatesRefs));
-            lines.push(`    return getNativeObject(ptr) as ${className};`);
+            lines.push(`    return getNativeObject(ptr, ${className})!;`);
         } else {
             const hasRefRewrap = gtkAllocatesRefs.length > 0;
             const needsResultVar = func.throws || hasRefRewrap;
@@ -817,11 +817,16 @@ ${allArgs ? `${allArgs},` : ""}
         }
         lines.push(`  ${methodName}(${params})${returnTypeAnnotation} {`);
 
+        const { wrapperCode, paramMappings } = this.generateCallbackWrappers(method.parameters, "    ");
+        if (wrapperCode) {
+            lines.push(wrapperCode);
+        }
+
         if (method.throws) {
             lines.push(`    const error = { value: null as unknown };`);
         }
 
-        const args = this.generateCallArguments(method.parameters);
+        const args = this.generateCallArguments(method.parameters, "      ", paramMappings);
         const errorArg = method.throws ? this.generateErrorArgument() : "";
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
 

@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, LineCap, LineJoin } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -239,7 +239,7 @@ const MazeDemo = () => {
     const sizeAdjustment = useMemo(() => new Gtk.Adjustment(21, 11, 41, 2, 4, 0), []);
 
     const drawMaze = useCallback(
-        (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             const mazeWidth = maze[0]?.length ?? 1;
             const cellWidth = width / mazeWidth;
             const cellHeight = height / maze.length;
@@ -253,37 +253,35 @@ const MazeDemo = () => {
 
                     switch (cell) {
                         case WALL:
-                            cairo.setSourceRgb(cr, 0.2, 0.2, 0.25);
+                            cr.setSourceRgb(0.2, 0.2, 0.25);
                             break;
                         case PATH:
-                            cairo.setSourceRgb(cr, 0.95, 0.95, 0.9);
+                            cr.setSourceRgb(0.95, 0.95, 0.9);
                             break;
                         case START:
-                            cairo.setSourceRgb(cr, 0.2, 0.7, 0.3);
+                            cr.setSourceRgb(0.2, 0.7, 0.3);
                             break;
                         case END:
-                            cairo.setSourceRgb(cr, 0.8, 0.2, 0.3);
+                            cr.setSourceRgb(0.8, 0.2, 0.3);
                             break;
                         default:
-                            cairo.setSourceRgb(cr, 0.95, 0.95, 0.9);
+                            cr.setSourceRgb(0.95, 0.95, 0.9);
                     }
-                    cairo.rectangle(cr, px, py, cellWidth, cellHeight);
-                    cairo.fill(cr);
+                    cr.rectangle(px, py, cellWidth, cellHeight).fill();
                 }
             }
 
             // Draw visited cells during animation
             if (animationStep > 0 && solution.visited.length > 0) {
                 const visitedCount = Math.min(animationStep, solution.visited.length);
-                cairo.setSourceRgba(cr, 0.6, 0.8, 1, 0.5);
+                cr.setSourceRgba(0.6, 0.8, 1, 0.5);
 
                 for (let i = 0; i < visitedCount; i++) {
                     const visitedCell = solution.visited[i];
                     if (visitedCell) {
                         const [x, y] = visitedCell;
                         if (maze[y]?.[x] !== START && maze[y]?.[x] !== END) {
-                            cairo.rectangle(cr, x * cellWidth + 1, y * cellHeight + 1, cellWidth - 2, cellHeight - 2);
-                            cairo.fill(cr);
+                            cr.rectangle(x * cellWidth + 1, y * cellHeight + 1, cellWidth - 2, cellHeight - 2).fill();
                         }
                     }
                 }
@@ -295,40 +293,37 @@ const MazeDemo = () => {
                 const pathCount = Math.min(pathProgress, solution.path.length);
 
                 if (pathCount > 1) {
-                    cairo.setSourceRgb(cr, 0.9, 0.6, 0.1);
-                    cairo.setLineWidth(cr, Math.min(cellWidth, cellHeight) * 0.4);
-                    cairo.setLineCap(cr, cairo.LineCap.ROUND);
-                    cairo.setLineJoin(cr, cairo.LineJoin.ROUND);
+                    cr.setSourceRgb(0.9, 0.6, 0.1)
+                        .setLineWidth(Math.min(cellWidth, cellHeight) * 0.4)
+                        .setLineCap(LineCap.ROUND)
+                        .setLineJoin(LineJoin.ROUND);
 
                     const firstCell = solution.path[0];
                     if (firstCell) {
                         const [firstX, firstY] = firstCell;
-                        cairo.moveTo(cr, (firstX + 0.5) * cellWidth, (firstY + 0.5) * cellHeight);
+                        cr.moveTo((firstX + 0.5) * cellWidth, (firstY + 0.5) * cellHeight);
 
                         for (let i = 1; i < pathCount; i++) {
                             const pathCell = solution.path[i];
                             if (pathCell) {
                                 const [x, y] = pathCell;
-                                cairo.lineTo(cr, (x + 0.5) * cellWidth, (y + 0.5) * cellHeight);
+                                cr.lineTo((x + 0.5) * cellWidth, (y + 0.5) * cellHeight);
                             }
                         }
-                        cairo.stroke(cr);
+                        cr.stroke();
                     }
                 }
             }
 
             // Draw grid lines
-            cairo.setSourceRgba(cr, 0, 0, 0, 0.1);
-            cairo.setLineWidth(cr, 0.5);
+            cr.setSourceRgba(0, 0, 0, 0.1).setLineWidth(0.5);
             for (let x = 0; x <= mazeWidth; x++) {
-                cairo.moveTo(cr, x * cellWidth, 0);
-                cairo.lineTo(cr, x * cellWidth, height);
+                cr.moveTo(x * cellWidth, 0).lineTo(x * cellWidth, height);
             }
             for (let y = 0; y <= maze.length; y++) {
-                cairo.moveTo(cr, 0, y * cellHeight);
-                cairo.lineTo(cr, width, y * cellHeight);
+                cr.moveTo(0, y * cellHeight).lineTo(width, y * cellHeight);
             }
-            cairo.stroke(cr);
+            cr.stroke();
         },
         [maze, solution, animationStep],
     );

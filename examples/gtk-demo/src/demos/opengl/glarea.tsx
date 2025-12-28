@@ -2,9 +2,11 @@ import type * as Gdk from "@gtkx/ffi/gdk";
 import {
     GL_ARRAY_BUFFER,
     GL_COLOR_BUFFER_BIT,
+    GL_COMPILE_STATUS,
     GL_DEPTH_BUFFER_BIT,
     GL_FLOAT,
     GL_FRAGMENT_SHADER,
+    GL_LINK_STATUS,
     GL_STATIC_DRAW,
     GL_TRIANGLES,
     GL_VERTEX_SHADER,
@@ -26,6 +28,8 @@ import {
     glEnableVertexAttribArray,
     glGenBuffer,
     glGenVertexArray,
+    glGetProgramiv,
+    glGetShaderiv,
     glGetUniformLocation,
     glLinkProgram,
     glShaderSource,
@@ -41,7 +45,9 @@ import type { Demo } from "../types.js";
 import sourceCode from "./glarea.tsx?raw";
 
 // Vertex shader - transforms vertices and passes color to fragment shader
-const VERTEX_SHADER = `#version 330 core
+const VERTEX_SHADER = `#version 300 es
+precision mediump float;
+
 layout (location = 0) in vec3 aPos;
 uniform vec4 uColor;
 out vec4 vertexColor;
@@ -51,7 +57,9 @@ void main() {
 }`;
 
 // Fragment shader - outputs the interpolated color
-const FRAGMENT_SHADER = `#version 330 core
+const FRAGMENT_SHADER = `#version 300 es
+precision mediump float;
+
 in vec4 vertexColor;
 out vec4 FragColor;
 void main() {
@@ -110,16 +118,40 @@ const GLAreaDemo = () => {
             glShaderSource(vertexShader, VERTEX_SHADER);
             glCompileShader(vertexShader);
 
+            // Check vertex shader compilation
+            const vertexStatus = glGetShaderiv(vertexShader, GL_COMPILE_STATUS);
+            if (!vertexStatus) {
+                glDeleteShader(vertexShader);
+                throw new Error("Vertex shader compilation failed");
+            }
+
             // Create and compile fragment shader
             const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
             glShaderSource(fragmentShader, FRAGMENT_SHADER);
             glCompileShader(fragmentShader);
+
+            // Check fragment shader compilation
+            const fragmentStatus = glGetShaderiv(fragmentShader, GL_COMPILE_STATUS);
+            if (!fragmentStatus) {
+                glDeleteShader(vertexShader);
+                glDeleteShader(fragmentShader);
+                throw new Error("Fragment shader compilation failed");
+            }
 
             // Create shader program
             const program = glCreateProgram();
             glAttachShader(program, vertexShader);
             glAttachShader(program, fragmentShader);
             glLinkProgram(program);
+
+            // Check program linking
+            const linkStatus = glGetProgramiv(program, GL_LINK_STATUS);
+            if (!linkStatus) {
+                glDeleteProgram(program);
+                glDeleteShader(vertexShader);
+                glDeleteShader(fragmentShader);
+                throw new Error("Shader program linking failed");
+            }
 
             // Clean up shaders (they're now linked into the program)
             glDeleteShader(vertexShader);
@@ -278,6 +310,7 @@ const GLAreaDemo = () => {
                     <GtkGLArea
                         ref={glAreaRef}
                         hasDepthBuffer
+                        useEs
                         onRealize={handleRealize}
                         onUnrealize={handleUnrealize}
                         onRender={handleRender}

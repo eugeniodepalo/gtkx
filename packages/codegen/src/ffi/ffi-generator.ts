@@ -166,9 +166,25 @@ export class CodeGenerator {
         if (publicFields.length === 0) return false;
 
         const primitiveTypes = new Set([
-            "gint", "guint", "gint8", "guint8", "gint16", "guint16",
-            "gint32", "guint32", "gint64", "guint64", "gfloat", "gdouble",
-            "gboolean", "gchar", "guchar", "gsize", "gssize", "glong", "gulong",
+            "gint",
+            "guint",
+            "gint8",
+            "guint8",
+            "gint16",
+            "guint16",
+            "gint32",
+            "guint32",
+            "gint64",
+            "guint64",
+            "gfloat",
+            "gdouble",
+            "gboolean",
+            "gchar",
+            "guchar",
+            "gsize",
+            "gssize",
+            "glong",
+            "gulong",
         ]);
 
         return publicFields.every((field) => primitiveTypes.has(field.type.name));

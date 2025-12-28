@@ -1,5 +1,5 @@
 import { css } from "@gtkx/css";
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, GtkScrolledWindow } from "@gtkx/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -14,60 +14,56 @@ const transparencyInfoStyle = css`
 
 // Drawing function that demonstrates transparency with checkerboard background
 const drawTransparencyDemo = (alpha: number, gradientType: "solid" | "linear" | "radial") => {
-    return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         // Draw checkerboard to show transparency
         const checkSize = 10;
         for (let y = 0; y < height; y += checkSize) {
             for (let x = 0; x < width; x += checkSize) {
                 const isLight = (x / checkSize + y / checkSize) % 2 === 0;
-                cairo.setSourceRgb(cr, isLight ? 0.9 : 0.7, isLight ? 0.9 : 0.7, isLight ? 0.9 : 0.7);
-                cairo.rectangle(cr, x, y, checkSize, checkSize);
-                cairo.fill(cr);
+                cr.setSourceRgb(isLight ? 0.9 : 0.7, isLight ? 0.9 : 0.7, isLight ? 0.9 : 0.7)
+                    .rectangle(x, y, checkSize, checkSize)
+                    .fill();
             }
         }
 
         // Draw semi-transparent overlay based on gradient type
         if (gradientType === "solid") {
-            cairo.setSourceRgba(cr, 0.2, 0.4, 0.8, alpha);
-            cairo.rectangle(cr, 20, 20, width - 40, height - 40);
-            cairo.fill(cr);
+            cr.setSourceRgba(0.2, 0.4, 0.8, alpha)
+                .rectangle(20, 20, width - 40, height - 40)
+                .fill();
         } else if (gradientType === "linear") {
-            const gradient = cairo.patternCreateLinear(0, 0, width, height);
-            cairo.patternAddColorStopRgba(gradient, 0, 0.8, 0.2, 0.2, alpha);
-            cairo.patternAddColorStopRgba(gradient, 0.5, 0.2, 0.8, 0.2, alpha);
-            cairo.patternAddColorStopRgba(gradient, 1, 0.2, 0.2, 0.8, alpha);
-            cairo.setSource(cr, gradient);
-            cairo.rectangle(cr, 20, 20, width - 40, height - 40);
-            cairo.fill(cr);
-            cairo.patternDestroy(gradient);
+            const gradient = Pattern.createLinear(0, 0, width, height);
+            gradient.addColorStopRgba(0, 0.8, 0.2, 0.2, alpha);
+            gradient.addColorStopRgba(0.5, 0.2, 0.8, 0.2, alpha);
+            gradient.addColorStopRgba(1, 0.2, 0.2, 0.8, alpha);
+            cr.setSource(gradient)
+                .rectangle(20, 20, width - 40, height - 40)
+                .fill();
         } else {
             const centerX = width / 2;
             const centerY = height / 2;
             const radius = Math.min(width, height) / 2 - 20;
-            const gradient = cairo.patternCreateRadial(centerX, centerY, 0, centerX, centerY, radius);
-            cairo.patternAddColorStopRgba(gradient, 0, 1, 1, 0.2, alpha);
-            cairo.patternAddColorStopRgba(gradient, 0.5, 0.8, 0.4, 0.2, alpha);
-            cairo.patternAddColorStopRgba(gradient, 1, 0.2, 0.2, 0.8, alpha * 0.5);
-            cairo.setSource(cr, gradient);
-            cairo.arc(cr, centerX, centerY, radius, 0, 2 * Math.PI);
-            cairo.fill(cr);
-            cairo.patternDestroy(gradient);
+            const gradient = Pattern.createRadial(centerX, centerY, 0, centerX, centerY, radius);
+            gradient.addColorStopRgba(0, 1, 1, 0.2, alpha);
+            gradient.addColorStopRgba(0.5, 0.8, 0.4, 0.2, alpha);
+            gradient.addColorStopRgba(1, 0.2, 0.2, 0.8, alpha * 0.5);
+            cr.setSource(gradient)
+                .arc(centerX, centerY, radius, 0, 2 * Math.PI)
+                .fill();
         }
 
         // Add text to show alpha value
-        cairo.setSourceRgba(cr, 0, 0, 0, 0.8);
-        cairo.moveTo(cr, 30, height - 30);
-        cairo.setFontSize(cr, 14);
-        cairo.showText(cr, `Alpha: ${alpha.toFixed(2)}`);
+        cr.setSourceRgba(0, 0, 0, 0.8)
+            .moveTo(30, height - 30)
+            .setFontSize(14)
+            .showText(`Alpha: ${alpha.toFixed(2)}`);
     };
 };
 
 // Draw overlapping transparent shapes
-const drawOverlappingShapes = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawOverlappingShapes = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     // White background
-    cairo.setSourceRgb(cr, 1, 1, 1);
-    cairo.rectangle(cr, 0, 0, width, height);
-    cairo.fill(cr);
+    cr.setSourceRgb(1, 1, 1).rectangle(0, 0, width, height).fill();
 
     const centerX = width / 2;
     const centerY = height / 2;
@@ -75,48 +71,48 @@ const drawOverlappingShapes = (_self: Gtk.DrawingArea, cr: cairo.Context, width:
     const offset = 35;
 
     // Red circle (top)
-    cairo.setSourceRgba(cr, 0.9, 0.1, 0.1, 0.6);
-    cairo.arc(cr, centerX, centerY - offset, radius, 0, 2 * Math.PI);
-    cairo.fill(cr);
+    cr.setSourceRgba(0.9, 0.1, 0.1, 0.6)
+        .arc(centerX, centerY - offset, radius, 0, 2 * Math.PI)
+        .fill();
 
     // Green circle (bottom-left)
-    cairo.setSourceRgba(cr, 0.1, 0.9, 0.1, 0.6);
-    cairo.arc(cr, centerX - offset, centerY + offset * 0.5, radius, 0, 2 * Math.PI);
-    cairo.fill(cr);
+    cr.setSourceRgba(0.1, 0.9, 0.1, 0.6)
+        .arc(centerX - offset, centerY + offset * 0.5, radius, 0, 2 * Math.PI)
+        .fill();
 
     // Blue circle (bottom-right)
-    cairo.setSourceRgba(cr, 0.1, 0.1, 0.9, 0.6);
-    cairo.arc(cr, centerX + offset, centerY + offset * 0.5, radius, 0, 2 * Math.PI);
-    cairo.fill(cr);
+    cr.setSourceRgba(0.1, 0.1, 0.9, 0.6)
+        .arc(centerX + offset, centerY + offset * 0.5, radius, 0, 2 * Math.PI)
+        .fill();
 };
 
 // Draw layered transparency with different operators
-const drawLayeredTransparency = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawLayeredTransparency = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     // Draw checkerboard background
     const checkSize = 8;
     for (let y = 0; y < height; y += checkSize) {
         for (let x = 0; x < width; x += checkSize) {
             const isLight = (x / checkSize + y / checkSize) % 2 === 0;
-            cairo.setSourceRgb(cr, isLight ? 0.85 : 0.65, isLight ? 0.85 : 0.65, isLight ? 0.85 : 0.65);
-            cairo.rectangle(cr, x, y, checkSize, checkSize);
-            cairo.fill(cr);
+            cr.setSourceRgb(isLight ? 0.85 : 0.65, isLight ? 0.85 : 0.65, isLight ? 0.85 : 0.65)
+                .rectangle(x, y, checkSize, checkSize)
+                .fill();
         }
     }
 
     // Layer 1: Base rectangle
-    cairo.setSourceRgba(cr, 0.2, 0.6, 0.9, 0.7);
-    cairo.rectangle(cr, 20, 20, width - 40, height - 40);
-    cairo.fill(cr);
+    cr.setSourceRgba(0.2, 0.6, 0.9, 0.7)
+        .rectangle(20, 20, width - 40, height - 40)
+        .fill();
 
     // Layer 2: Inner rectangle with different alpha
-    cairo.setSourceRgba(cr, 0.9, 0.3, 0.3, 0.5);
-    cairo.rectangle(cr, 40, 40, width - 80, height - 80);
-    cairo.fill(cr);
+    cr.setSourceRgba(0.9, 0.3, 0.3, 0.5)
+        .rectangle(40, 40, width - 80, height - 80)
+        .fill();
 
     // Layer 3: Innermost rectangle
-    cairo.setSourceRgba(cr, 0.3, 0.9, 0.3, 0.6);
-    cairo.rectangle(cr, 60, 60, width - 120, height - 120);
-    cairo.fill(cr);
+    cr.setSourceRgba(0.3, 0.9, 0.3, 0.6)
+        .rectangle(60, 60, width - 120, height - 120)
+        .fill();
 };
 
 const TransparentDemo = () => {

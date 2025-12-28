@@ -195,11 +195,7 @@ const Fixed2Demo = () => {
                     </GtkFixed>
 
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
-                        <GtkButton
-                            label="Randomize All"
-                            onClicked={randomizeAll}
-                            cssClasses={["suggested-action"]}
-                        />
+                        <GtkButton label="Randomize All" onClicked={randomizeAll} cssClasses={["suggested-action"]} />
                         <GtkButton label="Reset All" onClicked={resetAll} />
                         <GtkButton
                             label={isAnimating ? "Stop Animation" : "Animate Rotation"}
@@ -313,9 +309,7 @@ const Fixed2Demo = () => {
                             <GtkLabel
                                 key={w.id}
                                 label={`${w.label} (z=${i})`}
-                                cssClasses={[
-                                    cx(zLayerStyle, i < 2 ? zBackStyle : i < 4 ? zMiddleStyle : zFrontStyle),
-                                ]}
+                                cssClasses={[cx(zLayerStyle, i < 2 ? zBackStyle : i < 4 ? zMiddleStyle : zFrontStyle)]}
                             />
                         ))}
                     </GtkBox>

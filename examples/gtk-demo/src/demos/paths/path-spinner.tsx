@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,38 +7,36 @@ import sourceCode from "./path-spinner.tsx?raw";
 
 // Basic arc spinner
 const createArcSpinnerDrawFunc = (rotation: number, strokeWidth: number) => {
-    return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
         const centerY = height / 2;
         const radius = Math.min(width, height) / 2 - strokeWidth - 5;
 
         // Draw background circle
-        cairo.setSourceRgba(cr, 0.5, 0.5, 0.5, 0.3);
-        cairo.setLineWidth(cr, strokeWidth);
-        cairo.setLineCap(cr, cairo.LineCap.ROUND);
-        cairo.arc(cr, centerX, centerY, radius, 0, 2 * Math.PI);
-        cairo.stroke(cr);
+        cr.setSourceRgba(0.5, 0.5, 0.5, 0.3)
+            .setLineWidth(strokeWidth)
+            .setLineCap(LineCap.ROUND)
+            .arc(centerX, centerY, radius, 0, 2 * Math.PI)
+            .stroke();
 
         // Draw spinning arc
-        cairo.setSourceRgb(cr, 0.2, 0.6, 0.9);
+        cr.setSourceRgb(0.2, 0.6, 0.9);
         const startAngle = rotation;
         const endAngle = rotation + Math.PI * 0.75;
-        cairo.arc(cr, centerX, centerY, radius, startAngle, endAngle);
-        cairo.stroke(cr);
+        cr.arc(centerX, centerY, radius, startAngle, endAngle).stroke();
     };
 };
 
 // Gradient spinner with tail fade
 const createGradientSpinnerDrawFunc = (rotation: number, strokeWidth: number) => {
-    return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
         const centerY = height / 2;
         const radius = Math.min(width, height) / 2 - strokeWidth - 5;
         const segments = 20;
         const arcLength = Math.PI * 1.2;
 
-        cairo.setLineWidth(cr, strokeWidth);
-        cairo.setLineCap(cr, cairo.LineCap.ROUND);
+        cr.setLineWidth(strokeWidth).setLineCap(LineCap.ROUND);
 
         for (let i = 0; i < segments; i++) {
             const t = i / segments;
@@ -46,16 +44,14 @@ const createGradientSpinnerDrawFunc = (rotation: number, strokeWidth: number) =>
             const startAngle = rotation + t * arcLength;
             const endAngle = rotation + (t + 1 / segments) * arcLength;
 
-            cairo.setSourceRgba(cr, 0.3, 0.7, 0.4, alpha);
-            cairo.arc(cr, centerX, centerY, radius, startAngle, endAngle);
-            cairo.stroke(cr);
+            cr.setSourceRgba(0.3, 0.7, 0.4, alpha).arc(centerX, centerY, radius, startAngle, endAngle).stroke();
         }
     };
 };
 
 // Dotted spinner
 const createDottedSpinnerDrawFunc = (rotation: number, dotSize: number) => {
-    return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
         const centerY = height / 2;
         const radius = Math.min(width, height) / 2 - dotSize - 10;
@@ -70,53 +66,49 @@ const createDottedSpinnerDrawFunc = (rotation: number, dotSize: number) => {
             const alpha = 0.2 + 0.8 * (i / dotCount);
             const size = dotSize * (0.5 + 0.5 * (i / dotCount));
 
-            cairo.setSourceRgba(cr, 0.9, 0.4, 0.3, alpha);
-            cairo.arc(cr, x, y, size, 0, 2 * Math.PI);
-            cairo.fill(cr);
+            cr.setSourceRgba(0.9, 0.4, 0.3, alpha)
+                .arc(x, y, size, 0, 2 * Math.PI)
+                .fill();
         }
     };
 };
 
 // Pulsing ring spinner
 const createPulsingSpinnerDrawFunc = (rotation: number, strokeWidth: number, pulse: number = 0) => {
-    return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
         const centerY = height / 2;
         const baseRadius = Math.min(width, height) / 2 - strokeWidth - 15;
         const pulseAmount = 8 * Math.sin(pulse);
 
         // Outer ring
-        cairo.setSourceRgba(cr, 0.6, 0.3, 0.8, 0.3 + 0.2 * Math.sin(pulse));
-        cairo.setLineWidth(cr, strokeWidth * 0.6);
-        cairo.arc(cr, centerX, centerY, baseRadius + pulseAmount, 0, 2 * Math.PI);
-        cairo.stroke(cr);
+        cr.setSourceRgba(0.6, 0.3, 0.8, 0.3 + 0.2 * Math.sin(pulse))
+            .setLineWidth(strokeWidth * 0.6)
+            .arc(centerX, centerY, baseRadius + pulseAmount, 0, 2 * Math.PI)
+            .stroke();
 
         // Main spinning arc
-        cairo.setSourceRgb(cr, 0.6, 0.3, 0.8);
-        cairo.setLineWidth(cr, strokeWidth);
-        cairo.setLineCap(cr, cairo.LineCap.ROUND);
+        cr.setSourceRgb(0.6, 0.3, 0.8).setLineWidth(strokeWidth).setLineCap(LineCap.ROUND);
         const arcSpan = Math.PI * 0.5 + 0.3 * Math.sin(pulse * 2);
-        cairo.arc(cr, centerX, centerY, baseRadius, rotation, rotation + arcSpan);
-        cairo.stroke(cr);
+        cr.arc(centerX, centerY, baseRadius, rotation, rotation + arcSpan).stroke();
 
         // Inner ring
-        cairo.setSourceRgba(cr, 0.6, 0.3, 0.8, 0.2 + 0.15 * Math.sin(pulse + Math.PI));
-        cairo.setLineWidth(cr, strokeWidth * 0.4);
-        cairo.arc(cr, centerX, centerY, baseRadius - pulseAmount - 10, 0, 2 * Math.PI);
-        cairo.stroke(cr);
+        cr.setSourceRgba(0.6, 0.3, 0.8, 0.2 + 0.15 * Math.sin(pulse + Math.PI))
+            .setLineWidth(strokeWidth * 0.4)
+            .arc(centerX, centerY, baseRadius - pulseAmount - 10, 0, 2 * Math.PI)
+            .stroke();
     };
 };
 
 // Multi-arc spinner
 const createMultiArcSpinnerDrawFunc = (rotation: number, strokeWidth: number) => {
-    return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
         const centerY = height / 2;
         const maxRadius = Math.min(width, height) / 2 - strokeWidth - 5;
         const rings = 3;
 
-        cairo.setLineWidth(cr, strokeWidth);
-        cairo.setLineCap(cr, cairo.LineCap.ROUND);
+        cr.setLineWidth(strokeWidth).setLineCap(LineCap.ROUND);
 
         const colors: [number, number, number][] = [
             [0.2, 0.6, 0.9],
@@ -132,9 +124,9 @@ const createMultiArcSpinnerDrawFunc = (rotation: number, strokeWidth: number) =>
             const arcLength = Math.PI * (0.5 + 0.2 * i);
 
             const [r, g, b] = colors[i] as [number, number, number];
-            cairo.setSourceRgb(cr, r, g, b);
-            cairo.arc(cr, centerX, centerY, radius, currentRotation, currentRotation + arcLength);
-            cairo.stroke(cr);
+            cr.setSourceRgb(r, g, b)
+                .arc(centerX, centerY, radius, currentRotation, currentRotation + arcLength)
+                .stroke();
         }
     };
 };
@@ -155,7 +147,7 @@ const AnimatedSpinner = ({
         rotation: number,
         strokeWidth: number,
         pulse?: number,
-    ) => (self: Gtk.DrawingArea, cr: cairo.Context, w: number, h: number) => void;
+    ) => (self: Gtk.DrawingArea, cr: Context, w: number, h: number) => void;
     label: string;
     strokeWidth?: number;
     speed?: number;

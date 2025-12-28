@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, LineCap, LineJoin, Operator } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -6,101 +6,96 @@ import type { Demo } from "../types.js";
 import sourceCode from "./drawingarea.tsx?raw";
 
 // Draw a simple circle
-const drawCircle = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawCircle = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) / 2 - 10;
 
     // Draw filled circle
-    cairo.setSourceRgb(cr, 0.2, 0.6, 0.9);
-    cairo.arc(cr, centerX, centerY, radius, 0, 2 * Math.PI);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.2, 0.6, 0.9)
+        .arc(centerX, centerY, radius, 0, 2 * Math.PI)
+        .fill();
 
     // Draw border
-    cairo.setSourceRgb(cr, 0.1, 0.4, 0.7);
-    cairo.setLineWidth(cr, 3);
-    cairo.arc(cr, centerX, centerY, radius, 0, 2 * Math.PI);
-    cairo.stroke(cr);
+    cr.setSourceRgb(0.1, 0.4, 0.7)
+        .setLineWidth(3)
+        .arc(centerX, centerY, radius, 0, 2 * Math.PI)
+        .stroke();
 };
 
 // Draw basic shapes showcase
-const drawShapes = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawShapes = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const padding = 20;
 
     // Rectangle
-    cairo.setSourceRgb(cr, 0.9, 0.3, 0.3);
-    cairo.rectangle(cr, padding, padding, 80, 60);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.9, 0.3, 0.3).rectangle(padding, padding, 80, 60).fill();
 
     // Circle
-    cairo.setSourceRgb(cr, 0.3, 0.8, 0.3);
-    cairo.arc(cr, width / 2, height / 2, 40, 0, 2 * Math.PI);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.3, 0.8, 0.3)
+        .arc(width / 2, height / 2, 40, 0, 2 * Math.PI)
+        .fill();
 
     // Triangle using lines
-    cairo.setSourceRgb(cr, 0.3, 0.3, 0.9);
-    cairo.moveTo(cr, width - padding - 40, height - padding);
-    cairo.lineTo(cr, width - padding, height - padding);
-    cairo.lineTo(cr, width - padding - 20, height - padding - 60);
-    cairo.closePath(cr);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.3, 0.3, 0.9)
+        .moveTo(width - padding - 40, height - padding)
+        .lineTo(width - padding, height - padding)
+        .lineTo(width - padding - 20, height - padding - 60)
+        .closePath()
+        .fill();
 
     // Curved line
-    cairo.setSourceRgb(cr, 0.8, 0.5, 0.2);
-    cairo.setLineWidth(cr, 4);
-    cairo.moveTo(cr, padding, height - padding);
-    cairo.curveTo(cr, width / 4, padding, (3 * width) / 4, height - padding, width - padding, padding);
-    cairo.stroke(cr);
+    cr.setSourceRgb(0.8, 0.5, 0.2)
+        .setLineWidth(4)
+        .moveTo(padding, height - padding)
+        .curveTo(width / 4, padding, (3 * width) / 4, height - padding, width - padding, padding)
+        .stroke();
 };
 
 // Helper to draw an oval path
-const ovalPath = (cr: cairo.Context, xc: number, yc: number, xr: number, yr: number) => {
-    cairo.save(cr);
-    cairo.translate(cr, xc, yc);
-    cairo.scale(cr, 1, yr / xr);
-    cairo.arc(cr, 0, 0, xr, 0, 2 * Math.PI);
-    cairo.restore(cr);
+const ovalPath = (cr: Context, xc: number, yc: number, xr: number, yr: number) => {
+    cr.save()
+        .translate(xc, yc)
+        .scale(1, yr / xr)
+        .arc(0, 0, xr, 0, 2 * Math.PI)
+        .restore();
 };
 
 // Helper to draw checkerboard background
-const fillChecks = (cr: cairo.Context, width: number, height: number) => {
+const fillChecks = (cr: Context, width: number, height: number) => {
     const checkSize = 8;
-    cairo.setSourceRgb(cr, 0.4, 0.4, 0.4);
-    cairo.rectangle(cr, 0, 0, width, height);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.4, 0.4, 0.4).rectangle(0, 0, width, height).fill();
 
-    cairo.setSourceRgb(cr, 0.6, 0.6, 0.6);
+    cr.setSourceRgb(0.6, 0.6, 0.6);
     for (let y = 0; y < height; y += checkSize * 2) {
         for (let x = 0; x < width; x += checkSize * 2) {
-            cairo.rectangle(cr, x, y, checkSize, checkSize);
-            cairo.rectangle(cr, x + checkSize, y + checkSize, checkSize, checkSize);
+            cr.rectangle(x, y, checkSize, checkSize).rectangle(x + checkSize, y + checkSize, checkSize, checkSize);
         }
     }
-    cairo.fill(cr);
+    cr.fill();
 };
 
 // Draw three colored circles for compositing demo
-const draw3Circles = (cr: cairo.Context, xc: number, yc: number, radius: number) => {
+const draw3Circles = (cr: Context, xc: number, yc: number, radius: number) => {
     const subradius = radius * 0.7;
 
     // Red circle
-    cairo.setSourceRgba(cr, 1, 0, 0, 0.5);
+    cr.setSourceRgba(1, 0, 0, 0.5);
     ovalPath(cr, xc + radius / 2, yc - subradius / 2, subradius, subradius);
-    cairo.fill(cr);
+    cr.fill();
 
     // Green circle
-    cairo.setSourceRgba(cr, 0, 1, 0, 0.5);
+    cr.setSourceRgba(0, 1, 0, 0.5);
     ovalPath(cr, xc, yc + subradius / 2, subradius, subradius);
-    cairo.fill(cr);
+    cr.fill();
 
     // Blue circle
-    cairo.setSourceRgba(cr, 0, 0, 1, 0.5);
+    cr.setSourceRgba(0, 0, 1, 0.5);
     ovalPath(cr, xc - radius / 2, yc - subradius / 2, subradius, subradius);
-    cairo.fill(cr);
+    cr.fill();
 };
 
 // Draw compositing/knockout effect - similar to GTK demo
-const drawCompositing = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawCompositing = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const radius = Math.min(width, height) / 2 - 10;
     const xc = width / 2;
     const yc = height / 2;
@@ -113,7 +108,7 @@ const drawCompositing = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numbe
 };
 
 // Draw knockout effect using DEST_OUT operator
-const drawKnockout = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawKnockout = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const radius = Math.min(width, height) / 2 - 10;
     const xc = width / 2;
     const yc = height / 2;
@@ -122,27 +117,27 @@ const drawKnockout = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, 
     fillChecks(cr, width, height);
 
     // First draw a white circle
-    cairo.setSourceRgb(cr, 1, 1, 1);
-    cairo.arc(cr, xc, yc, radius, 0, 2 * Math.PI);
-    cairo.fill(cr);
+    cr.setSourceRgb(1, 1, 1)
+        .arc(xc, yc, radius, 0, 2 * Math.PI)
+        .fill();
 
     // Then knock out the three circles using DEST_OUT
-    cairo.setOperator(cr, cairo.Operator.DEST_OUT);
+    cr.setOperator(Operator.DEST_OUT);
     draw3Circles(cr, xc, yc, radius);
 
     // Reset operator
-    cairo.setOperator(cr, cairo.Operator.OVER);
+    cr.setOperator(Operator.OVER);
 };
 
 // Draw a star shape
-const drawStar = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+const drawStar = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const outerRadius = Math.min(width, height) / 2 - 10;
     const innerRadius = outerRadius * 0.4;
     const points = 5;
 
-    cairo.setSourceRgb(cr, 0.95, 0.8, 0.2);
+    cr.setSourceRgb(0.95, 0.8, 0.2);
 
     for (let i = 0; i < points * 2; i++) {
         const radius = i % 2 === 0 ? outerRadius : innerRadius;
@@ -151,17 +146,15 @@ const drawStar = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, heig
         const y = centerY + Math.sin(angle) * radius;
 
         if (i === 0) {
-            cairo.moveTo(cr, x, y);
+            cr.moveTo(x, y);
         } else {
-            cairo.lineTo(cr, x, y);
+            cr.lineTo(x, y);
         }
     }
-    cairo.closePath(cr);
-    cairo.fill(cr);
+    cr.closePath().fill();
 
     // Add outline
-    cairo.setSourceRgb(cr, 0.8, 0.6, 0.1);
-    cairo.setLineWidth(cr, 2);
+    cr.setSourceRgb(0.8, 0.6, 0.1).setLineWidth(2);
     for (let i = 0; i < points * 2; i++) {
         const radius = i % 2 === 0 ? outerRadius : innerRadius;
         const angle = (i * Math.PI) / points - Math.PI / 2;
@@ -169,13 +162,12 @@ const drawStar = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, heig
         const y = centerY + Math.sin(angle) * radius;
 
         if (i === 0) {
-            cairo.moveTo(cr, x, y);
+            cr.moveTo(x, y);
         } else {
-            cairo.lineTo(cr, x, y);
+            cr.lineTo(x, y);
         }
     }
-    cairo.closePath(cr);
-    cairo.stroke(cr);
+    cr.closePath().stroke();
 };
 
 // Component to wrap drawing area with draw function
@@ -187,7 +179,7 @@ const DrawingCanvas = ({
 }: {
     width: number;
     height: number;
-    drawFunc: (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
+    drawFunc: (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => void;
     label: string;
 }) => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
@@ -222,37 +214,32 @@ const ScribbleArea = () => {
     const startPointRef = useRef<Point | null>(null);
 
     const drawScribble = useCallback(
-        (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             // White background
-            cairo.setSourceRgb(cr, 1, 1, 1);
-            cairo.rectangle(cr, 0, 0, width, height);
-            cairo.fill(cr);
+            cr.setSourceRgb(1, 1, 1).rectangle(0, 0, width, height).fill();
 
             // Draw all completed strokes
-            cairo.setSourceRgb(cr, 0, 0, 0);
-            cairo.setLineWidth(cr, 3);
-            cairo.setLineCap(cr, cairo.LineCap.ROUND);
-            cairo.setLineJoin(cr, cairo.LineJoin.ROUND);
+            cr.setSourceRgb(0, 0, 0).setLineWidth(3).setLineCap(LineCap.ROUND).setLineJoin(LineJoin.ROUND);
 
             for (const stroke of strokes) {
                 const [first, ...rest] = stroke;
                 if (!first || rest.length === 0) continue;
-                cairo.moveTo(cr, first.x, first.y);
+                cr.moveTo(first.x, first.y);
                 for (const point of rest) {
-                    cairo.lineTo(cr, point.x, point.y);
+                    cr.lineTo(point.x, point.y);
                 }
-                cairo.stroke(cr);
+                cr.stroke();
             }
 
             // Draw current stroke in progress
             const currentStroke = currentStrokeRef.current;
             const [currentFirst, ...currentRest] = currentStroke;
             if (currentFirst && currentRest.length > 0) {
-                cairo.moveTo(cr, currentFirst.x, currentFirst.y);
+                cr.moveTo(currentFirst.x, currentFirst.y);
                 for (const point of currentRest) {
-                    cairo.lineTo(cr, point.x, point.y);
+                    cr.lineTo(point.x, point.y);
                 }
-                cairo.stroke(cr);
+                cr.stroke();
             }
         },
         [strokes],
@@ -380,7 +367,7 @@ const DrawingAreaDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkLabel label="Available Cairo functions:" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                    <GtkLabel label="Available Cairo methods:" cssClasses={["heading"]} halign={Gtk.Align.START} />
                     <GtkLabel
                         label={`Path: moveTo, lineTo, curveTo, arc, rectangle, closePath
 Draw: fill, stroke, paint, setOperator

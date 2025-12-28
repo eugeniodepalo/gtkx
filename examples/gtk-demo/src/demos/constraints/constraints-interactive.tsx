@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, FontSlant, FontWeight } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -38,28 +38,23 @@ const ConstraintVisualizer = ({
     const drawingRef = useRef<Gtk.DrawingArea | null>(null);
 
     const draw = useCallback(
-        (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             // Background
-            cairo.setSourceRgb(cr, 0.15, 0.15, 0.18);
-            cairo.rectangle(cr, 0, 0, width, height);
-            cairo.fill(cr);
+            cr.setSourceRgb(0.15, 0.15, 0.18).rectangle(0, 0, width, height).fill();
 
             // Draw grid
-            cairo.setSourceRgba(cr, 1, 1, 1, 0.1);
-            cairo.setLineWidth(cr, 1);
+            cr.setSourceRgba(1, 1, 1, 0.1).setLineWidth(1);
             const gridSize = 20;
             for (let x = 0; x <= width; x += gridSize) {
-                cairo.moveTo(cr, x, 0);
-                cairo.lineTo(cr, x, height);
+                cr.moveTo(x, 0).lineTo(x, height);
             }
             for (let y = 0; y <= height; y += gridSize) {
-                cairo.moveTo(cr, 0, y);
-                cairo.lineTo(cr, width, y);
+                cr.moveTo(0, y).lineTo(width, y);
             }
-            cairo.stroke(cr);
+            cr.stroke();
 
             // Draw constraint lines
-            cairo.setLineWidth(cr, 2);
+            cr.setLineWidth(2);
             for (const constraint of constraints) {
                 const targetWidget = widgets.get("button");
                 if (!targetWidget) continue;
@@ -131,45 +126,42 @@ const ConstraintVisualizer = ({
                 }
 
                 // Draw dashed constraint line
-                cairo.setSourceRgba(cr, 0.3, 0.7, 1, 0.8);
-                cairo.setDash(cr, [6, 4], 0);
-                cairo.moveTo(cr, startX, startY);
-                cairo.lineTo(cr, endX, endY);
-                cairo.stroke(cr);
-                cairo.setDash(cr, [], 0);
+                cr.setSourceRgba(0.3, 0.7, 1, 0.8)
+                    .setDash([6, 4], 0)
+                    .moveTo(startX, startY)
+                    .lineTo(endX, endY)
+                    .stroke()
+                    .setDash([], 0);
 
                 // Draw endpoints
-                cairo.setSourceRgb(cr, 0.3, 0.7, 1);
-                cairo.arc(cr, startX, startY, 4, 0, 2 * Math.PI);
-                cairo.fill(cr);
-                cairo.arc(cr, endX, endY, 4, 0, 2 * Math.PI);
-                cairo.fill(cr);
+                cr.setSourceRgb(0.3, 0.7, 1)
+                    .arc(startX, startY, 4, 0, 2 * Math.PI)
+                    .fill()
+                    .arc(endX, endY, 4, 0, 2 * Math.PI)
+                    .fill();
             }
 
             // Draw widgets
-            for (const [_name, pos] of widgets) {
+            for (const [name, pos] of widgets) {
                 // Widget rectangle
-                cairo.setSourceRgb(cr, 0.2, 0.5, 0.8);
-                cairo.rectangle(cr, pos.x, pos.y, pos.width, pos.height);
-                cairo.fill(cr);
+                cr.setSourceRgb(0.2, 0.5, 0.8).rectangle(pos.x, pos.y, pos.width, pos.height).fill();
 
                 // Widget border
-                cairo.setSourceRgb(cr, 0.3, 0.6, 0.9);
-                cairo.setLineWidth(cr, 2);
-                cairo.rectangle(cr, pos.x, pos.y, pos.width, pos.height);
-                cairo.stroke(cr);
+                cr.setSourceRgb(0.3, 0.6, 0.9).setLineWidth(2).rectangle(pos.x, pos.y, pos.width, pos.height).stroke();
 
                 // Widget label - draw text at center
-                cairo.setSourceRgb(cr, 1, 1, 1);
-                cairo.moveTo(cr, pos.x + 8, pos.y + pos.height / 2 + 4);
-                // Note: cairo.showText may not be available, so we skip it
+                cr.setSourceRgb(1, 1, 1)
+                    .selectFontFace("Sans", FontSlant.NORMAL, FontWeight.BOLD)
+                    .setFontSize(12)
+                    .moveTo(pos.x + 8, pos.y + pos.height / 2 + 4)
+                    .showText(name);
             }
 
             // Draw container bounds indicator
-            cairo.setSourceRgba(cr, 0.5, 0.5, 0.5, 0.5);
-            cairo.setLineWidth(cr, 1);
-            cairo.rectangle(cr, 0.5, 0.5, width - 1, height - 1);
-            cairo.stroke(cr);
+            cr.setSourceRgba(0.5, 0.5, 0.5, 0.5)
+                .setLineWidth(1)
+                .rectangle(0.5, 0.5, width - 1, height - 1)
+                .stroke();
         },
         [widgets, constraints],
     );

@@ -1,4 +1,4 @@
-import * as cairo from "@gtkx/ffi/cairo";
+import { type Context, FontSlant, FontWeight, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -105,90 +105,81 @@ const getPointAtLength = (
 };
 
 // Draw an arrow shape at a position
-const drawArrow = (cr: cairo.Context, x: number, y: number, angle: number, size: number) => {
-    cairo.save(cr);
-    cairo.translate(cr, x, y);
-    cairo.rotate(cr, angle);
+const drawArrow = (cr: Context, x: number, y: number, angle: number, size: number) => {
+    cr.save().translate(x, y).rotate(angle);
 
     // Arrow body
-    cairo.moveTo(cr, size * 0.6, 0);
-    cairo.lineTo(cr, -size * 0.4, -size * 0.4);
-    cairo.lineTo(cr, -size * 0.2, 0);
-    cairo.lineTo(cr, -size * 0.4, size * 0.4);
-    cairo.closePath(cr);
+    cr.moveTo(size * 0.6, 0)
+        .lineTo(-size * 0.4, -size * 0.4)
+        .lineTo(-size * 0.2, 0)
+        .lineTo(-size * 0.4, size * 0.4)
+        .closePath();
 
-    cairo.restore(cr);
+    cr.restore();
 };
 
 // Draw a car shape
-const drawCar = (cr: cairo.Context, x: number, y: number, angle: number, size: number) => {
-    cairo.save(cr);
-    cairo.translate(cr, x, y);
-    cairo.rotate(cr, angle);
+const drawCar = (cr: Context, x: number, y: number, angle: number, size: number) => {
+    cr.save().translate(x, y).rotate(angle);
 
     // Car body
-    cairo.setSourceRgb(cr, 0.2, 0.5, 0.8);
-    cairo.rectangle(cr, -size * 0.5, -size * 0.25, size, size * 0.5);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.2, 0.5, 0.8)
+        .rectangle(-size * 0.5, -size * 0.25, size, size * 0.5)
+        .fill();
 
     // Roof
-    cairo.setSourceRgb(cr, 0.3, 0.6, 0.9);
-    cairo.rectangle(cr, -size * 0.2, -size * 0.2, size * 0.5, size * 0.4);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.3, 0.6, 0.9)
+        .rectangle(-size * 0.2, -size * 0.2, size * 0.5, size * 0.4)
+        .fill();
 
     // Wheels
-    cairo.setSourceRgb(cr, 0.2, 0.2, 0.2);
-    cairo.arc(cr, -size * 0.3, -size * 0.3, size * 0.12, 0, 2 * Math.PI);
-    cairo.fill(cr);
-    cairo.arc(cr, size * 0.3, -size * 0.3, size * 0.12, 0, 2 * Math.PI);
-    cairo.fill(cr);
-    cairo.arc(cr, -size * 0.3, size * 0.3, size * 0.12, 0, 2 * Math.PI);
-    cairo.fill(cr);
-    cairo.arc(cr, size * 0.3, size * 0.3, size * 0.12, 0, 2 * Math.PI);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.2, 0.2, 0.2)
+        .arc(-size * 0.3, -size * 0.3, size * 0.12, 0, 2 * Math.PI)
+        .fill();
+    cr.arc(size * 0.3, -size * 0.3, size * 0.12, 0, 2 * Math.PI).fill();
+    cr.arc(-size * 0.3, size * 0.3, size * 0.12, 0, 2 * Math.PI).fill();
+    cr.arc(size * 0.3, size * 0.3, size * 0.12, 0, 2 * Math.PI).fill();
 
-    cairo.restore(cr);
+    cr.restore();
 };
 
 // Draw a simple plane
-const drawPlane = (cr: cairo.Context, x: number, y: number, angle: number, size: number) => {
-    cairo.save(cr);
-    cairo.translate(cr, x, y);
-    cairo.rotate(cr, angle);
+const drawPlane = (cr: Context, x: number, y: number, angle: number, size: number) => {
+    cr.save().translate(x, y).rotate(angle);
 
     // Fuselage
-    cairo.setSourceRgb(cr, 0.9, 0.9, 0.95);
-    cairo.moveTo(cr, size * 0.6, 0);
-    cairo.lineTo(cr, -size * 0.4, -size * 0.1);
-    cairo.lineTo(cr, -size * 0.5, 0);
-    cairo.lineTo(cr, -size * 0.4, size * 0.1);
-    cairo.closePath(cr);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.9, 0.9, 0.95)
+        .moveTo(size * 0.6, 0)
+        .lineTo(-size * 0.4, -size * 0.1)
+        .lineTo(-size * 0.5, 0)
+        .lineTo(-size * 0.4, size * 0.1)
+        .closePath()
+        .fill();
 
     // Wings
-    cairo.setSourceRgb(cr, 0.7, 0.7, 0.8);
-    cairo.moveTo(cr, 0, 0);
-    cairo.lineTo(cr, -size * 0.15, -size * 0.5);
-    cairo.lineTo(cr, -size * 0.25, -size * 0.5);
-    cairo.lineTo(cr, -size * 0.15, 0);
-    cairo.closePath(cr);
-    cairo.fill(cr);
-    cairo.moveTo(cr, 0, 0);
-    cairo.lineTo(cr, -size * 0.15, size * 0.5);
-    cairo.lineTo(cr, -size * 0.25, size * 0.5);
-    cairo.lineTo(cr, -size * 0.15, 0);
-    cairo.closePath(cr);
-    cairo.fill(cr);
+    cr.setSourceRgb(0.7, 0.7, 0.8)
+        .moveTo(0, 0)
+        .lineTo(-size * 0.15, -size * 0.5)
+        .lineTo(-size * 0.25, -size * 0.5)
+        .lineTo(-size * 0.15, 0)
+        .closePath()
+        .fill();
+    cr.moveTo(0, 0)
+        .lineTo(-size * 0.15, size * 0.5)
+        .lineTo(-size * 0.25, size * 0.5)
+        .lineTo(-size * 0.15, 0)
+        .closePath()
+        .fill();
 
     // Tail
-    cairo.moveTo(cr, -size * 0.4, 0);
-    cairo.lineTo(cr, -size * 0.5, -size * 0.2);
-    cairo.lineTo(cr, -size * 0.55, -size * 0.2);
-    cairo.lineTo(cr, -size * 0.5, 0);
-    cairo.closePath(cr);
-    cairo.fill(cr);
+    cr.moveTo(-size * 0.4, 0)
+        .lineTo(-size * 0.5, -size * 0.2)
+        .lineTo(-size * 0.55, -size * 0.2)
+        .lineTo(-size * 0.5, 0)
+        .closePath()
+        .fill();
 
-    cairo.restore(cr);
+    cr.restore();
 };
 
 // Interactive path walk component
@@ -218,7 +209,7 @@ const PathWalkDemo = () => {
 
     const drawScene = useCallback(
         (progress: number) => {
-            return (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
+            return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
                 if (!pathTableRef.current) return;
 
                 const { totalLength } = pathTableRef.current;
@@ -232,30 +223,23 @@ const PathWalkDemo = () => {
 
                 // Draw path
                 if (showPath) {
-                    cairo.setSourceRgba(cr, 0.5, 0.5, 0.5, 0.4);
-                    cairo.setLineWidth(cr, 3);
-                    cairo.setLineCap(cr, cairo.LineCap.ROUND);
-
-                    cairo.moveTo(cr, p0.x, p0.y);
-                    cairo.curveTo(cr, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
-                    cairo.stroke(cr);
+                    cr.setSourceRgba(0.5, 0.5, 0.5, 0.4)
+                        .setLineWidth(3)
+                        .setLineCap(LineCap.ROUND)
+                        .moveTo(p0.x, p0.y)
+                        .curveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y)
+                        .stroke();
 
                     // Draw control points
-                    cairo.setSourceRgba(cr, 0.8, 0.4, 0.4, 0.5);
-                    cairo.setLineWidth(cr, 1);
+                    cr.setSourceRgba(0.8, 0.4, 0.4, 0.5).setLineWidth(1);
 
                     // Control lines
-                    cairo.moveTo(cr, p0.x, p0.y);
-                    cairo.lineTo(cr, p1.x, p1.y);
-                    cairo.stroke(cr);
-                    cairo.moveTo(cr, p2.x, p2.y);
-                    cairo.lineTo(cr, p3.x, p3.y);
-                    cairo.stroke(cr);
+                    cr.moveTo(p0.x, p0.y).lineTo(p1.x, p1.y).stroke();
+                    cr.moveTo(p2.x, p2.y).lineTo(p3.x, p3.y).stroke();
 
                     // Control points
                     for (const p of [p0, p1, p2, p3]) {
-                        cairo.arc(cr, p.x, p.y, 5, 0, 2 * Math.PI);
-                        cairo.fill(cr);
+                        cr.arc(p.x, p.y, 5, 0, 2 * Math.PI).fill();
                     }
                 }
 
@@ -264,28 +248,27 @@ const PathWalkDemo = () => {
                 const point = getPointAtLength(distance, pathTableRef.current);
 
                 // Draw trail
-                cairo.setSourceRgba(cr, 0.2, 0.6, 0.9, 0.3);
-                cairo.setLineWidth(cr, 2);
+                cr.setSourceRgba(0.2, 0.6, 0.9, 0.3).setLineWidth(2);
                 const numTrailPoints = 30;
                 for (let i = numTrailPoints; i >= 0; i--) {
                     const trailProgress = Math.max(0, progress - i * 0.005);
                     const trailDistance = trailProgress * totalLength;
                     const trailPoint = getPointAtLength(trailDistance, pathTableRef.current);
                     if (i === numTrailPoints) {
-                        cairo.moveTo(cr, trailPoint.x, trailPoint.y);
+                        cr.moveTo(trailPoint.x, trailPoint.y);
                     } else {
-                        cairo.lineTo(cr, trailPoint.x, trailPoint.y);
+                        cr.lineTo(trailPoint.x, trailPoint.y);
                     }
                 }
-                cairo.stroke(cr);
+                cr.stroke();
 
                 // Draw object
                 const objectSize = 25;
                 switch (objectType) {
                     case "arrow":
-                        cairo.setSourceRgb(cr, 0.9, 0.4, 0.2);
+                        cr.setSourceRgb(0.9, 0.4, 0.2);
                         drawArrow(cr, point.x, point.y, point.angle, objectSize);
-                        cairo.fill(cr);
+                        cr.fill();
                         break;
                     case "car":
                         drawCar(cr, point.x, point.y, point.angle, objectSize);
@@ -296,13 +279,12 @@ const PathWalkDemo = () => {
                 }
 
                 // Draw progress info
-                cairo.selectFontFace(cr, "Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL);
-                cairo.setFontSize(cr, 12);
-                cairo.setSourceRgb(cr, 0.5, 0.5, 0.5);
-                cairo.moveTo(cr, 10, 20);
-                cairo.showText(cr, `Progress: ${(progress * 100).toFixed(1)}%`);
-                cairo.moveTo(cr, 10, 35);
-                cairo.showText(cr, `Angle: ${((point.angle * 180) / Math.PI).toFixed(1)}°`);
+                cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
+                    .setFontSize(12)
+                    .setSourceRgb(0.5, 0.5, 0.5)
+                    .moveTo(10, 20)
+                    .showText(`Progress: ${(progress * 100).toFixed(1)}%`);
+                cr.moveTo(10, 35).showText(`Angle: ${((point.angle * 180) / Math.PI).toFixed(1)}°`);
             };
         },
         [objectType, showPath],
