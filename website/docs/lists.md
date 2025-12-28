@@ -9,6 +9,7 @@ GTKX provides several list components for different use cases, from simple stati
 | `ListView` | Large lists (1000+ items) | Yes |
 | `GridView` | Photo galleries, icon grids | Yes |
 | `ColumnView` | Data tables with sorting | Yes |
+| `TreeListView` | Hierarchical data, file trees | Yes |
 | `GtkDropDown` | Small selection lists | No |
 | `GtkListBox` | Medium lists, complex rows | No |
 | `GtkFlowBox` | Tag clouds, reflowing grids | No |
@@ -294,9 +295,138 @@ const TagCloud = ({ tags }: { tags: string[] }) => (
 );
 ```
 
+## TreeListView
+
+Hierarchical tree display with expand/collapse functionality and virtual scrolling. Use for file browsers, settings panels, or any nested data structure.
+
+```tsx
+import { TreeListView, TreeListItem, GtkBox, GtkLabel, GtkImage, GtkScrolledWindow } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+
+interface Category {
+    type: "category";
+    id: string;
+    name: string;
+    icon: string;
+}
+
+interface Setting {
+    type: "setting";
+    id: string;
+    title: string;
+}
+
+type TreeItem = Category | Setting;
+
+interface CategoryWithChildren extends Category {
+    children: Setting[];
+}
+
+const categories: CategoryWithChildren[] = [
+    {
+        type: "category",
+        id: "appearance",
+        name: "Appearance",
+        icon: "preferences-desktop-appearance-symbolic",
+        children: [
+            { type: "setting", id: "dark-mode", title: "Dark Mode" },
+            { type: "setting", id: "animations", title: "Animations" },
+        ],
+    },
+    {
+        type: "category",
+        id: "privacy",
+        name: "Privacy",
+        icon: "preferences-system-privacy-symbolic",
+        children: [
+            { type: "setting", id: "location", title: "Location Services" },
+            { type: "setting", id: "camera", title: "Camera Access" },
+        ],
+    },
+];
+
+const SettingsTree = () => (
+    <GtkScrolledWindow vexpand>
+        <TreeListView<TreeItem>
+            renderItem={(item, row) => {
+                if (!item) return <GtkLabel label="Loading..." />;
+
+                if (item.type === "category") {
+                    return (
+                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkImage iconName={item.icon} pixelSize={20} />
+                            <GtkLabel label={item.name} cssClasses={["heading"]} />
+                        </GtkBox>
+                    );
+                }
+
+                return <GtkLabel label={item.title} />;
+            }}
+        >
+            {categories.map((category) => (
+                <TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                    {category.children.map((setting) => (
+                        <TreeListItem
+                            key={setting.id}
+                            id={setting.id}
+                            value={setting as TreeItem}
+                            hideExpander
+                        />
+                    ))}
+                </TreeListItem>
+            ))}
+        </TreeListView>
+    </GtkScrolledWindow>
+);
+```
+
+### TreeListView Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `renderItem` | `(item: T \| null, row: Gtk.TreeListRow \| null) => ReactElement` | Render function for each item |
+| `autoexpand` | `boolean` | Auto-expand new rows (default: false) |
+| `selectionMode` | `Gtk.SelectionMode` | `NONE`, `SINGLE`, `MULTIPLE`, `BROWSE` |
+| `selected` | `string[]` | Array of selected item IDs |
+| `onSelectionChanged` | `(ids: string[]) => void` | Selection change callback |
+
+### TreeListItem Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `id` | `string` | Unique identifier for this item |
+| `value` | `T` | The data value for this item |
+| `hideExpander` | `boolean` | Hide the expand/collapse arrow |
+| `indentForDepth` | `boolean` | Indent based on tree depth (default: true) |
+| `indentForIcon` | `boolean` | Indent for expander icon width |
+| `children` | `ReactNode` | Nested tree items |
+
+### Selection in TreeListView
+
+```tsx
+const [selected, setSelected] = useState<string[]>([]);
+
+<TreeListView
+    selectionMode={Gtk.SelectionMode.SINGLE}
+    selected={selected}
+    onSelectionChanged={setSelected}
+    renderItem={(item, row) => (
+        <GtkLabel label={item?.name ?? ""} />
+    )}
+>
+    {items.map((item) => (
+        <TreeListItem key={item.id} id={item.id} value={item}>
+            {item.children?.map((child) => (
+                <TreeListItem key={child.id} id={child.id} value={child} />
+            ))}
+        </TreeListItem>
+    ))}
+</TreeListView>
+```
+
 ## Performance Tips
 
-1. **Use virtualized lists** (`ListView`, `GridView`, `ColumnView`) for large datasets
+1. **Use virtualized lists** (`ListView`, `GridView`, `ColumnView`, `TreeListView`) for large datasets
 2. **Wrap in ScrolledWindow** for scrolling support
 3. **Memoize renderItem** with `useCallback` if it has dependencies
 4. **Use stable keys** — the `id` prop should be unique and stable

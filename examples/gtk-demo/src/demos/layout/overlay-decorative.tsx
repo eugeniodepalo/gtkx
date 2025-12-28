@@ -1,28 +1,11 @@
-import * as Gdk from "@gtkx/ffi/gdk";
+import { css, cx } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkOverlay, GtkSpinButton } from "@gtkx/react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay-decorative.tsx?raw";
 
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
-
-const OverlayDecorativeDemo = () => {
-    const [badgeCount, setBadgeCount] = useState(5);
-    const [showRibbon, setShowRibbon] = useState(true);
-    const [showWatermark, setShowWatermark] = useState(true);
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
-
-    const badgeAdjustment = useMemo(() => new Gtk.Adjustment(5, 0, 99, 1, 5, 0), []);
-
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        const css = `
-.badge {
+const badgeStyle = css`
     background-color: @error_bg_color;
     color: @error_fg_color;
     border-radius: 999px;
@@ -31,71 +14,59 @@ const OverlayDecorativeDemo = () => {
     padding: 2px 8px;
     font-size: 12px;
     font-weight: bold;
-}
+`;
 
-.badge-large {
-    min-width: 32px;
-    min-height: 32px;
-    font-size: 14px;
-}
-
-.ribbon {
+const ribbonStyle = css`
     background: linear-gradient(135deg, @accent_bg_color, shade(@accent_bg_color, 0.8));
     color: @accent_fg_color;
     padding: 4px 24px;
     font-size: 11px;
     font-weight: bold;
     text-transform: uppercase;
-}
+`;
 
-.watermark {
+const watermarkStyle = css`
     opacity: 0.15;
     font-size: 48px;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 4px;
-}
+`;
 
-.overlay-card {
+const overlayCardStyle = css`
     background-color: @card_bg_color;
     border-radius: 12px;
     min-height: 150px;
     min-width: 200px;
-}
+`;
 
-.status-dot {
+const statusDotStyle = css`
     background-color: @success_color;
     border-radius: 999px;
     min-width: 12px;
     min-height: 12px;
     border: 2px solid @card_bg_color;
-}
+`;
 
-.status-dot.offline {
+const statusDotOfflineStyle = css`
     background-color: @warning_color;
-}
+`;
 
-.corner-tag {
+const cornerTagStyle = css`
     background-color: @warning_bg_color;
     color: @warning_fg_color;
     padding: 4px 12px;
     border-radius: 0 0 0 8px;
     font-size: 11px;
     font-weight: bold;
-}
 `;
-        try {
-            cssProvider.loadFromString(css);
-        } catch {
-            // Ignore CSS errors
-        }
 
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [cssProvider]);
+const OverlayDecorativeDemo = () => {
+    const [badgeCount, setBadgeCount] = useState(5);
+    const [showRibbon, setShowRibbon] = useState(true);
+    const [showWatermark, setShowWatermark] = useState(true);
+
+    const badgeAdjustment = useMemo(() => new Gtk.Adjustment(5, 0, 99, 1, 5, 0), []);
 
     return (
         <GtkBox
@@ -136,7 +107,7 @@ const OverlayDecorativeDemo = () => {
                             {badgeCount > 0 && (
                                 <GtkLabel
                                     label={badgeCount > 99 ? "99+" : String(badgeCount)}
-                                    cssClasses={["badge"]}
+                                    cssClasses={[badgeStyle]}
                                     halign={Gtk.Align.END}
                                     valign={Gtk.Align.START}
                                     marginEnd={-4}
@@ -172,7 +143,7 @@ const OverlayDecorativeDemo = () => {
                             <GtkBox
                                 orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={0}
-                                cssClasses={["status-dot"]}
+                                cssClasses={[statusDotStyle]}
                                 halign={Gtk.Align.END}
                                 valign={Gtk.Align.END}
                                 marginEnd={2}
@@ -185,7 +156,7 @@ const OverlayDecorativeDemo = () => {
                             <GtkBox
                                 orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={0}
-                                cssClasses={["status-dot", "offline"]}
+                                cssClasses={[cx(statusDotStyle, statusDotOfflineStyle)]}
                                 halign={Gtk.Align.END}
                                 valign={Gtk.Align.END}
                                 marginEnd={2}
@@ -220,7 +191,7 @@ const OverlayDecorativeDemo = () => {
 
                     <GtkOverlay halign={Gtk.Align.CENTER}>
                         <GtkBox
-                            cssClasses={["overlay-card", "card"]}
+                            cssClasses={[overlayCardStyle, "card"]}
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
                             marginStart={24}
@@ -235,7 +206,7 @@ const OverlayDecorativeDemo = () => {
                         {showWatermark && (
                             <GtkLabel
                                 label="DRAFT"
-                                cssClasses={["watermark"]}
+                                cssClasses={[watermarkStyle]}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
                             />
@@ -244,7 +215,7 @@ const OverlayDecorativeDemo = () => {
                         {showRibbon && (
                             <GtkLabel
                                 label="Featured"
-                                cssClasses={["ribbon"]}
+                                cssClasses={[ribbonStyle]}
                                 halign={Gtk.Align.START}
                                 valign={Gtk.Align.START}
                             />
@@ -252,7 +223,7 @@ const OverlayDecorativeDemo = () => {
 
                         <GtkLabel
                             label="NEW"
-                            cssClasses={["corner-tag"]}
+                            cssClasses={[cornerTagStyle]}
                             halign={Gtk.Align.END}
                             valign={Gtk.Align.START}
                         />
@@ -286,7 +257,7 @@ const OverlayDecorativeDemo = () => {
                             {item.badge > 0 && (
                                 <GtkLabel
                                     label={String(item.badge)}
-                                    cssClasses={["badge"]}
+                                    cssClasses={[badgeStyle]}
                                     halign={Gtk.Align.END}
                                     valign={Gtk.Align.START}
                                     marginEnd={-2}

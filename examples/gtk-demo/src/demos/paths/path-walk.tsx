@@ -1,7 +1,7 @@
 import * as cairo from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-walk.tsx?raw";
 
@@ -200,6 +200,7 @@ const PathWalkDemo = () => {
     const [showPath, setShowPath] = useState(true);
     const progressRef = useRef(0);
     const pathTableRef = useRef<ReturnType<typeof buildPathTable> | null>(null);
+    const speedAdjustment = useMemo(() => new Gtk.Adjustment(1, 0.2, 3, 0.1, 0.5, 0), []);
 
     const canvasWidth = 500;
     const canvasHeight = 350;
@@ -357,7 +358,7 @@ const PathWalkDemo = () => {
                                 drawValue
                                 valuePos={Gtk.PositionType.RIGHT}
                                 digits={1}
-                                adjustment={new Gtk.Adjustment(speed, 0.2, 3, 0.1, 0.5, 0)}
+                                adjustment={speedAdjustment}
                                 onValueChanged={(range: Gtk.Range) => setSpeed(range.getValue())}
                                 widthRequest={120}
                             />

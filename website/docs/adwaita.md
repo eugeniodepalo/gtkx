@@ -160,6 +160,90 @@ const ToastExample = () => {
 };
 ```
 
+### AdwNavigationView / AdwNavigationPage
+
+Stack-based navigation with push/pop transitions:
+
+```tsx
+import { AdwNavigationView, AdwNavigationPage, AdwHeaderBar, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/ffi/adw";
+import { useState, useRef } from "react";
+
+const NavigationExample = () => {
+    const navViewRef = useRef<Adw.NavigationView | null>(null);
+    const [showDetail, setShowDetail] = useState(false);
+
+    const pushDetail = () => {
+        setShowDetail(true);
+        navViewRef.current?.pushByTag("detail");
+    };
+
+    const popToMain = () => {
+        navViewRef.current?.pop();
+        setShowDetail(false);
+    };
+
+    return (
+        <AdwNavigationView ref={navViewRef}>
+            <AdwNavigationPage title="Main" tag="main">
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <AdwHeaderBar />
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginTop={24} marginStart={24} marginEnd={24}>
+                        <GtkLabel label="Welcome to the app" cssClasses={["title-2"]} />
+                        <GtkButton label="View Details" onClicked={pushDetail} cssClasses={["suggested-action"]} />
+                    </GtkBox>
+                </GtkBox>
+            </AdwNavigationPage>
+
+            {showDetail && (
+                <AdwNavigationPage title="Details" tag="detail">
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                        <AdwHeaderBar />
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginTop={24} marginStart={24} marginEnd={24}>
+                            <GtkLabel label="Detail content here" />
+                            <GtkButton label="Go Back" onClicked={popToMain} />
+                        </GtkBox>
+                    </GtkBox>
+                </AdwNavigationPage>
+            )}
+        </AdwNavigationView>
+    );
+};
+```
+
+#### AdwNavigationPage Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | Page title shown in header bar |
+| `tag` | `string` | Unique tag for navigation (used with `pushByTag`) |
+| `canPop` | `boolean` | Whether the page can be popped (default: true) |
+| `onShowing` | `() => void` | Called when page starts showing |
+| `onShown` | `() => void` | Called when page is fully shown |
+| `onHiding` | `() => void` | Called when page starts hiding |
+| `onHidden` | `() => void` | Called when page is fully hidden |
+
+#### Navigation Methods
+
+Access navigation methods via ref:
+
+```tsx
+const navViewRef = useRef<Adw.NavigationView | null>(null);
+
+// Push a page by its tag
+navViewRef.current?.pushByTag("detail");
+
+// Pop the current page
+navViewRef.current?.pop();
+
+// Pop to a specific page
+navViewRef.current?.popToTag("main");
+
+// Replace the visible page
+navViewRef.current?.replaceWithTags(["main", "settings"]);
+```
+
 ## CSS Classes
 
 Adwaita provides many built-in CSS classes:

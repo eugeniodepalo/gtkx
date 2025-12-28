@@ -59,8 +59,8 @@ function generateTypeChecks(options: {
 
     if (hasBoxedArgs) {
         checks.push(`${indent}if (${typeVar}?.type === "boxed" && ${argsArrayVar}[${indexVar}] != null) {`);
-        checks.push(`${indent}  const _cls = getNativeClass(${typeVar}.innerType);`);
-        checks.push(`${indent}  return _cls ? getNativeObject(${argVar}, _cls) : ${argVar};`);
+        checks.push(`${indent}  const cls = getNativeClass(${typeVar}.innerType);`);
+        checks.push(`${indent}  return cls ? getNativeObject(${argVar}, cls) : ${argVar};`);
         checks.push(`${indent}}`);
     }
 
@@ -112,83 +112,83 @@ export function generateCallbackWrapperCode(options: CallbackWrapperOptions): Ca
     if (hasGVariantArgs) usesGLibVariant = true;
 
     const lines: string[] = [];
-    lines.push(`${indent}const ${wrappedName} = (..._args: unknown[]) => {`);
+    lines.push(`${indent}const ${wrappedName} = (...args: unknown[]) => {`);
 
     if (hasSelfArg) {
-        lines.push(`${indent}  const _self = getNativeObject(_args[0]);`);
-        lines.push(`${indent}  const _callbackArgs = _args.slice(1);`);
+        lines.push(`${indent}  const self = getNativeObject(args[0]);`);
+        lines.push(`${indent}  const callbackArgs = args.slice(1);`);
     } else {
-        lines.push(`${indent}  const _callbackArgs = _args;`);
+        lines.push(`${indent}  const callbackArgs = args;`);
     }
 
     if (needsArgWrapping) {
         if (mode === "static") {
             const typesStr = JSON.stringify(argTypes);
-            lines.push(`${indent}  const _types = ${typesStr} as const;`);
-            lines.push(`${indent}  const _wrapped = _callbackArgs.map((_arg, _i) => {`);
-            lines.push(`${indent}    const _t = _types[_i];`);
+            lines.push(`${indent}  const types = ${typesStr} as const;`);
+            lines.push(`${indent}  const wrapped = callbackArgs.map((arg, i) => {`);
+            lines.push(`${indent}    const t = types[i];`);
 
             const checks = generateTypeChecks({
                 hasGObjectArgs,
                 hasBoxedArgs,
                 hasGVariantArgs,
-                argVar: "_arg",
-                typeVar: "_t",
-                indexVar: "_i",
-                argsArrayVar: "_callbackArgs",
+                argVar: "arg",
+                typeVar: "t",
+                indexVar: "i",
+                argsArrayVar: "callbackArgs",
                 indent: `${indent}    `,
             });
             lines.push(...checks);
 
-            lines.push(`${indent}    return _arg;`);
+            lines.push(`${indent}    return arg;`);
             lines.push(`${indent}  });`);
         } else {
-            lines.push(`${indent}  if (!${metadataVar}) return ${callbackName}(_self, ..._callbackArgs);`);
-            lines.push(`${indent}  const _wrapped = ${metadataVar}.params.map((_t, _i) => {`);
+            lines.push(`${indent}  if (!${metadataVar}) return ${callbackName}(self, ...callbackArgs);`);
+            lines.push(`${indent}  const wrapped = ${metadataVar}.params.map((t, i) => {`);
 
             const checks = generateTypeChecks({
                 hasGObjectArgs,
                 hasBoxedArgs,
                 hasGVariantArgs,
-                argVar: "_callbackArgs[_i]",
-                typeVar: "_t",
-                indexVar: "_i",
-                argsArrayVar: "_callbackArgs",
+                argVar: "callbackArgs[i]",
+                typeVar: "t",
+                indexVar: "i",
+                argsArrayVar: "callbackArgs",
                 indent: `${indent}    `,
             });
             lines.push(...checks);
 
-            lines.push(`${indent}    return _callbackArgs[_i];`);
+            lines.push(`${indent}    return callbackArgs[i];`);
             lines.push(`${indent}  });`);
         }
 
         if (mode === "static") {
             const argCount = argTypes.length;
-            const argsList = Array.from({ length: argCount }, (_, i) => `_wrapped[${i}]`).join(", ");
+            const argsList = Array.from({ length: argCount }, (_, i) => `wrapped[${i}]`).join(", ");
             if (hasSelfArg) {
-                lines.push(`${indent}  const _result = (${callbackName} as any)(_self, ${argsList});`);
+                lines.push(`${indent}  const result = (${callbackName} as any)(self, ${argsList});`);
             } else {
-                lines.push(`${indent}  const _result = (${callbackName} as any)(${argsList});`);
+                lines.push(`${indent}  const result = (${callbackName} as any)(${argsList});`);
             }
         } else {
             if (hasSelfArg) {
-                lines.push(`${indent}  const _result = ${callbackName}(_self, ..._wrapped);`);
+                lines.push(`${indent}  const result = ${callbackName}(self, ...wrapped);`);
             } else {
-                lines.push(`${indent}  const _result = ${callbackName}(..._wrapped);`);
+                lines.push(`${indent}  const result = ${callbackName}(...wrapped);`);
             }
         }
     } else {
         if (hasSelfArg) {
-            lines.push(`${indent}  const _result = ${callbackName}(_self, ...(_callbackArgs as any[]));`);
+            lines.push(`${indent}  const result = ${callbackName}(self, ...(callbackArgs as any[]));`);
         } else {
-            lines.push(`${indent}  const _result = ${callbackName}(...(_callbackArgs as any[]));`);
+            lines.push(`${indent}  const result = ${callbackName}(...(callbackArgs as any[]));`);
         }
     }
 
     if (returnsGObject) {
-        lines.push(`${indent}  return _result != null ? (_result as any).id ?? _result : null;`);
+        lines.push(`${indent}  return result != null ? (result as any).id ?? result : null;`);
     } else {
-        lines.push(`${indent}  return _result;`);
+        lines.push(`${indent}  return result;`);
     }
 
     lines.push(`${indent}};`);

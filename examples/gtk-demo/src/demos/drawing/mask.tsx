@@ -1,6 +1,6 @@
 import * as cairo from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./mask.tsx?raw";
@@ -265,15 +265,14 @@ const MaskDemo = () => {
     }, []);
 
     return (
-        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={20}
-                marginStart={20}
-                marginEnd={20}
-                marginTop={20}
-                marginBottom={20}
-            >
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={20}
+            marginStart={20}
+            marginEnd={20}
+            marginTop={20}
+            marginBottom={20}
+        >
                 <GtkLabel label="Masking Effects" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
                 <GtkLabel
@@ -471,8 +470,7 @@ XOR - Combine non-overlapping regions`}
                         />
                     </GtkBox>
                 </GtkFrame>
-            </GtkBox>
-        </GtkScrolledWindow>
+        </GtkBox>
     );
 };
 

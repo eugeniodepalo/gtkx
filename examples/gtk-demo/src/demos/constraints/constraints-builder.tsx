@@ -38,6 +38,7 @@ const StrengthDemo = () => {
     const strongRef = useRef<Gtk.Button | null>(null);
     const mediumRef = useRef<Gtk.Button | null>(null);
     const weakRef = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
     useEffect(() => {
         if (
@@ -50,6 +51,7 @@ const StrengthDemo = () => {
             return;
 
         const layout = new Gtk.ConstraintLayout();
+        layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
 
         const buttons = [requiredRef, strongRef, mediumRef, weakRef];
@@ -153,11 +155,13 @@ const MultiplierDemo = () => {
     const halfRef = useRef<Gtk.Button | null>(null);
     const thirdRef = useRef<Gtk.Button | null>(null);
     const quarterRef = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
     useEffect(() => {
         if (!containerRef.current || !halfRef.current || !thirdRef.current || !quarterRef.current) return;
 
         const layout = new Gtk.ConstraintLayout();
+        layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
 
         const buttons = [
@@ -252,21 +256,36 @@ const GuideDemo = () => {
     const containerRef = useRef<Gtk.Box | null>(null);
     const leftRef = useRef<Gtk.Button | null>(null);
     const rightRef = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
+    const guideRef = useRef<Gtk.ConstraintGuide | null>(null);
     const [guidePosition, setGuidePosition] = useState(50); // percentage
 
     useEffect(() => {
         if (!containerRef.current || !leftRef.current || !rightRef.current) return;
 
-        const layout = new Gtk.ConstraintLayout();
-        containerRef.current.setLayoutManager(layout);
+        // Create layout and guide only once
+        if (!layoutRef.current) {
+            const layout = new Gtk.ConstraintLayout();
+            layoutRef.current = layout;
+            containerRef.current.setLayoutManager(layout);
 
-        // Create a guide that acts as a flexible divider
-        const guide = new Gtk.ConstraintGuide();
-        guide.setName("divider");
-        guide.setMinSize(1, -1);
-        guide.setNatSize(1, -1);
-        guide.setMaxSize(1, -1);
-        layout.addGuide(guide);
+            // Create a guide that acts as a flexible divider
+            const guide = new Gtk.ConstraintGuide();
+            guideRef.current = guide;
+            guide.setName("divider");
+            guide.setMinSize(1, -1);
+            guide.setNatSize(1, -1);
+            guide.setMaxSize(1, -1);
+            layout.addGuide(guide);
+        }
+
+        const layout = layoutRef.current;
+        const guide = guideRef.current;
+        if (!guide) return;
+
+        // Remove old constraints before adding new ones
+        // (no-op on first render since layout was just created)
+        layout.removeAllConstraints();
 
         // Position guide as percentage of container width
         layout.addConstraint(
@@ -278,6 +297,7 @@ const GuideDemo = () => {
             }),
         );
 
+        // Re-add all button constraints
         // Left button: from start to guide
         layout.addConstraint(
             createConstraint({
@@ -389,11 +409,13 @@ const RelationDemo = () => {
     const eqRef = useRef<Gtk.Button | null>(null);
     const geRef = useRef<Gtk.Button | null>(null);
     const leRef = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
     useEffect(() => {
         if (!containerRef.current || !eqRef.current || !geRef.current || !leRef.current) return;
 
         const layout = new Gtk.ConstraintLayout();
+        layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
 
         let yOffset = 8;

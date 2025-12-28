@@ -30,7 +30,7 @@ For more complex layouts, you can use GtkFixed for absolute positioning, GtkOver
     {
         title: "Styling with CSS",
         summary: "Customize the appearance of your application using CSS.",
-        content: `GTK4 uses CSS for styling widgets. You can apply built-in CSS classes like 'suggested-action', 'destructive-action', 'card', and 'dim-label'. For custom styles, create a CssProvider and load your CSS.
+        content: `GTK4 uses CSS for styling widgets. You can apply built-in CSS classes like 'suggested-action', 'destructive-action', 'card', and 'dim-label'. For custom styles, use @gtkx/css with css\`\` tagged templates and cx() for conditional styles.
 
 GTK CSS supports theme colors (@accent_bg_color, @theme_fg_color), gradients, shadows, animations, and most standard CSS properties. Some GTK-specific extensions like -gtk-icontheme() allow referencing theme icons.`,
     },

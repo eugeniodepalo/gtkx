@@ -1,7 +1,7 @@
 import * as cairo from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./constraints-interactive.tsx?raw";
 
@@ -227,11 +227,11 @@ const InteractiveConstraintEditor = () => {
         },
     ];
 
-    // Create adjustments for sliders
-    const xAdjustment = new Gtk.Adjustment(offsetX, -150, 150, 1, 10, 0);
-    const yAdjustment = new Gtk.Adjustment(offsetY, -100, 100, 1, 10, 0);
-    const widthAdjustment = new Gtk.Adjustment(widgetWidth, 50, 200, 1, 10, 0);
-    const heightAdjustment = new Gtk.Adjustment(widgetHeight, 30, 100, 1, 10, 0);
+    // Create adjustments for sliders - use useMemo to avoid creating new GObjects on each render
+    const xAdjustment = useMemo(() => new Gtk.Adjustment(0, -150, 150, 1, 10, 0), []);
+    const yAdjustment = useMemo(() => new Gtk.Adjustment(0, -100, 100, 1, 10, 0), []);
+    const widthAdjustment = useMemo(() => new Gtk.Adjustment(100, 50, 200, 1, 10, 0), []);
+    const heightAdjustment = useMemo(() => new Gtk.Adjustment(40, 30, 100, 1, 10, 0), []);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>

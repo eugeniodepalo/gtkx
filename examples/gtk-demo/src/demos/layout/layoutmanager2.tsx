@@ -1,86 +1,66 @@
-import * as Gdk from "@gtkx/ffi/gdk";
+import { css, cx } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale, GtkScrolledWindow, GtkToggleButton } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale, GtkToggleButton } from "@gtkx/react";
 import { useEffect, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./layoutmanager2.tsx?raw";
 
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
+// Styles for animated layout
+const animatedItemStyle = css`
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 300ms ease-in-out;
+`;
+
+const animatedItemExpandedStyle = css`
+    background-color: @success_bg_color;
+    color: @success_fg_color;
+`;
+
+// Styles for priority allocation
+const priorityHighStyle = css`
+    background-color: @error_bg_color;
+    color: @error_fg_color;
+`;
+
+const priorityMediumStyle = css`
+    background-color: @warning_bg_color;
+    color: @warning_fg_color;
+`;
+
+const priorityLowStyle = css`
+    background-color: alpha(@accent_bg_color, 0.5);
+`;
+
+// Styles for breakpoint indicator
+const breakpointIndicatorStyle = css`
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: bold;
+`;
+
+const breakpointCompactStyle = css`
+    background-color: @warning_bg_color;
+    color: @warning_fg_color;
+`;
+
+const breakpointMediumStyle = css`
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+`;
+
+const breakpointExpandedStyle = css`
+    background-color: @success_bg_color;
+    color: @success_fg_color;
+`;
 
 // Animated layout with smooth transitions
 const AnimatedLayoutDemo = () => {
     const [expanded, setExpanded] = useState(false);
     const [animationProgress, setAnimationProgress] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
-
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        const css = `
-.animated-item {
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-    border-radius: 8px;
-    padding: 12px;
-    transition: all 300ms ease-in-out;
-}
-
-.animated-item.expanded {
-    background-color: @success_bg_color;
-    color: @success_fg_color;
-}
-
-.priority-high {
-    background-color: @error_bg_color;
-    color: @error_fg_color;
-}
-
-.priority-medium {
-    background-color: @warning_bg_color;
-    color: @warning_fg_color;
-}
-
-.priority-low {
-    background-color: alpha(@accent_bg_color, 0.5);
-}
-
-.breakpoint-indicator {
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-weight: bold;
-}
-
-.breakpoint-compact {
-    background-color: @warning_bg_color;
-    color: @warning_fg_color;
-}
-
-.breakpoint-medium {
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-}
-
-.breakpoint-expanded {
-    background-color: @success_bg_color;
-    color: @success_fg_color;
-}
-`;
-        try {
-            cssProvider.loadFromString(css);
-        } catch {
-            // Ignore CSS errors
-        }
-
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [cssProvider]);
 
     // Animate the layout transition
     useEffect(() => {
@@ -149,7 +129,7 @@ const AnimatedLayoutDemo = () => {
                             <GtkLabel
                                 key={item}
                                 label={item}
-                                cssClasses={["animated-item", expanded ? "expanded" : ""]}
+                                cssClasses={[cx(animatedItemStyle, expanded && animatedItemExpandedStyle)]}
                                 marginStart={itemPadding}
                                 marginEnd={itemPadding}
                                 marginTop={Math.round(itemPadding / 2)}
@@ -246,7 +226,14 @@ const ResponsiveBreakpointsDemo = () => {
                         <GtkLabel label="Current Breakpoint:" />
                         <GtkLabel
                             label={breakpoint.toUpperCase()}
-                            cssClasses={["breakpoint-indicator", `breakpoint-${breakpoint}`]}
+                            cssClasses={[
+                                cx(
+                                    breakpointIndicatorStyle,
+                                    breakpoint === "compact" && breakpointCompactStyle,
+                                    breakpoint === "medium" && breakpointMediumStyle,
+                                    breakpoint === "expanded" && breakpointExpandedStyle,
+                                ),
+                            ]}
                         />
                     </GtkBox>
 
@@ -375,16 +362,24 @@ const PriorityAllocationDemo = () => {
                     </GtkBox>
 
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
-                        {items.map((item) => (
-                            <GtkLabel
-                                key={item.id}
-                                label={`${item.label}\n${Math.round(allocations[item.id] ?? 0)}px`}
-                                widthRequest={allocations[item.id] ?? 0}
-                                cssClasses={[`priority-${item.priority}`]}
-                                marginTop={8}
-                                marginBottom={8}
-                            />
-                        ))}
+                        {items.map((item) => {
+                            const priorityStyle =
+                                item.priority === "high"
+                                    ? priorityHighStyle
+                                    : item.priority === "medium"
+                                      ? priorityMediumStyle
+                                      : priorityLowStyle;
+                            return (
+                                <GtkLabel
+                                    key={item.id}
+                                    label={`${item.label}\n${Math.round(allocations[item.id] ?? 0)}px`}
+                                    widthRequest={allocations[item.id] ?? 0}
+                                    cssClasses={[priorityStyle]}
+                                    marginTop={8}
+                                    marginBottom={8}
+                                />
+                            );
+                        })}
                     </GtkBox>
 
                     <GtkFrame label="Allocation Details">
@@ -414,29 +409,27 @@ const PriorityAllocationDemo = () => {
 
 const LayoutManager2Demo = () => {
     return (
-        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={20}
-                marginStart={20}
-                marginEnd={20}
-                marginTop={20}
-                marginBottom={20}
-            >
-                <GtkLabel label="Advanced Layout Patterns" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={20}
+            marginStart={20}
+            marginEnd={20}
+            marginTop={20}
+            marginBottom={20}
+        >
+            <GtkLabel label="Advanced Layout Patterns" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-                <GtkLabel
-                    label="Advanced layout patterns include animated transitions, responsive breakpoints, and priority-based space allocation."
-                    wrap
-                    halign={Gtk.Align.START}
-                    cssClasses={["dim-label"]}
-                />
+            <GtkLabel
+                label="Advanced layout patterns include animated transitions, responsive breakpoints, and priority-based space allocation."
+                wrap
+                halign={Gtk.Align.START}
+                cssClasses={["dim-label"]}
+            />
 
-                <AnimatedLayoutDemo />
-                <ResponsiveBreakpointsDemo />
-                <PriorityAllocationDemo />
-            </GtkBox>
-        </GtkScrolledWindow>
+            <AnimatedLayoutDemo />
+            <ResponsiveBreakpointsDemo />
+            <PriorityAllocationDemo />
+        </GtkBox>
     );
 };
 

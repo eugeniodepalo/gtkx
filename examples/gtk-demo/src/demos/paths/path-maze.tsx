@@ -1,7 +1,7 @@
 import * as cairo from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-maze.tsx?raw";
 
@@ -236,6 +236,7 @@ const MazeDemo = () => {
     const [animationStep, setAnimationStep] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
     const [algorithm, setAlgorithm] = useState<"bfs" | "astar">("bfs");
+    const sizeAdjustment = useMemo(() => new Gtk.Adjustment(21, 11, 41, 2, 4, 0), []);
 
     const drawMaze = useCallback(
         (_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => {
@@ -416,7 +417,7 @@ const MazeDemo = () => {
                             orientation={Gtk.Orientation.HORIZONTAL}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
-                            adjustment={new Gtk.Adjustment(mazeSize, 11, 41, 2, 4, 0)}
+                            adjustment={sizeAdjustment}
                             onValueChanged={(range: Gtk.Range) => {
                                 const val = Math.round(range.getValue());
                                 setMazeSize(val % 2 === 0 ? val + 1 : val);

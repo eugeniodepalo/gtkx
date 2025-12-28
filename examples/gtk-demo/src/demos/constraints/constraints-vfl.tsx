@@ -16,11 +16,13 @@ const HorizontalLayoutDemo = () => {
     const containerRef = useRef<Gtk.Box | null>(null);
     const button1Ref = useRef<Gtk.Button | null>(null);
     const button2Ref = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
     useEffect(() => {
         if (!containerRef.current || !button1Ref.current || !button2Ref.current) return;
 
         const layout = new Gtk.ConstraintLayout();
+        layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
         const MARGIN = 8;
         const SPACING = 8;
@@ -135,11 +137,13 @@ const HorizontalLayoutDemo = () => {
 const ExplicitSpacingDemo = () => {
     const containerRef = useRef<Gtk.Box | null>(null);
     const widgetRef = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
     useEffect(() => {
         if (!containerRef.current || !widgetRef.current) return;
 
         const layout = new Gtk.ConstraintLayout();
+        layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
 
         // VFL: H:|-20-[widget]-50-|
@@ -230,11 +234,13 @@ const SizePredicatesDemo = () => {
     const containerRef = useRef<Gtk.Box | null>(null);
     const minWidthRef = useRef<Gtk.Button | null>(null);
     const fixedWidthRef = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
     useEffect(() => {
         if (!containerRef.current || !minWidthRef.current || !fixedWidthRef.current) return;
 
         const layout = new Gtk.ConstraintLayout();
+        layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
         const MARGIN = 8;
         const SPACING = 12;
@@ -357,11 +363,13 @@ const VerticalLayoutDemo = () => {
     const containerRef = useRef<Gtk.Box | null>(null);
     const topRef = useRef<Gtk.Button | null>(null);
     const bottomRef = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
     useEffect(() => {
         if (!containerRef.current || !topRef.current || !bottomRef.current) return;
 
         const layout = new Gtk.ConstraintLayout();
+        layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
         const MARGIN = 8;
         const SPACING = 8;

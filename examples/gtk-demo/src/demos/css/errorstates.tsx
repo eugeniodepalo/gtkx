@@ -1,11 +1,31 @@
-import * as Gdk from "@gtkx/ffi/gdk";
+import { css, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkCheckButton, GtkEntry, GtkFrame, GtkLabel, GtkSpinButton } from "@gtkx/react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
 
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
+const fieldErrorStyle = css`
+    color: @error_color;
+    font-size: 0.85em;
+`;
+
+injectGlobal`
+.field-success entry,
+.field-success spinbutton {
+    border-color: @success_color;
+}
+
+.error-shake {
+    animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+`;
 
 interface ValidationState {
     email: { value: string; error: string | null };
@@ -43,49 +63,8 @@ const ErrorstatesDemo = () => {
         terms: { checked: false, error: null },
     });
     const [showErrors, setShowErrors] = useState(false);
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
 
     const ageAdjustment = useMemo(() => new Gtk.Adjustment(25, 0, 150, 1, 10, 0), []);
-
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        const css = `
-.field-error {
-    color: @error_color;
-    font-size: 0.85em;
-}
-
-.field-success entry,
-.field-success spinbutton {
-    border-color: @success_color;
-}
-
-.error-shake {
-    animation: shake 0.3s ease-in-out;
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
-}
-`;
-        try {
-            cssProvider.loadFromString(css);
-        } catch {
-            // Ignore CSS errors
-        }
-
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [cssProvider]);
 
     const handleEmailChange = (entry: Gtk.Entry) => {
         const value = entry.getText();
@@ -178,7 +157,7 @@ const ErrorstatesDemo = () => {
                             <GtkLabel
                                 label={validation.email.error}
                                 halign={Gtk.Align.START}
-                                cssClasses={["field-error"]}
+                                cssClasses={[fieldErrorStyle]}
                             />
                         )}
                     </GtkBox>
@@ -196,7 +175,7 @@ const ErrorstatesDemo = () => {
                             <GtkLabel
                                 label={validation.password.error}
                                 halign={Gtk.Align.START}
-                                cssClasses={["field-error"]}
+                                cssClasses={[fieldErrorStyle]}
                             />
                         )}
                     </GtkBox>
@@ -215,7 +194,7 @@ const ErrorstatesDemo = () => {
                             <GtkLabel
                                 label={validation.age.error}
                                 halign={Gtk.Align.START}
-                                cssClasses={["field-error"]}
+                                cssClasses={[fieldErrorStyle]}
                             />
                         )}
                     </GtkBox>
@@ -231,7 +210,7 @@ const ErrorstatesDemo = () => {
                             <GtkLabel
                                 label={validation.terms.error}
                                 halign={Gtk.Align.START}
-                                cssClasses={["field-error"]}
+                                cssClasses={[fieldErrorStyle]}
                             />
                         )}
                     </GtkBox>

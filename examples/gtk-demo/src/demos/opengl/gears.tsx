@@ -42,7 +42,7 @@ import {
 } from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
 
@@ -299,6 +299,8 @@ const GearsDemo = () => {
     const [isAnimating, setIsAnimating] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const aspectRef = useRef(1.0);
+    const rotXAdjustment = useMemo(() => new Gtk.Adjustment(20, -90, 90, 1, 10, 0), []);
+    const rotYAdjustment = useMemo(() => new Gtk.Adjustment(30, -180, 180, 1, 10, 0), []);
 
     // Animation loop
     useEffect(() => {
@@ -573,7 +575,7 @@ const GearsDemo = () => {
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             hexpand
-                            adjustment={new Gtk.Adjustment(viewRotX, -90, 90, 1, 10, 0)}
+                            adjustment={rotXAdjustment}
                             onValueChanged={(self) => setViewRotX(self.getValue())}
                         />
                     </GtkBox>
@@ -584,7 +586,7 @@ const GearsDemo = () => {
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             hexpand
-                            adjustment={new Gtk.Adjustment(viewRotY, -180, 180, 1, 10, 0)}
+                            adjustment={rotYAdjustment}
                             onValueChanged={(self) => setViewRotY(self.getValue())}
                         />
                     </GtkBox>

@@ -1,7 +1,7 @@
 import * as cairo from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-spinner.tsx?raw";
 
@@ -195,6 +195,8 @@ const ConfigurableSpinner = () => {
     const [speed, setSpeed] = useState(1);
     const [isRunning, setIsRunning] = useState(true);
     const rotationRef = useRef(0);
+    const strokeAdjustment = useMemo(() => new Gtk.Adjustment(8, 2, 16, 1, 1, 0), []);
+    const speedAdjustment = useMemo(() => new Gtk.Adjustment(1, 0.2, 3, 0.1, 0.5, 0), []);
 
     useEffect(() => {
         if (!isRunning) return;
@@ -221,7 +223,7 @@ const ConfigurableSpinner = () => {
                             orientation={Gtk.Orientation.HORIZONTAL}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
-                            adjustment={new Gtk.Adjustment(strokeWidth, 2, 16, 1, 1, 0)}
+                            adjustment={strokeAdjustment}
                             onValueChanged={(range: Gtk.Range) => setStrokeWidth(range.getValue())}
                             widthRequest={120}
                         />
@@ -233,7 +235,7 @@ const ConfigurableSpinner = () => {
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             digits={1}
-                            adjustment={new Gtk.Adjustment(speed, 0.2, 3, 0.1, 0.5, 0)}
+                            adjustment={speedAdjustment}
                             onValueChanged={(range: Gtk.Range) => setSpeed(range.getValue())}
                             widthRequest={120}
                         />

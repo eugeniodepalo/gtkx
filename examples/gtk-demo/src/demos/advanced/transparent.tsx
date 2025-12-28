@@ -1,12 +1,16 @@
+import { css } from "@gtkx/css";
 import * as cairo from "@gtkx/ffi/cairo";
-import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, GtkScrolledWindow } from "@gtkx/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./transparent.tsx?raw";
 
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
+const transparencyInfoStyle = css`
+    background-color: alpha(@accent_bg_color, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+`;
 
 // Drawing function that demonstrates transparency with checkerboard background
 const drawTransparencyDemo = (alpha: number, gradientType: "solid" | "linear" | "radial") => {
@@ -121,40 +125,8 @@ const TransparentDemo = () => {
     const mainDrawingRef = useRef<Gtk.DrawingArea | null>(null);
     const overlappingRef = useRef<Gtk.DrawingArea | null>(null);
     const layeredRef = useRef<Gtk.DrawingArea | null>(null);
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
 
     const alphaAdjustment = useMemo(() => new Gtk.Adjustment(0.5, 0, 1, 0.05, 0.1, 0), []);
-
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        const css = `
-.transparency-info {
-    background-color: alpha(@accent_bg_color, 0.1);
-    border-radius: 8px;
-    padding: 12px;
-}
-
-.gradient-button.selected {
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-}
-`;
-        try {
-            cssProvider.loadFromString(css);
-        } catch {
-            // Ignore CSS errors
-        }
-
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [cssProvider]);
 
     // Update main drawing area
     useEffect(() => {
@@ -315,7 +287,7 @@ const TransparentDemo = () => {
                             cssClasses={["heading"]}
                             halign={Gtk.Align.START}
                         />
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} cssClasses={["transparency-info"]}>
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} cssClasses={[transparencyInfoStyle]}>
                             <GtkLabel
                                 label="1. An RGBA visual (usually automatic on modern systems)"
                                 halign={Gtk.Align.START}

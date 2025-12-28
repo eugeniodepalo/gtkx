@@ -1,11 +1,16 @@
-import * as Gdk from "@gtkx/ffi/gdk";
+import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./layoutmanager.tsx?raw";
 
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
+const circularContainerStyle = css`
+    min-width: 300px;
+    min-height: 300px;
+    background: linear-gradient(135deg, alpha(@accent_color, 0.1), alpha(@accent_color, 0.05));
+    border-radius: 12px;
+`;
 
 interface ChildPosition {
     id: string;
@@ -27,56 +32,9 @@ const CircularLayoutDemo = () => {
         { id: "5", label: "E", angle: 240 },
         { id: "6", label: "F", angle: 300 },
     ]);
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
 
     const radiusAdjustment = useMemo(() => new Gtk.Adjustment(80, 40, 120, 5, 10, 0), []);
     const rotationAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 360, 5, 30, 0), []);
-
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        const css = `
-.circular-container {
-    min-width: 300px;
-    min-height: 300px;
-    background: linear-gradient(135deg, alpha(@accent_color, 0.1), alpha(@accent_color, 0.05));
-    border-radius: 12px;
-}
-
-.circular-item {
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-    border-radius: 50%;
-    min-width: 40px;
-    min-height: 40px;
-    font-weight: bold;
-}
-
-.center-item {
-    background-color: @warning_bg_color;
-    color: @warning_fg_color;
-    border-radius: 50%;
-    min-width: 50px;
-    min-height: 50px;
-    font-size: 1.2em;
-    font-weight: bold;
-}
-`;
-        try {
-            cssProvider.loadFromString(css);
-        } catch {
-            // Ignore CSS errors
-        }
-
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [cssProvider]);
 
     // Calculate positions for items in a circle
     const getItemPosition = (angle: number) => {
@@ -111,7 +69,7 @@ const CircularLayoutDemo = () => {
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
                         spacing={0}
-                        cssClasses={["circular-container"]}
+                        cssClasses={[circularContainerStyle]}
                         halign={Gtk.Align.CENTER}
                         valign={Gtk.Align.CENTER}
                     >

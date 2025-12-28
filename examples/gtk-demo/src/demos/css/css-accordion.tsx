@@ -1,13 +1,11 @@
-import * as Gdk from "@gtkx/ffi/gdk";
+import { css, cx, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkExpander, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-accordion.tsx?raw";
 
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
-
-const ACCORDION_CSS = `
+injectGlobal`
   /* Transition timing functions */
   .transition-ease {
     transition: all 300ms ease;
@@ -27,24 +25,6 @@ const ACCORDION_CSS = `
 
   .transition-linear {
     transition: all 300ms linear;
-  }
-
-  /* Animated accordion panel */
-  .accordion-panel {
-    background-color: @theme_bg_color;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin: 4px 0;
-    transition: background-color 200ms ease, box-shadow 200ms ease;
-  }
-
-  .accordion-panel:hover {
-    background-color: alpha(@accent_bg_color, 0.1);
-  }
-
-  .accordion-panel.active {
-    background-color: alpha(@accent_bg_color, 0.15);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
   /* Animated button states */
@@ -72,34 +52,42 @@ const ACCORDION_CSS = `
   .scale-hover:hover {
     -gtk-icon-transform: scale(1.1);
   }
+`;
 
-  /* Color transitions */
-  .color-transition {
-    transition: background-color 500ms ease, color 500ms ease;
-    padding: 16px 24px;
-    border-radius: 8px;
-  }
+const accordionPanelStyle = css`
+  background-color: @theme_bg_color;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 4px 0;
+  transition: background-color 200ms ease, box-shadow 200ms ease;
 
-  .color-blue {
-    background-color: #3584e4;
-    color: white;
-  }
-
-  .color-green {
-    background-color: #2ec27e;
-    color: white;
-  }
-
-  .color-orange {
-    background-color: #ff7800;
-    color: white;
-  }
-
-  .color-purple {
-    background-color: #9141ac;
-    color: white;
+  &:hover {
+    background-color: alpha(@accent_bg_color, 0.1);
   }
 `;
+
+const accordionPanelActiveStyle = css`
+  background-color: alpha(@accent_bg_color, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+`;
+
+const colorTransitionStyle = css`
+  transition: background-color 500ms ease, color 500ms ease;
+  padding: 16px 24px;
+  border-radius: 8px;
+`;
+
+const colorBlueStyle = css`background-color: #3584e4; color: white;`;
+const colorGreenStyle = css`background-color: #2ec27e; color: white;`;
+const colorOrangeStyle = css`background-color: #ff7800; color: white;`;
+const colorPurpleStyle = css`background-color: #9141ac; color: white;`;
+
+const colorStyles: Record<string, string> = {
+    "color-blue": colorBlueStyle,
+    "color-green": colorGreenStyle,
+    "color-orange": colorOrangeStyle,
+    "color-purple": colorPurpleStyle,
+};
 
 interface AccordionItemProps {
     title: string;
@@ -109,7 +97,11 @@ interface AccordionItemProps {
 }
 
 const AccordionItem = ({ title, content, isOpen, onToggle }: AccordionItemProps) => (
-    <GtkBox cssClasses={["accordion-panel", isOpen ? "active" : ""]} orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+    <GtkBox
+        cssClasses={[cx(accordionPanelStyle, isOpen && accordionPanelActiveStyle)]}
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={8}
+    >
         <GtkButton cssClasses={["flat"]} onClicked={onToggle}>
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} hexpand>
                 <GtkLabel label={isOpen ? "-" : "+"} cssClasses={["heading"]} widthChars={2} />
@@ -127,22 +119,6 @@ const AccordionItem = ({ title, content, isOpen, onToggle }: AccordionItemProps)
 const CssAccordionDemo = () => {
     const [openPanel, setOpenPanel] = useState<number | null>(0);
     const [selectedColor, setSelectedColor] = useState("color-blue");
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
-
-    // Register CSS provider
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            cssProvider.loadFromString(ACCORDION_CSS);
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [cssProvider]);
 
     const accordionItems = [
         {
@@ -240,7 +216,7 @@ const CssAccordionDemo = () => {
                     </GtkBox>
 
                     <GtkBox
-                        cssClasses={["color-transition", selectedColor]}
+                        cssClasses={[cx(colorTransitionStyle, colorStyles[selectedColor])]}
                         halign={Gtk.Align.CENTER}
                         orientation={Gtk.Orientation.VERTICAL}
                         spacing={4}

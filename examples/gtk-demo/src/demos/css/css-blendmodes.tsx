@@ -1,11 +1,9 @@
-import * as Gdk from "@gtkx/ffi/gdk";
+import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel } from "@gtkx/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-blendmodes.tsx?raw";
-
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
 
 const BLEND_MODES = [
     { name: "Normal", value: "normal" },
@@ -36,53 +34,26 @@ const COLORS = [
     { name: "Pink", value: "#ed82c2" },
 ];
 
+const createBlendDemoContainerStyle = (color: string) => css`
+    background: linear-gradient(135deg, ${color} 0%, shade(${color}, 0.6) 100%);
+    border-radius: 12px;
+    padding: 24px;
+`;
+
+const createBlendDemoImageStyle = (blendMode: string) => css`
+    background-blend-mode: ${blendMode};
+    border-radius: 8px;
+`;
+
 const CssBlendmodesDemo = () => {
     const [blendModeIndex, setBlendModeIndex] = useState(2); // Screen
     const [colorIndex, setColorIndex] = useState(4); // Blue
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
 
     const blendMode = BLEND_MODES[blendModeIndex]?.value ?? "normal";
     const color = COLORS[colorIndex]?.value ?? "#3584e4";
 
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [cssProvider]);
-
-    useEffect(() => {
-        const css = `
-.blend-demo-container {
-    background: linear-gradient(135deg, ${color} 0%, shade(${color}, 0.6) 100%);
-    border-radius: 12px;
-    padding: 24px;
-}
-
-.blend-demo-image {
-    background-blend-mode: ${blendMode};
-    border-radius: 8px;
-}
-
-.color-overlay {
-    background-color: ${color};
-    opacity: 0.7;
-    mix-blend-mode: ${blendMode};
-    border-radius: 8px;
-}
-`;
-        try {
-            cssProvider.loadFromString(css);
-        } catch {
-            // Ignore CSS errors
-        }
-    }, [cssProvider, blendMode, color]);
+    const blendDemoContainerStyle = createBlendDemoContainerStyle(color);
+    const blendDemoImageStyle = createBlendDemoImageStyle(blendMode);
 
     return (
         <GtkBox
@@ -163,10 +134,14 @@ const CssBlendmodesDemo = () => {
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
                         spacing={0}
-                        cssClasses={["blend-demo-container"]}
+                        cssClasses={[blendDemoContainerStyle]}
                         halign={Gtk.Align.CENTER}
                     >
-                        <GtkImage iconName="emblem-photos-symbolic" pixelSize={200} cssClasses={["blend-demo-image"]} />
+                        <GtkImage
+                            iconName="emblem-photos-symbolic"
+                            pixelSize={200}
+                            cssClasses={[blendDemoImageStyle]}
+                        />
                     </GtkBox>
 
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>

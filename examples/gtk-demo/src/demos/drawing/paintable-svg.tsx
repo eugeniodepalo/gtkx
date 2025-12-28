@@ -82,6 +82,8 @@ const PaintableSvgDemo = () => {
     const [colorIndex, setColorIndex] = useState(0);
     const [strokeWidth, setStrokeWidth] = useState(3);
     const [starPoints, setStarPoints] = useState(5);
+    const strokeAdjustment = useMemo(() => new Gtk.Adjustment(3, 1, 10, 1, 2, 0), []);
+    const starPointsAdjustment = useMemo(() => new Gtk.Adjustment(5, 3, 12, 1, 2, 0), []);
 
     const color = COLORS[colorIndex] ?? COLORS[0] ?? "#3584e4";
     const nextColor = COLORS[(colorIndex + 1) % COLORS.length] ?? COLORS[1] ?? "#e01b24";
@@ -224,7 +226,7 @@ const PaintableSvgDemo = () => {
                                 drawValue
                                 valuePos={Gtk.PositionType.RIGHT}
                                 hexpand
-                                adjustment={new Gtk.Adjustment(strokeWidth, 1, 10, 1, 2, 0)}
+                                adjustment={strokeAdjustment}
                                 onValueChanged={(self) => setStrokeWidth(Math.floor(self.getValue()))}
                             />
                         </GtkBox>
@@ -238,7 +240,7 @@ const PaintableSvgDemo = () => {
                                 drawValue
                                 valuePos={Gtk.PositionType.RIGHT}
                                 hexpand
-                                adjustment={new Gtk.Adjustment(starPoints, 3, 12, 1, 2, 0)}
+                                adjustment={starPointsAdjustment}
                                 onValueChanged={(self) => setStarPoints(Math.floor(self.getValue()))}
                             />
                         </GtkBox>

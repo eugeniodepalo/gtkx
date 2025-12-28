@@ -117,6 +117,8 @@ const PaintableAnimatedDemo = () => {
     const [speed, setSpeed] = useState(1.0);
     const [animationType, setAnimationType] = useState<"plasma" | "wave" | "spiral">("plasma");
     const [resolution, setResolution] = useState(128);
+    const speedAdjustment = useMemo(() => new Gtk.Adjustment(1.0, 0.1, 3.0, 0.1, 0.5, 0), []);
+    const resolutionAdjustment = useMemo(() => new Gtk.Adjustment(128, 32, 256, 16, 32, 0), []);
 
     // Animation loop
     useEffect(() => {
@@ -230,7 +232,7 @@ const PaintableAnimatedDemo = () => {
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             hexpand
-                            adjustment={new Gtk.Adjustment(speed, 0.1, 3.0, 0.1, 0.5, 0)}
+                            adjustment={speedAdjustment}
                             onValueChanged={(self) => setSpeed(self.getValue())}
                         />
                     </GtkBox>
@@ -241,7 +243,7 @@ const PaintableAnimatedDemo = () => {
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             hexpand
-                            adjustment={new Gtk.Adjustment(resolution, 32, 256, 16, 32, 0)}
+                            adjustment={resolutionAdjustment}
                             onValueChanged={(self) => setResolution(Math.floor(self.getValue()))}
                         />
                     </GtkBox>

@@ -11,11 +11,13 @@ import sourceCode from "./constraints.tsx?raw";
 const CenteringDemo = () => {
     const containerRef = useRef<Gtk.Box | null>(null);
     const buttonRef = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
     useEffect(() => {
         if (!containerRef.current || !buttonRef.current) return;
 
         const layout = new Gtk.ConstraintLayout();
+        layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
 
         // Center the button horizontally: button.centerX = parent.centerX
@@ -87,6 +89,7 @@ const AlignmentDemo = () => {
     const topRightRef = useRef<Gtk.Button | null>(null);
     const bottomLeftRef = useRef<Gtk.Button | null>(null);
     const bottomRightRef = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
     useEffect(() => {
         if (
@@ -99,6 +102,7 @@ const AlignmentDemo = () => {
             return;
 
         const layout = new Gtk.ConstraintLayout();
+        layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
         const MARGIN = 8;
 
@@ -249,11 +253,13 @@ const SpacingDemo = () => {
     const button1Ref = useRef<Gtk.Button | null>(null);
     const button2Ref = useRef<Gtk.Button | null>(null);
     const button3Ref = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
     useEffect(() => {
         if (!containerRef.current || !button1Ref.current || !button2Ref.current || !button3Ref.current) return;
 
         const layout = new Gtk.ConstraintLayout();
+        layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
         const SPACING = 12;
 
@@ -357,13 +363,22 @@ const SpacingDemo = () => {
 const SizeConstraintsDemo = () => {
     const containerRef = useRef<Gtk.Box | null>(null);
     const buttonRef = useRef<Gtk.Button | null>(null);
+    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
     const [minWidth, setMinWidth] = useState(150);
 
     useEffect(() => {
         if (!containerRef.current || !buttonRef.current) return;
 
-        const layout = new Gtk.ConstraintLayout();
-        containerRef.current.setLayoutManager(layout);
+        // Create layout only once
+        if (!layoutRef.current) {
+            layoutRef.current = new Gtk.ConstraintLayout();
+            containerRef.current.setLayoutManager(layoutRef.current);
+        }
+
+        const layout = layoutRef.current;
+
+        // Clear existing constraints before adding new ones
+        layout.removeAllConstraints();
 
         // Center the button
         layout.addConstraint(

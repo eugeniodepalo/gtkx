@@ -1,106 +1,64 @@
-import { beginBatch, endBatch } from "@gtkx/ffi";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as GObject from "@gtkx/ffi/gobject";
+import { css, cx } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useEffect, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkToggleButton } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-basics.tsx?raw";
 
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
+// Static styles defined with css``
+const demoBoxStyle = css`
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+    padding: 24px;
+    border-radius: 12px;
 
-const DEFAULT_CSS = `/* Try editing this CSS! */
-.demo-box {
-  background-color: @accent_bg_color;
-  color: @accent_fg_color;
-  padding: 24px;
-  border-radius: 12px;
-}
+    &:hover {
+        background-color: shade(@accent_bg_color, 1.1);
+    }
+`;
 
-.demo-box:hover {
-  background-color: shade(@accent_bg_color, 1.1);
-}
+const demoLabelStyle = css`
+    font-size: 18px;
+    font-weight: bold;
+`;
 
-.demo-label {
-  font-size: 18px;
-  font-weight: bold;
-}
+const demoButtonStyle = css`
+    padding: 12px 24px;
+    border-radius: 8px;
+    background-color: @success_bg_color;
+    color: @success_fg_color;
 
-.demo-button {
-  padding: 12px 24px;
-  border-radius: 8px;
-  background-color: @success_bg_color;
-  color: @success_fg_color;
-}
+    &:hover {
+        background-color: shade(@success_bg_color, 1.15);
+    }
+`;
 
-.demo-button:hover {
-  background-color: shade(@success_bg_color, 1.15);
-}`;
+// Alternate style for demonstrating cx()
+const alternateBoxStyle = css`
+    background-color: @warning_bg_color;
+    color: @warning_fg_color;
+`;
 
-const getBufferText = (buffer: Gtk.TextBuffer): string => {
-    beginBatch();
-    const startIter = new Gtk.TextIter();
-    const endIter = new Gtk.TextIter();
-    buffer.getStartIter(startIter);
-    buffer.getEndIter(endIter);
-    endBatch();
-    return buffer.getText(startIter, endIter, true);
-};
+const CODE_EXAMPLE = `// Import the css utilities
+import { css, cx } from "@gtkx/css";
+
+// Define styles with css\`\`
+const boxStyle = css\`
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+    padding: 24px;
+    border-radius: 12px;
+\`;
+
+// Use cx() to combine styles
+const combined = cx(boxStyle, isActive && activeStyle);
+
+// Apply to components
+<GtkBox cssClasses={[boxStyle]} />
+<GtkBox cssClasses={[cx(boxStyle, activeStyle)]} />`;
 
 const CssBasicsDemo = () => {
-    const [buffer] = useState(() => new Gtk.TextBuffer());
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
-    const [error, setError] = useState<string | null>(null);
-    const [initialized, setInitialized] = useState(false);
-
-    // Initialize CSS provider and register it
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        // Set initial CSS
-        buffer.setText(DEFAULT_CSS, -1);
-        setInitialized(true);
-
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [buffer, cssProvider]);
-
-    // Apply CSS when buffer changes
-    useEffect(() => {
-        if (!initialized) return;
-
-        const handlerId = buffer.connect("changed", () => {
-            const css = getBufferText(buffer);
-            try {
-                cssProvider.loadFromString(css);
-                setError(null);
-            } catch (e) {
-                setError(e instanceof Error ? e.message : "Invalid CSS");
-            }
-        });
-
-        // Apply initial CSS
-        try {
-            cssProvider.loadFromString(DEFAULT_CSS);
-            setError(null);
-        } catch (e) {
-            setError(e instanceof Error ? e.message : "Invalid CSS");
-        }
-
-        return () => {
-            GObject.signalHandlerDisconnect(buffer, handlerId);
-        };
-    }, [buffer, cssProvider, initialized]);
-
-    const handleReset = () => {
-        buffer.setText(DEFAULT_CSS, -1);
-    };
+    const [useAlternate, setUseAlternate] = useState(false);
 
     return (
         <GtkBox
@@ -114,37 +72,29 @@ const CssBasicsDemo = () => {
             <GtkLabel label="CSS Basics" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="GTK4 uses CSS for styling widgets. Edit the CSS below to see changes applied in real-time to the preview widgets. GTK CSS supports theme variables like @accent_bg_color and functions like shade()."
+                label="GTKX uses an Emotion-based CSS-in-JS system. Use the css`` tagged template to define styles, and cx() to conditionally combine them. GTK CSS supports theme variables like @accent_bg_color and functions like shade()."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
             />
 
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={20} vexpand>
-                {/* CSS Editor */}
+                {/* Code Example */}
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} hexpand>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <GtkLabel label="CSS Editor" cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
-                        <GtkButton label="Reset" onClicked={handleReset} cssClasses={["flat"]} />
-                    </GtkBox>
+                    <GtkLabel label="Usage Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
 
                     <GtkFrame>
-                        <GtkScrolledWindow minContentHeight={300} hexpand vexpand>
-                            <GtkTextView
-                                buffer={buffer}
-                                monospace
-                                leftMargin={12}
-                                rightMargin={12}
-                                topMargin={12}
-                                bottomMargin={12}
-                                wrapMode={Gtk.WrapMode.WORD_CHAR}
-                            />
-                        </GtkScrolledWindow>
+                        <GtkLabel
+                            label={CODE_EXAMPLE}
+                            halign={Gtk.Align.START}
+                            cssClasses={["monospace"]}
+                            marginStart={16}
+                            marginEnd={16}
+                            marginTop={16}
+                            marginBottom={16}
+                            selectable
+                        />
                     </GtkFrame>
-
-                    {error && (
-                        <GtkLabel label={`CSS Error: ${error}`} cssClasses={["error"]} halign={Gtk.Align.START} wrap />
-                    )}
                 </GtkBox>
 
                 {/* Preview */}
@@ -160,19 +110,26 @@ const CssBasicsDemo = () => {
                             marginStart={20}
                             marginEnd={20}
                         >
+                            <GtkToggleButton
+                                label={useAlternate ? "Using alternate style" : "Using default style"}
+                                active={useAlternate}
+                                onToggled={(btn: Gtk.ToggleButton) => setUseAlternate(btn.getActive())}
+                                halign={Gtk.Align.CENTER}
+                            />
+
                             <GtkBox
-                                cssClasses={["demo-box"]}
+                                cssClasses={[cx(demoBoxStyle, useAlternate && alternateBoxStyle)]}
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={12}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <GtkLabel label="Styled Box" cssClasses={["demo-label"]} />
-                                <GtkLabel label="Hover over this box!" />
+                                <GtkLabel label="Styled Box" cssClasses={[demoLabelStyle]} />
+                                <GtkLabel label="Toggle the button to switch styles!" />
                             </GtkBox>
 
                             <GtkButton
                                 label="Styled Button"
-                                cssClasses={["demo-button"]}
+                                cssClasses={[demoButtonStyle]}
                                 halign={Gtk.Align.CENTER}
                                 onClicked={() => {}}
                             />
@@ -209,7 +166,7 @@ export const cssBasicsDemo: Demo = {
     id: "css-basics",
     title: "CSS Basics",
     description: "Live CSS editor to explore GTK styling",
-    keywords: ["css", "style", "theme", "editor", "live", "CssProvider"],
+    keywords: ["css", "style", "theme", "emotion", "css-in-js"],
     component: CssBasicsDemo,
     sourceCode,
 };

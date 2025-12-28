@@ -305,7 +305,7 @@ ${args ? `${args},` : ""}
         const params = this.generateParameterList(ctor.parameters);
         const args = this.generateCallArguments(ctor.parameters);
         const ctorDoc = this.formatMethodDoc(ctor.doc, ctor.parameters);
-        const borrowed = ctor.returnType.transferOwnership !== "full";
+        const borrowed = true;
 
         const errorArg = ctor.throws ? this.generateErrorArgument() : "";
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;

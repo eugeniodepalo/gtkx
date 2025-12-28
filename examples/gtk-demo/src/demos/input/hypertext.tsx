@@ -1,3 +1,4 @@
+import { css } from "@gtkx/css";
 import { beginBatch, createRef, endBatch } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -6,7 +7,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./hypertext.tsx?raw";
 
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
+const hypertextViewStyle = css`
+    font-size: 14px;
+    padding: 16px;
+
+    &:focus {
+        outline: none;
+    }
+`;
 
 interface Link {
     start: number;
@@ -27,7 +35,6 @@ const HypertextDemo = () => {
     const [buffer] = useState(() => new Gtk.TextBuffer());
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
     const [clickedLink, setClickedLink] = useState<string | null>(null);
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
     const textViewRef = useRef<Gtk.TextView | null>(null);
 
     const linkTag = useMemo(() => {
@@ -41,35 +48,6 @@ const HypertextDemo = () => {
         const tag = new Gtk.TextTag("link-hover");
         return tag;
     }, []);
-
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        const css = `
-.hypertext-view {
-    font-size: 14px;
-    padding: 16px;
-}
-
-.hypertext-view:focus {
-    outline: none;
-}
-`;
-        try {
-            cssProvider.loadFromString(css);
-        } catch {
-            // Ignore
-        }
-
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [cssProvider]);
 
     useEffect(() => {
         // Set up buffer with text and tags
@@ -179,7 +157,7 @@ const HypertextDemo = () => {
                             editable={false}
                             cursorVisible={false}
                             wrapMode={Gtk.WrapMode.WORD}
-                            cssClasses={["hypertext-view"]}
+                            cssClasses={[hypertextViewStyle]}
                             onMotion={handleMotion}
                             onPressed={handleClick}
                         />

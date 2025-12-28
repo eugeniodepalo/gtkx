@@ -12,6 +12,7 @@
         "dev": "gtkx dev src/dev.tsx"
     },
     "dependencies": {
+        "@gtkx/css": "workspace:*",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
         "react": "^19"

@@ -1,11 +1,9 @@
-import * as Gdk from "@gtkx/ffi/gdk";
+import { css, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-pixbufs.tsx?raw";
-
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
 
 const ICONS = [
     "emblem-photos-symbolic",
@@ -27,64 +25,7 @@ const EFFECTS = [
     { name: "Saturate", filter: "saturate(200%)" },
 ];
 
-const CssPixbufsDemo = () => {
-    const [iconIndex, setIconIndex] = useState(0);
-    const [effectIndex, setEffectIndex] = useState(0);
-    const [iconSize, setIconSize] = useState(64);
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
-
-    const sizeAdjustment = useMemo(() => new Gtk.Adjustment(64, 24, 128, 8, 16, 0), []);
-
-    const currentIcon = ICONS[iconIndex] ?? "emblem-photos-symbolic";
-    const currentEffect = EFFECTS[effectIndex] ?? EFFECTS[0];
-
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [cssProvider]);
-
-    useEffect(() => {
-        const css = `
-.icon-background {
-    background-image: -gtk-icontheme("${currentIcon}");
-    background-size: ${iconSize}px ${iconSize}px;
-    background-repeat: no-repeat;
-    background-position: center;
-    min-width: ${iconSize + 48}px;
-    min-height: ${iconSize + 48}px;
-    border-radius: 12px;
-    background-color: alpha(@theme_fg_color, 0.05);
-}
-
-.icon-with-effect {
-    background-image: -gtk-icontheme("${currentIcon}");
-    background-size: ${iconSize}px ${iconSize}px;
-    background-repeat: no-repeat;
-    background-position: center;
-    min-width: ${iconSize + 48}px;
-    min-height: ${iconSize + 48}px;
-    border-radius: 12px;
-    background-color: alpha(@theme_fg_color, 0.05);
-    filter: ${currentEffect?.filter ?? "none"};
-}
-
-.icon-tiled {
-    background-image: -gtk-icontheme("${currentIcon}");
-    background-size: 32px 32px;
-    background-repeat: repeat;
-    min-height: 150px;
-    border-radius: 12px;
-    opacity: 0.3;
-}
-
+injectGlobal`
 .icon-button {
     min-width: 48px;
     min-height: 48px;
@@ -94,12 +35,52 @@ const CssPixbufsDemo = () => {
     -gtk-icon-size: 24px;
 }
 `;
-        try {
-            cssProvider.loadFromString(css);
-        } catch {
-            // Ignore CSS errors
-        }
-    }, [cssProvider, currentIcon, iconSize, currentEffect?.filter]);
+
+const createIconBackgroundStyle = (icon: string, size: number) => css`
+    background-image: -gtk-icontheme("${icon}");
+    background-size: ${size}px ${size}px;
+    background-repeat: no-repeat;
+    background-position: center;
+    min-width: ${size + 48}px;
+    min-height: ${size + 48}px;
+    border-radius: 12px;
+    background-color: alpha(@theme_fg_color, 0.05);
+`;
+
+const createIconWithEffectStyle = (icon: string, size: number, filter: string) => css`
+    background-image: -gtk-icontheme("${icon}");
+    background-size: ${size}px ${size}px;
+    background-repeat: no-repeat;
+    background-position: center;
+    min-width: ${size + 48}px;
+    min-height: ${size + 48}px;
+    border-radius: 12px;
+    background-color: alpha(@theme_fg_color, 0.05);
+    filter: ${filter};
+`;
+
+const createIconTiledStyle = (icon: string) => css`
+    background-image: -gtk-icontheme("${icon}");
+    background-size: 32px 32px;
+    background-repeat: repeat;
+    min-height: 150px;
+    border-radius: 12px;
+    opacity: 0.3;
+`;
+
+const CssPixbufsDemo = () => {
+    const [iconIndex, setIconIndex] = useState(0);
+    const [effectIndex, setEffectIndex] = useState(0);
+    const [iconSize, setIconSize] = useState(64);
+
+    const sizeAdjustment = useMemo(() => new Gtk.Adjustment(64, 24, 128, 8, 16, 0), []);
+
+    const currentIcon = ICONS[iconIndex] ?? "emblem-photos-symbolic";
+    const currentEffect = EFFECTS[effectIndex] ?? EFFECTS[0];
+
+    const iconBackgroundStyle = createIconBackgroundStyle(currentIcon, iconSize);
+    const iconWithEffectStyle = createIconWithEffectStyle(currentIcon, iconSize, currentEffect?.filter ?? "none");
+    const iconTiledStyle = createIconTiledStyle(currentIcon);
 
     return (
         <GtkBox
@@ -154,7 +135,7 @@ const CssPixbufsDemo = () => {
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={0}
-                            cssClasses={["icon-background"]}
+                            cssClasses={[iconBackgroundStyle]}
                             halign={Gtk.Align.CENTER}
                         />
                         <GtkLabel label="background-image: -gtk-icontheme()" cssClasses={["caption", "dim-label"]} />
@@ -174,7 +155,7 @@ const CssPixbufsDemo = () => {
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={0}
-                            cssClasses={["icon-with-effect"]}
+                            cssClasses={[iconWithEffectStyle]}
                             halign={Gtk.Align.CENTER}
                         />
                         <GtkLabel
@@ -228,7 +209,7 @@ const CssPixbufsDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Tiled Pattern">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["icon-tiled"]} hexpand />
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={[iconTiledStyle]} hexpand />
             </GtkFrame>
 
             <GtkLabel

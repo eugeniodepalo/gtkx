@@ -1,13 +1,11 @@
-import * as Gdk from "@gtkx/ffi/gdk";
+import { injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-shadows.tsx?raw";
 
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
-
-const SHADOW_CSS = `
+injectGlobal`
   .shadow-card {
     padding: 24px;
     border-radius: 12px;
@@ -120,22 +118,6 @@ const ShadowCard = ({ label, shadowClass, description }: ShadowCardProps) => (
 
 const CssShadowsDemo = () => {
     const [selectedShadow, setSelectedShadow] = useState("shadow-medium");
-    const [cssProvider] = useState(() => new Gtk.CssProvider());
-
-    // Register CSS provider
-    useEffect(() => {
-        const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) {
-            cssProvider.loadFromString(SHADOW_CSS);
-            Gtk.StyleContext.addProviderForDisplay(display, cssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION);
-        }
-
-        return () => {
-            if (display) {
-                Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-            }
-        };
-    }, [cssProvider]);
 
     return (
         <GtkBox
