@@ -22,7 +22,15 @@ type UndefinedType = { type: "undefined" };
 
 type CallbackType = {
     type: "callback";
-    trampoline?: "closure" | "asyncReady" | "destroy" | "sourceFunc" | "drawFunc" | "compareDataFunc" | "tickFunc";
+    trampoline?:
+        | "closure"
+        | "asyncReady"
+        | "destroy"
+        | "sourceFunc"
+        | "drawFunc"
+        | "compareDataFunc"
+        | "tickFunc"
+        | "shortcutFunc";
     argTypes?: Type[];
     sourceType?: Type;
     resultType?: Type;

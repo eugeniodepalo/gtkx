@@ -1,4 +1,5 @@
 import { batch, NativeObject } from "@gtkx/ffi";
+import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS, PROPS, SIGNALS } from "../generated/internal.js";
 import { Node } from "../node.js";
@@ -17,8 +18,25 @@ import type { SignalHandler } from "./internal/signal-store.js";
 import { filterProps, isContainerType } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 
+const EVENT_CONTROLLER_PROPS = new Set([
+    "onEnter",
+    "onLeave",
+    "onMotion",
+    "onPressed",
+    "onReleased",
+    "onKeyPressed",
+    "onKeyReleased",
+    "onScroll",
+    "onNotify",
+]);
+
 export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Props> extends Node<T, P> {
     public static override priority = 3;
+
+    private motionController?: Gtk.EventControllerMotion;
+    private clickController?: Gtk.GestureClick;
+    private keyController?: Gtk.EventControllerKey;
+    private scrollController?: Gtk.EventControllerScroll;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
         return isContainerType(Gtk.Widget, containerOrClass);
@@ -184,15 +202,74 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         for (const name of propNames) {
             const oldValue = oldProps?.[name];
             const newValue = newProps[name];
-            const signalName = this.propNameToSignalName(name);
 
             if (oldValue === newValue) continue;
+
+            if (EVENT_CONTROLLER_PROPS.has(name)) {
+                this.updateEventControllerProp(name, newValue as SignalHandler | undefined);
+                continue;
+            }
+
+            const signalName = this.propNameToSignalName(name);
 
             if (signals.has(signalName)) {
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
                 this.signalStore.set(this.container, signalName, handler);
             } else if (newValue !== undefined) {
                 this.setProperty(name, newValue);
+            }
+        }
+    }
+
+    private updateEventControllerProp(propName: string, handler: SignalHandler | undefined): void {
+        switch (propName) {
+            case "onEnter":
+            case "onLeave":
+            case "onMotion": {
+                if (!this.motionController) {
+                    this.motionController = new Gtk.EventControllerMotion();
+                    this.container.addController(this.motionController);
+                }
+                const signalName = propName === "onEnter" ? "enter" : propName === "onLeave" ? "leave" : "motion";
+                this.signalStore.set(this.motionController, signalName, handler);
+                break;
+            }
+            case "onPressed":
+            case "onReleased": {
+                if (!this.clickController) {
+                    this.clickController = new Gtk.GestureClick();
+                    this.container.addController(this.clickController);
+                }
+                const signalName = propName === "onPressed" ? "pressed" : "released";
+                this.signalStore.set(this.clickController, signalName, handler);
+                break;
+            }
+            case "onKeyPressed":
+            case "onKeyReleased": {
+                if (!this.keyController) {
+                    this.keyController = new Gtk.EventControllerKey();
+                    this.container.addController(this.keyController);
+                }
+                const signalName = propName === "onKeyPressed" ? "key-pressed" : "key-released";
+                this.signalStore.set(this.keyController, signalName, handler);
+                break;
+            }
+            case "onScroll": {
+                if (!this.scrollController) {
+                    this.scrollController = new Gtk.EventControllerScroll(Gtk.EventControllerScrollFlags.BOTH_AXES);
+                    this.container.addController(this.scrollController);
+                }
+                this.signalStore.set(this.scrollController, "scroll", handler);
+                break;
+            }
+            case "onNotify": {
+                const wrappedHandler = handler
+                    ? (_obj: unknown, pspec: GObject.ParamSpec) => {
+                          handler(pspec.getName());
+                      }
+                    : undefined;
+                this.signalStore.set(this.container, "notify", wrappedHandler);
+                break;
             }
         }
     }

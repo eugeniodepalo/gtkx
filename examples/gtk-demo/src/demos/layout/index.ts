@@ -1,26 +1,26 @@
 import type { Demo } from "../types.js";
-import { boxDemo } from "./box.js";
-import { centerboxDemo } from "./centerbox.js";
 import { fixedDemo } from "./fixed.js";
+import { fixed2Demo } from "./fixed2.js";
 import { flowboxDemo } from "./flowbox.js";
 import { framesDemo } from "./frames.js";
-import { gridDemo } from "./grid.js";
 import { headerbarDemo } from "./headerbar.js";
-import { notebookDemo } from "./notebook.js";
+import { layoutManagerDemo } from "./layoutmanager.js";
+import { layoutManager2Demo } from "./layoutmanager2.js";
 import { overlayDemo } from "./overlay.js";
+import { overlayDecorativeDemo } from "./overlay-decorative.js";
 import { panedDemo } from "./paned.js";
 import { sizegroupDemo } from "./sizegroup.js";
 
 export const layoutDemos: Demo[] = [
-    boxDemo,
-    gridDemo,
     panedDemo,
     fixedDemo,
+    fixed2Demo,
     flowboxDemo,
     framesDemo,
     headerbarDemo,
-    centerboxDemo,
     overlayDemo,
+    overlayDecorativeDemo,
     sizegroupDemo,
-    notebookDemo,
+    layoutManagerDemo,
+    layoutManager2Demo,
 ];

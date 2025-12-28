@@ -62,6 +62,8 @@ pub enum CallbackTrampoline {
     Destroy,
 
     DrawFunc,
+
+    ShortcutFunc,
 }
 
 #[derive(Debug, Clone)]
@@ -135,6 +137,7 @@ impl Type {
                     Some("asyncReady") => CallbackTrampoline::AsyncReady,
                     Some("destroy") => CallbackTrampoline::Destroy,
                     Some("drawFunc") => CallbackTrampoline::DrawFunc,
+                    Some("shortcutFunc") => CallbackTrampoline::ShortcutFunc,
                     _ => CallbackTrampoline::Closure,
                 };
 

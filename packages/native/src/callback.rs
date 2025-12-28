@@ -190,6 +190,92 @@ pub fn get_async_ready_trampoline_ptr() -> *mut c_void {
     async_ready_trampoline as *mut c_void
 }
 
+pub struct ShortcutFuncData {
+    pub closure: *mut gobject_ffi::GClosure,
+    pub arg_gtypes: Vec<glib::Type>,
+}
+
+unsafe extern "C" fn shortcut_func_trampoline(
+    widget: *mut gobject_ffi::GObject,
+    args: *mut glib::ffi::GVariant,
+    user_data: *mut c_void,
+) -> glib::ffi::gboolean {
+    let data_ptr = user_data as *mut ShortcutFuncData;
+
+    if data_ptr.is_null() {
+        return glib::ffi::GFALSE;
+    }
+
+    let data = unsafe { &*data_ptr };
+    let closure_ptr = data.closure;
+
+    if closure_ptr.is_null() {
+        return glib::ffi::GFALSE;
+    }
+
+    unsafe {
+        let mut param_values: [glib::Value; 2] = [
+            glib::Value::from_type_unchecked(
+                data.arg_gtypes
+                    .first()
+                    .copied()
+                    .unwrap_or(glib::types::Type::OBJECT),
+            ),
+            glib::Value::from_type_unchecked(
+                data.arg_gtypes
+                    .get(1)
+                    .copied()
+                    .unwrap_or(glib::types::Type::VARIANT),
+            ),
+        ];
+
+        gobject_ffi::g_value_set_object(
+            param_values[0].to_glib_none_mut().0,
+            widget,
+        );
+
+        gobject_ffi::g_value_set_variant(
+            param_values[1].to_glib_none_mut().0,
+            args as *mut _,
+        );
+
+        let mut return_value = glib::Value::from_type_unchecked(glib::types::Type::BOOL);
+
+        gobject_ffi::g_closure_invoke(
+            closure_ptr,
+            return_value.to_glib_none_mut().0,
+            2,
+            param_values[0].to_glib_none_mut().0,
+            std::ptr::null_mut(),
+        );
+
+        return_value.get::<bool>().unwrap_or(false) as glib::ffi::gboolean
+    }
+}
+
+pub fn get_shortcut_func_trampoline_ptr() -> *mut c_void {
+    shortcut_func_trampoline as *mut c_void
+}
+
+unsafe extern "C" fn shortcut_func_data_destroy(user_data: *mut c_void) {
+    let data_ptr = user_data as *mut ShortcutFuncData;
+
+    if data_ptr.is_null() {
+        return;
+    }
+
+    unsafe {
+        let data = Box::from_raw(data_ptr);
+        if !data.closure.is_null() {
+            gobject_ffi::g_closure_unref(data.closure);
+        }
+    }
+}
+
+pub fn get_shortcut_func_data_destroy_ptr() -> *mut c_void {
+    shortcut_func_data_destroy as *mut c_void
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -300,5 +386,21 @@ mod tests {
         assert!(!get_draw_func_trampoline_ptr().is_null());
         assert!(!get_destroy_trampoline_ptr().is_null());
         assert!(!get_async_ready_trampoline_ptr().is_null());
+        assert!(!get_shortcut_func_trampoline_ptr().is_null());
+        assert!(!get_shortcut_func_data_destroy_ptr().is_null());
+    }
+
+    #[test]
+    fn shortcut_func_trampoline_null_safe() {
+        test_utils::ensure_gtk_init();
+
+        unsafe {
+            let result = shortcut_func_trampoline(
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            );
+            assert_eq!(result, glib::ffi::GFALSE);
+        }
     }
 }

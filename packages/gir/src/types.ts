@@ -386,13 +386,15 @@ export type FfiTypeDescriptor = {
 
     listType?: "glist" | "gslist";
 
-    trampoline?: "asyncReady" | "destroy" | "drawFunc" | "scaleFormatValueFunc";
+    trampoline?: "asyncReady" | "destroy" | "drawFunc" | "scaleFormatValueFunc" | "shortcutFunc";
 
     sourceType?: FfiTypeDescriptor;
 
     resultType?: FfiTypeDescriptor;
 
     argTypes?: FfiTypeDescriptor[];
+
+    returnType?: FfiTypeDescriptor;
 
     optional?: boolean;
 };
@@ -1294,6 +1296,28 @@ export class TypeMapper {
             };
         }
 
+        if (param.type.name === "Gtk.ShortcutFunc" || param.type.name === "ShortcutFunc") {
+            this.onSameNamespaceClassUsed?.("Widget", "Widget");
+            this.onExternalTypeUsed?.({
+                namespace: "GLib",
+                name: "Variant",
+                transformedName: "Variant",
+                kind: "record",
+            });
+            return {
+                ts: "(widget: Widget, args: GLib.Variant | null) => boolean",
+                ffi: {
+                    type: "callback",
+                    trampoline: "shortcutFunc",
+                    argTypes: [
+                        { type: "gobject", borrowed: true },
+                        { type: "gvariant", borrowed: true },
+                    ],
+                    returnType: { type: "boolean" },
+                },
+            };
+        }
+
         if (param.type.name === "GLib.Closure" || this.isCallback(param.type.name)) {
             return {
                 ts: "(...args: unknown[]) => unknown",
@@ -1338,6 +1362,8 @@ export class TypeMapper {
             "SourceFunc",
             "Gtk.TickCallback",
             "TickCallback",
+            "Gtk.ShortcutFunc",
+            "ShortcutFunc",
         ];
         return allParams.some(
             (p) => trampolineCallbacks.includes(p.type.name) && (p.closure === paramIndex || p.destroy === paramIndex),
@@ -1355,6 +1381,8 @@ export class TypeMapper {
             "DestroyNotify",
             "Gtk.DrawingAreaDrawFunc",
             "DrawingAreaDrawFunc",
+            "Gtk.ShortcutFunc",
+            "ShortcutFunc",
         ];
 
         if (supportedCallbacks.includes(param.type.name)) {

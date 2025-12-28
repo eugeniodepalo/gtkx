@@ -111,7 +111,9 @@ fn handle_call(
                 arg_types.push(libffi::Type::pointer());
                 arg_types.push(libffi::Type::pointer());
 
-                if cb.trampoline == CallbackTrampoline::DrawFunc {
+                if cb.trampoline == CallbackTrampoline::DrawFunc
+                    || cb.trampoline == CallbackTrampoline::ShortcutFunc
+                {
                     arg_types.push(libffi::Type::pointer());
                 }
             }

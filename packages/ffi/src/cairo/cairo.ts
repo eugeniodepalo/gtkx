@@ -1,8 +1,22 @@
-import { call } from "@gtkx/native";
-import type { LineCap, LineJoin, Operator } from "../generated/cairo/enums.js";
+import { alloc, call, read } from "@gtkx/native";
+import type {
+    Antialias,
+    FillRule,
+    FontSlant,
+    FontWeight,
+    HintMetrics,
+    HintStyle,
+    LineCap,
+    LineJoin,
+    Operator,
+    SubpixelOrder,
+} from "../generated/cairo/enums.js";
 
 const LIB = "libcairo.so.2";
+const FONT_OPTIONS_T = { type: "boxed", innerType: "cairo_font_options_t", lib: LIB, borrowed: true } as const;
 const CAIRO_T = { type: "boxed", innerType: "cairo_t", lib: LIB, borrowed: true } as const;
+const PATTERN_T = { type: "boxed", innerType: "cairo_pattern_t", lib: LIB, borrowed: false } as const;
+const PATTERN_T_BORROWED = { type: "boxed", innerType: "cairo_pattern_t", lib: LIB, borrowed: true } as const;
 
 export function moveTo(cr: unknown, x: number, y: number): void {
     call(
@@ -203,6 +217,26 @@ export function setLineJoin(cr: unknown, lineJoin: LineJoin): void {
     );
 }
 
+export function setFillRule(cr: unknown, fillRule: FillRule): void {
+    call(
+        LIB,
+        "cairo_set_fill_rule",
+        [
+            { type: CAIRO_T, value: cr },
+            { type: { type: "int", size: 32, unsigned: false }, value: fillRule },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function getFillRule(cr: unknown): FillRule {
+    return call(LIB, "cairo_get_fill_rule", [{ type: CAIRO_T, value: cr }], {
+        type: "int",
+        size: 32,
+        unsigned: false,
+    }) as FillRule;
+}
+
 export function setDash(cr: unknown, dashes: number[], offset: number): void {
     call(
         LIB,
@@ -285,4 +319,323 @@ export function setOperator(cr: unknown, op: Operator): void {
         ],
         { type: "undefined" },
     );
+}
+
+export function patternCreateLinear(x0: number, y0: number, x1: number, y1: number): unknown {
+    return call(
+        LIB,
+        "cairo_pattern_create_linear",
+        [
+            { type: { type: "float", size: 64 }, value: x0 },
+            { type: { type: "float", size: 64 }, value: y0 },
+            { type: { type: "float", size: 64 }, value: x1 },
+            { type: { type: "float", size: 64 }, value: y1 },
+        ],
+        PATTERN_T,
+    );
+}
+
+export function patternCreateRadial(
+    cx0: number,
+    cy0: number,
+    radius0: number,
+    cx1: number,
+    cy1: number,
+    radius1: number,
+): unknown {
+    return call(
+        LIB,
+        "cairo_pattern_create_radial",
+        [
+            { type: { type: "float", size: 64 }, value: cx0 },
+            { type: { type: "float", size: 64 }, value: cy0 },
+            { type: { type: "float", size: 64 }, value: radius0 },
+            { type: { type: "float", size: 64 }, value: cx1 },
+            { type: { type: "float", size: 64 }, value: cy1 },
+            { type: { type: "float", size: 64 }, value: radius1 },
+        ],
+        PATTERN_T,
+    );
+}
+
+export function patternAddColorStopRgb(
+    pattern: unknown,
+    offset: number,
+    red: number,
+    green: number,
+    blue: number,
+): void {
+    call(
+        LIB,
+        "cairo_pattern_add_color_stop_rgb",
+        [
+            { type: PATTERN_T_BORROWED, value: pattern },
+            { type: { type: "float", size: 64 }, value: offset },
+            { type: { type: "float", size: 64 }, value: red },
+            { type: { type: "float", size: 64 }, value: green },
+            { type: { type: "float", size: 64 }, value: blue },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function patternAddColorStopRgba(
+    pattern: unknown,
+    offset: number,
+    red: number,
+    green: number,
+    blue: number,
+    alpha: number,
+): void {
+    call(
+        LIB,
+        "cairo_pattern_add_color_stop_rgba",
+        [
+            { type: PATTERN_T_BORROWED, value: pattern },
+            { type: { type: "float", size: 64 }, value: offset },
+            { type: { type: "float", size: 64 }, value: red },
+            { type: { type: "float", size: 64 }, value: green },
+            { type: { type: "float", size: 64 }, value: blue },
+            { type: { type: "float", size: 64 }, value: alpha },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function patternDestroy(pattern: unknown): void {
+    call(LIB, "cairo_pattern_destroy", [{ type: PATTERN_T_BORROWED, value: pattern }], { type: "undefined" });
+}
+
+export function setSource(cr: unknown, pattern: unknown): void {
+    call(
+        LIB,
+        "cairo_set_source",
+        [
+            { type: CAIRO_T, value: cr },
+            { type: PATTERN_T_BORROWED, value: pattern },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function selectFontFace(cr: unknown, family: string, slant: FontSlant, weight: FontWeight): void {
+    call(
+        LIB,
+        "cairo_select_font_face",
+        [
+            { type: CAIRO_T, value: cr },
+            { type: { type: "string" }, value: family },
+            { type: { type: "int", size: 32, unsigned: false }, value: slant },
+            { type: { type: "int", size: 32, unsigned: false }, value: weight },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function setFontSize(cr: unknown, size: number): void {
+    call(
+        LIB,
+        "cairo_set_font_size",
+        [
+            { type: CAIRO_T, value: cr },
+            { type: { type: "float", size: 64 }, value: size },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function showText(cr: unknown, text: string): void {
+    call(
+        LIB,
+        "cairo_show_text",
+        [
+            { type: CAIRO_T, value: cr },
+            { type: { type: "string" }, value: text },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function textPath(cr: unknown, text: string): void {
+    call(
+        LIB,
+        "cairo_text_path",
+        [
+            { type: CAIRO_T, value: cr },
+            { type: { type: "string" }, value: text },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export interface TextExtents {
+    xBearing: number;
+    yBearing: number;
+    width: number;
+    height: number;
+    xAdvance: number;
+    yAdvance: number;
+}
+
+const DOUBLE_TYPE = { type: "float", size: 64 } as const;
+
+export function textExtents(cr: unknown, text: string): TextExtents {
+    const extents = alloc(48, "cairo_text_extents_t", LIB);
+    call(
+        LIB,
+        "cairo_text_extents",
+        [
+            { type: CAIRO_T, value: cr },
+            { type: { type: "string" }, value: text },
+            { type: { type: "boxed", innerType: "cairo_text_extents_t", lib: LIB, borrowed: true }, value: extents },
+        ],
+        { type: "undefined" },
+    );
+    return {
+        xBearing: read(extents, DOUBLE_TYPE, 0) as number,
+        yBearing: read(extents, DOUBLE_TYPE, 8) as number,
+        width: read(extents, DOUBLE_TYPE, 16) as number,
+        height: read(extents, DOUBLE_TYPE, 24) as number,
+        xAdvance: read(extents, DOUBLE_TYPE, 32) as number,
+        yAdvance: read(extents, DOUBLE_TYPE, 40) as number,
+    };
+}
+
+export function fontOptionsCreate(): unknown {
+    return call(LIB, "cairo_font_options_create", [], {
+        type: "boxed",
+        innerType: "cairo_font_options_t",
+        lib: LIB,
+        borrowed: false,
+    });
+}
+
+export function fontOptionsDestroy(options: unknown): void {
+    call(LIB, "cairo_font_options_destroy", [{ type: FONT_OPTIONS_T, value: options }], { type: "undefined" });
+}
+
+export function fontOptionsSetAntialias(options: unknown, antialias: Antialias): void {
+    call(
+        LIB,
+        "cairo_font_options_set_antialias",
+        [
+            { type: FONT_OPTIONS_T, value: options },
+            { type: { type: "int", size: 32, unsigned: false }, value: antialias },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function fontOptionsGetAntialias(options: unknown): Antialias {
+    return call(LIB, "cairo_font_options_get_antialias", [{ type: FONT_OPTIONS_T, value: options }], {
+        type: "int",
+        size: 32,
+        unsigned: false,
+    }) as Antialias;
+}
+
+export function fontOptionsSetHintStyle(options: unknown, hintStyle: HintStyle): void {
+    call(
+        LIB,
+        "cairo_font_options_set_hint_style",
+        [
+            { type: FONT_OPTIONS_T, value: options },
+            { type: { type: "int", size: 32, unsigned: false }, value: hintStyle },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function fontOptionsGetHintStyle(options: unknown): HintStyle {
+    return call(LIB, "cairo_font_options_get_hint_style", [{ type: FONT_OPTIONS_T, value: options }], {
+        type: "int",
+        size: 32,
+        unsigned: false,
+    }) as HintStyle;
+}
+
+export function fontOptionsSetHintMetrics(options: unknown, hintMetrics: HintMetrics): void {
+    call(
+        LIB,
+        "cairo_font_options_set_hint_metrics",
+        [
+            { type: FONT_OPTIONS_T, value: options },
+            { type: { type: "int", size: 32, unsigned: false }, value: hintMetrics },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function fontOptionsGetHintMetrics(options: unknown): HintMetrics {
+    return call(LIB, "cairo_font_options_get_hint_metrics", [{ type: FONT_OPTIONS_T, value: options }], {
+        type: "int",
+        size: 32,
+        unsigned: false,
+    }) as HintMetrics;
+}
+
+export function fontOptionsSetSubpixelOrder(options: unknown, subpixelOrder: SubpixelOrder): void {
+    call(
+        LIB,
+        "cairo_font_options_set_subpixel_order",
+        [
+            { type: FONT_OPTIONS_T, value: options },
+            { type: { type: "int", size: 32, unsigned: false }, value: subpixelOrder },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function fontOptionsGetSubpixelOrder(options: unknown): SubpixelOrder {
+    return call(LIB, "cairo_font_options_get_subpixel_order", [{ type: FONT_OPTIONS_T, value: options }], {
+        type: "int",
+        size: 32,
+        unsigned: false,
+    }) as SubpixelOrder;
+}
+
+export function setFontOptions(cr: unknown, options: unknown): void {
+    call(
+        LIB,
+        "cairo_set_font_options",
+        [
+            { type: CAIRO_T, value: cr },
+            { type: FONT_OPTIONS_T, value: options },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function getFontOptions(cr: unknown): unknown {
+    const options = fontOptionsCreate();
+    call(
+        LIB,
+        "cairo_get_font_options",
+        [
+            { type: CAIRO_T, value: cr },
+            { type: FONT_OPTIONS_T, value: options },
+        ],
+        { type: "undefined" },
+    );
+    return options;
+}
+
+export function setAntialias(cr: unknown, antialias: Antialias): void {
+    call(
+        LIB,
+        "cairo_set_antialias",
+        [
+            { type: CAIRO_T, value: cr },
+            { type: { type: "int", size: 32, unsigned: false }, value: antialias },
+        ],
+        { type: "undefined" },
+    );
+}
+
+export function getAntialias(cr: unknown): Antialias {
+    return call(LIB, "cairo_get_antialias", [{ type: CAIRO_T, value: cr }], {
+        type: "int",
+        size: 32,
+        unsigned: false,
+    }) as Antialias;
 }

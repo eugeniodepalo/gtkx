@@ -1,6 +1,6 @@
 import { advancedDemos } from "./advanced/index.js";
-import { adwaitaDemos } from "./adwaita/index.js";
 import { buttonsDemos } from "./buttons/index.js";
+import { constraintsDemos } from "./constraints/index.js";
 import { cssDemos } from "./css/index.js";
 import { dialogsDemos } from "./dialogs/index.js";
 import { drawingDemos } from "./drawing/index.js";
@@ -12,6 +12,8 @@ import { layoutDemos } from "./layout/index.js";
 import { listsDemos } from "./lists/index.js";
 import { mediaDemos } from "./media/index.js";
 import { navigationDemos } from "./navigation/index.js";
+import { openglDemos } from "./opengl/index.js";
+import { pathsDemos } from "./paths/index.js";
 import type { Category } from "./types.js";
 
 export const categories: Category[] = [
@@ -40,6 +42,12 @@ export const categories: Category[] = [
         demos: layoutDemos,
     },
     {
+        id: "constraints",
+        title: "Constraints",
+        icon: "view-pin-symbolic",
+        demos: constraintsDemos,
+    },
+    {
         id: "navigation",
         title: "Navigation",
         icon: "view-paged-symbolic",
@@ -64,6 +72,18 @@ export const categories: Category[] = [
         demos: drawingDemos,
     },
     {
+        id: "opengl",
+        title: "OpenGL",
+        icon: "video-display-symbolic",
+        demos: openglDemos,
+    },
+    {
+        id: "paths",
+        title: "Paths & Vectors",
+        icon: "draw-path-symbolic",
+        demos: pathsDemos,
+    },
+    {
         id: "css",
         title: "CSS & Styling",
         icon: "preferences-desktop-appearance-symbolic",
@@ -71,7 +91,7 @@ export const categories: Category[] = [
     },
     {
         id: "media",
-        title: "Media & Calendar",
+        title: "Media",
         icon: "applications-multimedia-symbolic",
         demos: mediaDemos,
     },
@@ -92,11 +112,5 @@ export const categories: Category[] = [
         title: "Gestures & Input",
         icon: "input-touchpad-symbolic",
         demos: gesturesDemos,
-    },
-    {
-        id: "adwaita",
-        title: "Adwaita",
-        icon: "org.gnome.Adwaita1.Demo-symbolic",
-        demos: adwaitaDemos,
     },
 ];
