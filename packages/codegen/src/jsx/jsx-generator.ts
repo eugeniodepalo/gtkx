@@ -693,7 +693,7 @@ export class JsxGenerator {
     }
 
     private canHaveChildren(widget: GirClass, widgetName: string): boolean {
-        if (isListWidget(widgetName) || isDropDownWidget(widgetName)) {
+        if (isListWidget(widgetName) || isColumnViewWidget(widgetName) || isDropDownWidget(widgetName)) {
             return true;
         }
 

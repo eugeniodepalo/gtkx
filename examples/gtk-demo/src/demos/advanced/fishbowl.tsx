@@ -172,7 +172,10 @@ const FishbowlDemo = () => {
                         marginTop={8}
                     />
                     <GtkLabel
-                        label="- Use virtualized lists for large data sets\n- Minimize state updates to only what's necessary\n- Batch updates when possible\n- Consider using CSS animations instead of React state"
+                        label={`- Use virtualized lists for large data sets
+- Minimize state updates to only what's necessary
+- Batch updates when possible
+- Consider using CSS animations instead of React state`}
                         wrap
                         halign={Gtk.Align.START}
                     />

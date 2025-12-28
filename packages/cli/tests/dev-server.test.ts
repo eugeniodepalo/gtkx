@@ -49,6 +49,7 @@ vi.mock("../src/vite-plugin-gtkx-refresh.js", () => ({
 
 vi.mock("@gtkx/react", () => ({
     update: vi.fn(),
+    setHotReloading: vi.fn(),
 }));
 
 vi.mock("@gtkx/ffi", () => ({

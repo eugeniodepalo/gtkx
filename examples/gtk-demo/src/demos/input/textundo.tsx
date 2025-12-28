@@ -105,7 +105,12 @@ const TextUndoDemo = () => {
                 </GtkBox>
 
                 <GtkLabel
-                    label="Usage example:\nbuffer.beginUserAction();\nbuffer.insertAtCursor('Hello ');\nbuffer.insertAtCursor('World');\nbuffer.endUserAction();\n// Both inserts are now a single undo action"
+                    label={`Usage example:
+buffer.beginUserAction();
+buffer.insertAtCursor('Hello ');
+buffer.insertAtCursor('World');
+buffer.endUserAction();
+// Both inserts are now a single undo action`}
                     cssClasses={["dim-label", "monospace"]}
                     halign={Gtk.Align.START}
                 />
@@ -114,7 +119,10 @@ const TextUndoDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Keyboard Shortcuts" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="Ctrl+Z: Undo the last change\nCtrl+Shift+Z or Ctrl+Y: Redo the last undone change\n\nGtkTextView automatically provides these shortcuts when the buffer has undo enabled."
+                    label={`Ctrl+Z: Undo the last change
+Ctrl+Shift+Z or Ctrl+Y: Redo the last undone change
+
+GtkTextView automatically provides these shortcuts when the buffer has undo enabled.`}
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
@@ -123,7 +131,13 @@ const TextUndoDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="API Reference" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="buffer.setEnableUndo(true) - Enable undo tracking\nbuffer.getCanUndo() - Check if undo is available\nbuffer.getCanRedo() - Check if redo is available\nbuffer.undo() - Perform undo\nbuffer.redo() - Perform redo\nbuffer.beginUserAction() - Start grouping edits\nbuffer.endUserAction() - End grouping edits"
+                    label={`buffer.setEnableUndo(true) - Enable undo tracking
+buffer.getCanUndo() - Check if undo is available
+buffer.getCanRedo() - Check if redo is available
+buffer.undo() - Perform undo
+buffer.redo() - Perform redo
+buffer.beginUserAction() - Start grouping edits
+buffer.endUserAction() - End grouping edits`}
                     cssClasses={["dim-label", "monospace"]}
                     halign={Gtk.Align.START}
                 />

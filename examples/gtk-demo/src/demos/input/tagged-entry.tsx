@@ -91,7 +91,18 @@ const TaggedEntryDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Implementation Notes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="This demo shows a React-based implementation of tag/chip input. The pattern involves:\n\n1. Maintaining an array of tags in state\n2. Handling Enter key to add new tags\n3. Preventing duplicate tags\n4. Rendering tags as clickable buttons for removal\n\nIn a production app, you might also add:\n- Tag validation\n- Comma-separated input parsing\n- Autocomplete suggestions\n- Maximum tag limit"
+                    label={`This demo shows a React-based implementation of tag/chip input. The pattern involves:
+
+1. Maintaining an array of tags in state
+2. Handling Enter key to add new tags
+3. Preventing duplicate tags
+4. Rendering tags as clickable buttons for removal
+
+In a production app, you might also add:
+- Tag validation
+- Comma-separated input parsing
+- Autocomplete suggestions
+- Maximum tag limit`}
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />

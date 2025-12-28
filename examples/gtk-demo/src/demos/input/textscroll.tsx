@@ -158,7 +158,11 @@ const TextScrollDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Scrollbar Policies" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="GtkScrolledWindow supports different scrollbar policies:\n- AUTOMATIC: Show when needed\n- ALWAYS: Always visible\n- NEVER: Never show (content clips)\n- EXTERNAL: Managed externally"
+                    label={`GtkScrolledWindow supports different scrollbar policies:
+- AUTOMATIC: Show when needed
+- ALWAYS: Always visible
+- NEVER: Never show (content clips)
+- EXTERNAL: Managed externally`}
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />

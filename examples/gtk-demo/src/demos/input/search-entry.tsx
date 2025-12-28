@@ -113,7 +113,11 @@ const SearchEntryDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="- Automatic search icon\n- Clear button when text is present\n- Debounced search-changed signal\n- Caps Lock warning\n- Keyboard navigation signals (previous-match, next-match, stop-search)"
+                    label={`- Automatic search icon
+- Clear button when text is present
+- Debounced search-changed signal
+- Caps Lock warning
+- Keyboard navigation signals (previous-match, next-match, stop-search)`}
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />

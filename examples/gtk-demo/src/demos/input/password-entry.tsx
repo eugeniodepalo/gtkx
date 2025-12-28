@@ -117,7 +117,11 @@ const PasswordEntryDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Security Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="GtkPasswordEntry provides several security features:\n- Text is hidden by default\n- Clipboard copy is disabled\n- Caps Lock warning is shown\n- Memory is stored in non-pageable area when possible"
+                    label={`GtkPasswordEntry provides several security features:
+- Text is hidden by default
+- Clipboard copy is disabled
+- Caps Lock warning is shown
+- Memory is stored in non-pageable area when possible`}
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />

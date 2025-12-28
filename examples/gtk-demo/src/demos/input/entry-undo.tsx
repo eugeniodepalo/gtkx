@@ -98,7 +98,8 @@ const EntryUndoDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Keyboard Shortcuts" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="Ctrl+Z: Undo\nCtrl+Shift+Z or Ctrl+Y: Redo"
+                    label={`Ctrl+Z: Undo
+Ctrl+Shift+Z or Ctrl+Y: Redo`}
                     cssClasses={["dim-label", "monospace"]}
                     halign={Gtk.Align.START}
                 />
