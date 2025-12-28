@@ -2,12 +2,24 @@
 .hero {
     padding: 6rem 2rem;
     text-align: center;
+    background-color: var(--ifm-background-color);
+    position: relative;
+}
+
+.hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
     background-image: url("/hero-bg.svg");
     background-size: cover;
     background-position: center;
+    pointer-events: none;
+    z-index: 0;
 }
 
 .heroInner {
+    position: relative;
+    z-index: 1;
     max-width: 800px;
     margin: 0 auto;
 }

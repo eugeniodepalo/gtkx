@@ -18,9 +18,6 @@ function HeroSection() {
                     <Link className={styles.heroButtonPrimary} to="/docs/getting-started">
                         Get Started
                     </Link>
-                    <Link className={styles.heroButtonSecondary} to="https://github.com/eugeniodepalo/gtkx">
-                        GitHub
-                    </Link>
                 </div>
             </div>
         </header>

@@ -18,6 +18,11 @@
             "ignoreDependencies": ["postject"],
             "entry": ["src/app.tsx", "src/index.tsx", "src/dev.tsx"]
         },
+        "examples/gtk-demo": {
+            "project": ["src/**/*"],
+            "entry": ["src/app.tsx", "src/index.tsx", "src/dev.tsx"],
+            "ignore": ["src/vite-env.d.ts"]
+        },
         "website": {
             "docusaurus": true,
             "ignore": ["build/**", ".docusaurus/**", "docs/api/**", "sidebars.ts"],
