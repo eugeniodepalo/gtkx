@@ -1,4 +1,5 @@
 import Link from "@docusaurus/Link";
+import useBaseUrl from "@docusaurus/useBaseUrl";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import CodeBlock from "@theme/CodeBlock";
 import Layout from "@theme/Layout";
@@ -8,10 +9,11 @@ import styles from "./index.module.css";
 
 function HeroSection() {
     const { siteConfig } = useDocusaurusContext();
+    const logoUrl = useBaseUrl("/logo.svg");
     return (
         <header className={styles.hero}>
             <div className={styles.heroInner}>
-                <img src="/logo.svg" alt="GTKX Logo" className={styles.heroLogo} />
+                <img src={logoUrl} alt="GTKX Logo" className={styles.heroLogo} />
                 <h1 className={styles.heroTitle}>{siteConfig.title}</h1>
                 <p className={styles.heroSubtitle}>{siteConfig.tagline}</p>
                 <div className={styles.heroButtons}>
@@ -25,6 +27,7 @@ function HeroSection() {
 }
 
 function DemoSection() {
+    const demoUrl = useBaseUrl("/demo.mp4");
     return (
         <section className={styles.demo}>
             <div className={styles.demoInner}>
@@ -32,7 +35,7 @@ function DemoSection() {
                 <p className={styles.sectionSubtitle}>Build native GTK4 applications with familiar React patterns</p>
                 <div className={styles.demoVideo}>
                     <video autoPlay loop muted playsInline className={styles.video}>
-                        <source src="/demo.mp4" type="video/mp4" />
+                        <source src={demoUrl} type="video/mp4" />
                     </video>
                 </div>
             </div>

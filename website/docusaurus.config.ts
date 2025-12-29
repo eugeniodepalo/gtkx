@@ -7,8 +7,8 @@ const config: Config = {
     tagline: "Build native Linux desktop apps with React and GTK4",
     favicon: "/favicon.svg",
 
-    url: "https://gtkx.dev",
-    baseUrl: "/",
+    url: "https://eugeniodepalo.github.io",
+    baseUrl: "/gtkx/",
 
     organizationName: "eugeniodepalo",
     projectName: "gtkx",
