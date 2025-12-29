@@ -5,7 +5,7 @@ import { SlotNode } from "./slot.js";
 
 type ToolbarChildNodePosition = "top" | "bottom";
 
-export class ToolbarChildNode extends SlotNode {
+class ToolbarChildNode extends SlotNode {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {

@@ -43,13 +43,10 @@ export class NotebookPageTabNode extends SlotNode<Props> {
         const notebook = this.getNotebook();
         const page = this.getPage();
 
-        // Only call setTabLabel if the page is actually in the notebook
-        // (pageNum returns -1 if not found)
         if (notebook.pageNum(page) === -1) {
             return;
         }
 
-        // setTabLabel accepts undefined to reset to default
         notebook.setTabLabel(page, this.child);
     }
 }

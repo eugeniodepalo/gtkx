@@ -74,7 +74,6 @@ export class NotebookPageNode extends SlotNode<Props> {
             return;
         }
 
-        // For content widget, use SlotNode's removeChild logic
         super.removeChild();
     }
 
@@ -85,7 +84,6 @@ export class NotebookPageNode extends SlotNode<Props> {
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         if (!oldProps || oldProps.label !== newProps.label) {
-            // Only update if using text label (no custom tab node)
             if (this.child && this.parent && !this.tabNode?.child) {
                 const tabLabel = this.getNotebook().getTabLabel(this.child) as Gtk.Label;
                 tabLabel.setLabel(newProps.label ?? "");
@@ -97,8 +95,8 @@ export class NotebookPageNode extends SlotNode<Props> {
         const child = this.getChild();
         const notebook = this.getNotebook();
 
-        // Use custom tab widget if provided, otherwise create a Label
         let tabLabel: Gtk.Widget;
+
         if (this.tabNode?.child) {
             tabLabel = this.tabNode.child;
         } else {

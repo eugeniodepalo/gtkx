@@ -71,16 +71,23 @@ const isWidgetSubclass = (
     typeName: string,
     classMap: Map<string, GirClass>,
     visited: Set<string> = new Set(),
+    currentNamespace?: string,
 ): boolean => {
     const className = typeName.includes(".") ? typeName.split(".")[1] : typeName;
-    if (!className || visited.has(className)) return false;
-    visited.add(className);
+    if (!className || visited.has(typeName)) return false;
+    visited.add(typeName);
 
-    const cls = classMap.get(className);
+    const namespacedName = typeName.includes(".")
+        ? typeName
+        : currentNamespace
+          ? `${currentNamespace}.${typeName}`
+          : null;
+    const cls =
+        classMap.get(typeName) ?? (namespacedName ? classMap.get(namespacedName) : null) ?? classMap.get(className);
     if (!cls) return false;
     if (className === "Widget") return true;
 
-    return cls.parent ? isWidgetSubclass(cls.parent, classMap, visited) : false;
+    return cls.parent ? isWidgetSubclass(cls.parent, classMap, visited, currentNamespace) : false;
 };
 
 export class JsxGenerator {
@@ -959,7 +966,9 @@ declare global {
                     if (hiddenProps.has(propName)) return false;
                     const typeName = prop.type.name;
                     return (
-                        typeName === "Gtk.Widget" || typeName === "Widget" || isWidgetSubclass(typeName, this.classMap)
+                        typeName === "Gtk.Widget" ||
+                        typeName === "Widget" ||
+                        isWidgetSubclass(typeName, this.classMap, new Set(), namespace)
                     );
                 })
                 .map((prop) => `"${toCamelCase(prop.name)}"`);

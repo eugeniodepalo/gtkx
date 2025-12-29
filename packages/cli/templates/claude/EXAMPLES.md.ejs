@@ -267,35 +267,33 @@ export const App = () => {
 
     return (
         <AdwApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
-            <Slot for={AdwApplicationWindow} id="content">
-                <AdwToolbarView>
-                    <Toolbar.Top>
-                        <AdwHeaderBar>
-                            <Slot for={AdwHeaderBar} id="titleWidget">
-                                <AdwWindowTitle title="My App" subtitle="Welcome" />
-                            </Slot>
-                        </AdwHeaderBar>
-                    </Toolbar.Top>
-                    <AdwBanner
-                        title="Welcome to the app!"
-                        buttonLabel="Dismiss"
-                        revealed={showBanner}
-                        onButtonClicked={() => setShowBanner(false)}
+            <AdwToolbarView>
+                <Toolbar.Top>
+                    <AdwHeaderBar>
+                        <Slot for={AdwHeaderBar} id="titleWidget">
+                            <AdwWindowTitle title="My App" subtitle="Welcome" />
+                        </Slot>
+                    </AdwHeaderBar>
+                </Toolbar.Top>
+                <AdwBanner
+                    title="Welcome to the app!"
+                    buttonLabel="Dismiss"
+                    revealed={showBanner}
+                    onButtonClicked={() => setShowBanner(false)}
+                />
+                <AdwStatusPage
+                    iconName="applications-system-symbolic"
+                    title="Welcome"
+                    description="Get started with your new GTKX app"
+                    vexpand
+                >
+                    <GtkButton
+                        label="Get Started"
+                        cssClasses={["suggested-action", "pill"]}
+                        halign={Gtk.Align.CENTER}
                     />
-                    <AdwStatusPage
-                        iconName="applications-system-symbolic"
-                        title="Welcome"
-                        description="Get started with your new GTKX app"
-                        vexpand
-                    >
-                        <GtkButton
-                            label="Get Started"
-                            cssClasses={["suggested-action", "pill"]}
-                            halign={Gtk.Align.CENTER}
-                        />
-                    </AdwStatusPage>
-                </AdwToolbarView>
-            </Slot>
+                </AdwStatusPage>
+            </AdwToolbarView>
         </AdwApplicationWindow>
     );
 };

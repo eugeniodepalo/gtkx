@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # GTKX
 
 React framework for building native GTK4 desktop applications on Linux.
@@ -67,21 +71,40 @@ Exported from `@gtkx/native`:
 ## Commands
 
 ```bash
-pnpm run build       # Build all packages
-pnpm run codegen     # Regenerate FFI bindings from GIR files
-pnpm run test        # Run test suite
-pnpm run lint        # Lint with Biome
-pnpm run docs        # Build documentation website
+pnpm build           # Build all packages
+pnpm codegen         # Regenerate FFI bindings from GIR files
+pnpm test            # Run test suite (uses xvfb locally)
+pnpm lint            # Lint TypeScript (Biome) and Rust (Clippy)
+pnpm docs            # Build documentation website
+pnpm knip            # Check for dead code
+```
+
+Build/test a specific package:
+
+```bash
+pnpm --filter @gtkx/react build
+pnpm --filter @gtkx/react test
+```
+
+Run a single test file:
+
+```bash
+pnpm --filter @gtkx/e2e test tests/button.test.tsx
+```
+
+Fix lint issues:
+
+```bash
+pnpm biome check --write .
 ```
 
 ## Examples
 
 ```
 examples/
+├── hello-world/   # Minimal counter app
 ├── todo/          # Complete todo app - state, lists, Adwaita styling
-├── gtk-demo/     # Widget showcase - buttons, lists, dialogs, menus
-├── lists/         # List widgets and virtualization
-├── adwaita/       # Libadwaita components
+├── gtk-demo/      # Full replica of official GTK demo
 └── deploying/     # Flatpak packaging
 ```
 
@@ -90,7 +113,7 @@ Run an example:
 ```bash
 cd examples/todo
 pnpm install
-pnpm run dev
+pnpm dev
 ```
 
 ## Key Concepts
@@ -176,5 +199,15 @@ pnpm run codegen
 - **Frontend:** React 19, TypeScript
 - **Native:** Rust, Neon (Node.js native modules)
 - **Target:** GTK4, Adwaita (Libadwaita)
-- **Build:** pnpm, Turbo, Vite
-- **Test:** Vitest
+- **Build:** pnpm workspaces, Turborepo, Vite
+- **Test:** Vitest (runs under xvfb with `pool: "forks"`)
+- **Lint:** Biome (TypeScript), Clippy (Rust)
+
+## Code Style
+
+- **Indentation:** 4 spaces
+- **Line width:** 120 characters
+- **Quotes:** Double quotes
+- **Semicolons:** Required
+- Biome config in `biome.json`
+- Clippy warnings are errors in CI

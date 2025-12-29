@@ -7,6 +7,7 @@ export const HIDDEN_PROPS: Record<string, readonly string[]> = {
     Window: ["application"],
     ApplicationWindow: ["application"],
     NavigationPage: ["child"],
+    GraphicsOffload: ["child"],
 };
 
 export const LIST_WIDGETS = new Set(["GtkListView", "GtkGridView"]);

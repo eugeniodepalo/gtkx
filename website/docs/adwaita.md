@@ -5,6 +5,7 @@ Libadwaita (Adw) is GNOME's design system library, providing modern widgets and 
 ## Overview
 
 Adwaita components are prefixed with `Adw` and provide:
+
 - Modern GNOME visual design
 - Responsive layouts
 - Adaptive widgets that work on different screen sizes
@@ -20,12 +21,12 @@ Modern header bar with adaptive styling:
 import { AdwHeaderBar, GtkButton, GtkLabel, Slot } from "@gtkx/react";
 
 <AdwHeaderBar>
-    <Slot for={AdwHeaderBar} id="titleWidget">
-        <GtkLabel label="My App" cssClasses={["title"]} />
-    </Slot>
+  <Slot for={AdwHeaderBar} id="titleWidget">
+    <GtkLabel label="My App" cssClasses={["title"]} />
+  </Slot>
 
-    <GtkButton iconName="open-menu-symbolic" cssClasses={["flat"]} />
-</AdwHeaderBar>
+  <GtkButton iconName="open-menu-symbolic" cssClasses={["flat"]} />
+</AdwHeaderBar>;
 ```
 
 ### AdwViewStack / AdwViewSwitcher
@@ -33,26 +34,35 @@ import { AdwHeaderBar, GtkButton, GtkLabel, Slot } from "@gtkx/react";
 Tab-like navigation between views:
 
 ```tsx
-import { AdwViewStack, AdwViewStackPage, AdwViewSwitcher, GtkBox } from "@gtkx/react";
+import {
+  AdwViewStack,
+  AdwViewStackPage,
+  AdwViewSwitcher,
+  GtkBox,
+} from "@gtkx/react";
 import { useState } from "react";
 
 const TabbedView = () => {
-    const [currentPage, setCurrentPage] = useState("home");
+  const [currentPage, setCurrentPage] = useState("home");
 
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <AdwViewSwitcher stack={currentPage} onStackChanged={setCurrentPage} />
+  return (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+      <AdwViewSwitcher stack={currentPage} onStackChanged={setCurrentPage} />
 
-            <AdwViewStack visibleChild={currentPage}>
-                <AdwViewStackPage name="home" title="Home" iconName="go-home-symbolic">
-                    Home content
-                </AdwViewStackPage>
-                <AdwViewStackPage name="settings" title="Settings" iconName="preferences-system-symbolic">
-                    Settings content
-                </AdwViewStackPage>
-            </AdwViewStack>
-        </GtkBox>
-    );
+      <AdwViewStack visibleChild={currentPage}>
+        <AdwViewStackPage name="home" title="Home" iconName="go-home-symbolic">
+          Home content
+        </AdwViewStackPage>
+        <AdwViewStackPage
+          name="settings"
+          title="Settings"
+          iconName="preferences-system-symbolic"
+        >
+          Settings content
+        </AdwViewStackPage>
+      </AdwViewStack>
+    </GtkBox>
+  );
 };
 ```
 
@@ -65,18 +75,26 @@ import { AdwActionRow, GtkListBox, GtkSwitch, GtkButton } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 <GtkListBox cssClasses={["boxed-list"]} selectionMode={Gtk.SelectionMode.NONE}>
-    <AdwActionRow title="Dark Mode" subtitle="Use dark color scheme">
-        <GtkSwitch valign={Gtk.Align.CENTER} />
-    </AdwActionRow>
+  <AdwActionRow title="Dark Mode" subtitle="Use dark color scheme">
+    <GtkSwitch valign={Gtk.Align.CENTER} />
+  </AdwActionRow>
 
-    <AdwActionRow title="Notifications" subtitle="Enable push notifications">
-        <GtkSwitch valign={Gtk.Align.CENTER} active />
-    </AdwActionRow>
+  <AdwActionRow title="Notifications" subtitle="Enable push notifications">
+    <GtkSwitch valign={Gtk.Align.CENTER} active />
+  </AdwActionRow>
 
-    <AdwActionRow title="Account" subtitle="Manage your account settings" activatable>
-        <GtkButton iconName="go-next-symbolic" cssClasses={["flat"]} valign={Gtk.Align.CENTER} />
-    </AdwActionRow>
-</GtkListBox>
+  <AdwActionRow
+    title="Account"
+    subtitle="Manage your account settings"
+    activatable
+  >
+    <GtkButton
+      iconName="go-next-symbolic"
+      cssClasses={["flat"]}
+      valign={Gtk.Align.CENTER}
+    />
+  </AdwActionRow>
+</GtkListBox>;
 ```
 
 ### AdwExpanderRow
@@ -87,15 +105,15 @@ Expandable list row:
 import { AdwExpanderRow, AdwActionRow, GtkListBox } from "@gtkx/react";
 
 <GtkListBox cssClasses={["boxed-list"]}>
-    <AdwExpanderRow title="Advanced Settings" subtitle="Additional options">
-        <AdwActionRow title="Option 1">
-            <GtkSwitch />
-        </AdwActionRow>
-        <AdwActionRow title="Option 2">
-            <GtkSwitch />
-        </AdwActionRow>
-    </AdwExpanderRow>
-</GtkListBox>
+  <AdwExpanderRow title="Advanced Settings" subtitle="Additional options">
+    <AdwActionRow title="Option 1">
+      <GtkSwitch />
+    </AdwActionRow>
+    <AdwActionRow title="Option 2">
+      <GtkSwitch />
+    </AdwActionRow>
+  </AdwExpanderRow>
+</GtkListBox>;
 ```
 
 ### AdwPreferencesGroup
@@ -103,16 +121,24 @@ import { AdwExpanderRow, AdwActionRow, GtkListBox } from "@gtkx/react";
 Group related settings with a header:
 
 ```tsx
-import { AdwPreferencesGroup, AdwActionRow, GtkSwitch, GtkSpinButton } from "@gtkx/react";
+import {
+  AdwPreferencesGroup,
+  AdwActionRow,
+  GtkSwitch,
+  GtkSpinButton,
+} from "@gtkx/react";
 
-<AdwPreferencesGroup title="Appearance" description="Customize the look and feel">
-    <AdwActionRow title="Dark Mode">
-        <GtkSwitch valign={Gtk.Align.CENTER} />
-    </AdwActionRow>
-    <AdwActionRow title="Font Size">
-        <GtkSpinButton valign={Gtk.Align.CENTER} />
-    </AdwActionRow>
-</AdwPreferencesGroup>
+<AdwPreferencesGroup
+  title="Appearance"
+  description="Customize the look and feel"
+>
+  <AdwActionRow title="Dark Mode">
+    <GtkSwitch valign={Gtk.Align.CENTER} />
+  </AdwActionRow>
+  <AdwActionRow title="Font Size">
+    <GtkSpinButton valign={Gtk.Align.CENTER} />
+  </AdwActionRow>
+</AdwPreferencesGroup>;
 ```
 
 ### AdwClamp
@@ -123,11 +149,11 @@ Constrain content width for readability:
 import { AdwClamp, GtkBox } from "@gtkx/react";
 
 <AdwClamp maximumSize={600} tighteningThreshold={400}>
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-        This content is constrained to a readable width
-        On wide screens, it won't stretch too far
-    </GtkBox>
-</AdwClamp>
+  <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+    This content is constrained to a readable width On wide screens, it won't
+    stretch too far
+  </GtkBox>
+</AdwClamp>;
 ```
 
 ### AdwToastOverlay
@@ -140,89 +166,112 @@ import * as Adw from "@gtkx/ffi/adw";
 import { useRef } from "react";
 
 const ToastExample = () => {
-    const overlayRef = useRef<Adw.ToastOverlay | null>(null);
+  const overlayRef = useRef<Adw.ToastOverlay | null>(null);
 
-    const showToast = () => {
-        if (overlayRef.current) {
-            const toast = new Adw.Toast({ title: "Action completed!" });
-            toast.setTimeout(3);
-            overlayRef.current.addToast(toast);
-        }
-    };
+  const showToast = () => {
+    if (overlayRef.current) {
+      const toast = new Adw.Toast({ title: "Action completed!" });
+      toast.setTimeout(3);
+      overlayRef.current.addToast(toast);
+    }
+  };
 
-    return (
-        <AdwToastOverlay ref={overlayRef}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER}>
-                <GtkButton label="Show Toast" onClicked={showToast} />
-            </GtkBox>
-        </AdwToastOverlay>
-    );
+  return (
+    <AdwToastOverlay ref={overlayRef}>
+      <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER}>
+        <GtkButton label="Show Toast" onClicked={showToast} />
+      </GtkBox>
+    </AdwToastOverlay>
+  );
 };
 ```
 
-### AdwNavigationView / AdwNavigationPage
+### AdwNavigationView / NavigationPage
 
 Stack-based navigation with push/pop transitions:
 
 ```tsx
-import { AdwNavigationView, AdwNavigationPage, AdwHeaderBar, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
+import {
+  AdwNavigationView,
+  NavigationPage,
+  AdwHeaderBar,
+  GtkBox,
+  GtkButton,
+  GtkLabel,
+} from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Adw from "@gtkx/ffi/adw";
 import { useState, useRef } from "react";
 
 const NavigationExample = () => {
-    const navViewRef = useRef<Adw.NavigationView | null>(null);
-    const [showDetail, setShowDetail] = useState(false);
+  const navViewRef = useRef<Adw.NavigationView | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
 
-    const pushDetail = () => {
-        setShowDetail(true);
-        navViewRef.current?.pushByTag("detail");
-    };
+  const pushDetail = () => {
+    setShowDetail(true);
+    navViewRef.current?.pushByTag("detail");
+  };
 
-    const popToMain = () => {
-        navViewRef.current?.pop();
-        setShowDetail(false);
-    };
+  const popToMain = () => {
+    navViewRef.current?.pop();
+    setShowDetail(false);
+  };
 
-    return (
-        <AdwNavigationView ref={navViewRef}>
-            <AdwNavigationPage title="Main" tag="main">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <AdwHeaderBar />
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginTop={24} marginStart={24} marginEnd={24}>
-                        <GtkLabel label="Welcome to the app" cssClasses={["title-2"]} />
-                        <GtkButton label="View Details" onClicked={pushDetail} cssClasses={["suggested-action"]} />
-                    </GtkBox>
-                </GtkBox>
-            </AdwNavigationPage>
+  return (
+    <AdwNavigationView ref={navViewRef}>
+      <NavigationPage title="Main" tag="main">
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+          <AdwHeaderBar />
+          <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={12}
+            marginTop={24}
+            marginStart={24}
+            marginEnd={24}
+          >
+            <GtkLabel label="Welcome to the app" cssClasses={["title-2"]} />
+            <GtkButton
+              label="View Details"
+              onClicked={pushDetail}
+              cssClasses={["suggested-action"]}
+            />
+          </GtkBox>
+        </GtkBox>
+      </NavigationPage>
 
-            {showDetail && (
-                <AdwNavigationPage title="Details" tag="detail">
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                        <AdwHeaderBar />
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginTop={24} marginStart={24} marginEnd={24}>
-                            <GtkLabel label="Detail content here" />
-                            <GtkButton label="Go Back" onClicked={popToMain} />
-                        </GtkBox>
-                    </GtkBox>
-                </AdwNavigationPage>
-            )}
-        </AdwNavigationView>
-    );
+      {showDetail && (
+        <NavigationPage title="Details" tag="detail">
+          <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <AdwHeaderBar />
+            <GtkBox
+              orientation={Gtk.Orientation.VERTICAL}
+              spacing={12}
+              marginTop={24}
+              marginStart={24}
+              marginEnd={24}
+            >
+              <GtkLabel label="Detail content here" />
+              <GtkButton label="Go Back" onClicked={popToMain} />
+            </GtkBox>
+          </GtkBox>
+        </NavigationPage>
+      )}
+    </AdwNavigationView>
+  );
 };
 ```
 
-#### AdwNavigationPage Props
+#### NavigationPage Props
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `title` | `string` | Page title shown in header bar |
-| `tag` | `string` | Unique tag for navigation (used with `pushByTag`) |
-| `canPop` | `boolean` | Whether the page can be popped (default: true) |
-| `onShowing` | `() => void` | Called when page starts showing |
-| `onShown` | `() => void` | Called when page is fully shown |
-| `onHiding` | `() => void` | Called when page starts hiding |
-| `onHidden` | `() => void` | Called when page is fully hidden |
+| Prop        | Type         | Description                                       |
+| ----------- | ------------ | ------------------------------------------------- |
+| `title`     | `string`     | Page title shown in header bar                    |
+| `tag`       | `string`     | Unique tag for navigation (used with `pushByTag`) |
+| `canPop`    | `boolean`    | Whether the page can be popped (default: true)    |
+| `onShowing` | `() => void` | Called when page starts showing                   |
+| `onShown`   | `() => void` | Called when page is fully shown                   |
+| `onHiding`  | `() => void` | Called when page starts hiding                    |
+| `onHidden`  | `() => void` | Called when page is fully hidden                  |
 
 #### Navigation Methods
 
@@ -296,55 +345,84 @@ Adwaita provides many built-in CSS classes:
 
 ```tsx
 import {
-    GtkApplicationWindow, GtkBox, GtkScrolledWindow,
-    AdwHeaderBar, AdwClamp, AdwPreferencesGroup, AdwActionRow,
-    GtkSwitch, GtkLabel, quit
+  GtkApplicationWindow,
+  GtkBox,
+  GtkScrolledWindow,
+  AdwHeaderBar,
+  AdwClamp,
+  AdwPreferencesGroup,
+  AdwActionRow,
+  GtkSwitch,
+  GtkLabel,
+  quit,
 } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const SettingsPage = () => {
-    const [darkMode, setDarkMode] = useState(false);
-    const [notifications, setNotifications] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifications, setNotifications] = useState(true);
 
-    return (
-        <GtkApplicationWindow title="Settings" defaultWidth={500} defaultHeight={600} onCloseRequest={quit}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <AdwHeaderBar />
+  return (
+    <GtkApplicationWindow
+      title="Settings"
+      defaultWidth={500}
+      defaultHeight={600}
+      onCloseRequest={quit}
+    >
+      <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+        <AdwHeaderBar />
 
-                <GtkScrolledWindow vexpand>
-                    <AdwClamp maximumSize={600}>
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24} marginTop={24} marginBottom={24}>
-                            <AdwPreferencesGroup title="Appearance">
-                                <AdwActionRow title="Dark Mode" subtitle="Use dark color scheme">
-                                    <GtkSwitch
-                                        valign={Gtk.Align.CENTER}
-                                        active={darkMode}
-                                        onStateSet={(_, state) => { setDarkMode(state); return false; }}
-                                    />
-                                </AdwActionRow>
-                            </AdwPreferencesGroup>
+        <GtkScrolledWindow vexpand>
+          <AdwClamp maximumSize={600}>
+            <GtkBox
+              orientation={Gtk.Orientation.VERTICAL}
+              spacing={24}
+              marginTop={24}
+              marginBottom={24}
+            >
+              <AdwPreferencesGroup title="Appearance">
+                <AdwActionRow
+                  title="Dark Mode"
+                  subtitle="Use dark color scheme"
+                >
+                  <GtkSwitch
+                    valign={Gtk.Align.CENTER}
+                    active={darkMode}
+                    onStateSet={(_, state) => {
+                      setDarkMode(state);
+                      return false;
+                    }}
+                  />
+                </AdwActionRow>
+              </AdwPreferencesGroup>
 
-                            <AdwPreferencesGroup title="Notifications">
-                                <AdwActionRow title="Enable Notifications" subtitle="Receive updates and alerts">
-                                    <GtkSwitch
-                                        valign={Gtk.Align.CENTER}
-                                        active={notifications}
-                                        onStateSet={(_, state) => { setNotifications(state); return false; }}
-                                    />
-                                </AdwActionRow>
-                            </AdwPreferencesGroup>
+              <AdwPreferencesGroup title="Notifications">
+                <AdwActionRow
+                  title="Enable Notifications"
+                  subtitle="Receive updates and alerts"
+                >
+                  <GtkSwitch
+                    valign={Gtk.Align.CENTER}
+                    active={notifications}
+                    onStateSet={(_, state) => {
+                      setNotifications(state);
+                      return false;
+                    }}
+                  />
+                </AdwActionRow>
+              </AdwPreferencesGroup>
 
-                            <AdwPreferencesGroup title="About">
-                                <AdwActionRow title="Version" subtitle="1.0.0" />
-                                <AdwActionRow title="License" subtitle="MIT" />
-                            </AdwPreferencesGroup>
-                        </GtkBox>
-                    </AdwClamp>
-                </GtkScrolledWindow>
+              <AdwPreferencesGroup title="About">
+                <AdwActionRow title="Version" subtitle="1.0.0" />
+                <AdwActionRow title="License" subtitle="MIT" />
+              </AdwPreferencesGroup>
             </GtkBox>
-        </GtkApplicationWindow>
-    );
+          </AdwClamp>
+        </GtkScrolledWindow>
+      </GtkBox>
+    </GtkApplicationWindow>
+  );
 };
 ```
 

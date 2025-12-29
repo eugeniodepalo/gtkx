@@ -372,13 +372,11 @@ Nested submenu.
 Import from `@gtkx/ffi/adw` for enums and `@gtkx/react` for components.
 
 ### AdwApplicationWindow
-Modern application window with required content slot.
+Modern application window.
 
 ```tsx
 <AdwApplicationWindow title="App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
-    <Slot for={AdwApplicationWindow} id="content">
-        <AdwToolbarView>...</AdwToolbarView>
-    </Slot>
+    <AdwToolbarView>...</AdwToolbarView>
 </AdwApplicationWindow>
 ```
 

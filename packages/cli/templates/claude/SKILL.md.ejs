@@ -279,12 +279,10 @@ Modern app layout with top/bottom bars:
 ```
 
 ### AdwApplicationWindow
-Modern window requiring content slot:
+Modern application window:
 ```tsx
 <AdwApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
-    <Slot for={AdwApplicationWindow} id="content">
-        <AdwToolbarView>...</AdwToolbarView>
-    </Slot>
+    <AdwToolbarView>...</AdwToolbarView>
 </AdwApplicationWindow>
 ```
 
