@@ -88,6 +88,7 @@ export class JsxGenerator {
     private usedNamespaces: Set<string> = new Set();
     private widgetPropertyNames: Set<string> = new Set();
     private widgetSignalNames: Set<string> = new Set();
+    private widgetPropertyNamesKebab: Set<string> = new Set();
     private currentNamespace = "";
     private widgetNamespaceMap: Map<string, string> = new Map();
 
@@ -131,6 +132,7 @@ export class JsxGenerator {
 
         this.widgetPropertyNames = new Set(widgetClass?.properties.map((p) => toCamelCase(p.name)) ?? []);
         this.widgetSignalNames = new Set(widgetClass?.signals.map((s) => toCamelCase(s.name)) ?? []);
+        this.widgetPropertyNamesKebab = new Set(widgetClass?.properties.map((p) => p.name) ?? []);
 
         const commonTypes = this.generateCommonTypes(widgetClass);
         const widgetPropsInterfaces = this.generateWidgetPropsInterfaces(allWidgets);
@@ -213,6 +215,13 @@ export class JsxGenerator {
     private generateWidgetPropsContent(widgetClass: GirClass | undefined): string {
         const lines: string[] = [];
         const widgetDoc = widgetClass?.doc ? this.formatDoc(widgetClass.doc) : "";
+
+        const widgetPropNames = [...this.widgetPropertyNamesKebab].sort();
+        if (widgetPropNames.length > 0) {
+            lines.push("/** Property names that can be passed to the onNotify callback for Widget. */");
+            lines.push(`export type WidgetNotifyProps = ${widgetPropNames.map((n) => `"${n}"`).join(" | ")};`);
+            lines.push("");
+        }
 
         if (widgetDoc) {
             lines.push(widgetDoc.trimEnd());
@@ -436,6 +445,19 @@ export class JsxGenerator {
         }
 
         lines.push("");
+        lines.push(`\t/**`);
+        lines.push(`\t * Called when any property on this widget changes.`);
+        lines.push(`\t * @param self - The widget that emitted the notification`);
+        lines.push(`\t * @param propName - The name of the property that changed (in kebab-case)`);
+        lines.push(`\t */`);
+        const ffiTypeNameNotify = toPascalCase(widget.name);
+        const allPropNames = this.collectAllPropertyNamesKebab(widget);
+        const propsUnion = allPropNames.map((n) => `"${n}"`).join(" | ");
+        lines.push(
+            `\tonNotify?: (self: ${this.currentNamespace}.${ffiTypeNameNotify}, propName: ${propsUnion}) => void;`,
+        );
+
+        lines.push("");
         const ffiTypeName = toPascalCase(widget.name);
         lines.push(`\tref?: Ref<${this.currentNamespace}.${ffiTypeName}>;`);
         lines.push(`}`);
@@ -445,7 +467,6 @@ export class JsxGenerator {
 
     private getParentPropsName(widget: GirClass): string {
         if (widget.name === "Window" && this.currentNamespace === "Gtk") return "WidgetProps";
-        if (widget.name === "ApplicationWindow" && this.currentNamespace === "Gtk") return "GtkWindowProps";
 
         if (!widget.parent) return "WidgetProps";
 
@@ -453,10 +474,10 @@ export class JsxGenerator {
         const parentName = widget.parent.includes(".") ? widget.parent.split(".")[1] : widget.parent;
 
         if (parentName === "Widget") return "WidgetProps";
-        if (parentName === "Window") return `${parentNs}WindowProps`;
+        if (parentName === "Window") return `Omit<${parentNs}WindowProps, "onNotify">`;
 
         const baseName = toPascalCase(parentName ?? "");
-        return `${parentNs}${baseName}Props`;
+        return `Omit<${parentNs}${baseName}Props, "onNotify">`;
     }
 
     private getRequiredConstructorParams(widget: GirClass): Set<string> {
@@ -678,6 +699,48 @@ export class JsxGenerator {
         }
 
         return signals;
+    }
+
+    /**
+     * Collects all property names in kebab-case for a widget, including inherited ones.
+     * Used for generating typed onNotify handlers.
+     */
+    private collectAllPropertyNamesKebab(widget: GirClass): string[] {
+        const propNames: string[] = [];
+        const seen = new Set<string>();
+
+        let current: GirClass | undefined = widget;
+        while (current) {
+            for (const prop of current.properties) {
+                if (!seen.has(prop.name)) {
+                    seen.add(prop.name);
+                    propNames.push(prop.name);
+                }
+            }
+
+            for (const ifaceName of current.implements) {
+                const iface = this.interfaceMap.get(ifaceName);
+                if (iface) {
+                    for (const prop of iface.properties) {
+                        if (!seen.has(prop.name)) {
+                            seen.add(prop.name);
+                            propNames.push(prop.name);
+                        }
+                    }
+                }
+            }
+
+            if (current.parent) {
+                current =
+                    this.classMap.get(current.parent) ??
+                    this.classMap.get(`${this.currentNamespace}.${current.parent}`) ??
+                    this.classMap.get(`Gtk.${current.parent}`);
+            } else {
+                current = undefined;
+            }
+        }
+
+        return propNames.sort();
     }
 
     private getAncestorInterfaces(widget: GirClass): Set<string> {

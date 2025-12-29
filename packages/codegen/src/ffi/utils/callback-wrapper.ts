@@ -21,6 +21,8 @@ export type CallbackWrapperOptions = {
     mode?: "static" | "runtime";
     /** Variable name for runtime metadata (only used in runtime mode) */
     metadataVar?: string;
+    /** Reference to ParamSpec class (e.g., "ParamSpec" or "GObject.ParamSpec") */
+    paramSpecRef?: string;
 };
 
 export type CallbackWrapperResult = {
@@ -40,6 +42,7 @@ export type CallbackWrapperResult = {
  */
 function generateTypeChecks(options: {
     hasGObjectArgs: boolean;
+    hasGParamArgs: boolean;
     hasBoxedArgs: boolean;
     hasGVariantArgs: boolean;
     argVar: string;
@@ -47,13 +50,31 @@ function generateTypeChecks(options: {
     indexVar: string;
     argsArrayVar: string;
     indent: string;
+    paramSpecRef?: string;
 }): string[] {
-    const { hasGObjectArgs, hasBoxedArgs, hasGVariantArgs, argVar, typeVar, argsArrayVar, indexVar, indent } = options;
+    const {
+        hasGObjectArgs,
+        hasGParamArgs,
+        hasBoxedArgs,
+        hasGVariantArgs,
+        argVar,
+        typeVar,
+        argsArrayVar,
+        indexVar,
+        indent,
+        paramSpecRef = "ParamSpec",
+    } = options;
     const checks: string[] = [];
 
     if (hasGObjectArgs) {
         checks.push(`${indent}if (${typeVar}?.type === "gobject" && ${argsArrayVar}[${indexVar}] != null) {`);
         checks.push(`${indent}  return getNativeObject(${argVar});`);
+        checks.push(`${indent}}`);
+    }
+
+    if (hasGParamArgs) {
+        checks.push(`${indent}if (${typeVar}?.type === "gparam" && ${argsArrayVar}[${indexVar}] != null) {`);
+        checks.push(`${indent}  return getNativeObject(${argVar}, ${paramSpecRef});`);
         checks.push(`${indent}}`);
     }
 
@@ -91,6 +112,7 @@ export function generateCallbackWrapperCode(options: CallbackWrapperOptions): Ca
         indent = "      ",
         mode = "static",
         metadataVar = "meta",
+        paramSpecRef = "ParamSpec",
     } = options;
 
     let usesGetNativeObject = false;
@@ -98,10 +120,11 @@ export function generateCallbackWrapperCode(options: CallbackWrapperOptions): Ca
     let usesGLibVariant = false;
 
     const hasGObjectArgs = argTypes.some((t) => t.type === "gobject");
+    const hasGParamArgs = argTypes.some((t) => t.type === "gparam");
     const hasBoxedArgs = argTypes.some((t) => t.type === "boxed");
     const hasGVariantArgs = argTypes.some((t) => t.type === "gvariant");
     const returnsGObject = returnType?.type === "gobject";
-    const needsArgWrapping = hasGObjectArgs || hasBoxedArgs || hasGVariantArgs;
+    const needsArgWrapping = hasGObjectArgs || hasGParamArgs || hasBoxedArgs || hasGVariantArgs;
 
     if (!needsArgWrapping && !returnsGObject && !hasSelfArg) {
         return { code: "", usesGetNativeObject: false, usesGetNativeClass: false, usesGLibVariant: false };
@@ -130,6 +153,7 @@ export function generateCallbackWrapperCode(options: CallbackWrapperOptions): Ca
 
             const checks = generateTypeChecks({
                 hasGObjectArgs,
+                hasGParamArgs,
                 hasBoxedArgs,
                 hasGVariantArgs,
                 argVar: "arg",
@@ -137,6 +161,7 @@ export function generateCallbackWrapperCode(options: CallbackWrapperOptions): Ca
                 indexVar: "i",
                 argsArrayVar: "callbackArgs",
                 indent: `${indent}    `,
+                paramSpecRef,
             });
             lines.push(...checks);
 
@@ -148,6 +173,7 @@ export function generateCallbackWrapperCode(options: CallbackWrapperOptions): Ca
 
             const checks = generateTypeChecks({
                 hasGObjectArgs,
+                hasGParamArgs,
                 hasBoxedArgs,
                 hasGVariantArgs,
                 argVar: "callbackArgs[i]",
@@ -155,6 +181,7 @@ export function generateCallbackWrapperCode(options: CallbackWrapperOptions): Ca
                 indexVar: "i",
                 argsArrayVar: "callbackArgs",
                 indent: `${indent}    `,
+                paramSpecRef,
             });
             lines.push(...checks);
 
@@ -210,22 +237,27 @@ export function generateSignalWrapperCode(options: {
     wrappedName: string;
     metadataVar: string;
     hasGObjectParams: boolean;
+    hasGParamParams: boolean;
     hasBoxedParams: boolean;
     hasGVariantParams: boolean;
     indent?: string;
+    paramSpecRef?: string;
 }): CallbackWrapperResult {
     const {
         handlerName,
         wrappedName,
         metadataVar,
         hasGObjectParams,
+        hasGParamParams,
         hasBoxedParams,
         hasGVariantParams,
         indent = "    ",
+        paramSpecRef = "ParamSpec",
     } = options;
 
     const argTypes: FfiTypeDescriptor[] = [];
     if (hasGObjectParams) argTypes.push({ type: "gobject" });
+    if (hasGParamParams) argTypes.push({ type: "gparam" });
     if (hasBoxedParams) argTypes.push({ type: "boxed" });
     if (hasGVariantParams) argTypes.push({ type: "gvariant" });
 
@@ -237,5 +269,6 @@ export function generateSignalWrapperCode(options: {
         mode: "runtime",
         metadataVar,
         indent,
+        paramSpecRef,
     });
 }

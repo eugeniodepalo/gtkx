@@ -20,6 +20,26 @@ const PickersDemo = () => {
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [saveLocation, setSaveLocation] = useState<string | null>(null);
 
+    const formatRgba = (rgba: { red: number; green: number; blue: number; alpha: number }) => {
+        return `rgba(${Math.round(rgba.red * 255)}, ${Math.round(rgba.green * 255)}, ${Math.round(rgba.blue * 255)}, ${rgba.alpha.toFixed(2)})`;
+    };
+
+    const handleColorButtonNotify = (button: Gtk.ColorDialogButton, propName: string) => {
+        if (propName === "rgba") {
+            const rgba = button.getRgba();
+            setSelectedColor(formatRgba(rgba));
+        }
+    };
+
+    const handleFontButtonNotify = (button: Gtk.FontDialogButton, propName: string) => {
+        if (propName === "font-desc") {
+            const fontDesc = button.getFontDesc();
+            if (fontDesc) {
+                setSelectedFont(fontDesc.toString());
+            }
+        }
+    };
+
     const handleColorPick = async () => {
         try {
             const colorDialog = new Gtk.ColorDialog();
@@ -27,8 +47,7 @@ const PickersDemo = () => {
             colorDialog.setModal(true);
 
             const rgba = await colorDialog.chooseRgba(app.getActiveWindow() ?? undefined);
-            const colorStr = `rgba(${Math.round(rgba.red * 255)}, ${Math.round(rgba.green * 255)}, ${Math.round(rgba.blue * 255)}, ${rgba.alpha.toFixed(2)})`;
-            setSelectedColor(colorStr);
+            setSelectedColor(formatRgba(rgba));
         } catch {
             // User cancelled
         }
@@ -130,7 +149,7 @@ const PickersDemo = () => {
                     />
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                         <GtkButton label="Choose Color..." onClicked={handleColorPick} />
-                        <GtkColorDialogButton />
+                        <GtkColorDialogButton dialog={new Gtk.ColorDialog()} onNotify={handleColorButtonNotify} />
                     </GtkBox>
                     {selectedColor && (
                         <GtkLabel
@@ -160,7 +179,7 @@ const PickersDemo = () => {
                     />
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                         <GtkButton label="Choose Font..." onClicked={handleFontPick} />
-                        <GtkFontDialogButton />
+                        <GtkFontDialogButton dialog={new Gtk.FontDialog()} onNotify={handleFontButtonNotify} />
                     </GtkBox>
                     {selectedFont && (
                         <GtkLabel

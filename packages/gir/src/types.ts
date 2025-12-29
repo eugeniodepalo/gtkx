@@ -1169,6 +1169,15 @@ export class TypeMapper {
                     return POINTER_TYPE;
                 }
 
+                if (registered.name === "ParamSpec" && registered.namespace === "GObject") {
+                    return {
+                        ts: qualifiedName,
+                        ffi: { type: "gparam", borrowed: isReturn },
+                        externalType,
+                        kind: registered.kind,
+                    };
+                }
+
                 return {
                     ts: qualifiedName,
                     ffi: { type: "gobject", borrowed: isReturn },
@@ -1279,6 +1288,14 @@ export class TypeMapper {
                     if (registered.kind === "callback") {
                         return POINTER_TYPE;
                     }
+                    if (registered.name === "ParamSpec" && registered.namespace === "GObject") {
+                        return {
+                            ts: qualifiedName,
+                            ffi: { type: "gparam", borrowed: isReturn },
+                            externalType: isExternal ? externalType : undefined,
+                            kind: registered.kind,
+                        };
+                    }
                     return {
                         ts: qualifiedName,
                         ffi: { type: "gobject", borrowed: isReturn },
@@ -1354,6 +1371,14 @@ export class TypeMapper {
                 }
                 if (registered.kind === "callback") {
                     return POINTER_TYPE;
+                }
+                if (registered.name === "ParamSpec" && registered.namespace === "GObject") {
+                    return {
+                        ts: qualifiedName,
+                        ffi: { type: "gparam", borrowed: isReturn },
+                        externalType,
+                        kind: registered.kind,
+                    };
                 }
                 return {
                     ts: qualifiedName,

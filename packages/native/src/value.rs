@@ -881,6 +881,23 @@ impl Value {
 
                 Ok(Value::Object(ObjectId::new(Object::GObject(obj))))
             }
+            Type::GParam(gparam_type) => {
+                let param_ptr = unsafe {
+                    glib::gobject_ffi::g_value_get_param(gvalue.to_glib_none().0 as *const _)
+                };
+
+                if param_ptr.is_null() {
+                    return Ok(Value::Null);
+                }
+
+                let param_spec = if gparam_type.is_borrowed {
+                    unsafe { glib::ParamSpec::from_glib_none(param_ptr) }
+                } else {
+                    unsafe { glib::ParamSpec::from_glib_full(param_ptr) }
+                };
+
+                Ok(Value::Object(ObjectId::new(Object::ParamSpec(param_spec))))
+            }
             Type::Boxed(boxed_type) => {
                 let gvalue_type = gvalue.type_();
 

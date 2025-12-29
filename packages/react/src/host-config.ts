@@ -4,6 +4,7 @@ import React from "react";
 import type ReactReconciler from "react-reconciler";
 import { createNode } from "./factory.js";
 import type { Node } from "./node.js";
+import { clearFiredSignals } from "./nodes/internal/signal-store.js";
 import { flushAfterCommit } from "./scheduler.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
@@ -131,6 +132,7 @@ export function createHostConfig(): HostConfig {
         },
         resetAfterCommit: () => {
             endBatch();
+            clearFiredSignals();
             flushAfterCommit();
             committing = false;
         },

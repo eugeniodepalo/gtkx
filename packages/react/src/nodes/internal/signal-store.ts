@@ -21,6 +21,12 @@ const LIFECYCLE_SIGNALS = new Set([
     "teardown",
 ]);
 
+const firedThisCommit = new Set<string>();
+
+export const clearFiredSignals = (): void => {
+    firedThisCommit.clear();
+};
+
 export class SignalStore {
     private signalHandlers: Map<string, { obj: GObject.GObject; handlerId: number }> = new Map();
 
@@ -40,8 +46,16 @@ export class SignalStore {
         const key = `${objectId}:${signal}`;
 
         const wrappedHandler: SignalHandler = (...args) => {
-            if (isCommitting() && !LIFECYCLE_SIGNALS.has(signal)) {
-                return;
+            if (LIFECYCLE_SIGNALS.has(signal)) {
+                return handler(...args);
+            }
+
+            if (isCommitting()) {
+                if (firedThisCommit.has(key)) {
+                    return;
+                }
+
+                firedThisCommit.add(key);
             }
 
             return handler(...args);

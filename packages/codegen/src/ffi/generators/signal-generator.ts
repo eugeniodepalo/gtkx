@@ -20,12 +20,16 @@ export class SignalGenerator extends BaseGenerator {
         this.typeMapper.setSameNamespaceClassUsageCallback(null);
 
         let hasBoxedSignalParams = false;
+        let hasGParamSignalParams = false;
         let hasGVariantSignalParams = false;
         const signalMetadata = signals.map((signal) => {
             const paramEntries = (signal.parameters ?? []).map((param) => {
                 const ffiType = this.typeMapper.mapParameter(param).ffi;
                 if (ffiType.type === "boxed") {
                     hasBoxedSignalParams = true;
+                }
+                if (ffiType.type === "gparam") {
+                    hasGParamSignalParams = true;
                 }
                 if (ffiType.type === "gvariant") {
                     hasGVariantSignalParams = true;
@@ -83,12 +87,16 @@ export class SignalGenerator extends BaseGenerator {
             signalOverloads.push(
                 `  ${methodName}(signal: "notify", handler: (self: ${className}, pspec: GObject.ParamSpec) => void, after?: boolean): number;`,
             );
+            signalMetadata.push(
+                `    "notify": { params: [{ type: "gparam", borrowed: true }], returnType: { type: "undefined" } }`,
+            );
             this.ctx.usedExternalTypes.set("GObject.ParamSpec", {
                 namespace: "GObject",
                 name: "ParamSpec",
                 transformedName: "ParamSpec",
                 kind: "class",
             });
+            hasGParamSignalParams = true;
         }
 
         signalOverloads.push(
@@ -111,6 +119,18 @@ export class SignalGenerator extends BaseGenerator {
                 kind: "record",
             });
         }
+        if (hasGParamSignalParams) {
+            if (this.options.namespace === "GObject") {
+                this.ctx.usedSameNamespaceClasses.set("ParamSpec", "ParamSpec");
+            } else {
+                this.ctx.usedExternalTypes.set("GObject.ParamSpec", {
+                    namespace: "GObject",
+                    name: "ParamSpec",
+                    transformedName: "ParamSpec",
+                    kind: "class",
+                });
+            }
+        }
 
         const moduleLevel =
             signalMetadata.length > 0 ? `const SIGNAL_META: SignalMeta = {\n${signalMetadata.join(",\n")}\n};\n` : "";
@@ -124,14 +144,17 @@ export class SignalGenerator extends BaseGenerator {
                 : `const selfType: Type = { type: "gobject", borrowed: true };\n    const argTypes = [selfType];\n    const returnType = undefined;`;
 
         const hasAnySignalParams = signalMetadata.length > 0;
+        const paramSpecRef = this.options.namespace === "GObject" ? "ParamSpec" : "GObject.ParamSpec";
         const wrapperResult = generateSignalWrapperCode({
             handlerName: "handler",
             wrappedName: "wrappedHandler",
             metadataVar: "meta",
             hasGObjectParams: hasAnySignalParams,
+            hasGParamParams: hasGParamSignalParams,
             hasBoxedParams: hasBoxedSignalParams,
             hasGVariantParams: hasGVariantSignalParams,
             indent: "    ",
+            paramSpecRef,
         });
 
         const wrapperCode = wrapperResult.code;

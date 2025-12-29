@@ -8,6 +8,8 @@ type StringType = { type: "string"; borrowed?: boolean; length?: number };
 
 type GObjectType = { type: "gobject"; borrowed?: boolean };
 
+type GParamType = { type: "gparam"; borrowed?: boolean };
+
 type BoxedType = { type: "boxed"; borrowed?: boolean; innerType: string; lib?: string; getTypeFn?: string };
 
 type StructType = { type: "struct"; borrowed?: boolean; innerType?: string; size?: number };
@@ -46,6 +48,7 @@ export type Type =
     | BooleanType
     | StringType
     | GObjectType
+    | GParamType
     | BoxedType
     | StructType
     | GVariantType

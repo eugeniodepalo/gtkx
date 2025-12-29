@@ -24,6 +24,40 @@ export class ClassGenerator extends BaseGenerator {
         this.signalGenerator = new SignalGenerator(typeMapper, ctx, options);
     }
 
+    /**
+     * Checks if a class is ParamSpec or inherits from ParamSpec.
+     * ParamSpec is a fundamental type (not a GObject) and needs special handling.
+     */
+    private isParamSpecClass(cls: GirClass, classMap: Map<string, GirClass>): boolean {
+        if (cls.name === "ParamSpec" || cls.glibTypeName === "GParam") {
+            return true;
+        }
+        if (cls.parent === "ParamSpec") {
+            return true;
+        }
+        if (cls.parent === "GObject.ParamSpec") {
+            return true;
+        }
+        if (cls.parent && classMap.has(cls.parent)) {
+            const parentCls = classMap.get(cls.parent);
+            if (parentCls) {
+                return this.isParamSpecClass(parentCls, classMap);
+            }
+        }
+        if (cls.parent?.includes(".")) {
+            const [ns, parentName] = cls.parent.split(".", 2);
+            const parentNs = (this.options.allNamespaces as Map<string, GirNamespace> | undefined)?.get(ns ?? "");
+            if (parentNs && parentName) {
+                const parentCls = parentNs.classes.find((c) => c.name === parentName);
+                if (parentCls) {
+                    const parentClassMap = new Map(parentNs.classes.map((c) => [c.name, c]));
+                    return this.isParamSpecClass(parentCls, parentClassMap);
+                }
+            }
+        }
+        return false;
+    }
+
     async generateClass(
         cls: GirClass,
         sharedLibrary: string,
@@ -143,10 +177,13 @@ export class ClassGenerator extends BaseGenerator {
         }
         sections.push(`export class ${className}${parentInfo.extendsClause}${implementsClause} {`);
 
+        const isParamSpec = this.isParamSpecClass(cls, classMap);
+
         if (cls.glibTypeName) {
             const override = parentInfo.hasParent ? "override " : "";
+            const objectType = isParamSpec ? "gparam" : "gobject";
             sections.push(`  static ${override}readonly glibTypeName: string = "${cls.glibTypeName}";`);
-            sections.push(`  static ${override}readonly objectType = "gobject" as const;\n`);
+            sections.push(`  static ${override}readonly objectType = "${objectType}" as const;\n`);
         }
 
         if (!parentInfo.hasParent) {
@@ -155,18 +192,18 @@ export class ClassGenerator extends BaseGenerator {
 
         sections.push(this.generateConstructors(cls, sharedLibrary, parentInfo.hasParent));
         sections.push(this.generateStaticFunctions(cls.functions, sharedLibrary, className));
-        sections.push(this.generateMethods(filteredClassMethods, sharedLibrary, cls.name));
+        sections.push(this.generateMethods(filteredClassMethods, sharedLibrary, cls.name, false, isParamSpec));
 
         if (interfaceMethods.length > 0) {
             for (const [sourceNamespace, methods] of interfaceMethodsByNamespace) {
                 if (sourceNamespace !== this.options.namespace && this.options.typeRegistry) {
                     this.typeMapper.setTypeRegistry(this.options.typeRegistry, sourceNamespace);
                     this.typeMapper.setForceExternalNamespace(sourceNamespace);
-                    sections.push(this.generateMethods(methods, sharedLibrary, className));
+                    sections.push(this.generateMethods(methods, sharedLibrary, className, false, isParamSpec));
                     this.typeMapper.setForceExternalNamespace(null);
                     this.typeMapper.setTypeRegistry(this.options.typeRegistry, this.options.namespace);
                 } else {
-                    sections.push(this.generateMethods(methods, sharedLibrary, className));
+                    sections.push(this.generateMethods(methods, sharedLibrary, className, false, isParamSpec));
                 }
             }
         }
@@ -427,7 +464,13 @@ ${allArgs ? `${allArgs},` : ""}
         return `${lines.join("\n")}\n`;
     }
 
-    generateMethods(methods: GirMethod[], sharedLibrary: string, className?: string, isRecord = false): string {
+    generateMethods(
+        methods: GirMethod[],
+        sharedLibrary: string,
+        className?: string,
+        isRecord = false,
+        isParamSpec = false,
+    ): string {
         const generatedMethods = new Set<string>();
         const sections: string[] = [];
 
@@ -450,14 +493,14 @@ ${allArgs ? `${allArgs},` : ""}
             }
 
             if (asyncMethods.has(method.name) || finishMethods.has(method.name)) {
-                const asyncWrapper = this.generateAsyncWrapper(method, methods, sharedLibrary, className);
+                const asyncWrapper = this.generateAsyncWrapper(method, methods, sharedLibrary, className, isParamSpec);
                 if (asyncWrapper) {
                     sections.push(asyncWrapper);
                 }
                 continue;
             }
 
-            sections.push(this.generateMethod(method, sharedLibrary, className, isRecord));
+            sections.push(this.generateMethod(method, sharedLibrary, className, isRecord, isParamSpec));
         }
 
         return sections.join("\n");
@@ -477,6 +520,7 @@ ${allArgs ? `${allArgs},` : ""}
         allMethods: GirMethod[],
         sharedLibrary: string,
         _className?: string,
+        isParamSpec = false,
     ): string | null {
         if (!this.hasAsyncCallback(method)) return null;
 
@@ -541,7 +585,14 @@ ${allArgs ? `${allArgs},` : ""}
         lines.push(`  ${methodName}(${params}): Promise<${promiseType}> {`);
         lines.push(`    return new Promise((resolve, reject) => {`);
 
-        const callArgs = this.buildAsyncCallArgs(method, finishMethod, outputParams, sharedLibrary, isNullable);
+        const callArgs = this.buildAsyncCallArgs(
+            method,
+            finishMethod,
+            outputParams,
+            sharedLibrary,
+            isNullable,
+            isParamSpec,
+        );
         lines.push(callArgs);
 
         lines.push(`    });`);
@@ -585,6 +636,7 @@ ${allArgs ? `${allArgs},` : ""}
         outputParams: GirParameter[],
         sharedLibrary: string,
         isNullable = false,
+        isParamSpec = false,
     ): string {
         const returnTypeMapping = this.typeMapper.mapType(finishMethod.returnType, true);
         const hasMainReturn = returnTypeMapping.ts !== "void";
@@ -597,6 +649,8 @@ ${allArgs ? `${allArgs},` : ""}
         const needsInterfaceWrap =
             returnTypeMapping.ffi.type === "gobject" && returnTypeMapping.ts !== "unknown" && isInterface;
         const needsObjectWrap = needsGObjectWrap || needsBoxedWrap || needsGVariantWrap || needsInterfaceWrap;
+
+        const selfType = isParamSpec ? "gparam" : "gobject";
 
         const lines: string[] = [];
 
@@ -643,7 +697,7 @@ ${allArgs ? `${allArgs},` : ""}
             lines.push(`            "${sharedLibrary}",`);
             lines.push(`            "${finishMethod.cIdentifier}",`);
             lines.push(`            [`);
-            lines.push(`              { type: { type: "gobject" }, value: this.id },`);
+            lines.push(`              { type: { type: "${selfType}" }, value: this.id },`);
             lines.push(`${finishCallArgs}${errorArg}`);
             lines.push(`            ],`);
             lines.push(`            ${this.generateTypeDescriptor(finishReturnType.ffi)}`);
@@ -653,7 +707,7 @@ ${allArgs ? `${allArgs},` : ""}
             lines.push(`            "${sharedLibrary}",`);
             lines.push(`            "${finishMethod.cIdentifier}",`);
             lines.push(`            [`);
-            lines.push(`              { type: { type: "gobject" }, value: this.id },`);
+            lines.push(`              { type: { type: "${selfType}" }, value: this.id },`);
             lines.push(`${finishCallArgs}${errorArg}`);
             lines.push(`            ],`);
             lines.push(`            { type: "undefined" }`);
@@ -732,7 +786,7 @@ ${allArgs ? `${allArgs},` : ""}
         lines.push(`        "${sharedLibrary}",`);
         lines.push(`        "${method.cIdentifier}",`);
         lines.push(`        [`);
-        lines.push(`          { type: { type: "gobject" }, value: this.id },`);
+        lines.push(`          { type: { type: "${selfType}" }, value: this.id },`);
         if (asyncCallArgs) {
             lines.push(`${asyncCallArgs},`);
         }
@@ -769,7 +823,13 @@ ${allArgs ? `${allArgs},` : ""}
             .join(",\n");
     }
 
-    private generateMethod(method: GirMethod, sharedLibrary: string, className?: string, isRecord = false): string {
+    private generateMethod(
+        method: GirMethod,
+        sharedLibrary: string,
+        className?: string,
+        isRecord = false,
+        isParamSpec = false,
+    ): string {
         const dynamicRename = this.ctx.methodRenames.get(method.cIdentifier);
         const camelName = toCamelCase(method.name);
         const methodName = dynamicRename ?? camelName;
@@ -806,10 +866,14 @@ ${allArgs ? `${allArgs},` : ""}
 
         const gtkAllocatesRefs = this.identifyGtkAllocatesRefs(method.parameters);
 
-        const selfTypeDescriptor =
-            isRecord && className
-                ? `{ type: "boxed", borrowed: true, innerType: "${className}", lib: "${sharedLibrary}" }`
-                : `{ type: "gobject" }`;
+        let selfTypeDescriptor: string;
+        if (isRecord && className) {
+            selfTypeDescriptor = `{ type: "boxed", borrowed: true, innerType: "${className}", lib: "${sharedLibrary}" }`;
+        } else if (isParamSpec) {
+            selfTypeDescriptor = `{ type: "gparam" }`;
+        } else {
+            selfTypeDescriptor = `{ type: "gobject" }`;
+        }
 
         const lines: string[] = [];
         const methodDoc = this.formatMethodDoc(method.doc, method.parameters);

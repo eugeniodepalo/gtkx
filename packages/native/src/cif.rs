@@ -278,6 +278,30 @@ impl TryFrom<arg::Arg> for Value {
 
                 Ok(Value::Ptr(ptr))
             }
+            Type::GParam(type_) => {
+                let object_id = match &arg.value {
+                    value::Value::Object(id) => Some(id),
+                    value::Value::Null | value::Value::Undefined => None,
+                    _ => bail!("Expected an Object for gparam type, got {:?}", arg.value),
+                };
+
+                let ptr = match object_id {
+                    Some(id) => id
+                        .as_ptr()
+                        .ok_or_else(|| anyhow::anyhow!("GParamSpec has been garbage collected"))?,
+                    None => std::ptr::null_mut(),
+                };
+
+                let is_transfer_full = !type_.is_borrowed && !ptr.is_null();
+
+                if is_transfer_full {
+                    unsafe {
+                        glib::gobject_ffi::g_param_spec_ref(ptr as *mut _);
+                    }
+                }
+
+                Ok(Value::Ptr(ptr))
+            }
             Type::Boxed(type_) => {
                 let object_id = match &arg.value {
                     value::Value::Object(id) => Some(id),

@@ -147,6 +147,9 @@ export abstract class BaseGenerator {
         if (type.type === "gobject") {
             return type.borrowed ? `{ type: "gobject", borrowed: true }` : `{ type: "gobject" }`;
         }
+        if (type.type === "gparam") {
+            return type.borrowed ? `{ type: "gparam", borrowed: true }` : `{ type: "gparam" }`;
+        }
         if (type.type === "boxed") {
             const innerType = typeof type.innerType === "string" ? type.innerType : "";
             if (innerType === "GVariant") {

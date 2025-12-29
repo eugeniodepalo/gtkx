@@ -37,6 +37,7 @@ mod boxed;
 mod callback;
 mod float;
 mod gobject;
+mod gparam;
 mod gvariant;
 mod integer;
 mod r#ref;
@@ -48,6 +49,7 @@ pub use boxed::*;
 pub use callback::*;
 pub use float::*;
 pub use gobject::*;
+pub use gparam::*;
 pub use gvariant::*;
 pub use integer::*;
 pub use r#ref::*;
@@ -56,7 +58,6 @@ pub use struct_type::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallbackTrampoline {
-
     Closure,
 
     AsyncReady,
@@ -72,7 +73,6 @@ pub enum CallbackTrampoline {
 
 #[derive(Debug, Clone)]
 pub struct CallbackType {
-
     pub trampoline: CallbackTrampoline,
 
     pub arg_types: Option<Vec<Type>>,
@@ -86,7 +86,6 @@ pub struct CallbackType {
 
 #[derive(Debug, Clone)]
 pub enum Type {
-
     Integer(IntegerType),
 
     Float(FloatType),
@@ -101,9 +100,10 @@ pub enum Type {
 
     GObject(GObjectType),
 
+    GParam(GParamType),
+
     Boxed(BoxedType),
 
-    /// Plain C struct without GType registration.
     Struct(StructType),
 
     GVariant(GVariantType),
@@ -116,7 +116,6 @@ pub enum Type {
 }
 
 impl Type {
-
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let type_value: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
@@ -134,6 +133,7 @@ impl Type {
             "null" => Ok(Type::Null),
             "undefined" => Ok(Type::Undefined),
             "gobject" => Ok(Type::GObject(GObjectType::from_js_value(cx, value)?)),
+            "gparam" => Ok(Type::GParam(GParamType::from_js_value(cx, value)?)),
             "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
             "struct" => Ok(Type::Struct(StructType::from_js_value(cx, value)?)),
             "gvariant" => Ok(Type::GVariant(GVariantType::from_js_value(cx, value)?)),
@@ -204,6 +204,7 @@ impl From<&Type> for ffi::Type {
             Type::Boolean => ffi::Type::u8(),
             Type::Null => ffi::Type::pointer(),
             Type::GObject(type_) => type_.into(),
+            Type::GParam(type_) => type_.into(),
             Type::Boxed(type_) => type_.into(),
             Type::Struct(type_) => type_.into(),
             Type::GVariant(type_) => type_.into(),
@@ -222,27 +223,45 @@ mod tests {
     #[test]
     fn callback_trampoline_equality() {
         assert_eq!(CallbackTrampoline::Closure, CallbackTrampoline::Closure);
-        assert_eq!(CallbackTrampoline::AsyncReady, CallbackTrampoline::AsyncReady);
+        assert_eq!(
+            CallbackTrampoline::AsyncReady,
+            CallbackTrampoline::AsyncReady
+        );
         assert_eq!(CallbackTrampoline::Destroy, CallbackTrampoline::Destroy);
         assert_eq!(CallbackTrampoline::DrawFunc, CallbackTrampoline::DrawFunc);
-        assert_eq!(CallbackTrampoline::ShortcutFunc, CallbackTrampoline::ShortcutFunc);
+        assert_eq!(
+            CallbackTrampoline::ShortcutFunc,
+            CallbackTrampoline::ShortcutFunc
+        );
         assert_eq!(
             CallbackTrampoline::TreeListModelCreateFunc,
             CallbackTrampoline::TreeListModelCreateFunc
         );
         assert_ne!(CallbackTrampoline::Closure, CallbackTrampoline::AsyncReady);
-        assert_ne!(CallbackTrampoline::ShortcutFunc, CallbackTrampoline::TreeListModelCreateFunc);
-        assert_ne!(CallbackTrampoline::DrawFunc, CallbackTrampoline::ShortcutFunc);
+        assert_ne!(
+            CallbackTrampoline::ShortcutFunc,
+            CallbackTrampoline::TreeListModelCreateFunc
+        );
+        assert_ne!(
+            CallbackTrampoline::DrawFunc,
+            CallbackTrampoline::ShortcutFunc
+        );
     }
 
     #[test]
     fn callback_trampoline_debug() {
         // Verify Debug impl works for all variants
         assert_eq!(format!("{:?}", CallbackTrampoline::Closure), "Closure");
-        assert_eq!(format!("{:?}", CallbackTrampoline::AsyncReady), "AsyncReady");
+        assert_eq!(
+            format!("{:?}", CallbackTrampoline::AsyncReady),
+            "AsyncReady"
+        );
         assert_eq!(format!("{:?}", CallbackTrampoline::Destroy), "Destroy");
         assert_eq!(format!("{:?}", CallbackTrampoline::DrawFunc), "DrawFunc");
-        assert_eq!(format!("{:?}", CallbackTrampoline::ShortcutFunc), "ShortcutFunc");
+        assert_eq!(
+            format!("{:?}", CallbackTrampoline::ShortcutFunc),
+            "ShortcutFunc"
+        );
         assert_eq!(
             format!("{:?}", CallbackTrampoline::TreeListModelCreateFunc),
             "TreeListModelCreateFunc"

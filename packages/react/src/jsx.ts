@@ -779,11 +779,5 @@ declare global {
 export * from "./generated/jsx.js";
 
 declare module "./generated/jsx.js" {
-    interface WidgetProps extends EventControllerProps {
-        /**
-         * Called when any property on this widget changes.
-         * @param propName - The name of the property that changed
-         */
-        onNotify?: (propName: string) => void;
-    }
+    interface WidgetProps extends EventControllerProps {}
 }

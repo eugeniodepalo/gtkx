@@ -264,8 +264,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             }
             case "onNotify": {
                 const wrappedHandler = handler
-                    ? (_obj: unknown, pspec: GObject.ParamSpec) => {
-                          handler(pspec.getName());
+                    ? (obj: Gtk.Widget, pspec: GObject.ParamSpec) => {
+                          handler(obj, pspec.getName());
                       }
                     : undefined;
                 this.signalStore.set(this.container, "notify", wrappedHandler);

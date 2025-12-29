@@ -35,6 +35,8 @@ pub enum Object {
     Boxed(Boxed),
 
     GVariant(GVariant),
+
+    ParamSpec(glib::ParamSpec),
 }
 
 impl Clone for Object {
@@ -43,6 +45,7 @@ impl Clone for Object {
             Object::GObject(obj) => Object::GObject(obj.clone()),
             Object::Boxed(boxed) => Object::Boxed(boxed.clone()),
             Object::GVariant(variant) => Object::GVariant(variant.clone()),
+            Object::ParamSpec(pspec) => Object::ParamSpec(pspec.clone()),
         }
     }
 }
@@ -67,6 +70,7 @@ impl ObjectId {
                 Object::GObject(obj) => obj.as_ptr() as *mut c_void,
                 Object::Boxed(boxed) => *boxed.as_ref(),
                 Object::GVariant(variant) => variant.as_ptr(),
+                Object::ParamSpec(pspec) => pspec.as_ptr() as *mut c_void,
             })
         })
     }
