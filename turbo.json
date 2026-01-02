@@ -5,29 +5,47 @@
     "globalPassThroughEnv": ["TURBO_TOKEN", "TURBO_TEAM"],
     "cacheDir": ".turbo",
     "tasks": {
+        "//#lint:all": {
+            "inputs": ["**/*.ts", "**/*.tsx", "**/*.json", "biome.json"],
+            "outputs": [],
+            "outputLogs": "new-only"
+        },
+        "//#knip:all": {
+            "inputs": ["**/*.ts", "**/*.tsx", "knip.json", "package.json"],
+            "outputs": [],
+            "outputLogs": "new-only"
+        },
+        "//#codegen:all": {
+            "dependsOn": ["@gtkx/codegen#build"],
+            "inputs": [
+                "$TURBO_ROOT$/girs/**",
+                "$TURBO_ROOT$/packages/gir/src/**",
+                "$TURBO_ROOT$/packages/codegen/src/**"
+            ],
+            "outputs": ["packages/ffi/src/generated/**", "packages/react/src/generated/**"],
+            "outputLogs": "new-only"
+        },
         "lint": {
-            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "scripts/**/*.ts"],
+            "inputs": ["*.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "scripts/**/*.ts"],
             "outputs": [],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
-        "codegen": {
-            "dependsOn": ["@gtkx/codegen#build"],
-            "inputs": ["$TURBO_ROOT$/girs/**", "$TURBO_ROOT$/packages/gir/src/**"],
-            "outputs": ["src/generated/**"],
-            "outputLogs": "new-only"
-        },
         "build": {
-            "dependsOn": ["^build", "codegen", "native-build"],
+            "dependsOn": ["^build", "native-build"],
             "inputs": [
+                "$TURBO_ROOT$/README.md",
+                "package.json",
+                "*.ts",
                 "bin/**",
                 "src/**/*.ts",
                 "src/**/*.tsx",
                 "tsconfig.json",
                 "tsconfig.app.json",
+                "tsconfig.lib.json",
                 "tsconfig.test.json"
             ],
-            "outputs": ["dist/**", "out-tsc/**", "build/**", "*.tsbuildinfo"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
             "outputLogs": "new-only"
         },
         "native-build": {
@@ -50,17 +68,17 @@
         },
         "test": {
             "dependsOn": ["^build", "native-test"],
-            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
+            "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
             "outputLogs": "new-only"
         },
-        "@gtkx/gir#build": {
-            "dependsOn": ["^build"],
-            "outputs": ["dist/**", "*.tsbuildinfo"],
+        "@gtkx/ffi#build": {
+            "dependsOn": ["^build", "//#codegen:all"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
             "outputLogs": "new-only"
         },
-        "@gtkx/codegen#build": {
-            "dependsOn": ["@gtkx/gir#build"],
-            "outputs": ["dist/**", "*.tsbuildinfo"],
+        "@gtkx/react#build": {
+            "dependsOn": ["^build", "//#codegen:all"],
+            "outputs": ["dist/**", "*.tsbuildinfo", "README.md"],
             "outputLogs": "new-only"
         },
         "website#build": {

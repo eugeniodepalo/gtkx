@@ -16,6 +16,14 @@
     },
     "linter": {
         "rules": {
+            "style": {
+                "useConsistentArrayType": {
+                    "level": "error",
+                    "options": {
+                        "syntax": "shorthand"
+                    }
+                }
+            },
             "suspicious": {
                 "noRedeclare": "off"
             }

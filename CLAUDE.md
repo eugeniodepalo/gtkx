@@ -2,218 +2,104 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Note:** This document is for **contributors and AI assistants** working on the GTKX codebase itself. If you're building an application with GTKX, see the [documentation](https://eugeniodepalo.github.io/gtkx/) instead.
-
-# GTKX
-
-React framework for building native GTK4 desktop applications on Linux.
-
-## Architecture
-
-```
-React Components (JSX)
-        ↓ props, callbacks
-@gtkx/react (reconciler)
-        ↓ widget operations
-@gtkx/ffi (TypeScript bindings)
-        ↓ FFI calls
-@gtkx/native (Rust/Neon)
-        ↓ GTK4 C API
-Native GTK4 Widgets
-```
-
-**Data flow:**
-
-- Props flow down: React state → reconciler → call() → GTK widget properties
-- Events flow up: GTK signals → FFI callbacks → React event handlers
-
-## Package Structure
-
-```
-packages/
-├── react/      # React reconciler, JSX components, render()
-├── ffi/        # Generated TypeScript FFI bindings to native module
-├── native/     # Rust native module (Neon) - GTK4 bridge
-├── cli/        # `gtkx` CLI - project scaffolding, dev server with HMR
-├── codegen/    # Generates FFI/JSX bindings from GIR files
-├── gir/        # GObject Introspection XML parser
-├── css/        # CSS-in-JS styling system (Emotion-based)
-├── testing/    # Component testing utilities
-├── vitest/     # Vitest plugin for Xvfb display management
-└── e2e/        # End-to-end tests
-```
-
-## Key Entry Points
-
-| File                                | Purpose                                   |
-| ----------------------------------- | ----------------------------------------- |
-| `packages/react/src/render.tsx`     | `render()` function, `ApplicationContext` |
-| `packages/react/src/host-config.ts` | React reconciler implementation           |
-| `packages/react/src/nodes/*.ts`     | Widget node handlers (30+ widgets)        |
-| `packages/native/src/lib.rs`        | Rust FFI exports                          |
-| `packages/ffi/src/index.ts`         | JavaScript FFI wrapper                    |
-| `packages/cli/src/create.ts`        | Project scaffolding                       |
-| `packages/cli/src/dev-server.tsx`   | Development server with HMR               |
-
-## Native FFI Functions
-
-Exported from `@gtkx/native`:
-
-| Function                        | Purpose                                   |
-| ------------------------------- | ----------------------------------------- |
-| `start(appId)`                  | Initialize GTK application                |
-| `stop()`                        | Shutdown GTK application                  |
-| `call(method, args)`            | Invoke a GTK method                       |
-| `batchCall(calls)`              | Multiple operations in one FFI round-trip |
-| `alloc(type)`                   | Allocate a boxed type                     |
-| `read(objectId, type, offset)`         | Read value from boxed memory              |
-| `write(objectId, type, offset, value)` | Write value to boxed memory               |
-| `getObjectId(object)`           | Get internal object ID                    |
-| `poll()`                        | Process GTK events                        |
-
 ## Commands
 
 ```bash
-pnpm build           # Build all packages
-pnpm codegen         # Regenerate FFI bindings from GIR files
-pnpm test            # Run test suite (uses @gtkx/vitest for Xvfb)
-pnpm lint            # Lint TypeScript (Biome) and Rust (Clippy)
-pnpm docs            # Build documentation website
-pnpm knip            # Check for dead code
+pnpm install                  # Install dependencies
+pnpm turbo build              # Build all packages (native + TypeScript)
+pnpm turbo test               # Run all tests (requires Xvfb for display isolation)
+pnpm turbo lint:all           # Run Biome (TS/JS) and Clippy (Rust)
+pnpm turbo knip:all           # Check for dead/unused code
+pnpm turbo codegen:all        # Regenerate FFI bindings from GIR files
+
+# Package-specific
+pnpm turbo build --filter=@gtkx/react
+pnpm turbo test --filter=@gtkx/react
+
+# Linting
+pnpm biome check --write .    # Fix auto-fixable issues
 ```
 
-Build/test a specific package:
+## Troubleshooting
 
-```bash
-pnpm --filter @gtkx/react build
-pnpm --filter @gtkx/react test
-```
+- **Caching issues**: Run with `--force` to bypass turbo cache (e.g., `pnpm turbo build --force`)
+- **Incremental build errors**: Remove `*.tsbuildinfo` files (`find . -name '*.tsbuildinfo' -delete`)
 
-Run a single test file:
+## Architecture
 
-```bash
-pnpm --filter @gtkx/e2e test tests/button.test.tsx
-```
+GTKX renders React components as native GTK4 widgets through a two-thread Rust FFI bridge.
 
-Fix lint issues:
-
-```bash
-pnpm biome check --write .
-```
-
-## Examples
+### Data Flow
 
 ```
-examples/
-├── hello-world/   # Minimal counter app
-├── todo/          # Complete todo app - state, lists, Adwaita styling
-├── gtk-demo/      # Full replica of official GTK demo
-└── deploying/     # Flatpak packaging
+React JSX → React Reconciler → HostConfig → Node Tree → WidgetNode
+    → SignalStore → FFI Batch Layer → Rust Native Module → GTK Thread → Native Widgets
 ```
 
-Run an example:
+### Package Structure
 
-```bash
-cd examples/todo
-pnpm install
-pnpm dev
-```
+| Package   | Purpose                                                             |
+| --------- | ------------------------------------------------------------------- |
+| `react`   | React reconciler, JSX components, `render()` entry point            |
+| `ffi`     | Generated TypeScript FFI bindings, batching, lifecycle              |
+| `native`  | Rust/Neon module: two-thread model, libffi calls, value marshalling |
+| `codegen` | Generates FFI/React bindings from GIR files                         |
+| `gir`     | GObject Introspection XML parser                                    |
+| `cli`     | Scaffolding, Vite-based dev server with HMR                         |
+| `css`     | CSS-in-JS styling adapted for GTK                                   |
+| `testing` | Component testing utilities (like Testing Library)                  |
+| `vitest`  | Vitest plugin for Xvfb display management                           |
 
-## Key Concepts
+### Key Files
 
-### Widgets
+- `packages/react/src/render.tsx` - App lifecycle, `render()`/`update()`/`quit()`
+- `packages/react/src/host-config.ts` - React Reconciler HostConfig implementation
+- `packages/react/src/node.ts` - Base Node class with specialized subclasses
+- `packages/react/src/nodes/widget.ts` - WidgetNode: props, children, signals
+- `packages/react/src/nodes/internal/signal-store.ts` - Central signal connection management
+- `packages/react/src/factory.ts` - Node creation with priority-based class selection
+- `packages/ffi/src/batch.ts` - FFI call batching optimization
+- `packages/ffi/src/native/lifecycle.ts` - GTK app start/stop
+- `packages/native/src/lib.rs` - Rust FFI exports (start, stop, call, batchCall)
+- `packages/native/src/value.rs` - JS ↔ GLib value conversion
 
-GTK widgets map to React components prefixed with `Gtk` or `Adw`:
+### Two-Thread Model
 
-```tsx
-<GtkButton label="Click" onClicked={() => {}} />
-<GtkLabel label="Text" cssClasses={["title-1"]} />
-<AdwHeaderBar />
-```
+- **JS Thread**: Node.js, React reconciliation, all JavaScript
+- **GTK Thread**: Spawned by native module, runs GTK main loop
+- Communication via `gtk_dispatch` (JS→GTK) and `js_dispatch` (GTK→JS callbacks)
 
-### Slots
+### Signal Blocking
 
-Named child positions for GTK's slot-based layout:
+During React commits, signals are blocked (`SignalStore.blockAll()`) to prevent handlers firing while the tree is being updated. Unblocked in `resetAfterCommit()`.
 
-```tsx
-<GtkHeaderBar>
-  <Slot for={GtkHeaderBar} id="titleWidget">
-    Title
-  </Slot>
-</GtkHeaderBar>
-```
+### Batching
 
-### Application Window
+Void-returning FFI calls are queued and executed together to reduce JS↔Native round-trips. Use `batch()` wrapper or manual `beginBatch()`/`endBatch()`.
 
-Every app needs a window with close handling:
+### Node Priority System
 
-```tsx
-<GtkApplicationWindow title="App" onCloseRequest={quit}>
-  {children}
-</GtkApplicationWindow>
-```
+Specialized nodes (ListItemNode, StackNode, etc.) have higher priority than the default WidgetNode. The factory uses `NodeClass.matches()` to select the appropriate handler.
 
-### Rendering
+### Container Predicates
 
-Mount your app with `render()`:
+Child management uses runtime method detection:
 
-```tsx
-import { render } from "@gtkx/react";
-render(<App />, "com.example.app");
-```
+- `isAppendable()` → `widget.append(child)`
+- `hasSingleContent()` → `widget.setContent(child)`
+- `isSingleChild()` → `widget.setChild(child)`
 
-## Development Patterns
+### Code Generation
 
-- Use `useState`, `useEffect`, and other React hooks normally
-- GTK enums come from `@gtkx/ffi/gtk` (e.g., `Gtk.Orientation.VERTICAL`)
-- CSS classes use `cssClasses={["class1", "class2"]}` prop
-- Adwaita classes: `title-1` through `title-4`, `dim-label`, `suggested-action`, etc.
+GIR files in `girs/` → `packages/gir` parser → `packages/codegen` → generates:
 
-## Testing
+- `packages/ffi/src/generated/*` - FFI wrappers for each GTK namespace
+- `packages/react/src/generated/*` - JSX types, namespace registry, widget metadata
 
-Use `@gtkx/testing` for component tests:
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { render, screen, userEvent } from "@gtkx/testing";
-
-test("button click", async () => {
-  await render(<MyComponent />);
-  const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "my-button" });
-  await userEvent.click(button);
-  const result = await screen.findByTestId("result");
-  expect((result as Gtk.Label).getLabel()).toBe("clicked");
-});
-```
-
-## Code Generation
-
-FFI bindings are auto-generated from GObject Introspection files:
-
-```
-girs/*.gir  →  @gtkx/codegen  →  packages/ffi/src/generated/
-```
-
-Regenerate after updating GIR files:
-
-```bash
-pnpm run codegen
-```
-
-## Tech Stack
-
-- **Frontend:** React 19, TypeScript
-- **Native:** Rust, Neon (Node.js native modules)
-- **Target:** GTK4, Adwaita (Libadwaita)
-- **Build:** pnpm workspaces, Turborepo, Vite
-- **Test:** Vitest with `@gtkx/vitest` plugin (auto-manages Xvfb displays)
-- **Lint:** Biome (TypeScript), Clippy (Rust)
+Run `pnpm turbo codegen` after modifying GIR files or codegen templates.
 
 ## Code Style
 
-- **Indentation:** 4 spaces
-- **Line width:** 120 characters
-- **Quotes:** Double quotes
-- **Semicolons:** Required
-- Biome config in `biome.json`
-- Clippy warnings are errors in CI
+- Biome: 4 spaces, 120 char line width, double quotes, semicolons required
+- Rust: Standard conventions, Clippy warnings are CI errors
+- TypeScript strict mode enabled
