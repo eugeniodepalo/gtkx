@@ -110,7 +110,15 @@ export function glShaderSource(shader: number, source: string): void {
         [
             { type: { type: "int", size: 32, unsigned: true }, value: shader },
             { type: { type: "int", size: 32, unsigned: false }, value: 1 },
-            { type: { type: "array", itemType: { type: "string" } }, value: [source] },
+            {
+                type: {
+                    type: "array",
+                    itemType: { type: "string", ownership: "none" },
+                    listType: "array",
+                    ownership: "none",
+                },
+                value: [source],
+            },
             { type: { type: "int", size: 64, unsigned: true }, value: 0 },
         ],
         { type: "undefined" },
@@ -169,7 +177,10 @@ export function glGetShaderInfoLog(shader: number): string {
             { type: { type: "int", size: 32, unsigned: true }, value: shader },
             { type: { type: "int", size: 32, unsigned: false }, value: logLength },
             { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: lengthRef },
-            { type: { type: "ref", innerType: { type: "string", length: logLength } }, value: infoLogRef },
+            {
+                type: { type: "ref", innerType: { type: "string", ownership: "none", length: logLength } },
+                value: infoLogRef,
+            },
         ],
         { type: "undefined" },
     );
@@ -274,7 +285,10 @@ export function glGetProgramInfoLog(program: number): string {
             { type: { type: "int", size: 32, unsigned: true }, value: program },
             { type: { type: "int", size: 32, unsigned: false }, value: logLength },
             { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: lengthRef },
-            { type: { type: "ref", innerType: { type: "string", length: logLength } }, value: infoLogRef },
+            {
+                type: { type: "ref", innerType: { type: "string", ownership: "none", length: logLength } },
+                value: infoLogRef,
+            },
         ],
         { type: "undefined" },
     );
@@ -304,7 +318,7 @@ export function glGetUniformLocation(program: number, name: string): number {
         "glGetUniformLocation",
         [
             { type: { type: "int", size: 32, unsigned: true }, value: program },
-            { type: { type: "string" }, value: name },
+            { type: { type: "string", ownership: "none" }, value: name },
         ],
         { type: "int", size: 32, unsigned: false },
     ) as number;
@@ -422,7 +436,10 @@ export function glUniformMatrix4fv(location: number, count: number, transpose: b
             { type: { type: "int", size: 32, unsigned: false }, value: location },
             { type: { type: "int", size: 32, unsigned: false }, value: count },
             { type: { type: "boolean" }, value: transpose },
-            { type: { type: "array", itemType: { type: "float", size: 32 } }, value },
+            {
+                type: { type: "array", itemType: { type: "float", size: 32 }, listType: "array", ownership: "none" },
+                value,
+            },
         ],
         { type: "undefined" },
     );
@@ -466,7 +483,15 @@ export function glDeleteVertexArray(array: number): void {
         "glDeleteVertexArrays",
         [
             { type: { type: "int", size: 32, unsigned: false }, value: 1 },
-            { type: { type: "array", itemType: { type: "int", size: 32, unsigned: true } }, value: [array] },
+            {
+                type: {
+                    type: "array",
+                    itemType: { type: "int", size: 32, unsigned: true },
+                    listType: "array",
+                    ownership: "none",
+                },
+                value: [array],
+            },
         ],
         { type: "undefined" },
     );
@@ -517,7 +542,15 @@ export function glDeleteBuffer(buffer: number): void {
         "glDeleteBuffers",
         [
             { type: { type: "int", size: 32, unsigned: false }, value: 1 },
-            { type: { type: "array", itemType: { type: "int", size: 32, unsigned: true } }, value: [buffer] },
+            {
+                type: {
+                    type: "array",
+                    itemType: { type: "int", size: 32, unsigned: true },
+                    listType: "array",
+                    ownership: "none",
+                },
+                value: [buffer],
+            },
         ],
         { type: "undefined" },
     );
@@ -538,7 +571,10 @@ export function glBufferData(target: number, data: number[], usage: number): voi
         [
             { type: { type: "int", size: 32, unsigned: true }, value: target },
             { type: { type: "int", size: 64, unsigned: false }, value: size },
-            { type: { type: "array", itemType: { type: "float", size: 32 } }, value: data },
+            {
+                type: { type: "array", itemType: { type: "float", size: 32 }, listType: "array", ownership: "none" },
+                value: data,
+            },
             { type: { type: "int", size: 32, unsigned: true }, value: usage },
         ],
         { type: "undefined" },
@@ -631,7 +667,15 @@ export function glBufferDataUshort(target: number, data: number[], usage: number
         [
             { type: { type: "int", size: 32, unsigned: true }, value: target },
             { type: { type: "int", size: 64, unsigned: false }, value: size },
-            { type: { type: "array", itemType: { type: "int", size: 16, unsigned: true } }, value: data },
+            {
+                type: {
+                    type: "array",
+                    itemType: { type: "int", size: 16, unsigned: true },
+                    listType: "array",
+                    ownership: "none",
+                },
+                value: data,
+            },
             { type: { type: "int", size: 32, unsigned: true }, value: usage },
         ],
         { type: "undefined" },
@@ -671,7 +715,7 @@ export function glGetAttribLocation(program: number, name: string): number {
         "glGetAttribLocation",
         [
             { type: { type: "int", size: 32, unsigned: true }, value: program },
-            { type: { type: "string" }, value: name },
+            { type: { type: "string", ownership: "none" }, value: name },
         ],
         { type: "int", size: 32, unsigned: false },
     ) as number;
@@ -690,7 +734,7 @@ export function glBindAttribLocation(program: number, index: number, name: strin
         [
             { type: { type: "int", size: 32, unsigned: true }, value: program },
             { type: { type: "int", size: 32, unsigned: true }, value: index },
-            { type: { type: "string" }, value: name },
+            { type: { type: "string", ownership: "none" }, value: name },
         ],
         { type: "undefined" },
     );

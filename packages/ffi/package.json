@@ -47,14 +47,13 @@
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",
-        "codegen": "gtkx-codegen ffi --girs-dir ../../girs --output-dir src/generated",
+        "codegen": "echo 'Use pnpm codegen from repo root'",
         "test": "vitest run"
     },
     "dependencies": {
         "@gtkx/native": "workspace:*"
     },
     "devDependencies": {
-        "@gtkx/codegen": "workspace:*",
         "@gtkx/vitest": "workspace:*"
     }
 }

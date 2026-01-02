@@ -1,5 +1,3 @@
-// biome-ignore-all lint/suspicious/noExplicitAny: Cairo FFI requires dynamic typing for GObject interop
-// biome-ignore-all lint/style/noNonNullAssertion: Cairo FFI returns valid pointers that are guaranteed non-null
 import { alloc, call, read } from "@gtkx/native";
 import { Context } from "../generated/cairo/context.js";
 import type {
@@ -24,28 +22,28 @@ const FONT_OPTIONS_T = {
     innerType: "CairoFontOptions",
     lib: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_font_options_get_type",
-    borrowed: true,
+    ownership: "none",
 } as const;
 const CAIRO_T = {
     type: "boxed",
     innerType: "CairoContext",
     lib: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_context_get_type",
-    borrowed: true,
+    ownership: "none",
 } as const;
 const PATTERN_T = {
     type: "boxed",
     innerType: "CairoPattern",
     lib: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_pattern_get_type",
-    borrowed: false,
+    ownership: "full",
 } as const;
-const PATTERN_T_BORROWED = {
+const PATTERN_T_NONE = {
     type: "boxed",
     innerType: "CairoPattern",
     lib: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_pattern_get_type",
-    borrowed: true,
+    ownership: "none",
 } as const;
 const DOUBLE_TYPE = { type: "float", size: 64 } as const;
 
@@ -576,7 +574,7 @@ Context.prototype.setSource = function (pattern: Pattern): Context {
         "cairo_set_source",
         [
             { type: CAIRO_T, value: this.id },
-            { type: PATTERN_T_BORROWED, value: pattern.id },
+            { type: PATTERN_T_NONE, value: pattern.id },
         ],
         { type: "undefined" },
     );
@@ -628,7 +626,7 @@ Context.prototype.setDash = function (dashes: number[], offset: number): Context
         "cairo_set_dash",
         [
             { type: CAIRO_T, value: this.id },
-            { type: { type: "array", itemType: DOUBLE_TYPE }, value: dashes },
+            { type: { type: "array", itemType: DOUBLE_TYPE, listType: "array", ownership: "full" }, value: dashes },
             { type: { type: "int", size: 32, unsigned: false }, value: dashes.length },
             { type: DOUBLE_TYPE, value: offset },
         ],
@@ -728,7 +726,7 @@ Context.prototype.selectFontFace = function (family: string, slant: FontSlant, w
         "cairo_select_font_face",
         [
             { type: CAIRO_T, value: this.id },
-            { type: { type: "string" }, value: family },
+            { type: { type: "string", ownership: "full" }, value: family },
             { type: { type: "int", size: 32, unsigned: false }, value: slant },
             { type: { type: "int", size: 32, unsigned: false }, value: weight },
         ],
@@ -756,7 +754,7 @@ Context.prototype.showText = function (text: string): Context {
         "cairo_show_text",
         [
             { type: CAIRO_T, value: this.id },
-            { type: { type: "string" }, value: text },
+            { type: { type: "string", ownership: "full" }, value: text },
         ],
         { type: "undefined" },
     );
@@ -769,7 +767,7 @@ Context.prototype.textPath = function (text: string): Context {
         "cairo_text_path",
         [
             { type: CAIRO_T, value: this.id },
-            { type: { type: "string" }, value: text },
+            { type: { type: "string", ownership: "full" }, value: text },
         ],
         { type: "undefined" },
     );
@@ -802,8 +800,8 @@ Context.prototype.textExtents = function (text: string): TextExtents {
         "cairo_text_extents",
         [
             { type: CAIRO_T, value: this.id },
-            { type: { type: "string" }, value: text },
-            { type: { type: "boxed", innerType: "cairo_text_extents_t", lib: LIB, borrowed: true }, value: extents },
+            { type: { type: "string", ownership: "full" }, value: text },
+            { type: { type: "boxed", innerType: "cairo_text_extents_t", lib: LIB, ownership: "none" }, value: extents },
         ],
         { type: "undefined" },
     );
@@ -823,7 +821,7 @@ Context.prototype.setFontOptions = function (options: FontOptions): Context {
         "cairo_set_font_options",
         [
             { type: CAIRO_T, value: this.id },
-            { type: FONT_OPTIONS_T, value: (options as any)?.id ?? options },
+            { type: FONT_OPTIONS_T, value: options.id },
         ],
         { type: "undefined" },
     );
@@ -837,7 +835,7 @@ Context.prototype.getFontOptions = function (): FontOptions {
         "cairo_get_font_options",
         [
             { type: CAIRO_T, value: this.id },
-            { type: FONT_OPTIONS_T, value: (options as any)?.id ?? options },
+            { type: FONT_OPTIONS_T, value: options.id },
         ],
         { type: "undefined" },
     );
@@ -865,7 +863,15 @@ Context.prototype.getAntialias = function (): Antialias {
     }) as Antialias;
 };
 
-(Pattern as any).createLinear = (x0: number, y0: number, x1: number, y1: number): Pattern => {
+/** Type for Pattern class with static factory methods */
+interface PatternStatic {
+    createLinear(x0: number, y0: number, x1: number, y1: number): Pattern;
+    createRadial(cx0: number, cy0: number, radius0: number, cx1: number, cy1: number, radius1: number): Pattern;
+}
+
+const PatternWithStatics = Pattern as typeof Pattern & PatternStatic;
+
+PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: number): Pattern => {
     const ptr = call(
         LIB,
         "cairo_pattern_create_linear",
@@ -880,7 +886,7 @@ Context.prototype.getAntialias = function (): Antialias {
     return Pattern.fromPtr(ptr);
 };
 
-(Pattern as any).createRadial = (
+PatternWithStatics.createRadial = (
     cx0: number,
     cy0: number,
     radius0: number,
@@ -909,7 +915,7 @@ Pattern.prototype.addColorStopRgb = function (offset: number, red: number, green
         LIB,
         "cairo_pattern_add_color_stop_rgb",
         [
-            { type: PATTERN_T_BORROWED, value: this.id },
+            { type: PATTERN_T_NONE, value: this.id },
             { type: DOUBLE_TYPE, value: offset },
             { type: DOUBLE_TYPE, value: red },
             { type: DOUBLE_TYPE, value: green },
@@ -931,7 +937,7 @@ Pattern.prototype.addColorStopRgba = function (
         LIB,
         "cairo_pattern_add_color_stop_rgba",
         [
-            { type: PATTERN_T_BORROWED, value: this.id },
+            { type: PATTERN_T_NONE, value: this.id },
             { type: DOUBLE_TYPE, value: offset },
             { type: DOUBLE_TYPE, value: red },
             { type: DOUBLE_TYPE, value: green },
@@ -943,15 +949,18 @@ Pattern.prototype.addColorStopRgba = function (
     return this;
 };
 
-// Override createPtr to allow `new FontOptions()` to work
-(FontOptions.prototype as any).createPtr = (): unknown =>
-    call(LIB, "cairo_font_options_create", [], {
-        type: "boxed",
-        innerType: "CairoFontOptions",
-        lib: LIB_GOBJECT,
-        getTypeFn: "cairo_gobject_font_options_get_type",
-        borrowed: false,
-    });
+Object.defineProperty(FontOptions.prototype, "createPtr", {
+    value: (): unknown =>
+        call(LIB, "cairo_font_options_create", [], {
+            type: "boxed",
+            innerType: "CairoFontOptions",
+            lib: LIB_GOBJECT,
+            getTypeFn: "cairo_gobject_font_options_get_type",
+            ownership: "full",
+        }),
+    writable: true,
+    configurable: true,
+});
 
 FontOptions.prototype.setHintStyle = function (hintStyle: number): FontOptions {
     call(

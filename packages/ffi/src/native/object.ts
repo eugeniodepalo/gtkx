@@ -1,5 +1,5 @@
-import { getObjectId } from "@gtkx/native";
 import { typeCheckInstanceIsA, typeFromName, typeNameFromInstance } from "../generated/gobject/functions.js";
+import { TypeInstance } from "../generated/gobject/type-instance.js";
 import { findNativeClass } from "../registry.js";
 import type { NativeClass, NativeObject } from "./base.js";
 
@@ -36,26 +36,22 @@ export function getNativeObject<T extends NativeObject = NativeObject>(
             const targetGType = typeFromName(targetType.glibTypeName);
             if (targetGType === 0) return null;
 
-            const objId = getObjectId(id);
-            if (!typeCheckInstanceIsA(objId, targetGType)) return null;
+            const typeInstance = TypeInstance.fromPtr(id);
+            if (!typeCheckInstanceIsA(typeInstance, targetGType)) return null;
         }
 
-        const instance = Object.create(targetType.prototype) as T;
-        instance.id = id;
-        return instance;
+        return targetType.fromPtr(id) as T;
     }
 
-    const objectId = getObjectId(id);
-    const runtimeTypeName = typeNameFromInstance(objectId);
+    const typeInstance = TypeInstance.fromPtr(id);
+    const runtimeTypeName = typeNameFromInstance(typeInstance);
     const cls = findNativeClass(runtimeTypeName);
 
     if (!cls) {
         throw new Error(`Expected registered GLib type, got '${runtimeTypeName}'`);
     }
 
-    const instance = Object.create(cls.prototype) as T;
-    instance.id = id;
-    return instance;
+    return cls.fromPtr(id) as T;
 }
 
 export { isInstantiating, type NativeClass, NativeObject, setInstantiating } from "./base.js";
