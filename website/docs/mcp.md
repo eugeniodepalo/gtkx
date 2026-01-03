@@ -34,8 +34,10 @@ npx gtkx dev src/dev.tsx
 The dev server automatically connects to the MCP server when available. You'll see connection messages in the console:
 
 ```
-[gtkx] Connected to MCP server at /tmp/gtkx-mcp.sock
+[gtkx] Connected to MCP server at /run/user/1000/gtkx-mcp.sock
 ```
+
+The socket path uses `$XDG_RUNTIME_DIR` when available, falling back to `/tmp`.
 
 ## Available Tools
 
@@ -174,7 +176,7 @@ Create complex interaction sequences:
 │  (e.g. Claude)  │                │   server     │
 └─────────────────┘                └──────┬───────┘
                                           │ Unix socket
-                                          │ /tmp/gtkx-mcp.sock
+                                          │ $XDG_RUNTIME_DIR/gtkx-mcp.sock
                                           ▼
                                    ┌──────────────┐
                                    │  gtkx dev    │

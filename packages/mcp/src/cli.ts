@@ -6,7 +6,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
-import { noAppConnectedError } from "./protocol/errors.js";
 import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
 
@@ -52,7 +51,6 @@ const FireEventInputSchema = WidgetIdSchema.extend({
 
 const TakeScreenshotInputSchema = AppIdSchema.extend({
     windowId: z.string().optional().describe("Window ID to capture. If not specified, captures the first window."),
-    format: z.enum(["png", "jpeg"]).optional().describe("Image format (default: png)"),
 });
 
 const tools = [
@@ -204,7 +202,7 @@ const tools = [
     },
     {
         name: "gtkx_take_screenshot",
-        description: "Capture a screenshot of a window. Returns base64-encoded image data.",
+        description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
         inputSchema: {
             type: "object" as const,
             properties: {
@@ -215,11 +213,6 @@ const tools = [
                 windowId: {
                     type: "string",
                     description: "Window ID to capture. If not specified, captures the first window.",
-                },
-                format: {
-                    type: "string",
-                    enum: ["png", "jpeg"],
-                    description: "Image format (default: png)",
                 },
             },
             required: [],
@@ -248,12 +241,6 @@ async function main() {
     connectionManager.on("appUnregistered", (appId) => {
         console.error(`[gtkx] App unregistered: ${appId}`);
     });
-
-    const requireConnectedApp = (): void => {
-        if (!connectionManager.hasConnectedApps()) {
-            throw noAppConnectedError();
-        }
-    };
 
     const server = new Server(
         {
@@ -285,7 +272,6 @@ async function main() {
 
                 case "gtkx_get_widget_tree": {
                     const input = GetWidgetTreeInputSchema.parse(args);
-                    requireConnectedApp();
                     const result = await connectionManager.sendToApp(input.appId, "widget.getTree", {});
                     return {
                         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
@@ -294,7 +280,6 @@ async function main() {
 
                 case "gtkx_query_widgets": {
                     const input = QueryWidgetsInputSchema.parse(args);
-                    requireConnectedApp();
                     const result = await connectionManager.sendToApp(input.appId, "widget.query", {
                         queryType: input.by,
                         value: input.value,
@@ -307,7 +292,6 @@ async function main() {
 
                 case "gtkx_get_widget_props": {
                     const input = GetWidgetPropsInputSchema.parse(args);
-                    requireConnectedApp();
                     const result = await connectionManager.sendToApp(input.appId, "widget.getProps", {
                         widgetId: input.widgetId,
                     });
@@ -318,7 +302,6 @@ async function main() {
 
                 case "gtkx_click": {
                     const input = ClickInputSchema.parse(args);
-                    requireConnectedApp();
                     await connectionManager.sendToApp(input.appId, "widget.click", {
                         widgetId: input.widgetId,
                     });
@@ -329,7 +312,6 @@ async function main() {
 
                 case "gtkx_type": {
                     const input = TypeInputSchema.parse(args);
-                    requireConnectedApp();
                     await connectionManager.sendToApp(input.appId, "widget.type", {
                         widgetId: input.widgetId,
                         text: input.text,
@@ -342,7 +324,6 @@ async function main() {
 
                 case "gtkx_fire_event": {
                     const input = FireEventInputSchema.parse(args);
-                    requireConnectedApp();
                     await connectionManager.sendToApp(input.appId, "widget.fireEvent", {
                         widgetId: input.widgetId,
                         signal: input.signal,
@@ -355,13 +336,11 @@ async function main() {
 
                 case "gtkx_take_screenshot": {
                     const input = TakeScreenshotInputSchema.parse(args);
-                    requireConnectedApp();
                     const result = await connectionManager.sendToApp<{ data: string; mimeType: string }>(
                         input.appId,
                         "widget.screenshot",
                         {
                             windowId: input.windowId,
-                            format: input.format,
                         },
                     );
                     return {

@@ -1,44 +1,18 @@
 import { discardAllBatches, start } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
+import { logWidget } from "./pretty-widget.js";
 import * as queries from "./queries.js";
 import { setScreenRoot } from "./screen.js";
 import { tick } from "./timing.js";
 import type { ByRoleOptions, RenderOptions, RenderResult, TextMatch, TextMatchOptions } from "./types.js";
-import { hasLabel } from "./widget.js";
 
 let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
 let lastRenderError: Error | null = null;
-
-const getWidgetLabel = (widget: Gtk.Widget): string | null => {
-    if (!hasLabel(widget)) return null;
-
-    const role = widget.getAccessibleRole();
-    if (role === Gtk.AccessibleRole.LABEL) {
-        return (widget as Gtk.Label).getLabel?.() ?? null;
-    }
-    return (widget as Gtk.Button).getLabel?.() ?? null;
-};
-
-const printWidgetTree = (root: Gtk.Widget, indent = 0): string => {
-    const prefix = "  ".repeat(indent);
-    const role = root.getAccessibleRole();
-    const roleName = role !== undefined ? (Gtk.AccessibleRole[role] ?? "UNKNOWN") : "UNKNOWN";
-    const labelText = getWidgetLabel(root);
-    const label = labelText ? ` label="${labelText}"` : "";
-    let result = `${prefix}<${root.constructor.name} role=${roleName}${label}>\n`;
-    let child = root.getFirstChild();
-    while (child) {
-        result += printWidgetTree(child, indent + 1);
-        child = child.getNextSibling();
-    }
-
-    return result;
-};
 
 type ReconcilerInstance = ReturnType<typeof reconciler.getInstance>;
 
@@ -151,10 +125,7 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
             return update(instance, withCtx, fiberRoot);
         },
         debug: () => {
-            const activeWindow = application.getActiveWindow();
-            if (activeWindow) {
-                console.log(printWidgetTree(activeWindow));
-            }
+            logWidget(application);
         },
     };
 };

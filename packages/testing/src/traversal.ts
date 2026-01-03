@@ -1,8 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 
-type Container = Gtk.Application | Gtk.Widget;
+export type Container = Gtk.Application | Gtk.Widget;
 
-const isApplication = (container: Container): container is Gtk.Application =>
+export const isApplication = (container: Container): container is Gtk.Application =>
     "getWindows" in container && typeof container.getWindows === "function";
 
 const traverseWidgetTree = function* (root: Gtk.Widget): Generator<Gtk.Widget> {

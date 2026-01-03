@@ -1,3 +1,5 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { z } from "zod";
 
 export const IpcRequestSchema = z.object({
@@ -14,7 +16,7 @@ export type IpcError = {
     data?: unknown;
 };
 
-const IpcErrorSchema = z.object({
+export const IpcErrorSchema = z.object({
     code: z.number(),
     message: z.string(),
     data: z.unknown().optional(),
@@ -58,8 +60,6 @@ export type AppInfo = {
 
 export type QueryOptions = {
     name?: string;
-    checked?: boolean;
-    expanded?: boolean;
     exact?: boolean;
     timeout?: number;
 };
@@ -82,4 +82,6 @@ export type IpcMethod =
 
 export type IpcMessage = IpcRequest | IpcResponse;
 
-export const DEFAULT_SOCKET_PATH = "/tmp/gtkx-mcp.sock";
+export const getRuntimeDir = (): string => process.env.XDG_RUNTIME_DIR ?? tmpdir();
+
+export const DEFAULT_SOCKET_PATH = join(getRuntimeDir(), "gtkx-mcp.sock");

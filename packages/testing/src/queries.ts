@@ -1,10 +1,8 @@
 import { getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { findAll } from "./traversal.js";
+import { type Container, findAll } from "./traversal.js";
 import type { ByRoleOptions, TextMatch, TextMatchOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
-
-type Container = Gtk.Application | Gtk.Widget;
 
 const buildNormalizer = (options?: TextMatchOptions): ((text: string) => string) => {
     if (options?.normalizer) {
@@ -105,7 +103,7 @@ const collectChildLabels = (widget: Gtk.Widget): string[] => {
     return labels;
 };
 
-const getWidgetText = (widget: Gtk.Widget): string | null => {
+export const getWidgetText = (widget: Gtk.Widget): string | null => {
     if (isInternalLabel(widget)) return null;
 
     const role = widget.getAccessibleRole();

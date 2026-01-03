@@ -129,3 +129,14 @@ export type RenderResult = BoundQueries & {
     /** Print the widget tree to console for debugging */
     debug: () => void;
 };
+
+export type ScreenshotResult = {
+    /** Base64-encoded PNG image data */
+    data: string;
+    /** MIME type of the image (always "image/png") */
+    mimeType: string;
+    /** Width of the captured image in pixels */
+    width: number;
+    /** Height of the captured image in pixels */
+    height: number;
+};

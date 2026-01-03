@@ -3,10 +3,13 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
 import { join } from "node:path";
+
 import type { Plugin } from "vitest/config";
 import type { Reporter, TestSpecification, Vitest } from "vitest/node";
 
-const getStateDir = (): string => join(tmpdir(), `gtkx-vitest-${process.pid}`);
+const getRuntimeDir = (): string => process.env.XDG_RUNTIME_DIR ?? tmpdir();
+
+const getStateDir = (): string => join(getRuntimeDir(), `gtkx-vitest-${process.pid}`);
 
 const getBaseDisplay = (): number => {
     const slot = process.pid % 500;

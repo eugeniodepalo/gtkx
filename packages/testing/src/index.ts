@@ -1,4 +1,6 @@
 export { fireEvent } from "./fire-event.js";
+export type { PrettyWidgetOptions } from "./pretty-widget.js";
+export { logWidget, prettyWidget } from "./pretty-widget.js";
 export {
     findAllByLabelText,
     findAllByRole,
@@ -11,6 +13,7 @@ export {
 } from "./queries.js";
 export { cleanup, render } from "./render.js";
 export { screen } from "./screen.js";
+export { screenshot } from "./screenshot.js";
 export { tick } from "./timing.js";
 export type {
     BoundQueries,
@@ -18,6 +21,7 @@ export type {
     NormalizerOptions,
     RenderOptions,
     RenderResult,
+    ScreenshotResult,
     TextMatch,
     TextMatchFunction,
     TextMatchOptions,

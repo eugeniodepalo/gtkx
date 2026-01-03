@@ -98,7 +98,13 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
                 timeout,
             });
 
-            this.socketServer.send(app.connection.id, request);
+            const sent = this.socketServer.send(app.connection.id, request);
+            if (!sent) {
+                clearTimeout(timeout);
+                this.pendingRequests.delete(requestId);
+                reject(appNotFoundError(app.info.appId));
+                return;
+            }
         });
     }
 

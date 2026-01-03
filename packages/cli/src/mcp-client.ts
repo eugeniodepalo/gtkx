@@ -3,7 +3,9 @@ import { getNativeObject, getObjectId } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     DEFAULT_SOCKET_PATH,
+    type IpcMethod,
     type IpcRequest,
+    IpcRequestSchema,
     type IpcResponse,
     McpError,
     McpErrorCode,
@@ -238,16 +240,16 @@ class McpClient {
         try {
             parsed = JSON.parse(line);
         } catch {
+            console.warn("[gtkx] Received invalid JSON from MCP server");
             return;
         }
 
-        const message = parsed as Record<string, unknown>;
-        if (typeof message.method !== "string" || typeof message.id !== "string") {
+        const result = IpcRequestSchema.safeParse(parsed);
+        if (!result.success) {
             return;
         }
 
-        const request = message as unknown as IpcRequest;
-        this.handleRequest(request).catch((error) => {
+        this.handleRequest(result.data).catch((error) => {
             console.error("[gtkx] Error handling request:", error);
         });
     }
@@ -256,7 +258,7 @@ class McpClient {
         const { id, method, params } = request;
 
         try {
-            const result = await this.executeMethod(method, params);
+            const result = await this.executeMethod(method as IpcMethod, params);
             this.send({ id, result });
         } catch (error) {
             if (error instanceof McpError) {
@@ -274,7 +276,7 @@ class McpClient {
         }
     }
 
-    private async executeMethod(method: string, params: unknown): Promise<unknown> {
+    private async executeMethod(method: IpcMethod, params: unknown): Promise<unknown> {
         const app = getApplication();
         if (!app) {
             throw new Error("Application not initialized");
@@ -349,17 +351,39 @@ class McpClient {
 
             case "widget.fireEvent": {
                 const testing = await loadTestingModule();
-                const p = params as { widgetId: string; signal: string };
+                const p = params as { widgetId: string; signal: string; args?: { type: unknown; value: unknown }[] };
                 const widget = getWidgetById(p.widgetId);
                 if (!widget) {
                     throw widgetNotFoundError(p.widgetId);
                 }
-                await testing.fireEvent(widget, p.signal);
+                type FireEventArgs = Parameters<TestingModule["fireEvent"]>;
+                const signalArgs = (p.args ?? []) as FireEventArgs[2][];
+                await testing.fireEvent(widget, p.signal, ...signalArgs);
                 return { success: true };
             }
 
             case "widget.screenshot": {
-                throw new Error("Screenshot not yet implemented");
+                const testing = await loadTestingModule();
+                const p = params as { windowId?: string };
+
+                let targetWindow: Gtk.Window;
+
+                if (p.windowId) {
+                    const widget = getWidgetById(p.windowId);
+                    if (!widget) {
+                        throw widgetNotFoundError(p.windowId);
+                    }
+                    targetWindow = widget as Gtk.Window;
+                } else {
+                    const windows = app.getWindows();
+                    if (windows.length === 0) {
+                        throw new Error("No windows available for screenshot");
+                    }
+                    targetWindow = windows[0] as Gtk.Window;
+                }
+
+                const result = testing.screenshot(targetWindow);
+                return { data: result.data, mimeType: result.mimeType };
             }
 
             default:
