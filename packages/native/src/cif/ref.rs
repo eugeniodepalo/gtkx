@@ -2,8 +2,8 @@ use std::ffi::c_void;
 
 use anyhow::bail;
 
-use super::owned_ptr::OwnedPtr;
 use super::Value;
+use super::owned_ptr::OwnedPtr;
 use crate::{arg::Arg, types::*, value};
 
 pub(super) fn try_from_ref(arg: &Arg, type_: &RefType) -> anyhow::Result<Value> {
@@ -19,9 +19,9 @@ pub(super) fn try_from_ref(arg: &Arg, type_: &RefType) -> anyhow::Result<Value> 
         Type::Boxed(_) | Type::Struct(_) | Type::GObject(_) | Type::GVariant(_) => {
             match &*r#ref.value {
                 value::Value::Object(id) => {
-                    let ptr = id.as_ptr().ok_or_else(|| {
-                        anyhow::anyhow!("Ref object has been garbage collected")
-                    })?;
+                    let ptr = id
+                        .as_ptr()
+                        .ok_or_else(|| anyhow::anyhow!("Ref object has been garbage collected"))?;
                     Ok(Value::Ptr(ptr))
                 }
                 value::Value::Null | value::Value::Undefined => {

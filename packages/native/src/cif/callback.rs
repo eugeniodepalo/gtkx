@@ -1,12 +1,14 @@
 use std::{ffi::c_void, sync::Arc};
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _, value::ToValue as _};
+use gtk4::glib::{
+    self, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _, value::ToValue as _,
+};
 use neon::prelude::*;
 
+use super::Value;
 use super::owned_ptr::OwnedPtr;
 use super::trampoline::{TrampolineCallbackValue, build_trampoline_callback};
-use super::Value;
 use crate::{arg, callback, gtk_dispatch, js_dispatch, types::*, value};
 
 pub fn closure_to_glib_full(closure: glib::Closure) -> *mut c_void {
@@ -94,22 +96,17 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
                     .expect("Failed to convert GLib callback arguments");
                 let return_type = *return_type.clone().unwrap_or(Box::new(Type::Undefined));
 
-                invoke_and_wait_for_js_result(
-                    &channel,
-                    &callback,
-                    args_values,
-                    true,
-                    |result| match result {
-                        Ok(value) => value::Value::into_glib_value_with_default(
-                            value,
-                            Some(&return_type),
-                        ),
+                invoke_and_wait_for_js_result(&channel, &callback, args_values, true, |result| {
+                    match result {
+                        Ok(value) => {
+                            value::Value::into_glib_value_with_default(value, Some(&return_type))
+                        }
                         Err(_) => value::Value::into_glib_value_with_default(
                             value::Value::Undefined,
                             Some(&return_type),
                         ),
-                    },
-                )
+                    }
+                })
             });
 
             let closure_ptr = closure_to_glib_full(closure);
@@ -185,7 +182,10 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
                 })
             });
 
-            Ok(build_trampoline_callback(closure, &callback::TrampolineSpec::draw_func()))
+            Ok(build_trampoline_callback(
+                closure,
+                &callback::TrampolineSpec::draw_func(),
+            ))
         }
 
         CallbackTrampoline::ShortcutFunc => {
@@ -195,19 +195,18 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
                 let args_values = convert_glib_args(args, &arg_types)
                     .expect("Failed to convert GLib shortcut callback arguments");
 
-                invoke_and_wait_for_js_result(
-                    &channel,
-                    &callback,
-                    args_values,
-                    true,
-                    |result| match result {
+                invoke_and_wait_for_js_result(&channel, &callback, args_values, true, |result| {
+                    match result {
                         Ok(value::Value::Boolean(b)) => Some(b.to_value()),
                         _ => Some(false.to_value()),
-                    },
-                )
+                    }
+                })
             });
 
-            Ok(build_trampoline_callback(closure, &callback::TrampolineSpec::shortcut_func()))
+            Ok(build_trampoline_callback(
+                closure,
+                &callback::TrampolineSpec::shortcut_func(),
+            ))
         }
 
         CallbackTrampoline::TreeListModelCreateFunc => {
@@ -217,12 +216,8 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
                 let args_values = convert_glib_args(args, &arg_types)
                     .expect("Failed to convert GLib tree list model callback arguments");
 
-                invoke_and_wait_for_js_result(
-                    &channel,
-                    &callback,
-                    args_values,
-                    true,
-                    |result| match result {
+                invoke_and_wait_for_js_result(&channel, &callback, args_values, true, |result| {
+                    match result {
                         Ok(value::Value::Object(obj_id)) => {
                             if let Some(ptr) = obj_id.as_ptr() {
                                 let obj: glib::Object = unsafe {
@@ -236,8 +231,8 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
                             }
                         }
                         _ => Some(None::<glib::Object>.to_value()),
-                    },
-                )
+                    }
+                })
             });
 
             Ok(build_trampoline_callback(

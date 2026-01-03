@@ -21,8 +21,7 @@ use neon::prelude::*;
 
 use crate::{
     boxed::Boxed,
-    gtk_dispatch,
-    integer,
+    gtk_dispatch, integer,
     object::{Object, ObjectId},
     types::{FloatSize, Type},
     value::Value,
@@ -104,4 +103,3 @@ fn handle_read(object_id: ObjectId, type_: &Type, offset: usize) -> anyhow::Resu
         _ => bail!("Unsupported field type for read_field: {:?}", type_),
     }
 }
-

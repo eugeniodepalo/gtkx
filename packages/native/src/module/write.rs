@@ -15,8 +15,7 @@ use anyhow::bail;
 use neon::prelude::*;
 
 use crate::{
-    gtk_dispatch,
-    integer,
+    gtk_dispatch, integer,
     object::ObjectId,
     types::{FloatSize, Type},
     value::Value,
@@ -31,7 +30,8 @@ pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let value = Value::from_js_value(&mut cx, js_value)?;
     let object_id = *object_id.as_inner();
 
-    let rx = gtk_dispatch::run_on_gtk_thread(move || handle_write(object_id, &type_, offset, &value));
+    let rx =
+        gtk_dispatch::run_on_gtk_thread(move || handle_write(object_id, &type_, offset, &value));
 
     rx.recv()
         .or_else(|err| cx.throw_error(format!("Error receiving write result: {err}")))?
@@ -64,4 +64,3 @@ fn handle_write(
 
     Ok(())
 }
-

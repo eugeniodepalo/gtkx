@@ -113,6 +113,10 @@ unsafe extern "C" fn draw_func_trampoline(
     }
 }
 
+/// # Safety
+///
+/// `user_data` must be a valid pointer to a `GClosure` that was previously
+/// allocated and ref'd, or null. The closure will be invoked and then unref'd.
 pub unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
     let Some(closure_ptr) = NonNull::new(user_data as *mut gobject_ffi::GClosure) else {
         eprintln!("[gtkx] WARNING: destroy_trampoline: user_data is null, callback skipped");
@@ -132,6 +136,12 @@ pub unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
     }
 }
 
+/// # Safety
+///
+/// - `source_object` must be a valid `GObject` pointer or null.
+/// - `res` must be a valid `GAsyncResult` pointer or null.
+/// - `user_data` must be a valid pointer to a `GClosure` that was previously
+///   allocated and ref'd, or null. The closure will be invoked and then unref'd.
 pub unsafe extern "C" fn async_ready_trampoline(
     source_object: *mut gobject_ffi::GObject,
     res: *mut GAsyncResult,

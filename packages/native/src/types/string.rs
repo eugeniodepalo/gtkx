@@ -55,4 +55,3 @@ impl From<&StringType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
-

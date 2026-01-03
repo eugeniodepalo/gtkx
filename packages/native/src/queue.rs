@@ -50,4 +50,3 @@ impl<T> Queue<T> {
             .is_empty()
     }
 }
-

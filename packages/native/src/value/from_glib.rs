@@ -1,15 +1,13 @@
 use std::ffi::c_void;
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _};
+use gtk4::glib::{
+    self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNone as _,
+    translate::ToGlibPtr as _,
+};
 
 use super::Value;
-use crate::{
-    boxed::Boxed,
-    object::Object,
-    types::*,
-    variant::GVariant as GVariantWrapper,
-};
+use crate::{boxed::Boxed, object::Object, types::*, variant::GVariant as GVariantWrapper};
 
 impl Value {
     pub fn from_glib_value(gvalue: &glib::Value, type_: &Type) -> anyhow::Result<Self> {
@@ -224,14 +222,12 @@ impl TryFrom<&glib::Value> for Value {
             let ps = value.get::<glib::ParamSpec>()?;
             Ok(Value::String(ps.name().to_string()))
         } else if value.type_().is_a(glib::types::Type::ENUM) {
-            let enum_value = unsafe {
-                glib::gobject_ffi::g_value_get_enum(value.to_glib_none().0 as *const _)
-            };
+            let enum_value =
+                unsafe { glib::gobject_ffi::g_value_get_enum(value.to_glib_none().0 as *const _) };
             Ok(Value::Number(enum_value as f64))
         } else if value.type_().is_a(glib::types::Type::FLAGS) {
-            let flags_value = unsafe {
-                glib::gobject_ffi::g_value_get_flags(value.to_glib_none().0 as *const _)
-            };
+            let flags_value =
+                unsafe { glib::gobject_ffi::g_value_get_flags(value.to_glib_none().0 as *const _) };
             Ok(Value::Number(flags_value as f64))
         } else if value.type_().is_a(glib::types::Type::OBJECT) {
             gobject_from_gvalue(value)
@@ -253,9 +249,8 @@ impl TryFrom<&glib::Value> for Value {
 }
 
 fn gobject_from_gvalue(gvalue: &glib::Value) -> anyhow::Result<Value> {
-    let obj_ptr = unsafe {
-        glib::gobject_ffi::g_value_get_object(gvalue.to_glib_none().0 as *const _)
-    };
+    let obj_ptr =
+        unsafe { glib::gobject_ffi::g_value_get_object(gvalue.to_glib_none().0 as *const _) };
 
     if obj_ptr.is_null() {
         return Ok(Value::Null);

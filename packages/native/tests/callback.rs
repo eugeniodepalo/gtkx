@@ -15,13 +15,7 @@ use native::callback::{
     CallbackData, CallbackKind, TrampolineSpec, async_ready_trampoline, destroy_trampoline,
 };
 
-type DrawFuncTrampoline = unsafe extern "C" fn(
-    *mut c_void,
-    *mut c_void,
-    i32,
-    i32,
-    *mut c_void,
-);
+type DrawFuncTrampoline = unsafe extern "C" fn(*mut c_void, *mut c_void, i32, i32, *mut c_void);
 
 type ShortcutFuncTrampoline = unsafe extern "C" fn(
     *mut glib::gobject_ffi::GObject,
@@ -36,9 +30,7 @@ type TreeListModelCreateFuncTrampoline = unsafe extern "C" fn(
 
 type CallbackDataDestroy = unsafe extern "C" fn(*mut c_void);
 
-fn create_test_closure_with_flag(
-    flag: Arc<AtomicBool>,
-) -> NonNull<glib::gobject_ffi::GClosure> {
+fn create_test_closure_with_flag(flag: Arc<AtomicBool>) -> NonNull<glib::gobject_ffi::GClosure> {
     common::ensure_gtk_init();
 
     let closure = glib::Closure::new(move |_| {
@@ -137,10 +129,12 @@ fn async_ready_trampoline_null_safe() {
 fn get_trampoline_ptrs_not_null() {
     assert!(!TrampolineSpec::draw_func().trampoline_ptr.is_null());
     assert!(!TrampolineSpec::draw_func().destroy_ptr.is_null());
-    assert!(!(destroy_trampoline as *mut c_void).is_null());
-    assert!(!(async_ready_trampoline as *mut c_void).is_null());
     assert!(!TrampolineSpec::shortcut_func().trampoline_ptr.is_null());
-    assert!(!TrampolineSpec::tree_list_model_create_func().trampoline_ptr.is_null());
+    assert!(
+        !TrampolineSpec::tree_list_model_create_func()
+            .trampoline_ptr
+            .is_null()
+    );
 }
 
 #[test]
@@ -259,15 +253,14 @@ fn tree_list_model_create_func_trampoline_null_safe() {
     }
 }
 
-fn create_object_returning_closure(
-    return_object: bool,
-) -> NonNull<glib::gobject_ffi::GClosure> {
+fn create_object_returning_closure(return_object: bool) -> NonNull<glib::gobject_ffi::GClosure> {
     common::ensure_gtk_init();
 
     let closure = glib::Closure::new(move |_| {
         if return_object {
             let label: glib::Object = unsafe {
-                let ptr = gtk4::ffi::gtk_label_new(std::ptr::null()) as *mut glib::gobject_ffi::GObject;
+                let ptr =
+                    gtk4::ffi::gtk_label_new(std::ptr::null()) as *mut glib::gobject_ffi::GObject;
                 glib::gobject_ffi::g_object_ref_sink(ptr);
                 glib::Object::from_glib_full(ptr)
             };
@@ -287,7 +280,10 @@ fn create_object_returning_closure(
 fn tree_list_model_create_func_trampoline_invokes_closure_returns_null() {
     let closure_ptr = create_object_returning_closure(false);
 
-    let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::TreeListModelCreateFunc));
+    let data = Box::new(CallbackData::new(
+        closure_ptr,
+        CallbackKind::TreeListModelCreateFunc,
+    ));
     let data_ptr = Box::into_raw(data);
 
     let spec = TrampolineSpec::tree_list_model_create_func();
@@ -296,10 +292,7 @@ fn tree_list_model_create_func_trampoline_invokes_closure_returns_null() {
     let destroy: CallbackDataDestroy = unsafe { std::mem::transmute(spec.destroy_ptr) };
 
     unsafe {
-        let result = trampoline(
-            std::ptr::null_mut(),
-            data_ptr as *mut c_void,
-        );
+        let result = trampoline(std::ptr::null_mut(), data_ptr as *mut c_void);
         assert!(result.is_null());
 
         destroy(data_ptr as *mut c_void);
@@ -310,7 +303,10 @@ fn tree_list_model_create_func_trampoline_invokes_closure_returns_null() {
 fn tree_list_model_create_func_trampoline_invokes_closure_returns_object() {
     let closure_ptr = create_object_returning_closure(true);
 
-    let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::TreeListModelCreateFunc));
+    let data = Box::new(CallbackData::new(
+        closure_ptr,
+        CallbackKind::TreeListModelCreateFunc,
+    ));
     let data_ptr = Box::into_raw(data);
 
     let spec = TrampolineSpec::tree_list_model_create_func();
@@ -319,10 +315,7 @@ fn tree_list_model_create_func_trampoline_invokes_closure_returns_object() {
     let destroy: CallbackDataDestroy = unsafe { std::mem::transmute(spec.destroy_ptr) };
 
     unsafe {
-        let result = trampoline(
-            std::ptr::null_mut(),
-            data_ptr as *mut c_void,
-        );
+        let result = trampoline(std::ptr::null_mut(), data_ptr as *mut c_void);
         assert!(!result.is_null());
 
         glib::gobject_ffi::g_object_unref(result as *mut _);
@@ -336,7 +329,10 @@ fn tree_list_model_create_func_data_destroy_unrefs_closure() {
     let invoked = Arc::new(AtomicBool::new(false));
     let closure_ptr = create_test_closure_with_flag(invoked.clone());
 
-    let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::TreeListModelCreateFunc));
+    let data = Box::new(CallbackData::new(
+        closure_ptr,
+        CallbackKind::TreeListModelCreateFunc,
+    ));
     let data_ptr = Box::into_raw(data);
 
     let spec = TrampolineSpec::tree_list_model_create_func();

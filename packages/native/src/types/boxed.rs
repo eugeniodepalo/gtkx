@@ -132,4 +132,3 @@ impl From<&BoxedType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
-

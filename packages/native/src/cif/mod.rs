@@ -47,7 +47,9 @@ impl std::fmt::Display for Value {
             Value::F64(v) => write!(f, "f64({})", v),
             Value::Ptr(ptr) => write!(f, "ptr({:p})", ptr),
             Value::OwnedPtr(owned) => write!(f, "owned_ptr({:p})", owned.ptr),
-            Value::TrampolineCallback(cb) => write!(f, "trampoline_callback({:p})", cb.trampoline_ptr),
+            Value::TrampolineCallback(cb) => {
+                write!(f, "trampoline_callback({:p})", cb.trampoline_ptr)
+            }
             Value::Void => write!(f, "void"),
         }
     }

@@ -70,4 +70,3 @@ impl From<&FloatType> for ffi::Type {
         }
     }
 }
-

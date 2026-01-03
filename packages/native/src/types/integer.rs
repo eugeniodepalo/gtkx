@@ -116,4 +116,3 @@ impl From<&IntegerType> for ffi::Type {
         }
     }
 }
-

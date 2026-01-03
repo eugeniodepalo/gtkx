@@ -35,4 +35,3 @@ impl From<&RefType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
-

@@ -3,8 +3,8 @@ use std::ffi::{CString, c_void};
 use anyhow::bail;
 use gtk4::glib;
 
-use super::owned_ptr::OwnedPtr;
 use super::Value;
+use super::owned_ptr::OwnedPtr;
 use crate::{arg, types::*, value};
 
 pub(super) fn try_from_hashtable(arg: &arg::Arg, type_: &HashTableType) -> anyhow::Result<Value> {
@@ -20,18 +20,10 @@ pub(super) fn try_from_hashtable(arg: &arg::Arg, type_: &HashTableType) -> anyho
     };
 
     match (&*type_.key_type, &*type_.value_type) {
-        (Type::String(_), Type::String(_)) => {
-            try_from_string_string_hashtable(tuples)
-        }
-        (Type::Integer(_), Type::Integer(_)) => {
-            try_from_int_int_hashtable(tuples)
-        }
-        (Type::String(_), Type::Integer(_)) => {
-            try_from_string_int_hashtable(tuples)
-        }
-        (Type::Integer(_), Type::String(_)) => {
-            try_from_int_string_hashtable(tuples)
-        }
+        (Type::String(_), Type::String(_)) => try_from_string_string_hashtable(tuples),
+        (Type::Integer(_), Type::Integer(_)) => try_from_int_int_hashtable(tuples),
+        (Type::String(_), Type::Integer(_)) => try_from_string_int_hashtable(tuples),
+        (Type::Integer(_), Type::String(_)) => try_from_int_string_hashtable(tuples),
         _ => bail!(
             "Unsupported GHashTable key/value types: {:?}/{:?}",
             type_.key_type,
@@ -89,7 +81,10 @@ fn try_from_string_string_hashtable(tuples: &[value::Value]) -> anyhow::Result<V
 
 fn try_from_int_int_hashtable(tuples: &[value::Value]) -> anyhow::Result<Value> {
     let hash_table = unsafe {
-        glib::ffi::g_hash_table_new(Some(glib::ffi::g_direct_hash), Some(glib::ffi::g_direct_equal))
+        glib::ffi::g_hash_table_new(
+            Some(glib::ffi::g_direct_hash),
+            Some(glib::ffi::g_direct_equal),
+        )
     };
 
     for tuple in tuples {
@@ -113,7 +108,10 @@ fn try_from_int_int_hashtable(tuples: &[value::Value]) -> anyhow::Result<Value> 
         }
     }
 
-    Ok(Value::OwnedPtr(OwnedPtr::new(hash_table, hash_table as *mut c_void)))
+    Ok(Value::OwnedPtr(OwnedPtr::new(
+        hash_table,
+        hash_table as *mut c_void,
+    )))
 }
 
 fn try_from_string_int_hashtable(tuples: &[value::Value]) -> anyhow::Result<Value> {
@@ -144,7 +142,11 @@ fn try_from_string_int_hashtable(tuples: &[value::Value]) -> anyhow::Result<Valu
 
         unsafe {
             let key_dup = glib::ffi::g_strdup(key_cstr.as_ptr());
-            glib::ffi::g_hash_table_insert(hash_table, key_dup as *mut c_void, val_num as *mut c_void);
+            glib::ffi::g_hash_table_insert(
+                hash_table,
+                key_dup as *mut c_void,
+                val_num as *mut c_void,
+            );
         }
 
         owned_strings.push(key_cstr);
@@ -184,7 +186,11 @@ fn try_from_int_string_hashtable(tuples: &[value::Value]) -> anyhow::Result<Valu
 
         unsafe {
             let val_dup = glib::ffi::g_strdup(val_cstr.as_ptr());
-            glib::ffi::g_hash_table_insert(hash_table, key_num as *mut c_void, val_dup as *mut c_void);
+            glib::ffi::g_hash_table_insert(
+                hash_table,
+                key_num as *mut c_void,
+                val_dup as *mut c_void,
+            );
         }
 
         owned_strings.push(val_cstr);

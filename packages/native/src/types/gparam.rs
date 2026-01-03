@@ -34,4 +34,3 @@ impl From<&GParamType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
-

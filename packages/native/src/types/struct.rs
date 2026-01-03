@@ -57,4 +57,3 @@ impl From<&StructType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
-

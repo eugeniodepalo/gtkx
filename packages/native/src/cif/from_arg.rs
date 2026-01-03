@@ -3,12 +3,12 @@ use std::ffi::{CString, c_void};
 use anyhow::bail;
 use gtk4::glib::{self, translate::IntoGlib as _};
 
+use super::Value;
 use super::array::try_from_array;
 use super::callback::try_from_callback;
 use super::hashtable::try_from_hashtable;
 use super::owned_ptr::OwnedPtr;
 use super::r#ref::try_from_ref;
-use super::Value;
 use crate::{arg::Arg, types::*, value};
 
 fn extract_object_ptr(val: &value::Value, type_name: &str) -> anyhow::Result<*mut c_void> {

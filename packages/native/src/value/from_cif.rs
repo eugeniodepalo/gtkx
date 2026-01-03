@@ -6,8 +6,7 @@ use gtk4::glib::{self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNo
 use super::Value;
 use crate::{
     boxed::Boxed,
-    cif,
-    integer,
+    cif, integer,
     object::{Object, ObjectId},
     types::*,
     variant::GVariant as GVariantWrapper,
@@ -101,10 +100,7 @@ fn ptr_element_to_value(ptr: *mut c_void, type_: &Type, context: &str) -> anyhow
     }
 }
 
-fn from_cif_glist(
-    cif_value: &cif::Value,
-    array_type: &ArrayType,
-) -> anyhow::Result<Value> {
+fn from_cif_glist(cif_value: &cif::Value, array_type: &ArrayType) -> anyhow::Result<Value> {
     let list_ptr = extract_ptr_from_cif(cif_value, "GList/GSList")?;
     if list_ptr.is_null() {
         return Ok(Value::Array(vec![]));
@@ -164,14 +160,18 @@ fn from_cif_owned_array(
                 let f32_vec = array_ptr
                     .value
                     .downcast_ref::<Vec<f32>>()
-                    .ok_or(anyhow::anyhow!("Failed to downcast array items to Vec<f32>"))?;
+                    .ok_or(anyhow::anyhow!(
+                        "Failed to downcast array items to Vec<f32>"
+                    ))?;
                 f32_vec.iter().map(|v| Value::Number(*v as f64)).collect()
             }
             FloatSize::_64 => {
                 let f64_vec = array_ptr
                     .value
                     .downcast_ref::<Vec<f64>>()
-                    .ok_or(anyhow::anyhow!("Failed to downcast array items to Vec<f64>"))?;
+                    .ok_or(anyhow::anyhow!(
+                        "Failed to downcast array items to Vec<f64>"
+                    ))?;
                 f64_vec.iter().map(|v| Value::Number(*v)).collect()
             }
         },
@@ -212,13 +212,13 @@ fn from_cif_owned_array(
     Ok(Value::Array(values))
 }
 
-fn from_cif_ref(
-    cif_value: &cif::Value,
-    ref_type: &RefType,
-) -> anyhow::Result<Value> {
+fn from_cif_ref(cif_value: &cif::Value, ref_type: &RefType) -> anyhow::Result<Value> {
     let ref_ptr = match cif_value {
         cif::Value::OwnedPtr(ptr) => ptr,
-        _ => bail!("Expected an owned pointer cif::Value for Ref, got {:?}", cif_value),
+        _ => bail!(
+            "Expected an owned pointer cif::Value for Ref, got {:?}",
+            cif_value
+        ),
     };
 
     match &*ref_type.inner_type {
@@ -228,9 +228,13 @@ fn from_cif_ref(
                 return Ok(Value::Null);
             }
             let object = if !gobject_type.is_transfer_full {
-                unsafe { glib::Object::from_glib_none(actual_ptr as *mut glib::gobject_ffi::GObject) }
+                unsafe {
+                    glib::Object::from_glib_none(actual_ptr as *mut glib::gobject_ffi::GObject)
+                }
             } else {
-                unsafe { glib::Object::from_glib_full(actual_ptr as *mut glib::gobject_ffi::GObject) }
+                unsafe {
+                    glib::Object::from_glib_full(actual_ptr as *mut glib::gobject_ffi::GObject)
+                }
             };
             Ok(Value::Object(Object::GObject(object).into()))
         }
@@ -271,7 +275,10 @@ fn from_cif_ref(
             Ok(Value::Number(number))
         }
         Type::String(string_type) => from_cif_ref_string(ref_ptr, string_type),
-        _ => bail!("Unsupported ref inner type for reading: {:?}", ref_type.inner_type),
+        _ => bail!(
+            "Unsupported ref inner type for reading: {:?}",
+            ref_type.inner_type
+        ),
     }
 }
 
@@ -288,7 +295,10 @@ fn from_cif_hashtable(
 
     unsafe {
         let mut iter = std::mem::MaybeUninit::<glib::ffi::GHashTableIter>::uninit();
-        glib::ffi::g_hash_table_iter_init(iter.as_mut_ptr(), hash_ptr as *mut glib::ffi::GHashTable);
+        glib::ffi::g_hash_table_iter_init(
+            iter.as_mut_ptr(),
+            hash_ptr as *mut glib::ffi::GHashTable,
+        );
 
         let mut key_ptr: *mut c_void = std::ptr::null_mut();
         let mut value_ptr: *mut c_void = std::ptr::null_mut();
@@ -299,8 +309,10 @@ fn from_cif_hashtable(
             &mut value_ptr as *mut _,
         ) != 0
         {
-            let key_value = ptr_element_to_value(key_ptr, &hash_table_type.key_type, "hash table key")?;
-            let val_value = ptr_element_to_value(value_ptr, &hash_table_type.value_type, "hash table value")?;
+            let key_value =
+                ptr_element_to_value(key_ptr, &hash_table_type.key_type, "hash table key")?;
+            let val_value =
+                ptr_element_to_value(value_ptr, &hash_table_type.value_type, "hash table value")?;
             pairs.push(Value::Array(vec![key_value, val_value]));
         }
     }
@@ -312,10 +324,7 @@ fn from_cif_hashtable(
     Ok(Value::Array(pairs))
 }
 
-fn from_cif_ref_string(
-    ref_ptr: &cif::OwnedPtr,
-    string_type: &StringType,
-) -> anyhow::Result<Value> {
+fn from_cif_ref_string(ref_ptr: &cif::OwnedPtr, string_type: &StringType) -> anyhow::Result<Value> {
     if ref_ptr.ptr.is_null() {
         return Ok(Value::Null);
     }
@@ -419,7 +428,12 @@ impl Value {
                 }
 
                 let boxed = if !type_.is_transfer_full {
-                    Boxed::from_glib_none_with_size(None, struct_ptr, type_.size, Some(&type_.type_))
+                    Boxed::from_glib_none_with_size(
+                        None,
+                        struct_ptr,
+                        type_.size,
+                        Some(&type_.type_),
+                    )
                 } else {
                     Boxed::from_glib_full(None, struct_ptr)
                 };

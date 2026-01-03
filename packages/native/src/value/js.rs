@@ -1,7 +1,7 @@
 use neon::prelude::*;
 
-use super::r#ref::Ref;
 use super::Value;
+use super::r#ref::Ref;
 use crate::object::ObjectId;
 use crate::types::Callback;
 

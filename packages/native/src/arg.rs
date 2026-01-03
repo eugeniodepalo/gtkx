@@ -62,9 +62,10 @@ impl Arg {
                     if prop.is_a::<JsUndefined, _>(cx) || prop.is_a::<JsNull, _>(cx) {
                         false
                     } else {
-                        prop
-                            .downcast::<JsBoolean, _>(cx)
-                            .or_else(|_| cx.throw_type_error("'optional' property must be a boolean"))?
+                        prop.downcast::<JsBoolean, _>(cx)
+                            .or_else(|_| {
+                                cx.throw_type_error("'optional' property must be a boolean")
+                            })?
                             .value(cx)
                     }
                 }

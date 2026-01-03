@@ -74,7 +74,11 @@ fn read_i64() {
 fn write_u8() {
     let mut value: u8 = 0;
     let ptr = &mut value as *mut u8;
-    integer::write(&int_type(IntegerSize::_8, IntegerSign::Unsigned), ptr, 123.0);
+    integer::write(
+        &int_type(IntegerSize::_8, IntegerSign::Unsigned),
+        ptr,
+        123.0,
+    );
     assert_eq!(value, 123);
 }
 
@@ -229,8 +233,7 @@ fn f64_to_vec_u8() {
 #[test]
 fn f64_to_vec_i32() {
     let values = [-100.0, 0.0, 100.0];
-    let owned_ptr =
-        integer::f64_to_vec(&int_type(IntegerSize::_32, IntegerSign::Signed), &values);
+    let owned_ptr = integer::f64_to_vec(&int_type(IntegerSize::_32, IntegerSign::Signed), &values);
     let result = owned_ptr.value.downcast_ref::<Vec<i32>>().unwrap();
     assert_eq!(result, &vec![-100i32, 0i32, 100i32]);
 }
@@ -239,8 +242,11 @@ fn f64_to_vec_i32() {
 fn vec_to_f64_u8() {
     let values: Vec<u8> = vec![10, 20, 30];
     let owned_ptr = cif::OwnedPtr::from_vec(values);
-    let result =
-        integer::vec_to_f64(&int_type(IntegerSize::_8, IntegerSign::Unsigned), &owned_ptr).unwrap();
+    let result = integer::vec_to_f64(
+        &int_type(IntegerSize::_8, IntegerSign::Unsigned),
+        &owned_ptr,
+    )
+    .unwrap();
     assert_eq!(result, vec![10.0, 20.0, 30.0]);
 }
 
@@ -256,11 +262,10 @@ fn vec_to_f64_i32() {
 #[test]
 fn vec_to_f64_wrong_type_fails() {
     let values: Vec<String> = vec!["not".to_string(), "numbers".to_string()];
-    let owned_ptr = cif::OwnedPtr::new(
-        Box::new(values),
-        std::ptr::null_mut(),
+    let owned_ptr = cif::OwnedPtr::new(Box::new(values), std::ptr::null_mut());
+    let result = integer::vec_to_f64(
+        &int_type(IntegerSize::_8, IntegerSign::Unsigned),
+        &owned_ptr,
     );
-    let result =
-        integer::vec_to_f64(&int_type(IntegerSize::_8, IntegerSign::Unsigned), &owned_ptr);
     assert!(result.is_err());
 }

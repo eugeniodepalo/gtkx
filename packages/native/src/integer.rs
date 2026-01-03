@@ -3,14 +3,30 @@ use crate::types::{IntegerSign, IntegerSize, IntegerType};
 
 pub fn read(int_type: &IntegerType, ptr: *const u8) -> f64 {
     match (int_type.size, int_type.sign) {
-        (IntegerSize::_8, IntegerSign::Unsigned) => unsafe { ptr.cast::<u8>().read_unaligned() as f64 },
-        (IntegerSize::_8, IntegerSign::Signed) => unsafe { ptr.cast::<i8>().read_unaligned() as f64 },
-        (IntegerSize::_16, IntegerSign::Unsigned) => unsafe { ptr.cast::<u16>().read_unaligned() as f64 },
-        (IntegerSize::_16, IntegerSign::Signed) => unsafe { ptr.cast::<i16>().read_unaligned() as f64 },
-        (IntegerSize::_32, IntegerSign::Unsigned) => unsafe { ptr.cast::<u32>().read_unaligned() as f64 },
-        (IntegerSize::_32, IntegerSign::Signed) => unsafe { ptr.cast::<i32>().read_unaligned() as f64 },
-        (IntegerSize::_64, IntegerSign::Unsigned) => unsafe { ptr.cast::<u64>().read_unaligned() as f64 },
-        (IntegerSize::_64, IntegerSign::Signed) => unsafe { ptr.cast::<i64>().read_unaligned() as f64 },
+        (IntegerSize::_8, IntegerSign::Unsigned) => unsafe {
+            ptr.cast::<u8>().read_unaligned() as f64
+        },
+        (IntegerSize::_8, IntegerSign::Signed) => unsafe {
+            ptr.cast::<i8>().read_unaligned() as f64
+        },
+        (IntegerSize::_16, IntegerSign::Unsigned) => unsafe {
+            ptr.cast::<u16>().read_unaligned() as f64
+        },
+        (IntegerSize::_16, IntegerSign::Signed) => unsafe {
+            ptr.cast::<i16>().read_unaligned() as f64
+        },
+        (IntegerSize::_32, IntegerSign::Unsigned) => unsafe {
+            ptr.cast::<u32>().read_unaligned() as f64
+        },
+        (IntegerSize::_32, IntegerSign::Signed) => unsafe {
+            ptr.cast::<i32>().read_unaligned() as f64
+        },
+        (IntegerSize::_64, IntegerSign::Unsigned) => unsafe {
+            ptr.cast::<u64>().read_unaligned() as f64
+        },
+        (IntegerSize::_64, IntegerSign::Signed) => unsafe {
+            ptr.cast::<i64>().read_unaligned() as f64
+        },
     }
 }
 

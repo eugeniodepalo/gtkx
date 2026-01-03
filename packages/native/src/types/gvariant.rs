@@ -34,4 +34,3 @@ impl From<&GVariantType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
-

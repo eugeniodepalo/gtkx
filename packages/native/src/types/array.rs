@@ -64,7 +64,7 @@ impl ArrayType {
             _ => {
                 return cx.throw_type_error(
                     "'listType' must be 'array', 'glist', 'gslist', 'gptrarray', or 'garray'",
-                )
+                );
             }
         };
 
@@ -91,4 +91,3 @@ impl From<&ArrayType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
-

@@ -123,4 +123,3 @@ pub fn dispatch_pending() -> bool {
 
     dispatched
 }
-

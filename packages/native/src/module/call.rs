@@ -234,7 +234,10 @@ fn handle_call(
             if let Type::Ref(ref_type) = &arg.type_ {
                 let is_object_passthrough = matches!(
                     (&*ref_type.inner_type, &*r#ref.value),
-                    (Type::Boxed(_) | Type::Struct(_) | Type::GObject(_), Value::Object(_))
+                    (
+                        Type::Boxed(_) | Type::Struct(_) | Type::GObject(_),
+                        Value::Object(_)
+                    )
                 );
                 if is_object_passthrough {
                     continue;

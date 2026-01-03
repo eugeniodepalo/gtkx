@@ -92,4 +92,3 @@ impl Drop for GVariant {
         }
     }
 }
-

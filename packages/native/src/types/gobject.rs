@@ -34,4 +34,3 @@ impl From<&GObjectType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
-

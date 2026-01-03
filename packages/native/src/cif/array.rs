@@ -2,8 +2,8 @@ use std::ffi::{CString, c_void};
 
 use anyhow::bail;
 
-use super::owned_ptr::OwnedPtr;
 use super::Value;
+use super::owned_ptr::OwnedPtr;
 use crate::{arg, types::*, value};
 
 pub(super) fn try_from_array(arg: &arg::Arg, type_: &ArrayType) -> anyhow::Result<Value> {
@@ -23,7 +23,9 @@ pub(super) fn try_from_array(arg: &arg::Arg, type_: &ArrayType) -> anyhow::Resul
                 }
             }
 
-            Ok(Value::OwnedPtr(crate::integer::f64_to_vec(int_type, &values)))
+            Ok(Value::OwnedPtr(crate::integer::f64_to_vec(
+                int_type, &values,
+            )))
         }
         Type::Float(ref float_type) => {
             let mut values = Vec::new();

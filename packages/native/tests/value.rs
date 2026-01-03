@@ -1037,8 +1037,7 @@ fn from_cif_value_struct_transfer_none_without_size_logs_warning() {
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
 
-    let struct_type =
-        native::types::StructType::new(false, "UnknownSizeStruct".to_string(), None);
+    let struct_type = native::types::StructType::new(false, "UnknownSizeStruct".to_string(), None);
     let type_ = Type::Struct(struct_type);
 
     let cif_value = cif::Value::Ptr(struct_ptr);
@@ -1061,8 +1060,7 @@ fn from_cif_value_struct_owned_without_size() {
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
 
-    let struct_type =
-        native::types::StructType::new(true, "UnknownSizeStruct".to_string(), None);
+    let struct_type = native::types::StructType::new(true, "UnknownSizeStruct".to_string(), None);
     let type_ = Type::Struct(struct_type);
 
     let cif_value = cif::Value::Ptr(struct_ptr);
