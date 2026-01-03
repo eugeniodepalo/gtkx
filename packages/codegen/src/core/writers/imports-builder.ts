@@ -61,10 +61,20 @@ export type ImportSpec = {
  * ```
  */
 export class ImportsBuilder {
+    private readonly currentNormalized: string;
+    private readonly parentNormalized: string;
+
     constructor(
         private readonly ctx: GenerationContext,
         private readonly options: ImportsBuilderOptions,
-    ) {}
+    ) {
+        this.currentNormalized = options.currentClassName
+            ? normalizeClassName(options.currentClassName, options.namespace)
+            : "";
+        this.parentNormalized = options.parentClassName
+            ? normalizeClassName(options.parentClassName, options.namespace)
+            : "";
+    }
 
     /**
      * Collects all imports based on the generation context.
@@ -215,49 +225,42 @@ export class ImportsBuilder {
         return imports;
     }
 
-    private collectRecordImports(): ImportSpec[] {
+    private collectSameNamespaceImports(
+        entries: Iterable<[string, string]>,
+        shouldSkip: (name: string) => boolean,
+        getFileName?: (name: string, originalName: string) => string,
+    ): ImportSpec[] {
         const imports: ImportSpec[] = [];
-        const currentNormalized = this.options.currentClassName
-            ? normalizeClassName(this.options.currentClassName, this.options.namespace)
-            : "";
-        const parentNormalized = this.options.parentClassName
-            ? normalizeClassName(this.options.parentClassName, this.options.namespace)
-            : "";
+        const sortedEntries = Array.from(entries).sort((a, b) => a[0].localeCompare(b[0]));
 
-        for (const normalizedRecordName of Array.from(this.ctx.usedRecords).sort()) {
-            if (normalizedRecordName !== currentNormalized && normalizedRecordName !== parentNormalized) {
-                const originalName = this.ctx.recordNameToFile.get(normalizedRecordName) ?? normalizedRecordName;
-                imports.push({
-                    moduleSpecifier: `./${toKebabCase(originalName)}.js`,
-                    namedImports: [normalizedRecordName],
-                });
-            }
+        for (const [name, originalName] of sortedEntries) {
+            if (shouldSkip(name)) continue;
+
+            const fileName = getFileName ? getFileName(name, originalName) : originalName;
+            imports.push({
+                moduleSpecifier: `./${toKebabCase(fileName)}.js`,
+                namedImports: [name],
+            });
         }
 
         return imports;
     }
 
+    private collectRecordImports(): ImportSpec[] {
+        const entries: [string, string][] = Array.from(this.ctx.usedRecords).map((name) => [name, name]);
+        return this.collectSameNamespaceImports(
+            entries,
+            (name) => name === this.currentNormalized || name === this.parentNormalized,
+            (name) => this.ctx.recordNameToFile.get(name) ?? name,
+        );
+    }
+
     private collectInterfaceImports(): ImportSpec[] {
-        const imports: ImportSpec[] = [];
-        const currentNormalized = this.options.currentClassName
-            ? normalizeClassName(this.options.currentClassName, this.options.namespace)
-            : "";
-
-        for (const [interfaceName, originalName] of Array.from(this.ctx.usedInterfaces.entries()).sort((a, b) =>
-            a[0].localeCompare(b[0]),
-        )) {
-            if (interfaceName === currentNormalized) {
-                continue;
-            }
-
-            const originalFileName = this.ctx.interfaceNameToFile.get(interfaceName) ?? originalName;
-            imports.push({
-                moduleSpecifier: `./${toKebabCase(originalFileName)}.js`,
-                namedImports: [interfaceName],
-            });
-        }
-
-        return imports;
+        return this.collectSameNamespaceImports(
+            this.ctx.usedInterfaces.entries(),
+            (name) => name === this.currentNormalized,
+            (name) => this.ctx.interfaceNameToFile.get(name) ?? name,
+        );
     }
 
     private collectParentClassImport(): ImportSpec | null {
@@ -272,50 +275,21 @@ export class ImportsBuilder {
     }
 
     private collectClassImports(): ImportSpec[] {
-        const imports: ImportSpec[] = [];
-        const currentNormalized = this.options.currentClassName
-            ? normalizeClassName(this.options.currentClassName, this.options.namespace)
-            : "";
-        const parentNormalized = this.options.parentClassName
-            ? normalizeClassName(this.options.parentClassName, this.options.namespace)
-            : "";
-
-        for (const [className, originalName] of Array.from(this.ctx.usedSameNamespaceClasses.entries()).sort((a, b) =>
-            a[0].localeCompare(b[0]),
-        )) {
-            if (
-                className === currentNormalized ||
-                className === parentNormalized ||
-                this.ctx.signalClasses.has(className) ||
-                this.ctx.usedInterfaces.has(className)
-            ) {
-                continue;
-            }
-
-            imports.push({
-                moduleSpecifier: `./${toKebabCase(originalName)}.js`,
-                namedImports: [className],
-            });
-        }
-
-        return imports;
+        return this.collectSameNamespaceImports(
+            this.ctx.usedSameNamespaceClasses.entries(),
+            (name) =>
+                name === this.currentNormalized ||
+                name === this.parentNormalized ||
+                this.ctx.signalClasses.has(name) ||
+                this.ctx.usedInterfaces.has(name),
+        );
     }
 
     private collectSignalClassImports(): ImportSpec[] {
-        const imports: ImportSpec[] = [];
-
-        for (const [className, originalName] of Array.from(this.ctx.signalClasses.entries()).sort((a, b) =>
-            a[0].localeCompare(b[0]),
-        )) {
-            if (className !== this.options.currentClassName && className !== this.options.parentClassName) {
-                imports.push({
-                    moduleSpecifier: `./${toKebabCase(originalName)}.js`,
-                    namedImports: [className],
-                });
-            }
-        }
-
-        return imports;
+        return this.collectSameNamespaceImports(this.ctx.signalClasses.entries(), (name) => {
+            const normalized = normalizeClassName(name, this.options.namespace);
+            return normalized === this.currentNormalized || normalized === this.parentNormalized;
+        });
     }
 
     private collectExternalNamespaceImports(): ImportSpec[] {

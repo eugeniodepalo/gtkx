@@ -431,6 +431,14 @@ export class MethodBodyWriter {
         }
     }
 
+    writeArgumentsToWriter(writer: Parameters<WriterFunction>[0], args: readonly CallArgument[]): void {
+        for (const arg of args) {
+            writer.write("{ type: ");
+            this.ffiTypeWriter.toWriter(arg.type)(writer);
+            writer.writeLine(`, value: ${arg.value}, optional: ${arg.optional ?? false} },`);
+        }
+    }
+
     /**
      * Builds call arguments as an array of CallArgument objects.
      * Used with CallExpressionBuilder.toWriter() for ts-morph generation.
@@ -813,11 +821,7 @@ export class MethodBodyWriter {
                 writer.writeLine(`"${cIdentifier}",`);
                 writer.writeLine("[");
                 writer.indent(() => {
-                    for (const arg of args) {
-                        writer.write("{ type: ");
-                        this.ffiTypeWriter.toWriter(arg.type)(writer);
-                        writer.writeLine(`, value: ${arg.value}, optional: ${arg.optional ?? false} },`);
-                    }
+                    this.writeArgumentsToWriter(writer, args);
                 });
                 writer.writeLine("],");
                 this.ffiTypeWriter.toWriter(returnTypeDescriptor)(writer);

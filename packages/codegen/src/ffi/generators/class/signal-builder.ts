@@ -20,6 +20,7 @@ import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import type { MappedType } from "../../../core/type-system/ffi-types.js";
+import { collectDirectMembers, collectParentSignalNames } from "../../../core/utils/class-traversal.js";
 import { filterVarargs } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import type { Writers } from "../../../core/writers/index.js";
@@ -84,22 +85,14 @@ export class SignalBuilder {
     }
 
     collectOwnSignals(): NormalizedSignal[] {
-        const ownSignals: NormalizedSignal[] = [...this.cls.signals];
-        const seenSignals = new Set(this.cls.signals.map((s) => s.name));
-
-        for (const ifaceQualifiedName of this.cls.implements) {
-            const iface = this.repository.resolveInterface(ifaceQualifiedName as QualifiedName);
-            if (!iface) continue;
-
-            for (const signal of iface.signals) {
-                if (!seenSignals.has(signal.name)) {
-                    seenSignals.add(signal.name);
-                    ownSignals.push(signal);
-                }
-            }
-        }
-
-        return ownSignals;
+        return collectDirectMembers({
+            cls: this.cls,
+            repo: this.repository,
+            getClassMembers: (c) => c.signals,
+            getInterfaceMembers: (i) => i.signals,
+            getParentNames: collectParentSignalNames,
+            transformName: toCamelCase,
+        });
     }
 
     collectAllSignals(): { allSignals: NormalizedSignal[]; hasCrossNamespaceParent: boolean } {
@@ -255,32 +248,13 @@ export class SignalBuilder {
     }
 
     private writeCallExpression(writer: CodeBlockWriter, signal: NormalizedSignal, paramData: SignalParamData[]): void {
-        writer.writeLine("return call(");
-        writer.indent(() => {
-            writer.writeLine(`"${this.options.sharedLibrary}",`);
-            writer.writeLine('"g_signal_connect_closure",');
-            writer.writeLine("[");
-            writer.indent(() => {
-                writer.writeLine('{ type: { type: "gobject", ownership: "none" }, value: this.id },');
-                writer.writeLine('{ type: { type: "string", ownership: "none" }, value: signal },');
-                writer.writeLine("{");
-                writer.indent(() => {
-                    writer.write("type: { ");
-                    writer.write('type: "callback", ');
-                    this.writeArgTypes(writer, paramData);
-                    writer.write(", ");
-                    this.writeReturnType(writer, signal);
-                    writer.write(', trampoline: "closure"');
-                    writer.writeLine(" },");
-                    writer.writeLine("value: wrappedHandler,");
-                });
-                writer.writeLine("},");
-                writer.writeLine('{ type: { type: "boolean" }, value: after },');
-            });
-            writer.writeLine("],");
-            writer.writeLine('{ type: "int", size: 64, unsigned: true }');
+        this.writeSignalConnectCall(writer, (w) => {
+            w.write('type: "callback", ');
+            this.writeArgTypes(w, paramData);
+            w.write(", ");
+            this.writeReturnType(w, signal);
+            w.write(', trampoline: "closure"');
         });
-        writer.writeLine(") as number;");
     }
 
     private writeArgTypes(writer: CodeBlockWriter, paramData: SignalParamData[]): void {
@@ -320,6 +294,12 @@ export class SignalBuilder {
             writer.writeLine(`return handler(getNativeObject(args[0]) as ${this.className}, ...args.slice(1));`);
         });
         writer.writeLine("};");
+        this.writeSignalConnectCall(writer, (w) => {
+            w.write('type: "callback", argTypes: [{ type: "gobject", ownership: "none" }], trampoline: "closure"');
+        });
+    }
+
+    private writeSignalConnectCall(writer: CodeBlockWriter, callbackTypeWriter: (w: CodeBlockWriter) => void): void {
         writer.writeLine("return call(");
         writer.indent(() => {
             writer.writeLine(`"${this.options.sharedLibrary}",`);
@@ -330,9 +310,9 @@ export class SignalBuilder {
                 writer.writeLine('{ type: { type: "string", ownership: "none" }, value: signal },');
                 writer.writeLine("{");
                 writer.indent(() => {
-                    writer.writeLine(
-                        'type: { type: "callback", argTypes: [{ type: "gobject", ownership: "none" }], trampoline: "closure" },',
-                    );
+                    writer.write("type: { ");
+                    callbackTypeWriter(writer);
+                    writer.writeLine(" },");
                     writer.writeLine("value: wrappedHandler,");
                 });
                 writer.writeLine("},");

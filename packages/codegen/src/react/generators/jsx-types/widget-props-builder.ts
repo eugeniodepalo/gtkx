@@ -130,21 +130,7 @@ export class WidgetPropsBuilder {
             });
         }
 
-        if (widget.isListWidget || widget.isColumnViewWidget) {
-            allPropertyStructures.push(...this.getListWidgetPropertyStructures());
-        }
-
-        if (widget.isColumnViewWidget) {
-            allPropertyStructures.push(...this.getColumnViewPropertyStructures());
-        }
-
-        if (widget.isListWidget) {
-            allPropertyStructures.push(...this.getListRenderPropertyStructures());
-        }
-
-        if (widget.isDropDownWidget) {
-            allPropertyStructures.push(...this.getDropDownPropertyStructures());
-        }
+        allPropertyStructures.push(...this.getSpecialWidgetProperties(widget));
 
         if (widget.isContainer || widget.isListWidget || widget.isColumnViewWidget || widget.isDropDownWidget) {
             allPropertyStructures.push({
@@ -182,55 +168,57 @@ export class WidgetPropsBuilder {
         });
     }
 
-    private getListWidgetPropertyStructures(): PropStructure[] {
-        return [
-            {
-                name: "selected",
-                type: "string[] | null",
-                hasQuestionToken: true,
-                docs: [{ description: "Array of selected item IDs" }],
-            },
-            {
-                name: "onSelectionChanged",
-                type: "((ids: string[]) => void) | null",
-                hasQuestionToken: true,
-                docs: [{ description: "Called when selection changes with array of selected item IDs" }],
-            },
-            {
-                name: "selectionMode",
-                type: 'import("@gtkx/ffi/gtk").SelectionMode | null',
-                hasQuestionToken: true,
-                docs: [{ description: "Selection mode: SINGLE (default) or MULTIPLE" }],
-            },
-        ];
-    }
+    private getSpecialWidgetProperties(widget: JsxWidget): PropStructure[] {
+        const props: PropStructure[] = [];
 
-    private getColumnViewPropertyStructures(): PropStructure[] {
-        return [
-            {
-                name: "sortColumn",
-                type: "string | null",
-                hasQuestionToken: true,
-                docs: [{ description: "ID of the currently sorted column, or null if unsorted" }],
-            },
-            {
-                name: "sortOrder",
-                type: 'import("@gtkx/ffi/gtk").SortType | null',
-                hasQuestionToken: true,
-                docs: [{ description: "The current sort direction" }],
-            },
-            {
-                name: "onSortChange",
-                type: '((column: string | null, order: import("@gtkx/ffi/gtk").SortType) => void) | null',
-                hasQuestionToken: true,
-                docs: [{ description: "Called when a column header is clicked to change sort" }],
-            },
-        ];
-    }
+        if (widget.isListWidget || widget.isColumnViewWidget) {
+            props.push(
+                {
+                    name: "selected",
+                    type: "string[] | null",
+                    hasQuestionToken: true,
+                    docs: [{ description: "Array of selected item IDs" }],
+                },
+                {
+                    name: "onSelectionChanged",
+                    type: "((ids: string[]) => void) | null",
+                    hasQuestionToken: true,
+                    docs: [{ description: "Called when selection changes with array of selected item IDs" }],
+                },
+                {
+                    name: "selectionMode",
+                    type: 'import("@gtkx/ffi/gtk").SelectionMode | null',
+                    hasQuestionToken: true,
+                    docs: [{ description: "Selection mode: SINGLE (default) or MULTIPLE" }],
+                },
+            );
+        }
 
-    private getListRenderPropertyStructures(): PropStructure[] {
-        return [
-            {
+        if (widget.isColumnViewWidget) {
+            props.push(
+                {
+                    name: "sortColumn",
+                    type: "string | null",
+                    hasQuestionToken: true,
+                    docs: [{ description: "ID of the currently sorted column, or null if unsorted" }],
+                },
+                {
+                    name: "sortOrder",
+                    type: 'import("@gtkx/ffi/gtk").SortType | null',
+                    hasQuestionToken: true,
+                    docs: [{ description: "The current sort direction" }],
+                },
+                {
+                    name: "onSortChange",
+                    type: '((column: string | null, order: import("@gtkx/ffi/gtk").SortType) => void) | null',
+                    hasQuestionToken: true,
+                    docs: [{ description: "Called when a column header is clicked to change sort" }],
+                },
+            );
+        }
+
+        if (widget.isListWidget) {
+            props.push({
                 name: "renderItem",
                 type: '(item: any) => import("react").ReactNode',
                 hasQuestionToken: false,
@@ -240,25 +228,27 @@ export class WidgetPropsBuilder {
                             "Render function for list items.\nCalled with null during setup (for loading state) and with the actual item during bind.",
                     },
                 ],
-            },
-        ];
-    }
+            });
+        }
 
-    private getDropDownPropertyStructures(): PropStructure[] {
-        return [
-            {
-                name: "selectedId",
-                type: "string | null",
-                hasQuestionToken: true,
-                docs: [{ description: "ID of the initially selected item" }],
-            },
-            {
-                name: "onSelectionChanged",
-                type: "((id: string) => void) | null",
-                hasQuestionToken: true,
-                docs: [{ description: "Called when selection changes with the selected item's ID" }],
-            },
-        ];
+        if (widget.isDropDownWidget) {
+            props.push(
+                {
+                    name: "selectedId",
+                    type: "string | null",
+                    hasQuestionToken: true,
+                    docs: [{ description: "ID of the initially selected item" }],
+                },
+                {
+                    name: "onSelectionChanged",
+                    type: "((id: string) => void) | null",
+                    hasQuestionToken: true,
+                    docs: [{ description: "Called when selection changes with the selected item's ID" }],
+                },
+            );
+        }
+
+        return props;
     }
 
     private getParentPropsName(widget: JsxWidget): string {

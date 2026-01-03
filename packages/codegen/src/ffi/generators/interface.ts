@@ -14,8 +14,7 @@ import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
 import { filterSupportedMethods } from "../../core/utils/filtering.js";
 import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
-import type { Writers } from "../../core/writers/index.js";
-import { MethodBodyWriter } from "../../core/writers/method-body-writer.js";
+import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../core/writers/index.js";
 
 /**
  * Generates interface classes.
@@ -36,7 +35,7 @@ export class InterfaceGenerator {
         private readonly repository: GirRepository,
         private readonly options: FfiGeneratorOptions,
     ) {
-        this.methodBody = new MethodBodyWriter(ffiMapper, ctx, writers.ffiTypeWriter);
+        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
     }
 
     /**

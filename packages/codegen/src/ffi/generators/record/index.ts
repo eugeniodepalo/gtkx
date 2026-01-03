@@ -29,8 +29,7 @@ import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import { buildFromPtrStatements } from "../../../core/utils/structure-helpers.js";
-import type { Writers } from "../../../core/writers/index.js";
-import { MethodBodyWriter } from "../../../core/writers/method-body-writer.js";
+import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
 import { FieldBuilder } from "./field-builder.js";
 
 /**
@@ -53,7 +52,7 @@ export class RecordGenerator {
         private readonly options: FfiGeneratorOptions,
     ) {
         this.fieldBuilder = new FieldBuilder(ffiMapper, ctx, writers);
-        this.methodBody = new MethodBodyWriter(ffiMapper, ctx, writers.ffiTypeWriter);
+        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
     }
 
     /**

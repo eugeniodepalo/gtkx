@@ -21,8 +21,8 @@ import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { isMethodDuplicate } from "../../../core/utils/filtering.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
 import { formatNullableReturn } from "../../../core/utils/type-qualification.js";
-import type { Writers } from "../../../core/writers/index.js";
-import { type ConstructorSelection, MethodBodyWriter } from "../../../core/writers/method-body-writer.js";
+import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
+import type { ConstructorSelection } from "../../../core/writers/method-body-writer.js";
 
 /**
  * Builds method code for a class.
@@ -36,7 +36,7 @@ export class MethodBuilder {
         writers: Writers,
         private readonly options: FfiGeneratorOptions,
     ) {
-        this.methodBody = new MethodBodyWriter(ffiMapper, ctx, writers.ffiTypeWriter);
+        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
     }
 
     /**
@@ -230,15 +230,8 @@ export class MethodBuilder {
                         this.methodBody.getFfiTypeWriter().toWriter(selfTypeDescriptor)(writer);
                         writer.writeLine(", value: this.id },");
 
-                        for (const param of asyncParams) {
-                            const mapped = this.ffiMapper.mapParameter(param);
-                            const jsParamName = this.methodBody.toJsParamName(param);
-                            const isOptional = this.ffiMapper.isNullable(param);
-                            const valueName = this.methodBody.buildValueExpression(jsParamName, mapped);
-                            writer.write("{ type: ");
-                            this.methodBody.getFfiTypeWriter().toWriter(mapped.ffi)(writer);
-                            writer.writeLine(`, value: ${valueName}, optional: ${isOptional} },`);
-                        }
+                        const asyncArgs = this.methodBody.buildCallArgumentsArray(asyncParams);
+                        this.methodBody.writeArgumentsToWriter(writer, asyncArgs);
 
                         writer.writeLine("{");
                         writer.indent(() => {

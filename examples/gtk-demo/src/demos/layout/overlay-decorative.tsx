@@ -110,8 +110,6 @@ const OverlayDecorativeDemo = () => {
                                     cssClasses={[badgeStyle]}
                                     halign={Gtk.Align.END}
                                     valign={Gtk.Align.START}
-                                    marginEnd={-4}
-                                    marginTop={-4}
                                 />
                             )}
                         </GtkOverlay>
@@ -260,8 +258,6 @@ const OverlayDecorativeDemo = () => {
                                     cssClasses={[badgeStyle]}
                                     halign={Gtk.Align.END}
                                     valign={Gtk.Align.START}
-                                    marginEnd={-2}
-                                    marginTop={-2}
                                 />
                             )}
                         </GtkOverlay>
@@ -270,7 +266,7 @@ const OverlayDecorativeDemo = () => {
             </GtkFrame>
 
             <GtkLabel
-                label="Use halign and valign props on overlay children to position them at corners or edges. Negative margins can extend elements beyond the overlay bounds."
+                label="Use halign and valign props on overlay children to position them at corners or edges."
                 wrap
                 cssClasses={["dim-label", "caption"]}
                 halign={Gtk.Align.START}

@@ -12,8 +12,7 @@ import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { normalizeClassName, toCamelCase } from "../../../core/utils/naming.js";
-import type { Writers } from "../../../core/writers/index.js";
-import { MethodBodyWriter } from "../../../core/writers/method-body-writer.js";
+import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
 
 /**
  * Builds constructor code for a class.
@@ -31,7 +30,7 @@ export class ConstructorBuilder {
         private readonly options: FfiGeneratorOptions,
     ) {
         this.className = normalizeClassName(cls.name, options.namespace);
-        this.methodBody = new MethodBodyWriter(ffiMapper, ctx, writers.ffiTypeWriter);
+        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
     }
 
     setParentFactoryMethodNames(names: Set<string>): void {

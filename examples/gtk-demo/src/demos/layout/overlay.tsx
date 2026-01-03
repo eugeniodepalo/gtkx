@@ -55,8 +55,6 @@ const OverlayDemo = () => {
                                 cssClasses={["error", "pill", "numeric"]}
                                 halign={Gtk.Align.END}
                                 valign={Gtk.Align.START}
-                                marginEnd={-4}
-                                marginTop={-4}
                             />
                         )}
                     </GtkOverlay>

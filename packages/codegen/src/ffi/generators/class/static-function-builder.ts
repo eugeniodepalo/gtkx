@@ -11,8 +11,7 @@ import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { filterSupportedFunctions } from "../../../core/utils/filtering.js";
 import { normalizeClassName } from "../../../core/utils/naming.js";
-import type { Writers } from "../../../core/writers/index.js";
-import { MethodBodyWriter } from "../../../core/writers/method-body-writer.js";
+import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
 
 /**
  * Builds static function code for a class.
@@ -29,7 +28,7 @@ export class StaticFunctionBuilder {
         private readonly options: FfiGeneratorOptions,
     ) {
         this.className = normalizeClassName(cls.name, options.namespace);
-        this.methodBody = new MethodBodyWriter(ffiMapper, ctx, writers.ffiTypeWriter);
+        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
     }
 
     /**

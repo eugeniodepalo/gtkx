@@ -14,8 +14,7 @@ import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions } from "../../core/utils/filtering.js";
 import { toCamelCase, toValidIdentifier } from "../../core/utils/naming.js";
 import { formatNullableReturn } from "../../core/utils/type-qualification.js";
-import type { Writers } from "../../core/writers/index.js";
-import { MethodBodyWriter } from "../../core/writers/method-body-writer.js";
+import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../core/writers/index.js";
 
 /**
  * Generates standalone exported functions.
@@ -35,7 +34,7 @@ export class FunctionGenerator {
         writers: Writers,
         private readonly options: FfiGeneratorOptions,
     ) {
-        this.methodBody = new MethodBodyWriter(ffiMapper, ctx, writers.ffiTypeWriter);
+        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
     }
 
     /**
