@@ -4,26 +4,25 @@ import { TypeInstance } from "../generated/gobject/type-instance.js";
 import { findNativeClass } from "../registry.js";
 import type { NativeClass, NativeObject } from "./base.js";
 
-export function getNativeObject<T extends NativeObject>(id: null | undefined, targetType?: NativeClass<T>): null;
-export function getNativeObject<T extends NativeObject>(id: ObjectId, targetType: NativeClass<T>): T;
-export function getNativeObject<T extends NativeObject>(
-    id: ObjectId | null | undefined,
-    targetType: NativeClass<T>,
-): T | null;
-export function getNativeObject(id: ObjectId): NativeObject;
-export function getNativeObject(id: ObjectId | null | undefined): NativeObject | null;
-export function getNativeObject<T extends NativeObject = NativeObject>(
-    id: ObjectId | null | undefined,
-    targetType?: NativeClass<T>,
-): T | null {
+type GetNativeObjectResult<
+    T extends ObjectId | null | undefined,
+    TClass extends NativeClass | undefined,
+> = T extends null | undefined ? null : TClass extends NativeClass<infer U> ? U : NativeObject;
+
+export function getNativeObject<
+    T extends ObjectId | null | undefined,
+    TClass extends NativeClass | undefined = undefined,
+>(id: T, targetType?: TClass): GetNativeObjectResult<T, TClass> {
+    type Result = GetNativeObjectResult<T, TClass>;
+
     if (id === null || id === undefined) {
-        return null;
+        return null as Result;
     }
 
     if (targetType) {
-        const instance = Object.create(targetType.prototype) as T;
+        const instance = Object.create(targetType.prototype) as NativeObject;
         instance.id = id;
-        return instance;
+        return instance as Result;
     }
 
     const typeInstance = Object.create(TypeInstance.prototype) as TypeInstance;
@@ -35,11 +34,18 @@ export function getNativeObject<T extends NativeObject = NativeObject>(
         throw new Error(`Expected registered GLib type, got '${runtimeTypeName}'`);
     }
 
-    const instance = Object.create(cls.prototype) as T;
+    const instance = Object.create(cls.prototype) as NativeObject;
     instance.id = id;
-    return instance;
+    return instance as Result;
 }
 
+/**
+ * Compares two NativeObject instances for equality based on their underlying object IDs.
+ *
+ * @param obj - The first NativeObject to compare.
+ * @param other - The second NativeObject to compare.
+ * @returns True if both objects have the same underlying ID, false otherwise.
+ */
 export const isObjectEqual = (obj: NativeObject, other: NativeObject): boolean => {
     return getObjectId(obj.id) === getObjectId(other.id);
 };
