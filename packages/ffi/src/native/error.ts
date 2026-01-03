@@ -33,7 +33,7 @@ export class NativeError extends Error {
      * @param id - Native GError pointer
      */
     constructor(id: unknown) {
-        const message = read(id, { type: "string" }, 8) as string;
+        const message = read(id, { type: "string", ownership: "none" }, 8) as string;
         super(message ?? "Unknown error");
 
         this.id = id;

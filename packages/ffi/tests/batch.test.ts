@@ -26,8 +26,8 @@ describe("endBatch", () => {
             "libgtk-4.so.1",
             "gtk_label_set_text",
             [
-                { type: { type: "gobject" }, value: label.id },
-                { type: { type: "string" }, value: "After" },
+                { type: { type: "gobject", ownership: "none" }, value: label.id },
+                { type: { type: "string", ownership: "full" }, value: "After" },
             ],
             { type: "undefined" },
         );
@@ -73,8 +73,8 @@ describe("call", () => {
             "libgtk-4.so.1",
             "gtk_label_set_text",
             [
-                { type: { type: "gobject" }, value: label.id },
-                { type: { type: "string" }, value: "Updated" },
+                { type: { type: "gobject", ownership: "none" }, value: label.id },
+                { type: { type: "string", ownership: "full" }, value: "Updated" },
             ],
             { type: "undefined" },
         );
@@ -86,8 +86,8 @@ describe("call", () => {
         const text = call(
             "libgtk-4.so.1",
             "gtk_label_get_text",
-            [{ type: { type: "gobject", borrowed: true }, value: label.id }],
-            { type: "string" },
+            [{ type: { type: "gobject", ownership: "none" }, value: label.id }],
+            { type: "string", ownership: "none" },
         );
         expect(text).toBe("Test Text");
     });

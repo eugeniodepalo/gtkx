@@ -15,12 +15,21 @@ export abstract class NativeObject {
     /** The type category: gobject, interface, boxed, gvariant, struct, or gparam */
     static readonly objectType: "gobject" | "interface" | "boxed" | "gvariant" | "struct" | "gparam";
 
+    /** Creates a wrapper instance from a native pointer/ID */
+    static fromPtr(ptr: unknown): NativeObject {
+        // biome-ignore lint/complexity/noThisInStatic: Intentional - allows subclasses to create instances of themselves
+        const instance = Object.create(this.prototype) as NativeObject;
+        instance.id = ptr;
+        return instance;
+    }
+
     /** Native object pointer/ID */
     id: unknown;
 
     // biome-ignore lint/complexity/noUselessConstructor: Required for NativeClass type compatibility
     // biome-ignore lint/suspicious/noExplicitAny: Required for NativeClass type compatibility
-    constructor(..._args: any[]) {}
+    // biome-ignore lint/correctness/noUnusedFunctionParameters: Required for NativeClass type compatibility
+    constructor(...args: any[]) {}
 
     /**
      * Compares this object to another for equality.

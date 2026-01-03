@@ -30,10 +30,10 @@ export function registerNativeClass(cls: NativeClass): void {
  * Gets a registered class by its GLib type name.
  *
  * @param glibTypeName - The GLib type name (e.g., "GtkButton")
- * @returns The registered class, or undefined if not found
+ * @returns The registered class, or null if not found
  */
-export function getNativeClass(glibTypeName: string): NativeClass | undefined {
-    return registry.get(glibTypeName);
+export function getNativeClass(glibTypeName: string): NativeClass | null {
+    return registry.get(glibTypeName) ?? null;
 }
 
 /**
@@ -43,9 +43,9 @@ export function getNativeClass(glibTypeName: string): NativeClass | undefined {
  * until a registered type is found.
  *
  * @param glibTypeName - The GLib type name to start from
- * @returns The closest registered parent class, or undefined
+ * @returns The closest registered parent class, or null
  */
-export const findNativeClass = (glibTypeName: string) => {
+export const findNativeClass = (glibTypeName: string): NativeClass | null => {
     let currentTypeName: string | null = glibTypeName;
 
     while (currentTypeName) {
@@ -60,4 +60,6 @@ export const findNativeClass = (glibTypeName: string) => {
 
         currentTypeName = typeName(parentGtype);
     }
+
+    return null;
 };
