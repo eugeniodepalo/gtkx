@@ -20,14 +20,12 @@ const TOGGLEABLE_ROLES = new Set([
 ]);
 
 const isToggleable = (widget: Gtk.Widget): boolean => {
-    const accessible = getNativeObject(widget.id, Gtk.Accessible);
-    if (!accessible) return false;
-    return TOGGLEABLE_ROLES.has(accessible.getAccessibleRole());
+    return TOGGLEABLE_ROLES.has(widget.getAccessibleRole());
 };
 
 const click = async (element: Gtk.Widget): Promise<void> => {
     if (isToggleable(element)) {
-        const role = getNativeObject(element.id, Gtk.Accessible)?.getAccessibleRole();
+        const role = element.getAccessibleRole();
 
         if (role === Gtk.AccessibleRole.CHECKBOX || role === Gtk.AccessibleRole.RADIO) {
             const checkButton = element as Gtk.CheckButton;
@@ -79,8 +77,6 @@ const type = async (element: Gtk.Widget, text: string): Promise<void> => {
     }
 
     const editable = getNativeObject(element.id, Gtk.Editable);
-    if (!editable) return;
-
     const currentText = editable.getText();
     editable.setText(currentText + text);
 
@@ -99,9 +95,8 @@ const clear = async (element: Gtk.Widget): Promise<void> => {
 const SELECTABLE_ROLES = new Set([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
-    const accessible = getNativeObject(widget.id, Gtk.Accessible);
-    if (!accessible) return false;
-    return SELECTABLE_ROLES.has(accessible.getAccessibleRole());
+    if (!widget) return false;
+    return SELECTABLE_ROLES.has(widget.getAccessibleRole());
 };
 
 const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: number[], exclusive: boolean): void => {
@@ -145,7 +140,7 @@ const selectOptions = async (element: Gtk.Widget, values: number | number[]): Pr
         throw new Error("Cannot select options: expected selectable widget (COMBO_BOX or LIST)");
     }
 
-    const role = getNativeObject(element.id, Gtk.Accessible)?.getAccessibleRole();
+    const role = element.getAccessibleRole();
 
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
         if (Array.isArray(values) && values.length > 1) {
@@ -186,7 +181,7 @@ const deselectOptions = async (element: Gtk.Widget, values: number | number[]): 
         return;
     }
 
-    const role = getNativeObject(element.id, Gtk.Accessible)?.getAccessibleRole();
+    const role = element.getAccessibleRole();
 
     if (role !== Gtk.AccessibleRole.LIST) {
         throw new Error("Cannot deselect options: only ListBox supports deselection");

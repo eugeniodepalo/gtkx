@@ -621,13 +621,13 @@ export class MethodBodyWriter {
                 this.writeRefRewrap(writer, gtkAllocatesRefs);
 
                 if (hasOwnClassReturn) {
-                    writer.writeLine(`return getNativeObject(ptr as ObjectId, ${options.ownClassName})!;`);
+                    writer.writeLine(`return getNativeObject(ptr as ObjectId, ${options.ownClassName});`);
                 } else {
                     if (isNullable) {
                         writer.writeLine("if (ptr === null) return null;");
                     }
                     if (wrapInfo.needsBoxedWrap || wrapInfo.needsGVariantWrap || wrapInfo.needsInterfaceWrap) {
-                        writer.writeLine(`return getNativeObject(ptr as ObjectId, ${baseReturnType})!;`);
+                        writer.writeLine(`return getNativeObject(ptr as ObjectId, ${baseReturnType});`);
                     } else {
                         writer.writeLine(`return getNativeObject(ptr as ObjectId) as ${baseReturnType};`);
                     }
@@ -745,7 +745,7 @@ export class MethodBodyWriter {
 
         writer.writeLine("if (error.value !== null) {");
         writer.indent(() => {
-            writer.writeLine(`throw new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef})!);`);
+            writer.writeLine(`throw new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef}));`);
         });
         writer.writeLine("}");
     }
@@ -755,11 +755,11 @@ export class MethodBodyWriter {
             this.ctx.usesGetNativeObject = true;
             if (ref.isBoxed) {
                 writer.writeLine(
-                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as ObjectId, ${ref.innerType})!;`,
+                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as ObjectId, ${ref.innerType});`,
                 );
             } else {
                 writer.writeLine(
-                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as ObjectId)! as ${ref.innerType};`,
+                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as ObjectId) as ${ref.innerType};`,
                 );
             }
         }
@@ -844,7 +844,7 @@ export class MethodBodyWriter {
 
             this.ctx.usesGetNativeObject = true;
             if (useClassInWrap) {
-                writer.writeLine(`return getNativeObject(ptr as ObjectId, ${wrapClassName})!;`);
+                writer.writeLine(`return getNativeObject(ptr as ObjectId, ${wrapClassName});`);
             } else {
                 writer.writeLine(`return getNativeObject(ptr as ObjectId) as ${wrapClassName};`);
             }

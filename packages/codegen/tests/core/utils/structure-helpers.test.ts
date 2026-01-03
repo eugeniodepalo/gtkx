@@ -2,7 +2,6 @@ import { StructureKind, VariableDeclarationKind, Writers } from "ts-morph";
 import { describe, expect, it } from "vitest";
 import {
     addNamespaceImports,
-    buildFromPtrStatements,
     createConstExport,
     writeConstIdentifierArray,
     writeConstStringArray,
@@ -210,33 +209,6 @@ describe("addNamespaceImports", () => {
 
         const imports = sourceFile.getImportDeclarations();
         expect(imports).toHaveLength(0);
-    });
-});
-
-describe("buildFromPtrStatements", () => {
-    it("returns three statements", () => {
-        const statements = buildFromPtrStatements("Button");
-        expect(statements).toHaveLength(3);
-    });
-
-    it("includes Object.create with class prototype", () => {
-        const statements = buildFromPtrStatements("Button");
-        expect(statements[0]).toContain("Object.create(Button.prototype)");
-    });
-
-    it("includes type cast to class", () => {
-        const statements = buildFromPtrStatements("Widget");
-        expect(statements[0]).toContain("as Widget");
-    });
-
-    it("includes id assignment", () => {
-        const statements = buildFromPtrStatements("Button");
-        expect(statements[1]).toBe("instance.id = ptr;");
-    });
-
-    it("includes return statement", () => {
-        const statements = buildFromPtrStatements("Button");
-        expect(statements[2]).toBe("return instance;");
     });
 });
 

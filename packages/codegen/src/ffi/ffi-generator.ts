@@ -7,7 +7,6 @@ import { FfiMapper } from "../core/type-system/ffi-mapper.js";
 import { isPrimitiveFieldType } from "../core/type-system/ffi-types.js";
 import { normalizeClassName, toKebabCase, toPascalCase } from "../core/utils/naming.js";
 import { parseParentReference } from "../core/utils/parent-reference.js";
-import { buildFromPtrStatements } from "../core/utils/structure-helpers.js";
 import { ImportsBuilder } from "../core/writers/imports-builder.js";
 import { createWriters } from "../core/writers/index.js";
 import { ClassGenerator } from "./generators/class/index.js";
@@ -152,14 +151,6 @@ export class FfiGenerator {
                     isStatic: true,
                     isReadonly: true,
                     initializer: '"boxed" as const',
-                });
-
-                classDecl.addMethod({
-                    name: "fromPtr",
-                    isStatic: true,
-                    parameters: [{ name: "ptr", type: "ObjectId" }],
-                    returnType: recordName,
-                    statements: buildFromPtrStatements(recordName),
                 });
             }
         }

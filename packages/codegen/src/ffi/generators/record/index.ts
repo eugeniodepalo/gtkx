@@ -20,7 +20,6 @@ import { boxedSelfType, type FfiTypeDescriptor, SELF_TYPE_GOBJECT } from "../../
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
-import { buildFromPtrStatements } from "../../../core/utils/structure-helpers.js";
 import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
 import { FieldBuilder } from "./field-builder.js";
 
@@ -62,8 +61,6 @@ export class RecordGenerator {
         const methodStructures: MethodDeclarationStructure[] = [];
 
         this.generateConstructors(record, recordName, classDecl, methodStructures);
-
-        methodStructures.push(this.buildFromPtrStructure(recordName));
 
         methodStructures.push(...this.buildStaticFunctionStructures(record.staticFunctions, recordName, record.name));
 
@@ -270,17 +267,6 @@ export class RecordGenerator {
             writer.writeLine("super();");
             writer.writeLine(`this.id = ${allocFn} as ObjectId;`);
             this.fieldBuilder.writeFieldWrites(fields)(writer);
-        };
-    }
-
-    private buildFromPtrStructure(recordName: string): MethodDeclarationStructure {
-        return {
-            kind: StructureKind.Method,
-            name: "fromPtr",
-            isStatic: true,
-            parameters: [{ name: "ptr", type: "ObjectId" }],
-            returnType: recordName,
-            statements: buildFromPtrStatements(recordName),
         };
     }
 

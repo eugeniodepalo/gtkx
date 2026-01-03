@@ -138,16 +138,6 @@ export type ConstExportOptions = {
     docs?: string | OptionalKind<JSDocStructure>[];
 };
 
-export type FromPtrStatements = string[];
-
-export function buildFromPtrStatements(className: string): FromPtrStatements {
-    return [
-        `const instance = Object.create(${className}.prototype) as ${className};`,
-        "instance.id = ptr;",
-        "return instance;",
-    ];
-}
-
 /**
  * Creates a variable statement structure for an exported const.
  * Centralizes the common pattern of creating const exports.

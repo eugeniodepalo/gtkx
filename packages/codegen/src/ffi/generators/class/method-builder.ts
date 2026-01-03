@@ -292,7 +292,7 @@ export class MethodBuilder {
                                     writer.writeLine("if (error.value !== null) {");
                                     writer.indent(() => {
                                         writer.writeLine(
-                                            `reject(new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef})!));`,
+                                            `reject(new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef})));`,
                                         );
                                         writer.writeLine("return;");
                                     });
@@ -316,7 +316,7 @@ export class MethodBuilder {
                                             wrapInfo.needsInterfaceWrap
                                         ) {
                                             writer.writeLine(
-                                                `resolve(getNativeObject(ptr as ObjectId, ${baseReturnType})!);`,
+                                                `resolve(getNativeObject(ptr as ObjectId, ${baseReturnType}));`,
                                             );
                                         } else {
                                             writer.writeLine(

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as Gdk from "../../src/generated/gdk/index.js";
 import * as Gtk from "../../src/generated/gtk/index.js";
-import { getNativeObject, type NativeClass } from "../../src/index.js";
+import { getNativeObject } from "../../src/index.js";
 
 describe("getNativeObject", () => {
     it("wraps a native pointer in a class instance", () => {
@@ -76,17 +76,6 @@ describe("getNativeObject", () => {
             const orientable = getNativeObject(box.id, Gtk.Orientable);
             expect(orientable).not.toBeNull();
             expect(typeof orientable?.setOrientation).toBe("function");
-        });
-
-        it("returns null for invalid gtype", () => {
-            const label = new Gtk.Label("Test");
-            const invalidType = {
-                glibTypeName: "InvalidInterface",
-                objectType: "interface",
-                prototype: { id: null },
-            } as unknown as NativeClass;
-            const result = getNativeObject(label.id, invalidType);
-            expect(result).toBeNull();
         });
     });
 });

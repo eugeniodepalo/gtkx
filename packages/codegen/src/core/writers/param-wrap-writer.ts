@@ -69,7 +69,7 @@ export class ParamWrapWriter {
         }
 
         if (wrapInfo.needsTargetClass && wrapInfo.targetClass) {
-            return `getNativeObject(${argName} as ObjectId, ${wrapInfo.targetClass})!`;
+            return `getNativeObject(${argName} as ObjectId, ${wrapInfo.targetClass})`;
         }
 
         return `getNativeObject(${argName} as ObjectId) as ${wrapInfo.tsType}`;

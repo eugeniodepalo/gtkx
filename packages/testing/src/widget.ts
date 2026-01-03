@@ -1,4 +1,3 @@
-import { getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 const EDITABLE_ROLES = new Set([
@@ -8,9 +7,7 @@ const EDITABLE_ROLES = new Set([
 ]);
 
 export const isEditable = (widget: Gtk.Widget): boolean => {
-    const accessible = getNativeObject(widget.id, Gtk.Accessible);
-    if (!accessible) return false;
-    return EDITABLE_ROLES.has(accessible.getAccessibleRole());
+    return EDITABLE_ROLES.has(widget.getAccessibleRole());
 };
 
 const LABEL_ROLES = new Set([
@@ -25,7 +22,5 @@ const LABEL_ROLES = new Set([
 ]);
 
 export const hasLabel = (widget: Gtk.Widget): boolean => {
-    const accessible = getNativeObject(widget.id, Gtk.Accessible);
-    if (!accessible) return false;
-    return LABEL_ROLES.has(accessible.getAccessibleRole());
+    return LABEL_ROLES.has(widget.getAccessibleRole());
 };

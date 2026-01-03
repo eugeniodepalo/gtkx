@@ -160,7 +160,7 @@ export class CallExpressionBuilder {
         return (writer) => {
             writer.writeLine("if (error.value !== null) {");
             writer.indent(() => {
-                writer.writeLine(`throw new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef})!);`);
+                writer.writeLine(`throw new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef}));`);
             });
             writer.writeLine("}");
         };

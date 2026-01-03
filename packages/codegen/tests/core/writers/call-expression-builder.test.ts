@@ -347,7 +347,7 @@ describe("CallExpressionBuilder", () => {
             const output = sourceFile.getFullText();
 
             expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("throw new NativeError(getNativeObject(error.value as ObjectId, GLib.GError)!)");
+            expect(output).toContain("throw new NativeError(getNativeObject(error.value as ObjectId, GLib.GError))");
         });
 
         it("builds error check code with custom GError reference", () => {
@@ -361,7 +361,7 @@ describe("CallExpressionBuilder", () => {
             const output = sourceFile.getFullText();
 
             expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("throw new NativeError(getNativeObject(error.value as ObjectId, GError)!)");
+            expect(output).toContain("throw new NativeError(getNativeObject(error.value as ObjectId, GError))");
         });
     });
 

@@ -1,4 +1,4 @@
-import { discardAllBatches, getNativeObject, start } from "@gtkx/ffi";
+import { discardAllBatches, start } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
@@ -17,10 +17,7 @@ let lastRenderError: Error | null = null;
 const getWidgetLabel = (widget: Gtk.Widget): string | null => {
     if (!hasLabel(widget)) return null;
 
-    const accessible = getNativeObject(widget.id, Gtk.Accessible);
-    if (!accessible) return null;
-
-    const role = accessible.getAccessibleRole();
+    const role = widget.getAccessibleRole();
     if (role === Gtk.AccessibleRole.LABEL) {
         return (widget as Gtk.Label).getLabel?.() ?? null;
     }
@@ -29,12 +26,11 @@ const getWidgetLabel = (widget: Gtk.Widget): string | null => {
 
 const printWidgetTree = (root: Gtk.Widget, indent = 0): string => {
     const prefix = "  ".repeat(indent);
-    const accessibleRole = getNativeObject(root.id, Gtk.Accessible)?.getAccessibleRole();
-    const role = accessibleRole !== undefined ? (Gtk.AccessibleRole[accessibleRole] ?? "UNKNOWN") : "UNKNOWN";
+    const role = root.getAccessibleRole();
+    const roleName = role !== undefined ? (Gtk.AccessibleRole[role] ?? "UNKNOWN") : "UNKNOWN";
     const labelText = getWidgetLabel(root);
     const label = labelText ? ` label="${labelText}"` : "";
-    let result = `${prefix}<${root.constructor.name} role=${role}${label}>\n`;
-
+    let result = `${prefix}<${root.constructor.name} role=${roleName}${label}>\n`;
     let child = root.getFirstChild();
     while (child) {
         result += printWidgetTree(child, indent + 1);

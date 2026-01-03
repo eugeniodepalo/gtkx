@@ -149,19 +149,6 @@ describe("RecordGenerator", () => {
             expect(code).toContain('"gvariant"');
         });
 
-        it("generates fromPtr static method", () => {
-            const { generator, sourceFile } = createTestSetup();
-            const record = createNormalizedRecord({
-                name: "Rectangle",
-                fields: [],
-            });
-
-            generator.generateToSourceFile(record, sourceFile);
-
-            const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("static fromPtr");
-        });
-
         it("adds registerNativeClass call when glibTypeName present", () => {
             const { generator, sourceFile } = createTestSetup();
             const record = createNormalizedRecord({

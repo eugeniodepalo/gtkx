@@ -971,7 +971,7 @@ Pattern.prototype.addColorStopRgba = function (
         getTypeFn: "cairo_gobject_font_options_get_type",
         ownership: "full",
     });
-    return FontOptions.fromPtr(ptr as ObjectId);
+    return getNativeObject(ptr as ObjectId, FontOptions);
 };
 
 FontOptions.prototype.setHintStyle = function (hintStyle: number): FontOptions {

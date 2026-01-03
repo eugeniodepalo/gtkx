@@ -70,16 +70,16 @@ const ROLES_WITH_INTERNAL_LABELS = new Set([
 ]);
 
 const isInternalLabel = (widget: Gtk.Widget): boolean => {
-    const accessible = getNativeObject(widget.id, Gtk.Accessible);
-    if (!accessible || accessible.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) return false;
+    if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) return false;
 
     const parent = widget.getParent();
     if (!parent) return false;
 
-    const parentAccessible = getNativeObject(parent.id, Gtk.Accessible);
-    if (!parentAccessible) return false;
+    if (parent.getAccessibleRole === undefined) return false;
+    const parentRole = parent.getAccessibleRole();
+    if (!parentRole) return false;
 
-    return ROLES_WITH_INTERNAL_LABELS.has(parentAccessible.getAccessibleRole());
+    return ROLES_WITH_INTERNAL_LABELS.has(parentRole);
 };
 
 const getLabelText = (widget: Gtk.Widget): string | null => {
@@ -93,8 +93,7 @@ const collectChildLabels = (widget: Gtk.Widget): string[] => {
     let child = widget.getFirstChild();
 
     while (child) {
-        const childAccessible = getNativeObject(child.id, Gtk.Accessible);
-        if (childAccessible?.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
+        if (child.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
             const labelText = getLabelText(child);
             if (labelText) labels.push(labelText);
         }
@@ -109,7 +108,7 @@ const collectChildLabels = (widget: Gtk.Widget): string[] => {
 const getWidgetText = (widget: Gtk.Widget): string | null => {
     if (isInternalLabel(widget)) return null;
 
-    const role = getNativeObject(widget.id, Gtk.Accessible)?.getAccessibleRole();
+    const role = widget.getAccessibleRole();
     if (role === undefined) return null;
 
     switch (role) {
@@ -135,7 +134,7 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
         case Gtk.AccessibleRole.TEXT_BOX:
         case Gtk.AccessibleRole.SEARCH_BOX:
         case Gtk.AccessibleRole.SPIN_BUTTON:
-            return getNativeObject(widget.id, Gtk.Editable)?.getText() ?? null;
+            return getNativeObject(widget.id, Gtk.Editable).getText() ?? null;
         case Gtk.AccessibleRole.GROUP:
             return (widget as Gtk.Frame).getLabel?.() ?? null;
         case Gtk.AccessibleRole.WINDOW:
@@ -163,10 +162,7 @@ const getWidgetTestId = (widget: Gtk.Widget): string | null => {
 };
 
 const getWidgetCheckedState = (widget: Gtk.Widget): boolean | null => {
-    const accessible = getNativeObject(widget.id, Gtk.Accessible);
-    if (!accessible) return null;
-
-    const role = accessible.getAccessibleRole();
+    const role = widget.getAccessibleRole();
 
     switch (role) {
         case Gtk.AccessibleRole.CHECKBOX:
@@ -182,10 +178,7 @@ const getWidgetCheckedState = (widget: Gtk.Widget): boolean | null => {
 };
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | null => {
-    const accessible = getNativeObject(widget.id, Gtk.Accessible);
-    if (!accessible) return null;
-
-    const role = accessible.getAccessibleRole();
+    const role = widget.getAccessibleRole();
 
     if (role === Gtk.AccessibleRole.BUTTON) {
         const parent = widget.getParent();
@@ -232,8 +225,7 @@ const formatByRoleError = (role: Gtk.AccessibleRole, options?: ByRoleOptions): s
 
 const getAllByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
-        const accessible = getNativeObject(node.id, Gtk.Accessible);
-        if (!accessible || accessible.getAccessibleRole() !== role) return false;
+        if (node.getAccessibleRole() !== role) return false;
         return matchByRoleOptions(node, options);
     });
 

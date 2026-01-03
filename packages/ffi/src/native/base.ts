@@ -1,4 +1,4 @@
-import { getObjectId, type ObjectId } from "@gtkx/native";
+import type { ObjectId } from "@gtkx/native";
 
 /**
  * Base class for all GTK/GLib object wrappers.
@@ -15,30 +15,11 @@ export abstract class NativeObject {
     /** The type category: gobject, interface, boxed, gvariant, struct, or gparam */
     static readonly objectType: "gobject" | "interface" | "boxed" | "gvariant" | "struct" | "gparam";
 
-    /** Native object ID */
     id: ObjectId;
 
     // biome-ignore lint/suspicious/noExplicitAny: Required for NativeClass type compatibility
     constructor(..._args: any[]) {
         this.id = undefined as unknown as ObjectId;
-    }
-
-    /** Retrieves the native ID memory address as a number */
-    getIdValue(): number {
-        return getObjectId(this.id);
-    }
-
-    /**
-     * Compares this object to another for equality.
-     *
-     * Objects are equal if they wrap the same native ID.
-     *
-     * @param other - Object to compare against
-     * @returns `true` if both wrap the same native object
-     */
-    equals(other: unknown): boolean {
-        if (!(other instanceof NativeObject)) return false;
-        return this.getIdValue() === other.getIdValue();
     }
 }
 
