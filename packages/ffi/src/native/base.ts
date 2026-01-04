@@ -1,4 +1,4 @@
-import type { ObjectId } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 
 /**
  * Base class for all GTK/GLib object wrappers.
@@ -15,12 +15,12 @@ export abstract class NativeObject {
     /** The type category: gobject, interface, boxed, struct, or fundamental */
     static readonly objectType: "gobject" | "interface" | "boxed" | "struct" | "fundamental";
 
-    /** The underlying native object identifier */
-    id: ObjectId;
+    /** The underlying native handle */
+    handle: NativeHandle;
 
     // biome-ignore lint/suspicious/noExplicitAny: Required for NativeClass type compatibility
     constructor(..._args: any[]) {
-        this.id = undefined as unknown as ObjectId;
+        this.handle = undefined as unknown as NativeHandle;
     }
 }
 
@@ -48,4 +48,4 @@ export const setInstantiating = (value: boolean): void => {
     isInstantiating = value;
 };
 
-export type { ObjectId };
+export type { NativeHandle };

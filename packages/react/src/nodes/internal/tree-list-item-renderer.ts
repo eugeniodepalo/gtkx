@@ -1,4 +1,4 @@
-import { getObjectId } from "@gtkx/ffi";
+import { getNativeId } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
@@ -42,7 +42,7 @@ export class TreeListItemRenderer {
 
     private initialize(): void {
         signalStore.set(this, this.factory, "setup", (_self, listItem: Gtk.ListItem) => {
-            const ptr = getObjectId(listItem.id);
+            const ptr = getNativeId(listItem.handle);
 
             const expander = new Gtk.TreeExpander();
             const box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
@@ -57,7 +57,7 @@ export class TreeListItemRenderer {
         });
 
         signalStore.set(this, this.factory, "bind", (_self, listItem: Gtk.ListItem) => {
-            const ptr = getObjectId(listItem.id);
+            const ptr = getNativeId(listItem.handle);
             const fiberRoot = this.fiberRoots.get(ptr);
 
             if (!fiberRoot) return;
@@ -93,7 +93,7 @@ export class TreeListItemRenderer {
         });
 
         signalStore.set(this, this.factory, "unbind", (_self, listItem: Gtk.ListItem) => {
-            const ptr = getObjectId(listItem.id);
+            const ptr = getNativeId(listItem.handle);
             const fiberRoot = this.fiberRoots.get(ptr);
 
             if (!fiberRoot) return;
@@ -107,7 +107,7 @@ export class TreeListItemRenderer {
         });
 
         signalStore.set(this, this.factory, "teardown", (_self, listItem) => {
-            const ptr = getObjectId(listItem.id);
+            const ptr = getNativeId(listItem.handle);
             const fiberRoot = this.fiberRoots.get(ptr);
 
             if (fiberRoot) {

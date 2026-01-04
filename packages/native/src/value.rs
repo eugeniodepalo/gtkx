@@ -1,15 +1,212 @@
 use std::ffi::c_void;
+use std::sync::Arc;
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _};
+use neon::{handle::Root, object::Object as _, prelude::*};
 
-use super::Value;
-use crate::{
-    managed::{Boxed, Fundamental, ManagedValue},
-    types::*,
-};
+use crate::ffi::FfiDecode;
+use crate::managed::{Boxed, Fundamental, NativeValue, NativeHandle};
+use crate::types::*;
+use crate::{arg::Arg, ffi};
+
+#[derive(Debug, Clone)]
+pub struct Callback {
+    pub js_func: Arc<Root<JsFunction>>,
+    pub channel: Channel,
+}
+
+impl Callback {
+    pub fn new(js_func: Arc<Root<JsFunction>>, channel: Channel) -> Self {
+        Callback { js_func, channel }
+    }
+
+    pub fn from_js_value<'a, C: Context<'a>>(
+        cx: &mut C,
+        value: Handle<JsValue>,
+    ) -> NeonResult<Self> {
+        let js_func = value.downcast::<JsFunction, _>(cx).or_throw(cx)?;
+        let js_func_root = js_func.root(cx);
+        let mut channel = cx.channel();
+
+        channel.unref(cx);
+
+        Ok(Callback::new(Arc::new(js_func_root), channel))
+    }
+
+    pub fn to_js_value<'a, C: Context<'a>>(&self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
+        let js_func = self.js_func.to_inner(cx);
+        Ok(js_func.upcast())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Ref {
+    pub value: Box<Value>,
+    pub js_obj: Arc<Root<JsObject>>,
+}
+
+impl Ref {
+    pub fn new(value: Value, js_obj: Arc<Root<JsObject>>) -> Self {
+        Ref {
+            value: Box::new(value),
+            js_obj,
+        }
+    }
+
+    pub fn from_js_value<'a, C: Context<'a>>(
+        cx: &mut C,
+        value: Handle<JsValue>,
+    ) -> NeonResult<Self> {
+        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+        let js_obj_root = obj.root(cx);
+        let value_prop: Handle<JsValue> = obj.get(cx, "value")?;
+        let value = Value::from_js_value(cx, value_prop)?;
+
+        Ok(Ref::new(value, Arc::new(js_obj_root)))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Value {
+    Number(f64),
+    String(String),
+    Boolean(bool),
+    Object(NativeHandle),
+    Null,
+    Undefined,
+    Array(Vec<Value>),
+    Callback(Callback),
+    Ref(Ref),
+}
 
 impl Value {
+    pub fn object_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
+        match self {
+            Value::Object(id) => id
+                .get_ptr()
+                .ok_or_else(|| anyhow::anyhow!("{} has been garbage collected", type_name)),
+            Value::Null | Value::Undefined => Ok(std::ptr::null_mut()),
+            _ => anyhow::bail!("Expected an Object for {} type, got {:?}", type_name, self),
+        }
+    }
+
+    pub fn from_ffi_value(ffi_value: &ffi::FfiValue, ty: &Type) -> anyhow::Result<Self> {
+        ty.decode(ffi_value)
+    }
+
+    pub fn from_ffi_value_with_args(
+        ffi_value: &ffi::FfiValue,
+        ty: &Type,
+        ffi_args: &[ffi::FfiValue],
+        args: &[Arg],
+    ) -> anyhow::Result<Self> {
+        ty.decode_with_context(ffi_value, ffi_args, args)
+    }
+
+    pub fn into_glib_value_with_default(self, return_type: Option<&Type>) -> Option<glib::Value> {
+        match &self {
+            Value::Undefined => match return_type {
+                Some(Type::Boolean) => Some(false.into()),
+                Some(Type::Integer(_)) => Some(0i32.into()),
+                _ => None,
+            },
+            _ => self.to_glib_value().ok(),
+        }
+    }
+
+    pub fn to_glib_value(self) -> anyhow::Result<glib::Value> {
+        match self {
+            Value::Number(n) => Ok(n.into()),
+            Value::String(s) => Ok(s.into()),
+            Value::Boolean(b) => Ok(b.into()),
+            Value::Null | Value::Undefined => {
+                bail!("Cannot convert Null/Undefined to glib::Value")
+            }
+            other => bail!(
+                "Unsupported Value type for glib::Value conversion: {:?}",
+                other
+            ),
+        }
+    }
+
+    pub fn from_js_value<'a, C: Context<'a>>(
+        cx: &mut C,
+        value: Handle<JsValue>,
+    ) -> NeonResult<Self> {
+        if let Ok(number) = value.downcast::<JsNumber, _>(cx) {
+            return Ok(Value::Number(number.value(cx)));
+        }
+
+        if let Ok(string) = value.downcast::<JsString, _>(cx) {
+            return Ok(Value::String(string.value(cx)));
+        }
+
+        if let Ok(boolean) = value.downcast::<JsBoolean, _>(cx) {
+            return Ok(Value::Boolean(boolean.value(cx)));
+        }
+
+        if value.downcast::<JsNull, _>(cx).is_ok() {
+            return Ok(Value::Null);
+        }
+
+        if value.downcast::<JsUndefined, _>(cx).is_ok() {
+            return Ok(Value::Undefined);
+        }
+
+        if let Ok(object_id) = value.downcast::<JsBox<NativeHandle>, _>(cx) {
+            return Ok(Value::Object(*object_id.as_inner()));
+        }
+
+        if let Ok(callback) = value.downcast::<JsFunction, _>(cx) {
+            return Ok(Value::Callback(Callback::from_js_value(
+                cx,
+                callback.upcast(),
+            )?));
+        }
+
+        if let Ok(array) = value.downcast::<JsArray, _>(cx) {
+            let values = array.to_vec(cx)?;
+            let vec_values = values
+                .into_iter()
+                .map(|item| Self::from_js_value(cx, item))
+                .collect::<NeonResult<Vec<_>>>()?;
+
+            return Ok(Value::Array(vec_values));
+        }
+
+        if let Ok(obj) = value.downcast::<JsObject, _>(cx) {
+            return Ok(Value::Ref(Ref::from_js_value(cx, obj.upcast())?));
+        }
+
+        cx.throw_type_error(format!("Unsupported JS value type: {:?}", *value))
+    }
+
+    pub fn to_js_value<'a, C: Context<'a>>(&self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
+        match self {
+            Value::Number(n) => Ok(cx.number(*n).upcast()),
+            Value::String(s) => Ok(cx.string(s).upcast()),
+            Value::Boolean(b) => Ok(cx.boolean(*b).upcast()),
+            Value::Object(id) => Ok(cx.boxed(*id).upcast()),
+            Value::Array(arr) => {
+                let js_array = cx.empty_array();
+
+                for (i, item) in arr.iter().enumerate() {
+                    let js_item = item.to_js_value(cx)?;
+                    js_array.set(cx, i as u32, js_item)?;
+                }
+
+                Ok(js_array.upcast())
+            }
+            Value::Null => Ok(cx.null().upcast()),
+            Value::Undefined => Ok(cx.undefined().upcast()),
+            _ => cx.throw_type_error(format!(
+                "Unsupported Value type for JS conversion: {:?}",
+                self
+            )),
+        }
+    }
+
     pub fn from_glib_value(gvalue: &glib::Value, ty: &Type) -> anyhow::Result<Self> {
         match ty {
             Type::Integer(int_kind) => {
@@ -34,6 +231,7 @@ impl Value {
                     })? as u16 as f64,
                     IntegerKind::I32 => {
                         if is_enum {
+                            // SAFETY: gvalue contains a valid enum type checked above
                             let enum_value = unsafe {
                                 glib::gobject_ffi::g_value_get_enum(
                                     gvalue.to_glib_none().0 as *const _,
@@ -48,6 +246,7 @@ impl Value {
                     }
                     IntegerKind::U32 => {
                         if is_flags {
+                            // SAFETY: gvalue contains a valid flags type checked above
                             let flags_value = unsafe {
                                 glib::gobject_ffi::g_value_get_flags(
                                     gvalue.to_glib_none().0 as *const _,
@@ -99,6 +298,7 @@ impl Value {
             Type::Boxed(boxed_type) => {
                 let gvalue_type = gvalue.type_();
 
+                // SAFETY: gvalue contains a valid boxed type
                 let boxed_ptr = unsafe {
                     glib::gobject_ffi::g_value_get_boxed(gvalue.to_glib_none().0 as *const _)
                 };
@@ -110,6 +310,7 @@ impl Value {
                 let gtype = boxed_type.gtype().or(Some(gvalue_type));
 
                 let boxed = if boxed_type.ownership.is_full() {
+                    // SAFETY: gvalue contains a valid boxed type and we're duplicating ownership
                     let owned_ptr = unsafe {
                         glib::gobject_ffi::g_value_dup_boxed(gvalue.to_glib_none().0 as *const _)
                     };
@@ -118,7 +319,7 @@ impl Value {
                     Boxed::from_glib_none(gtype, boxed_ptr)?
                 };
 
-                let object_id = ManagedValue::Boxed(boxed).into();
+                let object_id = NativeValue::Boxed(boxed).into();
                 Ok(Value::Object(object_id))
             }
             Type::Null | Type::Undefined => Ok(Value::Null),
@@ -131,11 +332,13 @@ impl Value {
                 let gvalue_type = gvalue.type_();
 
                 let ptr = if gvalue_type.is_a(glib::types::Type::VARIANT) {
+                    // SAFETY: gvalue contains a valid variant type checked above
                     unsafe {
                         glib::gobject_ffi::g_value_get_variant(gvalue.to_glib_none().0 as *const _)
                             .cast::<c_void>()
                     }
                 } else if gvalue_type.is_a(glib::types::Type::PARAM_SPEC) {
+                    // SAFETY: gvalue contains a valid param spec type checked above
                     unsafe {
                         glib::gobject_ffi::g_value_get_param(gvalue.to_glib_none().0 as *const _)
                             .cast::<c_void>()
@@ -154,7 +357,7 @@ impl Value {
                 } else {
                     Fundamental::from_glib_none(ptr, ref_fn, unref_fn)
                 };
-                Ok(Value::Object(ManagedValue::Fundamental(fundamental).into()))
+                Ok(Value::Object(NativeValue::Fundamental(fundamental).into()))
             }
             Type::Array(_) | Type::HashTable(_) | Type::Ref(_) | Type::Callback(_) => {
                 bail!(
@@ -164,9 +367,7 @@ impl Value {
             }
         }
     }
-}
 
-impl Value {
     pub fn from_glib_values(
         args: &[glib::Value],
         arg_types: &Option<Vec<Type>>,
@@ -187,6 +388,7 @@ impl Value {
     }
 
     fn from_glib_gobject(gvalue: &glib::Value) -> anyhow::Result<Value> {
+        // SAFETY: gvalue contains a valid GObject type
         let obj_ptr =
             unsafe { glib::gobject_ffi::g_value_get_object(gvalue.to_glib_none().0 as *const _) };
 
@@ -194,12 +396,14 @@ impl Value {
             return Ok(Value::Null);
         }
 
+        // SAFETY: obj_ptr is non-null and points to a valid GObject
         let type_class = unsafe { (*obj_ptr).g_type_instance.g_class };
         if type_class.is_null() {
             bail!("GObject has invalid type class (object may have been freed)");
         }
 
+        // SAFETY: obj_ptr is a valid GObject with a valid type class
         let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
-        Ok(Value::Object(ManagedValue::GObject(obj).into()))
+        Ok(Value::Object(NativeValue::GObject(obj).into()))
     }
 }

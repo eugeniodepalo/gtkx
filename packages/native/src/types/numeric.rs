@@ -9,7 +9,7 @@ pub trait NumericPrimitive: Sized + Copy + 'static {
     fn to_f64(self) -> f64;
     fn from_f64(value: f64) -> Self;
     fn to_ffi_value(self) -> ffi::FfiValue;
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash;
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage;
 
     fn read_unaligned(ptr: *const u8) -> Self {
         // SAFETY: The caller guarantees ptr is valid for reading a Self value
@@ -33,9 +33,9 @@ pub trait IntegerPrimitive: NumericPrimitive {
         }
     }
 
-    fn to_stash(values: &[f64]) -> ffi::Stash {
+    fn to_ffi_storage(values: &[f64]) -> ffi::FfiStorage {
         let vec: Vec<Self> = values.iter().map(|&v| Self::from_f64(v)).collect();
-        Self::vec_to_stash(vec)
+        Self::vec_to_ffi_storage(vec)
     }
 }
 
@@ -52,7 +52,7 @@ impl NumericPrimitive for u8 {
     fn to_ffi_value(self) -> ffi::FfiValue {
         ffi::FfiValue::U8(self)
     }
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash {
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
         vec.into()
     }
 }
@@ -70,7 +70,7 @@ impl NumericPrimitive for i8 {
     fn to_ffi_value(self) -> ffi::FfiValue {
         ffi::FfiValue::I8(self)
     }
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash {
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
         vec.into()
     }
 }
@@ -88,7 +88,7 @@ impl NumericPrimitive for u16 {
     fn to_ffi_value(self) -> ffi::FfiValue {
         ffi::FfiValue::U16(self)
     }
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash {
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
         vec.into()
     }
 }
@@ -106,7 +106,7 @@ impl NumericPrimitive for i16 {
     fn to_ffi_value(self) -> ffi::FfiValue {
         ffi::FfiValue::I16(self)
     }
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash {
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
         vec.into()
     }
 }
@@ -124,7 +124,7 @@ impl NumericPrimitive for u32 {
     fn to_ffi_value(self) -> ffi::FfiValue {
         ffi::FfiValue::U32(self)
     }
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash {
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
         vec.into()
     }
 }
@@ -142,7 +142,7 @@ impl NumericPrimitive for i32 {
     fn to_ffi_value(self) -> ffi::FfiValue {
         ffi::FfiValue::I32(self)
     }
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash {
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
         vec.into()
     }
 }
@@ -160,7 +160,7 @@ impl NumericPrimitive for u64 {
     fn to_ffi_value(self) -> ffi::FfiValue {
         ffi::FfiValue::U64(self)
     }
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash {
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
         vec.into()
     }
 }
@@ -178,7 +178,7 @@ impl NumericPrimitive for i64 {
     fn to_ffi_value(self) -> ffi::FfiValue {
         ffi::FfiValue::I64(self)
     }
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash {
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
         vec.into()
     }
 }
@@ -196,7 +196,7 @@ impl NumericPrimitive for f32 {
     fn to_ffi_value(self) -> ffi::FfiValue {
         ffi::FfiValue::F32(self)
     }
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash {
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
         vec.into()
     }
 }
@@ -214,7 +214,7 @@ impl NumericPrimitive for f64 {
     fn to_ffi_value(self) -> ffi::FfiValue {
         ffi::FfiValue::F64(self)
     }
-    fn vec_to_stash(vec: Vec<Self>) -> ffi::Stash {
+    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
         vec.into()
     }
 }
@@ -347,20 +347,20 @@ impl IntegerKind {
         }
     }
 
-    pub fn vec_to_f64(self, stash: &ffi::Stash) -> anyhow::Result<Vec<f64>> {
-        stash.as_numeric_slice(self)
+    pub fn vec_to_f64(self, storage: &ffi::FfiStorage) -> anyhow::Result<Vec<f64>> {
+        storage.as_numeric_slice(self)
     }
 
-    pub fn to_stash(self, values: &[f64]) -> ffi::Stash {
+    pub fn to_ffi_storage(self, values: &[f64]) -> ffi::FfiStorage {
         match self {
-            Self::U8 => u8::to_stash(values),
-            Self::I8 => i8::to_stash(values),
-            Self::U16 => u16::to_stash(values),
-            Self::I16 => i16::to_stash(values),
-            Self::U32 => u32::to_stash(values),
-            Self::I32 => i32::to_stash(values),
-            Self::U64 => u64::to_stash(values),
-            Self::I64 => i64::to_stash(values),
+            Self::U8 => u8::to_ffi_storage(values),
+            Self::I8 => i8::to_ffi_storage(values),
+            Self::U16 => u16::to_ffi_storage(values),
+            Self::I16 => i16::to_ffi_storage(values),
+            Self::U32 => u32::to_ffi_storage(values),
+            Self::I32 => i32::to_ffi_storage(values),
+            Self::U64 => u64::to_ffi_storage(values),
+            Self::I64 => i64::to_ffi_storage(values),
         }
     }
 

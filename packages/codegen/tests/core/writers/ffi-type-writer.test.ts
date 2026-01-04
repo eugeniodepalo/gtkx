@@ -163,7 +163,7 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, { type: "string", ownership: "borrowed" });
 
-                expect(output).toContain('"none"');
+                expect(output).toContain('"borrowed"');
             });
 
             it("defaults to full ownership", () => {
@@ -188,7 +188,7 @@ describe("FfiTypeWriter", () => {
                 const output = getWriterOutput(writer, { type: "gobject", ownership: "borrowed" });
 
                 expect(output).toContain('"gobject"');
-                expect(output).toContain('"none"');
+                expect(output).toContain('"borrowed"');
             });
         });
 
@@ -266,7 +266,7 @@ describe("FfiTypeWriter", () => {
                     innerType: "SomeStruct",
                 });
 
-                expect(output).toContain('"none"');
+                expect(output).toContain('"borrowed"');
             });
         });
 
@@ -483,7 +483,7 @@ describe("FfiTypeWriter", () => {
             const output = sourceFile.getFullText();
 
             expect(output).toContain('"gobject"');
-            expect(output).toContain('"none"');
+            expect(output).toContain('"borrowed"');
         });
 
         it("writes fundamental self argument when isFundamental is true", () => {
@@ -506,7 +506,7 @@ describe("FfiTypeWriter", () => {
             const output = sourceFile.getFullText();
 
             expect(output).toContain('"fundamental"');
-            expect(output).toContain('"none"');
+            expect(output).toContain('"borrowed"');
             expect(output).toContain('"libgobject-2.0.so.0"');
             expect(output).toContain('"g_param_spec_ref_sink"');
             expect(output).toContain('"g_param_spec_unref"');
@@ -530,7 +530,7 @@ describe("FfiTypeWriter", () => {
             const output = sourceFile.getFullText();
 
             expect(output).toContain('"boxed"');
-            expect(output).toContain('"none"');
+            expect(output).toContain('"borrowed"');
             expect(output).toContain('"GdkRGBA"');
             expect(output).toContain('"libgtk-4.so.1"');
         });

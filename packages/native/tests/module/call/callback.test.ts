@@ -53,7 +53,11 @@ describe("call - callback types", () => {
                     { type: GOBJECT_NONE, value: cancellable },
                     { type: STRING, value: "cancelled" },
                     {
-                        type: { type: "callback", trampoline: "closure" },
+                        type: {
+                            type: "callback",
+                            trampoline: "closure",
+                            argTypes: [{ type: "gobject", ownership: "borrowed" }],
+                        },
                         value: () => {
                             callbackInvoked = true;
                         },
@@ -142,7 +146,11 @@ describe("call - callback types", () => {
                     { type: GOBJECT_NONE, value: cancellable },
                     { type: STRING, value: "cancelled" },
                     {
-                        type: { type: "callback", trampoline: "closure" },
+                        type: {
+                            type: "callback",
+                            trampoline: "closure",
+                            argTypes: [{ type: "gobject", ownership: "borrowed" }],
+                        },
                         value: () => {
                             count1++;
                         },
@@ -159,7 +167,11 @@ describe("call - callback types", () => {
                     { type: GOBJECT_NONE, value: cancellable },
                     { type: STRING, value: "cancelled" },
                     {
-                        type: { type: "callback", trampoline: "closure" },
+                        type: {
+                            type: "callback",
+                            trampoline: "closure",
+                            argTypes: [{ type: "gobject", ownership: "borrowed" }],
+                        },
                         value: () => {
                             count2++;
                         },
@@ -316,7 +328,11 @@ describe("call - callback types", () => {
                     { type: GOBJECT_NONE, value: cancellable },
                     { type: STRING, value: "cancelled" },
                     {
-                        type: { type: "callback", trampoline: "closure" },
+                        type: {
+                            type: "callback",
+                            trampoline: "closure",
+                            argTypes: [{ type: "gobject", ownership: "borrowed" }],
+                        },
                         value: () => {
                             throw new Error("Test error in callback");
                         },

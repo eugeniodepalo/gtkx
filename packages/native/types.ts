@@ -1,9 +1,9 @@
 /**
- * Opaque identifier for a native GObject.
+ * Opaque handle for a native GObject.
  *
  * This branded type ensures type safety for native object references.
  */
-export type ObjectId = { readonly __brand: "ObjectId" };
+export type NativeHandle = { readonly __brand: "NativeHandle" };
 
 type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned: boolean };
 

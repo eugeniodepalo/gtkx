@@ -122,7 +122,7 @@ export class ConstructorBuilder {
                 writer.writeLine("// @ts-ignore");
                 writer.writeLine("super();");
                 writer.writeLine("setInstantiating(false);");
-                writer.write("this.id = call(");
+                writer.write("this.handle = call(");
                 writer.newLine();
                 writer.indent(() => {
                     writer.writeLine(`"${this.options.sharedLibrary}",`);
@@ -138,7 +138,7 @@ export class ConstructorBuilder {
                     writer.writeLine("],");
                     writer.writeLine(`{ type: "gobject", ownership: "${ownership}" }`);
                 });
-                writer.writeLine(") as ObjectId;");
+                writer.writeLine(") as NativeHandle;");
             });
             writer.writeLine("} else {");
             writer.indent(() => {
@@ -176,7 +176,7 @@ export class ConstructorBuilder {
                 });
                 writer.writeLine(");");
 
-                writer.write("this.id = call(");
+                writer.write("this.handle = call(");
                 writer.newLine();
                 writer.indent(() => {
                     writer.writeLine(`"${this.options.gobjectLibrary}",`);
@@ -191,7 +191,7 @@ export class ConstructorBuilder {
                     writer.writeLine("],");
                     writer.writeLine('{ type: "gobject", ownership: "full" }');
                 });
-                writer.writeLine(") as ObjectId;");
+                writer.writeLine(") as NativeHandle;");
             });
             writer.writeLine("} else {");
             writer.indent(() => {

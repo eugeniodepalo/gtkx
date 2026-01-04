@@ -224,13 +224,13 @@ export class RecordGenerator {
                     classDecl.addConstructor({
                         statements: (writer) => {
                             writer.writeLine("super();");
-                            writer.writeLine(`this.id = ${allocFn} as ObjectId;`);
+                            writer.writeLine(`this.handle = ${allocFn} as NativeHandle;`);
                         },
                     });
                 }
             } else {
                 classDecl.addConstructor({
-                    statements: ["super();", "this.id = null as unknown as ObjectId;"],
+                    statements: ["super();", "this.handle = null as unknown as NativeHandle;"],
                 });
             }
         }
@@ -244,7 +244,7 @@ export class RecordGenerator {
     ): WriterFunction {
         return (writer) => {
             writer.writeLine("super();");
-            writer.write("this.id = call(");
+            writer.write("this.handle = call(");
             writer.newLine();
             writer.indent(() => {
                 writer.writeLine(`"${this.options.sharedLibrary}",`);
@@ -263,14 +263,14 @@ export class RecordGenerator {
                     `{ type: "boxed", ownership: "borrowed", innerType: "${glibTypeName}", lib: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
                 );
             });
-            writer.writeLine(") as ObjectId;");
+            writer.writeLine(") as NativeHandle;");
         };
     }
 
     private writeConstructorWithAlloc(allocFn: string, fields: readonly GirField[]): WriterFunction {
         return (writer) => {
             writer.writeLine("super();");
-            writer.writeLine(`this.id = ${allocFn} as ObjectId;`);
+            writer.writeLine(`this.handle = ${allocFn} as NativeHandle;`);
             this.fieldBuilder.writeFieldWrites(fields)(writer);
         };
     }
@@ -404,7 +404,7 @@ export class RecordGenerator {
                     returnType: typeMapping.ts,
                     docs: buildJsDocStructure(field.doc, this.options.namespace),
                     statements: (writer) => {
-                        writer.write("return read(this.id, ");
+                        writer.write("return read(this.handle, ");
                         this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
                         writer.writeLine(`, ${offset}) as ${typeMapping.ts};`);
                     },
@@ -418,7 +418,7 @@ export class RecordGenerator {
                     parameters: [{ name: "value", type: typeMapping.ts }],
                     docs: buildJsDocStructure(field.doc, this.options.namespace),
                     statements: (writer) => {
-                        writer.write("write(this.id, ");
+                        writer.write("write(this.handle, ");
                         this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
                         writer.writeLine(`, ${offset}, value);`);
                     },

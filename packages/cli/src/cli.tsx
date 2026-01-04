@@ -57,7 +57,7 @@ const dev = defineCommand({
         console.log(`[gtkx] Rendering app with ID: ${appId}`);
         render(<App />, appId, appFlags);
 
-        startMcpClient(appId);
+        await startMcpClient(appId);
         events.on("stop", () => {
             stopMcpClient();
         });

@@ -7,8 +7,8 @@ use neon::object::Object as _;
 use neon::prelude::*;
 
 use crate::arg::Arg;
-use crate::ffi::{Stash, StashStorage};
-use crate::managed::{Boxed, Fundamental, ManagedValue};
+use crate::ffi::{FfiStorage, FfiStorageKind};
+use crate::managed::{Boxed, Fundamental, NativeValue};
 use crate::{ffi, types::Type, value};
 
 #[derive(Debug, Clone)]
@@ -54,9 +54,9 @@ impl ffi::FfiEncode for RefType {
                     value::Value::Null | value::Value::Undefined => {
                         let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
                         let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
-                        Ok(ffi::FfiValue::Stash(Stash::new(
+                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
                             ptr,
-                            StashStorage::PtrStorage(ptr_storage),
+                            FfiStorageKind::PtrStorage(ptr_storage),
                         )))
                     }
                     _ => bail!(
@@ -73,9 +73,9 @@ impl ffi::FfiEncode for RefType {
                     (None, value::Value::Null | value::Value::Undefined) => {
                         let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
                         let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
-                        return Ok(ffi::FfiValue::Stash(Stash::new(
+                        return Ok(ffi::FfiValue::Storage(FfiStorage::new(
                             ptr,
-                            StashStorage::PtrStorage(ptr_storage),
+                            FfiStorageKind::PtrStorage(ptr_storage),
                         )));
                     }
                     _ => bail!(
@@ -92,9 +92,9 @@ impl ffi::FfiEncode for RefType {
                 }
 
                 let ptr = buffer.as_mut_ptr() as *mut c_void;
-                Ok(ffi::FfiValue::Stash(Stash::new(
+                Ok(ffi::FfiValue::Storage(FfiStorage::new(
                     ptr,
-                    StashStorage::Buffer(buffer),
+                    FfiStorageKind::Buffer(buffer),
                 )))
             }
             _ => {
@@ -102,9 +102,9 @@ impl ffi::FfiEncode for RefType {
                 let ref_value = Box::new(ffi::FfiValue::try_from(ref_arg)?);
                 let ref_ptr = ref_value.as_raw_ptr();
 
-                Ok(ffi::FfiValue::Stash(Stash::new(
+                Ok(ffi::FfiValue::Storage(FfiStorage::new(
                     ref_ptr,
-                    StashStorage::Boxed(ref_value),
+                    FfiStorageKind::BoxedValue(ref_value),
                 )))
             }
         }
@@ -113,18 +113,18 @@ impl ffi::FfiEncode for RefType {
 
 impl ffi::FfiDecode for RefType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let stash = match ffi_value {
-            ffi::FfiValue::Stash(s) => s,
+        let storage = match ffi_value {
+            ffi::FfiValue::Storage(s) => s,
             _ => bail!(
-                "Expected a Stash ffi::FfiValue for Ref, got {:?}",
+                "Expected a Storage ffi::FfiValue for Ref, got {:?}",
                 ffi_value
             ),
         };
 
         match &*self.inner_type {
             Type::GObject(gobject_type) => {
-                // SAFETY: stash.ptr() points to a pointer-to-GObject allocated by encode
-                let actual_ptr = unsafe { *(stash.ptr() as *const *mut c_void) };
+                // SAFETY: storage.ptr() points to a pointer-to-GObject allocated by encode
+                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 if actual_ptr.is_null() {
                     return Ok(value::Value::Null);
                 }
@@ -137,11 +137,11 @@ impl ffi::FfiDecode for RefType {
                         glib::Object::from_glib_none(actual_ptr as *mut glib::gobject_ffi::GObject)
                     }
                 };
-                Ok(value::Value::Object(ManagedValue::GObject(object).into()))
+                Ok(value::Value::Object(NativeValue::GObject(object).into()))
             }
             Type::Boxed(boxed_type) => {
-                // SAFETY: stash.ptr() points to a pointer-to-boxed allocated by encode
-                let actual_ptr = unsafe { *(stash.ptr() as *const *mut c_void) };
+                // SAFETY: storage.ptr() points to a pointer-to-boxed allocated by encode
+                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 if actual_ptr.is_null() {
                     return Ok(value::Value::Null);
                 }
@@ -151,11 +151,11 @@ impl ffi::FfiDecode for RefType {
                 } else {
                     Boxed::from_glib_none(gtype, actual_ptr)?
                 };
-                Ok(value::Value::Object(ManagedValue::Boxed(boxed).into()))
+                Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
             }
             Type::Fundamental(fundamental_type) => {
-                // SAFETY: stash.ptr() points to a pointer-to-fundamental allocated by encode
-                let actual_ptr = unsafe { *(stash.ptr() as *const *mut c_void) };
+                // SAFETY: storage.ptr() points to a pointer-to-fundamental allocated by encode
+                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 if actual_ptr.is_null() {
                     return Ok(value::Value::Null);
                 }
@@ -167,18 +167,18 @@ impl ffi::FfiDecode for RefType {
                     Fundamental::from_glib_none(actual_ptr, ref_fn, unref_fn)
                 };
                 Ok(value::Value::Object(
-                    ManagedValue::Fundamental(fundamental).into(),
+                    NativeValue::Fundamental(fundamental).into(),
                 ))
             }
             Type::Integer(int_kind) => {
-                let number = int_kind.read_ptr(stash.ptr() as *const u8);
+                let number = int_kind.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
             }
             Type::Float(float_kind) => {
-                let number = float_kind.read_ptr(stash.ptr() as *const u8);
+                let number = float_kind.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
             }
-            Type::String(string_type) => self.decode_ref_string(stash, string_type),
+            Type::String(string_type) => self.decode_ref_string(storage, string_type),
             _ => bail!(
                 "Unsupported ref inner type for reading: {:?}",
                 self.inner_type
@@ -190,23 +190,23 @@ impl ffi::FfiDecode for RefType {
 impl RefType {
     fn decode_ref_string(
         &self,
-        stash: &Stash,
+        storage: &FfiStorage,
         string_type: &super::StringType,
     ) -> anyhow::Result<value::Value> {
-        if stash.ptr().is_null() {
+        if storage.ptr().is_null() {
             return Ok(value::Value::Null);
         }
 
-        match stash.storage() {
-            StashStorage::Buffer(_) => {
-                // SAFETY: stash.ptr() points to a null-terminated C string in our buffer
-                let c_str = unsafe { CStr::from_ptr(stash.ptr() as *const i8) };
+        match storage.kind() {
+            FfiStorageKind::Buffer(_) => {
+                // SAFETY: storage.ptr() points to a null-terminated C string in our buffer
+                let c_str = unsafe { CStr::from_ptr(storage.ptr() as *const i8) };
                 let string = c_str.to_str()?.to_string();
                 Ok(value::Value::String(string))
             }
             _ => {
-                // SAFETY: stash.ptr() points to a pointer-to-string
-                let str_ptr = unsafe { *(stash.ptr() as *const *const i8) };
+                // SAFETY: storage.ptr() points to a pointer-to-string
+                let str_ptr = unsafe { *(storage.ptr() as *const *const i8) };
                 if str_ptr.is_null() {
                     return Ok(value::Value::Null);
                 }

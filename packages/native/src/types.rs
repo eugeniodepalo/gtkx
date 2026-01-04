@@ -224,7 +224,7 @@ impl Type {
                 let object =
                     unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
                 Ok(value::Value::Object(
-                    crate::managed::ManagedValue::GObject(object).into(),
+                    crate::managed::NativeValue::GObject(object).into(),
                 ))
             }
             Type::Boxed(boxed_type) => {
@@ -234,7 +234,7 @@ impl Type {
                 let gtype = boxed_type.gtype();
                 let boxed = crate::managed::Boxed::from_glib_none(gtype, ptr)?;
                 Ok(value::Value::Object(
-                    crate::managed::ManagedValue::Boxed(boxed).into(),
+                    crate::managed::NativeValue::Boxed(boxed).into(),
                 ))
             }
             _ => bail!("Unsupported {} type: {:?}", context, self),

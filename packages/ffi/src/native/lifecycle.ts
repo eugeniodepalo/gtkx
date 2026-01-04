@@ -1,4 +1,4 @@
-import { poll as nativePoll, start as nativeStart, stop as nativeStop, type ObjectId } from "@gtkx/native";
+import { poll as nativePoll, start as nativeStart, stop as nativeStop, type NativeHandle } from "@gtkx/native";
 import { init as initAdwaita } from "../generated/adw/functions.js";
 import type { ApplicationFlags } from "../generated/gio/enums.js";
 import type { Application } from "../generated/gtk/application.js";
@@ -131,7 +131,7 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
         startPolling();
     }
 
-    application = getNativeObject(app as ObjectId) as Application;
+    application = getNativeObject(app as NativeHandle) as Application;
     registerExitHandlers();
     return application;
 };

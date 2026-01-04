@@ -55,9 +55,9 @@ impl ffi::FfiEncode for StringType {
             value::Value::String(s) => {
                 let cstring = CString::new(s.as_bytes())?;
                 let ptr = cstring.as_ptr() as *mut c_void;
-                Ok(ffi::FfiValue::Stash(ffi::Stash::new(
+                Ok(ffi::FfiValue::Storage(ffi::FfiStorage::new(
                     ptr,
-                    ffi::StashStorage::CString(cstring),
+                    ffi::FfiStorageKind::CString(cstring),
                 )))
             }
             value::Value::Null | value::Value::Undefined => {

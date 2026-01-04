@@ -10,9 +10,9 @@
 //!
 //! ## State Contents
 //!
-//! - `object_map`: Maps object IDs to managed [`ManagedValue`] instances
-//! - `next_object_id`: Counter for generating unique object IDs
-//! - `free_object_ids`: Recycled object IDs available for reuse
+//! - `handle_map`: Maps handle IDs to managed [`NativeValue`] instances
+//! - `next_handle_id`: Counter for generating unique handle IDs
+//! - `free_object_ids`: Recycled handle IDs available for reuse
 //! - `libraries`: Cache of dynamically loaded native libraries
 //! - `app_hold_guard`: Keeps the GTK application alive while running
 
@@ -24,7 +24,7 @@ use std::thread::JoinHandle;
 use gtk4::gio::ApplicationHoldGuard;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
-use crate::managed::ManagedValue;
+use crate::managed::NativeValue;
 
 thread_local! {
     static GTK_THREAD_STATE: RefCell<GtkThreadState> = RefCell::new(GtkThreadState::default());
@@ -61,16 +61,16 @@ impl GtkThread {
 
 pub struct GtkThreadState {
     pub app_hold_guard: Option<ApplicationHoldGuard>,
-    pub object_map: HashMap<usize, ManagedValue>,
-    pub next_object_id: usize,
+    pub handle_map: HashMap<usize, NativeValue>,
+    pub next_handle_id: usize,
     pub libraries: HashMap<String, Library>,
 }
 
 impl Default for GtkThreadState {
     fn default() -> Self {
         GtkThreadState {
-            object_map: HashMap::new(),
-            next_object_id: 1,
+            handle_map: HashMap::new(),
+            next_handle_id: 1,
             libraries: HashMap::new(),
             app_hold_guard: None,
         }

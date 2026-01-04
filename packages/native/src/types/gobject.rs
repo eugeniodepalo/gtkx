@@ -3,7 +3,7 @@ use libffi::middle as libffi;
 use neon::prelude::*;
 
 use super::Ownership;
-use crate::managed::ManagedValue;
+use crate::managed::NativeValue;
 use crate::{ffi, value};
 
 #[derive(Debug, Clone, Copy)]
@@ -54,9 +54,9 @@ impl ffi::FfiDecode for GObjectType {
             if is_floating {
                 unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
             }
-            ManagedValue::GObject(unsafe { glib::Object::from_glib_full(gobject_ptr) })
+            NativeValue::GObject(unsafe { glib::Object::from_glib_full(gobject_ptr) })
         } else {
-            ManagedValue::GObject(unsafe { glib::Object::from_glib_none(gobject_ptr) })
+            NativeValue::GObject(unsafe { glib::Object::from_glib_none(gobject_ptr) })
         };
 
         Ok(value::Value::Object(object.into()))

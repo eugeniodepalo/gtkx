@@ -1,4 +1,4 @@
-import { alloc, call, type ObjectId, read } from "@gtkx/native";
+import { alloc, call, type NativeHandle, read } from "@gtkx/native";
 import { Context } from "../generated/cairo/context.js";
 import type {
     Antialias,
@@ -385,7 +385,7 @@ Context.prototype.moveTo = function (x: number, y: number): Context {
         LIB,
         "cairo_move_to",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -399,7 +399,7 @@ Context.prototype.lineTo = function (x: number, y: number): Context {
         LIB,
         "cairo_line_to",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -413,7 +413,7 @@ Context.prototype.curveTo = function (x1: number, y1: number, x2: number, y2: nu
         LIB,
         "cairo_curve_to",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: x1 },
             { type: DOUBLE_TYPE, value: y1 },
             { type: DOUBLE_TYPE, value: x2 },
@@ -431,7 +431,7 @@ Context.prototype.arc = function (xc: number, yc: number, radius: number, angle1
         LIB,
         "cairo_arc",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: xc },
             { type: DOUBLE_TYPE, value: yc },
             { type: DOUBLE_TYPE, value: radius },
@@ -454,7 +454,7 @@ Context.prototype.arcNegative = function (
         LIB,
         "cairo_arc_negative",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: xc },
             { type: DOUBLE_TYPE, value: yc },
             { type: DOUBLE_TYPE, value: radius },
@@ -471,7 +471,7 @@ Context.prototype.rectangle = function (x: number, y: number, width: number, hei
         LIB,
         "cairo_rectangle",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
             { type: DOUBLE_TYPE, value: width },
@@ -483,42 +483,42 @@ Context.prototype.rectangle = function (x: number, y: number, width: number, hei
 };
 
 Context.prototype.closePath = function (): Context {
-    call(LIB, "cairo_close_path", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_close_path", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
 Context.prototype.newPath = function (): Context {
-    call(LIB, "cairo_new_path", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_new_path", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
 Context.prototype.newSubPath = function (): Context {
-    call(LIB, "cairo_new_sub_path", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_new_sub_path", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
 Context.prototype.stroke = function (): Context {
-    call(LIB, "cairo_stroke", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_stroke", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
 Context.prototype.strokePreserve = function (): Context {
-    call(LIB, "cairo_stroke_preserve", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_stroke_preserve", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
 Context.prototype.fill = function (): Context {
-    call(LIB, "cairo_fill", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_fill", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
 Context.prototype.fillPreserve = function (): Context {
-    call(LIB, "cairo_fill_preserve", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_fill_preserve", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
 Context.prototype.paint = function (): Context {
-    call(LIB, "cairo_paint", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_paint", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
@@ -527,7 +527,7 @@ Context.prototype.paintWithAlpha = function (alpha: number): Context {
         LIB,
         "cairo_paint_with_alpha",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: alpha },
         ],
         { type: "undefined" },
@@ -536,17 +536,17 @@ Context.prototype.paintWithAlpha = function (alpha: number): Context {
 };
 
 Context.prototype.clip = function (): Context {
-    call(LIB, "cairo_clip", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_clip", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
 Context.prototype.clipPreserve = function (): Context {
-    call(LIB, "cairo_clip_preserve", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_clip_preserve", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
 Context.prototype.resetClip = function (): Context {
-    call(LIB, "cairo_reset_clip", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_reset_clip", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
@@ -555,7 +555,7 @@ Context.prototype.setSourceRgb = function (red: number, green: number, blue: num
         LIB,
         "cairo_set_source_rgb",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: red },
             { type: DOUBLE_TYPE, value: green },
             { type: DOUBLE_TYPE, value: blue },
@@ -570,7 +570,7 @@ Context.prototype.setSourceRgba = function (red: number, green: number, blue: nu
         LIB,
         "cairo_set_source_rgba",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: red },
             { type: DOUBLE_TYPE, value: green },
             { type: DOUBLE_TYPE, value: blue },
@@ -586,8 +586,8 @@ Context.prototype.setSource = function (pattern: Pattern): Context {
         LIB,
         "cairo_set_source",
         [
-            { type: CAIRO_T, value: this.id },
-            { type: PATTERN_T_NONE, value: pattern.id },
+            { type: CAIRO_T, value: this.handle },
+            { type: PATTERN_T_NONE, value: pattern.handle },
         ],
         { type: "undefined" },
     );
@@ -599,7 +599,7 @@ Context.prototype.setLineWidth = function (width: number): Context {
         LIB,
         "cairo_set_line_width",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: width },
         ],
         { type: "undefined" },
@@ -612,7 +612,7 @@ Context.prototype.setLineCap = function (lineCap: LineCap): Context {
         LIB,
         "cairo_set_line_cap",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: { type: "int", size: 32, unsigned: false }, value: lineCap },
         ],
         { type: "undefined" },
@@ -625,7 +625,7 @@ Context.prototype.setLineJoin = function (lineJoin: LineJoin): Context {
         LIB,
         "cairo_set_line_join",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: { type: "int", size: 32, unsigned: false }, value: lineJoin },
         ],
         { type: "undefined" },
@@ -638,7 +638,7 @@ Context.prototype.setDash = function (dashes: number[], offset: number): Context
         LIB,
         "cairo_set_dash",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: { type: "array", itemType: DOUBLE_TYPE, listType: "array", ownership: "full" }, value: dashes },
             { type: { type: "int", size: 32, unsigned: false }, value: dashes.length },
             { type: DOUBLE_TYPE, value: offset },
@@ -653,7 +653,7 @@ Context.prototype.setFillRule = function (fillRule: FillRule): Context {
         LIB,
         "cairo_set_fill_rule",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: { type: "int", size: 32, unsigned: false }, value: fillRule },
         ],
         { type: "undefined" },
@@ -662,7 +662,7 @@ Context.prototype.setFillRule = function (fillRule: FillRule): Context {
 };
 
 Context.prototype.getFillRule = function (): FillRule {
-    return call(LIB, "cairo_get_fill_rule", [{ type: CAIRO_T, value: this.id }], {
+    return call(LIB, "cairo_get_fill_rule", [{ type: CAIRO_T, value: this.handle }], {
         type: "int",
         size: 32,
         unsigned: false,
@@ -670,12 +670,12 @@ Context.prototype.getFillRule = function (): FillRule {
 };
 
 Context.prototype.save = function (): Context {
-    call(LIB, "cairo_save", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_save", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
 Context.prototype.restore = function (): Context {
-    call(LIB, "cairo_restore", [{ type: CAIRO_T, value: this.id }], { type: "undefined" });
+    call(LIB, "cairo_restore", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
     return this;
 };
 
@@ -684,7 +684,7 @@ Context.prototype.translate = function (tx: number, ty: number): Context {
         LIB,
         "cairo_translate",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: tx },
             { type: DOUBLE_TYPE, value: ty },
         ],
@@ -698,7 +698,7 @@ Context.prototype.scale = function (sx: number, sy: number): Context {
         LIB,
         "cairo_scale",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: sx },
             { type: DOUBLE_TYPE, value: sy },
         ],
@@ -712,7 +712,7 @@ Context.prototype.rotate = function (angle: number): Context {
         LIB,
         "cairo_rotate",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: angle },
         ],
         { type: "undefined" },
@@ -725,7 +725,7 @@ Context.prototype.setOperator = function (op: Operator): Context {
         LIB,
         "cairo_set_operator",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: { type: "int", size: 32, unsigned: false }, value: op },
         ],
         { type: "undefined" },
@@ -738,7 +738,7 @@ Context.prototype.selectFontFace = function (family: string, slant: FontSlant, w
         LIB,
         "cairo_select_font_face",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: { type: "string", ownership: "full" }, value: family },
             { type: { type: "int", size: 32, unsigned: false }, value: slant },
             { type: { type: "int", size: 32, unsigned: false }, value: weight },
@@ -753,7 +753,7 @@ Context.prototype.setFontSize = function (size: number): Context {
         LIB,
         "cairo_set_font_size",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: size },
         ],
         { type: "undefined" },
@@ -766,7 +766,7 @@ Context.prototype.showText = function (text: string): Context {
         LIB,
         "cairo_show_text",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: { type: "string", ownership: "full" }, value: text },
         ],
         { type: "undefined" },
@@ -779,7 +779,7 @@ Context.prototype.textPath = function (text: string): Context {
         LIB,
         "cairo_text_path",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: { type: "string", ownership: "full" }, value: text },
         ],
         { type: "undefined" },
@@ -812,7 +812,7 @@ Context.prototype.textExtents = function (text: string): TextExtents {
         LIB,
         "cairo_text_extents",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: { type: "string", ownership: "full" }, value: text },
             {
                 type: { type: "boxed", innerType: "cairo_text_extents_t", lib: LIB, ownership: "borrowed" },
@@ -836,8 +836,8 @@ Context.prototype.setFontOptions = function (options: FontOptions): Context {
         LIB,
         "cairo_set_font_options",
         [
-            { type: CAIRO_T, value: this.id },
-            { type: FONT_OPTIONS_T, value: options.id },
+            { type: CAIRO_T, value: this.handle },
+            { type: FONT_OPTIONS_T, value: options.handle },
         ],
         { type: "undefined" },
     );
@@ -850,8 +850,8 @@ Context.prototype.getFontOptions = function (): FontOptions {
         LIB,
         "cairo_get_font_options",
         [
-            { type: CAIRO_T, value: this.id },
-            { type: FONT_OPTIONS_T, value: options.id },
+            { type: CAIRO_T, value: this.handle },
+            { type: FONT_OPTIONS_T, value: options.handle },
         ],
         { type: "undefined" },
     );
@@ -863,7 +863,7 @@ Context.prototype.setAntialias = function (antialias: Antialias): Context {
         LIB,
         "cairo_set_antialias",
         [
-            { type: CAIRO_T, value: this.id },
+            { type: CAIRO_T, value: this.handle },
             { type: { type: "int", size: 32, unsigned: false }, value: antialias },
         ],
         { type: "undefined" },
@@ -872,7 +872,7 @@ Context.prototype.setAntialias = function (antialias: Antialias): Context {
 };
 
 Context.prototype.getAntialias = function (): Antialias {
-    return call(LIB, "cairo_get_antialias", [{ type: CAIRO_T, value: this.id }], {
+    return call(LIB, "cairo_get_antialias", [{ type: CAIRO_T, value: this.handle }], {
         type: "int",
         size: 32,
         unsigned: false,
@@ -898,7 +898,7 @@ PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: numbe
             { type: DOUBLE_TYPE, value: y1 },
         ],
         PATTERN_T,
-    ) as ObjectId;
+    ) as NativeHandle;
 
     return getNativeObject(ptr, Pattern) as Pattern;
 };
@@ -924,7 +924,7 @@ PatternWithStatics.createRadial = (
         ],
         PATTERN_T,
     );
-    return getNativeObject(ptr as ObjectId, Pattern) as Pattern;
+    return getNativeObject(ptr as NativeHandle, Pattern) as Pattern;
 };
 
 Pattern.prototype.addColorStopRgb = function (offset: number, red: number, green: number, blue: number): Pattern {
@@ -932,7 +932,7 @@ Pattern.prototype.addColorStopRgb = function (offset: number, red: number, green
         LIB,
         "cairo_pattern_add_color_stop_rgb",
         [
-            { type: PATTERN_T_NONE, value: this.id },
+            { type: PATTERN_T_NONE, value: this.handle },
             { type: DOUBLE_TYPE, value: offset },
             { type: DOUBLE_TYPE, value: red },
             { type: DOUBLE_TYPE, value: green },
@@ -954,7 +954,7 @@ Pattern.prototype.addColorStopRgba = function (
         LIB,
         "cairo_pattern_add_color_stop_rgba",
         [
-            { type: PATTERN_T_NONE, value: this.id },
+            { type: PATTERN_T_NONE, value: this.handle },
             { type: DOUBLE_TYPE, value: offset },
             { type: DOUBLE_TYPE, value: red },
             { type: DOUBLE_TYPE, value: green },
@@ -974,7 +974,7 @@ Pattern.prototype.addColorStopRgba = function (
         getTypeFn: "cairo_gobject_font_options_get_type",
         ownership: "full",
     });
-    return getNativeObject(ptr as ObjectId, FontOptions);
+    return getNativeObject(ptr as NativeHandle, FontOptions);
 };
 
 FontOptions.prototype.setHintStyle = function (hintStyle: number): FontOptions {
@@ -982,7 +982,7 @@ FontOptions.prototype.setHintStyle = function (hintStyle: number): FontOptions {
         LIB,
         "cairo_font_options_set_hint_style",
         [
-            { type: FONT_OPTIONS_T, value: this.id },
+            { type: FONT_OPTIONS_T, value: this.handle },
             { type: { type: "int", size: 32, unsigned: false }, value: hintStyle },
         ],
         { type: "undefined" },
@@ -995,7 +995,7 @@ FontOptions.prototype.setAntialias = function (antialias: Antialias): FontOption
         LIB,
         "cairo_font_options_set_antialias",
         [
-            { type: FONT_OPTIONS_T, value: this.id },
+            { type: FONT_OPTIONS_T, value: this.handle },
             { type: { type: "int", size: 32, unsigned: false }, value: antialias },
         ],
         { type: "undefined" },
@@ -1008,7 +1008,7 @@ FontOptions.prototype.setHintMetrics = function (hintMetrics: number): FontOptio
         LIB,
         "cairo_font_options_set_hint_metrics",
         [
-            { type: FONT_OPTIONS_T, value: this.id },
+            { type: FONT_OPTIONS_T, value: this.handle },
             { type: { type: "int", size: 32, unsigned: false }, value: hintMetrics },
         ],
         { type: "undefined" },
@@ -1021,7 +1021,7 @@ FontOptions.prototype.setSubpixelOrder = function (subpixelOrder: number): FontO
         LIB,
         "cairo_font_options_set_subpixel_order",
         [
-            { type: FONT_OPTIONS_T, value: this.id },
+            { type: FONT_OPTIONS_T, value: this.handle },
             { type: { type: "int", size: 32, unsigned: false }, value: subpixelOrder },
         ],
         { type: "undefined" },

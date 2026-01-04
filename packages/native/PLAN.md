@@ -56,14 +56,14 @@ impl Ownership {
     pub fn decode_gobject(self, ptr: *mut GObject) -> glib::Object {
         match self {
             Ownership::Full => unsafe { glib::Object::from_glib_full(ptr) },
-            Ownership::None => unsafe { glib::Object::from_glib_none(ptr) },
+            Ownership::Borrowed => unsafe { glib::Object::from_glib_none(ptr) },
         }
     }
 
     pub fn decode_boxed(self, gtype: Option<glib::Type>, ptr: *mut c_void) -> Boxed {
         match self {
             Ownership::Full => Boxed::from_glib_full(gtype, ptr),
-            Ownership::None => Boxed::from_glib_none(gtype, ptr),
+            Ownership::Borrowed => Boxed::from_glib_none(gtype, ptr),
         }
     }
 }
@@ -140,7 +140,7 @@ impl cif::Value {
 pub struct GtkThreadState {
     pub app_hold_guard: Option<ApplicationHoldGuard>,
     // Fields dropped in declaration order - guard drops last
-    pub object_map: HashMap<usize, ManagedValue>,
+    pub handle_map: HashMap<usize, NativeValue>,
     pub libraries: HashMap<String, Library>,
     // ...
 }
@@ -255,15 +255,15 @@ Create `managed/` directory:
 
 ```
 managed/
-├── mod.rs           // pub use, ManagedValue enum
+├── mod.rs           // pub use, NativeValue enum
 ├── boxed.rs         // Boxed struct
 ├── fundamental.rs   // Fundamental struct
-└── object_id.rs     // ObjectId, From<ManagedValue> for ObjectId
+└── object_id.rs     // NativeHandle, From<NativeValue> for NativeHandle
 ```
 
-`ManagedValue` stays as enum in `mod.rs`:
+`NativeValue` stays as enum in `mod.rs`:
 ```rust
-pub enum ManagedValue {
+pub enum NativeValue {
     GObject(glib::Object),
     Boxed(Boxed),
     Fundamental(Fundamental),
@@ -341,12 +341,12 @@ impl CallbackData {
 
 ## 6. Domain Boundary Refinement
 
-### a) `StructType` returning `ManagedValue::Boxed`
+### a) `StructType` returning `NativeValue::Boxed`
 
 **Issue:** Blurs struct vs boxed distinction.
 
 **Options:**
-1. Add `ManagedValue::Struct(Boxed)` variant (wrapper to distinguish semantically)
+1. Add `NativeValue::Struct(Boxed)` variant (wrapper to distinguish semantically)
 2. Rename `Boxed` to `ManagedPtr` since it handles both
 3. Accept that both are "heap-allocated C data with optional GType"
 
@@ -386,7 +386,7 @@ The `CifEncode`/`CifDecode` traits on `Type` are appropriate since the type dete
 **a) `Default` for `Ownership`:**
 ```rust
 impl Default for Ownership {
-    fn default() -> Self { Ownership::None }
+    fn default() -> Self { Ownership::Borrowed }
 }
 ```
 

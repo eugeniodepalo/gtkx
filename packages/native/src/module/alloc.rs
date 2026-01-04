@@ -16,25 +16,61 @@ use neon::prelude::*;
 
 use crate::{
     gtk_dispatch,
-    managed::{Boxed, ManagedValue, ObjectId},
+    managed::{Boxed, NativeValue, NativeHandle},
     types::{BoxedType, Ownership},
 };
 
+struct AllocRequest {
+    size: usize,
+    type_name: Option<String>,
+    lib_name: Option<String>,
+}
+
+impl AllocRequest {
+    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
+        let size = cx.argument::<JsNumber>(0)?.value(cx) as usize;
+
+        let type_name = cx
+            .argument_opt(1)
+            .and_then(|v| v.downcast::<JsString, _>(cx).ok())
+            .map(|s| s.value(cx));
+
+        let lib_name = cx
+            .argument_opt(2)
+            .and_then(|v| v.downcast::<JsString, _>(cx).ok())
+            .map(|s| s.value(cx));
+
+        Ok(Self {
+            size,
+            type_name,
+            lib_name,
+        })
+    }
+
+    fn execute(self) -> anyhow::Result<NativeHandle> {
+        let gtype = self.type_name.as_ref().map(|name| {
+            let boxed_type =
+                BoxedType::new(Ownership::Full, name.clone(), self.lib_name.clone(), None);
+            boxed_type.gtype()
+        });
+
+        // SAFETY: g_malloc0 is a safe GLib memory allocation function
+        let ptr = unsafe { g_malloc0(self.size) };
+
+        if ptr.is_null() {
+            let type_desc = self.type_name.as_deref().unwrap_or("plain struct");
+            anyhow::bail!("Failed to allocate memory for {}", type_desc);
+        }
+
+        let boxed = Boxed::from_glib_full(gtype.flatten(), ptr);
+        Ok(NativeValue::Boxed(boxed).into())
+    }
+}
+
 pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
-    let size = cx.argument::<JsNumber>(0)?.value(&mut cx) as usize;
+    let request = AllocRequest::from_js(&mut cx)?;
 
-    let type_name = cx
-        .argument_opt(1)
-        .and_then(|v| v.downcast::<JsString, _>(&mut cx).ok())
-        .map(|s| s.value(&mut cx));
-
-    let lib_name = cx
-        .argument_opt(2)
-        .and_then(|v| v.downcast::<JsString, _>(&mut cx).ok())
-        .map(|s| s.value(&mut cx));
-
-    let rx = gtk_dispatch::GtkDispatcher::global()
-        .run_on_gtk_thread(move || handle_alloc(size, type_name.as_deref(), lib_name.as_deref()));
+    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(move || request.execute());
 
     let object_id = rx
         .recv()
@@ -42,30 +78,4 @@ pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
         .or_else(|err| cx.throw_error(format!("Error during alloc: {err}")))?;
 
     Ok(cx.boxed(object_id).upcast())
-}
-
-fn handle_alloc(
-    size: usize,
-    type_name: Option<&str>,
-    lib_name: Option<&str>,
-) -> anyhow::Result<ObjectId> {
-    let gtype = type_name.map(|name| {
-        let boxed_type = BoxedType::new(
-            Ownership::Full,
-            name.to_string(),
-            lib_name.map(String::from),
-            None,
-        );
-        boxed_type.gtype()
-    });
-
-    let ptr = unsafe { g_malloc0(size) };
-
-    if ptr.is_null() {
-        let type_desc = type_name.unwrap_or("plain struct");
-        anyhow::bail!("Failed to allocate memory for {}", type_desc);
-    }
-
-    let boxed = Boxed::from_glib_full(gtype.flatten(), ptr);
-    Ok(ManagedValue::Boxed(boxed).into())
 }

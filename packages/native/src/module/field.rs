@@ -28,20 +28,99 @@ use neon::prelude::*;
 
 use crate::{
     gtk_dispatch,
-    managed::{Boxed, ManagedValue, ObjectId},
+    managed::{Boxed, NativeValue, NativeHandle},
     types::Type,
     value::Value,
 };
 
-pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
-    let object_id = cx.argument::<JsBox<ObjectId>>(0)?;
-    let js_type = cx.argument::<JsObject>(1)?;
-    let offset = cx.argument::<JsNumber>(2)?.value(&mut cx) as usize;
-    let ty = Type::from_js_value(&mut cx, js_type.upcast())?;
-    let object_id = *object_id.as_inner();
+struct ReadRequest {
+    object_id: NativeHandle,
+    field_type: Type,
+    offset: usize,
+}
 
-    let rx = gtk_dispatch::GtkDispatcher::global()
-        .run_on_gtk_thread(move || handle_read(object_id, &ty, offset));
+impl ReadRequest {
+    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
+        let object_id = cx.argument::<JsBox<NativeHandle>>(0)?;
+        let js_type = cx.argument::<JsObject>(1)?;
+        let offset = cx.argument::<JsNumber>(2)?.value(cx) as usize;
+        let field_type = Type::from_js_value(cx, js_type.upcast())?;
+        let object_id = *object_id.as_inner();
+
+        Ok(Self {
+            object_id,
+            field_type,
+            offset,
+        })
+    }
+
+    fn execute(self) -> anyhow::Result<Value> {
+        let field_ptr = self.object_id.field_ptr_const(self.offset)?;
+
+        match self.field_type {
+            Type::Integer(int_kind) => {
+                let number = int_kind.read_ptr(field_ptr);
+                Ok(Value::Number(number))
+            }
+            Type::Float(float_kind) => {
+                let number = float_kind.read_ptr(field_ptr);
+                Ok(Value::Number(number))
+            }
+            Type::Boolean => {
+                // SAFETY: field_ptr is valid and within bounds (checked by field_ptr_const)
+                let value = unsafe { field_ptr.cast::<u8>().read_unaligned() != 0 };
+                Ok(Value::Boolean(value))
+            }
+            Type::String(_) => {
+                // SAFETY: field_ptr is valid and contains a C string pointer
+                let str_ptr = unsafe { field_ptr.cast::<*const i8>().read_unaligned() };
+
+                if str_ptr.is_null() {
+                    return Ok(Value::Null);
+                }
+
+                // SAFETY: str_ptr is a valid null-terminated C string from GTK
+                let c_str = unsafe { CStr::from_ptr(str_ptr) };
+                let string = c_str.to_str()?.to_string();
+                Ok(Value::String(string))
+            }
+            Type::GObject(_) => {
+                // SAFETY: field_ptr is valid and contains a GObject pointer
+                let obj_ptr = unsafe {
+                    field_ptr
+                        .cast::<*mut glib::gobject_ffi::GObject>()
+                        .read_unaligned()
+                };
+
+                if obj_ptr.is_null() {
+                    return Ok(Value::Null);
+                }
+
+                // SAFETY: obj_ptr is a valid GObject from GTK
+                let object = unsafe { glib::Object::from_glib_none(obj_ptr) };
+                Ok(Value::Object(NativeValue::GObject(object).into()))
+            }
+            Type::Boxed(ref boxed_type) => {
+                // SAFETY: field_ptr is valid and contains a boxed pointer
+                let boxed_ptr = unsafe { field_ptr.cast::<*mut c_void>().read_unaligned() };
+
+                if boxed_ptr.is_null() {
+                    return Ok(Value::Null);
+                }
+
+                let gtype = boxed_type.gtype();
+                let boxed = Boxed::from_glib_none(gtype, boxed_ptr)?;
+                Ok(Value::Object(NativeValue::Boxed(boxed).into()))
+            }
+            _ => bail!("Unsupported field type for read: {:?}", self.field_type),
+        }
+    }
+}
+
+pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
+    let request = ReadRequest::from_js(&mut cx)?;
+
+    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(move || request.execute());
 
     let value = rx
         .recv()
@@ -51,101 +130,62 @@ pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
     value.to_js_value(&mut cx)
 }
 
-fn handle_read(object_id: ObjectId, ty: &Type, offset: usize) -> anyhow::Result<Value> {
-    let field_ptr = object_id.field_ptr_const(offset)?;
+struct WriteRequest {
+    object_id: NativeHandle,
+    field_type: Type,
+    offset: usize,
+    value: Value,
+}
 
-    match ty {
-        Type::Integer(int_kind) => {
-            let number = int_kind.read_ptr(field_ptr);
-            Ok(Value::Number(number))
-        }
-        Type::Float(float_kind) => {
-            let number = float_kind.read_ptr(field_ptr);
-            Ok(Value::Number(number))
-        }
-        Type::Boolean => {
-            let value = unsafe { field_ptr.cast::<u8>().read_unaligned() != 0 };
-            Ok(Value::Boolean(value))
-        }
-        Type::String(_) => {
-            let str_ptr = unsafe { field_ptr.cast::<*const i8>().read_unaligned() };
+impl WriteRequest {
+    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
+        let object_id = cx.argument::<JsBox<NativeHandle>>(0)?;
+        let js_type = cx.argument::<JsObject>(1)?;
+        let offset = cx.argument::<JsNumber>(2)?.value(cx) as usize;
+        let js_value = cx.argument::<JsValue>(3)?;
+        let field_type = Type::from_js_value(cx, js_type.upcast())?;
+        let value = Value::from_js_value(cx, js_value)?;
+        let object_id = *object_id.as_inner();
 
-            if str_ptr.is_null() {
-                return Ok(Value::Null);
+        Ok(Self {
+            object_id,
+            field_type,
+            offset,
+            value,
+        })
+    }
+
+    fn execute(self) -> anyhow::Result<()> {
+        let field_ptr = self.object_id.field_ptr(self.offset)?;
+
+        match (&self.field_type, &self.value) {
+            (Type::Integer(int_kind), Value::Number(n)) => {
+                int_kind.write_ptr(field_ptr, *n);
             }
-
-            let c_str = unsafe { CStr::from_ptr(str_ptr) };
-            let string = c_str.to_str()?.to_string();
-            Ok(Value::String(string))
-        }
-        Type::GObject(_) => {
-            let obj_ptr = unsafe {
-                field_ptr
-                    .cast::<*mut glib::gobject_ffi::GObject>()
-                    .read_unaligned()
-            };
-
-            if obj_ptr.is_null() {
-                return Ok(Value::Null);
+            (Type::Float(float_kind), Value::Number(n)) => {
+                float_kind.write_ptr(field_ptr, *n);
             }
-
-            let object = unsafe { glib::Object::from_glib_none(obj_ptr) };
-            Ok(Value::Object(ManagedValue::GObject(object).into()))
-        }
-        Type::Boxed(boxed_type) => {
-            let boxed_ptr = unsafe { field_ptr.cast::<*mut c_void>().read_unaligned() };
-
-            if boxed_ptr.is_null() {
-                return Ok(Value::Null);
+            (Type::Boolean, Value::Boolean(b)) => {
+                // SAFETY: field_ptr is valid and within bounds (checked by field_ptr)
+                unsafe {
+                    field_ptr.cast::<u8>().write_unaligned(u8::from(*b));
+                }
             }
-
-            let gtype = boxed_type.gtype();
-            let boxed = Boxed::from_glib_none(gtype, boxed_ptr)?;
-            Ok(Value::Object(ManagedValue::Boxed(boxed).into()))
+            _ => bail!("Unsupported field type for write: {:?}", self.field_type),
         }
-        _ => bail!("Unsupported field type for read: {:?}", ty),
+
+        Ok(())
     }
 }
 
 pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let object_id = cx.argument::<JsBox<ObjectId>>(0)?;
-    let js_type = cx.argument::<JsObject>(1)?;
-    let offset = cx.argument::<JsNumber>(2)?.value(&mut cx) as usize;
-    let js_value = cx.argument::<JsValue>(3)?;
-    let ty = Type::from_js_value(&mut cx, js_type.upcast())?;
-    let value = Value::from_js_value(&mut cx, js_value)?;
-    let object_id = *object_id.as_inner();
+    let request = WriteRequest::from_js(&mut cx)?;
 
-    let rx = gtk_dispatch::GtkDispatcher::global()
-        .run_on_gtk_thread(move || handle_write(object_id, &ty, offset, &value));
+    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(move || request.execute());
 
     rx.recv()
         .or_else(|err| cx.throw_error(format!("Error receiving write result: {err}")))?
         .or_else(|err| cx.throw_error(format!("Error during write: {err}")))?;
 
     Ok(cx.undefined())
-}
-
-fn handle_write(
-    object_id: ObjectId,
-    ty: &Type,
-    offset: usize,
-    value: &Value,
-) -> anyhow::Result<()> {
-    let field_ptr = object_id.field_ptr(offset)?;
-
-    match (ty, value) {
-        (Type::Integer(int_kind), Value::Number(n)) => {
-            int_kind.write_ptr(field_ptr, *n);
-        }
-        (Type::Float(float_kind), Value::Number(n)) => {
-            float_kind.write_ptr(field_ptr, *n);
-        }
-        (Type::Boolean, Value::Boolean(b)) => unsafe {
-            field_ptr.cast::<u8>().write_unaligned(u8::from(*b));
-        },
-        _ => bail!("Unsupported field type for write: {:?}", ty),
-    }
-
-    Ok(())
 }

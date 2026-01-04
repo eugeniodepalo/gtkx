@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { alloc, call, getObjectId } from "../../index.js";
+import { alloc, call, getNativeId } from "../../index.js";
 import { GDK_LIB, GTK_LIB } from "./utils.js";
 
-describe("getObjectId", () => {
+describe("getNativeId", () => {
     it("returns a number identifier for a GObject", () => {
         const label = call(
             GTK_LIB,
@@ -14,7 +14,7 @@ describe("getObjectId", () => {
             },
         );
 
-        const id = getObjectId(label);
+        const id = getNativeId(label);
 
         expect(typeof id).toBe("number");
     });
@@ -22,7 +22,7 @@ describe("getObjectId", () => {
     it("returns a number identifier for a boxed type", () => {
         const rgba = alloc(16, "GdkRGBA", GDK_LIB);
 
-        const id = getObjectId(rgba);
+        const id = getNativeId(rgba);
 
         expect(typeof id).toBe("number");
     });
@@ -38,8 +38,8 @@ describe("getObjectId", () => {
             },
         );
 
-        const id1 = getObjectId(label);
-        const id2 = getObjectId(label);
+        const id1 = getNativeId(label);
+        const id2 = getNativeId(label);
 
         expect(id1).toBe(id2);
     });
@@ -58,8 +58,8 @@ describe("getObjectId", () => {
             { type: "gobject", ownership: "borrowed" },
         );
 
-        const id1 = getObjectId(label1);
-        const id2 = getObjectId(label2);
+        const id1 = getNativeId(label1);
+        const id2 = getNativeId(label2);
 
         expect(id1).not.toBe(id2);
     });
@@ -76,7 +76,7 @@ describe("getObjectId", () => {
         );
 
         const map = new Map<number, string>();
-        const id = getObjectId(label);
+        const id = getNativeId(label);
         map.set(id, "label-value");
 
         expect(map.get(id)).toBe("label-value");

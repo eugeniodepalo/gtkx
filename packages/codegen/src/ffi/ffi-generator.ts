@@ -132,7 +132,7 @@ export class FfiGenerator {
 
                 sourceFile.addImportDeclaration({
                     moduleSpecifier: "../../native/base.js",
-                    namedImports: ["NativeObject", "ObjectId"],
+                    namedImports: ["NativeObject", "NativeHandle"],
                 });
 
                 const classDecl = sourceFile.addClass({

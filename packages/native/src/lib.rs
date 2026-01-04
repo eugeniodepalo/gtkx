@@ -14,7 +14,7 @@
 //! | `alloc` | Allocate memory for boxed types |
 //! | `read` | Read field from boxed memory |
 //! | `write` | Write field to boxed memory |
-//! | `getObjectId` | Get internal pointer for managed object |
+//! | `getNativeId` | Get internal handle ID for managed object |
 //! | `poll` | Process pending JavaScript callbacks |
 //!
 //! ## Architecture
@@ -46,7 +46,7 @@ pub mod trampoline;
 pub mod types;
 pub mod value;
 
-pub use managed::{Boxed, Fundamental, ManagedValue, ObjectId};
+pub use managed::{Boxed, Fundamental, NativeValue, NativeHandle};
 
 use neon::prelude::*;
 
@@ -59,7 +59,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("read", module::read)?;
     cx.export_function("write", module::write)?;
     cx.export_function("alloc", module::alloc)?;
-    cx.export_function("getObjectId", module::get_object_id)?;
+    cx.export_function("getNativeId", module::get_native_id)?;
     cx.export_function("poll", module::poll)?;
     Ok(())
 }

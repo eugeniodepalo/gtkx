@@ -69,7 +69,7 @@ export type CallExpressionOptions = {
  *   cIdentifier: "gtk_button_set_label",
  *   args: [{ type: { type: "string" }, value: "label" }],
  *   returnType: { type: "undefined" },
- *   selfArg: { type: { type: "gobject" }, value: "this.id" },
+ *   selfArg: { type: { type: "gobject" }, value: "this.handle" },
  * });
  * ```
  */
@@ -122,7 +122,7 @@ export class CallExpressionBuilder {
     /**
      * Builds a value expression that handles object ID extraction.
      *
-     * For gobject/boxed/struct types, extracts the `.id` property (ObjectId).
+     * For gobject/boxed/struct types, extracts the `.handle` property (NativeHandle).
      * For hashtable types, generates: `Array.from(value)` to convert Map to array of tuples.
      * For primitives, just returns the value name.
      */
@@ -137,10 +137,10 @@ export class CallExpressionBuilder {
             const isUnknownType = mappedType.ts === "unknown";
             if (isUnknownType) {
                 return nullable
-                    ? `(${valueName} as { id: ObjectId } | null)?.id`
-                    : `(${valueName} as { id: ObjectId }).id`;
+                    ? `(${valueName} as { handle: NativeHandle } | null)?.handle`
+                    : `(${valueName} as { handle: NativeHandle }).handle`;
             }
-            return nullable ? `${valueName}?.id` : `${valueName}.id`;
+            return nullable ? `${valueName}?.handle` : `${valueName}.handle`;
         }
 
         if (mappedType.ffi.type === "hashtable") {
@@ -169,7 +169,7 @@ export class CallExpressionBuilder {
         return (writer) => {
             writer.writeLine("if (error.value !== null) {");
             writer.indent(() => {
-                writer.writeLine(`throw new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef}));`);
+                writer.writeLine(`throw new NativeError(getNativeObject(error.value as NativeHandle, ${gerrorRef}));`);
             });
             writer.writeLine("}");
         };

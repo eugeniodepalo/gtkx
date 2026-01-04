@@ -1,16 +1,16 @@
 //! Object pointer retrieval.
 //!
-//! The [`get_object_id`] function returns the raw pointer value for a managed
+//! The [`get_native_id`] function returns the raw pointer value for a managed
 //! object. This is primarily used for debugging and introspection.
 
 use std::sync::mpsc;
 
 use neon::prelude::*;
 
-use crate::{gtk_dispatch, managed::ObjectId};
+use crate::{gtk_dispatch, managed::NativeHandle};
 
-pub fn get_object_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
-    let object_id = cx.argument::<JsBox<ObjectId>>(0)?;
+pub fn get_native_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    let object_id = cx.argument::<JsBox<NativeHandle>>(0)?;
     let id = *object_id.as_inner();
 
     let (tx, rx) = mpsc::channel();

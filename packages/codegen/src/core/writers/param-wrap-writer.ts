@@ -63,10 +63,10 @@ export class ParamWrapWriter {
         }
 
         if (wrapInfo.needsTargetClass && wrapInfo.targetClass) {
-            return `getNativeObject(${argName} as ObjectId, ${wrapInfo.targetClass})`;
+            return `getNativeObject(${argName} as NativeHandle, ${wrapInfo.targetClass})`;
         }
 
-        return `getNativeObject(${argName} as ObjectId) as ${wrapInfo.tsType}`;
+        return `getNativeObject(${argName} as NativeHandle) as ${wrapInfo.tsType}`;
     }
 
     buildWrapParamsFunction(params: Array<{ mappedType: MappedType; paramName: string }>): WriterFunction | null {
@@ -106,7 +106,7 @@ export class ParamWrapWriter {
                         writer.newLine();
                         writer.indent(() => this.writeWrapExpressionsList(wrapInfos, writer));
                         writer.writeLine(");");
-                        writer.writeLine("return _result?.id ?? null;");
+                        writer.writeLine("return _result?.handle ?? null;");
                     });
                     writer.write("}");
                 } else {

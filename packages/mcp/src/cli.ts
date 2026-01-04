@@ -16,6 +16,14 @@ const AppIdSchema = z.object({
     appId: z.string().optional().describe("App ID to query. If not specified, uses the first connected app."),
 });
 
+const ListAppsInputSchema = z.object({
+    waitForApps: z
+        .boolean()
+        .optional()
+        .describe("If true, wait for at least one app to register before returning. Useful when app is still starting."),
+    timeout: z.number().optional().describe("Timeout in milliseconds when waitForApps is true (default: 10000)"),
+});
+
 const GetWidgetTreeInputSchema = AppIdSchema;
 
 const QueryWidgetsInputSchema = AppIdSchema.extend({
@@ -59,7 +67,17 @@ const tools = [
         description: "List all connected GTKX applications",
         inputSchema: {
             type: "object" as const,
-            properties: {},
+            properties: {
+                waitForApps: {
+                    type: "boolean",
+                    description:
+                        "If true, wait for at least one app to register before returning. Useful when app is still starting.",
+                },
+                timeout: {
+                    type: "number",
+                    description: "Timeout in milliseconds when waitForApps is true (default: 10000)",
+                },
+            },
             required: [],
         },
     },
@@ -264,6 +282,24 @@ async function main() {
         try {
             switch (name) {
                 case "gtkx_list_apps": {
+                    const input = ListAppsInputSchema.parse(args);
+
+                    if (input.waitForApps && !connectionManager.hasConnectedApps()) {
+                        try {
+                            await connectionManager.waitForApp(input.timeout);
+                        } catch (error) {
+                            return {
+                                content: [
+                                    {
+                                        type: "text",
+                                        text: error instanceof Error ? error.message : "Timeout waiting for app",
+                                    },
+                                ],
+                                isError: true,
+                            };
+                        }
+                    }
+
                     const apps = connectionManager.getApps();
                     return {
                         content: [{ type: "text", text: JSON.stringify(apps, null, 2) }],

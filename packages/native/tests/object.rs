@@ -7,7 +7,7 @@ use gtk4::glib;
 use gtk4::prelude::{ObjectType as _, StaticType as _};
 
 use native::Boxed;
-use native::managed::{ManagedValue, ObjectId};
+use native::managed::{NativeValue, NativeHandle};
 use native::state::GtkThreadState;
 
 fn create_test_gobject() -> glib::Object {
@@ -18,13 +18,13 @@ fn create_test_gobject() -> glib::Object {
 #[test]
 fn object_id_from_registers_in_map() {
     let obj = create_test_gobject();
-    let object = ManagedValue::GObject(obj);
-    let id: ObjectId = object.into();
+    let object = NativeValue::GObject(obj);
+    let id: NativeHandle = object.into();
 
     assert!(id.id() > 0);
 
     GtkThreadState::with(|state| {
-        assert!(state.object_map.contains_key(&id.id()));
+        assert!(state.handle_map.contains_key(&id.id()));
     });
 }
 
@@ -32,8 +32,8 @@ fn object_id_from_registers_in_map() {
 fn object_id_as_ptr_returns_correct_pointer() {
     let obj = create_test_gobject();
     let expected_ptr = obj.as_ptr() as *mut c_void;
-    let object = ManagedValue::GObject(obj);
-    let id: ObjectId = object.into();
+    let object = NativeValue::GObject(obj);
+    let id: NativeHandle = object.into();
 
     let ptr = id.get_ptr();
     assert_eq!(ptr, Some(expected_ptr));
@@ -42,11 +42,11 @@ fn object_id_as_ptr_returns_correct_pointer() {
 #[test]
 fn object_id_as_ptr_returns_none_after_removal() {
     let obj = create_test_gobject();
-    let object = ManagedValue::GObject(obj);
-    let id: ObjectId = object.into();
+    let object = NativeValue::GObject(obj);
+    let id: NativeHandle = object.into();
 
     GtkThreadState::with(|state| {
-        state.object_map.remove(&id.id());
+        state.handle_map.remove(&id.id());
     });
 
     assert_eq!(id.get_ptr(), None);
@@ -56,8 +56,8 @@ fn object_id_as_ptr_returns_none_after_removal() {
 fn object_id_get_ptr_as_usize_returns_usize() {
     let obj = create_test_gobject();
     let expected_ptr = obj.as_ptr() as usize;
-    let object = ManagedValue::GObject(obj);
-    let id: ObjectId = object.into();
+    let object = NativeValue::GObject(obj);
+    let id: NativeHandle = object.into();
 
     let ptr = id.get_ptr_as_usize();
     assert_eq!(ptr, Some(expected_ptr));
@@ -68,8 +68,8 @@ fn object_id_increments_sequentially() {
     let obj1 = create_test_gobject();
     let obj2 = create_test_gobject();
 
-    let id1: ObjectId = ManagedValue::GObject(obj1).into();
-    let id2: ObjectId = ManagedValue::GObject(obj2).into();
+    let id1: NativeHandle = NativeValue::GObject(obj1).into();
+    let id2: NativeHandle = NativeValue::GObject(obj2).into();
 
     assert!(id2.id() > id1.id());
 }
@@ -81,8 +81,8 @@ fn object_boxed_stores_and_retrieves() {
     let gtype = gdk::RGBA::static_type();
     let ptr = common::allocate_test_boxed(gtype);
     let boxed = Boxed::from_glib_full(Some(gtype), ptr);
-    let object = ManagedValue::Boxed(boxed);
-    let id: ObjectId = object.into();
+    let object = NativeValue::Boxed(boxed);
+    let id: NativeHandle = object.into();
 
     let retrieved_ptr = id.get_ptr();
     assert_eq!(retrieved_ptr, Some(ptr));
@@ -91,16 +91,16 @@ fn object_boxed_stores_and_retrieves() {
 #[test]
 fn object_gobject_clone_shares_reference() {
     let obj = create_test_gobject();
-    let object = ManagedValue::GObject(obj.clone());
+    let object = NativeValue::GObject(obj.clone());
     let cloned = object.clone();
 
     let ptr1 = match &object {
-        ManagedValue::GObject(o) => o.as_ptr(),
+        NativeValue::GObject(o) => o.as_ptr(),
         _ => panic!("Expected GObject"),
     };
 
     let ptr2 = match &cloned {
-        ManagedValue::GObject(o) => o.as_ptr(),
+        NativeValue::GObject(o) => o.as_ptr(),
         _ => panic!("Expected GObject"),
     };
 
@@ -114,16 +114,16 @@ fn object_boxed_clone_creates_copy() {
     let gtype = gdk::RGBA::static_type();
     let ptr = common::allocate_test_boxed(gtype);
     let boxed = Boxed::from_glib_full(Some(gtype), ptr);
-    let object = ManagedValue::Boxed(boxed);
+    let object = NativeValue::Boxed(boxed);
     let cloned = object.clone();
 
     let ptr1 = match &object {
-        ManagedValue::Boxed(b) => b.as_ptr(),
+        NativeValue::Boxed(b) => b.as_ptr(),
         _ => panic!("Expected Boxed"),
     };
 
     let ptr2 = match &cloned {
-        ManagedValue::Boxed(b) => b.as_ptr(),
+        NativeValue::Boxed(b) => b.as_ptr(),
         _ => panic!("Expected Boxed"),
     };
 
@@ -138,7 +138,7 @@ fn gobject_refcount_preserved_in_map() {
         (*ptr).ref_count
     };
 
-    let _id: ObjectId = ManagedValue::GObject(obj.clone()).into();
+    let _id: NativeHandle = NativeValue::GObject(obj.clone()).into();
 
     let after_ref = unsafe {
         let ptr = obj.as_ptr();
@@ -153,11 +153,11 @@ fn multiple_objects_independent() {
     let obj1 = create_test_gobject();
     let obj2 = create_test_gobject();
 
-    let id1: ObjectId = ManagedValue::GObject(obj1.clone()).into();
-    let id2: ObjectId = ManagedValue::GObject(obj2.clone()).into();
+    let id1: NativeHandle = NativeValue::GObject(obj1.clone()).into();
+    let id2: NativeHandle = NativeValue::GObject(obj2.clone()).into();
 
     GtkThreadState::with(|state| {
-        state.object_map.remove(&id1.id());
+        state.handle_map.remove(&id1.id());
     });
 
     assert_eq!(id1.get_ptr(), None);

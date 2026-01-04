@@ -13,7 +13,7 @@ describe("registerNativeClass", () => {
 
     it("allows getNativeObject to find registered types", () => {
         const label = new Gtk.Label("Test");
-        const wrapped = getNativeObject(label.id);
+        const wrapped = getNativeObject(label.handle);
         expect(wrapped).toBeInstanceOf(Gtk.Label);
     });
 });

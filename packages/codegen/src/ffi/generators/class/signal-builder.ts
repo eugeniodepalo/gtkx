@@ -236,7 +236,7 @@ export class SignalBuilder {
             writer.write("return handler(");
             writer.newLine();
             writer.indent(() => {
-                writer.writeLine(`getNativeObject(args[0] as ObjectId) as ${this.className},`);
+                writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
                 paramData.forEach((p, index) => {
                     const argAccess = `args[${index + 1}]`;
                     const expression = this.paramWrapWriter.writeWrapExpression(argAccess, p.wrapInfo);
@@ -297,7 +297,7 @@ export class SignalBuilder {
         writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
         writer.indent(() => {
             writer.writeLine(
-                `return handler(getNativeObject(args[0] as ObjectId) as ${this.className}, ...args.slice(1));`,
+                `return handler(getNativeObject(args[0] as NativeHandle) as ${this.className}, ...args.slice(1));`,
             );
         });
         writer.writeLine("};");
@@ -313,7 +313,7 @@ export class SignalBuilder {
             writer.writeLine('"g_signal_connect_closure",');
             writer.writeLine("[");
             writer.indent(() => {
-                writer.writeLine('{ type: { type: "gobject", ownership: "borrowed" }, value: this.id },');
+                writer.writeLine('{ type: { type: "gobject", ownership: "borrowed" }, value: this.handle },');
                 writer.writeLine('{ type: { type: "string", ownership: "borrowed" }, value: signal },');
                 writer.writeLine("{");
                 writer.indent(() => {

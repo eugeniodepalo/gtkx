@@ -1,4 +1,4 @@
-import { beginBatch, endBatch, getObjectId } from "@gtkx/ffi";
+import { beginBatch, endBatch, getNativeId } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
@@ -56,7 +56,7 @@ export type ReconcilerInstance = ReactReconciler.Reconciler<
 >;
 
 const getOrCreateContainerNode = (container: Container): Node => {
-    const id = getObjectId(container.id);
+    const id = getNativeId(container.handle);
     let node = containerNodeCache.get(id);
 
     if (!node) {

@@ -1,13 +1,24 @@
+//! Boxed and struct type handling for FFI.
+//!
+//! GLib boxed types are heap-allocated structures with reference counting
+//! managed by GLib. Struct types are similar but may be stack-allocated
+//! or have fixed sizes. This module provides [`BoxedType`] and [`StructType`]
+//! descriptors that handle encoding/decoding these types for FFI calls.
+
 use gtk4::glib::{self, translate::FromGlib as _, translate::IntoGlib as _};
 use libffi::middle as libffi;
 use neon::object::Object as _;
 use neon::prelude::*;
 
 use super::Ownership;
-use crate::managed::{Boxed, ManagedValue};
+use crate::managed::{Boxed, NativeValue};
 use crate::state::GtkThreadState;
 use crate::{ffi, value};
 
+/// Descriptor for GLib boxed types (reference-counted heap structures).
+///
+/// Boxed types are registered with GLib's type system and have automatic
+/// memory management via `g_boxed_copy` and `g_boxed_free`.
 #[derive(Debug, Clone)]
 pub struct BoxedType {
     pub ownership: Ownership,
@@ -114,9 +125,9 @@ impl ffi::FfiDecode for BoxedType {
 
         let gtype = self.gtype();
         let boxed = if self.ownership.is_full() {
-            ManagedValue::Boxed(Boxed::from_glib_full(gtype, boxed_ptr))
+            NativeValue::Boxed(Boxed::from_glib_full(gtype, boxed_ptr))
         } else {
-            ManagedValue::Boxed(Boxed::from_glib_none_with_size(
+            NativeValue::Boxed(Boxed::from_glib_none_with_size(
                 gtype,
                 boxed_ptr,
                 None,
@@ -128,6 +139,10 @@ impl ffi::FfiDecode for BoxedType {
     }
 }
 
+/// Descriptor for plain C struct types.
+///
+/// Unlike boxed types, struct types may not be registered with GLib's
+/// type system and use size-based copying for ownership transfer.
 #[derive(Debug, Clone)]
 pub struct StructType {
     pub ownership: Ownership,
@@ -189,6 +204,6 @@ impl ffi::FfiDecode for StructType {
             Boxed::from_glib_none_with_size(None, struct_ptr, self.size, Some(&self.type_name))?
         };
 
-        Ok(value::Value::Object(ManagedValue::Boxed(boxed).into()))
+        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
     }
 }

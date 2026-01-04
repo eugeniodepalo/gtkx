@@ -96,7 +96,7 @@ export class FieldBuilder {
                 const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
                 this.ctx.addTypeImports(typeMapping.imports);
 
-                writer.write(`if (init.${fieldName} !== undefined) write(this.id, `);
+                writer.write(`if (init.${fieldName} !== undefined) write(this.handle, `);
                 this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
                 writer.writeLine(`, ${offset}, init.${fieldName});`);
             }

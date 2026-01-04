@@ -6,25 +6,26 @@ use libffi::middle as libffi;
 use neon::prelude::*;
 
 use super::Ownership;
-use crate::ffi::{HashTableData, HashTableStorage, Stash, StashStorage};
+use crate::ffi::{FfiStorage, FfiStorageKind, HashTableData, HashTableStorage};
 use crate::types::Type;
 use crate::{ffi, value};
 
-trait HashTableKeyEncoder {
-    fn hash_func() -> glib::ffi::GHashFunc;
-    fn equal_func() -> glib::ffi::GEqualFunc;
-    fn free_func() -> glib::ffi::GDestroyNotify;
-    fn encode(value: &value::Value) -> anyhow::Result<(*mut c_void, HashTableStorage)>;
-}
+trait HashTableEncoder {
+    fn hash_func() -> glib::ffi::GHashFunc {
+        None
+    }
 
-trait HashTableValueEncoder {
+    fn equal_func() -> glib::ffi::GEqualFunc {
+        None
+    }
+
     fn free_func() -> glib::ffi::GDestroyNotify;
     fn encode(value: &value::Value) -> anyhow::Result<(*mut c_void, HashTableStorage)>;
 }
 
 struct StringEncoder;
 
-impl HashTableKeyEncoder for StringEncoder {
+impl HashTableEncoder for StringEncoder {
     fn hash_func() -> glib::ffi::GHashFunc {
         Some(glib::ffi::g_str_hash)
     }
@@ -43,24 +44,15 @@ impl HashTableKeyEncoder for StringEncoder {
             _ => bail!("Expected string in GHashTable, got {:?}", val),
         };
         let cstr = CString::new(s.as_bytes())?;
+        // SAFETY: g_strdup creates a copy of the C string
         let ptr = unsafe { glib::ffi::g_strdup(cstr.as_ptr()) };
         Ok((ptr as *mut c_void, HashTableStorage::Strings(vec![cstr])))
     }
 }
 
-impl HashTableValueEncoder for StringEncoder {
-    fn free_func() -> glib::ffi::GDestroyNotify {
-        Some(glib::ffi::g_free)
-    }
-
-    fn encode(val: &value::Value) -> anyhow::Result<(*mut c_void, HashTableStorage)> {
-        <Self as HashTableKeyEncoder>::encode(val)
-    }
-}
-
 struct IntEncoder;
 
-impl HashTableKeyEncoder for IntEncoder {
+impl HashTableEncoder for IntEncoder {
     fn hash_func() -> glib::ffi::GHashFunc {
         Some(glib::ffi::g_direct_hash)
     }
@@ -78,16 +70,6 @@ impl HashTableKeyEncoder for IntEncoder {
             value::Value::Number(n) => Ok((*n as isize as *mut c_void, HashTableStorage::Integers)),
             _ => bail!("Expected number in GHashTable, got {:?}", val),
         }
-    }
-}
-
-impl HashTableValueEncoder for IntEncoder {
-    fn free_func() -> glib::ffi::GDestroyNotify {
-        None
-    }
-
-    fn encode(val: &value::Value) -> anyhow::Result<(*mut c_void, HashTableStorage)> {
-        <Self as HashTableKeyEncoder>::encode(val)
     }
 }
 
@@ -134,9 +116,10 @@ impl HashTableType {
 
     fn encode_hashtable<K, V>(tuples: &[value::Value]) -> anyhow::Result<ffi::FfiValue>
     where
-        K: HashTableKeyEncoder,
-        V: HashTableValueEncoder,
+        K: HashTableEncoder,
+        V: HashTableEncoder,
     {
+        // SAFETY: Creating a new GHashTable with proper hash/equal/free functions
         let hash_table = unsafe {
             glib::ffi::g_hash_table_new_full(
                 K::hash_func(),
@@ -161,9 +144,9 @@ impl HashTableType {
             }
         }
 
-        Ok(ffi::FfiValue::Stash(Stash::new(
+        Ok(ffi::FfiValue::Storage(FfiStorage::new(
             hash_table as *mut c_void,
-            StashStorage::HashTable(HashTableData {
+            FfiStorageKind::HashTable(HashTableData {
                 handle: hash_table,
                 keys: key_storage,
                 values: val_storage,

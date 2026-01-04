@@ -1,5 +1,5 @@
 import * as net from "node:net";
-import { getNativeObject, getObjectId } from "@gtkx/ffi";
+import { getNativeObject, getNativeId } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     DEFAULT_SOCKET_PATH,
@@ -49,7 +49,7 @@ interface PendingRequest {
 }
 
 const RECONNECT_DELAY_MS = 2000;
-const REQUEST_TIMEOUT_MS = 5000;
+const REQUEST_TIMEOUT_MS = 30000;
 
 const formatRole = (role: Gtk.AccessibleRole | undefined): string => {
     if (role === undefined) return "UNKNOWN";
@@ -75,7 +75,7 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
         case Gtk.AccessibleRole.TEXT_BOX:
         case Gtk.AccessibleRole.SEARCH_BOX:
         case Gtk.AccessibleRole.SPIN_BUTTON:
-            return getNativeObject(widget.id, Gtk.Editable).getText() ?? null;
+            return getNativeObject(widget.handle, Gtk.Editable).getText() ?? null;
         case Gtk.AccessibleRole.GROUP:
             return (widget as Gtk.Frame).getLabel?.() ?? null;
         case Gtk.AccessibleRole.WINDOW:
@@ -98,7 +98,7 @@ const serializeWidget = (widget: Gtk.Widget): SerializedWidget => {
     const text = getWidgetText(widget);
 
     return {
-        id: String(getObjectId(widget.id)),
+        id: String(getNativeId(widget.handle)),
         type: widget.constructor.name,
         role: formatRole(widget.getAccessibleRole()),
         name: widget.getName() || null,
@@ -114,7 +114,7 @@ const serializeWidget = (widget: Gtk.Widget): SerializedWidget => {
 const widgetRegistry = new Map<string, Gtk.Widget>();
 
 const registerWidgets = (widget: Gtk.Widget): void => {
-    const idStr = String(getObjectId(widget.id));
+    const idStr = String(getNativeId(widget.handle));
     widgetRegistry.set(idStr, widget);
     let child = widget.getFirstChild();
     while (child) {
@@ -154,23 +154,31 @@ class McpClient {
     }
 
     async connect(): Promise<void> {
-        return new Promise((resolve) => {
-            this.attemptConnect(resolve);
+        return new Promise((resolve, reject) => {
+            this.attemptConnect(resolve, reject);
         });
     }
 
-    private attemptConnect(onFirstConnect?: () => void): void {
+    private attemptConnect(onSuccess?: () => void, onError?: (error: Error) => void): void {
+        let settled = false;
+
+        const settle = <T extends unknown[]>(callback: ((...args: T) => void) | undefined, ...args: T) => {
+            if (settled) return;
+            settled = true;
+            callback?.(...args);
+        };
+
         this.socket = net.createConnection(this.socketPath, () => {
             console.log(`[gtkx] Connected to MCP server at ${this.socketPath}`);
             this.hasConnected = true;
             this.register()
                 .then(() => {
                     console.log("[gtkx] Registered with MCP server");
-                    onFirstConnect?.();
+                    settle(onSuccess);
                 })
                 .catch((error) => {
                     console.error("[gtkx] Failed to register with MCP server:", error.message);
-                    onFirstConnect?.();
+                    settle(onError, error instanceof Error ? error : new Error(String(error)));
                 });
         });
 
@@ -195,7 +203,7 @@ class McpClient {
             } else {
                 console.error("[gtkx] Socket error:", error.message);
             }
-            onFirstConnect?.();
+            settle(onError, error);
         });
     }
 
@@ -450,15 +458,21 @@ class McpClient {
 
 let globalClient: McpClient | null = null;
 
-export const startMcpClient = (appId: string): McpClient => {
+export const startMcpClient = async (appId: string): Promise<McpClient> => {
     if (globalClient) {
         return globalClient;
     }
 
     globalClient = new McpClient({ appId });
-    globalClient.connect().catch((error) => {
-        console.error("[gtkx] Failed to connect:", error);
-    });
+
+    try {
+        await globalClient.connect();
+    } catch (error) {
+        console.error(
+            "[gtkx] Failed to connect to MCP server:",
+            error instanceof Error ? error.message : String(error),
+        );
+    }
 
     return globalClient;
 };

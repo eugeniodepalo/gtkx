@@ -112,7 +112,7 @@ describe("stringType", () => {
         expect(stringType(true)).toEqual({ type: "string", ownership: "full" });
     });
 
-    it("creates string type with none ownership", () => {
+    it("creates string type with borrowed ownership", () => {
         expect(stringType(false)).toEqual({ type: "string", ownership: "borrowed" });
     });
 });
@@ -122,7 +122,7 @@ describe("gobjectType", () => {
         expect(gobjectType(true)).toEqual({ type: "gobject", ownership: "full" });
     });
 
-    it("creates gobject type with none ownership", () => {
+    it("creates gobject type with borrowed ownership", () => {
         expect(gobjectType(false)).toEqual({ type: "gobject", ownership: "borrowed" });
     });
 });
@@ -138,7 +138,7 @@ describe("boxedType", () => {
         });
     });
 
-    it("creates boxed type with none ownership", () => {
+    it("creates boxed type with borrowed ownership", () => {
         expect(boxedType("Rectangle", false)).toEqual({
             type: "boxed",
             innerType: "Rectangle",
@@ -229,7 +229,7 @@ describe("refType", () => {
 });
 
 describe("Self type descriptors", () => {
-    it("SELF_TYPE_GOBJECT is gobject with none ownership", () => {
+    it("SELF_TYPE_GOBJECT is gobject with borrowed ownership", () => {
         expect(SELF_TYPE_GOBJECT).toEqual({ type: "gobject", ownership: "borrowed" });
     });
 

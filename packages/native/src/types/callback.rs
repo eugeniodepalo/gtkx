@@ -1,3 +1,16 @@
+//! Callback type handling for FFI.
+//!
+//! GTK and GLib use callbacks extensively for signals, async operations,
+//! and customization points. This module provides [`CallbackType`] and
+//! [`CallbackTrampoline`] to bridge JavaScript functions to native callbacks.
+//!
+//! Different callback patterns require different trampolines:
+//! - `Closure`: Standard GLib closure with arbitrary arguments
+//! - `AsyncReady`: For `GAsyncReadyCallback` async completion handlers
+//! - `DrawFunc`: For `GtkDrawingArea` draw functions
+//! - `ShortcutFunc`: For `GtkShortcut` handlers
+//! - `TreeListModelCreateFunc`: For `GtkTreeListModel` child creation
+
 use std::ffi::c_void;
 
 use gtk4::glib::{
@@ -6,13 +19,17 @@ use gtk4::glib::{
 };
 use neon::prelude::*;
 
-use crate::ffi::{Stash, StashStorage, TrampolineCallbackValue};
+use crate::ffi::{FfiStorage, FfiStorageKind, TrampolineCallbackValue};
 use crate::js_dispatch;
 use crate::trampoline::CallbackData;
 use crate::types::Type;
 use crate::value::Callback;
 use crate::{ffi, value};
 
+/// The trampoline type determines how the callback is invoked.
+///
+/// Each variant corresponds to a specific native callback signature pattern
+/// used in GTK and GLib.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CallbackTrampoline {
     Closure,
@@ -80,7 +97,10 @@ impl CallbackTrampoline {
                 });
 
                 let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
-                ffi::FfiValue::Stash(Stash::new(closure_ptr as *mut c_void, StashStorage::Unit))
+                ffi::FfiValue::Storage(FfiStorage::new(
+                    closure_ptr as *mut c_void,
+                    FfiStorageKind::Unit,
+                ))
             }
 
             CallbackTrampoline::AsyncReady => {
@@ -124,7 +144,7 @@ impl CallbackTrampoline {
 
                 ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
-                    closure: Stash::new(closure_ptr as *mut c_void, StashStorage::Unit),
+                    closure: FfiStorage::new(closure_ptr as *mut c_void, FfiStorageKind::Unit),
                     destroy_ptr: None,
                     data_first: false,
                 })
@@ -146,7 +166,7 @@ impl CallbackTrampoline {
 
                 ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
-                    closure: Stash::new(closure_ptr as *mut c_void, StashStorage::Unit),
+                    closure: FfiStorage::new(closure_ptr as *mut c_void, FfiStorageKind::Unit),
                     destroy_ptr: None,
                     data_first: true,
                 })

@@ -623,7 +623,7 @@ describe("MethodBodyWriter", () => {
             });
 
             const output = sourceFile.getFullText();
-            expect(output).toContain("this.id");
+            expect(output).toContain("this.handle");
         });
 
         it("adds error handling for throwing methods", () => {
@@ -714,7 +714,7 @@ describe("MethodBodyWriter", () => {
             const output = sourceFile.getFullText();
             expect(output).toContain("call(");
             expect(output).toContain('"gtk_init"');
-            expect(output).not.toContain("this.id");
+            expect(output).not.toContain("this.handle");
         });
     });
 
@@ -741,7 +741,7 @@ describe("MethodBodyWriter", () => {
 
             const output = sourceFile.getFullText();
             expect(output).toContain("const ptr = call(");
-            expect(output).toContain("getNativeObject(ptr as ObjectId) as Button");
+            expect(output).toContain("getNativeObject(ptr as NativeHandle) as Button");
             expect(ctx.usesGetNativeObject).toBe(true);
         });
 
@@ -766,7 +766,7 @@ describe("MethodBodyWriter", () => {
             });
 
             const output = sourceFile.getFullText();
-            expect(output).toContain("getNativeObject(ptr as ObjectId, TextIter)");
+            expect(output).toContain("getNativeObject(ptr as NativeHandle, TextIter)");
         });
 
         it("generates factory method with error handling", () => {

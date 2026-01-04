@@ -1,12 +1,22 @@
+//! Fundamental type handling for FFI.
+//!
+//! GLib fundamental types are custom reference-counted types that don't
+//! derive from GObject. Examples include `GParamSpec` and Pango layout types.
+//! They have custom ref/unref functions rather than using `g_object_ref/unref`.
+
 use libffi::middle as libffi;
 use neon::object::Object as _;
 use neon::prelude::*;
 
 use super::Ownership;
-use crate::managed::{Fundamental, ManagedValue, RefFn, UnrefFn};
+use crate::managed::{Fundamental, NativeValue, RefFn, UnrefFn};
 use crate::state::GtkThreadState;
 use crate::{ffi, value};
 
+/// Descriptor for GLib fundamental types with custom reference counting.
+///
+/// Fundamental types use library-specific ref/unref functions that must
+/// be looked up dynamically from the shared library.
 #[derive(Debug, Clone)]
 pub struct FundamentalType {
     pub ownership: Ownership,
@@ -105,7 +115,7 @@ impl ffi::FfiDecode for FundamentalType {
         };
 
         Ok(value::Value::Object(
-            ManagedValue::Fundamental(fundamental).into(),
+            NativeValue::Fundamental(fundamental).into(),
         ))
     }
 }

@@ -560,7 +560,7 @@ export class MethodBodyWriter {
             returnType: method.returnType,
             returnTypeMapping,
             throws: method.throws,
-            self: { type: options.selfTypeDescriptor, value: "this.id" },
+            self: { type: options.selfTypeDescriptor, value: "this.handle" },
             hasVarargs: hasVarargs(method.parameters),
         });
     }
@@ -648,15 +648,15 @@ export class MethodBodyWriter {
                 this.writeRefRewrap(writer, gtkAllocatesRefs);
 
                 if (hasOwnClassReturn) {
-                    writer.writeLine(`return getNativeObject(ptr as ObjectId, ${options.ownClassName});`);
+                    writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${options.ownClassName});`);
                 } else {
                     if (isNullable) {
                         writer.writeLine("if (ptr === null) return null;");
                     }
                     if (wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsInterfaceWrap) {
-                        writer.writeLine(`return getNativeObject(ptr as ObjectId, ${baseReturnType});`);
+                        writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${baseReturnType});`);
                     } else {
-                        writer.writeLine(`return getNativeObject(ptr as ObjectId) as ${baseReturnType};`);
+                        writer.writeLine(`return getNativeObject(ptr as NativeHandle) as ${baseReturnType};`);
                     }
                 }
             } else if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
@@ -680,7 +680,7 @@ export class MethodBodyWriter {
                 this.writeRefRewrap(writer, gtkAllocatesRefs);
 
                 writer.writeLine(
-                    `return arr.map((item) => getNativeObject(item as ObjectId) as ${wrapInfo.arrayItemType});`,
+                    `return arr.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType});`,
                 );
             } else if (wrapInfo.needsHashTableWrap) {
                 writer.write("const tuples = ");
@@ -775,7 +775,7 @@ export class MethodBodyWriter {
 
         writer.writeLine("if (error.value !== null) {");
         writer.indent(() => {
-            writer.writeLine(`throw new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef}));`);
+            writer.writeLine(`throw new NativeError(getNativeObject(error.value as NativeHandle, ${gerrorRef}));`);
         });
         writer.writeLine("}");
     }
@@ -785,11 +785,11 @@ export class MethodBodyWriter {
             this.ctx.usesGetNativeObject = true;
             if (ref.isBoxed) {
                 writer.writeLine(
-                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as ObjectId, ${ref.innerType});`,
+                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as NativeHandle, ${ref.innerType});`,
                 );
             } else {
                 writer.writeLine(
-                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as ObjectId) as ${ref.innerType};`,
+                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as NativeHandle) as ${ref.innerType};`,
                 );
             }
         }
@@ -874,9 +874,9 @@ export class MethodBodyWriter {
 
             this.ctx.usesGetNativeObject = true;
             if (useClassInWrap) {
-                writer.writeLine(`return getNativeObject(ptr as ObjectId, ${wrapClassName});`);
+                writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${wrapClassName});`);
             } else {
-                writer.writeLine(`return getNativeObject(ptr as ObjectId) as ${wrapClassName};`);
+                writer.writeLine(`return getNativeObject(ptr as NativeHandle) as ${wrapClassName};`);
             }
         };
     }

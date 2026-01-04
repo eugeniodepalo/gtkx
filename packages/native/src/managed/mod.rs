@@ -6,16 +6,16 @@
 //!
 //! ## Key Types
 //!
-//! - [`ManagedValue`]: Enum wrapping GObject, Boxed, or Fundamental instances
-//! - [`ObjectId`]: Newtype handle returned to JavaScript, implements [`Finalize`]
+//! - [`NativeValue`]: Enum wrapping GObject, Boxed, or Fundamental instances
+//! - [`NativeHandle`]: Newtype handle returned to JavaScript, implements [`Finalize`]
 //! - [`Boxed`]: GObject boxed type wrapper with copy/free semantics
 //! - [`Fundamental`]: GLib fundamental type wrapper with ref/unref semantics
 //!
 //! ## Lifecycle
 //!
-//! 1. Native code creates a value and wraps it in [`ManagedValue`]
-//! 2. [`ManagedValue`] is converted to [`ObjectId`] via `From`
-//! 3. [`ObjectId`] is returned to JavaScript as a boxed value
+//! 1. Native code creates a value and wraps it in [`NativeValue`]
+//! 2. [`NativeValue`] is converted to [`NativeHandle`] via `From`
+//! 3. [`NativeHandle`] is returned to JavaScript as a boxed value
 //! 4. When JS garbage collects the handle, [`Finalize::finalize`] schedules removal
 //! 5. The GTK thread removes the object from the map, dropping the Rust wrapper
 //!
@@ -35,27 +35,27 @@ use neon::prelude::*;
 use crate::{gtk_dispatch, state::GtkThreadState};
 
 #[derive(Debug, Clone, Copy)]
-pub struct ObjectId(pub(crate) usize);
+pub struct NativeHandle(pub(crate) usize);
 
-impl From<ManagedValue> for ObjectId {
-    fn from(object: ManagedValue) -> Self {
+impl From<NativeValue> for NativeHandle {
+    fn from(object: NativeValue) -> Self {
         GtkThreadState::with(|state| {
-            let id = state.next_object_id;
-            state.next_object_id = state.next_object_id.wrapping_add(1);
-            state.object_map.insert(id, object);
-            ObjectId(id)
+            let id = state.next_handle_id;
+            state.next_handle_id = state.next_handle_id.wrapping_add(1);
+            state.handle_map.insert(id, object);
+            NativeHandle(id)
         })
     }
 }
 
-impl ObjectId {
+impl NativeHandle {
     #[must_use]
     pub fn get_ptr(&self) -> Option<*mut c_void> {
         GtkThreadState::with(|state| {
-            state.object_map.get(&self.0).map(|object| match object {
-                ManagedValue::GObject(obj) => obj.as_ptr() as *mut c_void,
-                ManagedValue::Boxed(boxed) => boxed.as_ptr(),
-                ManagedValue::Fundamental(fundamental) => fundamental.as_ptr(),
+            state.handle_map.get(&self.0).map(|object| match object {
+                NativeValue::GObject(obj) => obj.as_ptr() as *mut c_void,
+                NativeValue::Boxed(boxed) => boxed.as_ptr(),
+                NativeValue::Fundamental(fundamental) => fundamental.as_ptr(),
             })
         })
     }
@@ -95,11 +95,11 @@ impl ObjectId {
     }
 }
 
-impl Finalize for ObjectId {
+impl Finalize for NativeHandle {
     fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {
         gtk_dispatch::GtkDispatcher::global().schedule(move || {
             GtkThreadState::with(|state| {
-                state.object_map.remove(&self.0);
+                state.handle_map.remove(&self.0);
             });
         });
     }
@@ -115,7 +115,7 @@ impl Finalize for ObjectId {
 /// - `Boxed`: Uses `g_boxed_copy`/`g_boxed_free` which require a GType parameter
 /// - `Fundamental`: Uses custom ref/unref functions that must be looked up dynamically
 #[derive(Debug, Clone)]
-pub enum ManagedValue {
+pub enum NativeValue {
     GObject(glib::Object),
     Boxed(Boxed),
     Fundamental(Fundamental),

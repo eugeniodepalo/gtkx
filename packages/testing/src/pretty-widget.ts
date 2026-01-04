@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { getWidgetText } from "./queries.js";
+import { formatRole } from "./role-helpers.js";
 import { type Container, isApplication } from "./traversal.js";
+import { getWidgetText } from "./widget-text.js";
 
 const DEFAULT_MAX_LENGTH = 7000;
 const INDENT = "  ";
@@ -49,13 +50,6 @@ const createColors = (enabled: boolean): HighlightColors => {
         text: (s) => s,
         reset: ansi.reset,
     };
-};
-
-const formatRole = (role: Gtk.AccessibleRole | undefined): string => {
-    if (role === undefined) return "unknown";
-    const name = Gtk.AccessibleRole[role];
-    if (!name) return String(role);
-    return name.toLowerCase();
 };
 
 const formatTagName = (widget: Gtk.Widget): string => {

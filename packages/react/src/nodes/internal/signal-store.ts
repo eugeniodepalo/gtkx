@@ -1,4 +1,4 @@
-import { getObjectId } from "@gtkx/ffi";
+import { getNativeId } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 
 type SignalOwner = object;
@@ -38,7 +38,7 @@ class SignalStore {
     }
 
     private disconnect(owner: SignalOwner, obj: GObject.GObject, signal: string): void {
-        const objectId = getObjectId(obj.id);
+        const objectId = getNativeId(obj.handle);
         const key = `${objectId}:${signal}`;
         const ownerMap = this.ownerHandlers.get(owner);
         const existing = ownerMap?.get(key);
@@ -50,7 +50,7 @@ class SignalStore {
     }
 
     private connect(owner: SignalOwner, obj: GObject.GObject, signal: string, handler: SignalHandler): void {
-        const objectId = getObjectId(obj.id);
+        const objectId = getNativeId(obj.handle);
         const key = `${objectId}:${signal}`;
         const handlerId = obj.connect(signal, handler);
         this.getOwnerMap(owner).set(key, { obj, handlerId });

@@ -7,8 +7,8 @@ fn gtk_thread_state_default_initializes_correctly() {
     common::ensure_gtk_init();
 
     GtkThreadState::with(|state| {
-        assert!(state.object_map.is_empty());
-        assert!(state.next_object_id >= 1);
+        assert!(state.handle_map.is_empty());
+        assert!(state.next_handle_id >= 1);
     });
 }
 
@@ -17,9 +17,9 @@ fn gtk_thread_state_with_provides_mutable_access() {
     common::ensure_gtk_init();
 
     GtkThreadState::with(|state| {
-        let initial_id = state.next_object_id;
-        state.next_object_id += 1;
-        assert_eq!(state.next_object_id, initial_id + 1);
+        let initial_id = state.next_handle_id;
+        state.next_handle_id += 1;
+        assert_eq!(state.next_handle_id, initial_id + 1);
     });
 }
 
@@ -28,11 +28,11 @@ fn gtk_thread_state_persists_across_calls() {
     common::ensure_gtk_init();
 
     let id_before = GtkThreadState::with(|state| {
-        state.next_object_id += 100;
-        state.next_object_id
+        state.next_handle_id += 100;
+        state.next_handle_id
     });
 
-    let id_after = GtkThreadState::with(|state| state.next_object_id);
+    let id_after = GtkThreadState::with(|state| state.next_handle_id);
 
     assert_eq!(id_before, id_after);
 }

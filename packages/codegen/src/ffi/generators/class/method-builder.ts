@@ -226,7 +226,7 @@ export class MethodBuilder {
                     writer.indent(() => {
                         writer.write("{ type: ");
                         this.methodBody.getFfiTypeWriter().toWriter(selfTypeDescriptor)(writer);
-                        writer.writeLine(", value: this.id },");
+                        writer.writeLine(", value: this.handle },");
 
                         const asyncArgs = this.methodBody.buildCallArgumentsArray(asyncParams);
                         this.methodBody.writeArgumentsToWriter(writer, asyncArgs);
@@ -255,7 +255,7 @@ export class MethodBuilder {
                                     writer.indent(() => {
                                         writer.write("{ type: ");
                                         this.methodBody.getFfiTypeWriter().toWriter(selfTypeDescriptor)(writer);
-                                        writer.writeLine(", value: this.id },");
+                                        writer.writeLine(", value: this.handle },");
                                         writer.writeLine(
                                             '{ type: { type: "gobject", ownership: "borrowed" }, value: result },',
                                         );
@@ -286,7 +286,7 @@ export class MethodBuilder {
                                     writer.writeLine("if (error.value !== null) {");
                                     writer.indent(() => {
                                         writer.writeLine(
-                                            `reject(new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef})));`,
+                                            `reject(new NativeError(getNativeObject(error.value as NativeHandle, ${gerrorRef})));`,
                                         );
                                         writer.writeLine("return;");
                                     });
@@ -310,11 +310,11 @@ export class MethodBuilder {
                                             wrapInfo.needsInterfaceWrap
                                         ) {
                                             writer.writeLine(
-                                                `resolve(getNativeObject(ptr as ObjectId, ${baseReturnType}));`,
+                                                `resolve(getNativeObject(ptr as NativeHandle, ${baseReturnType}));`,
                                             );
                                         } else {
                                             writer.writeLine(
-                                                `resolve(getNativeObject(ptr as ObjectId) as ${baseReturnType});`,
+                                                `resolve(getNativeObject(ptr as NativeHandle) as ${baseReturnType});`,
                                             );
                                         }
                                     } else {

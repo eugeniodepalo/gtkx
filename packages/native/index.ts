@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import type { Arg, ObjectId, Ref, Type } from "./types.js";
+import type { Arg, NativeHandle, Ref, Type } from "./types.js";
 
 const require = createRequire(import.meta.url);
 const native = require("./index.node");
@@ -126,15 +126,15 @@ export function alloc(size: number, glibTypeName?: string, lib?: string): unknow
 }
 
 /**
- * Gets the internal object ID for a native pointer.
+ * Gets the internal handle ID for a native pointer.
  *
  * Used for comparing object identity.
  *
- * @param id - Native object pointer
- * @returns Internal object ID
+ * @param handle - Native handle
+ * @returns Internal handle ID
  */
-export function getObjectId(id: unknown): number {
-    return native.getObjectId(id);
+export function getNativeId(handle: unknown): number {
+    return native.getNativeId(handle);
 }
 
 /**
@@ -147,4 +147,4 @@ export function poll(): void {
     native.poll();
 }
 
-export type { ObjectId, Ref, Arg, Type };
+export type { NativeHandle, Ref, Arg, Type };

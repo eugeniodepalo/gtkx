@@ -34,10 +34,6 @@ export interface GErrorLike extends NativeObject {
 export class NativeError extends Error {
     readonly gerror: GErrorLike;
 
-    get id(): unknown {
-        return this.gerror.id;
-    }
-
     get domain(): number {
         return this.gerror.domain;
     }

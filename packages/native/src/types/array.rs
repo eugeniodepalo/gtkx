@@ -8,7 +8,7 @@ use neon::prelude::*;
 
 use super::Ownership;
 use crate::arg::Arg;
-use crate::ffi::{Stash, StashStorage};
+use crate::ffi::{FfiStorage, FfiStorageKind};
 use crate::types::{FloatKind, Type};
 use crate::{ffi, value};
 
@@ -169,7 +169,7 @@ impl ffi::FfiEncode for ArrayType {
                     }
                 }
 
-                Ok(ffi::FfiValue::Stash(int_kind.to_stash(&values)))
+                Ok(ffi::FfiValue::Storage(int_kind.to_ffi_storage(&values)))
             }
             Type::Float(ref float_kind) => {
                 let mut values = Vec::new();
@@ -184,11 +184,11 @@ impl ffi::FfiEncode for ArrayType {
                 match float_kind {
                     FloatKind::F32 => {
                         let values: Vec<f32> = values.iter().map(|&v| *v as f32).collect();
-                        Ok(ffi::FfiValue::Stash(values.into()))
+                        Ok(ffi::FfiValue::Storage(values.into()))
                     }
                     FloatKind::F64 => {
                         let values: Vec<f64> = values.iter().map(|&v| *v).collect();
-                        Ok(ffi::FfiValue::Stash(values.into()))
+                        Ok(ffi::FfiValue::Storage(values.into()))
                     }
                 }
             }
@@ -211,9 +211,9 @@ impl ffi::FfiEncode for ArrayType {
 
                 let ptr = ptrs.as_ptr() as *mut c_void;
 
-                Ok(ffi::FfiValue::Stash(Stash::new(
+                Ok(ffi::FfiValue::Storage(FfiStorage::new(
                     ptr,
-                    StashStorage::StringArray(cstrings, ptrs),
+                    FfiStorageKind::StringArray(cstrings, ptrs),
                 )))
             }
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
@@ -235,9 +235,9 @@ impl ffi::FfiEncode for ArrayType {
                 }
                 let ptr = ptrs.as_ptr() as *mut c_void;
 
-                Ok(ffi::FfiValue::Stash(Stash::new(
+                Ok(ffi::FfiValue::Storage(FfiStorage::new(
                     ptr,
-                    StashStorage::ObjectArray(ids, ptrs),
+                    FfiStorageKind::ObjectArray(ids, ptrs),
                 )))
             }
             Type::Boolean => {
@@ -250,7 +250,7 @@ impl ffi::FfiEncode for ArrayType {
                     }
                 }
 
-                Ok(ffi::FfiValue::Stash(values.into()))
+                Ok(ffi::FfiValue::Storage(values.into()))
             }
             _ => bail!("Unsupported array item type: {:?}", self.item_type),
         }
@@ -278,15 +278,15 @@ impl ffi::FfiDecode for ArrayType {
             );
         }
 
-        let stash = match ffi_value {
-            ffi::FfiValue::Stash(s) => s,
+        let storage = match ffi_value {
+            ffi::FfiValue::Storage(s) => s,
             _ => bail!(
-                "Expected a Stash ffi::FfiValue for Array, got {:?}",
+                "Expected a Storage ffi::FfiValue for Array, got {:?}",
                 ffi_value
             ),
         };
 
-        self.decode_stash(stash)
+        self.decode_storage(storage)
     }
 
     fn decode_with_context(
@@ -383,41 +383,41 @@ impl ArrayType {
         Ok(value::Value::Array(values))
     }
 
-    fn decode_stash(&self, stash: &Stash) -> anyhow::Result<value::Value> {
+    fn decode_storage(&self, storage: &FfiStorage) -> anyhow::Result<value::Value> {
         let values = match &*self.item_type {
             Type::Integer(int_kind) => {
-                let f64_vec = int_kind.vec_to_f64(stash)?;
+                let f64_vec = int_kind.vec_to_f64(storage)?;
                 f64_vec.into_iter().map(value::Value::Number).collect()
             }
             Type::Float(float_kind) => match float_kind {
                 FloatKind::F32 => {
-                    let f32_vec = stash.as_f32_slice()?;
+                    let f32_vec = storage.as_f32_slice()?;
                     f32_vec
                         .iter()
                         .map(|v| value::Value::Number(*v as f64))
                         .collect()
                 }
                 FloatKind::F64 => {
-                    let f64_vec = stash.as_f64_slice()?;
+                    let f64_vec = storage.as_f64_slice()?;
                     f64_vec.iter().map(|v| value::Value::Number(*v)).collect()
                 }
             },
             Type::String(_) => {
-                let cstrings = stash.as_cstring_array()?;
+                let cstrings = storage.as_cstring_array()?;
                 cstrings
                     .iter()
                     .map(|cstr| Ok(value::Value::String(cstr.to_str()?.to_string())))
                     .collect::<anyhow::Result<Vec<value::Value>>>()?
             }
             Type::Boolean => {
-                let bool_vec = stash.as_bool_slice()?;
+                let bool_vec = storage.as_bool_slice()?;
                 bool_vec
                     .iter()
                     .map(|v| value::Value::Boolean(*v != 0))
                     .collect()
             }
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
-                let ids = stash.as_object_array()?;
+                let ids = storage.as_object_array()?;
                 ids.iter().map(|id| value::Value::Object(*id)).collect()
             }
             _ => bail!(
@@ -465,8 +465,8 @@ impl ArrayType {
             && let Type::Integer(int_kind) = &*ref_type.inner_type
         {
             match ffi_arg {
-                ffi::FfiValue::Stash(stash) => {
-                    let length = int_kind.read_ptr(stash.ptr() as *const u8);
+                ffi::FfiValue::Storage(storage) => {
+                    let length = int_kind.read_ptr(storage.ptr() as *const u8);
                     return Ok(length as usize);
                 }
                 ffi::FfiValue::Ptr(ptr) => {

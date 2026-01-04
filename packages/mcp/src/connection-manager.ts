@@ -32,6 +32,8 @@ interface RegisteredApp {
  * Handles app registration, request routing, and connection lifecycle.
  */
 export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
+    private static readonly DEFAULT_WAIT_TIMEOUT = 10000;
+
     private apps: Map<string, RegisteredApp> = new Map();
     private connectionToApp: Map<string, string> = new Map();
     private pendingRequests: Map<string, PendingRequest> = new Map();
@@ -72,6 +74,40 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     getDefaultApp(): RegisteredApp | undefined {
         const first = this.apps.values().next();
         return first.done ? undefined : first.value;
+    }
+
+    /**
+     * Waits for at least one app to connect and register.
+     *
+     * @param timeout - Maximum time to wait in milliseconds (default: 10000)
+     * @returns Promise that resolves with the first registered app info
+     * @throws Error if timeout is reached before any app registers
+     */
+    waitForApp(timeout: number = ConnectionManager.DEFAULT_WAIT_TIMEOUT): Promise<AppInfo> {
+        const defaultApp = this.getDefaultApp();
+        if (defaultApp) {
+            return Promise.resolve(defaultApp.info);
+        }
+
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                this.off("appRegistered", onRegister);
+                reject(
+                    new Error(
+                        `Timeout waiting for app registration after ${timeout}ms. ` +
+                            "Make sure your GTKX app is running with 'gtkx dev'.",
+                    ),
+                );
+            }, timeout);
+
+            const onRegister = (appInfo: AppInfo) => {
+                clearTimeout(timeoutId);
+                this.off("appRegistered", onRegister);
+                resolve(appInfo);
+            };
+
+            this.on("appRegistered", onRegister);
+        });
     }
 
     async sendToApp<T>(appId: string | undefined, method: string, params?: unknown): Promise<T> {

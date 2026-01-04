@@ -1,4 +1,4 @@
-export { createRef, getObjectId, type ObjectId } from "@gtkx/native";
+export { createRef, getNativeId, type NativeHandle } from "@gtkx/native";
 export * from "./batch.js";
 export * from "./native/base.js";
 export * from "./native/error.js";

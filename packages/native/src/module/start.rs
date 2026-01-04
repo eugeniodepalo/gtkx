@@ -10,8 +10,8 @@
 //! 3. Create the `GtkApplication` and connect the activate signal
 //! 4. Acquire an application hold guard to prevent auto-shutdown
 //! 5. Start the GTK main loop with `app.run_with_args`
-//! 6. When activate fires, send the application's `ObjectId` back to JS
-//! 7. Return the `ObjectId` to JavaScript
+//! 6. When activate fires, send the application's `NativeHandle` back to JS
+//! 7. Return the `NativeHandle` to JavaScript
 
 use std::sync::mpsc;
 
@@ -19,7 +19,7 @@ use gtk4::{gio::ApplicationFlags, prelude::*};
 use neon::prelude::*;
 
 use crate::{
-    managed::{ManagedValue, ObjectId},
+    managed::{NativeValue, NativeHandle},
     state::{GtkThread, GtkThreadState},
 };
 
@@ -36,7 +36,7 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
         .map(ApplicationFlags::from_bits_truncate)
         .unwrap_or(ApplicationFlags::FLAGS_NONE);
 
-    let (tx, rx) = mpsc::channel::<ObjectId>();
+    let (tx, rx) = mpsc::channel::<NativeHandle>();
 
     let handle = std::thread::spawn(move || {
         let app = gtk4::Application::builder()
@@ -44,7 +44,7 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
             .flags(flags)
             .build();
 
-        let app_object_id: ObjectId = ManagedValue::GObject(app.clone().into()).into();
+        let app_object_id: NativeHandle = NativeValue::GObject(app.clone().into()).into();
 
         GtkThreadState::with(|state| {
             state.app_hold_guard = Some(app.hold());

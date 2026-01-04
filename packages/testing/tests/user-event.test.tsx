@@ -88,7 +88,7 @@ describe("userEvent.type", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.type(entry, "Hello World");
 
-        const editable = getNativeObject(entry.id, Gtk.Editable);
+        const editable = getNativeObject(entry.handle, Gtk.Editable);
         expect(editable?.getText()).toBe("Hello World");
     });
 
@@ -98,7 +98,7 @@ describe("userEvent.type", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.type(entry, "appended");
 
-        const editable = getNativeObject(entry.id, Gtk.Editable);
+        const editable = getNativeObject(entry.handle, Gtk.Editable);
         expect(editable?.getText()).toBe("Initial appended");
     });
 
@@ -121,7 +121,7 @@ describe("userEvent.clear", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.clear(entry);
 
-        const editable = getNativeObject(entry.id, Gtk.Editable);
+        const editable = getNativeObject(entry.handle, Gtk.Editable);
         expect(editable?.getText()).toBe("");
     });
 

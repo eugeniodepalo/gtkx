@@ -84,11 +84,11 @@ describe("CallExpressionBuilder", () => {
                 returnType: { type: "undefined" },
                 selfArg: {
                     type: { type: "gobject", ownership: "borrowed" },
-                    value: "this.id",
+                    value: "this.handle",
                 },
             });
 
-            expect(output).toContain("value: this.id");
+            expect(output).toContain("value: this.handle");
             expect(output).toContain("value: label");
         });
 
@@ -119,7 +119,7 @@ describe("CallExpressionBuilder", () => {
                 returnType: { type: "undefined" },
                 selfArg: {
                     type: { type: "gobject", ownership: "borrowed" },
-                    value: "this.id",
+                    value: "this.handle",
                 },
             });
 
@@ -135,7 +135,7 @@ describe("CallExpressionBuilder", () => {
                 returnType: { type: "undefined" },
                 selfArg: {
                     type: { type: "gobject", ownership: "borrowed" },
-                    value: "this.id",
+                    value: "this.handle",
                 },
             });
 
@@ -254,7 +254,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("widget", mappedType);
 
-            expect(result).toBe("widget.id");
+            expect(result).toBe("widget.handle");
         });
 
         it("returns ID extraction expression for boxed type", () => {
@@ -266,7 +266,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("color", mappedType);
 
-            expect(result).toBe("color.id");
+            expect(result).toBe("color.handle");
         });
 
         it("returns ID extraction expression for struct type", () => {
@@ -278,7 +278,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("allocation", mappedType);
 
-            expect(result).toBe("allocation.id");
+            expect(result).toBe("allocation.handle");
         });
 
         it("handles complex value names", () => {
@@ -347,7 +347,7 @@ describe("CallExpressionBuilder", () => {
             const output = sourceFile.getFullText();
 
             expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("throw new NativeError(getNativeObject(error.value as ObjectId, GLib.GError))");
+            expect(output).toContain("throw new NativeError(getNativeObject(error.value as NativeHandle, GLib.GError))");
         });
 
         it("builds error check code with custom GError reference", () => {
@@ -361,7 +361,7 @@ describe("CallExpressionBuilder", () => {
             const output = sourceFile.getFullText();
 
             expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("throw new NativeError(getNativeObject(error.value as ObjectId, GError))");
+            expect(output).toContain("throw new NativeError(getNativeObject(error.value as NativeHandle, GError))");
         });
     });
 
@@ -409,11 +409,11 @@ describe("CallExpressionBuilder", () => {
                 returnType: { type: "gobject", ownership: "full" },
                 selfArg: {
                     type: { type: "gobject", ownership: "borrowed" },
-                    value: "this.id",
+                    value: "this.handle",
                 },
             });
 
-            expect(output).toContain("value: this.id");
+            expect(output).toContain("value: this.handle");
             expect(output).toContain("value: name");
             expect(output).toContain("value: count");
             expect(output).toContain("value: widget");

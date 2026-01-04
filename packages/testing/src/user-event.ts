@@ -62,7 +62,7 @@ const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => 
     const root = element.getRoot();
 
     if (root) {
-        (getNativeObject(root.id) as Gtk.Widget).childFocus(direction);
+        (getNativeObject(root.handle) as Gtk.Widget).childFocus(direction);
     }
 
     await tick();
@@ -73,7 +73,7 @@ const type = async (element: Gtk.Widget, text: string): Promise<void> => {
         throw new Error("Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
     }
 
-    const editable = getNativeObject(element.id, Gtk.Editable);
+    const editable = getNativeObject(element.handle, Gtk.Editable);
     const currentText = editable.getText();
     editable.setText(currentText + text);
 
@@ -85,7 +85,7 @@ const clear = async (element: Gtk.Widget): Promise<void> => {
         throw new Error("Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
     }
 
-    getNativeObject(element.id, Gtk.Editable)?.setText("");
+    getNativeObject(element.handle, Gtk.Editable)?.setText("");
     await tick();
 };
 
@@ -227,7 +227,7 @@ const emitSignal = (target: Gtk.EventController, signalName: string, ...args: Ar
         "libgobject-2.0.so.0",
         "g_signal_emit_by_name",
         [
-            { type: { type: "gobject", ownership: "borrowed" }, value: target.id },
+            { type: { type: "gobject", ownership: "borrowed" }, value: target.handle },
             { type: { type: "string", ownership: "borrowed" }, value: signalName },
             ...signalArgs,
         ],
