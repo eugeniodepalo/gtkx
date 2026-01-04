@@ -45,7 +45,8 @@
         },
         "packages/mcp": {
             "entry": ["src/cli.ts", "src/index.ts"],
-            "project": ["src/**/*"]
+            "project": ["src/**/*"],
+            "ignore": ["bin/gtkx-mcp.js"]
         },
         "packages/codegen": {
             "entry": ["src/cli.ts", "src/index.ts"],

@@ -122,9 +122,10 @@ function FeaturesSection() {
             icon: "🎨",
         },
         {
-            title: "Type Safe",
-            description: "Full TypeScript support with auto-generated types for the entire GTK ecosystem.",
-            icon: "🔒",
+            title: "Testing & MCP",
+            description:
+                "Test components with a Testing Library-like API and integrate AI agents via the built-in MCP server.",
+            icon: "🧪",
         },
     ];
 
