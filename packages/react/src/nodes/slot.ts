@@ -5,14 +5,14 @@ import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { scheduleAfterCommit } from "../scheduler.js";
-import type { ContainerClass } from "../types.js";
+import type { ContainerClass, Props } from "../types.js";
 import { resolvePropMeta } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
 type SlotNodeProps = Omit<SlotProps, "children">;
 
-export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNode<P> {
+export class SlotNode<P extends Props = SlotNodeProps> extends VirtualNode<P> {
     public static override priority = 2;
 
     public static override matches(type: string): boolean {

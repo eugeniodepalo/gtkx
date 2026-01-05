@@ -91,7 +91,7 @@ export type StringListItemProps = {
  *
  * @see {@link GridChild} for usage
  */
-export type GridChildProps = SlotProps & {
+export type GridChildProps = Omit<SlotProps, "id"> & {
     /** Column index (0-based) */
     column?: number;
     /** Row index (0-based) */
@@ -107,7 +107,7 @@ export type GridChildProps = SlotProps & {
  *
  * @see {@link FixedChild} for usage
  */
-export type FixedChildProps = SlotProps & {
+export type FixedChildProps = Omit<SlotProps, "id"> & {
     /** X coordinate in pixels */
     x?: number;
     /** Y coordinate in pixels */
@@ -165,7 +165,7 @@ export type ColumnViewRootProps<C extends string = string> = {
 /**
  * Props for notebook (tabbed) pages.
  */
-export type NotebookPageProps = SlotProps & {
+export type NotebookPageProps = Omit<SlotProps, "id"> & {
     /** Tab label text (optional when using Notebook.PageTab) */
     label?: string;
 };
@@ -178,7 +178,7 @@ export type NotebookPageTabProps = SlotProps;
 /**
  * Props for the root Stack component.
  */
-export type StackRootProps = SlotProps & {
+export type StackRootProps = Omit<SlotProps, "id"> & {
     /** Name of the currently visible child page */
     visibleChildName?: string;
 };
@@ -188,7 +188,7 @@ export type StackRootProps = SlotProps & {
  *
  * @see {@link StackPage} for usage
  */
-export type StackPageProps = SlotProps & {
+export type StackPageProps = Omit<SlotProps, "id"> & {
     /** Unique name for this page (used with visibleChildName) */
     name?: string;
     /** Display title shown in stack switchers */
@@ -246,7 +246,7 @@ export type MenuSubmenuProps = {
 /**
  * Props for children within an Overlay container.
  */
-export type OverlayChildProps = SlotProps & {
+export type OverlayChildProps = Omit<SlotProps, "id"> & {
     /** Whether to include this child in size measurement */
     measure?: boolean;
     /** Whether to clip this overlay child to the main child bounds */
