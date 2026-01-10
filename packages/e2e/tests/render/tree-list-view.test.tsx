@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkLabel, x } from "@gtkx/react";
-import { cleanup, render, userEvent } from "@gtkx/testing";
+import { cleanup, render, screen, tick, userEvent } from "@gtkx/testing";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -743,6 +743,419 @@ describe("render - TreeListView", () => {
             );
 
             expect(ref.current).not.toBeNull();
+        });
+    });
+
+    describe("settings tree regression", () => {
+        it("renders all children with non-null values on first expansion", async () => {
+            const ref = createRef<Gtk.ListView>();
+            const renderedItems: Array<{ id: string; name: string } | null> = [];
+
+            interface Category {
+                type: "category";
+                id: string;
+                name: string;
+            }
+
+            interface Setting {
+                type: "setting";
+                id: string;
+                name: string;
+            }
+
+            type TreeItem = Category | Setting;
+
+            const categories: Array<Category & { children: Setting[] }> = [
+                {
+                    type: "category",
+                    id: "appearance",
+                    name: "Appearance",
+                    children: [
+                        { type: "setting", id: "dark-mode", name: "Dark Mode" },
+                        { type: "setting", id: "large-text", name: "Large Text" },
+                        { type: "setting", id: "animations", name: "Enable Animations" },
+                        { type: "setting", id: "transparency", name: "Transparency Effects" },
+                    ],
+                },
+            ];
+
+            await render(
+                <x.TreeListView<TreeItem>
+                    ref={ref}
+                    renderItem={(item) => {
+                        renderedItems.push(item ? { id: item.id, name: item.name } : null);
+                        if (!item) {
+                            return <GtkLabel label="Loading..." />;
+                        }
+                        return <GtkLabel label={item.name} />;
+                    }}
+                >
+                    {categories.map((category) => (
+                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                            {category.children.map((setting) => (
+                                <x.TreeListItem
+                                    key={setting.id}
+                                    id={setting.id}
+                                    value={setting as TreeItem}
+                                    hideExpander
+                                />
+                            ))}
+                        </x.TreeListItem>
+                    ))}
+                </x.TreeListView>,
+                { wrapper: false },
+            );
+
+            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
+            const row = selectionModel.getObject(0) as Gtk.TreeListRow;
+
+            renderedItems.length = 0;
+            row.setExpanded(true);
+
+            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(5);
+            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual([
+                "appearance",
+                "dark-mode",
+                "large-text",
+                "animations",
+                "transparency",
+            ]);
+
+            const nullItems = renderedItems.filter((item) => item === null);
+            expect(nullItems.length).toBe(0);
+        });
+
+        it("renders all children with non-null values when clicking TreeExpander", async () => {
+            const ref = createRef<Gtk.ListView>();
+            const renderedItems: Array<{ id: string; name: string } | null> = [];
+
+            interface Category {
+                type: "category";
+                id: string;
+                name: string;
+            }
+
+            interface Setting {
+                type: "setting";
+                id: string;
+                name: string;
+            }
+
+            type TreeItem = Category | Setting;
+
+            const categories: Array<Category & { children: Setting[] }> = [
+                {
+                    type: "category",
+                    id: "appearance",
+                    name: "Appearance",
+                    children: [
+                        { type: "setting", id: "dark-mode", name: "Dark Mode" },
+                        { type: "setting", id: "large-text", name: "Large Text" },
+                        { type: "setting", id: "animations", name: "Enable Animations" },
+                        { type: "setting", id: "transparency", name: "Transparency Effects" },
+                    ],
+                },
+            ];
+
+            await render(
+                <x.TreeListView<TreeItem>
+                    ref={ref}
+                    renderItem={(item) => {
+                        renderedItems.push(item ? { id: item.id, name: item.name } : null);
+                        if (!item) {
+                            return <GtkLabel label="Loading..." />;
+                        }
+                        return <GtkLabel label={item.name} />;
+                    }}
+                >
+                    {categories.map((category) => (
+                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                            {category.children.map((setting) => (
+                                <x.TreeListItem
+                                    key={setting.id}
+                                    id={setting.id}
+                                    value={setting as TreeItem}
+                                    hideExpander
+                                />
+                            ))}
+                        </x.TreeListItem>
+                    ))}
+                </x.TreeListView>,
+            );
+
+            const buttons = screen.queryAllByRole(Gtk.AccessibleRole.BUTTON);
+            const treeExpanders = buttons.filter((btn) => btn instanceof Gtk.TreeExpander);
+            expect(treeExpanders.length).toBeGreaterThan(0);
+
+            const expander = treeExpanders[0] as Gtk.TreeExpander;
+            const row = expander.getListRow();
+            if (!row) throw new Error("Expected row to exist");
+
+            row.setExpanded(true);
+
+            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(5);
+            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual([
+                "appearance",
+                "dark-mode",
+                "large-text",
+                "animations",
+                "transparency",
+            ]);
+        });
+
+        it("renders all children correctly after multiple expand/collapse cycles", async () => {
+            const ref = createRef<Gtk.ListView>();
+            const renderedItems: Array<{ id: string; name: string } | null> = [];
+
+            interface Category {
+                type: "category";
+                id: string;
+                name: string;
+            }
+
+            interface Setting {
+                type: "setting";
+                id: string;
+                name: string;
+            }
+
+            type TreeItem = Category | Setting;
+
+            const categories: Array<Category & { children: Setting[] }> = [
+                {
+                    type: "category",
+                    id: "appearance",
+                    name: "Appearance",
+                    children: [
+                        { type: "setting", id: "dark-mode", name: "Dark Mode" },
+                        { type: "setting", id: "large-text", name: "Large Text" },
+                        { type: "setting", id: "animations", name: "Enable Animations" },
+                        { type: "setting", id: "transparency", name: "Transparency Effects" },
+                    ],
+                },
+                {
+                    type: "category",
+                    id: "notifications",
+                    name: "Notifications",
+                    children: [
+                        { type: "setting", id: "notifications-enabled", name: "Notifications" },
+                        { type: "setting", id: "sounds", name: "Notification Sounds" },
+                        { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
+                        { type: "setting", id: "badge-count", name: "Show Badge Count" },
+                    ],
+                },
+                {
+                    type: "category",
+                    id: "privacy",
+                    name: "Privacy",
+                    children: [
+                        { type: "setting", id: "location", name: "Location Services" },
+                        { type: "setting", id: "camera", name: "Camera Access" },
+                        { type: "setting", id: "microphone", name: "Microphone Access" },
+                        { type: "setting", id: "analytics", name: "Usage Analytics" },
+                    ],
+                },
+                {
+                    type: "category",
+                    id: "power",
+                    name: "Power",
+                    children: [
+                        { type: "setting", id: "auto-brightness", name: "Auto Brightness" },
+                        { type: "setting", id: "power-saver", name: "Power Saver Mode" },
+                        { type: "setting", id: "screen-timeout", name: "Screen Timeout" },
+                        { type: "setting", id: "auto-suspend", name: "Automatic Suspend" },
+                    ],
+                },
+                {
+                    type: "category",
+                    id: "network",
+                    name: "Network",
+                    children: [
+                        { type: "setting", id: "wifi", name: "Wi-Fi" },
+                        { type: "setting", id: "bluetooth", name: "Bluetooth" },
+                        { type: "setting", id: "airplane", name: "Airplane Mode" },
+                        { type: "setting", id: "vpn", name: "VPN" },
+                    ],
+                },
+            ];
+
+            await render(
+                <x.TreeListView<TreeItem>
+                    ref={ref}
+                    renderItem={(item) => {
+                        renderedItems.push(item ? { id: item.id, name: item.name } : null);
+                        if (!item) {
+                            return <GtkLabel label="Loading..." />;
+                        }
+                        return <GtkLabel label={item.name} />;
+                    }}
+                >
+                    {categories.map((category) => (
+                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                            {category.children.map((setting) => (
+                                <x.TreeListItem
+                                    key={setting.id}
+                                    id={setting.id}
+                                    value={setting as TreeItem}
+                                    hideExpander
+                                />
+                            ))}
+                        </x.TreeListItem>
+                    ))}
+                </x.TreeListView>,
+                { wrapper: false },
+            );
+
+            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(5);
+
+            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
+
+            const expandAndVerify = (categoryIndex: number, expectedChildren: string[]) => {
+                renderedItems.length = 0;
+                const row = selectionModel.getObject(categoryIndex) as Gtk.TreeListRow;
+                row.setExpanded(true);
+
+                const nullItems = renderedItems.filter((item) => item === null);
+                expect(nullItems.length).toBe(0);
+
+                const expandedOrder = getModelItemOrder(ref.current as Gtk.ListView);
+                for (const childId of expectedChildren) {
+                    expect(expandedOrder).toContain(childId);
+                }
+            };
+
+            const collapseRow = (categoryIndex: number) => {
+                const row = selectionModel.getObject(categoryIndex) as Gtk.TreeListRow;
+                row.setExpanded(false);
+            };
+
+            expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
+
+            collapseRow(0);
+            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(5);
+
+            expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
+
+            collapseRow(0);
+
+            expandAndVerify(1, ["notifications-enabled", "sounds", "do-not-disturb", "badge-count"]);
+
+            collapseRow(1);
+
+            expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
+
+            const finalNullItems = renderedItems.filter((item) => item === null);
+            expect(finalNullItems.length).toBe(0);
+        });
+
+        it("third child does not remain stuck on Loading after expansion", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            interface Category {
+                type: "category";
+                id: string;
+                name: string;
+            }
+
+            interface Setting {
+                type: "setting";
+                id: string;
+                name: string;
+            }
+
+            type TreeItem = Category | Setting;
+
+            const categories: Array<Category & { children: Setting[] }> = [
+                {
+                    type: "category",
+                    id: "appearance",
+                    name: "Appearance",
+                    children: [
+                        { type: "setting", id: "dark-mode", name: "Dark Mode" },
+                        { type: "setting", id: "large-text", name: "Large Text" },
+                        { type: "setting", id: "animations", name: "Enable Animations" },
+                        { type: "setting", id: "transparency", name: "Transparency Effects" },
+                    ],
+                },
+                {
+                    type: "category",
+                    id: "notifications",
+                    name: "Notifications",
+                    children: [
+                        { type: "setting", id: "notifications-enabled", name: "Notifications" },
+                        { type: "setting", id: "sounds", name: "Notification Sounds" },
+                        { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
+                        { type: "setting", id: "badge-count", name: "Show Badge Count" },
+                    ],
+                },
+            ];
+
+            await render(
+                <x.TreeListView<TreeItem>
+                    ref={ref}
+                    estimatedItemHeight={48}
+                    renderItem={(item) => {
+                        if (!item) {
+                            return <GtkLabel label="Loading..." />;
+                        }
+                        return <GtkLabel label={item.name} />;
+                    }}
+                >
+                    {categories.map((category) => (
+                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                            {category.children.map((setting) => (
+                                <x.TreeListItem
+                                    key={setting.id}
+                                    id={setting.id}
+                                    value={setting as TreeItem}
+                                    hideExpander
+                                />
+                            ))}
+                        </x.TreeListItem>
+                    ))}
+                </x.TreeListView>,
+            );
+
+            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
+            const row = selectionModel.getObject(0) as Gtk.TreeListRow;
+
+            const queryLabels = (text: string) =>
+                screen.queryAllByText(text).filter((w) => w.getAccessibleRole() === Gtk.AccessibleRole.LABEL);
+
+            const assertChildrenVisible = () => {
+                expect(queryLabels("Loading...")).toHaveLength(0);
+                expect(queryLabels("Dark Mode")).toHaveLength(1);
+                expect(queryLabels("Large Text")).toHaveLength(1);
+                expect(queryLabels("Enable Animations")).toHaveLength(1);
+                expect(queryLabels("Transparency Effects")).toHaveLength(1);
+            };
+
+            const assertChildrenHidden = () => {
+                expect(queryLabels("Dark Mode")).toHaveLength(0);
+                expect(queryLabels("Large Text")).toHaveLength(0);
+                expect(queryLabels("Enable Animations")).toHaveLength(0);
+                expect(queryLabels("Transparency Effects")).toHaveLength(0);
+            };
+
+            for (let i = 0; i < 3; i++) {
+                row.setExpanded(true);
+                await tick();
+                await tick();
+                await tick();
+                assertChildrenVisible();
+
+                row.setExpanded(false);
+                await tick();
+                await tick();
+                await tick();
+                assertChildrenHidden();
+            }
+
+            row.setExpanded(true);
+            await tick();
+            await tick();
+            await tick();
+            assertChildrenVisible();
         });
     });
 });

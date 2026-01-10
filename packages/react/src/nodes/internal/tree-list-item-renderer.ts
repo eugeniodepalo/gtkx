@@ -9,10 +9,20 @@ import type { TreeStore } from "./tree-store.js";
 
 export type TreeRenderItemFn<T> = (item: T | null, row: Gtk.TreeListRow | null) => ReactNode;
 
+interface PendingBind {
+    treeListRow: Gtk.TreeListRow;
+    expander: Gtk.TreeExpander;
+    id: string;
+}
+
 export class TreeListItemRenderer {
     private factory: Gtk.SignalListItemFactory;
     private store?: TreeStore | null;
     private fiberRoots = new Map<number, Reconciler.FiberRoot>();
+    private expanders = new Map<number, Gtk.TreeExpander>();
+    private setupComplete = new Set<number>();
+    private pendingBinds = new Map<number, PendingBind>();
+    private tornDown = new Set<number>();
     private renderFn?: TreeRenderItemFn<unknown> = () => null as never;
     private estimatedItemHeight?: number;
 
@@ -61,50 +71,39 @@ export class TreeListItemRenderer {
 
             const fiberRoot = createFiberRoot(box);
             this.fiberRoots.set(ptr, fiberRoot);
-            const element = this.renderFn?.(null, null);
+            this.expanders.set(ptr, expander);
 
-            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
+            const element = this.renderFn?.(null, null);
+            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
+                if (this.tornDown.has(ptr)) return;
+                this.setupComplete.add(ptr);
+                this.processPendingBind(ptr);
+            });
         });
 
         signalStore.set(this, this.factory, "bind", (_self, listItem: Gtk.ListItem) => {
             const ptr = getNativeId(listItem.handle);
             const fiberRoot = this.fiberRoots.get(ptr);
+            const expander = this.expanders.get(ptr);
 
-            if (!fiberRoot) return;
+            if (!fiberRoot || !expander) return;
 
             const treeListRow = listItem.getItem();
             if (!(treeListRow instanceof Gtk.TreeListRow)) return;
 
-            const expander = listItem.getChild();
-            if (!(expander instanceof Gtk.TreeExpander)) return;
             expander.setListRow(treeListRow);
 
             const stringObject = treeListRow.getItem();
             if (!(stringObject instanceof Gtk.StringObject)) return;
 
             const id = stringObject.getString();
-            const itemData = this.getStore().getItem(id);
 
-            if (itemData) {
-                if (itemData.indentForDepth !== undefined) {
-                    expander.setIndentForDepth(itemData.indentForDepth);
-                }
-                if (itemData.indentForIcon !== undefined) {
-                    expander.setIndentForIcon(itemData.indentForIcon);
-                }
-                if (itemData.hideExpander !== undefined) {
-                    expander.setHideExpander(itemData.hideExpander);
-                }
+            if (!this.setupComplete.has(ptr)) {
+                this.pendingBinds.set(ptr, { treeListRow, expander, id });
+                return;
             }
 
-            const element = this.renderFn?.(itemData?.value ?? null, treeListRow);
-
-            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
-                const box = expander.getChild();
-                if (box instanceof Gtk.Box) {
-                    box.setSizeRequest(-1, -1);
-                }
-            });
+            this.renderBind(ptr, expander, treeListRow, id);
         });
 
         signalStore.set(this, this.factory, "unbind", (_self, listItem: Gtk.ListItem) => {
@@ -119,8 +118,54 @@ export class TreeListItemRenderer {
             const fiberRoot = this.fiberRoots.get(ptr);
 
             if (fiberRoot) {
+                this.tornDown.add(ptr);
                 reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
-                queueMicrotask(() => this.fiberRoots.delete(ptr));
+                queueMicrotask(() => {
+                    this.fiberRoots.delete(ptr);
+                    this.expanders.delete(ptr);
+                    this.setupComplete.delete(ptr);
+                    this.pendingBinds.delete(ptr);
+                    this.tornDown.delete(ptr);
+                });
+            }
+        });
+    }
+
+    private processPendingBind(ptr: number): void {
+        const pending = this.pendingBinds.get(ptr);
+        if (!pending) return;
+
+        this.pendingBinds.delete(ptr);
+        this.renderBind(ptr, pending.expander, pending.treeListRow, pending.id);
+    }
+
+    private renderBind(ptr: number, expander: Gtk.TreeExpander, treeListRow: Gtk.TreeListRow, id: string): void {
+        const fiberRoot = this.fiberRoots.get(ptr);
+        if (!fiberRoot) return;
+
+        const itemData = this.getStore().getItem(id);
+
+        if (itemData) {
+            if (itemData.indentForDepth !== undefined) {
+                expander.setIndentForDepth(itemData.indentForDepth);
+            }
+            if (itemData.indentForIcon !== undefined) {
+                expander.setIndentForIcon(itemData.indentForIcon);
+            }
+            if (itemData.hideExpander !== undefined) {
+                expander.setHideExpander(itemData.hideExpander);
+            }
+        }
+
+        const element = this.renderFn?.(itemData?.value ?? null, treeListRow);
+
+        reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
+            if (this.tornDown.has(ptr)) return;
+            const currentExpander = this.expanders.get(ptr);
+            if (!currentExpander) return;
+            const box = currentExpander.getChild();
+            if (box instanceof Gtk.Box) {
+                box.setSizeRequest(-1, -1);
             }
         });
     }

@@ -128,8 +128,8 @@ export function createHostConfig(): HostConfig {
         resetAfterCommit: () => {
             signalStore.blockAll();
             endBatch();
-            signalStore.unblockAll();
             flushAfterCommit();
+            signalStore.unblockAll();
         },
         commitTextUpdate: (textInstance, oldText, newText) => {
             textInstance.updateProps({ label: oldText }, { label: newText });

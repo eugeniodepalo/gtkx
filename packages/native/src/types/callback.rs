@@ -20,6 +20,7 @@ use gtk4::glib::{
 use neon::prelude::*;
 
 use crate::ffi::{FfiStorage, FfiStorageKind, TrampolineCallbackValue};
+use crate::gtk_dispatch;
 use crate::js_dispatch;
 use crate::trampoline::CallbackData;
 use crate::types::Type;
@@ -70,9 +71,14 @@ impl CallbackTrampoline {
                 let return_type = callback_type.return_type.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    if gtk_dispatch::GtkDispatcher::global().is_stopped() {
+                        return None;
+                    }
+
+                    let return_type = *return_type.clone().unwrap_or(Box::new(Type::Undefined));
+
                     let args_values = value::Value::from_glib_values(args, &arg_types)
                         .expect("Failed to convert GLib callback arguments");
-                    let return_type = *return_type.clone().unwrap_or(Box::new(Type::Undefined));
 
                     js_dispatch::JsDispatcher::global().invoke_and_wait(
                         &channel,
@@ -110,6 +116,10 @@ impl CallbackTrampoline {
                     .unwrap_or(Box::new(Type::Null));
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    if gtk_dispatch::GtkDispatcher::global().is_stopped() {
+                        return None;
+                    }
+
                     let source_value = args
                         .first()
                         .map(|gval| {
@@ -148,6 +158,10 @@ impl CallbackTrampoline {
 
             CallbackTrampoline::Destroy => {
                 let closure = glib::Closure::new(move |_args: &[glib::Value]| {
+                    if gtk_dispatch::GtkDispatcher::global().is_stopped() {
+                        return None;
+                    }
+
                     js_dispatch::JsDispatcher::global().invoke_and_wait(
                         &channel,
                         &js_func,
@@ -172,6 +186,10 @@ impl CallbackTrampoline {
                 let arg_types = callback_type.arg_types.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    if gtk_dispatch::GtkDispatcher::global().is_stopped() {
+                        return None;
+                    }
+
                     let args_values = value::Value::from_glib_values(args, &arg_types)
                         .expect("Failed to convert GLib draw callback arguments");
 
@@ -191,6 +209,10 @@ impl CallbackTrampoline {
                 let arg_types = callback_type.arg_types.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    if gtk_dispatch::GtkDispatcher::global().is_stopped() {
+                        return Some(false.to_value());
+                    }
+
                     let args_values = value::Value::from_glib_values(args, &arg_types)
                         .expect("Failed to convert GLib shortcut callback arguments");
 
@@ -213,6 +235,10 @@ impl CallbackTrampoline {
                 let arg_types = callback_type.arg_types.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    if gtk_dispatch::GtkDispatcher::global().is_stopped() {
+                        return Some(None::<glib::Object>.to_value());
+                    }
+
                     let args_values = value::Value::from_glib_values(args, &arg_types)
                         .expect("Failed to convert GLib tree list model callback arguments");
 

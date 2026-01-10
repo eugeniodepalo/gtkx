@@ -2,6 +2,7 @@ import type * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
+import { scheduleAfterCommit } from "../../scheduler.js";
 import { signalStore } from "../internal/signal-store.js";
 import { TreeStore } from "../internal/tree-store.js";
 import { TreeListItemNode } from "../tree-list-item.js";
@@ -62,12 +63,16 @@ export class TreeList extends VirtualNode<TreeListProps> {
             throw new Error("Cannot append 'TreeListItem' to 'TreeList': missing required 'id' prop");
         }
 
+        const id = child.props.id;
         child.setStore(this.store);
-        this.store.addItem(child.props.id, {
-            value: child.props.value,
-            indentForDepth: child.props.indentForDepth,
-            indentForIcon: child.props.indentForIcon,
-            hideExpander: child.props.hideExpander,
+
+        scheduleAfterCommit(() => {
+            this.store.addItem(id, {
+                value: child.props.value,
+                indentForDepth: child.props.indentForDepth,
+                indentForIcon: child.props.indentForIcon,
+                hideExpander: child.props.hideExpander,
+            });
         });
     }
 
@@ -84,12 +89,17 @@ export class TreeList extends VirtualNode<TreeListProps> {
             throw new Error("Cannot insert 'TreeListItem' into 'TreeList': 'before' node missing required 'id' prop");
         }
 
+        const id = child.props.id;
+        const beforeId = before.props.id;
         child.setStore(this.store);
-        this.store.insertItemBefore(child.props.id, before.props.id, {
-            value: child.props.value,
-            indentForDepth: child.props.indentForDepth,
-            indentForIcon: child.props.indentForIcon,
-            hideExpander: child.props.hideExpander,
+
+        scheduleAfterCommit(() => {
+            this.store.insertItemBefore(id, beforeId, {
+                value: child.props.value,
+                indentForDepth: child.props.indentForDepth,
+                indentForIcon: child.props.indentForIcon,
+                hideExpander: child.props.hideExpander,
+            });
         });
     }
 
@@ -102,7 +112,12 @@ export class TreeList extends VirtualNode<TreeListProps> {
             throw new Error("Cannot remove 'TreeListItem' from 'TreeList': missing required 'id' prop");
         }
 
-        this.store.removeItem(child.props.id);
+        const id = child.props.id;
+
+        scheduleAfterCommit(() => {
+            this.store.removeItem(id);
+        });
+
         child.setStore(null);
     }
 

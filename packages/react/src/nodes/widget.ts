@@ -127,6 +127,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             ...Object.keys(filterProps(newProps ?? {}, ["children"])),
         ]);
 
+        const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
+
         for (const name of propNames) {
             const oldValue = oldProps?.[name];
             const newValue = newProps[name];
@@ -134,20 +136,19 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             if (oldValue === newValue) continue;
 
             if (EVENT_CONTROLLER_PROPS.has(name)) {
-                this.updateEventControllerProp(name, (newValue as SignalHandler) ?? null);
+                pendingSignals.push({ name, newValue });
                 continue;
             }
 
             if (name === "onNotify") {
-                this.updateNotifyHandler((newValue as SignalHandler) ?? null);
+                pendingSignals.push({ name, newValue });
                 continue;
             }
 
             const signalName = this.propNameToSignalName(name);
 
             if (resolveSignal(this.container, signalName)) {
-                const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-                signalStore.set(this, this.container, signalName, handler);
+                pendingSignals.push({ name, newValue });
             } else if (newValue !== undefined) {
                 const isEditableText = name === "text" && isEditable(this.container);
 
@@ -160,6 +161,18 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 }
 
                 this.setProperty(name, newValue);
+            }
+        }
+
+        for (const { name, newValue } of pendingSignals) {
+            if (EVENT_CONTROLLER_PROPS.has(name)) {
+                this.updateEventControllerProp(name, (newValue as SignalHandler) ?? null);
+            } else if (name === "onNotify") {
+                this.updateNotifyHandler((newValue as SignalHandler) ?? null);
+            } else {
+                const signalName = this.propNameToSignalName(name);
+                const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
+                signalStore.set(this, this.container, signalName, handler);
             }
         }
     }

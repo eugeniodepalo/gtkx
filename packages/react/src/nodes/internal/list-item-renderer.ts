@@ -13,6 +13,7 @@ export class ListItemRenderer {
     private factory: Gtk.SignalListItemFactory;
     private store?: ListStore | null;
     private fiberRoots = new Map<number, Reconciler.FiberRoot>();
+    private tornDown = new Set<number>();
     private renderFn?: RenderItemFn<unknown> = () => null as never;
     private estimatedItemHeight?: number;
 
@@ -76,7 +77,10 @@ export class ListItemRenderer {
             const element = this.renderFn?.(item);
 
             reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
-                const box = listItem.getChild();
+                if (this.tornDown.has(ptr)) return;
+                const currentFiberRoot = this.fiberRoots.get(ptr);
+                if (!currentFiberRoot) return;
+                const box = currentFiberRoot.containerInfo;
                 if (box instanceof Gtk.Box) {
                     box.setSizeRequest(-1, -1);
                 }
@@ -90,8 +94,12 @@ export class ListItemRenderer {
             const fiberRoot = this.fiberRoots.get(ptr);
 
             if (fiberRoot) {
+                this.tornDown.add(ptr);
                 reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
-                queueMicrotask(() => this.fiberRoots.delete(ptr));
+                queueMicrotask(() => {
+                    this.fiberRoots.delete(ptr);
+                    this.tornDown.delete(ptr);
+                });
             }
         });
     }

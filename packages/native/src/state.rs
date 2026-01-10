@@ -85,7 +85,7 @@ impl GtkThreadState {
     where
         F: FnOnce(&mut GtkThreadState) -> R,
     {
-        GTK_THREAD_STATE.with(|state| f(&mut state.borrow_mut()))
+        GTK_THREAD_STATE.with_borrow_mut(f)
     }
 
     pub fn library(&mut self, name: &str) -> anyhow::Result<&Library> {

@@ -113,6 +113,10 @@ impl GtkDispatcher {
         self.stopped.store(true, Ordering::Release);
     }
 
+    pub fn is_stopped(&self) -> bool {
+        self.stopped.load(Ordering::Acquire)
+    }
+
     pub fn schedule<F>(&self, task: F)
     where
         F: FnOnce() + Send + 'static,

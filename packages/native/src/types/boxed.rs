@@ -76,17 +76,19 @@ impl BoxedType {
         let lib_name = self.library.as_ref()?;
         let get_type_fn = self.get_type_fn.as_ref()?;
 
-        GtkThreadState::with(|state| {
+        let symbol = GtkThreadState::with(|state| {
             let library = state.library(lib_name).ok()?;
-            let symbol = unsafe {
+            unsafe {
                 library
                     .get::<unsafe extern "C" fn() -> glib::ffi::GType>(get_type_fn.as_bytes())
-                    .ok()?
-            };
-            let gtype_raw = unsafe { symbol() };
-            let gtype = unsafe { glib::Type::from_glib(gtype_raw) };
-            Some(gtype)
-        })
+                    .ok()
+                    .map(|s| *s)
+            }
+        })?;
+
+        let gtype_raw = unsafe { symbol() };
+        let gtype = unsafe { glib::Type::from_glib(gtype_raw) };
+        Some(gtype)
     }
 }
 

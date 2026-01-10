@@ -122,6 +122,11 @@ impl Value {
             Value::Undefined => match return_type {
                 Some(Type::Boolean) => Some(false.into()),
                 Some(Type::Integer(_)) => Some(0i32.into()),
+                Some(Type::Float(FloatKind::F32)) => Some(0.0f32.into()),
+                Some(Type::Float(FloatKind::F64)) => Some(0.0f64.into()),
+                Some(Type::String(_)) => Some(Option::<String>::None.into()),
+                Some(Type::GObject(_)) => Some(Option::<glib::Object>::None.into()),
+                Some(Type::Undefined) | None => None,
                 _ => None,
             },
             _ => self.to_glib_value().ok(),
