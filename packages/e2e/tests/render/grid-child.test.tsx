@@ -17,7 +17,6 @@ describe("render - GridChild", () => {
                         <GtkLabel ref={labelRef} label="Cell" />
                     </x.GridChild>
                 </GtkGrid>,
-                { wrapper: false },
             );
 
             const childAt = gridRef.current?.getChildAt(1, 2);
@@ -34,7 +33,6 @@ describe("render - GridChild", () => {
                         <GtkLabel ref={labelRef} label="Default" />
                     </x.GridChild>
                 </GtkGrid>,
-                { wrapper: false },
             );
 
             const childAt = gridRef.current?.getChildAt(0, 0);
@@ -51,7 +49,6 @@ describe("render - GridChild", () => {
                         <GtkLabel ref={labelRef} label="Wide" />
                     </x.GridChild>
                 </GtkGrid>,
-                { wrapper: false },
             );
 
             const child00 = gridRef.current?.getChildAt(0, 0);
@@ -72,7 +69,6 @@ describe("render - GridChild", () => {
                         <GtkLabel ref={labelRef} label="Tall" />
                     </x.GridChild>
                 </GtkGrid>,
-                { wrapper: false },
             );
 
             const child00 = gridRef.current?.getChildAt(0, 0);
@@ -95,11 +91,11 @@ describe("render - GridChild", () => {
                 );
             }
 
-            await render(<App col={0} row={0} />, { wrapper: false });
+            await render(<App col={0} row={0} />);
             const child00 = gridRef.current?.getChildAt(0, 0);
             expect(child00 && labelRef.current && isObjectEqual(child00, labelRef.current)).toBe(true);
 
-            await render(<App col={2} row={1} />, { wrapper: false });
+            await render(<App col={2} row={1} />);
             const child21 = gridRef.current?.getChildAt(2, 1);
             expect(child21 && labelRef.current && isObjectEqual(child21, labelRef.current)).toBe(true);
         });
@@ -118,7 +114,6 @@ describe("render - GridChild", () => {
                         <GtkLabel ref={label2Ref} label="Bottom Right" />
                     </x.GridChild>
                 </GtkGrid>,
-                { wrapper: false },
             );
 
             const child00 = gridRef.current?.getChildAt(0, 0);
@@ -143,10 +138,10 @@ describe("render - GridChild", () => {
                 );
             }
 
-            await render(<App showChild={true} />, { wrapper: false });
+            await render(<App showChild={true} />);
             expect(gridRef.current?.getChildAt(0, 0)).not.toBeNull();
 
-            await render(<App showChild={false} />, { wrapper: false });
+            await render(<App showChild={false} />);
             expect(gridRef.current?.getChildAt(0, 0)).toBeNull();
         });
     });

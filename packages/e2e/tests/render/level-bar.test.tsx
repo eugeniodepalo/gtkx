@@ -10,7 +10,7 @@ describe("render - LevelBar", () => {
         it("creates LevelBar widget without offsets", async () => {
             const ref = createRef<Gtk.LevelBar>();
 
-            await render(<GtkLevelBar ref={ref} />, { wrapper: false });
+            await render(<GtkLevelBar ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -23,7 +23,6 @@ describe("render - LevelBar", () => {
                     <x.LevelBarOffset id="low" value={0.25} />
                     <x.LevelBarOffset id="high" value={0.75} />
                 </GtkLevelBar>,
-                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -50,13 +49,13 @@ describe("render - LevelBar", () => {
                 );
             }
 
-            await render(<App value={0.5} />, { wrapper: false });
+            await render(<App value={0.5} />);
 
             const valueRef = createNativeRef(0);
             ref.current?.getOffsetValue(valueRef, "threshold");
             expect(valueRef.value).toBe(0.5);
 
-            await render(<App value={0.75} />, { wrapper: false });
+            await render(<App value={0.75} />);
 
             ref.current?.getOffsetValue(valueRef, "threshold");
             expect(valueRef.value).toBe(0.75);
@@ -73,13 +72,13 @@ describe("render - LevelBar", () => {
                 );
             }
 
-            await render(<App name="old-name" />, { wrapper: false });
+            await render(<App name="old-name" />);
 
             const valueRef = createNativeRef(0);
             expect(ref.current?.getOffsetValue(valueRef, "old-name")).toBe(true);
             expect(ref.current?.getOffsetValue(valueRef, "new-name")).toBe(false);
 
-            await render(<App name="new-name" />, { wrapper: false });
+            await render(<App name="new-name" />);
 
             expect(ref.current?.getOffsetValue(valueRef, "old-name")).toBe(false);
             expect(ref.current?.getOffsetValue(valueRef, "new-name")).toBe(true);
@@ -97,13 +96,13 @@ describe("render - LevelBar", () => {
                 );
             }
 
-            await render(<App showExtra={true} />, { wrapper: false });
+            await render(<App showExtra={true} />);
 
             const valueRef = createNativeRef(0);
             expect(ref.current?.getOffsetValue(valueRef, "always")).toBe(true);
             expect(ref.current?.getOffsetValue(valueRef, "extra")).toBe(true);
 
-            await render(<App showExtra={false} />, { wrapper: false });
+            await render(<App showExtra={false} />);
 
             expect(ref.current?.getOffsetValue(valueRef, "always")).toBe(true);
             expect(ref.current?.getOffsetValue(valueRef, "extra")).toBe(false);

@@ -32,7 +32,7 @@ class ExpanderRowNode extends WidgetNode<Adw.ExpanderRow> {
         }
 
         throw new Error(
-            `Cannot append '${child.typeName}' to 'AdwExpanderRow': expected ExpanderRow.Row, ExpanderRow.Action, ActionRow.Prefix, ActionRow.Suffix, or Widget`,
+            `Cannot append '${child.typeName}' to 'ExpanderRow': expected x.ExpanderRowRow, x.ExpanderRowAction, x.ActionRowPrefix, x.ActionRowSuffix, or Widget`,
         );
     }
 
@@ -53,7 +53,7 @@ class ExpanderRowNode extends WidgetNode<Adw.ExpanderRow> {
         }
 
         throw new Error(
-            `Cannot insert '${child.typeName}' into 'AdwExpanderRow': expected ExpanderRow.Row, ExpanderRow.Action, ActionRow.Prefix, ActionRow.Suffix, or Widget`,
+            `Cannot insert '${child.typeName}' into 'ExpanderRow': expected x.ExpanderRowRow, x.ExpanderRowAction, x.ActionRowPrefix, x.ActionRowSuffix, or Widget`,
         );
     }
 
@@ -68,7 +68,7 @@ class ExpanderRowNode extends WidgetNode<Adw.ExpanderRow> {
         }
 
         throw new Error(
-            `Cannot remove '${child.typeName}' from 'AdwExpanderRow': expected ExpanderRow.Row, ExpanderRow.Action, ActionRow.Prefix, ActionRow.Suffix, or Widget`,
+            `Cannot remove '${child.typeName}' from 'ExpanderRow': expected x.ExpanderRowRow, x.ExpanderRowAction, x.ActionRowPrefix, x.ActionRowSuffix, or Widget`,
         );
     }
 }

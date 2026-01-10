@@ -19,7 +19,6 @@ describe("render - ActionRowChild", () => {
                         </x.ActionRowPrefix>
                     </AdwActionRow>
                 </GtkListBox>,
-                { wrapper: false },
             );
 
             expect(prefixRef.current).not.toBeNull();
@@ -37,7 +36,6 @@ describe("render - ActionRowChild", () => {
                         </x.ActionRowSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
-                { wrapper: false },
             );
 
             expect(suffixRef.current).not.toBeNull();
@@ -59,7 +57,6 @@ describe("render - ActionRowChild", () => {
                         </x.ActionRowSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
-                { wrapper: false },
             );
 
             expect(prefixRef.current).not.toBeNull();
@@ -88,7 +85,7 @@ describe("render - ActionRowChild", () => {
                 );
             }
 
-            const { rerender } = await render(<App showPrefix={true} />, { wrapper: false });
+            const { rerender } = await render(<App showPrefix={true} />);
 
             expect(prefixRef.current).not.toBeNull();
             expect(alwaysRef.current).not.toBeNull();
@@ -113,7 +110,6 @@ describe("render - ActionRowChild", () => {
                         </x.ActionRowPrefix>
                     </AdwActionRow>
                 </GtkListBox>,
-                { wrapper: false },
             );
 
             expect(firstRef.current).not.toBeNull();
@@ -134,7 +130,6 @@ describe("render - ActionRowChild", () => {
                         </x.ActionRowSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
-                { wrapper: false },
             );
 
             expect(firstRef.current).not.toBeNull();
@@ -159,7 +154,7 @@ describe("render - ActionRowChild", () => {
                 );
             }
 
-            const { rerender } = await render(<App showSecond={true} />, { wrapper: false });
+            const { rerender } = await render(<App showSecond={true} />);
 
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).not.toBeNull();

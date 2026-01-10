@@ -1,8 +1,15 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkLabel, x } from "@gtkx/react";
+import { GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
 import { cleanup, render, screen, tick, userEvent } from "@gtkx/testing";
+import type { ReactNode } from "react";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const ScrollWrapper = ({ children }: { children: ReactNode }) => (
+    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
+        {children}
+    </GtkScrolledWindow>
+);
 
 const getModelItemCount = (listView: Gtk.ListView): number => {
     const model = listView.getModel();
@@ -38,10 +45,11 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                    <x.TreeListItem id="1" value={{ name: "First" }} />
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                        <x.TreeListItem id="1" value={{ name: "First" }} />
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(ref.current).not.toBeNull();
@@ -53,11 +61,12 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                    <x.TreeListItem id="1" value={{ name: "First" }} />
-                    <x.TreeListItem id="2" value={{ name: "Second" }} />
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                        <x.TreeListItem id="1" value={{ name: "First" }} />
+                        <x.TreeListItem id="2" value={{ name: "Second" }} />
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -67,13 +76,14 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
-                    <x.TreeListItem id="parent" value={{ name: "Parent" }}>
-                        <x.TreeListItem id="child1" value={{ name: "Child 1" }} />
-                        <x.TreeListItem id="child2" value={{ name: "Child 2" }} />
-                    </x.TreeListItem>
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
+                        <x.TreeListItem id="parent" value={{ name: "Parent" }}>
+                            <x.TreeListItem id="child1" value={{ name: "Child 1" }} />
+                            <x.TreeListItem id="child2" value={{ name: "Child 2" }} />
+                        </x.TreeListItem>
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(ref.current).not.toBeNull();
@@ -84,11 +94,13 @@ describe("render - TreeListView", () => {
 
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
-                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((item) => (
-                            <x.TreeListItem key={item.id} id={item.id} value={item} />
-                        ))}
-                    </x.TreeListView>
+                    <ScrollWrapper>
+                        <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((item) => (
+                                <x.TreeListItem key={item.id} id={item.id} value={item} />
+                            ))}
+                        </x.TreeListView>
+                    </ScrollWrapper>
                 );
             }
 
@@ -99,7 +111,6 @@ describe("render - TreeListView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
-                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -112,7 +123,6 @@ describe("render - TreeListView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
-                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
@@ -123,11 +133,13 @@ describe("render - TreeListView", () => {
 
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
-                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((item) => (
-                            <x.TreeListItem key={item.id} id={item.id} value={item} />
-                        ))}
-                    </x.TreeListView>
+                    <ScrollWrapper>
+                        <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((item) => (
+                                <x.TreeListItem key={item.id} id={item.id} value={item} />
+                            ))}
+                        </x.TreeListView>
+                    </ScrollWrapper>
                 );
             }
 
@@ -139,7 +151,6 @@ describe("render - TreeListView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
-                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
@@ -151,7 +162,6 @@ describe("render - TreeListView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
-                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -162,15 +172,17 @@ describe("render - TreeListView", () => {
 
             function App({ itemName }: { itemName: string }) {
                 return (
-                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                        <x.TreeListItem id="1" value={{ name: itemName }} />
-                    </x.TreeListView>
+                    <ScrollWrapper>
+                        <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                            <x.TreeListItem id="1" value={{ name: itemName }} />
+                        </x.TreeListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App itemName="Initial" />, { wrapper: false });
+            await render(<App itemName="Initial" />);
 
-            await render(<App itemName="Updated" />, { wrapper: false });
+            await render(<App itemName="Updated" />);
         });
     });
 
@@ -180,10 +192,11 @@ describe("render - TreeListView", () => {
             const renderItem = vi.fn((item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />);
 
             await render(
-                <x.TreeListView ref={ref} renderItem={renderItem}>
-                    <x.TreeListItem id="1" value={{ name: "Test Item" }} />
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={renderItem}>
+                        <x.TreeListItem id="1" value={{ name: "Test Item" }} />
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
         });
 
@@ -194,12 +207,13 @@ describe("render - TreeListView", () => {
             ));
 
             await render(
-                <x.TreeListView ref={ref} renderItem={renderItem} autoexpand>
-                    <x.TreeListItem id="parent" value={{ name: "Parent" }}>
-                        <x.TreeListItem id="child" value={{ name: "Child" }} />
-                    </x.TreeListItem>
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={renderItem} autoexpand>
+                        <x.TreeListItem id="parent" value={{ name: "Parent" }}>
+                            <x.TreeListItem id="child" value={{ name: "Child" }} />
+                        </x.TreeListItem>
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
         });
 
@@ -208,20 +222,22 @@ describe("render - TreeListView", () => {
 
             function App({ prefix }: { prefix: string }) {
                 return (
-                    <x.TreeListView
-                        ref={ref}
-                        renderItem={(item: { name: string } | null) => (
-                            <GtkLabel label={`${prefix}: ${item?.name ?? ""}`} />
-                        )}
-                    >
-                        <x.TreeListItem id="1" value={{ name: "Test" }} />
-                    </x.TreeListView>
+                    <ScrollWrapper>
+                        <x.TreeListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => (
+                                <GtkLabel label={`${prefix}: ${item?.name ?? ""}`} />
+                            )}
+                        >
+                            <x.TreeListItem id="1" value={{ name: "Test" }} />
+                        </x.TreeListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App prefix="First" />, { wrapper: false });
+            await render(<App prefix="First" />);
 
-            await render(<App prefix="Second" />, { wrapper: false });
+            await render(<App prefix="Second" />);
         });
     });
 
@@ -230,12 +246,13 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
-                    <x.TreeListItem id="parent" value={{ name: "Parent" }}>
-                        <x.TreeListItem id="child" value={{ name: "Child" }} />
-                    </x.TreeListItem>
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
+                        <x.TreeListItem id="parent" value={{ name: "Parent" }}>
+                            <x.TreeListItem id="child" value={{ name: "Child" }} />
+                        </x.TreeListItem>
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(ref.current).not.toBeNull();
@@ -245,13 +262,14 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
-                    <x.TreeListItem id="parent" value={{ name: "Parent" }}>
-                        <x.TreeListItem id="child1" value={{ name: "Child 1" }} />
-                        <x.TreeListItem id="child2" value={{ name: "Child 2" }} />
-                    </x.TreeListItem>
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
+                        <x.TreeListItem id="parent" value={{ name: "Parent" }}>
+                            <x.TreeListItem id="child1" value={{ name: "Child 1" }} />
+                            <x.TreeListItem id="child2" value={{ name: "Child 2" }} />
+                        </x.TreeListItem>
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
@@ -262,12 +280,13 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                    <x.TreeListItem id="parent" value={{ name: "Parent" }}>
-                        <x.TreeListItem id="child1" value={{ name: "Child 1" }} />
-                    </x.TreeListItem>
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                        <x.TreeListItem id="parent" value={{ name: "Parent" }}>
+                            <x.TreeListItem id="child1" value={{ name: "Child 1" }} />
+                        </x.TreeListItem>
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
@@ -282,13 +301,14 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                    <x.TreeListItem id="parent" value={{ name: "Parent" }}>
-                        <x.TreeListItem id="child1" value={{ name: "Child 1" }} />
-                        <x.TreeListItem id="child2" value={{ name: "Child 2" }} />
-                    </x.TreeListItem>
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                        <x.TreeListItem id="parent" value={{ name: "Parent" }}>
+                            <x.TreeListItem id="child1" value={{ name: "Child 1" }} />
+                            <x.TreeListItem id="child2" value={{ name: "Child 2" }} />
+                        </x.TreeListItem>
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(1);
@@ -306,17 +326,19 @@ describe("render - TreeListView", () => {
 
             function App({ autoexpand }: { autoexpand: boolean }) {
                 return (
-                    <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand={autoexpand}>
-                        <x.TreeListItem id="parent" value={{ name: "Parent" }}>
-                            <x.TreeListItem id="child" value={{ name: "Child" }} />
-                        </x.TreeListItem>
-                    </x.TreeListView>
+                    <ScrollWrapper>
+                        <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand={autoexpand}>
+                            <x.TreeListItem id="parent" value={{ name: "Parent" }}>
+                                <x.TreeListItem id="child" value={{ name: "Child" }} />
+                            </x.TreeListItem>
+                        </x.TreeListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App autoexpand={false} />, { wrapper: false });
+            await render(<App autoexpand={false} />);
 
-            await render(<App autoexpand={true} />, { wrapper: false });
+            await render(<App autoexpand={true} />);
         });
     });
 
@@ -325,11 +347,12 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"} selected={["2"]}>
-                    <x.TreeListItem id="1" value={{ name: "First" }} />
-                    <x.TreeListItem id="2" value={{ name: "Second" }} />
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"} selected={["2"]}>
+                        <x.TreeListItem id="1" value={{ name: "First" }} />
+                        <x.TreeListItem id="2" value={{ name: "Second" }} />
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
         });
 
@@ -338,11 +361,12 @@ describe("render - TreeListView", () => {
             const onSelectionChanged = vi.fn();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"} onSelectionChanged={onSelectionChanged}>
-                    <x.TreeListItem id="1" value={{ name: "First" }} />
-                    <x.TreeListItem id="2" value={{ name: "Second" }} />
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"} onSelectionChanged={onSelectionChanged}>
+                        <x.TreeListItem id="1" value={{ name: "First" }} />
+                        <x.TreeListItem id="2" value={{ name: "Second" }} />
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             await userEvent.selectOptions(ref.current as Gtk.ListView, 0);
@@ -355,15 +379,17 @@ describe("render - TreeListView", () => {
 
             function App({ selected }: { selected: string[] }) {
                 return (
-                    <x.TreeListView ref={ref} renderItem={() => "Item"} selected={selected}>
-                        <x.TreeListItem id="1" value={{ name: "First" }} />
-                    </x.TreeListView>
+                    <ScrollWrapper>
+                        <x.TreeListView ref={ref} renderItem={() => "Item"} selected={selected}>
+                            <x.TreeListItem id="1" value={{ name: "First" }} />
+                        </x.TreeListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App selected={["1"]} />, { wrapper: false });
+            await render(<App selected={["1"]} />);
 
-            await render(<App selected={[]} />, { wrapper: false });
+            await render(<App selected={[]} />);
         });
     });
 
@@ -372,11 +398,12 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"} selectionMode={Gtk.SelectionMode.MULTIPLE}>
-                    <x.TreeListItem id="1" value={{ name: "First" }} />
-                    <x.TreeListItem id="2" value={{ name: "Second" }} />
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"} selectionMode={Gtk.SelectionMode.MULTIPLE}>
+                        <x.TreeListItem id="1" value={{ name: "First" }} />
+                        <x.TreeListItem id="2" value={{ name: "Second" }} />
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
         });
 
@@ -384,17 +411,18 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView
-                    ref={ref}
-                    renderItem={() => "Item"}
-                    selectionMode={Gtk.SelectionMode.MULTIPLE}
-                    selected={["1", "3"]}
-                >
-                    <x.TreeListItem id="1" value={{ name: "First" }} />
-                    <x.TreeListItem id="2" value={{ name: "Second" }} />
-                    <x.TreeListItem id="3" value={{ name: "Third" }} />
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView
+                        ref={ref}
+                        renderItem={() => "Item"}
+                        selectionMode={Gtk.SelectionMode.MULTIPLE}
+                        selected={["1", "3"]}
+                    >
+                        <x.TreeListItem id="1" value={{ name: "First" }} />
+                        <x.TreeListItem id="2" value={{ name: "Second" }} />
+                        <x.TreeListItem id="3" value={{ name: "Third" }} />
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
         });
 
@@ -403,16 +431,17 @@ describe("render - TreeListView", () => {
             const onSelectionChanged = vi.fn();
 
             await render(
-                <x.TreeListView
-                    ref={ref}
-                    renderItem={() => "Item"}
-                    selectionMode={Gtk.SelectionMode.MULTIPLE}
-                    onSelectionChanged={onSelectionChanged}
-                >
-                    <x.TreeListItem id="1" value={{ name: "First" }} />
-                    <x.TreeListItem id="2" value={{ name: "Second" }} />
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView
+                        ref={ref}
+                        renderItem={() => "Item"}
+                        selectionMode={Gtk.SelectionMode.MULTIPLE}
+                        onSelectionChanged={onSelectionChanged}
+                    >
+                        <x.TreeListItem id="1" value={{ name: "First" }} />
+                        <x.TreeListItem id="2" value={{ name: "Second" }} />
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             await userEvent.selectOptions(ref.current as Gtk.ListView, [0, 1]);
@@ -426,12 +455,13 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                    <x.TreeListItem id="c" value={{ name: "C" }} />
-                    <x.TreeListItem id="a" value={{ name: "A" }} />
-                    <x.TreeListItem id="b" value={{ name: "B" }} />
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                        <x.TreeListItem id="c" value={{ name: "C" }} />
+                        <x.TreeListItem id="a" value={{ name: "A" }} />
+                        <x.TreeListItem id="b" value={{ name: "B" }} />
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["c", "a", "b"]);
@@ -442,18 +472,20 @@ describe("render - TreeListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.TreeListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </x.TreeListView>
+                    <ScrollWrapper>
+                        <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.TreeListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </x.TreeListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D", "E"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C", "D", "E"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D", "E"]);
 
-            await render(<App items={["E", "D", "C", "B", "A"]} />, { wrapper: false });
+            await render(<App items={["E", "D", "C", "B", "A"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
@@ -462,18 +494,20 @@ describe("render - TreeListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.TreeListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </x.TreeListView>
+                    <ScrollWrapper>
+                        <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.TreeListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </x.TreeListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C", "D"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["B", "D", "A", "C"]} />, { wrapper: false });
+            await render(<App items={["B", "D", "A", "C"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "D", "A", "C"]);
         });
 
@@ -482,18 +516,20 @@ describe("render - TreeListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.TreeListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </x.TreeListView>
+                    <ScrollWrapper>
+                        <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.TreeListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </x.TreeListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
 
-            await render(<App items={["D", "B", "E"]} />, { wrapper: false });
+            await render(<App items={["D", "B", "E"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["D", "B", "E"]);
         });
 
@@ -502,18 +538,20 @@ describe("render - TreeListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <x.TreeListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.TreeListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </x.TreeListView>
+                    <ScrollWrapper>
+                        <x.TreeListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.TreeListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </x.TreeListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
-            await render(<App items={["C", "A", "B"]} />, { wrapper: false });
-            await render(<App items={["B", "C", "A"]} />, { wrapper: false });
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["C", "A", "B"]} />);
+            await render(<App items={["B", "C", "A"]} />);
+            await render(<App items={["A", "B", "C"]} />);
 
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
         });
@@ -575,30 +613,31 @@ describe("render - TreeListView", () => {
             ];
 
             await render(
-                <x.TreeListView<TreeItem>
-                    ref={ref}
-                    renderItem={(item) => {
-                        renderedItems.push(item ? { id: item.id, name: item.name } : null);
-                        if (!item) {
-                            return <GtkLabel label="Loading..." />;
-                        }
-                        return <GtkLabel label={item.name} />;
-                    }}
-                >
-                    {categories.map((category) => (
-                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
-                            {category.children.map((setting) => (
-                                <x.TreeListItem
-                                    key={setting.id}
-                                    id={setting.id}
-                                    value={setting as TreeItem}
-                                    hideExpander
-                                />
-                            ))}
-                        </x.TreeListItem>
-                    ))}
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView<TreeItem>
+                        ref={ref}
+                        renderItem={(item) => {
+                            renderedItems.push(item ? { id: item.id, name: item.name } : null);
+                            if (!item) {
+                                return <GtkLabel label="Loading..." />;
+                            }
+                            return <GtkLabel label={item.name} />;
+                        }}
+                    >
+                        {categories.map((category) => (
+                            <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                                {category.children.map((setting) => (
+                                    <x.TreeListItem
+                                        key={setting.id}
+                                        id={setting.id}
+                                        value={setting as TreeItem}
+                                        hideExpander
+                                    />
+                                ))}
+                            </x.TreeListItem>
+                        ))}
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
@@ -607,8 +646,11 @@ describe("render - TreeListView", () => {
             const notificationsRow = selectionModel.getObject(1) as Gtk.TreeListRow;
             expect(notificationsRow.isExpandable()).toBe(true);
 
-            renderedItems.length = 0;
             notificationsRow.setExpanded(true);
+            await tick();
+            await tick();
+            renderedItems.length = 0;
+            await tick();
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(7);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual([
@@ -658,32 +700,38 @@ describe("render - TreeListView", () => {
             ];
 
             await render(
-                <x.TreeListView<TreeItem>
-                    ref={ref}
-                    autoexpand
-                    renderItem={(item) => {
-                        renderedItems.push(item ? { id: item.id, name: item.name } : null);
-                        if (!item) {
-                            return <GtkLabel label="Loading..." />;
-                        }
-                        return <GtkLabel label={item.name} />;
-                    }}
-                >
-                    {categories.map((category) => (
-                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
-                            {category.children.map((setting) => (
-                                <x.TreeListItem
-                                    key={setting.id}
-                                    id={setting.id}
-                                    value={setting as TreeItem}
-                                    hideExpander
-                                />
-                            ))}
-                        </x.TreeListItem>
-                    ))}
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView<TreeItem>
+                        ref={ref}
+                        autoexpand
+                        renderItem={(item) => {
+                            renderedItems.push(item ? { id: item.id, name: item.name } : null);
+                            if (!item) {
+                                return <GtkLabel label="Loading..." />;
+                            }
+                            return <GtkLabel label={item.name} />;
+                        }}
+                    >
+                        {categories.map((category) => (
+                            <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                                {category.children.map((setting) => (
+                                    <x.TreeListItem
+                                        key={setting.id}
+                                        id={setting.id}
+                                        value={setting as TreeItem}
+                                        hideExpander
+                                    />
+                                ))}
+                            </x.TreeListItem>
+                        ))}
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
+
+            await tick();
+            await tick();
+            renderedItems.length = 0;
+            await tick();
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(5);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual([
@@ -704,12 +752,13 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
-                    <x.TreeListItem id="parent" value={{ name: "Parent" }} indentForDepth={false}>
-                        <x.TreeListItem id="child" value={{ name: "Child" }} indentForDepth={true} />
-                    </x.TreeListItem>
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
+                        <x.TreeListItem id="parent" value={{ name: "Parent" }} indentForDepth={false}>
+                            <x.TreeListItem id="child" value={{ name: "Child" }} indentForDepth={true} />
+                        </x.TreeListItem>
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(ref.current).not.toBeNull();
@@ -719,12 +768,13 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
-                    <x.TreeListItem id="parent" value={{ name: "Parent" }} indentForIcon={true}>
-                        <x.TreeListItem id="child" value={{ name: "Child" }} indentForIcon={false} />
-                    </x.TreeListItem>
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
+                        <x.TreeListItem id="parent" value={{ name: "Parent" }} indentForIcon={true}>
+                            <x.TreeListItem id="child" value={{ name: "Child" }} indentForIcon={false} />
+                        </x.TreeListItem>
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(ref.current).not.toBeNull();
@@ -734,12 +784,13 @@ describe("render - TreeListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
-                    <x.TreeListItem id="parent" value={{ name: "Parent" }} hideExpander={false}>
-                        <x.TreeListItem id="child" value={{ name: "Child" }} hideExpander={true} />
-                    </x.TreeListItem>
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
+                        <x.TreeListItem id="parent" value={{ name: "Parent" }} hideExpander={false}>
+                            <x.TreeListItem id="child" value={{ name: "Child" }} hideExpander={true} />
+                        </x.TreeListItem>
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(ref.current).not.toBeNull();
@@ -780,37 +831,41 @@ describe("render - TreeListView", () => {
             ];
 
             await render(
-                <x.TreeListView<TreeItem>
-                    ref={ref}
-                    renderItem={(item) => {
-                        renderedItems.push(item ? { id: item.id, name: item.name } : null);
-                        if (!item) {
-                            return <GtkLabel label="Loading..." />;
-                        }
-                        return <GtkLabel label={item.name} />;
-                    }}
-                >
-                    {categories.map((category) => (
-                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
-                            {category.children.map((setting) => (
-                                <x.TreeListItem
-                                    key={setting.id}
-                                    id={setting.id}
-                                    value={setting as TreeItem}
-                                    hideExpander
-                                />
-                            ))}
-                        </x.TreeListItem>
-                    ))}
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView<TreeItem>
+                        ref={ref}
+                        renderItem={(item) => {
+                            renderedItems.push(item ? { id: item.id, name: item.name } : null);
+                            if (!item) {
+                                return <GtkLabel label="Loading..." />;
+                            }
+                            return <GtkLabel label={item.name} />;
+                        }}
+                    >
+                        {categories.map((category) => (
+                            <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                                {category.children.map((setting) => (
+                                    <x.TreeListItem
+                                        key={setting.id}
+                                        id={setting.id}
+                                        value={setting as TreeItem}
+                                        hideExpander
+                                    />
+                                ))}
+                            </x.TreeListItem>
+                        ))}
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
             const row = selectionModel.getObject(0) as Gtk.TreeListRow;
 
-            renderedItems.length = 0;
             row.setExpanded(true);
+            await tick();
+            await tick();
+            renderedItems.length = 0;
+            await tick();
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(5);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual([
@@ -858,29 +913,31 @@ describe("render - TreeListView", () => {
             ];
 
             await render(
-                <x.TreeListView<TreeItem>
-                    ref={ref}
-                    renderItem={(item) => {
-                        renderedItems.push(item ? { id: item.id, name: item.name } : null);
-                        if (!item) {
-                            return <GtkLabel label="Loading..." />;
-                        }
-                        return <GtkLabel label={item.name} />;
-                    }}
-                >
-                    {categories.map((category) => (
-                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
-                            {category.children.map((setting) => (
-                                <x.TreeListItem
-                                    key={setting.id}
-                                    id={setting.id}
-                                    value={setting as TreeItem}
-                                    hideExpander
-                                />
-                            ))}
-                        </x.TreeListItem>
-                    ))}
-                </x.TreeListView>,
+                <ScrollWrapper>
+                    <x.TreeListView<TreeItem>
+                        ref={ref}
+                        renderItem={(item) => {
+                            renderedItems.push(item ? { id: item.id, name: item.name } : null);
+                            if (!item) {
+                                return <GtkLabel label="Loading..." />;
+                            }
+                            return <GtkLabel label={item.name} />;
+                        }}
+                    >
+                        {categories.map((category) => (
+                            <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                                {category.children.map((setting) => (
+                                    <x.TreeListItem
+                                        key={setting.id}
+                                        id={setting.id}
+                                        value={setting as TreeItem}
+                                        hideExpander
+                                    />
+                                ))}
+                            </x.TreeListItem>
+                        ))}
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             const buttons = screen.queryAllByRole(Gtk.AccessibleRole.BUTTON);
@@ -980,40 +1037,44 @@ describe("render - TreeListView", () => {
             ];
 
             await render(
-                <x.TreeListView<TreeItem>
-                    ref={ref}
-                    renderItem={(item) => {
-                        renderedItems.push(item ? { id: item.id, name: item.name } : null);
-                        if (!item) {
-                            return <GtkLabel label="Loading..." />;
-                        }
-                        return <GtkLabel label={item.name} />;
-                    }}
-                >
-                    {categories.map((category) => (
-                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
-                            {category.children.map((setting) => (
-                                <x.TreeListItem
-                                    key={setting.id}
-                                    id={setting.id}
-                                    value={setting as TreeItem}
-                                    hideExpander
-                                />
-                            ))}
-                        </x.TreeListItem>
-                    ))}
-                </x.TreeListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <x.TreeListView<TreeItem>
+                        ref={ref}
+                        renderItem={(item) => {
+                            renderedItems.push(item ? { id: item.id, name: item.name } : null);
+                            if (!item) {
+                                return <GtkLabel label="Loading..." />;
+                            }
+                            return <GtkLabel label={item.name} />;
+                        }}
+                    >
+                        {categories.map((category) => (
+                            <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                                {category.children.map((setting) => (
+                                    <x.TreeListItem
+                                        key={setting.id}
+                                        id={setting.id}
+                                        value={setting as TreeItem}
+                                        hideExpander
+                                    />
+                                ))}
+                            </x.TreeListItem>
+                        ))}
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(5);
 
             const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
 
-            const expandAndVerify = (categoryIndex: number, expectedChildren: string[]) => {
-                renderedItems.length = 0;
+            const expandAndVerify = async (categoryIndex: number, expectedChildren: string[]) => {
                 const row = selectionModel.getObject(categoryIndex) as Gtk.TreeListRow;
                 row.setExpanded(true);
+                await tick();
+                await tick();
+                renderedItems.length = 0;
+                await tick();
 
                 const nullItems = renderedItems.filter((item) => item === null);
                 expect(nullItems.length).toBe(0);
@@ -1024,25 +1085,26 @@ describe("render - TreeListView", () => {
                 }
             };
 
-            const collapseRow = (categoryIndex: number) => {
+            const collapseRow = async (categoryIndex: number) => {
                 const row = selectionModel.getObject(categoryIndex) as Gtk.TreeListRow;
                 row.setExpanded(false);
+                await tick();
             };
 
-            expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
+            await expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
 
-            collapseRow(0);
+            await collapseRow(0);
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(5);
 
-            expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
+            await expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
 
-            collapseRow(0);
+            await collapseRow(0);
 
-            expandAndVerify(1, ["notifications-enabled", "sounds", "do-not-disturb", "badge-count"]);
+            await expandAndVerify(1, ["notifications-enabled", "sounds", "do-not-disturb", "badge-count"]);
 
-            collapseRow(1);
+            await collapseRow(1);
 
-            expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
+            await expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
 
             const finalNullItems = renderedItems.filter((item) => item === null);
             expect(finalNullItems.length).toBe(0);
@@ -1091,29 +1153,31 @@ describe("render - TreeListView", () => {
             ];
 
             await render(
-                <x.TreeListView<TreeItem>
-                    ref={ref}
-                    estimatedItemHeight={48}
-                    renderItem={(item) => {
-                        if (!item) {
-                            return <GtkLabel label="Loading..." />;
-                        }
-                        return <GtkLabel label={item.name} />;
-                    }}
-                >
-                    {categories.map((category) => (
-                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
-                            {category.children.map((setting) => (
-                                <x.TreeListItem
-                                    key={setting.id}
-                                    id={setting.id}
-                                    value={setting as TreeItem}
-                                    hideExpander
-                                />
-                            ))}
-                        </x.TreeListItem>
-                    ))}
-                </x.TreeListView>,
+                <ScrollWrapper>
+                    <x.TreeListView<TreeItem>
+                        ref={ref}
+                        estimatedItemHeight={48}
+                        renderItem={(item) => {
+                            if (!item) {
+                                return <GtkLabel label="Loading..." />;
+                            }
+                            return <GtkLabel label={item.name} />;
+                        }}
+                    >
+                        {categories.map((category) => (
+                            <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                                {category.children.map((setting) => (
+                                    <x.TreeListItem
+                                        key={setting.id}
+                                        id={setting.id}
+                                        value={setting as TreeItem}
+                                        hideExpander
+                                    />
+                                ))}
+                            </x.TreeListItem>
+                        ))}
+                    </x.TreeListView>
+                </ScrollWrapper>,
             );
 
             const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;

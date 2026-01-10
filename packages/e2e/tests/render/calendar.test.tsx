@@ -9,7 +9,7 @@ describe("render - Calendar", () => {
         it("creates Calendar widget without marks", async () => {
             const ref = createRef<Gtk.Calendar>();
 
-            await render(<GtkCalendar ref={ref} />, { wrapper: false });
+            await render(<GtkCalendar ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -23,7 +23,6 @@ describe("render - Calendar", () => {
                     <x.CalendarMark day={20} />
                     <x.CalendarMark day={25} />
                 </GtkCalendar>,
-                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -44,11 +43,11 @@ describe("render - Calendar", () => {
                 );
             }
 
-            await render(<App day={15} />, { wrapper: false });
+            await render(<App day={15} />);
             expect(ref.current?.getDayIsMarked(15)).toBe(true);
             expect(ref.current?.getDayIsMarked(20)).toBe(false);
 
-            await render(<App day={20} />, { wrapper: false });
+            await render(<App day={20} />);
             expect(ref.current?.getDayIsMarked(15)).toBe(false);
             expect(ref.current?.getDayIsMarked(20)).toBe(true);
         });
@@ -65,11 +64,11 @@ describe("render - Calendar", () => {
                 );
             }
 
-            await render(<App showExtra={true} />, { wrapper: false });
+            await render(<App showExtra={true} />);
             expect(ref.current?.getDayIsMarked(15)).toBe(true);
             expect(ref.current?.getDayIsMarked(20)).toBe(true);
 
-            await render(<App showExtra={false} />, { wrapper: false });
+            await render(<App showExtra={false} />);
             expect(ref.current?.getDayIsMarked(15)).toBe(true);
             expect(ref.current?.getDayIsMarked(20)).toBe(false);
         });
@@ -87,12 +86,12 @@ describe("render - Calendar", () => {
                 );
             }
 
-            await render(<App showMid={false} />, { wrapper: false });
+            await render(<App showMid={false} />);
             expect(ref.current?.getDayIsMarked(10)).toBe(true);
             expect(ref.current?.getDayIsMarked(15)).toBe(false);
             expect(ref.current?.getDayIsMarked(20)).toBe(true);
 
-            await render(<App showMid={true} />, { wrapper: false });
+            await render(<App showMid={true} />);
             expect(ref.current?.getDayIsMarked(10)).toBe(true);
             expect(ref.current?.getDayIsMarked(15)).toBe(true);
             expect(ref.current?.getDayIsMarked(20)).toBe(true);

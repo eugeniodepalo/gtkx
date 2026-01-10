@@ -14,7 +14,6 @@ describe("render - ActionRow", () => {
                 <GtkListBox>
                     <AdwActionRow ref={ref} title="Test Row" />
                 </GtkListBox>,
-                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -36,7 +35,6 @@ describe("render - ActionRow", () => {
                         </x.ActionRowSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
-                { wrapper: false },
             );
 
             expect(rowRef.current).not.toBeNull();
@@ -63,7 +61,7 @@ describe("render - ActionRow", () => {
                 );
             }
 
-            const { rerender } = await render(<App count={3} />, { wrapper: false });
+            const { rerender } = await render(<App count={3} />);
 
             expect(labelRefs[0]?.current).not.toBeNull();
             expect(labelRefs[1]?.current).not.toBeNull();

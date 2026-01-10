@@ -33,7 +33,6 @@ describe("render - FixedChild", () => {
                         <GtkLabel ref={labelRef} label="Positioned" />
                     </x.FixedChild>
                 </GtkFixed>,
-                { wrapper: false },
             );
 
             if (!fixedRef.current || !labelRef.current) {
@@ -55,7 +54,6 @@ describe("render - FixedChild", () => {
                         <GtkLabel ref={labelRef} label="Default" />
                     </x.FixedChild>
                 </GtkFixed>,
-                { wrapper: false },
             );
 
             if (!fixedRef.current || !labelRef.current) {
@@ -81,7 +79,7 @@ describe("render - FixedChild", () => {
                 );
             }
 
-            await render(<App posX={0} posY={0} />, { wrapper: false });
+            await render(<App posX={0} posY={0} />);
 
             if (!fixedRef.current || !labelRef.current) {
                 throw new Error("Refs should be set after render");
@@ -91,7 +89,7 @@ describe("render - FixedChild", () => {
             expect(pos1.x).toBe(0);
             expect(pos1.y).toBe(0);
 
-            await render(<App posX={200} posY={150} />, { wrapper: false });
+            await render(<App posX={200} posY={150} />);
 
             const pos2 = getChildPosition(fixedRef.current, labelRef.current);
             expect(pos2.x).toBe(200);
@@ -112,7 +110,6 @@ describe("render - FixedChild", () => {
                         <GtkLabel ref={label2Ref} label="Second" />
                     </x.FixedChild>
                 </GtkFixed>,
-                { wrapper: false },
             );
 
             if (!fixedRef.current || !label1Ref.current || !label2Ref.current) {
@@ -144,10 +141,10 @@ describe("render - FixedChild", () => {
                 );
             }
 
-            await render(<App showChild={true} />, { wrapper: false });
+            await render(<App showChild={true} />);
             expect(fixedRef.current?.getFirstChild()).not.toBeNull();
 
-            await render(<App showChild={false} />, { wrapper: false });
+            await render(<App showChild={false} />);
             expect(fixedRef.current?.getFirstChild()).toBeNull();
         });
     });

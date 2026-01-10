@@ -2,7 +2,7 @@ import { batch, isObjectEqual } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
-import { scheduleAfterCommit } from "../../scheduler.js";
+import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
 import { signalStore } from "../internal/signal-store.js";
 import { VirtualNode } from "../virtual.js";
 
@@ -124,8 +124,10 @@ export class Menu extends VirtualNode<MenuProps> {
     }
 
     private getPosition(): number {
-        const parent = this.getParent();
+        return this.findPositionIn(this.getParent());
+    }
 
+    private findPositionIn(parent: Gio.Menu): number {
         for (let i = 0; i < parent.getNItems(); i++) {
             if (this.type === "item") {
                 const actionName = parent.getItemAttributeValue(i, "action")?.getString();
@@ -142,7 +144,7 @@ export class Menu extends VirtualNode<MenuProps> {
             }
         }
 
-        return 0;
+        return -1;
     }
 
     private setParent(parent: Gio.Menu): void {
@@ -164,11 +166,16 @@ export class Menu extends VirtualNode<MenuProps> {
     public removeFromParent(): void {
         if (!this.parent) return;
 
-        const position = this.getPosition();
         const parent = this.parent;
         this.parent = undefined;
 
-        batch(() => parent.remove(position));
+        scheduleAfterCommit(() => {
+            const position = this.findPositionIn(parent);
+
+            if (position >= 0) {
+                parent.remove(position);
+            }
+        }, CommitPriority.HIGH);
     }
 
     public insertInParentBefore(before: Menu): void {
@@ -313,27 +320,27 @@ export class Menu extends VirtualNode<MenuProps> {
         }
 
         if (!oldProps || oldProps.label !== newProps.label) {
-            const position = this.getPosition();
             const parent = this.parent;
 
-            this.removeFromParent();
+            batch(() => {
+                const position = this.findPositionIn(parent);
 
-            if (this.type === "section") {
-                parent.insertSection(position, this.menu, newProps.label);
-            } else if (this.type === "submenu") {
-                parent.insertSubmenu(position, this.menu, newProps.label);
-            }
+                if (position >= 0) {
+                    parent.remove(position);
+
+                    if (this.type === "section") {
+                        parent.insertSection(position, this.menu, this.props.label);
+                    } else if (this.type === "submenu") {
+                        parent.insertSubmenu(position, this.menu, this.props.label);
+                    }
+                }
+            });
         }
     }
 
     public override unmount(): void {
         this.removeAction();
-
-        if (this.parent) {
-            this.removeFromParent();
-            this.parent = undefined;
-        }
-
+        this.removeFromParent();
         super.unmount();
     }
 }

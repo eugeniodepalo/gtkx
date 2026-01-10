@@ -16,7 +16,6 @@ describe("render - PackChild", () => {
                         <GtkLabel ref={startRef} label="Start" />
                     </x.PackStart>
                 </GtkHeaderBar>,
-                { wrapper: false },
             );
 
             expect(startRef.current).not.toBeNull();
@@ -33,7 +32,6 @@ describe("render - PackChild", () => {
                         <GtkLabel ref={endRef} label="End" />
                     </x.PackEnd>
                 </GtkHeaderBar>,
-                { wrapper: false },
             );
 
             expect(endRef.current).not.toBeNull();
@@ -54,7 +52,6 @@ describe("render - PackChild", () => {
                         <GtkLabel ref={endRef} label="End" />
                     </x.PackEnd>
                 </GtkHeaderBar>,
-                { wrapper: false },
             );
 
             expect(startRef.current).not.toBeNull();
@@ -81,12 +78,12 @@ describe("render - PackChild", () => {
                 );
             }
 
-            await render(<App showStart={true} />, { wrapper: false });
+            await render(<App showStart={true} />);
 
             expect(startRef.current).not.toBeNull();
             expect(alwaysRef.current).not.toBeNull();
 
-            await render(<App showStart={false} />, { wrapper: false });
+            await render(<App showStart={false} />);
 
             expect(startRef.current).toBeNull();
             expect(alwaysRef.current).not.toBeNull();
@@ -104,7 +101,6 @@ describe("render - PackChild", () => {
                         <GtkLabel ref={secondRef} label="Second" />
                     </x.PackStart>
                 </GtkHeaderBar>,
-                { wrapper: false },
             );
 
             expect(firstRef.current).not.toBeNull();
@@ -123,7 +119,6 @@ describe("render - PackChild", () => {
                         <GtkLabel ref={secondRef} label="Second" />
                     </x.PackEnd>
                 </GtkHeaderBar>,
-                { wrapper: false },
             );
 
             expect(firstRef.current).not.toBeNull();
@@ -146,12 +141,12 @@ describe("render - PackChild", () => {
                 );
             }
 
-            await render(<App showSecond={true} />, { wrapper: false });
+            await render(<App showSecond={true} />);
 
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).not.toBeNull();
 
-            await render(<App showSecond={false} />, { wrapper: false });
+            await render(<App showSecond={false} />);
 
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).toBeNull();

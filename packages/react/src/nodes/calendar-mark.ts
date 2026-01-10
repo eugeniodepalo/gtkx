@@ -10,34 +10,32 @@ export class CalendarMarkNode extends VirtualNode<CalendarMarkProps> {
     public static override priority = 1;
 
     private calendar?: Gtk.Calendar;
+    private onRebuild?: () => void;
 
     public static override matches(type: string): boolean {
         return type === "CalendarMark";
     }
 
-    public setCalendar(calendar: Gtk.Calendar): void {
+    public setCalendar(calendar: Gtk.Calendar, onRebuild: () => void): void {
         this.calendar = calendar;
+        this.onRebuild = onRebuild;
     }
 
     public addMark(): void {
         this.calendar?.markDay(this.props.day);
     }
 
-    public removeMark(): void {
-        this.calendar?.unmarkDay(this.props.day);
-    }
-
     public override updateProps(oldProps: CalendarMarkProps | null, newProps: CalendarMarkProps): void {
         super.updateProps(oldProps, newProps);
 
         if (oldProps && this.calendar && oldProps.day !== newProps.day) {
-            this.calendar.unmarkDay(oldProps.day);
-            this.calendar.markDay(newProps.day);
+            this.onRebuild?.();
         }
     }
 
     public override unmount(): void {
-        this.removeMark();
+        this.calendar = undefined;
+        this.onRebuild = undefined;
         super.unmount();
     }
 }

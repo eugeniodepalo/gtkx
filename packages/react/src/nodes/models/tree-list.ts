@@ -21,19 +21,34 @@ export class TreeList extends VirtualNode<TreeListProps> {
     private selectionModel: Gtk.SingleSelection | Gtk.MultiSelection;
     private handleSelectionChange?: () => void;
 
-    constructor(autoexpand = false, selectionMode?: Gtk.SelectionMode) {
+    constructor(props: TreeListProps = {}) {
         super("", {}, undefined);
         this.store = new TreeStore();
 
         this.treeListModel = new Gtk.TreeListModel(
             this.store.getRootModel(),
             false,
-            autoexpand,
+            props.autoexpand ?? false,
             (item: GObject.GObject) => this.createChildModel(item),
         );
 
-        this.selectionModel = this.createSelectionModel(selectionMode);
+        this.selectionModel = this.createSelectionModel(props.selectionMode);
         this.selectionModel.setModel(this.treeListModel);
+        this.initSelectionHandler(props.onSelectionChanged);
+        this.setSelection(props.selected);
+    }
+
+    private initSelectionHandler(onSelectionChanged?: (ids: string[]) => void): void {
+        if (!onSelectionChanged) {
+            signalStore.set(this, this.selectionModel, "selection-changed", null);
+            return;
+        }
+
+        this.handleSelectionChange = () => {
+            onSelectionChanged(this.getSelection());
+        };
+
+        signalStore.set(this, this.selectionModel, "selection-changed", this.handleSelectionChange);
     }
 
     private createChildModel(item: GObject.GObject): Gio.ListModel | null {
@@ -124,36 +139,24 @@ export class TreeList extends VirtualNode<TreeListProps> {
     public updateProps(oldProps: TreeListProps | null, newProps: TreeListProps): void {
         super.updateProps(oldProps, newProps);
 
-        if (!oldProps || oldProps.autoexpand !== newProps.autoexpand) {
+        if (oldProps && oldProps.autoexpand !== newProps.autoexpand) {
             this.treeListModel.setAutoexpand(newProps.autoexpand ?? false);
         }
 
-        if (!oldProps || oldProps.selectionMode !== newProps.selectionMode) {
+        if (oldProps && oldProps.selectionMode !== newProps.selectionMode) {
             signalStore.set(this, this.selectionModel, "selection-changed", null);
             this.selectionModel = this.createSelectionModel(newProps.selectionMode);
             this.selectionModel.setModel(this.treeListModel);
+            this.initSelectionHandler(newProps.onSelectionChanged);
+            this.setSelection(newProps.selected);
+            return;
         }
 
-        if (
-            !oldProps ||
-            oldProps.onSelectionChanged !== newProps.onSelectionChanged ||
-            oldProps.selectionMode !== newProps.selectionMode
-        ) {
-            const onSelectionChanged = newProps.onSelectionChanged;
-
-            this.handleSelectionChange = () => {
-                onSelectionChanged?.(this.getSelection());
-            };
-
-            signalStore.set(
-                this,
-                this.selectionModel,
-                "selection-changed",
-                newProps.onSelectionChanged ? this.handleSelectionChange : null,
-            );
+        if (oldProps && oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
+            this.initSelectionHandler(newProps.onSelectionChanged);
         }
 
-        if (!oldProps || oldProps.selected !== newProps.selected || oldProps.selectionMode !== newProps.selectionMode) {
+        if (oldProps && oldProps.selected !== newProps.selected) {
             this.setSelection(newProps.selected);
         }
     }

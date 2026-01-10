@@ -8,14 +8,8 @@ import { TreeList, type TreeListProps } from "./models/tree-list.js";
 import { TreeListItemNode } from "./tree-list-item.js";
 import { WidgetNode } from "./widget.js";
 
-const PROP_NAMES = [
-    "renderItem",
-    "estimatedItemHeight",
-    "autoexpand",
-    "selectionMode",
-    "selected",
-    "onSelectionChanged",
-];
+const RENDERER_PROP_NAMES = ["renderItem", "estimatedItemHeight"];
+const PROP_NAMES = [...RENDERER_PROP_NAMES, "autoexpand", "selectionMode", "selected", "onSelectionChanged"];
 
 type TreeListViewProps = TreeListProps & {
     renderItem?: TreeRenderItemFn<unknown>;
@@ -39,7 +33,12 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
     constructor(typeName: string, props: TreeListViewProps, container?: Gtk.ListView, rootContainer?: Container) {
         const listView = container ?? new Gtk.ListView();
         super(typeName, props, listView, rootContainer);
-        this.treeList = new TreeList(props.autoexpand, props.selectionMode);
+        this.treeList = new TreeList({
+            autoexpand: props.autoexpand,
+            selectionMode: props.selectionMode,
+            selected: props.selected,
+            onSelectionChanged: props.onSelectionChanged,
+        });
         this.itemRenderer = new TreeListItemRenderer();
         this.itemRenderer.setStore(this.treeList.getStore());
         this.container.setFactory(this.itemRenderer.getFactory());
@@ -52,7 +51,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
 
     public override appendChild(child: Node): void {
         if (!(child instanceof TreeListItemNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'TreeListView': expected TreeListItem`);
+            throw new Error(`Cannot append '${child.typeName}' to 'TreeListView': expected x.TreeListItem`);
         }
 
         this.treeList.appendChild(child);
@@ -60,7 +59,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
 
     public override insertBefore(child: Node, before: Node): void {
         if (!(child instanceof TreeListItemNode) || !(before instanceof TreeListItemNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' to 'TreeListView': expected TreeListItem`);
+            throw new Error(`Cannot insert '${child.typeName}' into 'TreeListView': expected x.TreeListItem`);
         }
 
         this.treeList.insertBefore(child, before);
@@ -68,7 +67,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
 
     public override removeChild(child: Node): void {
         if (!(child instanceof TreeListItemNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'TreeListView': expected TreeListItem`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'TreeListView': expected x.TreeListItem`);
         }
 
         this.treeList.removeChild(child);
@@ -84,10 +83,10 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
         }
 
         this.treeList.updateProps(
-            filterProps(oldProps ?? {}, ["renderItem", "estimatedItemHeight"]),
-            filterProps(newProps, ["renderItem", "estimatedItemHeight"]),
+            oldProps ? filterProps(oldProps, RENDERER_PROP_NAMES) : null,
+            filterProps(newProps, RENDERER_PROP_NAMES),
         );
-        super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
+        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 }
 

@@ -24,7 +24,7 @@ describe("render - Notebook", () => {
         it("creates Notebook widget", async () => {
             const ref = createRef<Gtk.Notebook>();
 
-            await render(<GtkNotebook ref={ref} />, { wrapper: false });
+            await render(<GtkNotebook ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -38,7 +38,6 @@ describe("render - Notebook", () => {
                 <GtkNotebook ref={notebookRef}>
                     <x.NotebookPage label="Tab 1">Page 1 Content</x.NotebookPage>
                 </GtkNotebook>,
-                { wrapper: false },
             );
 
             expect(notebookRef.current?.getNPages()).toBe(1);
@@ -63,9 +62,9 @@ describe("render - Notebook", () => {
                 );
             }
 
-            await render(<App pages={["First", "Last"]} />, { wrapper: false });
+            await render(<App pages={["First", "Last"]} />);
 
-            await render(<App pages={["First", "Middle", "Last"]} />, { wrapper: false });
+            await render(<App pages={["First", "Middle", "Last"]} />);
 
             const labels = getPageLabels(notebookRef.current as Gtk.Notebook);
             expect(labels).toEqual(["First", "Middle", "Last"]);
@@ -86,9 +85,9 @@ describe("render - Notebook", () => {
                 );
             }
 
-            await render(<App pages={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App pages={["A", "B", "C"]} />);
 
-            await render(<App pages={["A", "C"]} />, { wrapper: false });
+            await render(<App pages={["A", "C"]} />);
 
             const labels = getPageLabels(notebookRef.current as Gtk.Notebook);
             expect(labels).toEqual(["A", "C"]);
@@ -105,11 +104,11 @@ describe("render - Notebook", () => {
                 );
             }
 
-            await render(<App label="Initial" />, { wrapper: false });
+            await render(<App label="Initial" />);
 
             expect(getPageLabels(notebookRef.current as Gtk.Notebook)).toEqual(["Initial"]);
 
-            await render(<App label="Updated" />, { wrapper: false });
+            await render(<App label="Updated" />);
 
             expect(getPageLabels(notebookRef.current as Gtk.Notebook)).toEqual(["Updated"]);
         });

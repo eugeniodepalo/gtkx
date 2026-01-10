@@ -9,7 +9,7 @@ describe("render - Scale", () => {
         it("creates Scale widget without marks", async () => {
             const ref = createRef<Gtk.Scale>();
 
-            await render(<GtkScale ref={ref} orientation={Gtk.Orientation.HORIZONTAL} />, { wrapper: false });
+            await render(<GtkScale ref={ref} orientation={Gtk.Orientation.HORIZONTAL} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -23,7 +23,6 @@ describe("render - Scale", () => {
                     <x.ScaleMark value={50} label="Mid" />
                     <x.ScaleMark value={100} label="Max" />
                 </GtkScale>,
-                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -37,7 +36,6 @@ describe("render - Scale", () => {
                     <x.ScaleMark value={0} position={Gtk.PositionType.TOP} label="Top" />
                     <x.ScaleMark value={100} position={Gtk.PositionType.BOTTOM} label="Bottom" />
                 </GtkScale>,
-                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -54,7 +52,6 @@ describe("render - Scale", () => {
                     <x.ScaleMark value={75} />
                     <x.ScaleMark value={100} />
                 </GtkScale>,
-                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -72,10 +69,10 @@ describe("render - Scale", () => {
                 );
             }
 
-            await render(<App label="Start" />, { wrapper: false });
+            await render(<App label="Start" />);
             expect(ref.current).not.toBeNull();
 
-            await render(<App label="Begin" />, { wrapper: false });
+            await render(<App label="Begin" />);
             expect(ref.current).not.toBeNull();
         });
 
@@ -92,10 +89,10 @@ describe("render - Scale", () => {
                 );
             }
 
-            await render(<App showExtra={true} />, { wrapper: false });
+            await render(<App showExtra={true} />);
             expect(ref.current).not.toBeNull();
 
-            await render(<App showExtra={false} />, { wrapper: false });
+            await render(<App showExtra={false} />);
             expect(ref.current).not.toBeNull();
         });
 
@@ -112,10 +109,10 @@ describe("render - Scale", () => {
                 );
             }
 
-            await render(<App showMid={false} />, { wrapper: false });
+            await render(<App showMid={false} />);
             expect(ref.current).not.toBeNull();
 
-            await render(<App showMid={true} />, { wrapper: false });
+            await render(<App showMid={true} />);
             expect(ref.current).not.toBeNull();
         });
     });

@@ -9,7 +9,7 @@ describe("render - ToggleGroup", () => {
         it("creates ToggleGroup widget without toggles", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
-            await render(<AdwToggleGroup ref={ref} />, { wrapper: false });
+            await render(<AdwToggleGroup ref={ref} />);
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getNToggles()).toBe(0);
@@ -23,7 +23,6 @@ describe("render - ToggleGroup", () => {
                     <x.Toggle id="list" iconName="view-list-symbolic" />
                     <x.Toggle id="grid" iconName="view-grid-symbolic" />
                 </AdwToggleGroup>,
-                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -45,7 +44,6 @@ describe("render - ToggleGroup", () => {
                 <AdwToggleGroup ref={ref}>
                     <x.Toggle id="test" label="Test Label" />
                 </AdwToggleGroup>,
-                { wrapper: false },
             );
 
             const toggle = ref.current?.getToggleByName("test");
@@ -60,7 +58,6 @@ describe("render - ToggleGroup", () => {
                     <x.Toggle id="enabled" label="Enabled" />
                     <x.Toggle id="disabled" label="Disabled" enabled={false} />
                 </AdwToggleGroup>,
-                { wrapper: false },
             );
 
             expect(ref.current?.getToggleByName("enabled")?.getEnabled()).toBe(true);
@@ -78,10 +75,10 @@ describe("render - ToggleGroup", () => {
                 );
             }
 
-            await render(<App label="Initial" />, { wrapper: false });
+            await render(<App label="Initial" />);
             expect(ref.current?.getToggleByName("test")?.getLabel()).toBe("Initial");
 
-            await render(<App label="Updated" />, { wrapper: false });
+            await render(<App label="Updated" />);
             expect(ref.current?.getToggleByName("test")?.getLabel()).toBe("Updated");
         });
 
@@ -97,12 +94,12 @@ describe("render - ToggleGroup", () => {
                 );
             }
 
-            await render(<App showExtra={true} />, { wrapper: false });
+            await render(<App showExtra={true} />);
             expect(ref.current?.getNToggles()).toBe(2);
             expect(ref.current?.getToggleByName("always")).not.toBeNull();
             expect(ref.current?.getToggleByName("extra")).not.toBeNull();
 
-            await render(<App showExtra={false} />, { wrapper: false });
+            await render(<App showExtra={false} />);
             expect(ref.current?.getNToggles()).toBe(1);
             expect(ref.current?.getToggleByName("always")).not.toBeNull();
             expect(ref.current?.getToggleByName("extra")).toBeNull();
@@ -121,10 +118,10 @@ describe("render - ToggleGroup", () => {
                 );
             }
 
-            await render(<App showMid={false} />, { wrapper: false });
+            await render(<App showMid={false} />);
             expect(ref.current?.getNToggles()).toBe(2);
 
-            await render(<App showMid={true} />, { wrapper: false });
+            await render(<App showMid={true} />);
             expect(ref.current?.getNToggles()).toBe(3);
             expect(ref.current?.getToggleByName("middle")).not.toBeNull();
         });

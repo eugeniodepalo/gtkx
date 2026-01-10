@@ -1,8 +1,15 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkGridView, GtkLabel, GtkListView, x } from "@gtkx/react";
+import { GtkGridView, GtkLabel, GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
 import { cleanup, render, userEvent } from "@gtkx/testing";
+import type { ReactNode } from "react";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const ScrollWrapper = ({ children }: { children: ReactNode }) => (
+    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
+        {children}
+    </GtkScrolledWindow>
+);
 
 const getModelItemCount = (listView: Gtk.ListView): number => {
     const model = listView.getModel();
@@ -31,10 +38,11 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={ref} renderItem={() => "Item"}>
-                    <x.ListItem id="1" value={{ name: "First" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <x.ListItem id="1" value={{ name: "First" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
 
             expect(ref.current).not.toBeNull();
@@ -46,11 +54,12 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={ref} renderItem={() => "Item"}>
-                    <x.ListItem id="1" value={{ name: "First" }} />
-                    <x.ListItem id="2" value={{ name: "Second" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <x.ListItem id="1" value={{ name: "First" }} />
+                        <x.ListItem id="2" value={{ name: "Second" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -61,11 +70,13 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((item) => (
-                            <x.ListItem key={item.id} id={item.id} value={item} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((item) => (
+                                <x.ListItem key={item.id} id={item.id} value={item} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
@@ -76,7 +87,6 @@ describe("render - ListView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
-                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -89,7 +99,6 @@ describe("render - ListView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
-                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
@@ -100,11 +109,13 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((item) => (
-                            <x.ListItem key={item.id} id={item.id} value={item} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((item) => (
+                                <x.ListItem key={item.id} id={item.id} value={item} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
@@ -116,7 +127,6 @@ describe("render - ListView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
-                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
@@ -128,7 +138,6 @@ describe("render - ListView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
-                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -139,15 +148,17 @@ describe("render - ListView", () => {
 
             function App({ itemName }: { itemName: string }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        <x.ListItem id="1" value={{ name: itemName }} />
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            <x.ListItem id="1" value={{ name: itemName }} />
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App itemName="Initial" />, { wrapper: false });
+            await render(<App itemName="Initial" />);
 
-            await render(<App itemName="Updated" />, { wrapper: false });
+            await render(<App itemName="Updated" />);
         });
     });
 
@@ -157,10 +168,11 @@ describe("render - ListView", () => {
             const renderItem = vi.fn((item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />);
 
             await render(
-                <GtkListView ref={ref} renderItem={renderItem}>
-                    <x.ListItem id="1" value={{ name: "Test Item" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView ref={ref} renderItem={renderItem}>
+                        <x.ListItem id="1" value={{ name: "Test Item" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
         });
 
@@ -169,20 +181,22 @@ describe("render - ListView", () => {
 
             function App({ prefix }: { prefix: string }) {
                 return (
-                    <GtkListView
-                        ref={ref}
-                        renderItem={(item: { name: string } | null) => (
-                            <GtkLabel label={`${prefix}: ${item?.name ?? ""}`} />
-                        )}
-                    >
-                        <x.ListItem id="1" value={{ name: "Test" }} />
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => (
+                                <GtkLabel label={`${prefix}: ${item?.name ?? ""}`} />
+                            )}
+                        >
+                            <x.ListItem id="1" value={{ name: "Test" }} />
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App prefix="First" />, { wrapper: false });
+            await render(<App prefix="First" />);
 
-            await render(<App prefix="Second" />, { wrapper: false });
+            await render(<App prefix="Second" />);
         });
     });
 
@@ -191,11 +205,12 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={ref} renderItem={() => "Item"} selected={["2"]}>
-                    <x.ListItem id="1" value={{ name: "First" }} />
-                    <x.ListItem id="2" value={{ name: "Second" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView ref={ref} renderItem={() => "Item"} selected={["2"]}>
+                        <x.ListItem id="1" value={{ name: "First" }} />
+                        <x.ListItem id="2" value={{ name: "Second" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
         });
 
@@ -204,11 +219,12 @@ describe("render - ListView", () => {
             const onSelectionChanged = vi.fn();
 
             await render(
-                <GtkListView ref={ref} renderItem={() => "Item"} onSelectionChanged={onSelectionChanged}>
-                    <x.ListItem id="1" value={{ name: "First" }} />
-                    <x.ListItem id="2" value={{ name: "Second" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView ref={ref} renderItem={() => "Item"} onSelectionChanged={onSelectionChanged}>
+                        <x.ListItem id="1" value={{ name: "First" }} />
+                        <x.ListItem id="2" value={{ name: "Second" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
 
             await userEvent.selectOptions(ref.current as Gtk.ListView, 0);
@@ -221,15 +237,17 @@ describe("render - ListView", () => {
 
             function App({ selected }: { selected: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"} selected={selected}>
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"} selected={selected}>
+                            <x.ListItem id="1" value={{ name: "First" }} />
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App selected={["1"]} />, { wrapper: false });
+            await render(<App selected={["1"]} />);
 
-            await render(<App selected={[]} />, { wrapper: false });
+            await render(<App selected={[]} />);
         });
     });
 
@@ -238,11 +256,12 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={ref} renderItem={() => "Item"} selectionMode={Gtk.SelectionMode.MULTIPLE}>
-                    <x.ListItem id="1" value={{ name: "First" }} />
-                    <x.ListItem id="2" value={{ name: "Second" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView ref={ref} renderItem={() => "Item"} selectionMode={Gtk.SelectionMode.MULTIPLE}>
+                        <x.ListItem id="1" value={{ name: "First" }} />
+                        <x.ListItem id="2" value={{ name: "Second" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
         });
 
@@ -250,17 +269,18 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView
-                    ref={ref}
-                    renderItem={() => "Item"}
-                    selectionMode={Gtk.SelectionMode.MULTIPLE}
-                    selected={["1", "3"]}
-                >
-                    <x.ListItem id="1" value={{ name: "First" }} />
-                    <x.ListItem id="2" value={{ name: "Second" }} />
-                    <x.ListItem id="3" value={{ name: "Third" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={() => "Item"}
+                        selectionMode={Gtk.SelectionMode.MULTIPLE}
+                        selected={["1", "3"]}
+                    >
+                        <x.ListItem id="1" value={{ name: "First" }} />
+                        <x.ListItem id="2" value={{ name: "Second" }} />
+                        <x.ListItem id="3" value={{ name: "Third" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
         });
 
@@ -269,16 +289,17 @@ describe("render - ListView", () => {
             const onSelectionChanged = vi.fn();
 
             await render(
-                <GtkListView
-                    ref={ref}
-                    renderItem={() => "Item"}
-                    selectionMode={Gtk.SelectionMode.MULTIPLE}
-                    onSelectionChanged={onSelectionChanged}
-                >
-                    <x.ListItem id="1" value={{ name: "First" }} />
-                    <x.ListItem id="2" value={{ name: "Second" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={() => "Item"}
+                        selectionMode={Gtk.SelectionMode.MULTIPLE}
+                        onSelectionChanged={onSelectionChanged}
+                    >
+                        <x.ListItem id="1" value={{ name: "First" }} />
+                        <x.ListItem id="2" value={{ name: "Second" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
 
             await userEvent.selectOptions(ref.current as Gtk.ListView, [0, 1]);
@@ -292,10 +313,11 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.GridView>();
 
             await render(
-                <GtkGridView ref={ref} renderItem={() => "Item"}>
-                    <x.ListItem id="1" value={{ name: "First" }} />
-                </GtkGridView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkGridView ref={ref} renderItem={() => "Item"}>
+                        <x.ListItem id="1" value={{ name: "First" }} />
+                    </GtkGridView>
+                </ScrollWrapper>,
             );
 
             expect(ref.current).not.toBeNull();
@@ -311,12 +333,13 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={ref} renderItem={() => "Item"}>
-                    <x.ListItem id="c" value={{ name: "C" }} />
-                    <x.ListItem id="a" value={{ name: "A" }} />
-                    <x.ListItem id="b" value={{ name: "B" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <x.ListItem id="c" value={{ name: "C" }} />
+                        <x.ListItem id="a" value={{ name: "A" }} />
+                        <x.ListItem id="b" value={{ name: "B" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
 
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["c", "a", "b"]);
@@ -327,18 +350,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D", "E"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C", "D", "E"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D", "E"]);
 
-            await render(<App items={["E", "D", "C", "B", "A"]} />, { wrapper: false });
+            await render(<App items={["E", "D", "C", "B", "A"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
@@ -347,18 +372,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C", "D"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["B", "D", "A", "C"]} />, { wrapper: false });
+            await render(<App items={["B", "D", "A", "C"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "D", "A", "C"]);
         });
 
@@ -367,18 +394,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
 
-            await render(<App items={["D", "B", "E"]} />, { wrapper: false });
+            await render(<App items={["D", "B", "E"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["D", "B", "E"]);
         });
 
@@ -387,18 +416,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["B", "C"]} />, { wrapper: false });
+            await render(<App items={["B", "C"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "C"]);
 
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
         });
 
@@ -407,18 +438,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A"]} />, { wrapper: false });
+            await render(<App items={["A"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A"]);
 
-            await render(<App items={["X", "A", "Y"]} />, { wrapper: false });
+            await render(<App items={["X", "A", "Y"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["X", "A", "Y"]);
         });
 
@@ -427,18 +460,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
-            await render(<App items={["C", "A", "B"]} />, { wrapper: false });
-            await render(<App items={["B", "C", "A"]} />, { wrapper: false });
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["C", "A", "B"]} />);
+            await render(<App items={["B", "C", "A"]} />);
+            await render(<App items={["A", "B", "C"]} />);
 
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
         });
@@ -451,18 +486,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={initialItems} />, { wrapper: false });
+            await render(<App items={initialItems} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(initialItems);
 
-            await render(<App items={reversedItems} />, { wrapper: false });
+            await render(<App items={reversedItems} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(reversedItems);
         });
 
@@ -471,18 +508,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C", "D"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["B", "C", "D", "A"]} />, { wrapper: false });
+            await render(<App items={["B", "C", "D", "A"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "C", "D", "A"]);
         });
 
@@ -491,18 +530,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C", "D"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["D", "A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["D", "A", "B", "C"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["D", "A", "B", "C"]);
         });
 
@@ -511,18 +552,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C", "D"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["A", "C", "B", "D"]} />, { wrapper: false });
+            await render(<App items={["A", "C", "B", "D"]} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "C", "B", "D"]);
         });
 
@@ -539,11 +582,13 @@ describe("render - ListView", () => {
                 });
 
                 return (
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
-                        {filteredItems.map((item) => (
-                            <x.ListItem key={item.id} id={item.id} value={item} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                            {filteredItems.map((item) => (
+                                <x.ListItem key={item.id} id={item.id} value={item} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
@@ -555,16 +600,16 @@ describe("render - ListView", () => {
                 { id: "5", active: true },
             ];
 
-            await render(<App filter="all" items={items} />, { wrapper: false });
+            await render(<App filter="all" items={items} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3", "4", "5"]);
 
-            await render(<App filter="active" items={items} />, { wrapper: false });
+            await render(<App filter="active" items={items} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "3", "5"]);
 
-            await render(<App filter="inactive" items={items} />, { wrapper: false });
+            await render(<App filter="inactive" items={items} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["2", "4"]);
 
-            await render(<App filter="all" items={items} />, { wrapper: false });
+            await render(<App filter="all" items={items} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3", "4", "5"]);
         });
 
@@ -576,19 +621,21 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: Item[] }) {
                 return (
-                    <GtkListView
-                        ref={ref}
-                        renderItem={(item: Item | null) => {
-                            if (item) {
-                                renderCalls.push({ id: item.id, name: item.name });
-                            }
-                            return <GtkLabel label={item?.name ?? ""} />;
-                        }}
-                    >
-                        {items.map((item) => (
-                            <x.ListItem key={item.id} id={item.id} value={item} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: Item | null) => {
+                                if (item) {
+                                    renderCalls.push({ id: item.id, name: item.name });
+                                }
+                                return <GtkLabel label={item?.name ?? ""} />;
+                            }}
+                        >
+                            {items.map((item) => (
+                                <x.ListItem key={item.id} id={item.id} value={item} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
@@ -598,7 +645,7 @@ describe("render - ListView", () => {
                 { id: "3", name: "Charlie" },
             ];
 
-            await render(<App items={initialItems} />, { wrapper: false });
+            await render(<App items={initialItems} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
 
             renderCalls.length = 0;
@@ -609,7 +656,7 @@ describe("render - ListView", () => {
                 { id: "3", name: "Charlie Updated" },
             ];
 
-            await render(<App items={updatedItems} />, { wrapper: false });
+            await render(<App items={updatedItems} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
         });
 
@@ -620,16 +667,18 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: Item[] }) {
                 return (
-                    <GtkListView
-                        ref={ref}
-                        renderItem={(item: Item | null) => (
-                            <GtkLabel label={`${item?.name ?? ""}: ${item?.count ?? 0}`} />
-                        )}
-                    >
-                        {items.map((item) => (
-                            <x.ListItem key={item.id} id={item.id} value={item} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: Item | null) => (
+                                <GtkLabel label={`${item?.name ?? ""}: ${item?.count ?? 0}`} />
+                            )}
+                        >
+                            {items.map((item) => (
+                                <x.ListItem key={item.id} id={item.id} value={item} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
@@ -639,7 +688,7 @@ describe("render - ListView", () => {
                 { id: "3", name: "Counter C", count: 0 },
             ];
 
-            await render(<App items={initialItems} />, { wrapper: false });
+            await render(<App items={initialItems} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
 
             const updatedItems: Item[] = [
@@ -648,7 +697,7 @@ describe("render - ListView", () => {
                 { id: "3", name: "Counter C", count: 0 },
             ];
 
-            await render(<App items={updatedItems} />, { wrapper: false });
+            await render(<App items={updatedItems} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
         });
 
@@ -659,14 +708,16 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: Item[] }) {
                 return (
-                    <GtkListView
-                        ref={ref}
-                        renderItem={(item: Item | null) => <GtkLabel label={String(item?.value ?? 0)} />}
-                    >
-                        {items.map((item) => (
-                            <x.ListItem key={item.id} id={item.id} value={item} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: Item | null) => <GtkLabel label={String(item?.value ?? 0)} />}
+                        >
+                            {items.map((item) => (
+                                <x.ListItem key={item.id} id={item.id} value={item} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
@@ -676,7 +727,7 @@ describe("render - ListView", () => {
                 { id: "3", value: 0 },
             ];
 
-            await render(<App items={baseItems} />, { wrapper: false });
+            await render(<App items={baseItems} />);
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
 
             for (let i = 1; i <= 10; i++) {
@@ -685,7 +736,7 @@ describe("render - ListView", () => {
                     { id: "2", value: i * 2 },
                     { id: "3", value: i * 3 },
                 ];
-                await render(<App items={updatedItems} />, { wrapper: false });
+                await render(<App items={updatedItems} />);
                 expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
             }
         });
@@ -701,18 +752,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkGridView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkGridView>
+                    <ScrollWrapper>
+                        <GtkGridView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkGridView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D", "E"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C", "D", "E"]} />);
             expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["A", "B", "C", "D", "E"]);
 
-            await render(<App items={["E", "D", "C", "B", "A"]} />, { wrapper: false });
+            await render(<App items={["E", "D", "C", "B", "A"]} />);
             expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
@@ -721,18 +774,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkGridView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkGridView>
+                    <ScrollWrapper>
+                        <GtkGridView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkGridView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C", "D"]} />);
             expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["B", "D", "A", "C"]} />, { wrapper: false });
+            await render(<App items={["B", "D", "A", "C"]} />);
             expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["B", "D", "A", "C"]);
         });
 
@@ -741,18 +796,20 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkGridView ref={ref} renderItem={() => "Item"}>
-                        {items.map((id) => (
-                            <x.ListItem key={id} id={id} value={{ name: id }} />
-                        ))}
-                    </GtkGridView>
+                    <ScrollWrapper>
+                        <GtkGridView ref={ref} renderItem={() => "Item"}>
+                            {items.map((id) => (
+                                <x.ListItem key={id} id={id} value={{ name: id }} />
+                            ))}
+                        </GtkGridView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
-            await render(<App items={["C", "A", "B"]} />, { wrapper: false });
-            await render(<App items={["B", "C", "A"]} />, { wrapper: false });
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["C", "A", "B"]} />);
+            await render(<App items={["B", "C", "A"]} />);
+            await render(<App items={["A", "B", "C"]} />);
 
             expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["A", "B", "C"]);
         });

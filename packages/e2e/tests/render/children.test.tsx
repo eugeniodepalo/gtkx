@@ -30,7 +30,6 @@ describe("render - children", () => {
                 <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <GtkLabel ref={labelRef} label="Child" />
                 </GtkBox>,
-                { wrapper: false },
             );
 
             expect(labelRef.current?.getParent()?.handle).toEqual(boxRef.current?.handle);
@@ -44,7 +43,6 @@ describe("render - children", () => {
                 <GtkFrame ref={frameRef}>
                     <GtkLabel ref={labelRef} label="Single Child" />
                 </GtkFrame>,
-                { wrapper: false },
             );
 
             expect(frameRef.current?.getChild()?.handle).toEqual(labelRef.current?.handle);
@@ -63,11 +61,11 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App showChild={true} />, { wrapper: false });
+            await render(<App showChild={true} />);
 
             expect(getChildWidgets(boxRef.current as Gtk.Box).length).toBe(1);
 
-            await render(<App showChild={false} />, { wrapper: false });
+            await render(<App showChild={false} />);
 
             expect(getChildWidgets(boxRef.current as Gtk.Box).length).toBe(0);
         });
@@ -79,11 +77,11 @@ describe("render - children", () => {
                 return <GtkFrame ref={frameRef}>{showChild && "Child"}</GtkFrame>;
             }
 
-            await render(<App showChild={true} />, { wrapper: false });
+            await render(<App showChild={true} />);
 
             expect(frameRef.current?.getChild()).not.toBeNull();
 
-            await render(<App showChild={false} />, { wrapper: false });
+            await render(<App showChild={false} />);
 
             expect(frameRef.current?.getChild()).toBeNull();
         });
@@ -103,11 +101,11 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App items={["A", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "C"]} />);
 
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "C"]);
 
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />);
 
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
@@ -125,9 +123,9 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App items={["A", "B"]} />, { wrapper: false });
+            await render(<App items={["A", "B"]} />);
 
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />);
 
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
@@ -149,11 +147,11 @@ describe("render - children", () => {
                 return showWindow ? <GtkWindow ref={windowRef} title="Window" /> : null;
             }
 
-            await render(<App showWindow={true} />, { wrapper: false });
+            const { rerender } = await render(<App showWindow={true} />, { wrapper: false });
 
             expect(windowRef.current).not.toBeNull();
 
-            await render(<App showWindow={false} />, { wrapper: false });
+            await rerender(<App showWindow={false} />);
         });
 
         it("inserts root level window before sibling", async () => {
@@ -170,9 +168,9 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App windows={["First"]} />, { wrapper: false });
+            const { rerender } = await render(<App windows={["First"]} />, { wrapper: false });
 
-            await render(<App windows={["Second", "First"]} />, { wrapper: false });
+            await rerender(<App windows={["Second", "First"]} />);
         });
     });
 
@@ -190,13 +188,13 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />);
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
-            await render(<App items={["A", "D", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "D", "B", "C"]} />);
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "D", "B", "C"]);
 
-            await render(<App items={["D", "C"]} />, { wrapper: false });
+            await render(<App items={["D", "C"]} />);
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["D", "C"]);
         });
 
@@ -213,10 +211,10 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />);
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
-            await render(<App items={["C", "B", "A"]} />, { wrapper: false });
+            await render(<App items={["C", "B", "A"]} />);
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
         });
     });

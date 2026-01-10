@@ -32,9 +32,7 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
             return;
         }
 
-        throw new Error(
-            `Cannot append '${child.typeName}' to 'AdwNavigationView': expected x.NavigationPage, Slot, or Widget`,
-        );
+        throw new Error(`Cannot append '${child.typeName}' to 'NavigationView': expected x.NavigationPage or Widget`);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -48,9 +46,7 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
             return;
         }
 
-        throw new Error(
-            `Cannot insert '${child.typeName}' into 'AdwNavigationView': expected x.NavigationPage, Slot, or Widget`,
-        );
+        throw new Error(`Cannot insert '${child.typeName}' into 'NavigationView': expected x.NavigationPage or Widget`);
     }
 
     public override removeChild(child: Node): void {
@@ -63,9 +59,7 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
             return;
         }
 
-        throw new Error(
-            `Cannot remove '${child.typeName}' from 'AdwNavigationView': expected x.NavigationPage, Slot, or Widget`,
-        );
+        throw new Error(`Cannot remove '${child.typeName}' from 'NavigationView': expected x.NavigationPage or Widget`);
     }
 
     public override updateProps(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {

@@ -5,6 +5,7 @@ import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { ActionRowChild } from "./action-row-child.js";
 import { matchesInterface } from "./internal/utils.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 type PrefixSuffixWidget = Gtk.Widget & {
@@ -26,11 +27,30 @@ class ActionRowNode extends WidgetNode<PrefixSuffixWidget> {
             return;
         }
 
-        super.appendChild(child);
+        if (child instanceof SlotNode || child instanceof WidgetNode) {
+            super.appendChild(child);
+            return;
+        }
+
+        throw new Error(
+            `Cannot append '${child.typeName}' to 'ActionRow': expected x.ActionRowPrefix, x.ActionRowSuffix, or Widget`,
+        );
     }
 
-    public override insertBefore(child: Node): void {
-        this.appendChild(child);
+    public override insertBefore(child: Node, before: Node): void {
+        if (child instanceof ActionRowChild) {
+            child.setParent(this.container);
+            return;
+        }
+
+        if (child instanceof SlotNode || child instanceof WidgetNode) {
+            super.insertBefore(child, before);
+            return;
+        }
+
+        throw new Error(
+            `Cannot insert '${child.typeName}' into 'ActionRow': expected x.ActionRowPrefix, x.ActionRowSuffix, or Widget`,
+        );
     }
 
     public override removeChild(child: Node): void {
@@ -39,7 +59,14 @@ class ActionRowNode extends WidgetNode<PrefixSuffixWidget> {
             return;
         }
 
-        super.removeChild(child);
+        if (child instanceof SlotNode || child instanceof WidgetNode) {
+            super.removeChild(child);
+            return;
+        }
+
+        throw new Error(
+            `Cannot remove '${child.typeName}' from 'ActionRow': expected x.ActionRowPrefix, x.ActionRowSuffix, or Widget`,
+        );
     }
 }
 

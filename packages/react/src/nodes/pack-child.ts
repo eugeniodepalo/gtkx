@@ -1,12 +1,6 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import { scheduleAfterCommit } from "../scheduler.js";
-import { VirtualNode } from "./virtual.js";
-import { WidgetNode } from "./widget.js";
-
-type PackChildPosition = "start" | "end";
+import { VirtualChildNode } from "./virtual-child.js";
 
 type PackableWidget = Gtk.Widget & {
     packStart(child: Gtk.Widget): void;
@@ -14,90 +8,23 @@ type PackableWidget = Gtk.Widget & {
     remove(child: Gtk.Widget): void;
 };
 
-export class PackChild extends VirtualNode {
+export class PackChild extends VirtualChildNode<PackableWidget> {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
         return type === "PackStart" || type === "PackEnd";
     }
 
-    private parent?: PackableWidget;
-    private children: Gtk.Widget[] = [];
-
-    private getPosition(): PackChildPosition {
+    protected override getPositionLabel(): string {
         return this.typeName === "PackStart" ? "start" : "end";
     }
 
-    public setParent(newParent?: PackableWidget): void {
-        this.parent = newParent;
-    }
-
-    public override unmount(): void {
-        const parent = this.parent;
-        const childrenToRemove = [...this.children];
-
-        if (parent && childrenToRemove.length > 0) {
-            scheduleAfterCommit(() => {
-                for (const widget of childrenToRemove) {
-                    const currentParent = widget.getParent();
-
-                    if (currentParent && isObjectEqual(currentParent, parent)) {
-                        parent.remove(widget);
-                    }
-                }
-            });
+    protected override attachChild(parent: PackableWidget, widget: Gtk.Widget): void {
+        if (this.getPositionLabel() === "start") {
+            parent.packStart(widget);
+        } else {
+            parent.packEnd(widget);
         }
-
-        this.children = [];
-        this.parent = undefined;
-        super.unmount();
-    }
-
-    public override appendChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected Widget`);
-        }
-
-        const widget = child.container;
-        this.children.push(widget);
-
-        scheduleAfterCommit(() => {
-            if (this.parent) {
-                if (this.getPosition() === "start") {
-                    this.parent.packStart(widget);
-                } else {
-                    this.parent.packEnd(widget);
-                }
-            }
-        });
-    }
-
-    public override insertBefore(child: Node): void {
-        this.appendChild(child);
-    }
-
-    public override removeChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected Widget`);
-        }
-
-        const widget = child.container;
-        const parent = this.parent;
-        const index = this.children.indexOf(widget);
-
-        if (index !== -1) {
-            this.children.splice(index, 1);
-        }
-
-        scheduleAfterCommit(() => {
-            if (parent) {
-                const currentParent = widget.getParent();
-
-                if (currentParent && isObjectEqual(currentParent, parent)) {
-                    parent.remove(widget);
-                }
-            }
-        });
     }
 }
 

@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
+import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass } from "../types.js";
 import { isContainerType } from "./internal/utils.js";
 import { ScaleMarkNode } from "./scale-mark.js";
@@ -18,9 +19,9 @@ class ScaleNode extends WidgetNode<Gtk.Scale> {
 
     public override appendChild(child: Node): void {
         if (child instanceof ScaleMarkNode) {
-            child.setScale(this.container, () => this.rebuildAllMarks());
+            child.setScale(this.container, () => this.scheduleRebuildAllMarks());
             this.markChildren.push(child);
-            child.addMark();
+            scheduleAfterCommit(() => child.addMark());
             return;
         }
 
@@ -29,12 +30,12 @@ class ScaleNode extends WidgetNode<Gtk.Scale> {
             return;
         }
 
-        throw new Error(`Cannot append '${child.typeName}' to 'GtkScale': expected ScaleMark or Widget`);
+        throw new Error(`Cannot append '${child.typeName}' to 'Scale': expected x.ScaleMark or Widget`);
     }
 
     public override insertBefore(child: Node, before: Node): void {
         if (child instanceof ScaleMarkNode) {
-            child.setScale(this.container, () => this.rebuildAllMarks());
+            child.setScale(this.container, () => this.scheduleRebuildAllMarks());
 
             const beforeIndex = this.markChildren.indexOf(before as ScaleMarkNode);
             if (beforeIndex >= 0) {
@@ -43,7 +44,7 @@ class ScaleNode extends WidgetNode<Gtk.Scale> {
                 this.markChildren.push(child);
             }
 
-            this.rebuildAllMarks();
+            this.scheduleRebuildAllMarks();
             return;
         }
 
@@ -52,7 +53,7 @@ class ScaleNode extends WidgetNode<Gtk.Scale> {
             return;
         }
 
-        throw new Error(`Cannot insert '${child.typeName}' into 'GtkScale': expected ScaleMark or Widget`);
+        throw new Error(`Cannot insert '${child.typeName}' into 'Scale': expected x.ScaleMark or Widget`);
     }
 
     public override removeChild(child: Node): void {
@@ -61,7 +62,7 @@ class ScaleNode extends WidgetNode<Gtk.Scale> {
             if (index >= 0) {
                 this.markChildren.splice(index, 1);
             }
-            this.rebuildAllMarks();
+            this.scheduleRebuildAllMarks(CommitPriority.HIGH);
             return;
         }
 
@@ -70,15 +71,16 @@ class ScaleNode extends WidgetNode<Gtk.Scale> {
             return;
         }
 
-        throw new Error(`Cannot remove '${child.typeName}' from 'GtkScale': expected ScaleMark or Widget`);
+        throw new Error(`Cannot remove '${child.typeName}' from 'Scale': expected x.ScaleMark or Widget`);
     }
 
-    private rebuildAllMarks(): void {
-        this.container.clearMarks();
-
-        for (const mark of this.markChildren) {
-            mark.addMark();
-        }
+    private scheduleRebuildAllMarks(priority = CommitPriority.NORMAL): void {
+        scheduleAfterCommit(() => {
+            this.container.clearMarks();
+            for (const mark of this.markChildren) {
+                mark.addMark();
+            }
+        }, priority);
     }
 }
 

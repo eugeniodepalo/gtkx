@@ -39,42 +39,45 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | 
     }
 
     public override appendChild(child: Node): void {
+        if (child instanceof MenuNode) {
+            this.menu.appendChild(child);
+            return;
+        }
+
         if (child instanceof SlotNode || child instanceof WidgetNode) {
             super.appendChild(child);
             return;
         }
 
-        if (!(child instanceof MenuNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'PopoverMenu': expected MenuItem`);
-        }
-
-        this.menu.appendChild(child);
+        throw new Error(`Cannot append '${child.typeName}' to 'PopoverMenu': expected MenuItem or Widget`);
     }
 
     public override insertBefore(child: Node, before: Node): void {
+        if (child instanceof MenuNode) {
+            this.menu.insertBefore(child, before);
+            return;
+        }
+
         if (child instanceof SlotNode || child instanceof WidgetNode) {
             super.insertBefore(child, before);
             return;
         }
 
-        if (!(child instanceof MenuNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' to 'PopoverMenu': expected MenuItem`);
-        }
-
-        this.menu.insertBefore(child, before);
+        throw new Error(`Cannot insert '${child.typeName}' into 'PopoverMenu': expected MenuItem or Widget`);
     }
 
     public override removeChild(child: Node): void {
+        if (child instanceof MenuNode) {
+            this.menu.removeChild(child);
+            return;
+        }
+
         if (child instanceof SlotNode || child instanceof WidgetNode) {
             super.removeChild(child);
             return;
         }
 
-        if (!(child instanceof MenuNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'PopoverMenu': expected MenuItem`);
-        }
-
-        this.menu.removeChild(child);
+        throw new Error(`Cannot remove '${child.typeName}' from 'PopoverMenu': expected MenuItem or Widget`);
     }
 }
 

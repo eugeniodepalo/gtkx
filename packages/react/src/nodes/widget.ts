@@ -178,6 +178,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     private updateEventControllerProp(propName: string, handler: SignalHandler | null): void {
+        const wrappedHandler = handler ? (_self: unknown, ...args: unknown[]) => handler(...args) : undefined;
+
         switch (propName) {
             case "onEnter":
             case "onLeave":
@@ -187,7 +189,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                     this.container.addController(this.motionController);
                 }
                 const signalName = propName === "onEnter" ? "enter" : propName === "onLeave" ? "leave" : "motion";
-                signalStore.set(this, this.motionController, signalName, handler);
+                signalStore.set(this, this.motionController, signalName, wrappedHandler);
                 break;
             }
             case "onPressed":
@@ -197,7 +199,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                     this.container.addController(this.clickController);
                 }
                 const signalName = propName === "onPressed" ? "pressed" : "released";
-                signalStore.set(this, this.clickController, signalName, handler);
+                signalStore.set(this, this.clickController, signalName, wrappedHandler);
                 break;
             }
             case "onKeyPressed":
@@ -207,7 +209,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                     this.container.addController(this.keyController);
                 }
                 const signalName = propName === "onKeyPressed" ? "key-pressed" : "key-released";
-                signalStore.set(this, this.keyController, signalName, handler);
+                signalStore.set(this, this.keyController, signalName, wrappedHandler);
                 break;
             }
             case "onScroll": {
@@ -215,7 +217,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                     this.scrollController = new Gtk.EventControllerScroll(Gtk.EventControllerScrollFlags.BOTH_AXES);
                     this.container.addController(this.scrollController);
                 }
-                signalStore.set(this, this.scrollController, "scroll", handler);
+                signalStore.set(this, this.scrollController, "scroll", wrappedHandler);
                 break;
             }
         }

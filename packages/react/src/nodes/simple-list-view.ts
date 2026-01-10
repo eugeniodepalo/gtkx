@@ -66,7 +66,7 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
 
     public override appendChild(child: Node): void {
         if (!(child instanceof SimpleListItemNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'SimpleListView': expected SimpleListItem`);
+            throw new Error(`Cannot append '${child.typeName}' to 'DropDown': expected x.SimpleListItem`);
         }
 
         const { id, value } = child.props;
@@ -81,7 +81,7 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
 
     public override insertBefore(child: Node, before: Node): void {
         if (!(child instanceof SimpleListItemNode) || !(before instanceof SimpleListItemNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' to 'SimpleListView': expected SimpleListItem`);
+            throw new Error(`Cannot insert '${child.typeName}' into 'DropDown': expected x.SimpleListItem`);
         }
 
         const { id, value } = child.props;
@@ -97,7 +97,7 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
 
     public override removeChild(child: Node): void {
         if (!(child instanceof SimpleListItemNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'SimpleListView': expected SimpleListItem`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'DropDown': expected x.SimpleListItem`);
         }
 
         const { id } = child.props;

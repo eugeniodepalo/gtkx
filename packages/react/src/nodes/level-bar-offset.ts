@@ -7,38 +7,39 @@ export class LevelBarOffsetNode extends VirtualNode<LevelBarOffsetProps> {
     public static override priority = 1;
 
     private levelBar?: Gtk.LevelBar;
+    private onRebuild?: () => void;
 
     public static override matches(type: string): boolean {
         return type === "LevelBarOffset";
     }
 
-    public setLevelBar(levelBar: Gtk.LevelBar): void {
+    public setLevelBar(levelBar: Gtk.LevelBar, onRebuild: () => void): void {
         this.levelBar = levelBar;
+        this.onRebuild = onRebuild;
     }
 
-    public addOffset(): void {
-        this.levelBar?.addOffsetValue(this.props.id, this.props.value);
-    }
+    public addOffset(): string | undefined {
+        if (!this.levelBar) return undefined;
 
-    public removeOffset(): void {
-        this.levelBar?.removeOffsetValue(this.props.id);
+        this.levelBar.addOffsetValue(this.props.id, this.props.value);
+        return this.props.id;
     }
 
     public override updateProps(oldProps: LevelBarOffsetProps | null, newProps: LevelBarOffsetProps): void {
         super.updateProps(oldProps, newProps);
 
         if (oldProps && this.levelBar) {
-            if (oldProps.id !== newProps.id) {
-                this.levelBar.removeOffsetValue(oldProps.id);
-                this.levelBar.addOffsetValue(newProps.id, newProps.value);
-            } else if (oldProps.value !== newProps.value) {
-                this.levelBar.addOffsetValue(newProps.id, newProps.value);
+            const changed = oldProps.id !== newProps.id || oldProps.value !== newProps.value;
+
+            if (changed) {
+                this.onRebuild?.();
             }
         }
     }
 
     public override unmount(): void {
-        this.removeOffset();
+        this.levelBar = undefined;
+        this.onRebuild = undefined;
         super.unmount();
     }
 }

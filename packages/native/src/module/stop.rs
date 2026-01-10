@@ -5,12 +5,20 @@
 //!
 //! ## Shutdown Sequence
 //!
-//! 1. Schedule a task on the GTK thread to:
-//!    - Mark the dispatch queue as stopped (no new tasks accepted)
-//!    - Clear the handle map (prevents callbacks during TLS destruction)
-//!    - Release the application hold guard (allows GTK main loop to exit)
-//! 2. Wait for confirmation that the task completed
-//! 3. Join the GTK thread, waiting for it to fully terminate
+//! 1. Mark stopped immediately on the JS thread (prevents new signal callbacks)
+//! 2. Schedule a task on the GTK thread to release the application hold guard
+//! 3. Wait for confirmation that the task completed
+//! 4. Join the GTK thread, waiting for it to fully terminate
+//!
+//! Note: The handle map is intentionally NOT cleared during stop. Handles are
+//! stored in thread-local storage and will be dropped when the GTK thread exits.
+//! Clearing them earlier could cause use-after-free if signal closures are still
+//! being processed by the GTK main loop.
+//!
+//! Note: We mark stopped BEFORE scheduling the cleanup task. This ensures that
+//! any signal closures that fire during the cleanup see the stopped flag and
+//! return early, avoiding deadlocks where the closure tries to invoke_and_wait
+//! while JS is blocked waiting for GTK to finish.
 
 use neon::prelude::*;
 
@@ -20,15 +28,12 @@ use crate::{
 };
 
 pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(|| {
-        gtk_dispatch::GtkDispatcher::global().mark_stopped();
+    gtk_dispatch::GtkDispatcher::global().mark_stopped();
 
-        let (old_handles, _guard) = GtkThreadState::with(|state| {
-            let old_handles = std::mem::take(&mut state.handle_map);
-            let guard = state.app_hold_guard.take();
-            (old_handles, guard)
+    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(|| {
+        GtkThreadState::with(|state| {
+            state.app_hold_guard.take();
         });
-        drop(old_handles);
     });
 
     rx.recv()

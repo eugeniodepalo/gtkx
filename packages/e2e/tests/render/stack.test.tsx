@@ -9,7 +9,7 @@ describe("render - Stack", () => {
         it("creates Stack widget", async () => {
             const ref = createRef<Gtk.Stack>();
 
-            await render(<GtkStack ref={ref} />, { wrapper: false });
+            await render(<GtkStack ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -23,7 +23,6 @@ describe("render - Stack", () => {
                 <GtkStack ref={stackRef}>
                     <x.StackPage id="page1">Page 1</x.StackPage>
                 </GtkStack>,
-                { wrapper: false },
             );
 
             expect(stackRef.current?.getChildByName("page1")).not.toBeNull();
@@ -38,7 +37,6 @@ describe("render - Stack", () => {
                         Titled Content
                     </x.StackPage>
                 </GtkStack>,
-                { wrapper: false },
             );
 
             const page = stackRef.current?.getPage(stackRef.current.getChildByName("titled") as Gtk.Widget);
@@ -52,7 +50,6 @@ describe("render - Stack", () => {
                 <GtkStack ref={stackRef}>
                     <x.StackPage>Unnamed Page</x.StackPage>
                 </GtkStack>,
-                { wrapper: false },
             );
 
             expect(stackRef.current?.getFirstChild()).not.toBeNull();
@@ -67,7 +64,6 @@ describe("render - Stack", () => {
                         With Props
                     </x.StackPage>
                 </GtkStack>,
-                { wrapper: false },
             );
 
             const child = stackRef.current?.getChildByName("props-test");
@@ -93,9 +89,9 @@ describe("render - Stack", () => {
                 );
             }
 
-            await render(<App pages={["first", "last"]} />, { wrapper: false });
+            await render(<App pages={["first", "last"]} />);
 
-            await render(<App pages={["first", "middle", "last"]} />, { wrapper: false });
+            await render(<App pages={["first", "middle", "last"]} />);
 
             expect(stackRef.current?.getChildByName("first")).not.toBeNull();
             expect(stackRef.current?.getChildByName("middle")).not.toBeNull();
@@ -117,9 +113,9 @@ describe("render - Stack", () => {
                 );
             }
 
-            await render(<App pages={["a", "b", "c"]} />, { wrapper: false });
+            await render(<App pages={["a", "b", "c"]} />);
 
-            await render(<App pages={["a", "c"]} />, { wrapper: false });
+            await render(<App pages={["a", "c"]} />);
 
             expect(stackRef.current?.getChildByName("a")).not.toBeNull();
             expect(stackRef.current?.getChildByName("b")).toBeNull();
@@ -139,13 +135,13 @@ describe("render - Stack", () => {
                 );
             }
 
-            await render(<App iconName="dialog-information" />, { wrapper: false });
+            await render(<App iconName="dialog-information" />);
 
             const child = stackRef.current?.getChildByName("dynamic");
             let page = stackRef.current?.getPage(child as Gtk.Widget);
             expect(page?.getIconName()).toBe("dialog-information");
 
-            await render(<App iconName="dialog-warning" />, { wrapper: false });
+            await render(<App iconName="dialog-warning" />);
 
             page = stackRef.current?.getPage(child as Gtk.Widget);
             expect(page?.getIconName()).toBe("dialog-warning");
@@ -161,7 +157,6 @@ describe("render - Stack", () => {
                     <x.StackPage id="page1">Page 1</x.StackPage>
                     <x.StackPage id="page2">Page 2</x.StackPage>
                 </GtkStack>,
-                { wrapper: false },
             );
 
             expect(stackRef.current?.getVisibleChildName()).toBe("page2");
@@ -182,9 +177,9 @@ describe("render - Stack", () => {
                 );
             }
 
-            await render(<App pages={["other"]} />, { wrapper: false });
+            await render(<App pages={["other"]} />);
 
-            await render(<App pages={["other", "target"]} />, { wrapper: false });
+            await render(<App pages={["other", "target"]} />);
 
             expect(stackRef.current?.getVisibleChildName()).toBe("target");
         });

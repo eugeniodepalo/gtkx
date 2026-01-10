@@ -9,7 +9,7 @@ describe("render - SimpleListView", () => {
         it("creates DropDown widget", async () => {
             const ref = createRef<Gtk.DropDown>();
 
-            await render(<GtkDropDown ref={ref} />, { wrapper: false });
+            await render(<GtkDropDown ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -23,7 +23,6 @@ describe("render - SimpleListView", () => {
                     <x.SimpleListItem id="2" value="Option 2" />
                     <x.SimpleListItem id="3" value="Option 3" />
                 </GtkDropDown>,
-                { wrapper: false },
             );
 
             const model = dropDownRef.current?.getModel();
@@ -39,7 +38,6 @@ describe("render - SimpleListView", () => {
                     <x.SimpleListItem id="2" value="Option 2" />
                     <x.SimpleListItem id="3" value="Option 3" />
                 </GtkDropDown>,
-                { wrapper: false },
             );
 
             expect(dropDownRef.current?.getSelected()).toBe(1);
@@ -54,7 +52,6 @@ describe("render - SimpleListView", () => {
                     <x.SimpleListItem id="1" value="Option 1" />
                     <x.SimpleListItem id="2" value="Option 2" />
                 </GtkDropDown>,
-                { wrapper: false },
             );
 
             dropDownRef.current?.setSelected(1);
@@ -82,7 +79,6 @@ describe("render - SimpleListView", () => {
                         { id: "2", value: "Second" },
                     ]}
                 />,
-                { wrapper: false },
             );
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(2);
 
@@ -94,7 +90,6 @@ describe("render - SimpleListView", () => {
                         { id: "3", value: "Third" },
                     ]}
                 />,
-                { wrapper: false },
             );
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(3);
         });
@@ -120,11 +115,10 @@ describe("render - SimpleListView", () => {
                         { id: "3", value: "Third" },
                     ]}
                 />,
-                { wrapper: false },
             );
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(3);
 
-            await render(<App items={[{ id: "1", value: "First" }]} />, { wrapper: false });
+            await render(<App items={[{ id: "1", value: "First" }]} />);
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(1);
         });
     });

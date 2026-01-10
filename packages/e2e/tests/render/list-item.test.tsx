@@ -1,8 +1,15 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkListView, x } from "@gtkx/react";
+import { GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
+import type { ReactNode } from "react";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+
+const ScrollWrapper = ({ children }: { children: ReactNode }) => (
+    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
+        {children}
+    </GtkScrolledWindow>
+);
 
 describe("render - ListItem", () => {
     describe("ListItemNode", () => {
@@ -10,10 +17,11 @@ describe("render - ListItem", () => {
             const listViewRef = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={listViewRef} renderItem={() => "Item"}>
-                    <x.ListItem id="1" value={{ text: "First" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView ref={listViewRef} renderItem={() => "Item"}>
+                        <x.ListItem id="1" value={{ text: "First" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
 
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(1);
@@ -23,12 +31,13 @@ describe("render - ListItem", () => {
             const listViewRef = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={listViewRef} renderItem={() => "Item"}>
-                    <x.ListItem id="1" value={{ text: "First" }} />
-                    <x.ListItem id="2" value={{ text: "Second" }} />
-                    <x.ListItem id="3" value={{ text: "Third" }} />
-                </GtkListView>,
-                { wrapper: false },
+                <ScrollWrapper>
+                    <GtkListView ref={listViewRef} renderItem={() => "Item"}>
+                        <x.ListItem id="1" value={{ text: "First" }} />
+                        <x.ListItem id="2" value={{ text: "Second" }} />
+                        <x.ListItem id="3" value={{ text: "Third" }} />
+                    </GtkListView>
+                </ScrollWrapper>,
             );
 
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(3);
@@ -39,16 +48,18 @@ describe("render - ListItem", () => {
 
             function App({ value }: { value: Record<string, unknown> }) {
                 return (
-                    <GtkListView ref={listViewRef} renderItem={() => "Item"}>
-                        <x.ListItem id="dynamic" value={value} />
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={listViewRef} renderItem={() => "Item"}>
+                            <x.ListItem id="dynamic" value={value} />
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
-            await render(<App value={{ text: "Initial" }} />, { wrapper: false });
+            await render(<App value={{ text: "Initial" }} />);
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(1);
 
-            await render(<App value={{ text: "Updated" }} />, { wrapper: false });
+            await render(<App value={{ text: "Updated" }} />);
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(1);
         });
 
@@ -57,11 +68,13 @@ describe("render - ListItem", () => {
 
             function App({ items }: { items: Array<{ id: string; text: string }> }) {
                 return (
-                    <GtkListView ref={listViewRef} renderItem={() => "Item"}>
-                        {items.map((item) => (
-                            <x.ListItem key={item.id} id={item.id} value={item} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={listViewRef} renderItem={() => "Item"}>
+                            {items.map((item) => (
+                                <x.ListItem key={item.id} id={item.id} value={item} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
@@ -73,11 +86,10 @@ describe("render - ListItem", () => {
                         { id: "3", text: "Third" },
                     ]}
                 />,
-                { wrapper: false },
             );
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(3);
 
-            await render(<App items={[{ id: "1", text: "First" }]} />, { wrapper: false });
+            await render(<App items={[{ id: "1", text: "First" }]} />);
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(1);
         });
 
@@ -86,11 +98,13 @@ describe("render - ListItem", () => {
 
             function App({ items }: { items: Array<{ id: string; text: string }> }) {
                 return (
-                    <GtkListView ref={listViewRef} renderItem={() => "Item"}>
-                        {items.map((item) => (
-                            <x.ListItem key={item.id} id={item.id} value={item} />
-                        ))}
-                    </GtkListView>
+                    <ScrollWrapper>
+                        <GtkListView ref={listViewRef} renderItem={() => "Item"}>
+                            {items.map((item) => (
+                                <x.ListItem key={item.id} id={item.id} value={item} />
+                            ))}
+                        </GtkListView>
+                    </ScrollWrapper>
                 );
             }
 
@@ -101,7 +115,6 @@ describe("render - ListItem", () => {
                         { id: "last", text: "Last" },
                     ]}
                 />,
-                { wrapper: false },
             );
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(2);
 
@@ -113,7 +126,6 @@ describe("render - ListItem", () => {
                         { id: "last", text: "Last" },
                     ]}
                 />,
-                { wrapper: false },
             );
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(3);
         });

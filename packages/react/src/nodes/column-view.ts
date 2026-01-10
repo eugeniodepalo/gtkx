@@ -33,7 +33,11 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
 
     constructor(typeName: string, props: ColumnViewProps, container: Gtk.ColumnView, rootContainer?: Container) {
         super(typeName, props, container, rootContainer);
-        this.list = new List(props.selectionMode);
+        this.list = new List({
+            selectionMode: props.selectionMode,
+            selected: props.selected,
+            onSelectionChanged: props.onSelectionChanged,
+        });
     }
 
     public override mount(): void {
@@ -48,7 +52,9 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         if (!(child instanceof ColumnViewColumnNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'ColumnView': expected ColumnViewColumn`);
+            throw new Error(
+                `Cannot append '${child.typeName}' to 'ColumnView': expected x.ColumnViewColumn or x.ListItem`,
+            );
         }
 
         const existingColumn = this.findColumnInView(child.column);
@@ -70,7 +76,9 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         if (!(child instanceof ColumnViewColumnNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' to 'ColumnView': expected ColumnViewColumn`);
+            throw new Error(
+                `Cannot insert '${child.typeName}' into 'ColumnView': expected x.ColumnViewColumn or x.ListItem`,
+            );
         }
 
         const existingColumn = this.findColumnInView(child.column);
@@ -98,7 +106,9 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         if (!(child instanceof ColumnViewColumnNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'ColumnView': expected ColumnViewColumn`);
+            throw new Error(
+                `Cannot remove '${child.typeName}' from 'ColumnView': expected x.ColumnViewColumn or x.ListItem`,
+            );
         }
 
         const existingColumn = this.findColumnInView(child.column);
@@ -143,8 +153,8 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             }
         }
 
-        this.list.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
-        super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
+        this.list.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 
     private getColumn(columnId: string): Gtk.ColumnViewColumn {

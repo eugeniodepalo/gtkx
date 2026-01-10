@@ -6,6 +6,7 @@ import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { isRemovable, isSingleChild } from "./internal/predicates.js";
 import { matchesAnyClass } from "./internal/utils.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 type AutowrappingContainer = Gtk.ListBox | Gtk.FlowBox;
@@ -23,9 +24,13 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
     }
 
     public override appendChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
+        if (child instanceof SlotNode) {
             super.appendChild(child);
             return;
+        }
+
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot append '${child.typeName}' to 'ListBox/FlowBox': expected Widget`);
         }
 
         batch(() => {
@@ -43,9 +48,13 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
     }
 
     public override removeChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
+        if (child instanceof SlotNode) {
             super.removeChild(child);
             return;
+        }
+
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot remove '${child.typeName}' from 'ListBox/FlowBox': expected Widget`);
         }
 
         batch(() => {
@@ -64,9 +73,15 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof WidgetNode) || !(before instanceof WidgetNode)) {
+        if (child instanceof SlotNode) {
             super.insertBefore(child, before);
             return;
+        }
+
+        if (!(child instanceof WidgetNode) || !(before instanceof WidgetNode)) {
+            throw new Error(
+                `Cannot insert '${child.typeName}' before '${before.typeName}' in 'ListBox/FlowBox': expected Widget`,
+            );
         }
 
         batch(() => {

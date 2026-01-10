@@ -18,7 +18,6 @@ describe("createPortal", () => {
             <Portal>
                 <GtkWindow ref={windowRef} title="Portal Window" />
             </Portal>,
-            { wrapper: false },
         );
 
         expect(windowRef.current).not.toBeNull();
@@ -39,25 +38,25 @@ describe("createPortal", () => {
             );
         }
 
-        await render(<App />, { wrapper: false });
-        await render(<App />, { wrapper: false });
+        await render(<App />);
+        await render(<App />);
 
         expect(labelRef.current).not.toBeNull();
         expect(labelRef.current?.getParent()?.handle).toEqual(boxRef.current?.handle);
     });
 
     it("preserves key when provided", async () => {
-        const labelRef = createRef<Gtk.Label>();
+        const windowRef = createRef<Gtk.Window>();
 
         await render(
             <Portal portalKey="my-key">
-                <GtkLabel ref={labelRef} label="Keyed" />
+                <GtkWindow ref={windowRef} title="Keyed Window" />
             </Portal>,
-            { wrapper: false },
         );
 
         await tick();
-        expect(labelRef.current).not.toBeNull();
+        expect(windowRef.current).not.toBeNull();
+        expect(windowRef.current?.getTitle()).toBe("Keyed Window");
     });
 
     it("unmounts portal children when portal is removed", async () => {
@@ -68,12 +67,12 @@ describe("createPortal", () => {
             return <>{showPortal && createPortal(<GtkWindow ref={windowRef} title="Portal" />, app)}</>;
         }
 
-        await render(<App showPortal={true} />, { wrapper: false });
+        await render(<App showPortal={true} />);
 
         const windowId = windowRef.current?.handle;
         expect(windowId).not.toBeUndefined();
 
-        await render(<App showPortal={false} />, { wrapper: false });
+        await render(<App showPortal={false} />);
     });
 
     it("updates portal children when props change", async () => {
@@ -84,10 +83,10 @@ describe("createPortal", () => {
             return <>{createPortal(<GtkWindow ref={windowRef} title={title} />, app)}</>;
         }
 
-        await render(<App title="First" />, { wrapper: false });
+        await render(<App title="First" />);
         expect(windowRef.current?.getTitle()).toBe("First");
 
-        await render(<App title="Second" />, { wrapper: false });
+        await render(<App title="Second" />);
         expect(windowRef.current?.getTitle()).toBe("Second");
     });
 
@@ -107,8 +106,8 @@ describe("createPortal", () => {
             );
         }
 
-        await render(<App />, { wrapper: false });
-        await render(<App />, { wrapper: false });
+        await render(<App />);
+        await render(<App />);
 
         expect(label1Ref.current).not.toBeNull();
         expect(label2Ref.current).not.toBeNull();
@@ -132,8 +131,8 @@ describe("createPortal", () => {
             );
         }
 
-        await render(<App />, { wrapper: false });
-        await render(<App />, { wrapper: false });
+        await render(<App />);
+        await render(<App />);
 
         expect(buttonRef.current).not.toBeNull();
         expect(buttonRef.current?.getParent()?.handle).toEqual(innerBoxRef.current?.handle);

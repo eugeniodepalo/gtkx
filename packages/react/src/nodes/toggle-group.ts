@@ -26,7 +26,7 @@ class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup> {
             return;
         }
 
-        throw new Error(`Cannot append '${child.typeName}' to 'AdwToggleGroup': expected x.Toggle, Slot, or Widget`);
+        throw new Error(`Cannot append '${child.typeName}' to 'ToggleGroup': expected x.Toggle or Widget`);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -41,7 +41,7 @@ class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup> {
             return;
         }
 
-        throw new Error(`Cannot insert '${child.typeName}' into 'AdwToggleGroup': expected x.Toggle, Slot, or Widget`);
+        throw new Error(`Cannot insert '${child.typeName}' into 'ToggleGroup': expected x.Toggle or Widget`);
     }
 
     public override removeChild(child: Node): void {
@@ -55,7 +55,7 @@ class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup> {
             return;
         }
 
-        throw new Error(`Cannot remove '${child.typeName}' from 'AdwToggleGroup': expected x.Toggle, Slot, or Widget`);
+        throw new Error(`Cannot remove '${child.typeName}' from 'ToggleGroup': expected x.Toggle or Widget`);
     }
 }
 

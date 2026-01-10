@@ -66,17 +66,19 @@ class GridChildNode extends SlotNode<Props> {
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const grid = this.getGrid();
 
-        if (oldChild) {
-            const parent = oldChild.getParent();
+        batch(() => {
+            if (oldChild) {
+                const parent = oldChild.getParent();
 
-            if (parent && isObjectEqual(parent, grid)) {
-                grid.remove(oldChild);
+                if (parent && isObjectEqual(parent, grid)) {
+                    grid.remove(oldChild);
+                }
             }
-        }
 
-        if (this.child) {
-            this.attachChild();
-        }
+            if (this.child) {
+                this.attachChild();
+            }
+        });
     }
 }
 

@@ -16,7 +16,7 @@ type WindowProps = Props & {
     onClose?: () => void;
 };
 
-class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
+export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     public static override priority = 1;
 
     private menu: Menu;

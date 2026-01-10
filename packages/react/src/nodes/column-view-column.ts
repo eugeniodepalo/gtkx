@@ -69,6 +69,8 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
                 this.column.setSorter(null);
             }
         }
+
+        super.updateProps(oldProps, newProps);
     }
 }
 

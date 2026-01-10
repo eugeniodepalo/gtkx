@@ -9,7 +9,7 @@ describe("render - ExpanderRow", () => {
         it("creates ExpanderRow widget", async () => {
             const ref = createRef<Adw.ExpanderRow>();
 
-            await render(<AdwExpanderRow ref={ref} title="Test" />, { wrapper: false });
+            await render(<AdwExpanderRow ref={ref} title="Test" />);
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getTitle()).toBe("Test");
@@ -24,7 +24,6 @@ describe("render - ExpanderRow", () => {
                         <AdwActionRow ref={rowRef} title="Option 1" />
                     </x.ExpanderRowRow>
                 </AdwExpanderRow>,
-                { wrapper: false },
             );
 
             expect(rowRef.current).not.toBeNull();
@@ -40,7 +39,6 @@ describe("render - ExpanderRow", () => {
                         <GtkButton label="Action" />
                     </x.ExpanderRowAction>
                 </AdwExpanderRow>,
-                { wrapper: false },
             );
 
             expect(true).toBe(true);
@@ -56,7 +54,6 @@ describe("render - ExpanderRow", () => {
                         <GtkButton label="Suffix" />
                     </x.ActionRowSuffix>
                 </AdwExpanderRow>,
-                { wrapper: false },
             );
 
             expect(true).toBe(true);
@@ -76,10 +73,10 @@ describe("render - ExpanderRow", () => {
                 );
             }
 
-            await render(<App showRow={true} />, { wrapper: false });
+            await render(<App showRow={true} />);
             expect(expanderRef.current).not.toBeNull();
 
-            await render(<App showRow={false} />, { wrapper: false });
+            await render(<App showRow={false} />);
             expect(expanderRef.current).not.toBeNull();
         });
 
@@ -101,7 +98,6 @@ describe("render - ExpanderRow", () => {
                         <AdwActionRow title="Row 3" />
                     </x.ExpanderRowRow>
                 </AdwExpanderRow>,
-                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();

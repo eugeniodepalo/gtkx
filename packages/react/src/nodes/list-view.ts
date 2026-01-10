@@ -6,12 +6,12 @@ import type { Container, ContainerClass } from "../types.js";
 import { ListItemRenderer, type RenderItemFn } from "./internal/list-item-renderer.js";
 import { filterProps, matchesAnyClass } from "./internal/utils.js";
 import { ListItemNode } from "./list-item.js";
-import { List } from "./models/list.js";
+import { List, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
 const PROP_NAMES = ["renderItem", "estimatedItemHeight"];
 
-type ListViewProps = {
+type ListViewProps = ListProps & {
     renderItem?: RenderItemFn<unknown>;
     estimatedItemHeight?: number;
 };
@@ -33,7 +33,11 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
         rootContainer?: Container,
     ) {
         super(typeName, props, container, rootContainer);
-        this.list = new List();
+        this.list = new List({
+            selectionMode: props.selectionMode,
+            selected: props.selected,
+            onSelectionChanged: props.onSelectionChanged,
+        });
         this.itemRenderer = new ListItemRenderer();
         this.itemRenderer.setStore(this.list.getStore());
         this.container.setFactory(this.itemRenderer.getFactory());
@@ -46,7 +50,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
 
     public override appendChild(child: Node): void {
         if (!(child instanceof ListItemNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'ListView': expected ListItem`);
+            throw new Error(`Cannot append '${child.typeName}' to 'ListView': expected x.ListItem`);
         }
 
         this.list.appendChild(child);
@@ -54,7 +58,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
 
     public override insertBefore(child: Node, before: Node): void {
         if (!(child instanceof ListItemNode) || !(before instanceof ListItemNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' to 'ListView': expected ListItem`);
+            throw new Error(`Cannot insert '${child.typeName}' into 'ListView': expected x.ListItem`);
         }
 
         this.list.insertBefore(child, before);
@@ -62,7 +66,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
 
     public override removeChild(child: Node): void {
         if (!(child instanceof ListItemNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'ListView': expected ListItem`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'ListView': expected x.ListItem`);
         }
 
         this.list.removeChild(child);
@@ -77,8 +81,8 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
             this.itemRenderer.setEstimatedItemHeight(newProps.estimatedItemHeight);
         }
 
-        this.list.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
-        super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
+        this.list.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 }
 

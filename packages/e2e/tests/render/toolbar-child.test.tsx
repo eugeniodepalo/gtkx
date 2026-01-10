@@ -18,7 +18,6 @@ describe("render - ToolbarChild", () => {
                     </x.ToolbarTop>
                     <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
-                { wrapper: false },
             );
 
             expect(contentRef.current).not.toBeNull();
@@ -36,7 +35,6 @@ describe("render - ToolbarChild", () => {
                         <AdwHeaderBar />
                     </x.ToolbarBottom>
                 </AdwToolbarView>,
-                { wrapper: false },
             );
 
             expect(contentRef.current).not.toBeNull();
@@ -58,7 +56,6 @@ describe("render - ToolbarChild", () => {
                     </x.ToolbarTop>
                     <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
-                { wrapper: false },
             );
 
             expect(secondTopRef.current).not.toBeNull();
@@ -82,8 +79,8 @@ describe("render - ToolbarChild", () => {
                 );
             }
 
-            await render(<App showTop={false} />, { wrapper: false });
-            await render(<App showTop={true} />, { wrapper: false });
+            await render(<App showTop={false} />);
+            await render(<App showTop={true} />);
 
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();

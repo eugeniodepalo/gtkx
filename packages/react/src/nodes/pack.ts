@@ -5,6 +5,7 @@ import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { matchesInterface } from "./internal/utils.js";
 import { PackChild } from "./pack-child.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 type PackableWidget = Gtk.Widget & {
@@ -26,11 +27,26 @@ class PackNode extends WidgetNode<PackableWidget> {
             return;
         }
 
-        super.appendChild(child);
+        if (child instanceof SlotNode || child instanceof WidgetNode) {
+            super.appendChild(child);
+            return;
+        }
+
+        throw new Error(`Cannot append '${child.typeName}' to 'Pack': expected x.PackStart, x.PackEnd, or Widget`);
     }
 
-    public override insertBefore(child: Node): void {
-        this.appendChild(child);
+    public override insertBefore(child: Node, before: Node): void {
+        if (child instanceof PackChild) {
+            child.setParent(this.container);
+            return;
+        }
+
+        if (child instanceof SlotNode || child instanceof WidgetNode) {
+            super.insertBefore(child, before);
+            return;
+        }
+
+        throw new Error(`Cannot insert '${child.typeName}' into 'Pack': expected x.PackStart, x.PackEnd, or Widget`);
     }
 
     public override removeChild(child: Node): void {
@@ -39,7 +55,12 @@ class PackNode extends WidgetNode<PackableWidget> {
             return;
         }
 
-        super.removeChild(child);
+        if (child instanceof SlotNode || child instanceof WidgetNode) {
+            super.removeChild(child);
+            return;
+        }
+
+        throw new Error(`Cannot remove '${child.typeName}' from 'Pack': expected x.PackStart, x.PackEnd, or Widget`);
     }
 }
 

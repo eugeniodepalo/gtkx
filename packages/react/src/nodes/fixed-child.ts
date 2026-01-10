@@ -54,17 +54,19 @@ class FixedChildNode extends SlotNode<Props> {
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const fixed = this.getFixed();
 
-        if (oldChild) {
-            const parent = oldChild.getParent();
+        batch(() => {
+            if (oldChild) {
+                const parent = oldChild.getParent();
 
-            if (parent && isObjectEqual(parent, fixed)) {
-                fixed.remove(oldChild);
+                if (parent && isObjectEqual(parent, fixed)) {
+                    fixed.remove(oldChild);
+                }
             }
-        }
 
-        if (this.child) {
-            this.positionChild();
-        }
+            if (this.child) {
+                this.positionChild();
+            }
+        });
     }
 }
 

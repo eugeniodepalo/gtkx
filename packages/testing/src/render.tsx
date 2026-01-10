@@ -61,7 +61,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
 };
 
 const DefaultWrapper = ({ children }: { children: ReactNode }): ReactNode => (
-    <GtkApplicationWindow>{children}</GtkApplicationWindow>
+    <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>{children}</GtkApplicationWindow>
 );
 
 const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"] = true): ReactNode => {

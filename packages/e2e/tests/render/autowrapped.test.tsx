@@ -9,7 +9,7 @@ describe("render - Autowrapped", () => {
         it("creates ListBox widget", async () => {
             const ref = createRef<Gtk.ListBox>();
 
-            await render(<GtkListBox ref={ref} />, { wrapper: false });
+            await render(<GtkListBox ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -22,7 +22,6 @@ describe("render - Autowrapped", () => {
                 <GtkListBox ref={listBoxRef}>
                     <GtkLabel ref={labelRef} label="Item 1" />
                 </GtkListBox>,
-                { wrapper: false },
             );
 
             const firstChild = listBoxRef.current?.getFirstChild();
@@ -39,7 +38,6 @@ describe("render - Autowrapped", () => {
                     <GtkLabel label="Item 2" />
                     <GtkLabel label="Item 3" />
                 </GtkListBox>,
-                { wrapper: false },
             );
 
             let count = 0;
@@ -64,7 +62,7 @@ describe("render - Autowrapped", () => {
                 );
             }
 
-            await render(<App items={["a", "b", "c"]} />, { wrapper: false });
+            await render(<App items={["a", "b", "c"]} />);
 
             let count = 0;
             let child = listBoxRef.current?.getFirstChild();
@@ -74,7 +72,7 @@ describe("render - Autowrapped", () => {
             }
             expect(count).toBe(3);
 
-            await render(<App items={["a", "c"]} />, { wrapper: false });
+            await render(<App items={["a", "c"]} />);
 
             count = 0;
             child = listBoxRef.current?.getFirstChild();
@@ -98,8 +96,8 @@ describe("render - Autowrapped", () => {
                 );
             }
 
-            await render(<App items={["first", "second"]} />, { wrapper: false });
-            await render(<App items={["second", "first"]} />, { wrapper: false });
+            await render(<App items={["first", "second"]} />);
+            await render(<App items={["second", "first"]} />);
 
             expect(listBoxRef.current?.getFirstChild()).not.toBeNull();
         });
@@ -109,7 +107,7 @@ describe("render - Autowrapped", () => {
         it("creates FlowBox widget", async () => {
             const ref = createRef<Gtk.FlowBox>();
 
-            await render(<GtkFlowBox ref={ref} />, { wrapper: false });
+            await render(<GtkFlowBox ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -122,7 +120,6 @@ describe("render - Autowrapped", () => {
                 <GtkFlowBox ref={flowBoxRef}>
                     <GtkLabel ref={labelRef} label="Item 1" />
                 </GtkFlowBox>,
-                { wrapper: false },
             );
 
             const firstChild = flowBoxRef.current?.getFirstChild();
@@ -139,7 +136,6 @@ describe("render - Autowrapped", () => {
                     <GtkLabel label="Item 2" />
                     <GtkLabel label="Item 3" />
                 </GtkFlowBox>,
-                { wrapper: false },
             );
 
             let count = 0;
@@ -164,7 +160,7 @@ describe("render - Autowrapped", () => {
                 );
             }
 
-            await render(<App items={["a", "b", "c"]} />, { wrapper: false });
+            await render(<App items={["a", "b", "c"]} />);
 
             let count = 0;
             let child = flowBoxRef.current?.getFirstChild();
@@ -174,7 +170,7 @@ describe("render - Autowrapped", () => {
             }
             expect(count).toBe(3);
 
-            await render(<App items={["a"]} />, { wrapper: false });
+            await render(<App items={["a"]} />);
 
             count = 0;
             child = flowBoxRef.current?.getFirstChild();

@@ -4,7 +4,7 @@ import { toCamelCase } from "@gtkx/gir";
 import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import { scheduleAfterCommit } from "../scheduler.js";
+import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { ContainerClass, Props } from "../types.js";
 import { resolvePropMeta } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
@@ -89,7 +89,7 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualNode<P> {
             if (this.parent) {
                 this.onChildChange(oldChild ?? null);
             }
-        });
+        }, CommitPriority.HIGH);
     }
 
     protected onChildChange(oldChild: Gtk.Widget | null): void {

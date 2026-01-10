@@ -15,7 +15,6 @@ describe("render - Slot", () => {
                     <GtkLabel ref={titleRef} label="Custom Title" />
                 </x.Slot>
             </GtkHeaderBar>,
-            { wrapper: false },
         );
 
         expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(titleRef.current?.handle);
@@ -31,7 +30,6 @@ describe("render - Slot", () => {
                     <GtkLabel ref={labelRef} label="Start Content" />
                 </x.Slot>
             </GtkPaned>,
-            { wrapper: false },
         );
 
         expect(panedRef.current?.getStartChild()?.handle).toEqual(labelRef.current?.handle);
@@ -52,11 +50,11 @@ describe("render - Slot", () => {
             );
         }
 
-        await render(<App showTitle={true} />, { wrapper: false });
+        await render(<App showTitle={true} />);
 
         expect(headerBarRef.current?.getTitleWidget()).not.toBeNull();
 
-        await render(<App showTitle={false} />, { wrapper: false });
+        await render(<App showTitle={false} />);
 
         expect(headerBarRef.current?.getTitleWidget()).toBeNull();
     });
@@ -80,11 +78,11 @@ describe("render - Slot", () => {
             );
         }
 
-        await render(<App first={true} />, { wrapper: false });
+        await render(<App first={true} />);
 
         expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(label1Ref.current?.handle);
 
-        await render(<App first={false} />, { wrapper: false });
+        await render(<App first={false} />);
 
         expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(label2Ref.current?.handle);
     });
@@ -99,7 +97,6 @@ describe("render - Slot", () => {
                     <GtkLabel ref={labelRef} label="Start Child" />
                 </x.Slot>
             </GtkPaned>,
-            { wrapper: false },
         );
 
         expect(panedRef.current?.getStartChild()?.handle).toEqual(labelRef.current?.handle);
@@ -115,7 +112,6 @@ describe("render - Slot", () => {
                     <GtkPopover ref={popoverRef}>Popover Content</GtkPopover>
                 </x.Slot>
             </GtkMenuButton>,
-            { wrapper: false },
         );
 
         expect(menuButtonRef.current?.getPopover()?.handle).toEqual(popoverRef.current?.handle);
@@ -135,7 +131,6 @@ describe("render - Slot", () => {
                     <GtkLabel ref={endRef} label="End" />
                 </x.Slot>
             </GtkPaned>,
-            { wrapper: false },
         );
 
         expect(panedRef.current?.getStartChild()?.handle).toEqual(startRef.current?.handle);

@@ -16,11 +16,26 @@ export class List extends VirtualNode<ListProps> {
     private selectionModel: Gtk.SingleSelection | Gtk.MultiSelection;
     private handleSelectionChange?: () => void;
 
-    constructor(selectionMode?: Gtk.SelectionMode) {
+    constructor(props: ListProps = {}) {
         super("", {}, undefined);
         this.store = new ListStore();
-        this.selectionModel = this.createSelectionModel(selectionMode);
+        this.selectionModel = this.createSelectionModel(props.selectionMode);
         this.selectionModel.setModel(this.store.getModel());
+        this.initSelectionHandler(props.onSelectionChanged);
+        this.setSelection(props.selected);
+    }
+
+    private initSelectionHandler(onSelectionChanged?: (ids: string[]) => void): void {
+        if (!onSelectionChanged) {
+            signalStore.set(this, this.selectionModel, "selection-changed", null);
+            return;
+        }
+
+        this.handleSelectionChange = () => {
+            onSelectionChanged(this.getSelection());
+        };
+
+        signalStore.set(this, this.selectionModel, "selection-changed", this.handleSelectionChange);
     }
 
     public getStore(): ListStore {
@@ -61,31 +76,20 @@ export class List extends VirtualNode<ListProps> {
     public updateProps(oldProps: ListProps | null, newProps: ListProps): void {
         super.updateProps(oldProps, newProps);
 
-        if (!oldProps || oldProps.selectionMode !== newProps.selectionMode) {
+        if (oldProps && oldProps.selectionMode !== newProps.selectionMode) {
             signalStore.set(this, this.selectionModel, "selection-changed", null);
             this.selectionModel = this.createSelectionModel(newProps.selectionMode);
+            this.selectionModel.setModel(this.store.getModel());
+            this.initSelectionHandler(newProps.onSelectionChanged);
+            this.setSelection(newProps.selected);
+            return;
         }
 
-        if (
-            !oldProps ||
-            oldProps.onSelectionChanged !== newProps.onSelectionChanged ||
-            oldProps.selectionMode !== newProps.selectionMode
-        ) {
-            const onSelectionChanged = newProps.onSelectionChanged;
-
-            this.handleSelectionChange = () => {
-                onSelectionChanged?.(this.getSelection());
-            };
-
-            signalStore.set(
-                this,
-                this.selectionModel,
-                "selection-changed",
-                newProps.onSelectionChanged ? this.handleSelectionChange : null,
-            );
+        if (oldProps && oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
+            this.initSelectionHandler(newProps.onSelectionChanged);
         }
 
-        if (!oldProps || oldProps.selected !== newProps.selected || oldProps.selectionMode !== newProps.selectionMode) {
+        if (oldProps && oldProps.selected !== newProps.selected) {
             this.setSelection(newProps.selected);
         }
     }
