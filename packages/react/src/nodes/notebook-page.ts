@@ -83,6 +83,8 @@ export class NotebookPageNode extends SlotNode<Props> {
     }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
+        super.updateProps(oldProps, newProps);
+
         if (!oldProps || oldProps.label !== newProps.label) {
             if (this.child && this.parent && !this.tabNode?.child) {
                 const tabLabel = this.getNotebook().getTabLabel(this.child) as Gtk.Label;

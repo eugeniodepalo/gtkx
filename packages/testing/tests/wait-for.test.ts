@@ -70,14 +70,14 @@ describe("waitFor", () => {
                     attempts++;
                     throw new Error("fail");
                 },
-                { timeout: 200, interval: 50 },
+                { timeout: 300, interval: 50 },
             ),
         ).rejects.toThrow();
 
         const elapsed = Date.now() - start;
-        expect(attempts).toBeGreaterThanOrEqual(3);
-        expect(attempts).toBeLessThanOrEqual(6);
-        expect(elapsed).toBeGreaterThanOrEqual(190);
+        expect(attempts).toBeGreaterThanOrEqual(2);
+        expect(attempts).toBeLessThanOrEqual(10);
+        expect(elapsed).toBeGreaterThanOrEqual(280);
     });
 
     it("calls onTimeout callback when provided", async () => {

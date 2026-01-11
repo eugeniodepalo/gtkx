@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkPicture, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paintable-animated.tsx?raw";
 
@@ -114,8 +114,17 @@ const PaintableAnimatedDemo = () => {
     const [speed, setSpeed] = useState(1.0);
     const [animationType, setAnimationType] = useState<"plasma" | "wave" | "spiral">("plasma");
     const [resolution, setResolution] = useState(128);
-    const speedAdjustment = useMemo(() => new Gtk.Adjustment(1.0, 0.1, 3.0, 0.1, 0.5, 0), []);
-    const resolutionAdjustment = useMemo(() => new Gtk.Adjustment(128, 32, 256, 16, 32, 0), []);
+    const [speedAdjustment] = useState(() => new Gtk.Adjustment(1.0, 0.1, 3.0, 0.1, 0.5, 0));
+    const [resolutionAdjustment] = useState(() => new Gtk.Adjustment(128, 32, 256, 16, 32, 0));
+    const [texture, setTexture] = useState<Gdk.MemoryTexture | null>(null);
+    const mountedRef = useRef(false);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
 
     useEffect(() => {
         if (!isPlaying) return;
@@ -132,12 +141,24 @@ const PaintableAnimatedDemo = () => {
         return () => clearInterval(intervalId);
     }, [isPlaying, speed]);
 
-    const texture = useMemo(() => {
-        return createAnimatedFrame(resolution, resolution, time, animationType);
+    useEffect(() => {
+        setTexture(createAnimatedFrame(resolution, resolution, time, animationType));
     }, [time, animationType, resolution]);
 
     const handleReset = useCallback(() => {
         setTime(0);
+    }, []);
+
+    const handleSpeedChange = useCallback((self: Gtk.Range) => {
+        if (mountedRef.current) {
+            setSpeed(self.getValue());
+        }
+    }, []);
+
+    const handleResolutionChange = useCallback((self: Gtk.Range) => {
+        if (mountedRef.current) {
+            setResolution(Math.floor(self.getValue()));
+        }
     }, []);
 
     return (
@@ -231,7 +252,7 @@ const PaintableAnimatedDemo = () => {
                             valuePos={Gtk.PositionType.RIGHT}
                             hexpand
                             adjustment={speedAdjustment}
-                            onValueChanged={(self) => setSpeed(self.getValue())}
+                            onValueChanged={handleSpeedChange}
                         />
                     </GtkBox>
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
@@ -242,7 +263,7 @@ const PaintableAnimatedDemo = () => {
                             valuePos={Gtk.PositionType.RIGHT}
                             hexpand
                             adjustment={resolutionAdjustment}
-                            onValueChanged={(self) => setResolution(Math.floor(self.getValue()))}
+                            onValueChanged={handleResolutionChange}
                         />
                     </GtkBox>
                 </GtkBox>

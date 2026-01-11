@@ -65,7 +65,13 @@ describe("render - ColumnViewColumn", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={columnViewRef}>
-                        <x.ColumnViewColumn id="resize" title="Resizable" expand resizable={true} renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="resize"
+                            title="Resizable"
+                            expand
+                            resizable={true}
+                            renderCell={() => "Cell"}
+                        />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );

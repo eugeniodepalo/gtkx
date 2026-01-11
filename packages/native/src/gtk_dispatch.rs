@@ -29,7 +29,8 @@
 //! ## Shutdown
 //!
 //! [`GtkDispatcher::mark_stopped`] signals that the application is shutting down. After this,
-//! new tasks are silently dropped to allow clean termination.
+//! new tasks are silently dropped to allow clean termination. This is called after the
+//! application hold guard is released and the GTK main loop has exited.
 
 use std::collections::VecDeque;
 use std::sync::{

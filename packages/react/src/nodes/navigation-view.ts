@@ -3,15 +3,17 @@ import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass, Props } from "../types.js";
+import { signalStore } from "./internal/signal-store.js";
 import { filterProps, isContainerType } from "./internal/utils.js";
 import { NavigationPageNode } from "./navigation-page.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-const CUSTOM_PROPS = ["history"];
+const PROPS = ["history", "onHistoryChanged"];
 
 type NavigationViewProps = Props & {
     history?: string[] | null;
+    onHistoryChanged?: (history: string[]) => void;
 };
 
 class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps> {
@@ -70,10 +72,26 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
             this.syncHistory(newHistory);
         }
 
-        super.updateProps(
-            filterProps(oldProps ?? {}, CUSTOM_PROPS),
-            filterProps(newProps, CUSTOM_PROPS) as NavigationViewProps,
-        );
+        if (!oldProps || oldProps.onHistoryChanged !== newProps.onHistoryChanged) {
+            const onHistoryChanged = newProps.onHistoryChanged;
+
+            if (onHistoryChanged) {
+                const handleHistoryChanged = () => {
+                    const history = this.getCurrentHistory();
+                    onHistoryChanged(history);
+                };
+
+                signalStore.set(this, this.container, "popped", handleHistoryChanged);
+                signalStore.set(this, this.container, "pushed", handleHistoryChanged);
+                signalStore.set(this, this.container, "replaced", handleHistoryChanged);
+            } else {
+                signalStore.set(this, this.container, "popped", null);
+                signalStore.set(this, this.container, "pushed", null);
+                signalStore.set(this, this.container, "replaced", null);
+            }
+        }
+
+        super.updateProps(filterProps(oldProps ?? {}, PROPS), filterProps(newProps, PROPS) as NavigationViewProps);
     }
 
     private syncHistory(history: string[]): void {
@@ -82,6 +100,22 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
         scheduleAfterCommit(() => {
             container.replaceWithTags(history, history.length);
         });
+    }
+
+    private getCurrentHistory(): string[] {
+        const stack = this.container.getNavigationStack();
+        const history: string[] = [];
+        const nItems = stack.getNItems();
+
+        for (let i = 0; i < nItems; i++) {
+            const page = stack.getObject(i) as Adw.NavigationPage | null;
+            const tag = page?.getTag();
+            if (tag) {
+                history.push(tag);
+            }
+        }
+
+        return history;
     }
 
     private arraysEqual(a: string[] | null | undefined, b: string[] | null | undefined): boolean {

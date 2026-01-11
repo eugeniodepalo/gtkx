@@ -9,12 +9,16 @@ import {
     GtkScrolledWindow,
     x,
 } from "@gtkx/react";
+import { useCallback, useMemo, useState } from "react";
 
 type Person = {
     name: string;
     email: string;
     role: string;
+    salary: number;
 };
+
+type SortColumn = "name" | "email" | "role" | "salary" | null;
 
 type FileItem = {
     name: string;
@@ -22,11 +26,14 @@ type FileItem = {
 };
 
 const people: Person[] = [
-    { name: "Alice Johnson", email: "alice@example.com", role: "Developer" },
-    { name: "Bob Smith", email: "bob@example.com", role: "Designer" },
-    { name: "Charlie Brown", email: "charlie@example.com", role: "Manager" },
-    { name: "Diana Ross", email: "diana@example.com", role: "Developer" },
-    { name: "Eve Wilson", email: "eve@example.com", role: "QA Engineer" },
+    { name: "Alice Johnson", email: "alice@example.com", role: "Developer", salary: 95000 },
+    { name: "Bob Smith", email: "bob@example.com", role: "Designer", salary: 85000 },
+    { name: "Charlie Brown", email: "charlie@example.com", role: "Manager", salary: 120000 },
+    { name: "Diana Ross", email: "diana@example.com", role: "Developer", salary: 92000 },
+    { name: "Eve Wilson", email: "eve@example.com", role: "QA Engineer", salary: 78000 },
+    { name: "Frank Miller", email: "frank@example.com", role: "Developer", salary: 105000 },
+    { name: "Grace Lee", email: "grace@example.com", role: "Designer", salary: 88000 },
+    { name: "Henry Chen", email: "henry@example.com", role: "Manager", salary: 115000 },
 ];
 
 const files: FileItem[] = [
@@ -38,6 +45,37 @@ const files: FileItem[] = [
 ];
 
 export const ListDemo = () => {
+    const [sortColumn, setSortColumn] = useState<SortColumn>(null);
+    const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
+
+    const handleSortChange = useCallback((column: string | null, order: Gtk.SortType) => {
+        setSortColumn(column as SortColumn);
+        setSortOrder(order);
+    }, []);
+
+    const sortedPeople = useMemo(() => {
+        if (!sortColumn) return people;
+
+        return [...people].sort((a, b) => {
+            let comparison = 0;
+            switch (sortColumn) {
+                case "name":
+                    comparison = a.name.localeCompare(b.name);
+                    break;
+                case "email":
+                    comparison = a.email.localeCompare(b.email);
+                    break;
+                case "role":
+                    comparison = a.role.localeCompare(b.role);
+                    break;
+                case "salary":
+                    comparison = a.salary - b.salary;
+                    break;
+            }
+            return sortOrder === Gtk.SortType.ASCENDING ? comparison : -comparison;
+        });
+    }, [sortColumn, sortOrder]);
+
     return (
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
@@ -173,14 +211,23 @@ export const ListDemo = () => {
                 </GtkFrame>
             </AdwPreferencesGroup>
 
-            <AdwPreferencesGroup title="x.ColumnViewColumn" description="Table columns with custom cell rendering">
+            <AdwPreferencesGroup
+                title="x.ColumnViewColumn"
+                description="Table columns with custom cell rendering and React-controlled sorting"
+            >
                 <GtkFrame marginTop={12}>
-                    <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <GtkColumnView estimatedRowHeight={48}>
+                    <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                        <GtkColumnView
+                            estimatedRowHeight={48}
+                            sortColumn={sortColumn}
+                            sortOrder={sortOrder}
+                            onSortChange={handleSortChange}
+                        >
                             <x.ColumnViewColumn<Person>
                                 id="name"
                                 title="Name"
                                 expand
+                                sortable
                                 renderCell={(item) => (
                                     <GtkLabel
                                         label={item?.name ?? ""}
@@ -193,24 +240,10 @@ export const ListDemo = () => {
                                 )}
                             />
                             <x.ColumnViewColumn<Person>
-                                id="email"
-                                title="Email"
-                                expand
-                                renderCell={(item) => (
-                                    <GtkLabel
-                                        label={item?.email ?? ""}
-                                        halign={Gtk.Align.START}
-                                        marginTop={8}
-                                        marginBottom={8}
-                                        marginStart={8}
-                                        marginEnd={8}
-                                    />
-                                )}
-                            />
-                            <x.ColumnViewColumn<Person>
                                 id="role"
                                 title="Role"
-                                fixedWidth={120}
+                                fixedWidth={100}
+                                sortable
                                 renderCell={(item) => (
                                     <GtkLabel
                                         label={item?.role ?? ""}
@@ -222,12 +255,33 @@ export const ListDemo = () => {
                                     />
                                 )}
                             />
-                            {people.map((person) => (
+                            <x.ColumnViewColumn<Person>
+                                id="salary"
+                                title="Salary"
+                                fixedWidth={100}
+                                sortable
+                                renderCell={(item) => (
+                                    <GtkLabel
+                                        label={item ? `$${item.salary.toLocaleString()}` : ""}
+                                        halign={Gtk.Align.END}
+                                        marginTop={8}
+                                        marginBottom={8}
+                                        marginStart={8}
+                                        marginEnd={8}
+                                    />
+                                )}
+                            />
+                            {sortedPeople.map((person) => (
                                 <x.ListItem key={person.email} id={person.email} value={person} />
                             ))}
                         </GtkColumnView>
                     </GtkScrolledWindow>
                 </GtkFrame>
+                <GtkLabel
+                    label={`Sorting: ${sortColumn ? `${sortColumn} (${sortOrder === Gtk.SortType.ASCENDING ? "asc" : "desc"})` : "none"}`}
+                    cssClasses={["dim-label", "monospace"]}
+                    marginTop={8}
+                />
             </AdwPreferencesGroup>
         </GtkBox>
     );

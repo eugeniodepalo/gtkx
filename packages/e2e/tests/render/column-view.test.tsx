@@ -182,7 +182,13 @@ describe("render - ColumnView", () => {
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
                             {columns.map((title) => (
-                                <x.ColumnViewColumn key={title} id={title} title={title} expand renderCell={() => "Cell"} />
+                                <x.ColumnViewColumn
+                                    key={title}
+                                    id={title}
+                                    title={title}
+                                    expand
+                                    renderCell={() => "Cell"}
+                                />
                             ))}
                             <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
@@ -205,7 +211,13 @@ describe("render - ColumnView", () => {
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
                             {columns.map((title) => (
-                                <x.ColumnViewColumn key={title} id={title} title={title} expand renderCell={() => "Cell"} />
+                                <x.ColumnViewColumn
+                                    key={title}
+                                    id={title}
+                                    title={title}
+                                    expand
+                                    renderCell={() => "Cell"}
+                                />
                             ))}
                             <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
@@ -1140,7 +1152,13 @@ describe("render - ColumnView", () => {
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
                             {columns.map((title) => (
-                                <x.ColumnViewColumn key={title} id={title} title={title} expand renderCell={() => "Cell"} />
+                                <x.ColumnViewColumn
+                                    key={title}
+                                    id={title}
+                                    title={title}
+                                    expand
+                                    renderCell={() => "Cell"}
+                                />
                             ))}
                             <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
@@ -1163,7 +1181,13 @@ describe("render - ColumnView", () => {
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
                             {columns.map((title) => (
-                                <x.ColumnViewColumn key={title} id={title} title={title} expand renderCell={() => "Cell"} />
+                                <x.ColumnViewColumn
+                                    key={title}
+                                    id={title}
+                                    title={title}
+                                    expand
+                                    renderCell={() => "Cell"}
+                                />
                             ))}
                             <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
@@ -1186,7 +1210,13 @@ describe("render - ColumnView", () => {
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
                             {columns.map((title) => (
-                                <x.ColumnViewColumn key={title} id={title} title={title} expand renderCell={() => "Cell"} />
+                                <x.ColumnViewColumn
+                                    key={title}
+                                    id={title}
+                                    title={title}
+                                    expand
+                                    renderCell={() => "Cell"}
+                                />
                             ))}
                             <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>

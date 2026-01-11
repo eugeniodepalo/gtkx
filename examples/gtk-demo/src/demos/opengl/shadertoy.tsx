@@ -219,11 +219,12 @@ const ShadertoyDemo = () => {
     const [compiledCode, setCompiledCode] = useState(DEFAULT_SHADER);
     const [compileError, setCompileError] = useState<string | null>(null);
     const [isAnimating, setIsAnimating] = useState(true);
-    const [time, setTime] = useState(0);
+    const [displayTime, setDisplayTime] = useState(0);
     const [resolution, setResolution] = useState({ x: 400, y: 300 });
     const [mouse] = useState({ x: 0, y: 0, z: 0, w: 0 });
 
     const startTimeRef = useRef(Date.now());
+    const timeRef = useRef(0);
 
     const buffer = useMemo(() => {
         const buf = new GtkSource.Buffer();
@@ -245,11 +246,19 @@ const ShadertoyDemo = () => {
     useEffect(() => {
         if (!isAnimating) return;
 
-        const intervalId = setInterval(() => {
+        let lastDisplayUpdate = 0;
+        const animate = () => {
             const elapsed = (Date.now() - startTimeRef.current) / 1000;
-            setTime(elapsed);
-        }, 16);
+            timeRef.current = elapsed;
+            glAreaRef.current?.queueRender();
 
+            if (elapsed - lastDisplayUpdate >= 0.1) {
+                lastDisplayUpdate = elapsed;
+                setDisplayTime(elapsed);
+            }
+        };
+
+        const intervalId = setInterval(animate, 16);
         return () => clearInterval(intervalId);
     }, [isAnimating]);
 
@@ -346,7 +355,7 @@ const ShadertoyDemo = () => {
             gl.useProgram(state.program);
 
             if (state.uniforms.time >= 0) {
-                gl.uniform1f(state.uniforms.time, time);
+                gl.uniform1f(state.uniforms.time, timeRef.current);
             }
             if (state.uniforms.resolution >= 0) {
                 gl.uniform2f(state.uniforms.resolution, resolution.x, resolution.y);
@@ -364,7 +373,7 @@ const ShadertoyDemo = () => {
 
             return true;
         },
-        [time, resolution, mouse, compiledCode],
+        [resolution, mouse, compiledCode],
     );
 
     const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {
@@ -388,14 +397,16 @@ const ShadertoyDemo = () => {
             setShaderCode(preset.code);
             setCompiledCode(preset.code);
             startTimeRef.current = Date.now();
-            setTime(0);
+            timeRef.current = 0;
+            setDisplayTime(0);
         },
         [buffer],
     );
 
     const handleReset = useCallback(() => {
         startTimeRef.current = Date.now();
-        setTime(0);
+        timeRef.current = 0;
+        setDisplayTime(0);
     }, []);
 
     return (
@@ -486,9 +497,10 @@ const ShadertoyDemo = () => {
                                     cssClasses={["card"]}
                                 />
                                 <GtkLabel
-                                    label={`Time: ${time.toFixed(2)}s | Resolution: ${resolution.x}x${resolution.y}`}
+                                    label={`Time: ${displayTime.toFixed(2)}s | Resolution: ${resolution.x}x${resolution.y}`}
                                     cssClasses={["dim-label", "caption"]}
                                     halign={Gtk.Align.CENTER}
+                                    widthChars={40}
                                 />
                             </GtkBox>
                         </x.Slot>

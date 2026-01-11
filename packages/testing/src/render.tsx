@@ -1,4 +1,4 @@
-import { discardAllBatches, start } from "@gtkx/ffi";
+import { discardAllBatches, start, stop } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
@@ -61,7 +61,9 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
 };
 
 const DefaultWrapper = ({ children }: { children: ReactNode }): ReactNode => (
-    <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>{children}</GtkApplicationWindow>
+    <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>
+        {children}
+    </GtkApplicationWindow>
 );
 
 const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"] = true): ReactNode => {
@@ -148,3 +150,13 @@ export const cleanup = async (): Promise<void> => {
     container = null;
     setScreenRoot(null);
 };
+
+const handleSignal = (): void => {
+    try {
+        stop();
+    } catch {}
+    process.exit(0);
+};
+
+process.on("SIGTERM", handleSignal);
+process.on("SIGINT", handleSignal);

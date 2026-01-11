@@ -1,4 +1,4 @@
-import { isObjectEqual } from "@gtkx/ffi";
+import { batch, isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
@@ -42,25 +42,27 @@ class OverlayChildNode extends SlotNode<Props> {
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const overlay = this.getOverlay();
 
-        if (oldChild) {
-            const parent = oldChild.getParent();
+        batch(() => {
+            if (oldChild) {
+                const parent = oldChild.getParent();
 
-            if (parent && isObjectEqual(parent, overlay)) {
-                overlay.removeOverlay(oldChild);
-            }
-        }
-
-        if (this.child) {
-            overlay.addOverlay(this.child);
-
-            if (this.props.measure !== undefined) {
-                overlay.setMeasureOverlay(this.child, this.props.measure);
+                if (parent && isObjectEqual(parent, overlay)) {
+                    overlay.removeOverlay(oldChild);
+                }
             }
 
-            if (this.props.clipOverlay !== undefined) {
-                overlay.setClipOverlay(this.child, this.props.clipOverlay);
+            if (this.child) {
+                overlay.addOverlay(this.child);
+
+                if (this.props.measure !== undefined) {
+                    overlay.setMeasureOverlay(this.child, this.props.measure);
+                }
+
+                if (this.props.clipOverlay !== undefined) {
+                    overlay.setClipOverlay(this.child, this.props.clipOverlay);
+                }
             }
-        }
+        });
     }
 }
 

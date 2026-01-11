@@ -8,11 +8,11 @@ import { getNativeObject } from "./object.js";
 
 declare const Deno: unknown;
 const isDeno = typeof Deno !== "undefined";
-const isVitest = !!process.env.VITEST;
 
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let application: Application | null = null;
+let isStopping = false;
 
 /**
  * Checks if the GTK application runtime is currently running.
@@ -20,71 +20,6 @@ let application: Application | null = null;
  * @returns `true` if {@link start} has been called and {@link stop} has not
  */
 export const isStarted = (): boolean => application !== null;
-let exitHandlersRegistered = false;
-
-const teardown = (): void => {
-    if (application) {
-        try {
-            stop();
-        } catch {}
-    }
-};
-
-const handleSigint = (): void => {
-    teardown();
-    if (!isVitest) {
-        process.exit(130);
-    }
-};
-
-const handleSigterm = (): void => {
-    teardown();
-    if (!isVitest) {
-        process.exit(143);
-    }
-};
-
-const handleException = (error: unknown): void => {
-    teardown();
-    console.error(error);
-    if (!isVitest) {
-        process.exit(1);
-    }
-};
-
-const handleRejection = (reason: unknown): void => {
-    teardown();
-    console.error("Unhandled rejection:", reason);
-    if (!isVitest) {
-        process.exit(1);
-    }
-};
-
-const registerExitHandlers = (): void => {
-    if (exitHandlersRegistered || isDeno) {
-        return;
-    }
-    exitHandlersRegistered = true;
-
-    process.on("exit", teardown);
-    process.on("SIGINT", handleSigint);
-    process.on("SIGTERM", handleSigterm);
-    process.on("uncaughtException", handleException);
-    process.on("unhandledRejection", handleRejection);
-};
-
-const unregisterExitHandlers = (): void => {
-    if (!exitHandlersRegistered) {
-        return;
-    }
-    exitHandlersRegistered = false;
-
-    process.off("exit", teardown);
-    process.off("SIGINT", handleSigint);
-    process.off("SIGTERM", handleSigterm);
-    process.off("uncaughtException", handleException);
-    process.off("unhandledRejection", handleRejection);
-};
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
@@ -141,7 +76,6 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
     }
 
     application = getNativeObject(app as NativeHandle) as Application;
-    registerExitHandlers();
     return application;
 };
 
@@ -155,11 +89,11 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
  * @see {@link events} for lifecycle event handling
  */
 export const stop = (): void => {
-    if (!application) {
+    if (!application || isStopping) {
         return;
     }
 
-    unregisterExitHandlers();
+    isStopping = true;
 
     if (keepAliveTimeout) {
         clearTimeout(keepAliveTimeout);
@@ -175,4 +109,5 @@ export const stop = (): void => {
 
     application = null;
     nativeStop();
+    isStopping = false;
 };

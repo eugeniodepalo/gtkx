@@ -14,11 +14,15 @@ import {
     GtkStackSwitcher,
     x,
 } from "@gtkx/react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 export const NavigationDemo = () => {
     const [stackPage, setStackPage] = useState("page1");
     const [history, setHistory] = useState(["home"]);
+
+    const handleHistoryChanged = useCallback((newHistory: string[]) => {
+        setHistory(newHistory);
+    }, []);
 
     return (
         <GtkBox
@@ -102,10 +106,10 @@ export const NavigationDemo = () => {
 
             <AdwPreferencesGroup
                 title="x.NavigationPage + history"
-                description="Declarative stack navigation with AdwNavigationView"
+                description="Declarative navigation with React-controlled history and onHistoryChanged for back gestures"
             >
                 <GtkFrame marginTop={12}>
-                    <AdwNavigationView history={history} heightRequest={280}>
+                    <AdwNavigationView history={history} onHistoryChanged={handleHistoryChanged} heightRequest={280}>
                         <x.NavigationPage id="home" title="Home">
                             <AdwToolbarView>
                                 <x.ToolbarTop>
@@ -171,7 +175,7 @@ export const NavigationDemo = () => {
                     </AdwNavigationView>
                 </GtkFrame>
                 <GtkLabel
-                    label={`Current history: [${history.map((h) => `"${h}"`).join(", ")}]`}
+                    label={`History: [${history.map((h) => `"${h}"`).join(", ")}] (swipe right or click header back button to pop)`}
                     cssClasses={["dim-label", "monospace"]}
                     marginTop={8}
                 />

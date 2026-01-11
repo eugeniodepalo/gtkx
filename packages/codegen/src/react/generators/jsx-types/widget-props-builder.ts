@@ -256,12 +256,20 @@ export class WidgetPropsBuilder {
         }
 
         if (widget.isNavigationView) {
-            props.push({
-                name: "history",
-                type: "string[] | null",
-                optional: true,
-                doc: "Array of page IDs representing the navigation stack. The last ID is the visible page.",
-            });
+            props.push(
+                {
+                    name: "history",
+                    type: "string[] | null",
+                    optional: true,
+                    doc: "Array of page IDs representing the navigation stack. The last ID is the visible page.",
+                },
+                {
+                    name: "onHistoryChanged",
+                    type: "((history: string[]) => void) | null",
+                    optional: true,
+                    doc: "Called when the navigation history changes due to user interaction (back button, swipe gesture).",
+                },
+            );
         }
 
         if (widget.isStack) {

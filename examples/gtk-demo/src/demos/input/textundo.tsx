@@ -15,30 +15,30 @@ const TextUndoDemo = () => {
         buffer.setEnableUndo(true);
 
         const changedHandler = buffer.connect("changed", () => {
-            setCanUndo(buffer.getCanUndo());
-            setCanRedo(buffer.getCanRedo());
             setActionCount((prev) => prev + 1);
+        });
+
+        const canUndoHandler = buffer.connect("notify::can-undo", () => {
+            setCanUndo(buffer.getCanUndo());
+        });
+
+        const canRedoHandler = buffer.connect("notify::can-redo", () => {
+            setCanRedo(buffer.getCanRedo());
         });
 
         return () => {
             GObject.signalHandlerDisconnect(buffer, changedHandler);
+            GObject.signalHandlerDisconnect(buffer, canUndoHandler);
+            GObject.signalHandlerDisconnect(buffer, canRedoHandler);
         };
     }, [buffer]);
 
     const handleUndo = () => {
-        if (buffer.getCanUndo()) {
-            buffer.undo();
-            setCanUndo(buffer.getCanUndo());
-            setCanRedo(buffer.getCanRedo());
-        }
+        buffer.undo();
     };
 
     const handleRedo = () => {
-        if (buffer.getCanRedo()) {
-            buffer.redo();
-            setCanUndo(buffer.getCanUndo());
-            setCanRedo(buffer.getCanRedo());
-        }
+        buffer.redo();
     };
 
     const handleInsertSample = () => {

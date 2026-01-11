@@ -61,20 +61,23 @@ impl GtkThread {
 
 pub struct GtkThreadState {
     pub app_hold_guard: Option<ApplicationHoldGuard>,
-    pub handle_map: HashMap<usize, NativeValue>,
+    /// Native object handles. Wrapped in ManuallyDrop because dropping GLib objects
+    /// after GTK cleanup can crash - e.g., WebKit objects have complex cleanup
+    /// that depends on the main loop. Objects are reclaimed at process exit.
+    pub handle_map: ManuallyDrop<HashMap<usize, NativeValue>>,
     pub next_handle_id: usize,
     /// Dynamically loaded libraries. Wrapped in ManuallyDrop because libraries
     /// like WebKit spawn threads with TLS destructors - calling dlclose() while
     /// those threads exist causes segfaults. Libraries are reclaimed at process exit.
-    pub libraries: HashMap<String, ManuallyDrop<Library>>,
+    pub libraries: ManuallyDrop<HashMap<String, Library>>,
 }
 
 impl Default for GtkThreadState {
     fn default() -> Self {
         GtkThreadState {
-            handle_map: HashMap::new(),
+            handle_map: ManuallyDrop::new(HashMap::new()),
             next_handle_id: 1,
-            libraries: HashMap::new(),
+            libraries: ManuallyDrop::new(HashMap::new()),
             app_hold_guard: None,
         }
     }
@@ -100,7 +103,7 @@ impl GtkThreadState {
                     // is safe as long as the library path is valid
                     match unsafe { Library::open(Some(*lib_name), RTLD_NOW | RTLD_GLOBAL) } {
                         Ok(lib) => {
-                            return Ok(entry.insert(ManuallyDrop::new(lib)));
+                            return Ok(entry.insert(lib));
                         }
                         Err(err) => {
                             last_error = Some(err);
