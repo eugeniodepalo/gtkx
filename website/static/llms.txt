@@ -14,23 +14,23 @@ GTKX enables React developers to build Linux desktop applications using familiar
 
 ## Documentation
 
-- [Introduction](https://eugeniodepalo.github.io/gtkx/introduction): What GTKX is, how it works, architecture overview, and target audience
-- [Getting Started](https://eugeniodepalo.github.io/gtkx/getting-started): Create first app, project structure, basic component patterns
-- [CLI Reference](https://eugeniodepalo.github.io/gtkx/cli): gtkx create, gtkx dev commands, npm scripts, programmatic API
-- [Slots](https://eugeniodepalo.github.io/gtkx/slots): Named child positions for widgets like GtkHeaderBar, GtkPaned, GtkMenuButton
-- [Styling](https://eugeniodepalo.github.io/gtkx/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
-- [Lists](https://eugeniodepalo.github.io/gtkx/lists): x.ListView, x.GridView, GtkColumnView, x.TreeListView, GtkDropDown with virtual scrolling
-- [Menus](https://eugeniodepalo.github.io/gtkx/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu, keyboard shortcuts, GtkPopoverMenu
-- [Adwaita](https://eugeniodepalo.github.io/gtkx/adwaita): Libadwaita components — AdwToolbarView, AdwHeaderBar, AdwActionRow, AdwNavigationView
-- [Portals and Dialogs](https://eugeniodepalo.github.io/gtkx/portals): createPortal(), AlertDialog, AboutDialog, FileDialog, modal windows
-- [Async Operations](https://eugeniodepalo.github.io/gtkx/async-operations): Async event handlers, loading states, file I/O, network requests
-- [Error Handling](https://eugeniodepalo.github.io/gtkx/error-handling): Try/catch patterns, error states, toast notifications, form validation
-- [Testing](https://eugeniodepalo.github.io/gtkx/testing): render(), screen queries, userEvent, waitFor, Xvfb setup for CI
-- [Deploying](https://eugeniodepalo.github.io/gtkx/deploying): Node.js Single Executable Application (SEA), Flatpak packaging
+- [Introduction](https://eugeniodepalo.github.io/gtkx/docs/introduction): What GTKX is, how it works, architecture overview, and target audience
+- [Getting Started](https://eugeniodepalo.github.io/gtkx/docs/getting-started): Create first app, project structure, basic component patterns
+- [CLI Reference](https://eugeniodepalo.github.io/gtkx/docs/cli): gtkx create, gtkx dev commands, npm scripts, programmatic API
+- [Slots](https://eugeniodepalo.github.io/gtkx/docs/slots): Named child positions for widgets like GtkHeaderBar, GtkPaned, GtkMenuButton
+- [Styling](https://eugeniodepalo.github.io/gtkx/docs/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
+- [Lists](https://eugeniodepalo.github.io/gtkx/docs/lists): x.ListView, x.GridView, GtkColumnView, x.TreeListView, GtkDropDown with virtual scrolling
+- [Menus](https://eugeniodepalo.github.io/gtkx/docs/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu, keyboard shortcuts, GtkPopoverMenu
+- [Adwaita](https://eugeniodepalo.github.io/gtkx/docs/adwaita): Libadwaita components — AdwToolbarView, AdwHeaderBar, AdwActionRow, AdwNavigationView
+- [Portals and Dialogs](https://eugeniodepalo.github.io/gtkx/docs/portals): createPortal(), AlertDialog, AboutDialog, FileDialog, modal windows
+- [Async Operations](https://eugeniodepalo.github.io/gtkx/docs/async-operations): Async event handlers, loading states, file I/O, network requests
+- [Error Handling](https://eugeniodepalo.github.io/gtkx/docs/error-handling): Try/catch patterns, error states, toast notifications, form validation
+- [Testing](https://eugeniodepalo.github.io/gtkx/docs/testing): render(), screen queries, userEvent, waitFor, Xvfb setup for CI
+- [Deploying](https://eugeniodepalo.github.io/gtkx/docs/deploying): Node.js Single Executable Application (SEA), Flatpak packaging
 
 ## API Reference
 
-- [React Package API](https://eugeniodepalo.github.io/gtkx/api/react): Component props, render functions, hooks, and utilities
+- [React Package API](https://eugeniodepalo.github.io/gtkx/docs/api/react): Component props, render functions, hooks, and utilities
 
 ## Optional
 

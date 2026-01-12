@@ -83,6 +83,7 @@ Explore complete applications in the [`examples/`](./examples) directory:
 - **[gtk-demo](./examples/gtk-demo)** — Full replica of the official GTK demo app
 - **[hello-world](./examples/hello-world)** — Minimal application showing a counter
 - **[todo](./examples/todo)** — Full-featured todo application with Adwaita styling and testing
+- **[x-showcase](./examples/x-showcase)** — Showcase of all x.* virtual components
 - **[deploying](./examples/deploying)** — Example of packaging and distributing a GTKX app
 
 ## Documentation
