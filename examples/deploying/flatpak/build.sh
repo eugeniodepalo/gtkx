@@ -5,11 +5,10 @@ cd "$(dirname "$0")/.."
 
 echo "Building GTKX Example Flatpak..."
 
-# Ensure the app is built
 pnpm bundle
-pnpm build:sea
 
-# Build the Flatpak
+cp ../../packages/native/index.node dist/
+
 flatpak-builder \
     --force-clean \
     --user \
@@ -18,7 +17,6 @@ flatpak-builder \
     build-dir \
     flatpak/org.gtkx.example.yaml
 
-# Create the bundle
 flatpak build-bundle \
     flatpak-repo \
     dist/org.gtkx.example.flatpak \

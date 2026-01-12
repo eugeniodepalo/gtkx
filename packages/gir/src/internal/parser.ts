@@ -439,17 +439,36 @@ export class RawGirParser {
         if (!properties || !Array.isArray(properties)) {
             return [];
         }
-        return properties.map((prop) => ({
-            name: String(prop["@_name"] ?? ""),
-            type: this.parseType((prop.type ?? prop.array) as Record<string, unknown> | undefined),
-            readable: prop["@_readable"] !== "0",
-            writable: prop["@_writable"] === "1",
-            constructOnly: prop["@_construct-only"] === "1",
-            hasDefault: prop["@_default-value"] !== undefined,
-            getter: prop["@_getter"] ? String(prop["@_getter"]) : undefined,
-            setter: prop["@_setter"] ? String(prop["@_setter"]) : undefined,
-            doc: extractDoc(prop),
-        }));
+        return properties.map((prop) => {
+            let getter = prop["@_getter"] ? String(prop["@_getter"]) : undefined;
+            let setter = prop["@_setter"] ? String(prop["@_setter"]) : undefined;
+
+            const attributes = prop.attribute as Record<string, unknown>[] | Record<string, unknown> | undefined;
+            if (attributes) {
+                const attrList = Array.isArray(attributes) ? attributes : [attributes];
+                for (const attr of attrList) {
+                    const attrName = attr["@_name"];
+                    const attrValue = attr["@_value"];
+                    if (attrName === "org.gtk.Property.get" && attrValue) {
+                        getter = String(attrValue);
+                    } else if (attrName === "org.gtk.Property.set" && attrValue) {
+                        setter = String(attrValue);
+                    }
+                }
+            }
+
+            return {
+                name: String(prop["@_name"] ?? ""),
+                type: this.parseType((prop.type ?? prop.array) as Record<string, unknown> | undefined),
+                readable: prop["@_readable"] !== "0",
+                writable: prop["@_writable"] === "1",
+                constructOnly: prop["@_construct-only"] === "1",
+                hasDefault: prop["@_default-value"] !== undefined,
+                getter,
+                setter,
+                doc: extractDoc(prop),
+            };
+        });
     }
 
     private parseSignals(signals: Record<string, unknown>[]): RawSignal[] {

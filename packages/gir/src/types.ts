@@ -278,6 +278,11 @@ export class GirClass {
         return this.getParent()?.findMethod(name) ?? null;
     }
 
+    /** Finds a method by its C identifier. */
+    getMethodByCIdentifier(cIdentifier: string): GirMethod | null {
+        return this.methods.find((m) => m.cIdentifier === cIdentifier) ?? null;
+    }
+
     /** Finds a property by name, searching up the inheritance chain. */
     findProperty(name: string): GirProperty | null {
         const own = this.getProperty(name);

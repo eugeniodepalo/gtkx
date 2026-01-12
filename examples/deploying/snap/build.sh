@@ -5,17 +5,22 @@ cd "$(dirname "$0")/.."
 
 echo "Building GTKX Example Snap..."
 
-# Ensure the app is built
 pnpm bundle
-pnpm build:sea
 
-# Build the Snap
-snapcraft
+cp ../../packages/native/index.node dist/
+
+if command -v snapcraft &> /dev/null; then
+    SNAPCRAFT=(snapcraft)
+else
+    SNAPCRAFT=(snap run snapcraft)
+fi
+
+"${SNAPCRAFT[@]}" pack --output dist/gtkx-example.snap
 
 echo "Snap built successfully!"
 echo ""
 echo "To install (devmode):"
-echo "  sudo snap install --devmode gtkx-example_*.snap"
+echo "  sudo snap install --devmode dist/gtkx-example.snap"
 echo ""
 echo "To run:"
 echo "  gtkx-example"

@@ -497,3 +497,144 @@ const CardDemo = () => (
     </GtkBox>
 );
 ```
+
+---
+
+## Navigation with AdwNavigationView
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import {
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwNavigationView,
+    AdwToolbarView,
+    GtkBox,
+    GtkButton,
+    GtkLabel,
+    quit,
+    x,
+} from "@gtkx/react";
+import { useState } from "react";
+
+const NavigationDemo = () => {
+    const [history, setHistory] = useState(["home"]);
+
+    const push = (page: string) => setHistory([...history, page]);
+    const pop = () => setHistory(history.slice(0, -1));
+
+    return (
+        <AdwApplicationWindow title="Navigation Demo" defaultWidth={600} defaultHeight={400} onClose={quit}>
+            <AdwNavigationView history={history} onHistoryChanged={setHistory}>
+                <x.NavigationPage id="home" title="Home">
+                    <AdwToolbarView>
+                        <x.ToolbarTop><AdwHeaderBar /></x.ToolbarTop>
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                            <GtkLabel label="Welcome!" cssClasses={["title-1"]} />
+                            <GtkButton label="Go to Settings" onClicked={() => push("settings")} cssClasses={["suggested-action"]} />
+                        </GtkBox>
+                    </AdwToolbarView>
+                </x.NavigationPage>
+                <x.NavigationPage id="settings" title="Settings" canPop>
+                    <AdwToolbarView>
+                        <x.ToolbarTop><AdwHeaderBar /></x.ToolbarTop>
+                        <GtkLabel label="Settings page content" vexpand />
+                    </AdwToolbarView>
+                </x.NavigationPage>
+            </AdwNavigationView>
+        </AdwApplicationWindow>
+    );
+};
+```
+
+---
+
+## File Browser with TreeListView
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
+import { useState } from "react";
+
+interface FileNode {
+    id: string;
+    name: string;
+    isDirectory: boolean;
+    children?: FileNode[];
+}
+
+const files: FileNode[] = [
+    {
+        id: "src",
+        name: "src",
+        isDirectory: true,
+        children: [
+            { id: "src/app.tsx", name: "app.tsx", isDirectory: false },
+            { id: "src/index.tsx", name: "index.tsx", isDirectory: false },
+        ],
+    },
+    { id: "package.json", name: "package.json", isDirectory: false },
+];
+
+const FileBrowser = () => {
+    const [selected, setSelected] = useState<string | null>(null);
+
+    return (
+        <GtkScrolledWindow vexpand cssClasses={["card"]}>
+            <x.TreeListView<FileNode>
+                estimatedItemHeight={36}
+                vexpand
+                autoexpand={false}
+                selectionMode={Gtk.SelectionMode.SINGLE}
+                selected={selected ? [selected] : []}
+                onSelectionChanged={(ids) => setSelected(ids[0] ?? null)}
+                renderItem={(item) => (
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                        <GtkImage iconName={item?.isDirectory ? "folder-symbolic" : "text-x-generic-symbolic"} />
+                        <GtkLabel label={item?.name ?? ""} halign={Gtk.Align.START} />
+                    </GtkBox>
+                )}
+            >
+                {files.map((file) => (
+                    <x.TreeListItem key={file.id} id={file.id} value={file}>
+                        {file.children?.map((child) => (
+                            <x.TreeListItem key={child.id} id={child.id} value={child} />
+                        ))}
+                    </x.TreeListItem>
+                ))}
+            </x.TreeListView>
+        </GtkScrolledWindow>
+    );
+};
+```
+
+---
+
+## Toggle Group View Switcher
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { AdwToggleGroup, GtkBox, GtkLabel, GtkStack, x } from "@gtkx/react";
+import { useState } from "react";
+
+const ViewSwitcher = () => {
+    const [view, setView] = useState("list");
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+            <AdwToggleGroup active={view} onToggled={setView} halign={Gtk.Align.CENTER}>
+                <x.Toggle id="list" iconName="view-list-symbolic" tooltip="List view" />
+                <x.Toggle id="grid" iconName="view-grid-symbolic" tooltip="Grid view" />
+            </AdwToggleGroup>
+            <GtkStack page={view} vexpand>
+                <x.StackPage id="list">
+                    <GtkLabel label="List View Content" />
+                </x.StackPage>
+                <x.StackPage id="grid">
+                    <GtkLabel label="Grid View Content" />
+                </x.StackPage>
+            </GtkStack>
+        </GtkBox>
+    );
+};
+```

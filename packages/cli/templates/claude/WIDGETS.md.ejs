@@ -181,6 +181,36 @@ Selection dropdown.
 </GtkDropDown>
 ```
 
+### TreeListView
+Hierarchical tree with expand/collapse.
+
+```tsx
+<x.TreeListView<FileNode>
+    estimatedItemHeight={48}
+    vexpand
+    autoexpand={false}
+    selectionMode={Gtk.SelectionMode.SINGLE}
+    selected={selectedId ? [selectedId] : []}
+    onSelectionChanged={(ids) => setSelectedId(ids[0])}
+    renderItem={(item, row) => (
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+            <GtkImage iconName={item?.isDirectory ? "folder-symbolic" : "text-x-generic-symbolic"} />
+            <GtkLabel label={item?.name ?? ""} />
+        </GtkBox>
+    )}
+>
+    {files.map(file => (
+        <x.TreeListItem key={file.id} id={file.id} value={file}>
+            {file.children?.map(child => (
+                <x.TreeListItem key={child.id} id={child.id} value={child} />
+            ))}
+        </x.TreeListItem>
+    ))}
+</x.TreeListView>
+```
+
+**TreeListItem props:** `id`, `value`, `indentForDepth`, `indentForIcon`, `hideExpander`, nested `children`
+
 ---
 
 ## Inputs
@@ -219,6 +249,44 @@ Numeric input with increment/decrement.
 
 ```tsx
 <GtkSpinButton value={count} onValueChanged={(sb) => setCount(sb.getValue())} />
+```
+
+### GtkScale
+Slider with optional marks.
+
+```tsx
+<GtkScale
+    orientation={Gtk.Orientation.HORIZONTAL}
+    drawValue
+    valuePos={Gtk.PositionType.TOP}
+>
+    <x.ScaleMark value={0} label="Min" />
+    <x.ScaleMark value={50} />
+    <x.ScaleMark value={100} label="Max" />
+</GtkScale>
+```
+
+**ScaleMark props:** `value` (required), `position`, `label`
+
+### GtkCalendar
+Date picker with markable days.
+
+```tsx
+<GtkCalendar onDaySelected={(cal) => setDate(cal.getDate())}>
+    <x.CalendarMark day={15} />
+    <x.CalendarMark day={20} />
+</GtkCalendar>
+```
+
+### GtkLevelBar
+Progress/level indicator with customizable thresholds.
+
+```tsx
+<GtkLevelBar value={0.6}>
+    <x.LevelBarOffset id="low" value={0.25} />
+    <x.LevelBarOffset id="high" value={0.75} />
+    <x.LevelBarOffset id="full" value={1.0} />
+</GtkLevelBar>
 ```
 
 ---
@@ -375,23 +443,35 @@ Settings UI.
     <AdwPreferencesGroup title="Appearance" description="Customize look">
         <AdwSwitchRow title="Dark Mode" active={dark} onActivated={() => setDark(!dark)} />
         <AdwActionRow title="Theme" subtitle="Select color">
-            <x.Slot for={AdwActionRow} id="activatableWidget">
+            <x.ActionRowPrefix>
+                <GtkImage iconName="preferences-color-symbolic" />
+            </x.ActionRowPrefix>
+            <x.ActionRowSuffix>
                 <GtkImage iconName="go-next-symbolic" valign={Gtk.Align.CENTER} />
-            </x.Slot>
+            </x.ActionRowSuffix>
         </AdwActionRow>
     </AdwPreferencesGroup>
 </AdwPreferencesPage>
 ```
 
+**ActionRow children:** Use `x.ActionRowPrefix` for left widgets, `x.ActionRowSuffix` for right widgets, or `x.Slot for={AdwActionRow} id="activatableWidget"` for clickable suffix.
+
 ### AdwExpanderRow
-Expandable settings row.
+Expandable settings row with optional action widget.
 
 ```tsx
 <AdwExpanderRow title="Advanced" subtitle="More options">
-    <AdwSwitchRow title="Option 1" active />
-    <AdwSwitchRow title="Option 2" active={false} />
+    <x.ExpanderRowAction>
+        <GtkButton iconName="emblem-system-symbolic" cssClasses={["flat"]} />
+    </x.ExpanderRowAction>
+    <x.ExpanderRowRow>
+        <AdwSwitchRow title="Option 1" active />
+        <AdwSwitchRow title="Option 2" active={false} />
+    </x.ExpanderRowRow>
 </AdwExpanderRow>
 ```
+
+**ExpanderRow slots:** `x.ExpanderRowRow` for nested rows, `x.ExpanderRowAction` for header action widget. Direct children also work for simple cases.
 
 ### AdwEntryRow / AdwPasswordEntryRow
 Input in list row.
@@ -400,6 +480,37 @@ Input in list row.
 <AdwEntryRow title="Username" text={username} onChanged={(e) => setUsername(e.getText())} />
 <AdwPasswordEntryRow title="Password" />
 ```
+
+### AdwToggleGroup
+Segmented button group for mutually exclusive options.
+
+```tsx
+<AdwToggleGroup active={viewMode} onToggled={setViewMode}>
+    <x.Toggle id="list" iconName="view-list-symbolic" tooltip="List view" />
+    <x.Toggle id="grid" iconName="view-grid-symbolic" tooltip="Grid view" />
+    <x.Toggle id="flow" label="Flow" />
+</AdwToggleGroup>
+```
+
+**Toggle props:** `id` (optional), `label`, `iconName`, `tooltip`, `enabled`
+
+### AdwNavigationView
+Stack-based navigation with history.
+
+```tsx
+const [history, setHistory] = useState(["home"]);
+
+<AdwNavigationView history={history} onHistoryChanged={setHistory}>
+    <x.NavigationPage id="home" title="Home">
+        <GtkButton label="Go to Details" onClicked={() => setHistory([...history, "details"])} />
+    </x.NavigationPage>
+    <x.NavigationPage id="details" title="Details" canPop>
+        <GtkLabel label="Details content" />
+    </x.NavigationPage>
+</AdwNavigationView>
+```
+
+**NavigationPage props:** `id` (required), `title`, `canPop`. Control navigation via `history` array.
 
 ### Other Adwaita Widgets
 

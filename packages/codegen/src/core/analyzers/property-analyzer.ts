@@ -42,17 +42,31 @@ export class PropertyAnalyzer {
         const { namespace } = parseQualifiedName(cls.qualifiedName);
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
 
+        const getter = this.resolveAccessorName(prop.getter, cls);
+        const setter = this.resolveAccessorName(prop.setter, cls);
+
         return {
             name: prop.name,
             camelName: toCamelCase(prop.name),
             type: qualifyType(typeMapping.ts, namespace),
             isRequired: requiredParams.has(prop.name) || requiredParams.has(kebabToSnake(prop.name)),
             isWritable: prop.writable,
-            getter: prop.getter,
-            setter: prop.setter,
+            getter,
+            setter,
             doc: prop.doc,
             referencedNamespaces: collectExternalNamespaces(typeMapping.imports),
         };
+    }
+
+    private resolveAccessorName(accessor: string | undefined, cls: GirClass): string | undefined {
+        if (!accessor) return undefined;
+
+        const method = cls.getMethodByCIdentifier(accessor);
+        if (method) {
+            return method.name;
+        }
+
+        return accessor;
     }
 
     private getRequiredConstructorParams(cls: GirClass): Set<string> {

@@ -5,6 +5,7 @@ import {
     createNormalizedClass,
     createNormalizedConstructor,
     createNormalizedInterface,
+    createNormalizedMethod,
     createNormalizedNamespace,
     createNormalizedParameter,
     createNormalizedProperty,
@@ -280,7 +281,7 @@ describe("PropertyAnalyzer", () => {
             expect(result.map((p) => p.name)).toContain("spacing");
         });
 
-        it("preserves getter and setter names", () => {
+        it("preserves getter and setter names when method lookup fails", () => {
             const cls = createNormalizedClass({
                 name: "Button",
                 parent: null,
@@ -302,6 +303,47 @@ describe("PropertyAnalyzer", () => {
 
             expect(result[0]?.getter).toBe("get_label");
             expect(result[0]?.setter).toBe("set_label");
+        });
+
+        it("resolves C identifier accessors to method names", () => {
+            const cls = createNormalizedClass({
+                name: "Image",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "file",
+                        getter: "gtk_image_get_file",
+                        setter: "gtk_image_set_from_file",
+                    }),
+                ],
+                methods: [
+                    createNormalizedMethod({
+                        name: "get_file",
+                        cIdentifier: "gtk_image_get_file",
+                        returnType: createNormalizedType({ name: "utf8", nullable: true }),
+                    }),
+                    createNormalizedMethod({
+                        name: "set_from_file",
+                        cIdentifier: "gtk_image_set_from_file",
+                        parameters: [
+                            createNormalizedParameter({
+                                name: "filename",
+                                type: createNormalizedType({ name: "utf8", nullable: true }),
+                            }),
+                        ],
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Image", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.getter).toBe("get_file");
+            expect(result[0]?.setter).toBe("set_from_file");
         });
 
         it("tracks referenced external namespaces", () => {
