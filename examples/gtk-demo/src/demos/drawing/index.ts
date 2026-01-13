@@ -4,6 +4,7 @@ import { imageFilteringDemo } from "./image-filtering.js";
 import { imageScalingDemo } from "./image-scaling.js";
 import { imagesDemo } from "./images.js";
 import { maskDemo } from "./mask.js";
+import { paintDemo } from "./paint.js";
 import { paintableDemo } from "./paintable.js";
 import { paintableAnimatedDemo } from "./paintable-animated.js";
 import { paintableEmblemDemo } from "./paintable-emblem.js";
@@ -13,6 +14,7 @@ import { paintableSymbolicDemo } from "./paintable-symbolic.js";
 
 export const drawingDemos: Demo[] = [
     drawingAreaDemo,
+    paintDemo,
     imagesDemo,
     imageScalingDemo,
     imageFilteringDemo,

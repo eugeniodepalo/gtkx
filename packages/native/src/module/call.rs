@@ -59,13 +59,6 @@ impl CallRequest {
     }
 
     fn execute(self) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
-        GtkThreadState::with(|state| {
-            if state.app_hold_guard.is_none() {
-                bail!("GTK application has not been started. Call start() first.");
-            }
-            Ok(())
-        })?;
-
         let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(self.args.len() + 1);
         for arg in &self.args {
             arg.ty.append_ffi_arg_types(&mut arg_types);
@@ -146,6 +139,8 @@ impl CallRequest {
 }
 
 pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
+    gtk_dispatch::GtkDispatcher::global().assert_started();
+
     let request = CallRequest::from_js(&mut cx)?;
 
     let (tx, rx) = mpsc::channel::<anyhow::Result<(Value, Vec<RefUpdate>)>>();
@@ -174,6 +169,8 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 }
 
 pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    gtk_dispatch::GtkDispatcher::global().assert_started();
+
     let js_calls = cx.argument::<JsArray>(0)?;
     let len = js_calls.len(&mut cx);
 

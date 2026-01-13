@@ -1,4 +1,5 @@
 import { advancedDemos } from "./advanced/index.js";
+import { benchmarkDemos } from "./benchmark/index.js";
 import { buttonsDemos } from "./buttons/index.js";
 import { constraintsDemos } from "./constraints/index.js";
 import { cssDemos } from "./css/index.js";
@@ -105,5 +106,11 @@ export const categories: Category[] = [
         title: "Gestures & Input",
         icon: "input-touchpad-symbolic",
         demos: gesturesDemos,
+    },
+    {
+        id: "benchmark",
+        title: "Benchmark",
+        icon: "utilities-system-monitor-symbolic",
+        demos: benchmarkDemos,
     },
 ];

@@ -49,6 +49,7 @@ type Task = Box<dyn FnOnce() + Send + 'static>;
 pub struct GtkDispatcher {
     queue: Mutex<VecDeque<Task>>,
     dispatch_scheduled: AtomicBool,
+    started: AtomicBool,
     stopped: AtomicBool,
     js_wait_depth: AtomicUsize,
 }
@@ -64,6 +65,7 @@ impl GtkDispatcher {
         Self {
             queue: Mutex::new(VecDeque::new()),
             dispatch_scheduled: AtomicBool::new(false),
+            started: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
             js_wait_depth: AtomicUsize::new(0),
         }
@@ -108,6 +110,17 @@ impl GtkDispatcher {
 
     pub fn exit_js_wait(&self) {
         self.js_wait_depth.fetch_sub(1, Ordering::AcqRel);
+    }
+
+    pub fn mark_started(&self) {
+        self.started.store(true, Ordering::Release);
+    }
+
+    pub fn assert_started(&self) {
+        assert!(
+            self.started.load(Ordering::Acquire),
+            "GTK application has not been started. Call start() first."
+        );
     }
 
     pub fn mark_stopped(&self) {

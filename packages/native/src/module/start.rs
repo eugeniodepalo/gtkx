@@ -19,6 +19,7 @@ use gtk4::{gio::ApplicationFlags, prelude::*};
 use neon::prelude::*;
 
 use crate::{
+    gtk_dispatch::GtkDispatcher,
     managed::{NativeHandle, NativeValue},
     state::{GtkThread, GtkThreadState},
 };
@@ -62,6 +63,8 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
     let app_object_id = rx
         .recv()
         .or_else(|err| cx.throw_error(format!("Error starting GTK thread: {err}")))?;
+
+    GtkDispatcher::global().mark_started();
 
     Ok(cx.boxed(app_object_id).upcast())
 }
