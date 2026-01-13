@@ -1,3 +1,4 @@
+import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFlowBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
@@ -27,28 +28,10 @@ const colors = [
     "#9a9996",
 ];
 
-const colorClasses = [
-    "red",
-    "orange",
-    "yellow",
-    "green",
-    "blue",
-    "purple",
-    "red",
-    "brown",
-    "gray",
-    "gray",
-    "gray",
-    "red",
-    "orange",
-    "yellow",
-    "green",
-    "blue",
-    "purple",
-    "orange",
-    "brown",
-    "gray",
-];
+const colorData = colors.map((color) => ({
+    color,
+    style: css`background-color: ${color}; border-radius: 8px;`,
+}));
 
 const FlowBoxDemo = () => {
     const [itemCount, setItemCount] = useState(12);
@@ -96,13 +79,8 @@ const FlowBoxDemo = () => {
                         marginStart={12}
                         marginEnd={12}
                     >
-                        {colors.map((color, index) => (
-                            <GtkBox
-                                key={color}
-                                widthRequest={80}
-                                heightRequest={60}
-                                cssClasses={["card", colorClasses[index] || "accent"]}
-                            />
+                        {colorData.map(({ color, style }) => (
+                            <GtkBox key={color} widthRequest={80} heightRequest={60} cssClasses={["card", style]} />
                         ))}
                     </GtkFlowBox>
                 </GtkScrolledWindow>

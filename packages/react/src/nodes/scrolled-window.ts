@@ -11,7 +11,7 @@ type ScrolledWindowProps = Props & {
     vscrollbarPolicy?: Gtk.PolicyType;
 };
 
-export class ScrolledWindowNode extends WidgetNode<Gtk.ScrolledWindow, ScrolledWindowProps> {
+class ScrolledWindowNode extends WidgetNode<Gtk.ScrolledWindow, ScrolledWindowProps> {
     public static override priority = 2;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {

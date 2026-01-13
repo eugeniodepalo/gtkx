@@ -92,21 +92,6 @@ export class WidgetPropsBuilder {
             });
         }
 
-        allProps.push(
-            {
-                name: "widthRequest",
-                type: "number",
-                optional: true,
-                doc: "Overrides for width request of the widget.\n\nIf this is -1, the natural request will be used.",
-            },
-            {
-                name: "heightRequest",
-                type: "number",
-                optional: true,
-                doc: "Overrides for height request of the widget.\n\nIf this is -1, the natural request will be used.",
-            },
-        );
-
         sourceFile.addTypeAlias({
             name: "WidgetProps",
             isExported: true,
@@ -305,43 +290,12 @@ export class WidgetPropsBuilder {
         }
 
         if (widget.isWindow) {
-            props.push(
-                {
-                    name: "defaultWidth",
-                    type: "number",
-                    optional: true,
-                    doc: "The default width of the window.",
-                },
-                {
-                    name: "defaultHeight",
-                    type: "number",
-                    optional: true,
-                    doc: "The default height of the window.",
-                },
-                {
-                    name: "onClose",
-                    type: "(() => void) | null",
-                    optional: true,
-                    doc: "Called when the window close button is clicked. Control window visibility using React state.",
-                },
-            );
-        }
-
-        if (widget.isScrolledWindow) {
-            props.push(
-                {
-                    name: "hscrollbarPolicy",
-                    type: 'import("@gtkx/ffi/gtk").PolicyType',
-                    optional: true,
-                    doc: "When the horizontal scrollbar is displayed.",
-                },
-                {
-                    name: "vscrollbarPolicy",
-                    type: 'import("@gtkx/ffi/gtk").PolicyType',
-                    optional: true,
-                    doc: "When the vertical scrollbar is displayed.",
-                },
-            );
+            props.push({
+                name: "onClose",
+                type: "(() => void) | null",
+                optional: true,
+                doc: "Called when the window close button is clicked. Control window visibility using React state.",
+            });
         }
 
         return props;

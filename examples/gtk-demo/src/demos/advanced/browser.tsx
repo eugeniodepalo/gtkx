@@ -1,14 +1,16 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as WebKit from "@gtkx/ffi/webkit";
 import { GtkBox, GtkButton, GtkEntry, WebKitWebView } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./browser.tsx?raw";
 
+const INITIAL_URL = "https://eugeniodepalo.github.io/gtkx/";
+
 const BrowserDemo = () => {
     const webViewRef = useRef<WebKit.WebView>(null);
-    const [url, setUrl] = useState("https://eugeniodepalo.github.io/gtkx/");
-    const [inputUrl, setInputUrl] = useState(url);
+    const [inputUrl, setInputUrl] = useState(INITIAL_URL);
+    const hasLoadedInitial = useRef(false);
 
     const navigate = useCallback((targetUrl: string) => {
         if (!webViewRef.current) {
@@ -21,7 +23,7 @@ const BrowserDemo = () => {
         }
 
         webViewRef.current.loadUri(finalUrl);
-        setUrl(finalUrl);
+        setInputUrl(finalUrl);
     }, []);
 
     const handleActivate = useCallback(() => {
@@ -40,12 +42,18 @@ const BrowserDemo = () => {
         webViewRef.current?.reload();
     }, []);
 
+    useEffect(() => {
+        if (webViewRef.current && !hasLoadedInitial.current) {
+            hasLoadedInitial.current = true;
+            webViewRef.current.loadUri(INITIAL_URL);
+        }
+    }, []);
+
     const handleLoadChanged = useCallback((_self: WebKit.WebView, loadEvent: WebKit.LoadEvent) => {
         if (loadEvent === WebKit.LoadEvent.COMMITTED) {
             const currentUri = webViewRef.current?.getUri();
             if (currentUri) {
                 setInputUrl(currentUri);
-                setUrl(currentUri);
             }
         }
     }, []);
@@ -65,7 +73,7 @@ const BrowserDemo = () => {
                 />
                 <GtkButton label="Go" onClicked={handleActivate} cssClasses={["suggested-action"]} />
             </GtkBox>
-            <WebKitWebView ref={webViewRef} hexpand vexpand uri={url} onLoadChanged={handleLoadChanged} />
+            <WebKitWebView ref={webViewRef} hexpand vexpand onLoadChanged={handleLoadChanged} />
         </GtkBox>
     );
 };

@@ -35,6 +35,8 @@ export type PropertyAnalysis = {
     doc?: string;
     /** External namespaces referenced by this property's type (e.g., ["GLib", "cairo"]) */
     referencedNamespaces: string[];
+    /** Whether this property uses a synthetic setter (generated via g_object_set_property) */
+    hasSyntheticSetter?: boolean;
 };
 
 /**

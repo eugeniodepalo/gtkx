@@ -25,6 +25,7 @@ import { type ParentInfo, parseParentReference } from "../../../core/utils/paren
 import type { Writers } from "../../../core/writers/index.js";
 import { ConstructorBuilder } from "./constructor-builder.js";
 import { MethodBuilder } from "./method-builder.js";
+import { PropertySetterBuilder } from "./property-setter-builder.js";
 import { SignalBuilder } from "./signal-builder.js";
 import { StaticFunctionBuilder } from "./static-function-builder.js";
 import { type WidgetMetaAnalyzers, WidgetMetaBuilder } from "./widget-meta-builder.js";
@@ -70,6 +71,7 @@ export class ClassGenerator {
     private readonly methodBuilder: MethodBuilder;
     private readonly staticBuilder: StaticFunctionBuilder;
     private readonly signalBuilder: SignalBuilder;
+    private readonly propertySetterBuilder: PropertySetterBuilder;
     private readonly widgetMetaBuilder: WidgetMetaBuilder;
 
     constructor(
@@ -86,6 +88,7 @@ export class ClassGenerator {
         this.methodBuilder = new MethodBuilder(ffiMapper, ctx, writers, options);
         this.staticBuilder = new StaticFunctionBuilder(cls, ffiMapper, ctx, writers, options);
         this.signalBuilder = new SignalBuilder(cls, ffiMapper, ctx, repository, writers, options);
+        this.propertySetterBuilder = new PropertySetterBuilder(cls, ffiMapper, ctx, repository, options);
 
         const analyzers: WidgetMetaAnalyzers = {
             property: new PropertyAnalyzer(repository, ffiMapper),
@@ -150,6 +153,7 @@ export class ClassGenerator {
                 this.methodBuilder.buildStructures(methods, selfTypeDescriptor, asyncAnalysis),
             ),
             ...this.signalBuilder.buildConnectMethodStructures(),
+            ...this.propertySetterBuilder.buildStructures(),
         ];
 
         if (allMethodStructures.length > 0) {

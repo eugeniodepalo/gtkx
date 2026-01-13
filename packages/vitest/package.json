@@ -39,7 +39,7 @@
         "build": "tsc -b && cp ../../README.md ."
     },
     "devDependencies": {
-        "vitest": "^4.0.16"
+        "vitest": "^4.0.17"
     },
     "peerDependencies": {
         "vitest": ">=4"

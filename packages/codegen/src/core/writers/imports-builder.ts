@@ -310,7 +310,10 @@ export class ImportsBuilder {
             externalNamespaces.add("Gio");
         }
 
-        if (this.ctx.usesGObjectNamespace && this.options.namespace !== "GObject") {
+        if (
+            (this.ctx.usesGObjectNamespace || this.ctx.usesSyntheticPropertySetter) &&
+            this.options.namespace !== "GObject"
+        ) {
             externalNamespaces.add("GObject");
         }
 

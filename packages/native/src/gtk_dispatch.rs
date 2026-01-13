@@ -33,9 +33,10 @@
 //! application hold guard is released and the GTK main loop has exited.
 
 use std::collections::VecDeque;
+use std::process;
 use std::sync::{
     Mutex, OnceLock,
-    atomic::{AtomicBool, AtomicUsize, Ordering},
+    atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering},
     mpsc,
 };
 
@@ -50,6 +51,7 @@ pub struct GtkDispatcher {
     queue: Mutex<VecDeque<Task>>,
     dispatch_scheduled: AtomicBool,
     started: AtomicBool,
+    started_pid: AtomicU32,
     stopped: AtomicBool,
     js_wait_depth: AtomicUsize,
 }
@@ -66,6 +68,7 @@ impl GtkDispatcher {
             queue: Mutex::new(VecDeque::new()),
             dispatch_scheduled: AtomicBool::new(false),
             started: AtomicBool::new(false),
+            started_pid: AtomicU32::new(0),
             stopped: AtomicBool::new(false),
             js_wait_depth: AtomicUsize::new(0),
         }
@@ -113,11 +116,13 @@ impl GtkDispatcher {
     }
 
     pub fn mark_started(&self) {
+        self.started_pid.store(process::id(), Ordering::Release);
         self.started.store(true, Ordering::Release);
     }
 
     pub fn is_started(&self) -> bool {
         self.started.load(Ordering::Acquire)
+            && self.started_pid.load(Ordering::Acquire) == process::id()
     }
 
     pub fn mark_stopped(&self) {

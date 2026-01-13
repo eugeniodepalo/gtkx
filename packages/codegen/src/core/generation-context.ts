@@ -90,6 +90,9 @@ export class GenerationContext {
     /** Whether the module uses the Arg type for varargs */
     usesArg = false;
 
+    /** Whether the module uses synthetic property setters (GObject.Value and typeFromName) */
+    usesSyntheticPropertySetter = false;
+
     /** Enums used from the same namespace */
     usedEnums = new Set<string>();
 
@@ -137,6 +140,7 @@ export class GenerationContext {
         this.usesGetClassByTypeName = false;
         this.usesGObjectNamespace = false;
         this.usesArg = false;
+        this.usesSyntheticPropertySetter = false;
 
         this.usedEnums.clear();
         this.usedRecords.clear();

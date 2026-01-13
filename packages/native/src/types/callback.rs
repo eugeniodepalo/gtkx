@@ -12,8 +12,8 @@
 //! - `TreeListModelCreateFunc`: For `GtkTreeListModel` child creation
 
 use std::ffi::c_void;
-use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicPtr, Ordering};
 
 use gtk4::glib::{
     self, gobject_ffi, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _,
@@ -23,7 +23,7 @@ use neon::prelude::*;
 
 use crate::ffi::{FfiStorage, FfiStorageKind, TrampolineCallbackValue};
 use crate::js_dispatch;
-use crate::trampoline::CallbackData;
+use crate::trampoline::{CallbackData, ClosureGuard};
 use crate::types::Type;
 use crate::value::Callback;
 use crate::{ffi, value};
@@ -82,12 +82,10 @@ impl CallbackTrampoline {
                     let args_values = value::Value::from_glib_values(args, &arg_types)
                         .expect("Failed to convert GLib callback arguments");
 
-                    let closure_ptr = closure_holder_for_callback.load(Ordering::Acquire);
-                    if !closure_ptr.is_null() {
-                        unsafe { gobject_ffi::g_closure_ref(closure_ptr) };
-                    }
+                    let _guard =
+                        ClosureGuard::from_ptr(closure_holder_for_callback.load(Ordering::Acquire));
 
-                    let result = js_dispatch::JsDispatcher::global().invoke_and_wait(
+                    js_dispatch::JsDispatcher::global().invoke_and_wait(
                         &channel,
                         &js_func,
                         args_values,
@@ -102,13 +100,7 @@ impl CallbackTrampoline {
                                 Some(&return_type_inner),
                             ),
                         },
-                    );
-
-                    if !closure_ptr.is_null() {
-                        unsafe { gobject_ffi::g_closure_unref(closure_ptr) };
-                    }
-
-                    result
+                    )
                 });
 
                 let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();

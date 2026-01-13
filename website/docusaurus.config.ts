@@ -41,6 +41,8 @@ const config: Config = {
                 typeDeclarationFormat: "table",
                 groupOrder: ["Functions", "Variables", "Interfaces", "*"],
                 excludeInternal: true,
+                useCodeBlocks: true,
+                sanitizeComments: true,
             },
         ],
         [
@@ -56,6 +58,8 @@ const config: Config = {
                 enumMembersFormat: "table",
                 typeDeclarationFormat: "table",
                 groupOrder: ["Functions", "Variables", "Interfaces", "*"],
+                useCodeBlocks: true,
+                sanitizeComments: true,
             },
         ],
         [
@@ -71,6 +75,8 @@ const config: Config = {
                 enumMembersFormat: "table",
                 typeDeclarationFormat: "table",
                 groupOrder: ["Functions", "Variables", "Interfaces", "*"],
+                useCodeBlocks: true,
+                sanitizeComments: true,
             },
         ],
         [
@@ -86,6 +92,8 @@ const config: Config = {
                 enumMembersFormat: "table",
                 typeDeclarationFormat: "table",
                 groupOrder: ["Functions", "Variables", "Interfaces", "*"],
+                useCodeBlocks: true,
+                sanitizeComments: true,
             },
         ],
     ],

@@ -1,7 +1,7 @@
 import { getNativeObject } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { type Arg, call } from "@gtkx/native";
+import { type Arg, call, createRef } from "@gtkx/native";
 import { fireEvent } from "./fire-event.js";
 import { tick } from "./timing.js";
 import { isEditable } from "./widget.js";
@@ -215,6 +215,8 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
 
 type ArgSpec = { type: "float"; value: number } | { type: "int"; value: number };
 
+const SIGNALS_WITH_RETURN_VALUE = new Set(["key-pressed", "key-released"]);
+
 const emitSignal = (target: Gtk.EventController, signalName: string, ...args: ArgSpec[]): void => {
     const signalArgs = args.map((arg): Arg => {
         if (arg.type === "float") {
@@ -223,16 +225,21 @@ const emitSignal = (target: Gtk.EventController, signalName: string, ...args: Ar
         return { type: { type: "int", size: 32, unsigned: true }, value: arg.value };
     });
 
-    call(
-        "libgobject-2.0.so.0",
-        "g_signal_emit_by_name",
-        [
-            { type: { type: "gobject", ownership: "borrowed" }, value: target.handle },
-            { type: { type: "string", ownership: "borrowed" }, value: signalName },
-            ...signalArgs,
-        ],
-        { type: "undefined" },
-    );
+    const ffiArgs: Arg[] = [
+        { type: { type: "gobject", ownership: "borrowed" }, value: target.handle },
+        { type: { type: "string", ownership: "borrowed" }, value: signalName },
+        ...signalArgs,
+    ];
+
+    if (SIGNALS_WITH_RETURN_VALUE.has(signalName)) {
+        const returnRef = createRef(0);
+        ffiArgs.push({
+            type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } },
+            value: returnRef,
+        } as Arg);
+    }
+
+    call("libgobject-2.0.so.0", "g_signal_emit_by_name", ffiArgs, { type: "undefined" });
 };
 
 const hover = async (element: Gtk.Widget): Promise<void> => {

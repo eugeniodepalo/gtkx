@@ -13,13 +13,15 @@ let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let application: Application | null = null;
 let isStopping = false;
+let startedPid: number | null = null;
 
 /**
  * Checks if the GTK application runtime is currently running.
+ * Returns false in forked child processes where GTK state is invalid.
  *
  * @returns `true` if {@link start} has been called and {@link stop} has not
  */
-export const isStarted = (): boolean => application !== null;
+export const isStarted = (): boolean => startedPid === process.pid;
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
@@ -61,6 +63,7 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
         return application;
     }
 
+    startedPid = process.pid;
     const app = nativeStart(appId, flags);
     events.emit("start");
 

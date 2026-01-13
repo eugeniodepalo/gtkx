@@ -44,7 +44,13 @@ export class PropertyAnalyzer {
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
 
         const getter = this.resolveAccessorName(prop.getter, cls);
-        const setter = this.resolveAccessorName(prop.setter, cls);
+        let setter = this.resolveAccessorName(prop.setter, cls);
+
+        const needsSyntheticSetter = prop.writable && !prop.constructOnly && !setter;
+        if (needsSyntheticSetter && this.canGenerateSyntheticSetter(prop)) {
+            const camelName = toCamelCase(prop.name);
+            setter = `set${camelName.charAt(0).toUpperCase()}${camelName.slice(1)}`;
+        }
 
         return {
             name: prop.name,
@@ -57,7 +63,43 @@ export class PropertyAnalyzer {
             setter,
             doc: prop.doc,
             referencedNamespaces: collectExternalNamespaces(typeMapping.imports),
+            hasSyntheticSetter: needsSyntheticSetter && this.canGenerateSyntheticSetter(prop),
         };
+    }
+
+    private canGenerateSyntheticSetter(prop: GirProperty): boolean {
+        const typeName = String(prop.type.name);
+        const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
+
+        const supportedPrimitives = new Set([
+            "utf8",
+            "gchararray",
+            "gboolean",
+            "gint",
+            "gint32",
+            "guint",
+            "guint32",
+            "gint64",
+            "guint64",
+            "gfloat",
+            "gdouble",
+            "glong",
+            "gulong",
+        ]);
+
+        if (supportedPrimitives.has(typeName)) {
+            return true;
+        }
+
+        if (typeMapping.kind === "enum" || typeMapping.kind === "flags") {
+            return true;
+        }
+
+        if (typeMapping.kind === "class" || typeMapping.kind === "interface") {
+            return true;
+        }
+
+        return false;
     }
 
     private resolveAccessorName(accessor: string | undefined, cls: GirClass): string | undefined {

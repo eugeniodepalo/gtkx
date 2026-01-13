@@ -57,7 +57,6 @@ const PasswordEntryDemo = () => {
                     <GtkLabel label="Password:" halign={Gtk.Align.START} />
                     <GtkPasswordEntry
                         text={password}
-                        placeholderText="Enter your password..."
                         showPeekIcon
                         onChanged={(entry) => setPassword(entry.getText())}
                     />
@@ -72,7 +71,6 @@ const PasswordEntryDemo = () => {
                     <GtkLabel label="Confirm Password:" halign={Gtk.Align.START} />
                     <GtkPasswordEntry
                         text={confirmPassword}
-                        placeholderText="Confirm your password..."
                         showPeekIcon
                         onChanged={(entry) => setConfirmPassword(entry.getText())}
                     />
@@ -111,7 +109,7 @@ const PasswordEntryDemo = () => {
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <GtkPasswordEntry placeholderText="No peek icon available..." showPeekIcon={false} />
+                <GtkPasswordEntry showPeekIcon={false} />
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>

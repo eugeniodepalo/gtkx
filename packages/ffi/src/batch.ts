@@ -1,4 +1,5 @@
 import { type Arg, batchCall, type CallDescriptor, call as nativeCall, type Type } from "@gtkx/native";
+import { isStarted } from "./native/lifecycle.js";
 
 const batchStack: CallDescriptor[][] = [];
 
@@ -72,6 +73,13 @@ export const discardAllBatches = (): void => {
  * @returns The function return value, or undefined for void calls
  */
 export const call = (library: string, symbol: string, args: Arg[], returnType: Type): unknown => {
+    if (!isStarted()) {
+        const err = new Error(`[gtkx] FFI call blocked in forked process: ${library}:${symbol}`);
+        console.error(err.message);
+        console.error("Stack trace:", err.stack);
+        throw err;
+    }
+
     const currentQueue = batchStack[batchStack.length - 1];
 
     if (currentQueue && returnType.type === "undefined") {
