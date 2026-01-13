@@ -1,8 +1,6 @@
 import { read } from "@gtkx/native";
-import { Value } from "../generated/gobject/value.js";
 import { typeName } from "../generated/gobject/functions.js";
-
-export { Value };
+import { Value } from "../generated/gobject/value.js";
 
 declare module "../generated/gobject/value.js" {
     interface Value {

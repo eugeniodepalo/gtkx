@@ -3,15 +3,14 @@ import * as GObject from "@gtkx/ffi/gobject";
 import { typeFromName } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
 
-const STRING_TYPE = typeFromName("gchararray");
-
 function createStringValue(str: string): GObject.Value {
+    const stringType = typeFromName("gchararray");
     const value = new GObject.Value();
-    value.init(STRING_TYPE);
+    value.init(stringType);
     value.setString(str);
     return value;
 }
@@ -35,14 +34,20 @@ const DraggableItem = ({ label, color }: DraggableItemProps) => {
     );
 };
 
+interface DroppedItem {
+    id: number;
+    label: string;
+}
+
 interface DropZoneProps {
     title: string;
-    items: string[];
+    items: DroppedItem[];
     onDrop: (value: string) => void;
 }
 
 const DropZone = ({ title, items, onDrop }: DropZoneProps) => {
     const [isHovering, setIsHovering] = useState(false);
+    const stringType = useMemo(() => typeFromName("gchararray"), []);
 
     return (
         <GtkFrame label={title}>
@@ -55,7 +60,7 @@ const DropZone = ({ title, items, onDrop }: DropZoneProps) => {
                 marginEnd={12}
                 vexpand
                 cssClasses={isHovering ? ["accent"] : []}
-                dropTypes={[STRING_TYPE]}
+                dropTypes={[stringType]}
                 onDropEnter={() => {
                     setIsHovering(true);
                     return Gdk.DragAction.COPY;
@@ -73,18 +78,20 @@ const DropZone = ({ title, items, onDrop }: DropZoneProps) => {
                 {items.length === 0 ? (
                     <GtkLabel label="Drop items here" cssClasses={["dim-label"]} vexpand valign={Gtk.Align.CENTER} />
                 ) : (
-                    items.map((item, index) => <GtkLabel key={`${item}-${index}`} label={item} />)
+                    items.map((item) => <GtkLabel key={item.id} label={item.label} />)
                 )}
             </GtkBox>
         </GtkFrame>
     );
 };
 
+let nextId = 0;
+
 const DndDemo = () => {
-    const [droppedItems, setDroppedItems] = useState<string[]>([]);
+    const [droppedItems, setDroppedItems] = useState<DroppedItem[]>([]);
 
     const handleDrop = (value: string) => {
-        setDroppedItems((prev) => [...prev, value]);
+        setDroppedItems((prev) => [...prev, { id: nextId++, label: value }]);
     };
 
     const handleClear = () => {
@@ -143,11 +150,7 @@ const DndDemo = () => {
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
                         <GtkBox spacing={12}>
                             <GtkLabel label="onDragPrepare" widthChars={14} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel
-                                label="Returns ContentProvider with drag data"
-                                wrap
-                                cssClasses={["dim-label"]}
-                            />
+                            <GtkLabel label="Returns ContentProvider with drag data" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
                         <GtkBox spacing={12}>
                             <GtkLabel label="onDragBegin" widthChars={14} xalign={0} cssClasses={["monospace"]} />

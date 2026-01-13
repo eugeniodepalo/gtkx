@@ -231,9 +231,9 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             case "onDragEnd":
             case "onDragCancel":
             case "dragActions": {
-                this.ensureDragSource();
+                const dragSource = this.ensureDragSource();
                 if (propName === "dragActions") {
-                    this.dragSourceController!.setActions((handlerOrValue as Gdk.DragAction) ?? Gdk.DragAction.COPY);
+                    dragSource.setActions((handlerOrValue as Gdk.DragAction) ?? Gdk.DragAction.COPY);
                 } else {
                     const signalName =
                         propName === "onDragPrepare"
@@ -243,7 +243,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                               : propName === "onDragEnd"
                                 ? "drag-end"
                                 : "drag-cancel";
-                    signalStore.set(this, this.dragSourceController!, signalName, wrappedHandler);
+                    signalStore.set(this, dragSource, signalName, wrappedHandler);
                 }
                 break;
             }
@@ -253,12 +253,12 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             case "onDropMotion":
             case "dropActions":
             case "dropTypes": {
-                this.ensureDropTarget();
+                const dropTarget = this.ensureDropTarget();
                 if (propName === "dropActions") {
-                    this.dropTargetController!.setActions((handlerOrValue as Gdk.DragAction) ?? Gdk.DragAction.COPY);
+                    dropTarget.setActions((handlerOrValue as Gdk.DragAction) ?? Gdk.DragAction.COPY);
                 } else if (propName === "dropTypes") {
                     const types = (handlerOrValue as number[]) ?? [];
-                    this.dropTargetController!.setGtypes(types.length, types);
+                    dropTarget.setGtypes(types.length, types);
                 } else {
                     const signalName =
                         propName === "onDrop"
@@ -268,26 +268,28 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                               : propName === "onDropLeave"
                                 ? "leave"
                                 : "motion";
-                    signalStore.set(this, this.dropTargetController!, signalName, wrappedHandler);
+                    signalStore.set(this, dropTarget, signalName, wrappedHandler);
                 }
                 break;
             }
         }
     }
 
-    private ensureDragSource(): void {
+    private ensureDragSource(): Gtk.DragSource {
         if (!this.dragSourceController) {
             this.dragSourceController = new Gtk.DragSource();
             this.dragSourceController.setActions(Gdk.DragAction.COPY);
             this.container.addController(this.dragSourceController);
         }
+        return this.dragSourceController;
     }
 
-    private ensureDropTarget(): void {
+    private ensureDropTarget(): Gtk.DropTarget {
         if (!this.dropTargetController) {
             this.dropTargetController = new Gtk.DropTarget(0, Gdk.DragAction.COPY);
             this.container.addController(this.dropTargetController);
         }
+        return this.dropTargetController;
     }
 
     private updateNotifyHandler(handler: SignalHandler | null): void {
