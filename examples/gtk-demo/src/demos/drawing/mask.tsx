@@ -1,7 +1,7 @@
 import { type Context, FontSlant, FontWeight, Operator, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
+import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./mask.tsx?raw";
 
@@ -159,8 +159,6 @@ const drawTextMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height
 const MaskDemo = () => {
     const [feather, setFeather] = useState(0.5);
 
-    const featherAdjustment = useMemo(() => new Gtk.Adjustment(0.5, 0, 1, 0.05, 0.1, 0), []);
-
     const gradientMaskDrawFunc = useCallback(
         (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             drawGradientMask(feather)(self, cr, width, height);
@@ -255,14 +253,16 @@ const MaskDemo = () => {
 
                     <GtkBox spacing={12}>
                         <GtkLabel label="Feather:" widthRequest={60} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={featherAdjustment}
-                            drawValue
-                            digits={2}
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setFeather(scale.getValue())}
-                        />
+                        <GtkScale drawValue digits={2} valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={feather}
+                                lower={0}
+                                upper={1}
+                                stepIncrement={0.05}
+                                pageIncrement={0.1}
+                                onValueChange={setFeather}
+                            />
+                        </GtkScale>
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

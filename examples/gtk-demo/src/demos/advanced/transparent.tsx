@@ -1,8 +1,8 @@
 import { css } from "@gtkx/css";
 import { type Context, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./transparent.tsx?raw";
 
@@ -105,8 +105,6 @@ const TransparentDemo = () => {
     const [alpha, setAlpha] = useState(0.5);
     const [gradientType, setGradientType] = useState<"solid" | "linear" | "radial">("solid");
 
-    const alphaAdjustment = useMemo(() => new Gtk.Adjustment(0.5, 0, 1, 0.05, 0.1, 0), []);
-
     const drawMain = useCallback(
         (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             drawTransparencyDemo(alpha, gradientType)(self, cr, width, height);
@@ -151,14 +149,16 @@ const TransparentDemo = () => {
 
                     <GtkBox spacing={12}>
                         <GtkLabel label="Alpha:" widthRequest={60} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={alphaAdjustment}
-                            drawValue
-                            digits={2}
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setAlpha(scale.getValue())}
-                        />
+                        <GtkScale drawValue digits={2} valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={alpha}
+                                lower={0}
+                                upper={1}
+                                stepIncrement={0.05}
+                                pageIncrement={0.1}
+                                onValueChange={setAlpha}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={8} halign={Gtk.Align.CENTER}>

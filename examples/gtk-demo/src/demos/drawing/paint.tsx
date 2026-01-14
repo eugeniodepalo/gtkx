@@ -1,8 +1,8 @@
 import { type Context, LineCap, LineJoin } from "@gtkx/ffi/cairo";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkColorDialogButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkColorDialogButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paint.tsx?raw";
 
@@ -33,8 +33,7 @@ const PaintDemo = () => {
     const [brushSize, setBrushSize] = useState(4);
     const currentStrokeRef = useRef<Point[]>([]);
     const startPointRef = useRef<Point | null>(null);
-    const brushSizeAdjustment = useMemo(() => new Gtk.Adjustment(4, 1, 20, 1, 5, 0), []);
-    const rgba = useMemo(() => new Gdk.RGBA(color), [color]);
+    const rgba = new Gdk.RGBA(color);
 
     const drawCanvas = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -195,14 +194,16 @@ const PaintDemo = () => {
 
                     <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkLabel label="Brush Size:" />
-                        <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
-                            adjustment={brushSizeAdjustment}
-                            drawValue
-                            digits={0}
-                            widthRequest={200}
-                            onValueChanged={(scale: Gtk.Range) => setBrushSize(scale.getValue())}
-                        />
+                        <GtkScale orientation={Gtk.Orientation.HORIZONTAL} drawValue digits={0} widthRequest={200}>
+                            <x.Adjustment
+                                value={brushSize}
+                                lower={1}
+                                upper={20}
+                                stepIncrement={1}
+                                pageIncrement={5}
+                                onValueChange={setBrushSize}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkDrawingArea

@@ -1,7 +1,7 @@
 import { type Context, LineCap, LineJoin } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-maze.tsx?raw";
 
@@ -227,7 +227,6 @@ const MazeDemo = () => {
     const [animationStep, setAnimationStep] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
     const [algorithm, setAlgorithm] = useState<"bfs" | "astar">("bfs");
-    const sizeAdjustment = useMemo(() => new Gtk.Adjustment(21, 11, 41, 2, 4, 0), []);
 
     const drawMaze = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -390,16 +389,19 @@ const MazeDemo = () => {
 
                     <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkLabel label="Size:" cssClasses={["dim-label"]} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            adjustment={sizeAdjustment}
-                            onValueChanged={(range: Gtk.Range) => {
-                                const val = Math.round(range.getValue());
-                                setMazeSize(val % 2 === 0 ? val + 1 : val);
-                            }}
-                            widthRequest={150}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} widthRequest={150}>
+                            <x.Adjustment
+                                value={mazeSize}
+                                lower={11}
+                                upper={41}
+                                stepIncrement={2}
+                                pageIncrement={4}
+                                onValueChange={(val) => {
+                                    const rounded = Math.round(val);
+                                    setMazeSize(rounded % 2 === 0 ? rounded + 1 : rounded);
+                                }}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={8} halign={Gtk.Align.CENTER}>

@@ -2,8 +2,8 @@ import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
-import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
+import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./rotated-text.tsx?raw";
 
@@ -13,10 +13,6 @@ const RotatedTextDemo = () => {
     const [rotation, setRotation] = useState(0);
     const [fontSize, setFontSize] = useState(24);
     const [spacing, setSpacing] = useState(30);
-
-    const rotationAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 360, 1, 15, 0), []);
-    const fontSizeAdjustment = useMemo(() => new Gtk.Adjustment(24, 12, 72, 1, 4, 0), []);
-    const spacingAdjustment = useMemo(() => new Gtk.Adjustment(30, 0, 90, 5, 15, 0), []);
 
     const drawFunc = useCallback(
         (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -102,35 +98,44 @@ const RotatedTextDemo = () => {
                 >
                     <GtkBox spacing={16}>
                         <GtkLabel label="Rotation:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={rotationAdjustment}
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setRotation(scale.getValue())}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={rotation}
+                                lower={0}
+                                upper={360}
+                                stepIncrement={1}
+                                pageIncrement={15}
+                                onValueChange={setRotation}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={16}>
                         <GtkLabel label="Font Size:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={fontSizeAdjustment}
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setFontSize(scale.getValue())}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={fontSize}
+                                lower={12}
+                                upper={72}
+                                stepIncrement={1}
+                                pageIncrement={4}
+                                onValueChange={setFontSize}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={16}>
                         <GtkLabel label="Spacing:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={spacingAdjustment}
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setSpacing(scale.getValue())}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={spacing}
+                                lower={0}
+                                upper={90}
+                                stepIncrement={5}
+                                pageIncrement={15}
+                                onValueChange={setSpacing}
+                            />
+                        </GtkScale>
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

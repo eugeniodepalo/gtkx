@@ -2,8 +2,8 @@ import { type Context, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkEntry, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkEntry, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textmask.tsx?raw";
 
@@ -21,8 +21,6 @@ const TextmaskDemo = () => {
     const [gradientIndex, setGradientIndex] = useState(0);
     const [animationOffset, setAnimationOffset] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
-
-    const fontSizeAdjustment = useMemo(() => new Gtk.Adjustment(120, 48, 200, 4, 16, 0), []);
 
     const currentGradient = GRADIENT_PRESETS[gradientIndex] ?? GRADIENT_PRESETS[0];
 
@@ -148,13 +146,16 @@ const TextmaskDemo = () => {
                 >
                     <GtkBox spacing={16}>
                         <GtkLabel label="Font Size:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={fontSizeAdjustment}
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setFontSize(scale.getValue())}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={fontSize}
+                                lower={48}
+                                upper={200}
+                                stepIncrement={4}
+                                pageIncrement={16}
+                                onValueChange={setFontSize}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={16} halign={Gtk.Align.CENTER}>

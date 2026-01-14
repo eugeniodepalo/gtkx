@@ -1,8 +1,7 @@
 import type { Context } from "@gtkx/ffi/cairo";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./image-filtering.tsx?raw";
 
@@ -259,15 +258,6 @@ const ImageFilteringDemo = () => {
     const [activeFilter, setActiveFilter] = useState<FilterType>("none");
     const [intensity, setIntensity] = useState(1);
 
-    const intensityAdj = useMemo(() => new Gtk.Adjustment(1, 0.5, 3, 0.1, 0.5, 0), []);
-
-    useEffect(() => {
-        const handlerId = intensityAdj.connect("value-changed", (adj: Gtk.Adjustment) => setIntensity(adj.getValue()));
-        return () => {
-            GObject.signalHandlerDisconnect(intensityAdj, handlerId);
-        };
-    }, [intensityAdj]);
-
     const filters: { filter: FilterType; label: string }[] = [
         { filter: "none", label: "Original" },
         { filter: "blur", label: "Blur" },
@@ -318,12 +308,17 @@ const ImageFilteringDemo = () => {
                             marginStart={12}
                             marginEnd={12}
                         >
-                            <GtkScale adjustment={intensityAdj} drawValue digits={1} hexpand />
-                            <GtkButton
-                                label="Reset"
-                                onClicked={() => intensityAdj.setValue(1)}
-                                halign={Gtk.Align.END}
-                            />
+                            <GtkScale drawValue digits={1} hexpand>
+                                <x.Adjustment
+                                    value={intensity}
+                                    lower={0.5}
+                                    upper={3}
+                                    stepIncrement={0.1}
+                                    pageIncrement={0.5}
+                                    onValueChange={setIntensity}
+                                />
+                            </GtkScale>
+                            <GtkButton label="Reset" onClicked={() => setIntensity(1)} halign={Gtk.Align.END} />
                         </GtkBox>
                     </GtkFrame>
 

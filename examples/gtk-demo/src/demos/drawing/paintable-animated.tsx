@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkPicture, GtkScale } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkPicture, GtkScale, x } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paintable-animated.tsx?raw";
@@ -114,8 +114,6 @@ const PaintableAnimatedDemo = () => {
     const [speed, setSpeed] = useState(1.0);
     const [animationType, setAnimationType] = useState<"plasma" | "wave" | "spiral">("plasma");
     const [resolution, setResolution] = useState(128);
-    const [speedAdjustment] = useState(() => new Gtk.Adjustment(1.0, 0.1, 3.0, 0.1, 0.5, 0));
-    const [resolutionAdjustment] = useState(() => new Gtk.Adjustment(128, 32, 256, 16, 32, 0));
     const [texture, setTexture] = useState<Gdk.MemoryTexture | null>(null);
     const mountedRef = useRef(false);
 
@@ -147,18 +145,6 @@ const PaintableAnimatedDemo = () => {
 
     const handleReset = useCallback(() => {
         setTime(0);
-    }, []);
-
-    const handleSpeedChange = useCallback((self: Gtk.Range) => {
-        if (mountedRef.current) {
-            setSpeed(self.getValue());
-        }
-    }, []);
-
-    const handleResolutionChange = useCallback((self: Gtk.Range) => {
-        if (mountedRef.current) {
-            setResolution(Math.floor(self.getValue()));
-        }
     }, []);
 
     return (
@@ -245,23 +231,29 @@ const PaintableAnimatedDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Speed:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            adjustment={speedAdjustment}
-                            onValueChanged={handleSpeedChange}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={speed}
+                                lower={0.1}
+                                upper={3.0}
+                                stepIncrement={0.1}
+                                pageIncrement={0.5}
+                                onValueChange={setSpeed}
+                            />
+                        </GtkScale>
                     </GtkBox>
                     <GtkBox spacing={12}>
                         <GtkLabel label="Resolution:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            adjustment={resolutionAdjustment}
-                            onValueChanged={handleResolutionChange}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={resolution}
+                                lower={32}
+                                upper={256}
+                                stepIncrement={16}
+                                pageIncrement={32}
+                                onValueChange={(val) => setResolution(Math.floor(val))}
+                            />
+                        </GtkScale>
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

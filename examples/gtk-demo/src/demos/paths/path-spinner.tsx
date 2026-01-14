@@ -1,7 +1,7 @@
 import { type Context, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-spinner.tsx?raw";
 
@@ -186,8 +186,6 @@ const ConfigurableSpinner = () => {
     const [speed, setSpeed] = useState(1);
     const [isRunning, setIsRunning] = useState(true);
     const rotationRef = useRef(0);
-    const strokeAdjustment = useMemo(() => new Gtk.Adjustment(8, 2, 16, 1, 1, 0), []);
-    const speedAdjustment = useMemo(() => new Gtk.Adjustment(1, 0.2, 3, 0.1, 0.5, 0), []);
 
     const drawFunc = useCallback(
         (self: Gtk.DrawingArea, cr: Context, w: number, h: number) => {
@@ -222,24 +220,29 @@ const ConfigurableSpinner = () => {
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
                     <GtkBox spacing={8}>
                         <GtkLabel label="Stroke:" cssClasses={["dim-label"]} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            adjustment={strokeAdjustment}
-                            onValueChanged={(range: Gtk.Range) => setStrokeWidth(range.getValue())}
-                            widthRequest={120}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} widthRequest={120}>
+                            <x.Adjustment
+                                value={strokeWidth}
+                                lower={2}
+                                upper={16}
+                                stepIncrement={1}
+                                pageIncrement={1}
+                                onValueChange={setStrokeWidth}
+                            />
+                        </GtkScale>
                     </GtkBox>
                     <GtkBox spacing={8}>
                         <GtkLabel label="Speed:" cssClasses={["dim-label"]} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            digits={1}
-                            adjustment={speedAdjustment}
-                            onValueChanged={(range: Gtk.Range) => setSpeed(range.getValue())}
-                            widthRequest={120}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} digits={1} widthRequest={120}>
+                            <x.Adjustment
+                                value={speed}
+                                lower={0.2}
+                                upper={3}
+                                stepIncrement={0.1}
+                                pageIncrement={0.5}
+                                onValueChange={setSpeed}
+                            />
+                        </GtkScale>
                     </GtkBox>
                     <GtkButton
                         label={isRunning ? "Pause" : "Resume"}

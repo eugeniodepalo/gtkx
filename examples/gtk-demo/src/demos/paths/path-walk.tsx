@@ -1,7 +1,7 @@
 import { type Context, FontSlant, FontWeight, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-walk.tsx?raw";
 
@@ -173,7 +173,6 @@ const PathWalkDemo = () => {
     const [showPath, setShowPath] = useState(true);
     const progressRef = useRef(0);
     const pathTableRef = useRef<ReturnType<typeof buildPathTable> | null>(null);
-    const speedAdjustment = useMemo(() => new Gtk.Adjustment(1, 0.2, 3, 0.1, 0.5, 0), []);
 
     const canvasWidth = 500;
     const canvasHeight = 350;
@@ -306,14 +305,16 @@ const PathWalkDemo = () => {
                     <GtkBox spacing={16} halign={Gtk.Align.CENTER}>
                         <GtkBox spacing={8}>
                             <GtkLabel label="Speed:" cssClasses={["dim-label"]} />
-                            <GtkScale
-                                drawValue
-                                valuePos={Gtk.PositionType.RIGHT}
-                                digits={1}
-                                adjustment={speedAdjustment}
-                                onValueChanged={(range: Gtk.Range) => setSpeed(range.getValue())}
-                                widthRequest={120}
-                            />
+                            <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} digits={1} widthRequest={120}>
+                                <x.Adjustment
+                                    value={speed}
+                                    lower={0.2}
+                                    upper={3}
+                                    stepIncrement={0.1}
+                                    pageIncrement={0.5}
+                                    onValueChange={setSpeed}
+                                />
+                            </GtkScale>
                         </GtkBox>
                         <GtkButton
                             label={isRunning ? "Pause" : "Play"}

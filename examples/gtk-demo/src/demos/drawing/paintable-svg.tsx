@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkPicture, GtkScale } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkPicture, GtkScale, x } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paintable-svg.tsx?raw";
@@ -80,8 +80,6 @@ const PaintableSvgDemo = () => {
     const [colorIndex, setColorIndex] = useState(0);
     const [strokeWidth, setStrokeWidth] = useState(3);
     const [starPoints, setStarPoints] = useState(5);
-    const strokeAdjustment = useMemo(() => new Gtk.Adjustment(3, 1, 10, 1, 2, 0), []);
-    const starPointsAdjustment = useMemo(() => new Gtk.Adjustment(5, 3, 12, 1, 2, 0), []);
 
     const color = COLORS[colorIndex] ?? COLORS[0] ?? "#3584e4";
     const nextColor = COLORS[(colorIndex + 1) % COLORS.length] ?? COLORS[1] ?? "#e01b24";
@@ -207,26 +205,32 @@ const PaintableSvgDemo = () => {
                     {selectedShape === "circle" && (
                         <GtkBox spacing={12}>
                             <GtkLabel label="Stroke Width:" widthRequest={100} halign={Gtk.Align.START} />
-                            <GtkScale
-                                drawValue
-                                valuePos={Gtk.PositionType.RIGHT}
-                                hexpand
-                                adjustment={strokeAdjustment}
-                                onValueChanged={(self) => setStrokeWidth(Math.floor(self.getValue()))}
-                            />
+                            <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                                <x.Adjustment
+                                    value={strokeWidth}
+                                    lower={1}
+                                    upper={10}
+                                    stepIncrement={1}
+                                    pageIncrement={2}
+                                    onValueChange={(val) => setStrokeWidth(Math.floor(val))}
+                                />
+                            </GtkScale>
                         </GtkBox>
                     )}
 
                     {selectedShape === "star" && (
                         <GtkBox spacing={12}>
                             <GtkLabel label="Star Points:" widthRequest={100} halign={Gtk.Align.START} />
-                            <GtkScale
-                                drawValue
-                                valuePos={Gtk.PositionType.RIGHT}
-                                hexpand
-                                adjustment={starPointsAdjustment}
-                                onValueChanged={(self) => setStarPoints(Math.floor(self.getValue()))}
-                            />
+                            <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                                <x.Adjustment
+                                    value={starPoints}
+                                    lower={3}
+                                    upper={12}
+                                    stepIncrement={1}
+                                    pageIncrement={2}
+                                    onValueChange={(val) => setStarPoints(Math.floor(val))}
+                                />
+                            </GtkScale>
                         </GtkBox>
                     )}
                 </GtkBox>

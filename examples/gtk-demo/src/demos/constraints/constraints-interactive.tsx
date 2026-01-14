@@ -1,7 +1,7 @@
 import { type Context, FontSlant, FontWeight } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./constraints-interactive.tsx?raw";
 
@@ -199,11 +199,6 @@ const InteractiveConstraintEditor = () => {
         },
     ];
 
-    const xAdjustment = useMemo(() => new Gtk.Adjustment(0, -150, 150, 1, 10, 0), []);
-    const yAdjustment = useMemo(() => new Gtk.Adjustment(0, -100, 100, 1, 10, 0), []);
-    const widthAdjustment = useMemo(() => new Gtk.Adjustment(100, 50, 200, 1, 10, 0), []);
-    const heightAdjustment = useMemo(() => new Gtk.Adjustment(40, 30, 100, 1, 10, 0), []);
-
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
             <ConstraintVisualizer
@@ -216,46 +211,58 @@ const InteractiveConstraintEditor = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkBox spacing={12}>
                     <GtkLabel label="X Offset:" halign={Gtk.Align.START} widthRequest={100} />
-                    <GtkScale
-                        hexpand
-                        drawValue
-                        valuePos={Gtk.PositionType.RIGHT}
-                        adjustment={xAdjustment}
-                        onValueChanged={(scale) => setOffsetX(scale.getValue())}
-                    />
+                    <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT}>
+                        <x.Adjustment
+                            value={offsetX}
+                            lower={-150}
+                            upper={150}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChange={setOffsetX}
+                        />
+                    </GtkScale>
                 </GtkBox>
 
                 <GtkBox spacing={12}>
                     <GtkLabel label="Y Offset:" halign={Gtk.Align.START} widthRequest={100} />
-                    <GtkScale
-                        hexpand
-                        drawValue
-                        valuePos={Gtk.PositionType.RIGHT}
-                        adjustment={yAdjustment}
-                        onValueChanged={(scale) => setOffsetY(scale.getValue())}
-                    />
+                    <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT}>
+                        <x.Adjustment
+                            value={offsetY}
+                            lower={-100}
+                            upper={100}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChange={setOffsetY}
+                        />
+                    </GtkScale>
                 </GtkBox>
 
                 <GtkBox spacing={12}>
                     <GtkLabel label="Width:" halign={Gtk.Align.START} widthRequest={100} />
-                    <GtkScale
-                        hexpand
-                        drawValue
-                        valuePos={Gtk.PositionType.RIGHT}
-                        adjustment={widthAdjustment}
-                        onValueChanged={(scale) => setWidgetWidth(scale.getValue())}
-                    />
+                    <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT}>
+                        <x.Adjustment
+                            value={widgetWidth}
+                            lower={50}
+                            upper={200}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChange={setWidgetWidth}
+                        />
+                    </GtkScale>
                 </GtkBox>
 
                 <GtkBox spacing={12}>
                     <GtkLabel label="Height:" halign={Gtk.Align.START} widthRequest={100} />
-                    <GtkScale
-                        hexpand
-                        drawValue
-                        valuePos={Gtk.PositionType.RIGHT}
-                        adjustment={heightAdjustment}
-                        onValueChanged={(scale) => setWidgetHeight(scale.getValue())}
-                    />
+                    <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT}>
+                        <x.Adjustment
+                            value={widgetHeight}
+                            lower={30}
+                            upper={100}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChange={setWidgetHeight}
+                        />
+                    </GtkScale>
                 </GtkBox>
             </GtkBox>
 

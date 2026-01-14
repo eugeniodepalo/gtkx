@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkLabel, GtkSpinButton } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { GtkBox, GtkFrame, GtkLabel, GtkSpinButton, x } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinbutton.tsx?raw";
 
@@ -10,12 +10,6 @@ const SpinButtonDemo = () => {
     const [hours, setHours] = useState(12);
     const [minutes, setMinutes] = useState(0);
     const [seconds, setSeconds] = useState(0);
-
-    const basicAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
-    const floatAdjustment = useMemo(() => new Gtk.Adjustment(2.5, 0, 10, 0.1, 1, 0), []);
-    const hoursAdjustment = useMemo(() => new Gtk.Adjustment(12, 0, 23, 1, 6, 0), []);
-    const minutesAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 59, 1, 10, 0), []);
-    const secondsAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 59, 1, 10, 0), []);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
@@ -39,13 +33,16 @@ const SpinButtonDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Value (0-100):" halign={Gtk.Align.START} hexpand />
-                        <GtkSpinButton
-                            value={basicValue}
-                            onValueChanged={(spinButton: Gtk.SpinButton) => setBasicValue(spinButton.getValue())}
-                            adjustment={basicAdjustment}
-                            digits={0}
-                            climbRate={1}
-                        />
+                        <GtkSpinButton digits={0} climbRate={1}>
+                            <x.Adjustment
+                                value={basicValue}
+                                lower={0}
+                                upper={100}
+                                stepIncrement={1}
+                                pageIncrement={10}
+                                onValueChange={setBasicValue}
+                            />
+                        </GtkSpinButton>
                     </GtkBox>
                     <GtkLabel
                         label={`Current value: ${basicValue}`}
@@ -66,13 +63,16 @@ const SpinButtonDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Value (0.0-10.0):" halign={Gtk.Align.START} hexpand />
-                        <GtkSpinButton
-                            value={floatValue}
-                            onValueChanged={(spinButton: Gtk.SpinButton) => setFloatValue(spinButton.getValue())}
-                            adjustment={floatAdjustment}
-                            digits={2}
-                            climbRate={0.1}
-                        />
+                        <GtkSpinButton digits={2} climbRate={0.1}>
+                            <x.Adjustment
+                                value={floatValue}
+                                lower={0}
+                                upper={10}
+                                stepIncrement={0.1}
+                                pageIncrement={1}
+                                onValueChange={setFloatValue}
+                            />
+                        </GtkSpinButton>
                     </GtkBox>
                     <GtkLabel
                         label={`Current value: ${floatValue.toFixed(2)}`}
@@ -92,35 +92,38 @@ const SpinButtonDemo = () => {
                     marginEnd={12}
                 >
                     <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
-                        <GtkSpinButton
-                            value={hours}
-                            onValueChanged={(spinButton: Gtk.SpinButton) => setHours(spinButton.getValue())}
-                            adjustment={hoursAdjustment}
-                            digits={0}
-                            climbRate={1}
-                            wrap
-                            widthChars={2}
-                        />
+                        <GtkSpinButton digits={0} climbRate={1} wrap widthChars={2}>
+                            <x.Adjustment
+                                value={hours}
+                                lower={0}
+                                upper={23}
+                                stepIncrement={1}
+                                pageIncrement={6}
+                                onValueChange={setHours}
+                            />
+                        </GtkSpinButton>
                         <GtkLabel label=":" />
-                        <GtkSpinButton
-                            value={minutes}
-                            onValueChanged={(spinButton: Gtk.SpinButton) => setMinutes(spinButton.getValue())}
-                            adjustment={minutesAdjustment}
-                            digits={0}
-                            climbRate={1}
-                            wrap
-                            widthChars={2}
-                        />
+                        <GtkSpinButton digits={0} climbRate={1} wrap widthChars={2}>
+                            <x.Adjustment
+                                value={minutes}
+                                lower={0}
+                                upper={59}
+                                stepIncrement={1}
+                                pageIncrement={10}
+                                onValueChange={setMinutes}
+                            />
+                        </GtkSpinButton>
                         <GtkLabel label=":" />
-                        <GtkSpinButton
-                            value={seconds}
-                            onValueChanged={(spinButton: Gtk.SpinButton) => setSeconds(spinButton.getValue())}
-                            adjustment={secondsAdjustment}
-                            digits={0}
-                            climbRate={1}
-                            wrap
-                            widthChars={2}
-                        />
+                        <GtkSpinButton digits={0} climbRate={1} wrap widthChars={2}>
+                            <x.Adjustment
+                                value={seconds}
+                                lower={0}
+                                upper={59}
+                                stepIncrement={1}
+                                pageIncrement={10}
+                                onValueChange={setSeconds}
+                            />
+                        </GtkSpinButton>
                     </GtkBox>
                     <GtkLabel
                         label={`Time: ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`}

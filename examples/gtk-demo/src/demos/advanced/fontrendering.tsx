@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkBox, GtkDrawingArea, GtkDropDown, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fontrendering.tsx?raw";
 
@@ -172,9 +172,6 @@ const FontRenderingDemo = () => {
     const [fontSize, setFontSize] = useState(24);
     const [scale, setScale] = useState(4);
 
-    const fontSizeAdjustment = useMemo(() => new Gtk.Adjustment(24, 8, 72, 1, 4, 0), []);
-    const scaleAdjustment = useMemo(() => new Gtk.Adjustment(4, 1, 16, 1, 2, 0), []);
-
     const options: FontRenderingOptions = {
         hintStyle,
         antialias,
@@ -333,24 +330,30 @@ const FontRenderingDemo = () => {
                 >
                     <GtkBox spacing={16}>
                         <GtkLabel label="Font Size:" widthRequest={100} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={fontSizeAdjustment}
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(s) => setFontSize(Math.round(s.getValue()))}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={fontSize}
+                                lower={8}
+                                upper={72}
+                                stepIncrement={1}
+                                pageIncrement={4}
+                                onValueChange={(val) => setFontSize(Math.round(val))}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={16}>
                         <GtkLabel label="Magnification:" widthRequest={100} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={scaleAdjustment}
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(s) => setScale(Math.round(s.getValue()))}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={scale}
+                                lower={1}
+                                upper={16}
+                                stepIncrement={1}
+                                pageIncrement={2}
+                                onValueChange={(val) => setScale(Math.round(val))}
+                            />
+                        </GtkScale>
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

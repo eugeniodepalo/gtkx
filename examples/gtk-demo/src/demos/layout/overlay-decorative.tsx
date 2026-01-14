@@ -1,7 +1,7 @@
 import { css, cx } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkOverlay, GtkSpinButton } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkOverlay, GtkSpinButton, x } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay-decorative.tsx?raw";
 
@@ -66,8 +66,6 @@ const OverlayDecorativeDemo = () => {
     const [showRibbon, setShowRibbon] = useState(true);
     const [showWatermark, setShowWatermark] = useState(true);
 
-    const badgeAdjustment = useMemo(() => new Gtk.Adjustment(5, 0, 99, 1, 5, 0), []);
-
     return (
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
@@ -116,12 +114,16 @@ const OverlayDecorativeDemo = () => {
 
                         <GtkBox spacing={8}>
                             <GtkLabel label="Count:" />
-                            <GtkSpinButton
-                                climbRate={1}
-                                digits={0}
-                                adjustment={badgeAdjustment}
-                                onValueChanged={(sb) => setBadgeCount(sb.getValue())}
-                            />
+                            <GtkSpinButton climbRate={1} digits={0}>
+                                <x.Adjustment
+                                    value={badgeCount}
+                                    lower={0}
+                                    upper={99}
+                                    stepIncrement={1}
+                                    pageIncrement={5}
+                                    onValueChange={setBadgeCount}
+                                />
+                            </GtkSpinButton>
                         </GtkBox>
                     </GtkBox>
                 </GtkFrame>

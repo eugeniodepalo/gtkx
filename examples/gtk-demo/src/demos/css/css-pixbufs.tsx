@@ -1,7 +1,7 @@
 import { css, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-pixbufs.tsx?raw";
 
@@ -72,8 +72,6 @@ const CssPixbufsDemo = () => {
     const [iconIndex, setIconIndex] = useState(0);
     const [effectIndex, setEffectIndex] = useState(0);
     const [iconSize, setIconSize] = useState(64);
-
-    const sizeAdjustment = useMemo(() => new Gtk.Adjustment(64, 24, 128, 8, 16, 0), []);
 
     const currentIcon = ICONS[iconIndex] ?? "emblem-photos-symbolic";
     const currentEffect = EFFECTS[effectIndex] ?? EFFECTS[0];
@@ -186,13 +184,16 @@ const CssPixbufsDemo = () => {
             <GtkFrame label="Icon Size">
                 <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkLabel label="Size:" />
-                    <GtkScale
-                        adjustment={sizeAdjustment}
-                        drawValue
-                        valuePos={Gtk.PositionType.RIGHT}
-                        hexpand
-                        onValueChanged={(scale: Gtk.Range) => setIconSize(scale.getValue())}
-                    />
+                    <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                        <x.Adjustment
+                            value={iconSize}
+                            lower={24}
+                            upper={128}
+                            stepIncrement={8}
+                            pageIncrement={16}
+                            onValueChange={setIconSize}
+                        />
+                    </GtkScale>
                 </GtkBox>
             </GtkFrame>
 

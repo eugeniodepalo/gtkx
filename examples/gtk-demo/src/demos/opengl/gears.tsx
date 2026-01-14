@@ -1,8 +1,8 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkGLArea, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
 
@@ -315,9 +315,6 @@ const GearsDemo = () => {
     const aspectRef = useRef(1.0);
     const sizeRef = useRef({ width: 500, height: 400 });
 
-    const rotXAdjustment = useMemo(() => new Gtk.Adjustment(20, -90, 90, 1, 10, 0), []);
-    const rotYAdjustment = useMemo(() => new Gtk.Adjustment(30, -180, 180, 1, 10, 0), []);
-
     useEffect(() => {
         if (!isAnimating) return;
 
@@ -496,23 +493,29 @@ const GearsDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Rotation X:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            adjustment={rotXAdjustment}
-                            onValueChanged={(self) => setViewRotX(self.getValue())}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={viewRotX}
+                                lower={-90}
+                                upper={90}
+                                stepIncrement={1}
+                                pageIncrement={10}
+                                onValueChange={setViewRotX}
+                            />
+                        </GtkScale>
                     </GtkBox>
                     <GtkBox spacing={12}>
                         <GtkLabel label="Rotation Y:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            adjustment={rotYAdjustment}
-                            onValueChanged={(self) => setViewRotY(self.getValue())}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={viewRotY}
+                                lower={-180}
+                                upper={180}
+                                stepIncrement={1}
+                                pageIncrement={10}
+                                onValueChange={setViewRotY}
+                            />
+                        </GtkScale>
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

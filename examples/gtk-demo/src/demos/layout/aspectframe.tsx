@@ -1,12 +1,11 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkAspectFrame, GtkBox, GtkFrame, GtkImage, GtkLabel, GtkScale } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { GtkAspectFrame, GtkBox, GtkFrame, GtkImage, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./aspectframe.tsx?raw";
 
 const AspectFrameDemo = () => {
     const [ratio, setRatio] = useState(1.5);
-    const ratioAdjustment = useMemo(() => new Gtk.Adjustment(1.5, 0.2, 5.0, 0.1, 0.5, 0), []);
 
     return (
         <GtkBox
@@ -40,13 +39,16 @@ const AspectFrameDemo = () => {
                 >
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                         <GtkLabel label={`Aspect Ratio: ${ratio.toFixed(2)}`} halign={Gtk.Align.START} />
-                        <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
-                            adjustment={ratioAdjustment}
-                            digits={2}
-                            drawValue
-                            onValueChanged={(scale: Gtk.Range) => setRatio(scale.getValue())}
-                        />
+                        <GtkScale orientation={Gtk.Orientation.HORIZONTAL} digits={2} drawValue>
+                            <x.Adjustment
+                                value={ratio}
+                                lower={0.2}
+                                upper={5.0}
+                                stepIncrement={0.1}
+                                pageIncrement={0.5}
+                                onValueChange={setRatio}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={24} halign={Gtk.Align.CENTER} vexpand heightRequest={200}>

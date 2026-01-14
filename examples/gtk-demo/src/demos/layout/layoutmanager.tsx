@@ -1,7 +1,7 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFixed, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./layoutmanager.tsx?raw";
 
@@ -29,9 +29,6 @@ const CircularLayoutDemo = () => {
         { id: "5", label: "E", angle: 240 },
         { id: "6", label: "F", angle: 300 },
     ]);
-
-    const radiusAdjustment = useMemo(() => new Gtk.Adjustment(80, 40, 120, 5, 10, 0), []);
-    const rotationAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 360, 5, 30, 0), []);
 
     const getItemPosition = (angle: number) => {
         const totalAngle = angle + rotation;
@@ -86,24 +83,30 @@ const CircularLayoutDemo = () => {
 
                     <GtkBox spacing={12}>
                         <GtkLabel label="Radius:" widthRequest={70} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={radiusAdjustment}
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setRadius(scale.getValue())}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={radius}
+                                lower={40}
+                                upper={120}
+                                stepIncrement={5}
+                                pageIncrement={10}
+                                onValueChange={setRadius}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={12}>
                         <GtkLabel label="Rotation:" widthRequest={70} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={rotationAdjustment}
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setRotation(scale.getValue())}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={rotation}
+                                lower={0}
+                                upper={360}
+                                stepIncrement={5}
+                                pageIncrement={30}
+                                onValueChange={setRotation}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkFrame label="Calculated Positions">
@@ -144,9 +147,6 @@ const GridLayoutDemo = () => {
         })),
     );
 
-    const columnsAdjustment = useMemo(() => new Gtk.Adjustment(3, 1, 6, 1, 1, 0), []);
-    const spacingAdjustment = useMemo(() => new Gtk.Adjustment(8, 0, 24, 2, 4, 0), []);
-
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
             <GtkLabel
@@ -181,26 +181,30 @@ const GridLayoutDemo = () => {
 
                     <GtkBox spacing={12}>
                         <GtkLabel label="Columns:" widthRequest={70} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={columnsAdjustment}
-                            drawValue
-                            digits={0}
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setColumns(Math.round(scale.getValue()))}
-                        />
+                        <GtkScale drawValue digits={0} valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={columns}
+                                lower={1}
+                                upper={6}
+                                stepIncrement={1}
+                                pageIncrement={1}
+                                onValueChange={(val) => setColumns(Math.round(val))}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={12}>
                         <GtkLabel label="Spacing:" widthRequest={70} halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={spacingAdjustment}
-                            drawValue
-                            digits={0}
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setSpacing(Math.round(scale.getValue()))}
-                        />
+                        <GtkScale drawValue digits={0} valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={spacing}
+                                lower={0}
+                                upper={24}
+                                stepIncrement={2}
+                                pageIncrement={4}
+                                onValueChange={(val) => setSpacing(Math.round(val))}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkLabel

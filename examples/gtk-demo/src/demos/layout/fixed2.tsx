@@ -1,7 +1,7 @@
 import { css, cx } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFixed, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
 
@@ -81,11 +81,6 @@ const Fixed2Demo = () => {
     const [selectedId, setSelectedId] = useState<string | null>("1");
     const [isAnimating, setIsAnimating] = useState(false);
 
-    const rotationAdjustment = useMemo(() => new Gtk.Adjustment(0, -180, 180, 5, 15, 0), []);
-    const scaleAdjustment = useMemo(() => new Gtk.Adjustment(1, 0.5, 2, 0.1, 0.25, 0), []);
-    const xAdjustment = useMemo(() => new Gtk.Adjustment(100, 0, 350, 10, 50, 0), []);
-    const yAdjustment = useMemo(() => new Gtk.Adjustment(100, 0, 200, 10, 50, 0), []);
-
     const selectedWidget = widgets.find((w) => w.id === selectedId);
 
     useEffect(() => {
@@ -109,13 +104,6 @@ const Fixed2Demo = () => {
 
     const handleSelect = (id: string) => {
         setSelectedId(id);
-        const widget = widgets.find((w) => w.id === id);
-        if (widget) {
-            rotationAdjustment.setValue(widget.rotation);
-            scaleAdjustment.setValue(widget.scale);
-            xAdjustment.setValue(widget.x);
-            yAdjustment.setValue(widget.y);
-        }
     };
 
     const randomizeAll = () => {
@@ -215,58 +203,60 @@ const Fixed2Demo = () => {
                     >
                         <GtkBox spacing={12}>
                             <GtkLabel label="X Position:" widthRequest={80} halign={Gtk.Align.START} />
-                            <GtkScale
-                                adjustment={xAdjustment}
-                                drawValue
-                                digits={0}
-                                valuePos={Gtk.PositionType.RIGHT}
-                                hexpand
-                                onValueChanged={(scale: Gtk.Range) =>
-                                    updateWidget(selectedWidget.id, { x: Math.round(scale.getValue()) })
-                                }
-                            />
+                            <GtkScale drawValue digits={0} valuePos={Gtk.PositionType.RIGHT} hexpand>
+                                <x.Adjustment
+                                    value={selectedWidget.x}
+                                    lower={0}
+                                    upper={350}
+                                    stepIncrement={10}
+                                    pageIncrement={50}
+                                    onValueChange={(val) => updateWidget(selectedWidget.id, { x: Math.round(val) })}
+                                />
+                            </GtkScale>
                         </GtkBox>
 
                         <GtkBox spacing={12}>
                             <GtkLabel label="Y Position:" widthRequest={80} halign={Gtk.Align.START} />
-                            <GtkScale
-                                adjustment={yAdjustment}
-                                drawValue
-                                digits={0}
-                                valuePos={Gtk.PositionType.RIGHT}
-                                hexpand
-                                onValueChanged={(scale: Gtk.Range) =>
-                                    updateWidget(selectedWidget.id, { y: Math.round(scale.getValue()) })
-                                }
-                            />
+                            <GtkScale drawValue digits={0} valuePos={Gtk.PositionType.RIGHT} hexpand>
+                                <x.Adjustment
+                                    value={selectedWidget.y}
+                                    lower={0}
+                                    upper={200}
+                                    stepIncrement={10}
+                                    pageIncrement={50}
+                                    onValueChange={(val) => updateWidget(selectedWidget.id, { y: Math.round(val) })}
+                                />
+                            </GtkScale>
                         </GtkBox>
 
                         <GtkBox spacing={12}>
                             <GtkLabel label="Rotation:" widthRequest={80} halign={Gtk.Align.START} />
-                            <GtkScale
-                                adjustment={rotationAdjustment}
-                                drawValue
-                                digits={0}
-                                valuePos={Gtk.PositionType.RIGHT}
-                                hexpand
-                                onValueChanged={(scale: Gtk.Range) =>
-                                    updateWidget(selectedWidget.id, { rotation: Math.round(scale.getValue()) })
-                                }
-                            />
+                            <GtkScale drawValue digits={0} valuePos={Gtk.PositionType.RIGHT} hexpand>
+                                <x.Adjustment
+                                    value={selectedWidget.rotation}
+                                    lower={-180}
+                                    upper={180}
+                                    stepIncrement={5}
+                                    pageIncrement={15}
+                                    onValueChange={(val) =>
+                                        updateWidget(selectedWidget.id, { rotation: Math.round(val) })
+                                    }
+                                />
+                            </GtkScale>
                         </GtkBox>
 
                         <GtkBox spacing={12}>
                             <GtkLabel label="Scale:" widthRequest={80} halign={Gtk.Align.START} />
-                            <GtkScale
-                                adjustment={scaleAdjustment}
-                                drawValue
-                                digits={2}
-                                valuePos={Gtk.PositionType.RIGHT}
-                                hexpand
-                                onValueChanged={(scale: Gtk.Range) =>
-                                    updateWidget(selectedWidget.id, { scale: scale.getValue() })
-                                }
-                            />
+                            <GtkScale drawValue digits={2} valuePos={Gtk.PositionType.RIGHT} hexpand>
+                                <x.Adjustment
+                                    value={selectedWidget.scale}
+                                    lower={0.5}
+                                    upper={2}
+                                    stepIncrement={0.1}
+                                    pageIncrement={0.25}
+                                    onValueChange={(val) => updateWidget(selectedWidget.id, { scale: val })}
+                                />
+                            </GtkScale>
                         </GtkBox>
 
                         <GtkLabel

@@ -1,7 +1,7 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-multiplebgs.tsx?raw";
 
@@ -75,8 +75,6 @@ const CssMultiplebgsDemo = () => {
     const [presetIndex, setPresetIndex] = useState(0);
     const [opacity, setOpacity] = useState(100);
 
-    const opacityAdjustment = useMemo(() => new Gtk.Adjustment(100, 0, 100, 1, 10, 0), []);
-
     const preset = PRESETS[presetIndex];
     const multiBgDemoStyle = createMultiBgDemoStyle(preset?.background ?? "", opacity);
 
@@ -146,13 +144,16 @@ const CssMultiplebgsDemo = () => {
             <GtkFrame label="Opacity">
                 <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkLabel label="Opacity:" />
-                    <GtkScale
-                        adjustment={opacityAdjustment}
-                        drawValue
-                        valuePos={Gtk.PositionType.RIGHT}
-                        hexpand
-                        onValueChanged={(scale: Gtk.Range) => setOpacity(scale.getValue())}
-                    />
+                    <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                        <x.Adjustment
+                            value={opacity}
+                            lower={0}
+                            upper={100}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChange={setOpacity}
+                        />
+                    </GtkScale>
                 </GtkBox>
             </GtkFrame>
 

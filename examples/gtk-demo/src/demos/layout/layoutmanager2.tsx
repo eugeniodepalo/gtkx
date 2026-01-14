@@ -1,7 +1,7 @@
 import { css, cx } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale, GtkToggleButton } from "@gtkx/react";
-import { useEffect, useMemo, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale, GtkToggleButton, x } from "@gtkx/react";
+import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./layoutmanager2.tsx?raw";
 
@@ -145,7 +145,6 @@ const AnimatedLayoutDemo = () => {
 
 const ResponsiveBreakpointsDemo = () => {
     const [containerWidth, setContainerWidth] = useState(400);
-    const widthAdjustment = useMemo(() => new Gtk.Adjustment(400, 200, 800, 10, 50, 0), []);
 
     const getBreakpoint = (width: number): "compact" | "medium" | "expanded" => {
         if (width < 300) return "compact";
@@ -203,13 +202,16 @@ const ResponsiveBreakpointsDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Container Width:" halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={widthAdjustment}
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setContainerWidth(Math.round(scale.getValue()))}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={containerWidth}
+                                lower={200}
+                                upper={800}
+                                stepIncrement={10}
+                                pageIncrement={50}
+                                onValueChange={(val) => setContainerWidth(Math.round(val))}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={12}>
@@ -279,7 +281,6 @@ const ResponsiveBreakpointsDemo = () => {
 
 const PriorityAllocationDemo = () => {
     const [availableSpace, setAvailableSpace] = useState(300);
-    const spaceAdjustment = useMemo(() => new Gtk.Adjustment(300, 100, 500, 10, 50, 0), []);
 
     const items = [
         { id: "1", label: "Critical", priority: "high", minWidth: 80, preferredWidth: 150 },
@@ -335,13 +336,16 @@ const PriorityAllocationDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Available Space:" halign={Gtk.Align.START} />
-                        <GtkScale
-                            adjustment={spaceAdjustment}
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            onValueChanged={(scale: Gtk.Range) => setAvailableSpace(Math.round(scale.getValue()))}
-                        />
+                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
+                            <x.Adjustment
+                                value={availableSpace}
+                                lower={100}
+                                upper={500}
+                                stepIncrement={10}
+                                pageIncrement={50}
+                                onValueChange={(val) => setAvailableSpace(Math.round(val))}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={4}>

@@ -1,7 +1,7 @@
 import { css, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkCheckButton, GtkEntry, GtkFrame, GtkLabel, GtkSpinButton } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { GtkBox, GtkButton, GtkCheckButton, GtkEntry, GtkFrame, GtkLabel, GtkSpinButton, x } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
 
@@ -63,8 +63,6 @@ const ErrorstatesDemo = () => {
         terms: { checked: false, error: null },
     });
     const [showErrors, setShowErrors] = useState(false);
-
-    const ageAdjustment = useMemo(() => new Gtk.Adjustment(25, 0, 150, 1, 10, 0), []);
 
     const handleEmailChange = (entry: Gtk.Entry) => {
         const value = entry.getText();
@@ -183,10 +181,17 @@ const ErrorstatesDemo = () => {
                         <GtkSpinButton
                             climbRate={1}
                             digits={0}
-                            adjustment={ageAdjustment}
                             cssClasses={validation.age.error ? ["error"] : []}
                             onValueChanged={handleAgeChange}
-                        />
+                        >
+                            <x.Adjustment
+                                value={validation.age.value}
+                                lower={0}
+                                upper={150}
+                                stepIncrement={1}
+                                pageIncrement={10}
+                            />
+                        </GtkSpinButton>
                         {validation.age.error && (
                             <GtkLabel
                                 label={validation.age.error}

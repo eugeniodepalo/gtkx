@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFlowBox, GtkFrame, GtkLabel, GtkScale, GtkScrolledWindow } from "@gtkx/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkFlowBox, GtkFrame, GtkLabel, GtkScale, GtkScrolledWindow, x } from "@gtkx/react";
+import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fishbowl.tsx?raw";
 
@@ -70,12 +70,6 @@ const FishbowlDemo = () => {
         return () => clearInterval(interval);
     }, [isAnimating]);
 
-    const fishCountAdjustment = useMemo(() => new Gtk.Adjustment(50, 10, 500, 10, 50, 0), []);
-
-    const handleFishCountChange = (scale: Gtk.Range) => {
-        setFishCount(Math.round(scale.getValue()));
-    };
-
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
             <GtkLabel label="Fishbowl" cssClasses={["title-2"]} halign={Gtk.Align.START} />
@@ -98,14 +92,16 @@ const FishbowlDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Fish Count:" halign={Gtk.Align.START} />
-                        <GtkScale
-                            hexpand
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            digits={0}
-                            adjustment={fishCountAdjustment}
-                            onValueChanged={handleFishCountChange}
-                        />
+                        <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT} digits={0}>
+                            <x.Adjustment
+                                value={fishCount}
+                                lower={10}
+                                upper={500}
+                                stepIncrement={10}
+                                pageIncrement={50}
+                                onValueChange={(val) => setFishCount(Math.round(val))}
+                            />
+                        </GtkScale>
                     </GtkBox>
 
                     <GtkBox spacing={12}>
