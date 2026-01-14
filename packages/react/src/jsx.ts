@@ -1,10 +1,16 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
+import type { AdjustmentProps } from "./nodes/adjustment.js";
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
+import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
+import type { ShortcutControllerProps as ShortcutControllerNodeProps } from "./nodes/shortcut-controller.js";
+import type { TextBufferProps } from "./nodes/text-buffer.js";
 
-export type { DragSourceProps, DropTargetProps, EventControllerProps } from "./types.js";
+export type { AdjustmentProps } from "./nodes/adjustment.js";
+export type { TextBufferProps } from "./nodes/text-buffer.js";
+export type { DragSourceProps, DropTargetProps, EventControllerProps, GestureDragProps } from "./types.js";
 
 /**
  * Props for slot-based child positioning.
@@ -345,6 +351,12 @@ type NavigationPageBaseProps = {
     canPop?: boolean;
     children?: ReactNode;
 };
+
+export type ShortcutControllerProps = ShortcutControllerNodeProps & {
+    children?: ReactNode;
+};
+
+export type ShortcutProps = ShortcutNodeProps;
 
 /**
  * Props for the NavigationPage virtual element with type-safe targeting.
@@ -777,6 +789,25 @@ export const x = {
     MenuSubmenu: "MenuSubmenu" as const,
 
     /**
+     * Declarative adjustment configuration for adjustable widgets.
+     *
+     * Works with Scale, Scrollbar, ScaleButton, SpinButton, and ListBox.
+     *
+     * @example
+     * ```tsx
+     * <GtkScale>
+     *   <x.Adjustment
+     *     value={50}
+     *     lower={0}
+     *     upper={100}
+     *     onValueChange={(v) => console.log(v)}
+     *   />
+     * </GtkScale>
+     * ```
+     */
+    Adjustment: "Adjustment" as const,
+
+    /**
      * A mark to display on a GtkScale slider.
      *
      * @example
@@ -789,6 +820,22 @@ export const x = {
      * ```
      */
     ScaleMark: "ScaleMark" as const,
+
+    /**
+     * Declarative text buffer for a GtkTextView.
+     *
+     * @example
+     * ```tsx
+     * <GtkTextView>
+     *   <x.TextBuffer
+     *     text="Hello!"
+     *     enableUndo
+     *     onTextChange={(text) => console.log(text)}
+     *   />
+     * </GtkTextView>
+     * ```
+     */
+    TextBuffer: "TextBuffer" as const,
 
     /**
      * A day mark on a GtkCalendar.
@@ -888,6 +935,37 @@ export const x = {
      * ```
      */
     NavigationPage: "NavigationPage" as const,
+
+    /**
+     * Declarative keyboard shortcut controller.
+     *
+     * Attach keyboard shortcuts to a widget. Must contain `x.Shortcut` children.
+     *
+     * @example
+     * ```tsx
+     * <GtkBox>
+     *   <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+     *     <x.Shortcut trigger="<Control>f" onActivate={() => setSearchMode(s => !s)} />
+     *     <x.Shortcut trigger="<Control>q" onActivate={quit} />
+     *   </x.ShortcutController>
+     * </GtkBox>
+     * ```
+     */
+    ShortcutController: "ShortcutController" as const,
+
+    /**
+     * A keyboard shortcut definition.
+     *
+     * Must be a child of `x.ShortcutController`.
+     *
+     * @example
+     * ```tsx
+     * <x.Shortcut trigger="<Control>s" onActivate={save} />
+     * <x.Shortcut trigger={["F5", "<Control>r"]} onActivate={refresh} />
+     * <x.Shortcut trigger="Escape" onActivate={cancel} disabled={!canCancel} />
+     * ```
+     */
+    Shortcut: "Shortcut" as const,
 };
 
 declare global {
@@ -913,7 +991,9 @@ declare global {
                 OverlayChild: OverlayChildProps;
                 PackEnd: VirtualSlotProps;
                 PackStart: VirtualSlotProps;
+                Adjustment: AdjustmentProps;
                 ScaleMark: ScaleMarkProps;
+                TextBuffer: TextBufferProps;
                 SimpleListItem: StringListItemProps;
                 StackPage: StackPageProps;
                 Toggle: ToggleProps;
@@ -922,6 +1002,8 @@ declare global {
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 TreeListItem: TreeListItemProps<any>;
                 NavigationPage: NavigationPageProps;
+                ShortcutController: ShortcutControllerProps;
+                Shortcut: ShortcutProps;
             }
         }
     }
