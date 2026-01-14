@@ -1,18 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
-import { GtkBox, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useEffect, useMemo, useRef } from "react";
+import { GtkBox, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./tabs.tsx?raw";
 
 const TabsDemo = () => {
     const textViewRef = useRef<Gtk.TextView>(null);
-
-    const buffer = useMemo(() => {
-        const buf = new Gtk.TextBuffer();
-        buf.setText("one\t2.0\tthree\nfour\t5.555\tsix\nseven\t88.88\tnine", -1);
-        return buf;
-    }, []);
 
     useEffect(() => {
         const view = textViewRef.current;
@@ -58,7 +52,6 @@ const TabsDemo = () => {
                     >
                         <GtkTextView
                             ref={textViewRef}
-                            buffer={buffer}
                             wrapMode={Gtk.WrapMode.WORD}
                             topMargin={20}
                             bottomMargin={20}
@@ -66,7 +59,9 @@ const TabsDemo = () => {
                             rightMargin={20}
                             editable={false}
                             cursorVisible={false}
-                        />
+                        >
+                            <x.TextBuffer text={"one\t2.0\tthree\nfour\t5.555\tsix\nseven\t88.88\tnine"} />
+                        </GtkTextView>
                     </GtkScrolledWindow>
                 </GtkBox>
             </GtkFrame>

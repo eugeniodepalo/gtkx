@@ -1,7 +1,7 @@
 import { beginBatch, endBatch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { useCallback, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textscroll.tsx?raw";
 
@@ -17,34 +17,22 @@ Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit la
 
 At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi.`;
 
+const horizontalText = `${"This is a very long line of text that extends beyond the visible area. ".repeat(10)}\n\n${loremIpsum.split("\n\n").join(" ")}`;
+const bothText = (() => {
+    const content = loremIpsum
+        .split("\n\n")
+        .map((para) => para.replace(/\n/g, " "))
+        .join("\n\n");
+    return `${content}\n\n${content}`;
+})();
+
 const TextScrollDemo = () => {
     const verticalViewRef = useRef<Gtk.TextView | null>(null);
 
-    const [verticalBuffer] = useState(() => {
-        const buffer = new Gtk.TextBuffer();
-        buffer.setText(loremIpsum, -1);
-        return buffer;
-    });
-
-    const [horizontalBuffer] = useState(() => {
-        const buffer = new Gtk.TextBuffer();
-        const longLine = "This is a very long line of text that extends beyond the visible area. ".repeat(10);
-        buffer.setText(`${longLine}\n\n${loremIpsum.split("\n\n").join(" ")}`, -1);
-        return buffer;
-    });
-
-    const [bothBuffer] = useState(() => {
-        const buffer = new Gtk.TextBuffer();
-        const content = loremIpsum
-            .split("\n\n")
-            .map((para) => para.replace(/\n/g, " "))
-            .join("\n\n");
-        buffer.setText(`${content}\n\n${content}`, -1);
-        return buffer;
-    });
-
-    const scrollToStart = (buffer: Gtk.TextBuffer, textView: Gtk.TextView | null) => {
+    const scrollToStart = useCallback((textView: Gtk.TextView | null) => {
         if (!textView) return;
+        const buffer = textView.getBuffer();
+        if (!buffer) return;
         beginBatch();
         const startIter = new Gtk.TextIter();
         buffer.getStartIter(startIter);
@@ -52,10 +40,12 @@ const TextScrollDemo = () => {
         buffer.placeCursor(startIter);
         const insertMark = buffer.getInsert();
         textView.scrollToMark(insertMark, 0.0, false, 0.0, 0.0);
-    };
+    }, []);
 
-    const scrollToEnd = (buffer: Gtk.TextBuffer, textView: Gtk.TextView | null) => {
+    const scrollToEnd = useCallback((textView: Gtk.TextView | null) => {
         if (!textView) return;
+        const buffer = textView.getBuffer();
+        if (!buffer) return;
         beginBatch();
         const endIter = new Gtk.TextIter();
         buffer.getEndIter(endIter);
@@ -63,7 +53,7 @@ const TextScrollDemo = () => {
         buffer.placeCursor(endIter);
         const insertMark = buffer.getInsert();
         textView.scrollToMark(insertMark, 0.0, false, 0.0, 0.0);
-    };
+    }, []);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
@@ -86,7 +76,6 @@ const TextScrollDemo = () => {
                     >
                         <GtkTextView
                             ref={verticalViewRef}
-                            buffer={verticalBuffer}
                             leftMargin={12}
                             rightMargin={12}
                             topMargin={12}
@@ -94,19 +83,15 @@ const TextScrollDemo = () => {
                             wrapMode={Gtk.WrapMode.WORD}
                             editable={false}
                             cursorVisible={false}
-                        />
+                        >
+                            <x.TextBuffer text={loremIpsum} />
+                        </GtkTextView>
                     </GtkScrolledWindow>
                 </GtkFrame>
 
                 <GtkBox spacing={8}>
-                    <GtkButton
-                        label="Scroll to Start"
-                        onClicked={() => scrollToStart(verticalBuffer, verticalViewRef.current)}
-                    />
-                    <GtkButton
-                        label="Scroll to End"
-                        onClicked={() => scrollToEnd(verticalBuffer, verticalViewRef.current)}
-                    />
+                    <GtkButton label="Scroll to Start" onClicked={() => scrollToStart(verticalViewRef.current)} />
+                    <GtkButton label="Scroll to End" onClicked={() => scrollToEnd(verticalViewRef.current)} />
                 </GtkBox>
             </GtkBox>
 
@@ -126,7 +111,6 @@ const TextScrollDemo = () => {
                         vscrollbarPolicy={Gtk.PolicyType.NEVER}
                     >
                         <GtkTextView
-                            buffer={horizontalBuffer}
                             leftMargin={12}
                             rightMargin={12}
                             topMargin={12}
@@ -134,7 +118,9 @@ const TextScrollDemo = () => {
                             wrapMode={Gtk.WrapMode.NONE}
                             editable={false}
                             cursorVisible={false}
-                        />
+                        >
+                            <x.TextBuffer text={horizontalText} />
+                        </GtkTextView>
                     </GtkScrolledWindow>
                 </GtkFrame>
             </GtkBox>
@@ -156,7 +142,6 @@ const TextScrollDemo = () => {
                         vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     >
                         <GtkTextView
-                            buffer={bothBuffer}
                             leftMargin={12}
                             rightMargin={12}
                             topMargin={12}
@@ -165,7 +150,9 @@ const TextScrollDemo = () => {
                             monospace
                             editable={false}
                             cursorVisible={false}
-                        />
+                        >
+                            <x.TextBuffer text={bothText} />
+                        </GtkTextView>
                     </GtkScrolledWindow>
                 </GtkFrame>
             </GtkBox>

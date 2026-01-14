@@ -61,8 +61,8 @@ const TextUndoDemo = () => {
                             <x.TextBuffer
                                 text={text}
                                 enableUndo
-                                onCanUndoChange={setCanUndo}
-                                onCanRedoChange={setCanRedo}
+                                onCanUndoChanged={setCanUndo}
+                                onCanRedoChanged={setCanRedo}
                             />
                         </GtkTextView>
                     </GtkScrolledWindow>

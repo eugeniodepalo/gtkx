@@ -2,8 +2,8 @@ import { css } from "@gtkx/css";
 import { beginBatch, createRef, endBatch } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./hypertext.tsx?raw";
 
@@ -32,23 +32,25 @@ const SAMPLE_LINKS: Link[] = [
 const SAMPLE_TEXT = `GTK is the toolkit used to create graphical user interfaces for GNOME and many other applications. Visit GNOME for more information about the desktop environment. Check out GitHub for the source code.`;
 
 const HypertextDemo = () => {
-    const [buffer] = useState(() => new Gtk.TextBuffer());
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
     const [clickedLink, setClickedLink] = useState<string | null>(null);
     const [cursor, setCursor] = useState(() => new Gdk.Cursor("text"));
     const textViewRef = useRef<Gtk.TextView | null>(null);
+    const tagsInitializedRef = useRef(false);
 
-    const linkTag = useMemo(() => {
-        const tag = new Gtk.TextTag("link");
-        return tag;
-    }, []);
+    const linkTag = useMemo(() => new Gtk.TextTag("link"), []);
+    const hoverTag = useMemo(() => new Gtk.TextTag("link-hover"), []);
 
-    const hoverTag = useMemo(() => {
-        const tag = new Gtk.TextTag("link-hover");
-        return tag;
-    }, []);
+    const initTags = useCallback(() => {
+        if (tagsInitializedRef.current) return;
+        const textView = textViewRef.current;
+        if (!textView) return;
 
-    useEffect(() => {
+        const buffer = textView.getBuffer();
+        if (!buffer) return;
+
+        tagsInitializedRef.current = true;
+
         const tagTable = buffer.getTagTable();
         tagTable.add(linkTag);
         tagTable.add(hoverTag);
@@ -64,7 +66,11 @@ const HypertextDemo = () => {
             buffer.applyTag(linkTag, startIter, endIter);
         }
         endBatch();
-    }, [buffer, linkTag, hoverTag]);
+    }, [linkTag, hoverTag]);
+
+    useEffect(() => {
+        initTags();
+    }, [initTags]);
 
     const handleMotion = (x: number, y: number) => {
         const textView = textViewRef.current;
@@ -147,7 +153,6 @@ const HypertextDemo = () => {
                     <GtkScrolledWindow minContentHeight={120} cssClasses={["card"]}>
                         <GtkTextView
                             ref={textViewRef}
-                            buffer={buffer}
                             editable={false}
                             cursorVisible={false}
                             cursor={cursor}
@@ -155,7 +160,9 @@ const HypertextDemo = () => {
                             cssClasses={[hypertextViewStyle]}
                             onMotion={handleMotion}
                             onPressed={handleClick}
-                        />
+                        >
+                            <x.TextBuffer />
+                        </GtkTextView>
                     </GtkScrolledWindow>
 
                     <GtkBox spacing={12}>

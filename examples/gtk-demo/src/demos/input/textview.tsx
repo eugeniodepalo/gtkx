@@ -1,8 +1,8 @@
 import { beginBatch, endBatch } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useEffect, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";
 
@@ -17,38 +17,54 @@ const getBufferText = (buffer: Gtk.TextBuffer): string => {
 };
 
 const TextViewDemo = () => {
-    const [buffer] = useState(() => new Gtk.TextBuffer());
+    const textViewRef = useRef<Gtk.TextView | null>(null);
     const [charCount, setCharCount] = useState(0);
     const [wordCount, setWordCount] = useState(0);
     const [lineCount, setLineCount] = useState(1);
+    const handlerIdRef = useRef<number | null>(null);
+
+    const handleBufferChanged = useCallback((buffer: Gtk.TextBuffer) => {
+        const text = getBufferText(buffer);
+        setCharCount(text.length);
+        const words = text
+            .trim()
+            .split(/\s+/)
+            .filter((w) => w.length > 0);
+        setWordCount(words.length);
+        setLineCount(buffer.getLineCount());
+    }, []);
 
     useEffect(() => {
-        const handlerId = buffer.connect("changed", () => {
-            const text = getBufferText(buffer);
-            setCharCount(text.length);
-            const words = text
-                .trim()
-                .split(/\s+/)
-                .filter((w) => w.length > 0);
-            setWordCount(words.length);
-            setLineCount(buffer.getLineCount());
-        });
+        const textView = textViewRef.current;
+        if (!textView) return;
+
+        const buffer = textView.getBuffer();
+        if (!buffer) return;
+
+        handlerIdRef.current = buffer.connect("changed", () => handleBufferChanged(buffer));
 
         return () => {
-            GObject.signalHandlerDisconnect(buffer, handlerId);
+            if (handlerIdRef.current !== null) {
+                GObject.signalHandlerDisconnect(buffer, handlerIdRef.current);
+                handlerIdRef.current = null;
+            }
         };
-    }, [buffer]);
+    }, [handleBufferChanged]);
 
-    const handleClear = () => {
-        buffer.setText("", 0);
-    };
+    const handleClear = useCallback(() => {
+        const buffer = textViewRef.current?.getBuffer();
+        if (buffer) buffer.setText("", 0);
+    }, []);
 
-    const handleInsertSample = () => {
-        buffer.setText(
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n\nSed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-            -1,
-        );
-    };
+    const handleInsertSample = useCallback(() => {
+        const buffer = textViewRef.current?.getBuffer();
+        if (buffer) {
+            buffer.setText(
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n\nSed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+                -1,
+            );
+        }
+    }, []);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
@@ -70,13 +86,15 @@ const TextViewDemo = () => {
                 <GtkFrame>
                     <GtkScrolledWindow minContentHeight={200} hexpand vexpand>
                         <GtkTextView
-                            buffer={buffer}
+                            ref={textViewRef}
                             leftMargin={12}
                             rightMargin={12}
                             topMargin={12}
                             bottomMargin={12}
                             wrapMode={Gtk.WrapMode.WORD_CHAR}
-                        />
+                        >
+                            <x.TextBuffer />
+                        </GtkTextView>
                     </GtkScrolledWindow>
                 </GtkFrame>
 
