@@ -1,5 +1,6 @@
 import * as net from "node:net";
 import { getNativeId, getNativeObject } from "@gtkx/ffi";
+import { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     DEFAULT_SOCKET_PATH,
@@ -415,13 +416,37 @@ class McpClient {
 
             case "widget.fireEvent": {
                 const testing = await loadTestingModule();
-                const p = params as { widgetId: string; signal: string; args?: { type: unknown; value: unknown }[] };
+                const p = params as {
+                    widgetId: string;
+                    signal: string;
+                    args?: { type: string; value: unknown }[];
+                };
                 const widget = getWidgetById(p.widgetId);
                 if (!widget) {
                     throw widgetNotFoundError(p.widgetId);
                 }
-                type FireEventArgs = Parameters<TestingModule["fireEvent"]>;
-                const signalArgs = (p.args ?? []) as FireEventArgs[2][];
+                const signalArgs = (p.args ?? []).map((arg) => {
+                    switch (arg.type) {
+                        case "boolean":
+                            return Value.newFromBoolean(arg.value as boolean);
+                        case "int":
+                            return Value.newFromInt(arg.value as number);
+                        case "uint":
+                            return Value.newFromUint(arg.value as number);
+                        case "int64":
+                            return Value.newFromInt64(arg.value as number);
+                        case "uint64":
+                            return Value.newFromUint64(arg.value as number);
+                        case "float":
+                            return Value.newFromFloat(arg.value as number);
+                        case "double":
+                            return Value.newFromDouble(arg.value as number);
+                        case "string":
+                            return Value.newFromString(arg.value as string | null);
+                        default:
+                            throw new McpError(McpErrorCode.INVALID_REQUEST, `Unknown argument type: ${arg.type}`);
+                    }
+                });
                 await testing.fireEvent(widget, p.signal, ...signalArgs);
                 return { success: true };
             }
