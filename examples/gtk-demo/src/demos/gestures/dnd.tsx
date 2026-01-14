@@ -1,19 +1,10 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GObject from "@gtkx/ffi/gobject";
-import { typeFromName } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
-
-function createStringValue(str: string): GObject.Value {
-    const stringType = typeFromName("gchararray");
-    const value = new GObject.Value();
-    value.init(stringType);
-    value.setString(str);
-    return value;
-}
 
 interface DraggableItemProps {
     label: string;
@@ -27,7 +18,7 @@ const DraggableItem = ({ label, color }: DraggableItemProps) => {
         <GtkButton
             label={label}
             cssClasses={[color, isDragging ? "dim-label" : ""]}
-            onDragPrepare={() => Gdk.ContentProvider.newForValue(createStringValue(label))}
+            onDragPrepare={() => Gdk.ContentProvider.newForValue(GObject.Value.newFromString(label))}
             onDragBegin={() => setIsDragging(true)}
             onDragEnd={() => setIsDragging(false)}
         />
@@ -47,7 +38,6 @@ interface DropZoneProps {
 
 const DropZone = ({ title, items, onDrop }: DropZoneProps) => {
     const [isHovering, setIsHovering] = useState(false);
-    const stringType = useMemo(() => typeFromName("gchararray"), []);
 
     return (
         <GtkFrame label={title}>
@@ -60,7 +50,7 @@ const DropZone = ({ title, items, onDrop }: DropZoneProps) => {
                 marginEnd={12}
                 vexpand
                 cssClasses={isHovering ? ["accent"] : []}
-                dropTypes={[stringType]}
+                dropTypes={[GObject.Type.STRING]}
                 onDropEnter={() => {
                     setIsHovering(true);
                     return Gdk.DragAction.COPY;
