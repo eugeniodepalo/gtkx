@@ -51,18 +51,19 @@ The native module uses two threads to satisfy GTK's single-threaded requirements
 
 ### Key Entry Points
 
-| File | Purpose |
-|------|---------|
-| `packages/react/src/render.tsx` | `render()` function, app initialization |
-| `packages/react/src/host-config.ts` | React reconciler implementation |
-| `packages/native/src/lib.rs` | Rust FFI exports (start, stop, call, poll, etc.) |
-| `packages/ffi/src/index.ts` | JavaScript FFI wrapper |
+| File                                | Purpose                                          |
+| ----------------------------------- | ------------------------------------------------ |
+| `packages/react/src/render.tsx`     | `render()` function, app initialization          |
+| `packages/react/src/host-config.ts` | React reconciler implementation                  |
+| `packages/native/src/lib.rs`        | Rust FFI exports (start, stop, call, poll, etc.) |
+| `packages/ffi/src/index.ts`         | JavaScript FFI wrapper                           |
 
 ### Code Generation Pipeline
 
 GIR XML files (girs/) → @gtkx/gir parser → @gtkx/codegen → Generated TypeScript
 
 Output locations:
+
 - `packages/ffi/src/generated/` — FFI type bindings
 - `packages/react/src/generated/` — React JSX component wrappers
 
@@ -70,18 +71,18 @@ Run `pnpm codegen` after modifying GIR files or codegen templates.
 
 ## Monorepo Structure
 
-| Package | Description |
-|---------|-------------|
-| `@gtkx/react` | React reconciler and JSX components |
-| `@gtkx/ffi` | Generated TypeScript FFI bindings |
-| `@gtkx/native` | Rust/Neon native module (GTK4 bridge) |
-| `@gtkx/cli` | Scaffolding, dev server with HMR |
-| `@gtkx/codegen` | Generates bindings from GIR files |
-| `@gtkx/gir` | GObject Introspection XML parser |
-| `@gtkx/css` | CSS-in-JS styling for GTK |
-| `@gtkx/testing` | Component testing utilities |
-| `@gtkx/vitest` | Vitest plugin for Xvfb display management |
-| `@gtkx/mcp` | MCP server for AI-powered app interaction |
+| Package         | Description                               |
+| --------------- | ----------------------------------------- |
+| `@gtkx/react`   | React reconciler and JSX components       |
+| `@gtkx/ffi`     | Generated TypeScript FFI bindings         |
+| `@gtkx/native`  | Rust/Neon native module (GTK4 bridge)     |
+| `@gtkx/cli`     | Scaffolding, dev server with HMR          |
+| `@gtkx/codegen` | Generates bindings from GIR files         |
+| `@gtkx/gir`     | GObject Introspection XML parser          |
+| `@gtkx/css`     | CSS-in-JS styling for GTK                 |
+| `@gtkx/testing` | Component testing utilities               |
+| `@gtkx/vitest`  | Vitest plugin for Xvfb display management |
+| `@gtkx/mcp`     | MCP server for AI-powered app interaction |
 
 ## Code Style
 
@@ -100,6 +101,7 @@ Tests run under Xvfb (virtual framebuffer) for headless GUI testing. The `@gtkx/
 ## Build Dependencies
 
 The build follows this task order via Turborepo:
+
 1. `@gtkx/codegen` builds first
 2. `//#codegen:run` generates FFI/React bindings
 3. `@gtkx/ffi` and `@gtkx/react` build after codegen

@@ -31,36 +31,36 @@ npm run dev
 
 ```tsx
 import {
- GtkApplicationWindow,
- GtkBox,
- GtkButton,
- GtkLabel,
- quit,
- render,
+  GtkApplicationWindow,
+  GtkBox,
+  GtkButton,
+  GtkLabel,
+  quit,
+  render,
 } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const App = () => {
- const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0);
 
- return (
- <GtkApplicationWindow
- title="Counter"
- defaultWidth={300}
- defaultHeight={200}
- onClose={quit}
->
- <GtkBox
- orientation={Gtk.Orientation.VERTICAL}
- spacing={20}
- valign={Gtk.Align.CENTER}
->
- <GtkLabel label={`Count: ${count}`} cssClasses={["title-1"]} />
- <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
- </GtkBox>
- </GtkApplicationWindow>
- );
+  return (
+    <GtkApplicationWindow
+      title="Counter"
+      defaultWidth={300}
+      defaultHeight={200}
+      onClose={quit}
+    >
+      <GtkBox
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={20}
+        valign={Gtk.Align.CENTER}
+      >
+        <GtkLabel label={`Count: ${count}`} cssClasses={["title-1"]} />
+        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+      </GtkBox>
+    </GtkApplicationWindow>
+  );
 };
 
 render(<App />, "com.example.counter");
@@ -80,11 +80,11 @@ render(<App />, "com.example.counter");
 
 Explore complete applications in the [`examples/`](./examples) directory:
 
-- **[browser](./examples/browser)** — Simple browser using WebKitWebView
 - **[gtk-demo](./examples/gtk-demo)** — Full replica of the official GTK demo app
 - **[hello-world](./examples/hello-world)** — Minimal application showing a counter
 - **[todo](./examples/todo)** — Full-featured todo application with Adwaita styling and testing
-- **[x-showcase](./examples/x-showcase)** — Showcase of all x.* virtual components
+- **[x-showcase](./examples/x-showcase)** — Showcase of all x.\* virtual components
+- **[browser](./examples/browser)** — Simple browser using WebKitWebView
 - **[deploying](./examples/deploying)** — Example of packaging and distributing a GTKX app
 
 ## Documentation

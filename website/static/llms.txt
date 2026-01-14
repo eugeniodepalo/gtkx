@@ -11,21 +11,24 @@ GTKX enables React developers to build Linux desktop applications using familiar
 - `@gtkx/css`: CSS-in-JS styling (Emotion-like API adapted for GTK CSS syntax)
 - `@gtkx/testing`: Component testing utilities (Testing Library-style API for GTK)
 - `@gtkx/cli`: Project scaffolding (gtkx create) and dev server with hot module replacement
+- `@gtkx/mcp`: MCP server for AI-powered app interaction, widget tree inspection, automated testing
 
 ## Documentation
 
 - [Introduction](https://eugeniodepalo.github.io/gtkx/docs/introduction): What GTKX is, how it works, architecture overview, and target audience
 - [Getting Started](https://eugeniodepalo.github.io/gtkx/docs/getting-started): Create first app, project structure, basic component patterns
 - [CLI Reference](https://eugeniodepalo.github.io/gtkx/docs/cli): gtkx create, gtkx dev commands, npm scripts, programmatic API
-- [Slots](https://eugeniodepalo.github.io/gtkx/docs/slots): Named child positions for widgets like GtkHeaderBar, GtkPaned, GtkMenuButton
 - [Styling](https://eugeniodepalo.github.io/gtkx/docs/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
-- [Lists](https://eugeniodepalo.github.io/gtkx/docs/lists): x.ListView, x.GridView, GtkColumnView, x.TreeListView, GtkDropDown with virtual scrolling
-- [Menus](https://eugeniodepalo.github.io/gtkx/docs/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu, keyboard shortcuts, GtkPopoverMenu
-- [Adwaita](https://eugeniodepalo.github.io/gtkx/docs/adwaita): Libadwaita components — AdwToolbarView, AdwHeaderBar, AdwActionRow, AdwNavigationView
-- [Portals and Dialogs](https://eugeniodepalo.github.io/gtkx/docs/portals): createPortal(), AlertDialog, AboutDialog, FileDialog, modal windows
 - [Async Operations](https://eugeniodepalo.github.io/gtkx/docs/async-operations): Async event handlers, loading states, file I/O, network requests
 - [Error Handling](https://eugeniodepalo.github.io/gtkx/docs/error-handling): Try/catch patterns, error states, toast notifications, form validation
+- [Widgets](https://eugeniodepalo.github.io/gtkx/docs/widgets): Declarative widget children — x.ScaleMark, x.CalendarMark, x.GridChild, x.Toggle, x.NotebookPage, drag-and-drop
+- [Lists](https://eugeniodepalo.github.io/gtkx/docs/lists): x.ListView, x.GridView, GtkColumnView, x.TreeListView, GtkDropDown with virtual scrolling
+- [Menus](https://eugeniodepalo.github.io/gtkx/docs/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu, keyboard shortcuts, GtkPopoverMenu
+- [Slots](https://eugeniodepalo.github.io/gtkx/docs/slots): Named child positions for widgets like GtkHeaderBar, GtkPaned, GtkMenuButton
+- [Portals and Dialogs](https://eugeniodepalo.github.io/gtkx/docs/portals): createPortal(), AlertDialog, AboutDialog, FileDialog, modal windows
+- [Adwaita](https://eugeniodepalo.github.io/gtkx/docs/adwaita): Libadwaita components — AdwToolbarView, AdwHeaderBar, AdwActionRow, AdwNavigationView
 - [Testing](https://eugeniodepalo.github.io/gtkx/docs/testing): render(), screen queries, userEvent, waitFor, Xvfb setup for CI
+- [MCP Integration](https://eugeniodepalo.github.io/gtkx/docs/mcp): AI assistant integration via Model Context Protocol, widget tree inspection, automated UI interaction
 - [Deploying](https://eugeniodepalo.github.io/gtkx/docs/deploying): Node.js Single Executable Application (SEA), Flatpak packaging
 
 ## API Reference

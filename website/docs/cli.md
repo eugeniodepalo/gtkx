@@ -28,12 +28,12 @@ npx @gtkx/cli create [project-name]
 
 **Interactive Prompts:**
 
-| Prompt | Description | Validation |
-| ----------------- | ------------------------------- | ---------------------------------------- |
-| Project name | Directory name for your project | Lowercase, numbers, hyphens only |
-| App ID | Unique application identifier | Reverse domain (e.g., `com.example.app`) |
-| Package manager | Dependency manager | pnpm, npm, yarn |
-| Testing | Include Vitest testing setup | yes, no |
+| Prompt          | Description                     | Validation                               |
+| --------------- | ------------------------------- | ---------------------------------------- |
+| Project name    | Directory name for your project | Lowercase, numbers, hyphens only         |
+| App ID          | Unique application identifier   | Reverse domain (e.g., `com.example.app`) |
+| Package manager | Dependency manager              | pnpm, npm, yarn                          |
+| Testing         | Include Vitest testing setup    | yes, no                                  |
 
 **Generated Project:**
 
@@ -103,21 +103,21 @@ After `gtkx create`, your `package.json` includes:
 
 ```json
 {
- "scripts": {
- "dev": "gtkx dev src/dev.tsx",
- "build": "tsc -b",
- "start": "node dist/index.js",
- "test": "vitest"
- }
+  "scripts": {
+    "dev": "gtkx dev src/dev.tsx",
+    "build": "tsc -b",
+    "start": "node dist/index.js",
+    "test": "vitest"
+  }
 }
 ```
 
-| Script | Description |
+| Script          | Description               |
 | --------------- | ------------------------- |
-| `npm run dev` | Start development server |
-| `npm run build` | Compile TypeScript |
-| `npm start` | Run production build |
-| `npm test` | Run tests (if configured) |
+| `npm run dev`   | Start development server  |
+| `npm run build` | Compile TypeScript        |
+| `npm start`     | Run production build      |
+| `npm test`      | Run tests (if configured) |
 
 ## Programmatic API
 
@@ -128,14 +128,14 @@ import { createApp, createDevServer } from "@gtkx/cli";
 
 // Create a new project
 await createApp({
- name: "my-app",
- appId: "com.example.myapp",
- packageManager: "pnpm",
- testing: "vitest",
+  name: "my-app",
+  appId: "com.example.myapp",
+  packageManager: "pnpm",
+  testing: "vitest",
 });
 
 // Start dev server
 const server = await createDevServer({
- entry: "src/dev.tsx",
+  entry: "src/dev.tsx",
 });
 ```

@@ -19,13 +19,13 @@ Mark the native module as external:
 import * as esbuild from "esbuild";
 
 await esbuild.build({
- entryPoints: ["dist/index.js"],
- bundle: true,
- platform: "node",
- target: "node22",
- outfile: "dist/bundle.js",
- format: "cjs",
- external: ["./index.node"], // Keep native module external
+  entryPoints: ["dist/index.js"],
+  bundle: true,
+  platform: "node",
+  target: "node22",
+  outfile: "dist/bundle.js",
+  format: "cjs",
+  external: ["./index.node"], // Keep native module external
 });
 ```
 
@@ -35,11 +35,11 @@ Create `sea-config.json`:
 
 ```json
 {
- "main": "dist/bundle.js",
- "output": "dist/sea-prep.blob",
- "disableExperimentalSEAWarning": true,
- "useSnapshot": false,
- "useCodeCache": true
+  "main": "dist/bundle.js",
+  "output": "dist/sea-prep.blob",
+  "disableExperimentalSEAWarning": true,
+  "useSnapshot": false,
+  "useCodeCache": true
 }
 ```
 
@@ -64,6 +64,7 @@ cp node_modules/@gtkx/native/index.node dist/
 ```
 
 The final distribution includes:
+
 - `dist/app` — The executable (~100MB)
 - `dist/index.node` — The native GTK4 bindings
 
@@ -114,17 +115,17 @@ base: core24
 confinement: strict
 
 apps:
- myapp:
- command: bin/myapp
- extensions: [gnome] # Required for GTK4
+  myapp:
+  command: bin/myapp
+  extensions: [gnome] # Required for GTK4
 
 parts:
- myapp:
- plugin: dump
- source: dist/
- organize:
- app: bin/myapp
- index.node: bin/index.node # GTKX native module
+  myapp:
+  plugin: dump
+  source: dist/
+  organize:
+  app: bin/myapp
+  index.node: bin/index.node # GTKX native module
 ```
 
 For complete Snap setup, see the [Snapcraft Documentation](https://snapcraft.io/docs).

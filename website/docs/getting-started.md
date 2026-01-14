@@ -50,36 +50,36 @@ my-app/
 import { useState } from "react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
- GtkApplicationWindow,
- GtkBox,
- GtkButton,
- GtkLabel,
- quit,
+  GtkApplicationWindow,
+  GtkBox,
+  GtkButton,
+  GtkLabel,
+  quit,
 } from "@gtkx/react";
 
 export default function App() {
- const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0);
 
- return (
- <GtkApplicationWindow
- title="My App"
- defaultWidth={400}
- defaultHeight={300}
- onClose={quit}
->
- <GtkBox
- orientation={Gtk.Orientation.VERTICAL}
- spacing={20}
- marginTop={40}
- marginStart={40}
- marginEnd={40}
->
- Welcome to GTKX!
- <GtkLabel label={`Count: ${count}`} />
- <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
- </GtkBox>
- </GtkApplicationWindow>
- );
+  return (
+    <GtkApplicationWindow
+      title="My App"
+      defaultWidth={400}
+      defaultHeight={300}
+      onClose={quit}
+    >
+      <GtkBox
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={20}
+        marginTop={40}
+        marginStart={40}
+        marginEnd={40}
+      >
+        Welcome to GTKX!
+        <GtkLabel label={`Count: ${count}`} />
+        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+      </GtkBox>
+    </GtkApplicationWindow>
+  );
 }
 ```
 
@@ -97,9 +97,9 @@ render(<App />, pkg.gtkx.appId);
 
 ```json
 {
- "gtkx": {
- "appId": "com.example.myapp"
- }
+  "gtkx": {
+    "appId": "com.example.myapp"
+  }
 }
 ```
 
@@ -147,9 +147,9 @@ Component props map to GTK widget properties:
 
 ```tsx
 <GtkButton
- label="Click me" // Sets the button label
- sensitive={false} // Disables the button
- cssClasses={["suggested-action"]} // Adds CSS classes
+  label="Click me" // Sets the button label
+  sensitive={false} // Disables the button
+  cssClasses={["suggested-action"]} // Adds CSS classes
 />
 ```
 

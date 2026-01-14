@@ -10,13 +10,13 @@ GTK uses CSS for styling, but with its own syntax and properties. GTKX bridges t
 import { css } from "@gtkx/css";
 
 const buttonStyle = css`
- background: #3584e4;
- color: white;
- padding: 8px 16px;
- border-radius: 6px;
+  background: #3584e4;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
 `;
 
-<GtkButton cssClasses={[buttonStyle]} label="Styled Button" />
+<GtkButton cssClasses={[buttonStyle]} label="Styled Button" />;
 ```
 
 ## Nesting
@@ -25,15 +25,15 @@ The `css` function supports nesting with `&`:
 
 ```typescript
 const buttonStyle = css`
- background: #3584e4;
+  background: #3584e4;
 
- &:hover {
- background: #1c71d8;
- }
+  &:hover {
+    background: #1c71d8;
+  }
 
- &:disabled {
- opacity: 0.5;
- }
+  &:disabled {
+    opacity: 0.5;
+  }
 `;
 ```
 

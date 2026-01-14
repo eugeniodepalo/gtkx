@@ -6,22 +6,22 @@ Thank you for your interest in contributing to GTKX! This document provides guid
 
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
- - [Prerequisites](#prerequisites)
- - [System Dependencies](#system-dependencies)
- - [Development Setup](#development-setup)
+- [Prerequisites](#prerequisites)
+- [System Dependencies](#system-dependencies)
+- [Development Setup](#development-setup)
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
- - [Building](#building)
- - [Testing](#testing)
- - [Linting](#linting)
- - [Code Generation](#code-generation)
+- [Building](#building)
+- [Testing](#testing)
+- [Linting](#linting)
+- [Code Generation](#code-generation)
 - [Making Changes](#making-changes)
- - [Branching Strategy](#branching-strategy)
- - [Commit Messages](#commit-messages)
- - [Pull Request Process](#pull-request-process)
+- [Branching Strategy](#branching-strategy)
+- [Commit Messages](#commit-messages)
+- [Pull Request Process](#pull-request-process)
 - [Issue Guidelines](#issue-guidelines)
- - [Bug Reports](#bug-reports)
- - [Feature Requests](#feature-requests)
+- [Bug Reports](#bug-reports)
+- [Feature Requests](#feature-requests)
 - [Code Style](#code-style)
 - [Documentation](#documentation)
 - [Getting Help](#getting-help)
@@ -109,28 +109,28 @@ sudo pacman -S \
 
 1. **Fork and clone the repository:**
 
- ```bash
- git clone https://github.com/YOUR_USERNAME/gtkx.git
- cd gtkx
- ```
+```bash
+git clone https://github.com/YOUR_USERNAME/gtkx.git
+cd gtkx
+```
 
 2. **Install dependencies:**
 
- ```bash
- pnpm install
- ```
+```bash
+pnpm install
+```
 
 3. **Build all packages:**
 
- ```bash
- pnpm build
- ```
+```bash
+pnpm build
+```
 
 4. **Verify the setup by running tests:**
 
- ```bash
- pnpm test
- ```
+```bash
+pnpm test
+```
 
 ## Project Structure
 
@@ -156,12 +156,12 @@ girs/ # GObject Introspection XML files
 
 Key entry points:
 
-| File | Purpose |
-|------|---------|
-| `packages/react/src/render.tsx` | `render()` function and app lifecycle |
-| `packages/react/src/host-config.ts` | React reconciler implementation |
-| `packages/native/src/lib.rs` | Rust FFI exports |
-| `packages/ffi/src/index.ts` | JavaScript FFI wrapper |
+| File                                | Purpose                               |
+| ----------------------------------- | ------------------------------------- |
+| `packages/react/src/render.tsx`     | `render()` function and app lifecycle |
+| `packages/react/src/host-config.ts` | React reconciler implementation       |
+| `packages/native/src/lib.rs`        | Rust FFI exports                      |
+| `packages/ffi/src/index.ts`         | JavaScript FFI wrapper                |
 
 ## Development Workflow
 
@@ -210,6 +210,7 @@ pnpm lint
 ```
 
 This runs:
+
 - **Biome** for TypeScript/JavaScript formatting and linting
 - **Clippy** for Rust linting (in the native package)
 
@@ -234,6 +235,7 @@ pnpm codegen
 ```
 
 Run this after:
+
 - Updating GIR files in `girs/`
 - Modifying the codegen templates
 - Adding support for new GTK widgets
@@ -244,15 +246,16 @@ Run this after:
 
 1. Create a branch from `main`:
 
- ```bash
- git checkout -b feature/your-feature-name
- ```
+```bash
+git checkout -b feature/your-feature-name
+```
 
 2. Use descriptive branch names:
- - `feature/` for new features
- - `fix/` for bug fixes
- - `docs/` for documentation changes
- - `refactor/` for code refactoring
+
+- `feature/` for new features
+- `fix/` for bug fixes
+- `docs/` for documentation changes
+- `refactor/` for code refactoring
 
 ### Commit Messages
 
@@ -280,25 +283,29 @@ Fix memory leak in signal handler cleanup
 ### Pull Request Process
 
 1. **Before submitting:**
- - Ensure all tests pass: `pnpm test`
- - Ensure linting passes: `pnpm lint`
- - Ensure no dead code: `pnpm knip`
- - Update documentation if needed
+
+- Ensure all tests pass: `pnpm test`
+- Ensure linting passes: `pnpm lint`
+- Ensure no dead code: `pnpm knip`
+- Update documentation if needed
 
 2. **Create the pull request:**
- - Fill out the PR template
- - Provide a clear description of changes
- - Link related issues
- - Include screenshots for UI changes
+
+- Fill out the PR template
+- Provide a clear description of changes
+- Link related issues
+- Include screenshots for UI changes
 
 3. **Review process:**
- - Address review feedback
- - Keep the PR focused on a single concern
- - Rebase on `main` if needed to resolve conflicts
+
+- Address review feedback
+- Keep the PR focused on a single concern
+- Rebase on `main` if needed to resolve conflicts
 
 4. **CI requirements:**
- - All CI checks must pass
- - Build, lint, tests, and dead code checks run automatically
+
+- All CI checks must pass
+- Build, lint, tests, and dead code checks run automatically
 
 ## Issue Guidelines
 
@@ -367,7 +374,7 @@ API docs are generated from TypeScript with TypeDoc. Add JSDoc comments to expor
  * @param element - The root React element to render
  * @param appId - The GTK application ID (e.g., "com.example.app")
  */
-export function render(element: React.ReactNode, appId: string): void
+export function render(element: React.ReactNode, appId: string): void;
 ```
 
 ### Examples

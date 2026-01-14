@@ -26,23 +26,26 @@ import { NativeError } from "@gtkx/ffi";
 import { GtkButton, useApplication } from "@gtkx/react";
 
 const FilePickerButton = () => {
- const app = useApplication();
+  const app = useApplication();
 
- const pickFile = async () => {
- const dialog = new Gtk.FileDialog();
+  const pickFile = async () => {
+    const dialog = new Gtk.FileDialog();
 
- try {
- const file = await dialog.openAsync(app.getActiveWindow() ?? undefined);
- console.log("Selected:", file.getPath());
- } catch (error) {
- if (error instanceof NativeError && error.code === Gtk.DialogError.DISMISSED) {
- return; // User cancelled
- }
- throw error;
- }
- };
+    try {
+      const file = await dialog.openAsync(app.getActiveWindow() ?? undefined);
+      console.log("Selected:", file.getPath());
+    } catch (error) {
+      if (
+        error instanceof NativeError &&
+        error.code === Gtk.DialogError.DISMISSED
+      ) {
+        return; // User cancelled
+      }
+      throw error;
+    }
+  };
 
- return <GtkButton label="Open File" onClicked={() => pickFile()} />;
+  return <GtkButton label="Open File" onClicked={() => pickFile()} />;
 };
 ```
 
@@ -72,11 +75,14 @@ const cancellable = new Gio.Cancellable();
 setTimeout(() => cancellable.cancel(), 30000);
 
 try {
- const file = await dialog.openAsync(window, cancellable);
+  const file = await dialog.openAsync(window, cancellable);
 } catch (error) {
- if (error instanceof NativeError && error.code === Gio.IOErrorEnum.CANCELLED) {
- console.log("Operation was cancelled");
- }
+  if (
+    error instanceof NativeError &&
+    error.code === Gio.IOErrorEnum.CANCELLED
+  ) {
+    console.log("Operation was cancelled");
+  }
 }
 ```
 

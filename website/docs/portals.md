@@ -10,19 +10,17 @@ Render a component into a different container—typically used for dialogs that 
 import { createPortal, useApplication } from "@gtkx/react";
 
 const MyComponent = () => {
- const app = useApplication();
- const activeWindow = app.getActiveWindow();
+  const app = useApplication();
+  const activeWindow = app.getActiveWindow();
 
- return (
- <>
- <GtkButton label="Main content" />
+  return (
+    <>
+      <GtkButton label="Main content" />
 
- {activeWindow && createPortal(
- <GtkAboutDialog programName="My App" />,
- activeWindow
- )}
- </>
- );
+      {activeWindow &&
+        createPortal(<GtkAboutDialog programName="My App" />, activeWindow)}
+    </>
+  );
 };
 ```
 
@@ -35,30 +33,37 @@ GTKX supports two dialog patterns:
 Best for dialogs with React content or that need state management:
 
 ```tsx
-import { createPortal, GtkAboutDialog, GtkButton, useApplication } from "@gtkx/react";
+import {
+  createPortal,
+  GtkAboutDialog,
+  GtkButton,
+  useApplication,
+} from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const AboutButton = () => {
- const [showDialog, setShowDialog] = useState(false);
- const app = useApplication();
- const activeWindow = app.getActiveWindow();
+  const [showDialog, setShowDialog] = useState(false);
+  const app = useApplication();
+  const activeWindow = app.getActiveWindow();
 
- return (
- <>
- <GtkButton label="About" onClicked={() => setShowDialog(true)} />
+  return (
+    <>
+      <GtkButton label="About" onClicked={() => setShowDialog(true)} />
 
- {showDialog && activeWindow && createPortal(
- <GtkAboutDialog
- programName="My Application"
- version="1.0.0"
- licenseType={Gtk.License.MIT_X11}
- onClose={() => setShowDialog(false)}
- />,
- activeWindow
- )}
- </>
- );
+      {showDialog &&
+        activeWindow &&
+        createPortal(
+          <GtkAboutDialog
+            programName="My Application"
+            version="1.0.0"
+            licenseType={Gtk.License.MIT_X11}
+            onClose={() => setShowDialog(false)}
+          />,
+          activeWindow,
+        )}
+    </>
+  );
 };
 ```
 
@@ -71,19 +76,19 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, useApplication } from "@gtkx/react";
 
 const FilePickerButton = () => {
- const app = useApplication();
+  const app = useApplication();
 
- const pickFile = async () => {
- const dialog = new Gtk.FileDialog();
- try {
- const file = await dialog.openAsync(app.getActiveWindow() ?? undefined);
- console.log("Selected:", file.getPath());
- } catch {
- // User cancelled
- }
- };
+  const pickFile = async () => {
+    const dialog = new Gtk.FileDialog();
+    try {
+      const file = await dialog.openAsync(app.getActiveWindow() ?? undefined);
+      console.log("Selected:", file.getPath());
+    } catch {
+      // User cancelled
+    }
+  };
 
- return <GtkButton label="Open File" onClicked={() => pickFile()} />;
+  return <GtkButton label="Open File" onClicked={() => pickFile()} />;
 };
 ```
 
@@ -94,36 +99,43 @@ See [Async Operations](./async-operations.md) for Promise-wrapped dialog APIs an
 For bubble popups attached to widgets, use the `x.Slot` pattern:
 
 ```tsx
-import { x, GtkMenuButton, GtkPopover, GtkBox, GtkLabel, GtkButton } from "@gtkx/react";
+import {
+  x,
+  GtkMenuButton,
+  GtkPopover,
+  GtkBox,
+  GtkLabel,
+  GtkButton,
+} from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const PopoverExample = () => {
- const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0);
 
- return (
- <GtkMenuButton label="Open Popover">
- <x.Slot for={GtkMenuButton} id="popover">
- <GtkPopover>
- <GtkBox
- orientation={Gtk.Orientation.VERTICAL}
- spacing={8}
- marginStart={12}
- marginEnd={12}
- marginTop={12}
- marginBottom={12}
->
- <GtkLabel label="Popover Content" cssClasses={["heading"]} />
- <GtkButton
- label={`Clicked ${count} times`}
- onClicked={() => setCount(c => c + 1)}
- cssClasses={["suggested-action"]}
- />
- </GtkBox>
- </GtkPopover>
- </x.Slot>
- </GtkMenuButton>
- );
+  return (
+    <GtkMenuButton label="Open Popover">
+      <x.Slot for={GtkMenuButton} id="popover">
+        <GtkPopover>
+          <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={8}
+            marginStart={12}
+            marginEnd={12}
+            marginTop={12}
+            marginBottom={12}
+          >
+            <GtkLabel label="Popover Content" cssClasses={["heading"]} />
+            <GtkButton
+              label={`Clicked ${count} times`}
+              onClicked={() => setCount((c) => c + 1)}
+              cssClasses={["suggested-action"]}
+            />
+          </GtkBox>
+        </GtkPopover>
+      </x.Slot>
+    </GtkMenuButton>
+  );
 };
 ```
 
@@ -135,15 +147,15 @@ Access the GTK application context for getting the active window (needed for dia
 import { useApplication } from "@gtkx/react";
 
 const MyComponent = () => {
- const app = useApplication();
+  const app = useApplication();
 
- // Get active window for dialogs
- const activeWindow = app.getActiveWindow();
+  // Get active window for dialogs
+  const activeWindow = app.getActiveWindow();
 
- // Access application instance
- const appId = app.getApplicationId();
+  // Access application instance
+  const appId = app.getApplicationId();
 
- return <GtkLabel label={`App: ${appId}`} />;
+  return <GtkLabel label={`App: ${appId}`} />;
 };
 ```
 
@@ -152,16 +164,20 @@ const MyComponent = () => {
 For apps with multiple dialog types:
 
 ```tsx
-const [modalState, setModalState] = useState<"closed" | "confirm" | "about">("closed");
+const [modalState, setModalState] = useState<"closed" | "confirm" | "about">(
+  "closed",
+);
 
 return (
- <>
- <GtkButton label="About" onClicked={() => setModalState("about")} />
+  <>
+    <GtkButton label="About" onClicked={() => setModalState("about")} />
 
- {modalState === "about" && activeWindow && createPortal(
- <GtkAboutDialog onClose={() => setModalState("closed")} />,
- activeWindow
- )}
- </>
+    {modalState === "about" &&
+      activeWindow &&
+      createPortal(
+        <GtkAboutDialog onClose={() => setModalState("closed")} />,
+        activeWindow,
+      )}
+  </>
 );
 ```
