@@ -212,7 +212,7 @@ const PaintableSvgDemo = () => {
                                     upper={10}
                                     stepIncrement={1}
                                     pageIncrement={2}
-                                    onValueChange={(val) => setStrokeWidth(Math.floor(val))}
+                                    onValueChanged={(val) => setStrokeWidth(Math.floor(val))}
                                 />
                             </GtkScale>
                         </GtkBox>
@@ -228,7 +228,7 @@ const PaintableSvgDemo = () => {
                                     upper={12}
                                     stepIncrement={1}
                                     pageIncrement={2}
-                                    onValueChange={(val) => setStarPoints(Math.floor(val))}
+                                    onValueChanged={(val) => setStarPoints(Math.floor(val))}
                                 />
                             </GtkScale>
                         </GtkBox>

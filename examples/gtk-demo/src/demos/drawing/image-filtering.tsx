@@ -315,7 +315,7 @@ const ImageFilteringDemo = () => {
                                     upper={3}
                                     stepIncrement={0.1}
                                     pageIncrement={0.5}
-                                    onValueChange={setIntensity}
+                                    onValueChanged={setIntensity}
                                 />
                             </GtkScale>
                             <GtkButton label="Reset" onClicked={() => setIntensity(1)} halign={Gtk.Align.END} />

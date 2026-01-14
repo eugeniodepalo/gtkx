@@ -36,7 +36,7 @@ const ScaleDemo = () => {
                             upper={100}
                             stepIncrement={1}
                             pageIncrement={10}
-                            onValueChange={setHorizontalValue}
+                            onValueChanged={setHorizontalValue}
                         />
                     </GtkScale>
                     <GtkLabel
@@ -62,7 +62,7 @@ const ScaleDemo = () => {
                             upper={100}
                             stepIncrement={1}
                             pageIncrement={10}
-                            onValueChange={setVerticalValue}
+                            onValueChanged={setVerticalValue}
                         />
                     </GtkScale>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} valign={Gtk.Align.CENTER}>
@@ -88,7 +88,7 @@ const ScaleDemo = () => {
                             upper={10}
                             stepIncrement={1}
                             pageIncrement={5}
-                            onValueChange={setMarkedValue}
+                            onValueChanged={setMarkedValue}
                         />
                     </GtkScale>
                     <GtkLabel

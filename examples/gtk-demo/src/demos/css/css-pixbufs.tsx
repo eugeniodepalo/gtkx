@@ -191,7 +191,7 @@ const CssPixbufsDemo = () => {
                             upper={128}
                             stepIncrement={8}
                             pageIncrement={16}
-                            onValueChange={setIconSize}
+                            onValueChanged={setIconSize}
                         />
                     </GtkScale>
                 </GtkBox>

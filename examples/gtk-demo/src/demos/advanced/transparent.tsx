@@ -156,7 +156,7 @@ const TransparentDemo = () => {
                                 upper={1}
                                 stepIncrement={0.05}
                                 pageIncrement={0.1}
-                                onValueChange={setAlpha}
+                                onValueChanged={setAlpha}
                             />
                         </GtkScale>
                     </GtkBox>

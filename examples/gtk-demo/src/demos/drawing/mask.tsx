@@ -260,7 +260,7 @@ const MaskDemo = () => {
                                 upper={1}
                                 stepIncrement={0.05}
                                 pageIncrement={0.1}
-                                onValueChange={setFeather}
+                                onValueChanged={setFeather}
                             />
                         </GtkScale>
                     </GtkBox>

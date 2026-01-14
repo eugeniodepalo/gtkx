@@ -40,7 +40,7 @@ const SpinButtonDemo = () => {
                                 upper={100}
                                 stepIncrement={1}
                                 pageIncrement={10}
-                                onValueChange={setBasicValue}
+                                onValueChanged={setBasicValue}
                             />
                         </GtkSpinButton>
                     </GtkBox>
@@ -70,7 +70,7 @@ const SpinButtonDemo = () => {
                                 upper={10}
                                 stepIncrement={0.1}
                                 pageIncrement={1}
-                                onValueChange={setFloatValue}
+                                onValueChanged={setFloatValue}
                             />
                         </GtkSpinButton>
                     </GtkBox>
@@ -99,7 +99,7 @@ const SpinButtonDemo = () => {
                                 upper={23}
                                 stepIncrement={1}
                                 pageIncrement={6}
-                                onValueChange={setHours}
+                                onValueChanged={setHours}
                             />
                         </GtkSpinButton>
                         <GtkLabel label=":" />
@@ -110,7 +110,7 @@ const SpinButtonDemo = () => {
                                 upper={59}
                                 stepIncrement={1}
                                 pageIncrement={10}
-                                onValueChange={setMinutes}
+                                onValueChanged={setMinutes}
                             />
                         </GtkSpinButton>
                         <GtkLabel label=":" />
@@ -121,7 +121,7 @@ const SpinButtonDemo = () => {
                                 upper={59}
                                 stepIncrement={1}
                                 pageIncrement={10}
-                                onValueChange={setSeconds}
+                                onValueChanged={setSeconds}
                             />
                         </GtkSpinButton>
                     </GtkBox>

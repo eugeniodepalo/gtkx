@@ -337,7 +337,7 @@ const FontRenderingDemo = () => {
                                 upper={72}
                                 stepIncrement={1}
                                 pageIncrement={4}
-                                onValueChange={(val) => setFontSize(Math.round(val))}
+                                onValueChanged={(val) => setFontSize(Math.round(val))}
                             />
                         </GtkScale>
                     </GtkBox>
@@ -351,7 +351,7 @@ const FontRenderingDemo = () => {
                                 upper={16}
                                 stepIncrement={1}
                                 pageIncrement={2}
-                                onValueChange={(val) => setScale(Math.round(val))}
+                                onValueChanged={(val) => setScale(Math.round(val))}
                             />
                         </GtkScale>
                     </GtkBox>

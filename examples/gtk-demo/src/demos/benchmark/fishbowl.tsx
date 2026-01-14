@@ -99,7 +99,7 @@ const FishbowlDemo = () => {
                                 upper={500}
                                 stepIncrement={10}
                                 pageIncrement={50}
-                                onValueChange={(val) => setFishCount(Math.round(val))}
+                                onValueChanged={(val) => setFishCount(Math.round(val))}
                             />
                         </GtkScale>
                     </GtkBox>

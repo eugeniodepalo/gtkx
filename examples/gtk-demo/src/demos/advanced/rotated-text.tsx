@@ -105,7 +105,7 @@ const RotatedTextDemo = () => {
                                 upper={360}
                                 stepIncrement={1}
                                 pageIncrement={15}
-                                onValueChange={setRotation}
+                                onValueChanged={setRotation}
                             />
                         </GtkScale>
                     </GtkBox>
@@ -119,7 +119,7 @@ const RotatedTextDemo = () => {
                                 upper={72}
                                 stepIncrement={1}
                                 pageIncrement={4}
-                                onValueChange={setFontSize}
+                                onValueChanged={setFontSize}
                             />
                         </GtkScale>
                     </GtkBox>
@@ -133,7 +133,7 @@ const RotatedTextDemo = () => {
                                 upper={90}
                                 stepIncrement={5}
                                 pageIncrement={15}
-                                onValueChange={setSpacing}
+                                onValueChanged={setSpacing}
                             />
                         </GtkScale>
                     </GtkBox>

@@ -210,7 +210,7 @@ const Fixed2Demo = () => {
                                     upper={350}
                                     stepIncrement={10}
                                     pageIncrement={50}
-                                    onValueChange={(val) => updateWidget(selectedWidget.id, { x: Math.round(val) })}
+                                    onValueChanged={(val) => updateWidget(selectedWidget.id, { x: Math.round(val) })}
                                 />
                             </GtkScale>
                         </GtkBox>
@@ -224,7 +224,7 @@ const Fixed2Demo = () => {
                                     upper={200}
                                     stepIncrement={10}
                                     pageIncrement={50}
-                                    onValueChange={(val) => updateWidget(selectedWidget.id, { y: Math.round(val) })}
+                                    onValueChanged={(val) => updateWidget(selectedWidget.id, { y: Math.round(val) })}
                                 />
                             </GtkScale>
                         </GtkBox>
@@ -238,7 +238,7 @@ const Fixed2Demo = () => {
                                     upper={180}
                                     stepIncrement={5}
                                     pageIncrement={15}
-                                    onValueChange={(val) =>
+                                    onValueChanged={(val) =>
                                         updateWidget(selectedWidget.id, { rotation: Math.round(val) })
                                     }
                                 />
@@ -254,7 +254,7 @@ const Fixed2Demo = () => {
                                     upper={2}
                                     stepIncrement={0.1}
                                     pageIncrement={0.25}
-                                    onValueChange={(val) => updateWidget(selectedWidget.id, { scale: val })}
+                                    onValueChanged={(val) => updateWidget(selectedWidget.id, { scale: val })}
                                 />
                             </GtkScale>
                         </GtkBox>

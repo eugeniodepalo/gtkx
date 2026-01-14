@@ -312,7 +312,7 @@ const PathWalkDemo = () => {
                                     upper={3}
                                     stepIncrement={0.1}
                                     pageIncrement={0.5}
-                                    onValueChange={setSpeed}
+                                    onValueChanged={setSpeed}
                                 />
                             </GtkScale>
                         </GtkBox>

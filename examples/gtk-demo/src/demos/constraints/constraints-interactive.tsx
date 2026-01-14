@@ -218,7 +218,7 @@ const InteractiveConstraintEditor = () => {
                             upper={150}
                             stepIncrement={1}
                             pageIncrement={10}
-                            onValueChange={setOffsetX}
+                            onValueChanged={setOffsetX}
                         />
                     </GtkScale>
                 </GtkBox>
@@ -232,7 +232,7 @@ const InteractiveConstraintEditor = () => {
                             upper={100}
                             stepIncrement={1}
                             pageIncrement={10}
-                            onValueChange={setOffsetY}
+                            onValueChanged={setOffsetY}
                         />
                     </GtkScale>
                 </GtkBox>
@@ -246,7 +246,7 @@ const InteractiveConstraintEditor = () => {
                             upper={200}
                             stepIncrement={1}
                             pageIncrement={10}
-                            onValueChange={setWidgetWidth}
+                            onValueChanged={setWidgetWidth}
                         />
                     </GtkScale>
                 </GtkBox>
@@ -260,7 +260,7 @@ const InteractiveConstraintEditor = () => {
                             upper={100}
                             stepIncrement={1}
                             pageIncrement={10}
-                            onValueChange={setWidgetHeight}
+                            onValueChanged={setWidgetHeight}
                         />
                     </GtkScale>
                 </GtkBox>

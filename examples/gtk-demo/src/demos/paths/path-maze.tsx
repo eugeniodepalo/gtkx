@@ -396,7 +396,7 @@ const MazeDemo = () => {
                                 upper={41}
                                 stepIncrement={2}
                                 pageIncrement={4}
-                                onValueChange={(val) => {
+                                onValueChanged={(val) => {
                                     const rounded = Math.round(val);
                                     setMazeSize(rounded % 2 === 0 ? rounded + 1 : rounded);
                                 }}

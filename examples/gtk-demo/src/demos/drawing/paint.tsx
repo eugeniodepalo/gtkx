@@ -201,7 +201,7 @@ const PaintDemo = () => {
                                 upper={20}
                                 stepIncrement={1}
                                 pageIncrement={5}
-                                onValueChange={setBrushSize}
+                                onValueChanged={setBrushSize}
                             />
                         </GtkScale>
                     </GtkBox>

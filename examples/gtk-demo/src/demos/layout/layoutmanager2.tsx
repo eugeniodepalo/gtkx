@@ -209,7 +209,7 @@ const ResponsiveBreakpointsDemo = () => {
                                 upper={800}
                                 stepIncrement={10}
                                 pageIncrement={50}
-                                onValueChange={(val) => setContainerWidth(Math.round(val))}
+                                onValueChanged={(val) => setContainerWidth(Math.round(val))}
                             />
                         </GtkScale>
                     </GtkBox>
@@ -343,7 +343,7 @@ const PriorityAllocationDemo = () => {
                                 upper={500}
                                 stepIncrement={10}
                                 pageIncrement={50}
-                                onValueChange={(val) => setAvailableSpace(Math.round(val))}
+                                onValueChanged={(val) => setAvailableSpace(Math.round(val))}
                             />
                         </GtkScale>
                     </GtkBox>

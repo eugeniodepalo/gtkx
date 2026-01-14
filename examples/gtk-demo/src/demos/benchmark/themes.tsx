@@ -117,7 +117,7 @@ const ThemesDemo = () => {
                                 upper={1000}
                                 stepIncrement={10}
                                 pageIncrement={100}
-                                onValueChange={(val) => setIntervalMs(Math.round(val))}
+                                onValueChanged={(val) => setIntervalMs(Math.round(val))}
                             />
                         </GtkScale>
                     </GtkBox>

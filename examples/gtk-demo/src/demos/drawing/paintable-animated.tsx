@@ -238,7 +238,7 @@ const PaintableAnimatedDemo = () => {
                                 upper={3.0}
                                 stepIncrement={0.1}
                                 pageIncrement={0.5}
-                                onValueChange={setSpeed}
+                                onValueChanged={setSpeed}
                             />
                         </GtkScale>
                     </GtkBox>
@@ -251,7 +251,7 @@ const PaintableAnimatedDemo = () => {
                                 upper={256}
                                 stepIncrement={16}
                                 pageIncrement={32}
-                                onValueChange={(val) => setResolution(Math.floor(val))}
+                                onValueChanged={(val) => setResolution(Math.floor(val))}
                             />
                         </GtkScale>
                     </GtkBox>

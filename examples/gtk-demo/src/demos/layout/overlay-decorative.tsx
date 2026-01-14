@@ -121,7 +121,7 @@ const OverlayDecorativeDemo = () => {
                                     upper={99}
                                     stepIncrement={1}
                                     pageIncrement={5}
-                                    onValueChange={setBadgeCount}
+                                    onValueChanged={setBadgeCount}
                                 />
                             </GtkSpinButton>
                         </GtkBox>

@@ -153,7 +153,7 @@ const TextmaskDemo = () => {
                                 upper={200}
                                 stepIncrement={4}
                                 pageIncrement={16}
-                                onValueChange={setFontSize}
+                                onValueChanged={setFontSize}
                             />
                         </GtkScale>
                     </GtkBox>

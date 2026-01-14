@@ -227,7 +227,7 @@ const ConfigurableSpinner = () => {
                                 upper={16}
                                 stepIncrement={1}
                                 pageIncrement={1}
-                                onValueChange={setStrokeWidth}
+                                onValueChanged={setStrokeWidth}
                             />
                         </GtkScale>
                     </GtkBox>
@@ -240,7 +240,7 @@ const ConfigurableSpinner = () => {
                                 upper={3}
                                 stepIncrement={0.1}
                                 pageIncrement={0.5}
-                                onValueChange={setSpeed}
+                                onValueChanged={setSpeed}
                             />
                         </GtkScale>
                     </GtkBox>

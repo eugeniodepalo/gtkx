@@ -99,13 +99,11 @@ const IconsContent = () => {
 };
 
 const TextContent = () => {
-    const buffer = useMemo(() => {
-        const buf = new Gtk.TextBuffer();
-        buf.setText(loremIpsum, -1);
-        return buf;
-    }, []);
-
-    return <GtkTextView buffer={buffer} editable={false} cursorVisible={false} wrapMode={Gtk.WrapMode.WORD} />;
+    return (
+        <GtkTextView editable={false} cursorVisible={false} wrapMode={Gtk.WrapMode.WORD}>
+            <x.TextBuffer text={loremIpsum} />
+        </GtkTextView>
+    );
 };
 
 const ColorGridContent = () => {

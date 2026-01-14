@@ -500,7 +500,7 @@ const GearsDemo = () => {
                                 upper={90}
                                 stepIncrement={1}
                                 pageIncrement={10}
-                                onValueChange={setViewRotX}
+                                onValueChanged={setViewRotX}
                             />
                         </GtkScale>
                     </GtkBox>
@@ -513,7 +513,7 @@ const GearsDemo = () => {
                                 upper={180}
                                 stepIncrement={1}
                                 pageIncrement={10}
-                                onValueChange={setViewRotY}
+                                onValueChanged={setViewRotY}
                             />
                         </GtkScale>
                     </GtkBox>

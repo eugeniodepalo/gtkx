@@ -277,7 +277,7 @@ const PageSetupDemo = () => {
                                         upper={100}
                                         stepIncrement={1}
                                         pageIncrement={10}
-                                        onValueChange={setTopMargin}
+                                        onValueChanged={setTopMargin}
                                     />
                                 </GtkSpinButton>
                             </GtkBox>
@@ -290,7 +290,7 @@ const PageSetupDemo = () => {
                                         upper={100}
                                         stepIncrement={1}
                                         pageIncrement={10}
-                                        onValueChange={setBottomMargin}
+                                        onValueChanged={setBottomMargin}
                                     />
                                 </GtkSpinButton>
                             </GtkBox>
@@ -303,7 +303,7 @@ const PageSetupDemo = () => {
                                         upper={100}
                                         stepIncrement={1}
                                         pageIncrement={10}
-                                        onValueChange={setLeftMargin}
+                                        onValueChanged={setLeftMargin}
                                     />
                                 </GtkSpinButton>
                             </GtkBox>
@@ -316,7 +316,7 @@ const PageSetupDemo = () => {
                                         upper={100}
                                         stepIncrement={1}
                                         pageIncrement={10}
-                                        onValueChange={setRightMargin}
+                                        onValueChanged={setRightMargin}
                                     />
                                 </GtkSpinButton>
                             </GtkBox>

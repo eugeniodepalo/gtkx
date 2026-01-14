@@ -151,7 +151,7 @@ const CssMultiplebgsDemo = () => {
                             upper={100}
                             stepIncrement={1}
                             pageIncrement={10}
-                            onValueChange={setOpacity}
+                            onValueChanged={setOpacity}
                         />
                     </GtkScale>
                 </GtkBox>

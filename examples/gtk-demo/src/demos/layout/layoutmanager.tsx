@@ -90,7 +90,7 @@ const CircularLayoutDemo = () => {
                                 upper={120}
                                 stepIncrement={5}
                                 pageIncrement={10}
-                                onValueChange={setRadius}
+                                onValueChanged={setRadius}
                             />
                         </GtkScale>
                     </GtkBox>
@@ -104,7 +104,7 @@ const CircularLayoutDemo = () => {
                                 upper={360}
                                 stepIncrement={5}
                                 pageIncrement={30}
-                                onValueChange={setRotation}
+                                onValueChanged={setRotation}
                             />
                         </GtkScale>
                     </GtkBox>
@@ -188,7 +188,7 @@ const GridLayoutDemo = () => {
                                 upper={6}
                                 stepIncrement={1}
                                 pageIncrement={1}
-                                onValueChange={(val) => setColumns(Math.round(val))}
+                                onValueChanged={(val) => setColumns(Math.round(val))}
                             />
                         </GtkScale>
                     </GtkBox>
@@ -202,7 +202,7 @@ const GridLayoutDemo = () => {
                                 upper={24}
                                 stepIncrement={2}
                                 pageIncrement={4}
-                                onValueChange={(val) => setSpacing(Math.round(val))}
+                                onValueChanged={(val) => setSpacing(Math.round(val))}
                             />
                         </GtkScale>
                     </GtkBox>

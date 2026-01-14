@@ -46,7 +46,7 @@ const AspectFrameDemo = () => {
                                 upper={5.0}
                                 stepIncrement={0.1}
                                 pageIncrement={0.5}
-                                onValueChange={setRatio}
+                                onValueChanged={setRatio}
                             />
                         </GtkScale>
                     </GtkBox>
