@@ -99,9 +99,10 @@ const PaintDemo = () => {
                     brushSize,
                 },
             ]);
-            currentStrokeRef.current = [];
-            startPointRef.current = null;
         }
+        currentStrokeRef.current = [];
+        startPointRef.current = null;
+        ref.current?.queueDraw();
     }, [color, brushSize]);
 
     const handleClear = () => {

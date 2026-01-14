@@ -330,9 +330,6 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
-      '@gtkx/native':
-        specifier: workspace:*
-        version: link:../native
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
