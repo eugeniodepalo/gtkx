@@ -18,6 +18,9 @@ type EditableWidget = Gtk.Widget & {
     setPosition: (position: number) => void;
     getText: () => string;
 };
+export type AdjustableWidget = Gtk.Widget & {
+    setAdjustment: (adjustment: Gtk.Adjustment) => void;
+};
 
 export const isAppendable = (obj: unknown): obj is AppendableWidget => {
     return obj instanceof Gtk.Widget && "append" in obj && typeof obj.append === "function";
@@ -69,4 +72,8 @@ export const isEditable = (obj: unknown): obj is EditableWidget => {
         "getText" in obj &&
         typeof obj.getText === "function"
     );
+};
+
+export const isAdjustable = (obj: unknown): obj is AdjustableWidget => {
+    return obj instanceof Gtk.Widget && "setAdjustment" in obj && typeof obj.setAdjustment === "function";
 };
