@@ -352,10 +352,23 @@ type NavigationPageBaseProps = {
     children?: ReactNode;
 };
 
+/**
+ * Props for the ShortcutController element in JSX.
+ *
+ * Extends the base ShortcutControllerProps with support for children.
+ *
+ * @see {@link x.ShortcutController} for usage examples
+ */
 export type ShortcutControllerProps = ShortcutControllerNodeProps & {
+    /** Shortcut children to add to this controller */
     children?: ReactNode;
 };
 
+/**
+ * Props for the Shortcut element in JSX.
+ *
+ * @see {@link x.Shortcut} for usage examples
+ */
 export type ShortcutProps = ShortcutNodeProps;
 
 /**

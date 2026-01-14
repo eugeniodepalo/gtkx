@@ -3,10 +3,30 @@ import { registerNodeClass } from "../registry.js";
 import type { Props } from "../types.js";
 import { VirtualNode } from "./virtual.js";
 
+/**
+ * Props for the Shortcut virtual element.
+ *
+ * Defines a keyboard shortcut. Must be a child of `x.ShortcutController`.
+ *
+ * @example
+ * ```tsx
+ * <x.ShortcutController>
+ *     <x.Shortcut trigger="<Control>s" onActivate={save} />
+ *     <x.Shortcut trigger={["F5", "<Control>r"]} onActivate={refresh} />
+ *     <x.Shortcut trigger="Escape" onActivate={cancel} disabled={!canCancel} />
+ * </x.ShortcutController>
+ * ```
+ */
 export interface ShortcutProps extends Props {
+    /** The trigger string(s) using GTK accelerator format (e.g., "\<Control\>s", "F1") */
     trigger: string | string[];
+    /**
+     * Called when the shortcut is activated.
+     * Return false to indicate the shortcut was not handled; otherwise it is considered handled.
+     */
     // biome-ignore lint/suspicious/noConfusingVoidType: void is intentional - returning nothing means "handled"
     onActivate: () => boolean | void;
+    /** Whether the shortcut is disabled */
     disabled?: boolean;
 }
 

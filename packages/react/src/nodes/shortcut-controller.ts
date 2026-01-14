@@ -5,7 +5,23 @@ import type { Props } from "../types.js";
 import { ShortcutNode } from "./shortcut.js";
 import { VirtualNode } from "./virtual.js";
 
+/**
+ * Props for the ShortcutController virtual element.
+ *
+ * Attaches keyboard shortcuts to a widget. Must contain `x.Shortcut` children.
+ *
+ * @example
+ * ```tsx
+ * <GtkBox>
+ *     <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+ *         <x.Shortcut trigger="<Control>f" onActivate={toggleSearch} />
+ *         <x.Shortcut trigger="<Control>q" onActivate={quit} />
+ *     </x.ShortcutController>
+ * </GtkBox>
+ * ```
+ */
 export interface ShortcutControllerProps extends Props {
+    /** The scope for shortcuts (LOCAL, MANAGED, or GLOBAL) */
     scope?: Gtk.ShortcutScope;
 }
 
