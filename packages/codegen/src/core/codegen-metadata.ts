@@ -26,6 +26,8 @@ export type CodegenWidgetMeta = {
     readonly jsxName: string;
     /** Widget can contain children */
     readonly isContainer: boolean;
+    /** Widget supports an Adjustment child */
+    readonly isAdjustable: boolean;
     /** Named slots for child widgets (kebab-case) */
     readonly slots: readonly string[];
     /** All writable property names (kebab-case) - for internal.ts PROPS map */

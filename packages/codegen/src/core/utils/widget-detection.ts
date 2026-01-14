@@ -37,6 +37,11 @@ const CONTAINER_METHODS = new Set([
 export const isContainerMethod = (methodName: string): boolean => CONTAINER_METHODS.has(methodName);
 
 /**
+ * Checks if a method name indicates the widget supports an Adjustment child.
+ */
+export const isAdjustableMethod = (methodName: string): boolean => methodName === "set_adjustment";
+
+/**
  * Checks if a type name refers to a widget type (Gtk.Widget or subclass).
  *
  * @param typeName - The type name to check (string or QualifiedName)

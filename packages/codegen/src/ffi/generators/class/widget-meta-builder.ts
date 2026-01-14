@@ -10,7 +10,7 @@ import { parseQualifiedName, qualifiedName } from "@gtkx/gir";
 import type { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import { normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
-import { isContainerMethod, isWidgetType } from "../../../core/utils/widget-detection.js";
+import { isAdjustableMethod, isContainerMethod, isWidgetType } from "../../../core/utils/widget-detection.js";
 
 export type WidgetMetaAnalyzers = {
     readonly property: PropertyAnalyzer;
@@ -51,6 +51,7 @@ export class WidgetMetaBuilder {
             namespace: this.namespace,
             jsxName: `${this.namespace}${className}`,
             isContainer: this.detectIsContainer(),
+            isAdjustable: this.detectIsAdjustable(),
             slots: this.detectSlots(),
             propNames,
             signalNames: signals.map((s) => s.name),
@@ -79,6 +80,16 @@ export class WidgetMetaBuilder {
             }
         }
 
+        return false;
+    }
+
+    private detectIsAdjustable(): boolean {
+        const allMethods = this.cls.getAllMethods();
+        for (const method of allMethods) {
+            if (isAdjustableMethod(method.name)) {
+                return true;
+            }
+        }
         return false;
     }
 
