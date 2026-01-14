@@ -6,11 +6,13 @@ import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
+import { AdjustmentNode } from "./adjustment.js";
 import { EVENT_CONTROLLER_PROPS } from "./internal/constants.js";
 import {
     hasSingleContent,
     type InsertableWidget,
     isAddable,
+    isAdjustable,
     isAppendable,
     isEditable,
     isInsertable,
@@ -21,9 +23,10 @@ import {
 } from "./internal/predicates.js";
 import { type SignalHandler, signalStore } from "./internal/signal-store.js";
 import { filterProps, isContainerType, resolvePropMeta, resolveSignal } from "./internal/utils.js";
+import { ShortcutControllerNode } from "./shortcut-controller.js";
 import { SlotNode } from "./slot.js";
 
-const PROPS = ["children", "widthRequest", "heightRequest"];
+const PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
 
 export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Props> extends Node<T, P> {
     public static override priority = 3;
@@ -34,6 +37,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     private scrollController?: Gtk.EventControllerScroll;
     private dragSourceController?: Gtk.DragSource;
     private dropTargetController?: Gtk.DropTarget;
+    private gestureDragController?: Gtk.GestureDrag;
+    private adjustmentChild?: AdjustmentNode;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return isContainerType(Gtk.Widget, containerOrClass);
@@ -48,8 +53,25 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public appendChild(child: Node): void {
+        if (child instanceof ShortcutControllerNode) {
+            child.setParent(this.container);
+            return;
+        }
+
         if (child instanceof SlotNode) {
             child.setParent(this.container);
+            return;
+        }
+
+        if (child instanceof AdjustmentNode) {
+            if (!isAdjustable(this.container)) {
+                throw new Error(`Cannot add Adjustment to '${this.typeName}': widget does not support adjustments`);
+            }
+            if (this.adjustmentChild) {
+                throw new Error(`${this.typeName} can only have one Adjustment child`);
+            }
+            this.adjustmentChild = child;
+            child.setWidget(this.container);
             return;
         }
 
@@ -65,7 +87,19 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public removeChild(child: Node): void {
+        if (child instanceof ShortcutControllerNode) {
+            child.setParent(undefined);
+            return;
+        }
+
         if (child instanceof SlotNode) {
+            return;
+        }
+
+        if (child instanceof AdjustmentNode) {
+            if (this.adjustmentChild === child) {
+                this.adjustmentChild = undefined;
+            }
             return;
         }
 
@@ -81,8 +115,25 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public insertBefore(child: Node, before: Node): void {
+        if (child instanceof ShortcutControllerNode) {
+            child.setParent(this.container);
+            return;
+        }
+
         if (child instanceof SlotNode) {
             child.setParent(this.container);
+            return;
+        }
+
+        if (child instanceof AdjustmentNode) {
+            if (!isAdjustable(this.container)) {
+                throw new Error(`Cannot add Adjustment to '${this.typeName}': widget does not support adjustments`);
+            }
+            if (this.adjustmentChild) {
+                throw new Error(`${this.typeName} can only have one Adjustment child`);
+            }
+            this.adjustmentChild = child;
+            child.setWidget(this.container);
             return;
         }
 
@@ -128,6 +179,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
     public updateProps(oldProps: P | null, newProps: P): void {
         this.updateSizeRequest(oldProps, newProps);
+        this.updateGrabFocus(oldProps, newProps);
 
         const propNames = new Set([
             ...Object.keys(filterProps(oldProps ?? {}, PROPS)),
@@ -192,6 +244,15 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
         if (oldWidth !== newWidth || oldHeight !== newHeight) {
             this.container.setSizeRequest(newWidth ?? -1, newHeight ?? -1);
+        }
+    }
+
+    private updateGrabFocus(oldProps: P | null, newProps: P): void {
+        const oldGrabFocus = oldProps?.grabFocus as boolean | undefined;
+        const newGrabFocus = newProps.grabFocus as boolean | undefined;
+
+        if (!oldGrabFocus && newGrabFocus) {
+            this.container.grabFocus();
         }
     }
 
@@ -287,6 +348,19 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 }
                 break;
             }
+            case "onGestureDragBegin":
+            case "onGestureDragUpdate":
+            case "onGestureDragEnd": {
+                const gestureDrag = this.ensureGestureDrag();
+                const signalName =
+                    propName === "onGestureDragBegin"
+                        ? "drag-begin"
+                        : propName === "onGestureDragUpdate"
+                          ? "drag-update"
+                          : "drag-end";
+                signalStore.set(this, gestureDrag, signalName, wrappedHandler);
+                break;
+            }
         }
     }
 
@@ -305,6 +379,14 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             this.container.addController(this.dropTargetController);
         }
         return this.dropTargetController;
+    }
+
+    private ensureGestureDrag(): Gtk.GestureDrag {
+        if (!this.gestureDragController) {
+            this.gestureDragController = new Gtk.GestureDrag();
+            this.container.addController(this.gestureDragController);
+        }
+        return this.gestureDragController;
     }
 
     private updateNotifyHandler(handler: SignalHandler | null): void {
