@@ -55,6 +55,15 @@ export class TreeListItemRenderer {
         return this.store;
     }
 
+    public dispose(): void {
+        signalStore.clear(this);
+        this.fiberRoots.clear();
+        this.expanders.clear();
+        this.setupComplete.clear();
+        this.pendingBinds.clear();
+        this.tornDown.clear();
+    }
+
     private initialize(): void {
         signalStore.set(this, this.factory, "setup", (_self, listItem: Gtk.ListItem) => {
             const ptr = getNativeId(listItem.handle);

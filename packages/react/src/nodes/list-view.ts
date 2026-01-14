@@ -48,6 +48,11 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
         this.container.setModel(this.list.getSelectionModel());
     }
 
+    public override unmount(): void {
+        this.itemRenderer.dispose();
+        super.unmount();
+    }
+
     public override appendChild(child: Node): void {
         if (!(child instanceof ListItemNode)) {
             throw new Error(`Cannot append '${child.typeName}' to 'ListView': expected x.ListItem`);

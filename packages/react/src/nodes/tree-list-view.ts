@@ -49,6 +49,11 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
         this.container.setModel(this.treeList.getSelectionModel());
     }
 
+    public override unmount(): void {
+        this.itemRenderer.dispose();
+        super.unmount();
+    }
+
     public override appendChild(child: Node): void {
         if (!(child instanceof TreeListItemNode)) {
             throw new Error(`Cannot append '${child.typeName}' to 'TreeListView': expected x.TreeListItem`);

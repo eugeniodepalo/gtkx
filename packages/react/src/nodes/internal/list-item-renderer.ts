@@ -46,6 +46,12 @@ export class ListItemRenderer {
         return this.store;
     }
 
+    public dispose(): void {
+        signalStore.clear(this);
+        this.fiberRoots.clear();
+        this.tornDown.clear();
+    }
+
     private initialize(): void {
         signalStore.set(this, this.factory, "setup", (_self, listItem: Gtk.ListItem) => {
             const ptr = getNativeId(listItem.handle);

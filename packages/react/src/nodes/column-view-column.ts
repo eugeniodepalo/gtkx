@@ -25,6 +25,11 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
         this.column.setFactory(this.itemRenderer.getFactory());
     }
 
+    public override unmount(): void {
+        this.itemRenderer.dispose();
+        super.unmount();
+    }
+
     public setStore(model?: ListStore): void {
         this.itemRenderer.setStore(model);
     }
