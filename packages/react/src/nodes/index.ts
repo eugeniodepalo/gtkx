@@ -34,6 +34,8 @@ import "./shortcut.js";
 import "./simple-list-item.js";
 import "./simple-list-view.js";
 import "./slot.js";
+import "./source-buffer.js";
+import "./source-view.js";
 import "./stack-page.js";
 import "./stack.js";
 import "./text-buffer.js";

@@ -1,34 +1,32 @@
-import * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { isContainerType } from "./internal/utils.js";
-import { TextBufferNode } from "./text-buffer.js";
+import { SourceBufferNode } from "./source-buffer.js";
 import { WidgetNode } from "./widget.js";
 
-class TextViewNode extends WidgetNode<Gtk.TextView> {
+class SourceViewNode extends WidgetNode<GtkSource.View> {
     public static override priority = 1;
 
-    private bufferChild?: TextBufferNode;
+    private bufferChild?: SourceBufferNode;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        if (isContainerType(GtkSource.View, containerOrClass)) return false;
-        return isContainerType(Gtk.TextView, containerOrClass);
+        return isContainerType(GtkSource.View, containerOrClass);
     }
 
     public override appendChild(child: Node): void {
-        if (this.tryAttachTextBuffer(child)) return;
+        if (this.tryAttachSourceBuffer(child)) return;
         super.appendChild(child);
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (this.tryAttachTextBuffer(child)) return;
+        if (this.tryAttachSourceBuffer(child)) return;
         super.insertBefore(child, before);
     }
 
     public override removeChild(child: Node): void {
-        if (child instanceof TextBufferNode) {
+        if (child instanceof SourceBufferNode) {
             if (this.bufferChild === child) {
                 this.bufferChild = undefined;
             }
@@ -37,17 +35,17 @@ class TextViewNode extends WidgetNode<Gtk.TextView> {
         super.removeChild(child);
     }
 
-    private tryAttachTextBuffer(child: Node): boolean {
-        if (!(child instanceof TextBufferNode)) return false;
+    private tryAttachSourceBuffer(child: Node): boolean {
+        if (!(child instanceof SourceBufferNode)) return false;
 
         if (this.bufferChild) {
-            throw new Error("TextView can only have one TextBuffer child");
+            throw new Error("SourceView can only have one SourceBuffer child");
         }
 
         this.bufferChild = child;
-        child.setTextView(this.container);
+        child.setSourceView(this.container);
         return true;
     }
 }
 
-registerNodeClass(TextViewNode);
+registerNodeClass(SourceViewNode);
