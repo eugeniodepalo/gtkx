@@ -322,6 +322,13 @@ const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
     await tick();
 };
 
+/**
+ * Pointer input actions for simulating mouse interactions.
+ *
+ * - `"click"` or `"[MouseLeft]"`: Full click (press + release)
+ * - `"down"` or `"[MouseLeft>]"`: Press and hold
+ * - `"up"` or `"[/MouseLeft]"`: Release
+ */
 export type PointerInput = "click" | "down" | "up" | "[MouseLeft]" | "[MouseLeft>]" | "[/MouseLeft]";
 
 const pointer = async (element: Gtk.Widget, input: PointerInput): Promise<void> => {
