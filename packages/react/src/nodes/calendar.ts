@@ -5,7 +5,6 @@ import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass } from "../types.js";
 import { CalendarMarkNode } from "./calendar-mark.js";
 import { isContainerType } from "./internal/utils.js";
-import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 class CalendarNode extends WidgetNode<Gtk.Calendar> {
@@ -25,12 +24,7 @@ class CalendarNode extends WidgetNode<Gtk.Calendar> {
             return;
         }
 
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.appendChild(child);
-            return;
-        }
-
-        throw new Error(`Cannot append '${child.typeName}' to 'Calendar': expected x.CalendarMark or Widget`);
+        super.appendChild(child);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -48,12 +42,7 @@ class CalendarNode extends WidgetNode<Gtk.Calendar> {
             return;
         }
 
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.insertBefore(child, before);
-            return;
-        }
-
-        throw new Error(`Cannot insert '${child.typeName}' into 'Calendar': expected x.CalendarMark or Widget`);
+        super.insertBefore(child, before);
     }
 
     public override removeChild(child: Node): void {
@@ -66,12 +55,7 @@ class CalendarNode extends WidgetNode<Gtk.Calendar> {
             return;
         }
 
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.removeChild(child);
-            return;
-        }
-
-        throw new Error(`Cannot remove '${child.typeName}' from 'Calendar': expected x.CalendarMark or Widget`);
+        super.removeChild(child);
     }
 
     private scheduleRebuildAllMarks(priority = CommitPriority.NORMAL): void {

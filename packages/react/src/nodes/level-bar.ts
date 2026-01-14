@@ -5,7 +5,6 @@ import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass } from "../types.js";
 import { isContainerType } from "./internal/utils.js";
 import { LevelBarOffsetNode } from "./level-bar-offset.js";
-import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
@@ -31,12 +30,7 @@ class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
             return;
         }
 
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.appendChild(child);
-            return;
-        }
-
-        throw new Error(`Cannot append '${child.typeName}' to 'LevelBar': expected x.LevelBarOffset or Widget`);
+        super.appendChild(child);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -54,12 +48,7 @@ class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
             return;
         }
 
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.insertBefore(child, before);
-            return;
-        }
-
-        throw new Error(`Cannot insert '${child.typeName}' into 'LevelBar': expected x.LevelBarOffset or Widget`);
+        super.insertBefore(child, before);
     }
 
     public override removeChild(child: Node): void {
@@ -72,12 +61,7 @@ class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
             return;
         }
 
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.removeChild(child);
-            return;
-        }
-
-        throw new Error(`Cannot remove '${child.typeName}' from 'LevelBar': expected x.LevelBarOffset or Widget`);
+        super.removeChild(child);
     }
 
     private scheduleRebuildAllOffsets(priority = CommitPriority.NORMAL): void {

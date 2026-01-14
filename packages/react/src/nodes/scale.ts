@@ -5,7 +5,6 @@ import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass } from "../types.js";
 import { isContainerType } from "./internal/utils.js";
 import { ScaleMarkNode } from "./scale-mark.js";
-import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 class ScaleNode extends WidgetNode<Gtk.Scale> {
@@ -25,12 +24,7 @@ class ScaleNode extends WidgetNode<Gtk.Scale> {
             return;
         }
 
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.appendChild(child);
-            return;
-        }
-
-        throw new Error(`Cannot append '${child.typeName}' to 'Scale': expected x.ScaleMark or Widget`);
+        super.appendChild(child);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -48,12 +42,7 @@ class ScaleNode extends WidgetNode<Gtk.Scale> {
             return;
         }
 
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.insertBefore(child, before);
-            return;
-        }
-
-        throw new Error(`Cannot insert '${child.typeName}' into 'Scale': expected x.ScaleMark or Widget`);
+        super.insertBefore(child, before);
     }
 
     public override removeChild(child: Node): void {
@@ -66,12 +55,7 @@ class ScaleNode extends WidgetNode<Gtk.Scale> {
             return;
         }
 
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.removeChild(child);
-            return;
-        }
-
-        throw new Error(`Cannot remove '${child.typeName}' from 'Scale': expected x.ScaleMark or Widget`);
+        super.removeChild(child);
     }
 
     private scheduleRebuildAllMarks(priority = CommitPriority.NORMAL): void {
