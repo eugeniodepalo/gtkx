@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type * as Pango from "@gtkx/ffi/pango";
 import type { ReactNode } from "react";
@@ -139,6 +138,7 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
 
     public setBuffer(buffer: Gtk.TextBuffer): void {
         this.buffer = buffer;
+        this.updateChildOffsets(0);
         this.setupTag();
 
         for (const child of this.children) {
@@ -146,6 +146,10 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
                 child.setBuffer(buffer);
             }
         }
+    }
+
+    public hasBuffer(): boolean {
+        return this.buffer !== undefined;
     }
 
     private setupTag(): void {
@@ -268,7 +272,6 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
 
     public reapplyTag(): void {
         if (!this.buffer || !this.tag) return;
-        console.log(`[reapplyTag] tag=${this.props.id} offset=${this.bufferOffset} length=${this.getLength()}`);
         this.removeTagFromBuffer();
         this.applyTagToRange();
     }

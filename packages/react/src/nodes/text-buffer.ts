@@ -94,8 +94,10 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
         if (!this.buffer || text.length === 0) return;
 
         const iter = new Gtk.TextIter();
-        this.buffer.getIterAtOffset(iter, offset);
-        this.buffer.insert(iter, text, text.length);
+        batch(() => {
+            this.buffer!.getIterAtOffset(iter, offset);
+            this.buffer!.insert(iter, text, text.length);
+        });
     }
 
     private deleteTextAtRange(start: number, end: number): void {
@@ -108,9 +110,8 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
         batch(() => {
             buffer.getIterAtOffset(startIter, start);
             buffer.getIterAtOffset(endIter, end);
+            buffer.delete(startIter, endIter);
         });
-
-        buffer.delete(startIter, endIter);
     }
 
     private updateChildOffsets(startIndex: number): void {
@@ -140,10 +141,8 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
     }
 
     private reapplyTagsFromOffset(fromOffset: number): void {
-        console.log(`[reapplyTagsFromOffset] fromOffset=${fromOffset} children=${this.children.length}`);
         for (const child of this.children) {
             if (child instanceof TextTagNode) {
-                console.log(`[reapplyTagsFromOffset] checking tag=${child.props?.id} offset=${child.bufferOffset} length=${child.getLength()}`);
                 if (child.bufferOffset >= fromOffset) {
                     child.reapplyTag();
                     this.reapplyAllTagsRecursive(child.getChildren());
@@ -207,13 +206,11 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
         if (!this.buffer) return;
 
         const offset = child.bufferOffset;
-        console.log(`[onChildTextChanged] offset=${offset} oldLength=${oldLength} newText=${child.getText()}`);
 
         this.deleteTextAtRange(offset, offset + oldLength);
         this.insertTextAtOffset(child.getText(), offset);
 
         const containingIndex = this.findDirectChildContaining(offset);
-        console.log(`[onChildTextChanged] containingIndex=${containingIndex}`);
         if (containingIndex !== -1) {
             this.updateChildOffsets(containingIndex + 1);
         }
@@ -231,11 +228,26 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
 
     public override appendChild(child: Node): void {
         if (this.isTextContentChild(child)) {
+            const wasMoved = this.children.indexOf(child as TextContentChild) !== -1;
+            if (wasMoved) {
+                const existingIndex = this.children.indexOf(child as TextContentChild);
+                const oldOffset = (child as TextContentChild).bufferOffset;
+                const oldLength = (child as TextContentChild).getLength();
+
+                this.children.splice(existingIndex, 1);
+
+                if (this.buffer && oldLength > 0) {
+                    this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
+                }
+
+                this.updateChildOffsets(existingIndex);
+            }
+
             const offset = this.getTotalLength();
 
-            this.children.push(child);
+            this.children.push(child as TextContentChild);
             (child as TextContentChild).bufferOffset = offset;
-            this.setChildParent(child);
+            this.setChildParent(child as TextContentChild);
 
             if (this.buffer) {
                 if (child instanceof TextSegmentNode) {
@@ -243,10 +255,17 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
                 } else if (child instanceof TextTagNode) {
                     const text = child.getText();
                     this.insertTextAtOffset(text, offset);
-                    child.setBuffer(this.buffer);
+                    if (!child.hasBuffer()) {
+                        child.setBuffer(this.buffer);
+                    }
                 } else if (child instanceof TextAnchorNode && this.textView) {
                     child.setTextViewAndBuffer(this.textView, this.buffer);
                 }
+            }
+
+            if (wasMoved) {
+                this.updateChildOffsets(0);
+                this.reapplyTagsFromOffset(0);
             }
             return;
         }
@@ -269,12 +288,15 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
             this.reapplyTagsFromOffset(offset);
             return;
         }
+        if (this.isTextContentChild(child)) {
+            return;
+        }
         super.removeChild(child);
     }
 
     public override insertBefore(child: Node, before: Node): void {
         if (this.isTextContentChild(child)) {
-            const existingIndex = this.children.indexOf(child);
+            const existingIndex = this.children.indexOf(child as TextContentChild);
             if (existingIndex !== -1) {
                 const oldOffset = (child as TextContentChild).bufferOffset;
                 const oldLength = (child as TextContentChild).getLength();
@@ -284,6 +306,8 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
                 if (this.buffer && oldLength > 0) {
                     this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
                 }
+
+                this.updateChildOffsets(existingIndex);
             }
 
             let beforeIndex = this.children.indexOf(before as TextContentChild);
@@ -295,9 +319,9 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
                 if (c) offset += c.getLength();
             }
 
-            this.children.splice(insertIndex, 0, child);
+            this.children.splice(insertIndex, 0, child as TextContentChild);
             (child as TextContentChild).bufferOffset = offset;
-            this.setChildParent(child);
+            this.setChildParent(child as TextContentChild);
 
             if (this.buffer) {
                 if (child instanceof TextSegmentNode) {
@@ -305,7 +329,9 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
                 } else if (child instanceof TextTagNode) {
                     const text = child.getText();
                     this.insertTextAtOffset(text, offset);
-                    child.setBuffer(this.buffer);
+                    if (!child.hasBuffer()) {
+                        child.setBuffer(this.buffer);
+                    }
                 } else if (child instanceof TextAnchorNode && this.textView) {
                     child.setTextViewAndBuffer(this.textView, this.buffer);
                 }
