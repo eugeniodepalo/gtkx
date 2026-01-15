@@ -1,3 +1,4 @@
+import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
@@ -104,6 +105,8 @@ export type FixedChildProps = VirtualSlotProps & {
     x?: number;
     /** Y coordinate in pixels */
     y?: number;
+    /** 3D transform to apply to the child (perspective, rotation, etc.) */
+    transform?: Gsk.Transform;
 };
 
 /**

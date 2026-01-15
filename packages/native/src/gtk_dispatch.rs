@@ -75,21 +75,16 @@ impl GtkDispatcher {
     fn push_task(&self, task: Task) {
         self.queue
             .lock()
-            .expect("queue mutex poisoned")
+            .unwrap()
             .push_back(task);
     }
 
     fn pop_task(&self) -> Option<Task> {
-        self.queue.lock().expect("queue mutex poisoned").pop_front()
+        self.queue.lock().unwrap().pop_front()
     }
 
     fn is_queue_empty(&self) -> bool {
-        self.queue.lock().expect("queue mutex poisoned").is_empty()
-    }
-
-    pub fn clear(&self) {
-        self.queue.lock().expect("queue mutex poisoned").clear();
-        self.dispatch_scheduled.store(false, Ordering::Release);
+        self.queue.lock().unwrap().is_empty()
     }
 
     pub fn run_on_gtk_thread<F, T>(&self, task: F) -> mpsc::Receiver<T>

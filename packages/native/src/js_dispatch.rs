@@ -66,16 +66,12 @@ impl JsDispatcher {
     fn push_callback(&self, callback: PendingCallback) {
         self.queue
             .lock()
-            .expect("queue mutex poisoned")
+            .unwrap()
             .push_back(callback);
     }
 
     fn pop_callback(&self) -> Option<PendingCallback> {
-        self.queue.lock().expect("queue mutex poisoned").pop_front()
-    }
-
-    pub fn clear(&self) {
-        self.queue.lock().expect("queue mutex poisoned").clear();
+        self.queue.lock().unwrap().pop_front()
     }
 
     pub fn queue(

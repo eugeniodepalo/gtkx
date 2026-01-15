@@ -1,5 +1,5 @@
 import { batch, isObjectEqual } from "@gtkx/ffi";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import type { FixedChildProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
 import { SlotNode } from "./slot.js";
@@ -24,9 +24,16 @@ class FixedChildNode extends SlotNode<Props> {
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
 
-        if (!oldProps || oldProps.x !== newProps.x || oldProps.y !== newProps.y) {
+        const positionChanged = !oldProps || oldProps.x !== newProps.x || oldProps.y !== newProps.y;
+        const transformChanged = !oldProps || oldProps.transform !== newProps.transform;
+
+        if (positionChanged) {
             if (this.parent && this.child) {
                 this.positionChild();
+            }
+        } else if (transformChanged) {
+            if (this.parent && this.child) {
+                this.applyTransform();
             }
         }
     }
@@ -47,8 +54,25 @@ class FixedChildNode extends SlotNode<Props> {
                 }
 
                 fixed.put(child, x, y);
+                this.applyTransform();
             });
         }
+    }
+
+    private applyTransform(): void {
+        if (!this.child || !this.props.transform) {
+            return;
+        }
+
+        const fixed = this.getFixed();
+        const layoutManager = fixed.getLayoutManager();
+
+        if (!layoutManager) {
+            return;
+        }
+
+        const layoutChild = layoutManager.getLayoutChild(this.child) as Gtk.FixedLayoutChild;
+        layoutChild.setTransform(this.props.transform);
     }
 
     protected override onChildChange(oldChild: Gtk.Widget | null): void {

@@ -20,16 +20,11 @@ use neon::prelude::*;
 
 use crate::{
     gtk_dispatch::GtkDispatcher,
-    js_dispatch::JsDispatcher,
     managed::{NativeHandle, NativeValue},
     state::{GtkThread, GtkThreadState},
 };
 
 pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
-    GtkDispatcher::global().clear();
-    JsDispatcher::global().clear();
-    GtkThread::global().clear();
-
     let app_id = cx.argument::<JsString>(0)?.value(&mut cx);
 
     let flags_value: Option<u32> = cx.argument_opt(1).and_then(|arg| {

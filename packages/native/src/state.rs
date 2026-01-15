@@ -46,7 +46,7 @@ impl GtkThread {
     pub fn set_handle(&self, handle: JoinHandle<()>) {
         self.handle
             .lock()
-            .expect("GTK thread handle mutex poisoned")
+            .unwrap()
             .replace(handle);
     }
 
@@ -55,12 +55,6 @@ impl GtkThread {
             && let Some(handle) = guard.take()
         {
             let _ = handle.join();
-        }
-    }
-
-    pub fn clear(&self) {
-        if let Ok(mut guard) = self.handle.lock() {
-            guard.take();
         }
     }
 }

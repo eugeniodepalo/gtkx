@@ -1,24 +1,117 @@
+import { css } from "@gtkx/css";
+import * as Gdk from "@gtkx/ffi/gdk";
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkEntry, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useState } from "react";
+import {
+    GtkBox,
+    GtkButton,
+    GtkEntry,
+    GtkFrame,
+    GtkImage,
+    GtkLabel,
+    GtkPicture,
+} from "@gtkx/react";
+import { useCallback, useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 
+const previewStyle = css`
+    background-color: alpha(@window_fg_color, 0.05);
+    border-radius: 8px;
+    padding: 12px;
+`;
+
 const ClipboardDemo = () => {
-    const [_clipboardStatus, _setClipboardStatus] = useState<string | null>(null);
+    const [textToCopy, setTextToCopy] = useState("Hello from clipboard!");
+    const [pastedText, setPastedText] = useState<string | null>(null);
+    const [copyStatus, setCopyStatus] = useState<string | null>(null);
+    const [clipboardHasText, setClipboardHasText] = useState(false);
+    const [clipboardHasImage, setClipboardHasImage] = useState(false);
+    const [pastedTexture, setPastedTexture] = useState<Gdk.Texture | null>(null);
+
+    const getClipboard = useCallback(() => {
+        const display = Gdk.Display.getDefault();
+        return display?.getClipboard() ?? null;
+    }, []);
+
+    const checkClipboardContents = useCallback(() => {
+        const clipboard = getClipboard();
+        if (!clipboard) return;
+
+        const formats = clipboard.getFormats();
+        setClipboardHasText(formats.containGtype(GObject.Type.STRING));
+        setClipboardHasImage(formats.containMimeType("image/png") || formats.containMimeType("image/jpeg"));
+    }, [getClipboard]);
+
+    useEffect(() => {
+        const clipboard = getClipboard();
+        if (!clipboard) return;
+
+        checkClipboardContents();
+        clipboard.connect("changed", () => {
+            checkClipboardContents();
+        });
+    }, [getClipboard, checkClipboardContents]);
+
+    const handleCopyText = useCallback(() => {
+        const clipboard = getClipboard();
+        if (!clipboard) return;
+
+        const value = GObject.Value.newFromString(textToCopy);
+        clipboard.setValue(value);
+        setCopyStatus("Text copied!");
+        setTimeout(() => setCopyStatus(null), 2000);
+    }, [textToCopy, getClipboard]);
+
+    const handlePasteText = useCallback(async () => {
+        const clipboard = getClipboard();
+        if (!clipboard) return;
+
+        try {
+            const text = await clipboard.readTextAsync();
+            setPastedText(text);
+        } catch {
+            setPastedText("[Failed to read clipboard]");
+        }
+    }, [getClipboard]);
+
+    const handlePasteImage = useCallback(async () => {
+        const clipboard = getClipboard();
+        if (!clipboard) return;
+
+        try {
+            const texture = await clipboard.readTextureAsync();
+            setPastedTexture(texture);
+        } catch {
+            setPastedTexture(null);
+        }
+    }, [getClipboard]);
+
+    const handleClearClipboard = useCallback(() => {
+        const clipboard = getClipboard();
+        if (!clipboard) return;
+
+        clipboard.setContent(null);
+        setCopyStatus("Clipboard cleared!");
+        setTimeout(() => setCopyStatus(null), 2000);
+    }, [getClipboard]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24} marginStart={20} marginEnd={20} marginTop={20}>
             <GtkLabel label="Clipboard" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="GTK provides clipboard access through GdkClipboard. You can copy text, images, and other content to the system clipboard and paste from it."
+                label="GTK provides clipboard access through GdkClipboard. Copy text to the system clipboard and paste text or images from it."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
             />
 
-            <GtkFrame label="Built-in Clipboard Support">
+            {copyStatus && (
+                <GtkLabel label={copyStatus} cssClasses={["success"]} halign={Gtk.Align.START} />
+            )}
+
+            <GtkFrame label="Text Clipboard">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={12}
@@ -28,24 +121,156 @@ const ClipboardDemo = () => {
                     marginEnd={12}
                 >
                     <GtkLabel
-                        label="Many GTK widgets have built-in clipboard support. GtkEntry and GtkTextView support Ctrl+C, Ctrl+X, and Ctrl+V by default."
+                        label="Copy and paste text programmatically using clipboard.setValue() and clipboard.readTextAsync()."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkBox spacing={12}>
+                        <GtkEntry
+                            text={textToCopy}
+                            onChanged={(entry) => setTextToCopy(entry.getText())}
+                            hexpand
+                            placeholderText="Text to copy..."
+                        />
+                        <GtkButton onClicked={handleCopyText}>
+                            <GtkBox spacing={6}>
+                                <GtkImage iconName="edit-copy-symbolic" />
+                                <GtkLabel label="Copy" />
+                            </GtkBox>
+                        </GtkButton>
+                    </GtkBox>
+
+                    <GtkBox spacing={12}>
+                        <GtkButton onClicked={() => void handlePasteText()} sensitive={clipboardHasText}>
+                            <GtkBox spacing={6}>
+                                <GtkImage iconName="edit-paste-symbolic" />
+                                <GtkLabel label="Paste Text" />
+                            </GtkBox>
+                        </GtkButton>
+                        {pastedText && (
+                            <GtkLabel
+                                label={`Pasted: "${pastedText}"`}
+                                cssClasses={["dim-label"]}
+                                ellipsize={3}
+                                hexpand
+                            />
+                        )}
+                    </GtkBox>
+                </GtkBox>
+            </GtkFrame>
+
+            <GtkFrame label="Image Clipboard">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="Images can be read from the clipboard as GdkTexture. Copy an image from another application and paste it here."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkBox spacing={12}>
+                        <GtkButton onClicked={() => void handlePasteImage()} sensitive={clipboardHasImage}>
+                            <GtkBox spacing={6}>
+                                <GtkImage iconName="edit-paste-symbolic" />
+                                <GtkLabel label="Paste Image" />
+                            </GtkBox>
+                        </GtkButton>
+                        <GtkLabel
+                            label={clipboardHasImage ? "Image available in clipboard" : "No image in clipboard"}
+                            cssClasses={["dim-label"]}
+                        />
+                    </GtkBox>
+
+                    {pastedTexture && (
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} cssClasses={[previewStyle]}>
+                            <GtkLabel label="Pasted image:" halign={Gtk.Align.START} cssClasses={["heading"]} />
+                            <GtkPicture
+                                paintable={pastedTexture}
+                                contentFit={Gtk.ContentFit.SCALE_DOWN}
+                                widthRequest={200}
+                                heightRequest={150}
+                            />
+                            <GtkLabel
+                                label={`Size: ${pastedTexture.getWidth()}×${pastedTexture.getHeight()}`}
+                                cssClasses={["dim-label", "caption"]}
+                            />
+                        </GtkBox>
+                    )}
+                </GtkBox>
+            </GtkFrame>
+
+            <GtkFrame label="Clipboard Status">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="The clipboard emits a 'changed' signal when its contents change. This demo monitors the clipboard and updates the UI accordingly."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+                        <GtkBox spacing={12}>
+                            <GtkImage
+                                iconName={clipboardHasText ? "emblem-ok-symbolic" : "window-close-symbolic"}
+                                cssClasses={clipboardHasText ? ["success"] : ["dim-label"]}
+                            />
+                            <GtkLabel label="Text content" />
+                        </GtkBox>
+                        <GtkBox spacing={12}>
+                            <GtkImage
+                                iconName={clipboardHasImage ? "emblem-ok-symbolic" : "window-close-symbolic"}
+                                cssClasses={clipboardHasImage ? ["success"] : ["dim-label"]}
+                            />
+                            <GtkLabel label="Image content" />
+                        </GtkBox>
+                    </GtkBox>
+
+                    <GtkButton onClicked={handleClearClipboard} cssClasses={["destructive-action"]} halign={Gtk.Align.START}>
+                        <GtkBox spacing={6}>
+                            <GtkImage iconName="edit-clear-symbolic" />
+                            <GtkLabel label="Clear Clipboard" />
+                        </GtkBox>
+                    </GtkButton>
+                </GtkBox>
+            </GtkFrame>
+
+            <GtkFrame label="Built-in Widget Support">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="Text widgets have built-in clipboard support. Select text and use standard shortcuts."
                         wrap
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <GtkLabel label="Try selecting text and using Ctrl+C / Ctrl+V:" halign={Gtk.Align.START} />
-                        <GtkEntry placeholderText="Type and select text, then Ctrl+C to copy..." />
-                        <GtkEntry placeholderText="Press Ctrl+V to paste here..." />
+                        <GtkEntry placeholderText="Type here, select text, and use Ctrl+C to copy..." />
+                        <GtkEntry placeholderText="Use Ctrl+V to paste here..." />
                     </GtkBox>
 
-                    <GtkLabel
-                        label="Standard keyboard shortcuts:"
-                        halign={Gtk.Align.START}
-                        cssClasses={["heading"]}
-                        marginTop={8}
-                    />
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <GtkBox spacing={12}>
                             <GtkLabel label="Ctrl+C" widthChars={10} xalign={0} cssClasses={["monospace"]} />
@@ -59,223 +284,7 @@ const ClipboardDemo = () => {
                             <GtkLabel label="Ctrl+V" widthChars={10} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Paste from clipboard" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="Ctrl+A" widthChars={10} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Select all" cssClasses={["dim-label"]} />
-                        </GtkBox>
                     </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Clipboard API Overview">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="GdkClipboard provides programmatic access to the system clipboard:"
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="getClipboard()" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Get the clipboard from GdkDisplay" wrap cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="setContent()" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel
-                                label="Set clipboard content via ContentProvider"
-                                wrap
-                                cssClasses={["dim-label"]}
-                            />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="readTextFinish()" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Read text from clipboard (async)" wrap cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel
-                                label="readTextureFinish()"
-                                widthChars={20}
-                                xalign={0}
-                                cssClasses={["monospace"]}
-                            />
-                            <GtkLabel label="Read image from clipboard (async)" wrap cssClasses={["dim-label"]} />
-                        </GtkBox>
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="GdkContentProvider">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Content is placed on the clipboard using GdkContentProvider, which can provide data in multiple formats:"
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox spacing={12}>
-                            <GtkLabel
-                                label="providerNewForValue()"
-                                widthChars={22}
-                                xalign={0}
-                                cssClasses={["monospace"]}
-                            />
-                            <GtkLabel label="Create provider from a GValue" wrap cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel
-                                label="new ContentProvider()"
-                                widthChars={22}
-                                xalign={0}
-                                cssClasses={["monospace"]}
-                            />
-                            <GtkLabel label="Create provider from raw bytes" wrap cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel
-                                label="providerNewUnion()"
-                                widthChars={22}
-                                xalign={0}
-                                cssClasses={["monospace"]}
-                            />
-                            <GtkLabel label="Combine multiple providers" wrap cssClasses={["dim-label"]} />
-                        </GtkBox>
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Implementation Example">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Here's how to programmatically access the clipboard:"
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkLabel
-                        label={`import * as Gdk from "@gtkx/ffi/gdk";
-import * as GObject from "@gtkx/ffi/gobject";
-import sourceCode from "./clipboard.tsx?raw";
-
-// Get clipboard from a window
-const display = window.getDisplay();
-const clipboard = display.getClipboard();
-
-// Check if clipboard is local (owned by this app)
-const isLocal = clipboard.isLocal();
-
-// Get available formats
-const formats = clipboard.getFormats();
-
-// Set text content
-const value = new GObject.Value();
-// ... initialize value with text ...
-const provider = Gdk.ContentProvider.providerNewForValue(value);
-clipboard.setContent(provider);
-
-// Listen for clipboard changes
-clipboard.connect("changed", () => {
- console.log("Clipboard content changed");
-});`}
-                        cssClasses={["monospace"]}
-                        halign={Gtk.Align.START}
-                        wrap
-                    />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Primary Selection (Linux)">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="On Linux/X11, there's a separate 'primary selection' clipboard that holds the currently selected text. It's accessed with middle-click paste."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="getClipboard()" widthChars={22} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Main clipboard (Ctrl+C/V)" wrap cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel
-                                label="getPrimaryClipboard()"
-                                widthChars={22}
-                                xalign={0}
-                                cssClasses={["monospace"]}
-                            />
-                            <GtkLabel label="Selection clipboard (middle-click)" wrap cssClasses={["dim-label"]} />
-                        </GtkBox>
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Tips">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={8}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="1. Text widgets (Entry, TextView) handle clipboard automatically."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkLabel
-                        label="2. Use clipboard.connect('changed', ...) to react to external changes."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkLabel
-                        label="3. ContentProvider can offer data in multiple formats for compatibility."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkLabel
-                        label="4. Clipboard operations are asynchronous - use async/await patterns."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
                 </GtkBox>
             </GtkFrame>
         </GtkBox>
@@ -285,8 +294,18 @@ clipboard.connect("changed", () => {
 export const clipboardDemo: Demo = {
     id: "clipboard",
     title: "Clipboard",
-    description: "Copy and paste functionality with GdkClipboard",
-    keywords: ["clipboard", "copy", "paste", "cut", "GdkClipboard", "ContentProvider", "text", "transfer"],
+    description: "Copy and paste text and images with GdkClipboard",
+    keywords: [
+        "clipboard",
+        "copy",
+        "paste",
+        "cut",
+        "GdkClipboard",
+        "ContentProvider",
+        "text",
+        "image",
+        "transfer",
+    ],
     component: ClipboardDemo,
     sourceCode,
 };

@@ -1,10 +1,82 @@
+import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkMenuButton, x } from "@gtkx/react";
-import { useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkMenuButton, useApplication, x } from "@gtkx/react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shortcuts.tsx?raw";
 
+interface ShortcutDef {
+    title: string;
+    accelerator: string;
+}
+
+interface ShortcutSectionDef {
+    title: string | null;
+    shortcuts: ShortcutDef[];
+}
+
+const shortcutSections: ShortcutSectionDef[] = [
+    {
+        title: "General",
+        shortcuts: [
+            { title: "Help", accelerator: "F1" },
+            { title: "Preferences", accelerator: "<Control>comma" },
+            { title: "Keyboard Shortcuts", accelerator: "<Control>question" },
+            { title: "Quit", accelerator: "<Control>q" },
+        ],
+    },
+    {
+        title: "File",
+        shortcuts: [
+            { title: "New", accelerator: "<Control>n" },
+            { title: "Open", accelerator: "<Control>o" },
+            { title: "Save", accelerator: "<Control>s" },
+            { title: "Save As", accelerator: "<Control><Shift>s" },
+            { title: "Close", accelerator: "<Control>w" },
+        ],
+    },
+    {
+        title: "Edit",
+        shortcuts: [
+            { title: "Undo", accelerator: "<Control>z" },
+            { title: "Redo", accelerator: "<Control><Shift>z" },
+            { title: "Cut", accelerator: "<Control>x" },
+            { title: "Copy", accelerator: "<Control>c" },
+            { title: "Paste", accelerator: "<Control>v" },
+            { title: "Select All", accelerator: "<Control>a" },
+        ],
+    },
+    {
+        title: "View",
+        shortcuts: [
+            { title: "Zoom In", accelerator: "<Control>plus" },
+            { title: "Zoom Out", accelerator: "<Control>minus" },
+            { title: "Reset Zoom", accelerator: "<Control>0" },
+            { title: "Full Screen", accelerator: "F11" },
+        ],
+    },
+    {
+        title: "Search",
+        shortcuts: [
+            { title: "Find", accelerator: "<Control>f" },
+            { title: "Find and Replace", accelerator: "<Control>h" },
+            { title: "Find Next", accelerator: "<Control>g" },
+            { title: "Find Previous", accelerator: "<Control><Shift>g" },
+        ],
+    },
+    {
+        title: "Navigation",
+        shortcuts: [
+            { title: "Go to Line", accelerator: "<Control>l" },
+            { title: "Go to Definition", accelerator: "F12" },
+            { title: "Go to File", accelerator: "<Control>p" },
+            { title: "Go to Symbol", accelerator: "<Control><Shift>o" },
+        ],
+    },
+];
+
 const ShortcutsDemo = () => {
+    const app = useApplication();
     const [menuActionTriggered, setMenuActionTriggered] = useState<string | null>(null);
 
     const handleMenuAction = (action: string) => {
@@ -12,18 +84,41 @@ const ShortcutsDemo = () => {
         setTimeout(() => setMenuActionTriggered(null), 2000);
     };
 
+    const createShortcutsDialog = useCallback(() => {
+        const dialog = new Adw.ShortcutsDialog();
+
+        for (const sectionDef of shortcutSections) {
+            const section = new Adw.ShortcutsSection(sectionDef.title);
+
+            for (const shortcutDef of sectionDef.shortcuts) {
+                const item = new Adw.ShortcutsItem(shortcutDef.title, shortcutDef.accelerator);
+                section.add(item);
+            }
+
+            dialog.add(section);
+        }
+
+        return dialog;
+    }, []);
+
+    const handleOpenShortcuts = useCallback(() => {
+        const dialog = createShortcutsDialog();
+        const parent = app.getActiveWindow();
+        dialog.present(parent ?? undefined);
+    }, [app, createShortcutsDialog]);
+
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24} marginStart={20} marginEnd={20} marginTop={20}>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
             <GtkLabel label="Keyboard Shortcuts" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="GTK provides comprehensive keyboard shortcut support through GtkShortcutController. Shortcuts can be defined with accelerator strings like '<Control>s' for common actions."
+                label="AdwShortcutsDialog displays application keyboard shortcuts in a structured, searchable dialog. Press the button below or use Ctrl+? to open the shortcuts dialog."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
             />
 
-            <GtkFrame label="Menu with Keyboard Accelerators">
+            <GtkFrame label="Shortcuts Dialog">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={12}
@@ -33,7 +128,39 @@ const ShortcutsDemo = () => {
                     marginEnd={12}
                 >
                     <GtkLabel
-                        label="Menu items can have keyboard accelerators that activate them directly. These are displayed next to the menu item text."
+                        label="AdwShortcutsDialog organizes shortcuts into titled sections. Each section contains a list of shortcuts with their accelerators. The dialog can be presented as a floating window or bottom sheet depending on screen size."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkButton onClicked={handleOpenShortcuts} halign={Gtk.Align.START}>
+                        <GtkBox spacing={8}>
+                            <GtkImage iconName="preferences-desktop-keyboard-shortcuts-symbolic" />
+                            <GtkLabel label="Open Keyboard Shortcuts" />
+                        </GtkBox>
+                    </GtkButton>
+
+                    <GtkLabel
+                        label="The shortcuts dialog includes 6 sections covering general, file, edit, view, search, and navigation shortcuts. Sections are searchable within the dialog."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label", "caption"]}
+                    />
+                </GtkBox>
+            </GtkFrame>
+
+            <GtkFrame label="Menu with Accelerators">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="Menu items can have keyboard accelerators displayed next to them. These accelerators activate the menu action directly."
                         wrap
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
@@ -164,56 +291,11 @@ const ShortcutsDemo = () => {
                         </GtkBox>
                         <GtkBox spacing={12}>
                             <GtkLabel label="<Primary>q" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Primary+Q (Ctrl on Linux, Cmd on macOS)" cssClasses={["dim-label"]} />
+                            <GtkLabel label="Platform primary key (Ctrl/Cmd)" cssClasses={["dim-label"]} />
                         </GtkBox>
                         <GtkBox spacing={12}>
                             <GtkLabel label="F5" widthChars={20} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="F5 (no modifier)" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Available Modifiers">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="These modifiers can be combined in accelerator strings:"
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="<Control>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Control key" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="<Shift>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Shift key" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="<Alt>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Alt key" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="<Super>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Super/Windows key" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="<Primary>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Platform-specific (Ctrl/Cmd)" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="<Meta>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Meta key" cssClasses={["dim-label"]} />
                         </GtkBox>
                     </GtkBox>
                 </GtkBox>
@@ -229,7 +311,7 @@ const ShortcutsDemo = () => {
                     marginEnd={12}
                 >
                     <GtkLabel
-                        label="Buttons and labels can have mnemonics - underlined letters that activate the widget when pressed with Alt. Use an underscore before the mnemonic character."
+                        label="Buttons can have mnemonics - underlined letters activated with Alt. Use an underscore before the mnemonic character in the label."
                         wrap
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
@@ -242,30 +324,21 @@ const ShortcutsDemo = () => {
                     </GtkBox>
 
                     <GtkLabel
-                        label="Press Alt to see the mnemonic underlines, then press the letter to activate."
+                        label="Press Alt to see the underlines, then press the letter to activate."
                         wrap
                         halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
+                        cssClasses={["dim-label", "caption"]}
                     />
                 </GtkBox>
             </GtkFrame>
-
-            <GtkButton
-                label="Clear Status"
-                onClicked={() => {
-                    setMenuActionTriggered(null);
-                }}
-                halign={Gtk.Align.START}
-            />
         </GtkBox>
     );
 };
 
 export const shortcutsDemo: Demo = {
     id: "shortcuts",
-    title: "Shortcuts Window",
-    description:
-        "GtkShortcutsWindow is a window that shows various application shortcuts in a structured way. The shortcuts that are shown are typically gathered from accelerators added to actions, widgets, etc.",
+    title: "Shortcuts Dialog",
+    description: "AdwShortcutsDialog displays application keyboard shortcuts in a structured, searchable dialog",
     keywords: [
         "keyboard",
         "shortcut",
@@ -273,9 +346,12 @@ export const shortcutsDemo: Demo = {
         "mnemonic",
         "hotkey",
         "keybinding",
-        "GtkShortcutController",
+        "AdwShortcutsDialog",
+        "AdwShortcutsSection",
+        "AdwShortcutsItem",
         "key",
         "binding",
+        "adwaita",
     ],
     component: ShortcutsDemo,
     sourceCode,

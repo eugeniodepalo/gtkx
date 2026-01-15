@@ -13,15 +13,25 @@ let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let application: Application | null = null;
 let isStopping = false;
-let startedPid: number | null = null;
 
 /**
  * Checks if the GTK application runtime is currently running.
- * Returns false in forked child processes where GTK state is invalid.
  *
  * @returns `true` if {@link start} has been called and {@link stop} has not
  */
-export const isStarted = (): boolean => startedPid === process.pid;
+export const isStarted = (): boolean => application !== null;
+
+/**
+ * Returns why FFI calls are not allowed, or null if they are allowed.
+ *
+ * @returns Error reason string, or null if runtime is available
+ */
+export const getStartError = (): string | null => {
+    if (application === null) {
+        return "GTK runtime not started. Call start() before making FFI calls.";
+    }
+    return null;
+};
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
@@ -63,9 +73,8 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
         return application;
     }
 
-    startedPid = process.pid;
     const app = nativeStart(appId, flags);
-    events.emit("start");
+    application = getNativeObject(app as NativeHandle) as Application;
 
     try {
         initAdwaita();
@@ -78,7 +87,7 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
         startPolling();
     }
 
-    application = getNativeObject(app as NativeHandle) as Application;
+    events.emit("start");
     return application;
 };
 
