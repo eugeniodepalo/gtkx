@@ -1,5 +1,5 @@
 import { batch, isObjectEqual } from "@gtkx/ffi";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { FixedChildProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
 import { SlotNode } from "./slot.js";

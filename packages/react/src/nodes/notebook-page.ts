@@ -92,6 +92,14 @@ export class NotebookPageNode extends SlotNode<Props> {
                 tabLabel.setLabel(newProps.label ?? "");
             }
         }
+
+        if (
+            this.child &&
+            this.parent &&
+            (!oldProps || oldProps.tabExpand !== newProps.tabExpand || oldProps.tabFill !== newProps.tabFill)
+        ) {
+            this.applyPageProps();
+        }
     }
 
     private attachPage(): void {
@@ -110,10 +118,28 @@ export class NotebookPageNode extends SlotNode<Props> {
 
         if (this.position != null) {
             notebook.insertPage(child, this.position, tabLabel);
-            return;
+        } else {
+            notebook.appendPage(child, tabLabel);
         }
 
-        notebook.appendPage(child, tabLabel);
+        this.applyPageProps();
+    }
+
+    private applyPageProps(): void {
+        const child = this.child;
+        if (!child || !this.parent) return;
+
+        const notebook = this.getNotebook();
+        const page = notebook.getPage(child);
+        if (!page) return;
+
+        if (this.props.tabExpand !== undefined) {
+            page.setTabExpand(this.props.tabExpand);
+        }
+
+        if (this.props.tabFill !== undefined) {
+            page.setTabFill(this.props.tabFill);
+        }
     }
 
     private detachPage(childToDetach: Gtk.Widget): void {
