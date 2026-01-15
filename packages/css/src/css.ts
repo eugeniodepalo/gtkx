@@ -12,48 +12,38 @@ function expandNestedRules(styles: string, className: string): string {
     const expandedStyles = styles.replace(/&/g, selector);
 
     const rules: string[] = [];
-    let currentRule = "";
+    let topLevelProperties = "";
+    let currentSegment = "";
     let braceDepth = 0;
-    let inSelector = false;
-    let mainProperties = "";
 
     for (let i = 0; i < expandedStyles.length; i++) {
         const char = expandedStyles[i];
 
         if (char === "{") {
+            currentSegment += char;
             braceDepth++;
-            if (braceDepth === 1 && currentRule.includes(selector)) {
-                inSelector = true;
-                currentRule += char;
-            } else {
-                currentRule += char;
-            }
         } else if (char === "}") {
             braceDepth--;
-            currentRule += char;
-            if (braceDepth === 0 && inSelector) {
-                rules.push(currentRule.trim());
-                currentRule = "";
-                inSelector = false;
+            currentSegment += char;
+            if (braceDepth === 0) {
+                rules.push(currentSegment.trim());
+                currentSegment = "";
             }
-        } else if (braceDepth === 0 && char === "." && expandedStyles.slice(i).startsWith(selector)) {
-            if (mainProperties.length > 0 || currentRule.length > 0) {
-                mainProperties += currentRule;
-                currentRule = "";
-            }
-            currentRule += char;
+        } else if (char === ";" && braceDepth === 0) {
+            topLevelProperties += currentSegment + char;
+            currentSegment = "";
         } else {
-            currentRule += char;
+            currentSegment += char;
         }
     }
 
-    if (currentRule.trim()) {
-        mainProperties += currentRule;
+    if (currentSegment.trim() && braceDepth === 0) {
+        topLevelProperties += currentSegment;
     }
 
     const allRules: string[] = [];
-    if (mainProperties.trim()) {
-        allRules.push(`${selector}{${mainProperties.trim()}}`);
+    if (topLevelProperties.trim()) {
+        allRules.push(`${selector}{${topLevelProperties.trim()}}`);
     }
     allRules.push(...rules);
 
