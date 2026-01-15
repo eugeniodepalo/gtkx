@@ -1,9 +1,28 @@
-import { type Context, FontSlant, FontWeight, LineCap, LineJoin } from "@gtkx/ffi/cairo";
+import { type Context, FillRule, FontSlant, FontWeight, LineCap, LineJoin } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
+import {
+    GtkBox,
+    GtkButton,
+    GtkCheckButton,
+    GtkDrawingArea,
+    GtkDropDown,
+    GtkFrame,
+    GtkLabel,
+    GtkScale,
+    x,
+} from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-explorer.tsx?raw";
+
+const LINE_CAPS: LineCap[] = [LineCap.BUTT, LineCap.ROUND, LineCap.SQUARE];
+const LINE_CAP_LABELS = ["Butt", "Round", "Square"];
+
+const LINE_JOINS: LineJoin[] = [LineJoin.MITER, LineJoin.ROUND, LineJoin.BEVEL];
+const LINE_JOIN_LABELS = ["Miter", "Round", "Bevel"];
+
+const FILL_RULES: FillRule[] = [FillRule.WINDING, FillRule.EVEN_ODD];
+const FILL_RULE_LABELS = ["Winding", "Even-Odd"];
 
 interface Point {
     x: number;
@@ -62,7 +81,13 @@ const PathExplorerDemo = () => {
     const [selectedPoint, setSelectedPoint] = useState<{ segmentIdx: number; pointIdx: number } | "start" | null>(null);
     const [showHandles, setShowHandles] = useState(true);
     const [showPath, setShowPath] = useState(true);
-    const [strokeWidth] = useState(3);
+    const [strokeWidth, setStrokeWidth] = useState(3);
+    const [lineCapIdx, setLineCapIdx] = useState(1);
+    const [lineJoinIdx, setLineJoinIdx] = useState(1);
+    const [fillRuleIdx, setFillRuleIdx] = useState(0);
+    const [closePath, setClosePath] = useState(false);
+    const [fillPath, setFillPath] = useState(false);
+    const [useDash, setUseDash] = useState(false);
 
     const dragStartRef = useRef<Point | null>(null);
     const originalPointRef = useRef<Point | null>(null);
@@ -84,11 +109,19 @@ const PathExplorerDemo = () => {
     const drawPath = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, _width: number, _height: number) => {
             if (showPath) {
-                cr.setSourceRgb(0.2, 0.5, 0.8)
-                    .setLineWidth(strokeWidth)
-                    .setLineCap(LineCap.ROUND)
-                    .setLineJoin(LineJoin.ROUND)
-                    .moveTo(path.start.x, path.start.y);
+                const lineCap = LINE_CAPS[lineCapIdx] ?? LineCap.ROUND;
+                const lineJoin = LINE_JOINS[lineJoinIdx] ?? LineJoin.ROUND;
+                const fillRule = FILL_RULES[fillRuleIdx] ?? FillRule.WINDING;
+
+                cr.setLineWidth(strokeWidth).setLineCap(lineCap).setLineJoin(lineJoin).setFillRule(fillRule);
+
+                if (useDash) {
+                    cr.setDash([10, 5], 0);
+                } else {
+                    cr.setDash([], 0);
+                }
+
+                cr.moveTo(path.start.x, path.start.y);
 
                 let currentPoint = path.start;
                 for (const segment of path.segments) {
@@ -126,6 +159,17 @@ const PathExplorerDemo = () => {
                         }
                     }
                 }
+
+                if (closePath) {
+                    cr.closePath();
+                }
+
+                if (fillPath) {
+                    cr.setSourceRgba(0.2, 0.5, 0.8, 0.3);
+                    cr.fillPreserve();
+                }
+
+                cr.setSourceRgb(0.2, 0.5, 0.8);
                 cr.stroke();
             }
 
@@ -206,7 +250,20 @@ const PathExplorerDemo = () => {
                 cr.moveTo(10, 35).showText(`Selected: ${pointInfo}`);
             }
         },
-        [path, selectedPoint, showHandles, showPath, strokeWidth, getAllPoints],
+        [
+            path,
+            selectedPoint,
+            showHandles,
+            showPath,
+            strokeWidth,
+            lineCapIdx,
+            lineJoinIdx,
+            fillRuleIdx,
+            closePath,
+            fillPath,
+            useDash,
+            getAllPoints,
+        ],
     );
 
     const handleDragBegin = useCallback(
@@ -325,7 +382,7 @@ const PathExplorerDemo = () => {
             <GtkLabel label="Interactive Path Editor" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="Drag control points to edit the path. Add or remove segments to build complex paths interactively."
+                label="Drag control points to edit the path. Configure stroke width, line caps, joins, and dashes. Enable fill with different fill rules."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
@@ -381,6 +438,87 @@ const PathExplorerDemo = () => {
                             cssClasses={["flat"]}
                             sensitive={path.segments.length > 0}
                         />
+                    </GtkBox>
+                </GtkBox>
+            </GtkFrame>
+
+            <GtkFrame label="Stroke & Fill Options">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkBox spacing={16} halign={Gtk.Align.CENTER}>
+                        <GtkBox spacing={8}>
+                            <GtkLabel label="Width:" cssClasses={["dim-label"]} />
+                            <GtkScale
+                                orientation={Gtk.Orientation.HORIZONTAL}
+                                widthRequest={100}
+                                drawValue
+                                digits={0}
+                                valuePos={Gtk.PositionType.RIGHT}
+                            >
+                                <x.Adjustment
+                                    value={strokeWidth}
+                                    lower={1}
+                                    upper={20}
+                                    stepIncrement={1}
+                                    pageIncrement={5}
+                                    onValueChanged={setStrokeWidth}
+                                />
+                            </GtkScale>
+                        </GtkBox>
+
+                        <GtkBox spacing={8}>
+                            <GtkLabel label="Cap:" cssClasses={["dim-label"]} />
+                            <GtkDropDown
+                                selectedId={String(lineCapIdx)}
+                                onSelectionChanged={(id) => setLineCapIdx(Number(id))}
+                            >
+                                {LINE_CAP_LABELS.map((label, idx) => (
+                                    <x.SimpleListItem key={label} id={String(idx)} value={label} />
+                                ))}
+                            </GtkDropDown>
+                        </GtkBox>
+
+                        <GtkBox spacing={8}>
+                            <GtkLabel label="Join:" cssClasses={["dim-label"]} />
+                            <GtkDropDown
+                                selectedId={String(lineJoinIdx)}
+                                onSelectionChanged={(id) => setLineJoinIdx(Number(id))}
+                            >
+                                {LINE_JOIN_LABELS.map((label, idx) => (
+                                    <x.SimpleListItem key={label} id={String(idx)} value={label} />
+                                ))}
+                            </GtkDropDown>
+                        </GtkBox>
+                    </GtkBox>
+
+                    <GtkBox spacing={16} halign={Gtk.Align.CENTER}>
+                        <GtkCheckButton
+                            label="Close Path"
+                            active={closePath}
+                            onToggled={() => setClosePath(!closePath)}
+                        />
+                        <GtkCheckButton label="Fill" active={fillPath} onToggled={() => setFillPath(!fillPath)} />
+                        <GtkCheckButton label="Dashed" active={useDash} onToggled={() => setUseDash(!useDash)} />
+
+                        {fillPath && (
+                            <GtkBox spacing={8}>
+                                <GtkLabel label="Fill Rule:" cssClasses={["dim-label"]} />
+                                <GtkDropDown
+                                    selectedId={String(fillRuleIdx)}
+                                    onSelectionChanged={(id) => setFillRuleIdx(Number(id))}
+                                >
+                                    {FILL_RULE_LABELS.map((label, idx) => (
+                                        <x.SimpleListItem key={label} id={String(idx)} value={label} />
+                                    ))}
+                                </GtkDropDown>
+                            </GtkBox>
+                        )}
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

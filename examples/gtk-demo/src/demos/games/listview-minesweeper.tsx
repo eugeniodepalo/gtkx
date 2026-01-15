@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { SYSTEM_SOUNDS, useSound } from "../../hooks/index.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
 
@@ -71,6 +72,20 @@ const ListViewMinesweeperDemo = () => {
     const [gameState, setGameState] = useState<GameState>("playing");
     const [flagCount, setFlagCount] = useState(0);
     const [startTime, setStartTime] = useState<number | null>(null);
+    const prevGameState = useRef<GameState>("playing");
+
+    const clickSound = useSound(SYSTEM_SOUNDS.click, { volume: 0.5 });
+    const explosionSound = useSound(SYSTEM_SOUNDS.error, { volume: 0.8 });
+    const victorySound = useSound(SYSTEM_SOUNDS.complete, { volume: 0.8 });
+
+    useEffect(() => {
+        if (prevGameState.current === "playing" && gameState === "lost") {
+            explosionSound.play();
+        } else if (prevGameState.current === "playing" && gameState === "won") {
+            victorySound.play();
+        }
+        prevGameState.current = gameState;
+    }, [gameState, explosionSound, victorySound]);
 
     const revealCell = useCallback((index: number, currentBoard: Cell[]): Cell[] => {
         const cell = currentBoard[index];
@@ -114,6 +129,8 @@ const ListViewMinesweeperDemo = () => {
             const cell = board[index];
             if (!cell || cell.isRevealed || cell.isFlagged) return;
 
+            clickSound.play();
+
             if (startTime === null) {
                 setStartTime(Date.now());
             }
@@ -133,7 +150,7 @@ const ListViewMinesweeperDemo = () => {
                 setGameState("won");
             }
         },
-        [board, gameState, startTime, revealCell],
+        [board, gameState, startTime, revealCell, clickSound],
     );
 
     const resetGame = useCallback(() => {
@@ -326,7 +343,7 @@ const ListViewMinesweeperDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Implementation Notes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="Uses GridView with fixed column count to create a game grid. Each cell is a button that reveals on click. The flood-fill algorithm for empty cells uses recursive state updates. Game state tracks win/lose conditions."
+                    label="Uses GridView with fixed column count to create a game grid. Each cell is a button that reveals on click. The flood-fill algorithm for empty cells uses recursive state updates. Game state tracks win/lose conditions. Sound effects use GtkMediaFile with freedesktop system sounds."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}

@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkGrid, GtkLabel, x } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { SYSTEM_SOUNDS, useSound } from "../../hooks/index.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./peg-solitaire.tsx?raw";
 
@@ -96,9 +97,26 @@ const PegSolitaireDemo = () => {
     const [selected, setSelected] = useState<Position | null>(null);
     const [moves, setMoves] = useState(0);
     const [gameOver, setGameOver] = useState(false);
+    const wasGameOver = useRef(false);
+
+    const selectSound = useSound(SYSTEM_SOUNDS.click, { volume: 0.4 });
+    const jumpSound = useSound(SYSTEM_SOUNDS.message, { volume: 0.5 });
+    const victorySound = useSound(SYSTEM_SOUNDS.complete, { volume: 0.8 });
+    const gameOverSound = useSound(SYSTEM_SOUNDS.warning, { volume: 0.6 });
 
     const pegCount = countPegs(board);
     const isWin = pegCount === 1 && board[3]?.[3] === 1;
+
+    useEffect(() => {
+        if (!wasGameOver.current && gameOver) {
+            if (isWin) {
+                victorySound.play();
+            } else {
+                gameOverSound.play();
+            }
+        }
+        wasGameOver.current = gameOver;
+    }, [gameOver, isWin, victorySound, gameOverSound]);
 
     const handleCellClick = useCallback(
         (row: number, col: number) => {
@@ -109,6 +127,7 @@ const PegSolitaireDemo = () => {
             if (cell === 1) {
                 const validMoves = getValidMoves(board, { row, col });
                 if (validMoves.length > 0) {
+                    selectSound.play();
                     setSelected({ row, col });
                 } else if (selected && selected.row === row && selected.col === col) {
                     setSelected(null);
@@ -119,6 +138,8 @@ const PegSolitaireDemo = () => {
             if (cell === 0 && selected) {
                 const jumped = isValidJump(board, selected, { row, col });
                 if (jumped) {
+                    jumpSound.play();
+
                     const newBoard = copyBoard(board);
                     const selectedRow = newBoard[selected.row];
                     const jumpedRow = newBoard[jumped.row];
@@ -137,7 +158,7 @@ const PegSolitaireDemo = () => {
                 }
             }
         },
-        [board, selected, gameOver],
+        [board, selected, gameOver, selectSound, jumpSound],
     );
 
     const handleNewGame = useCallback(() => {
@@ -145,6 +166,7 @@ const PegSolitaireDemo = () => {
         setSelected(null);
         setMoves(0);
         setGameOver(false);
+        wasGameOver.current = false;
     }, []);
 
     const validMoves = selected ? getValidMoves(board, selected) : [];

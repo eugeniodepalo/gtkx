@@ -1,5 +1,5 @@
 import type { Demo } from "../types.js";
-import { aspectFrameDemo } from "./aspectframe.js";
+import { aspectFrameDemo } from "./aspect-frame.js";
 import { fixedDemo } from "./fixed.js";
 import { fixed2Demo } from "./fixed2.js";
 import { flowboxDemo } from "./flowbox.js";
@@ -8,12 +8,12 @@ import { layoutManagerDemo } from "./layoutmanager.js";
 import { layoutManager2Demo } from "./layoutmanager2.js";
 import { overlayDemo } from "./overlay.js";
 import { overlayDecorativeDemo } from "./overlay-decorative.js";
-import { panedDemo } from "./paned.js";
+import { panesDemo } from "./panes.js";
 import { sizegroupDemo } from "./sizegroup.js";
 
 export const layoutDemos: Demo[] = [
     aspectFrameDemo,
-    panedDemo,
+    panesDemo,
     fixedDemo,
     fixed2Demo,
     flowboxDemo,

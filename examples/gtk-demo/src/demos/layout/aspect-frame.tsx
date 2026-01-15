@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkAspectFrame, GtkBox, GtkFrame, GtkImage, GtkLabel, GtkScale, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-import sourceCode from "./aspectframe.tsx?raw";
+import sourceCode from "./aspect-frame.tsx?raw";
 
 const AspectFrameDemo = () => {
     const [ratio, setRatio] = useState(1.5);
@@ -154,7 +154,7 @@ const AspectFrameDemo = () => {
 };
 
 export const aspectFrameDemo: Demo = {
-    id: "aspectframe",
+    id: "aspect-frame",
     title: "Aspect Frame",
     description: "Maintains child aspect ratio within available space.",
     keywords: ["aspect", "ratio", "frame", "resize", "GtkAspectFrame", "proportion", "layout"],

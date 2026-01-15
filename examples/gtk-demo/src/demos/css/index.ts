@@ -6,7 +6,7 @@ import { cssMultiplebgsDemo } from "./css-multiplebgs.js";
 import { cssPixbufsDemo } from "./css-pixbufs.js";
 import { cssShadowsDemo } from "./css-shadows.js";
 import { errorstatesDemo } from "./errorstates.js";
-import { styleClassesDemo } from "./style-classes.js";
+import { themingStyleClassesDemo } from "./theming-style-classes.js";
 
 export const cssDemos: Demo[] = [
     cssBasicsDemo,
@@ -16,5 +16,5 @@ export const cssDemos: Demo[] = [
     cssMultiplebgsDemo,
     cssPixbufsDemo,
     errorstatesDemo,
-    styleClassesDemo,
+    themingStyleClassesDemo,
 ];

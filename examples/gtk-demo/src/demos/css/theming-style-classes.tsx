@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-import sourceCode from "./style-classes.tsx?raw";
+import sourceCode from "./theming-style-classes.tsx?raw";
 
 interface StyleClassInfo {
     name: string;
@@ -50,7 +50,7 @@ const STYLE_CLASSES: StyleClassInfo[] = [
     { name: "activatable", description: "Hover/active states", category: "Special" },
 ];
 
-const StyleClassesDemo = () => {
+const ThemingStyleClassesDemo = () => {
     const [selectedCategory, setSelectedCategory] = useState("Typography");
 
     const categories = [...new Set(STYLE_CLASSES.map((c) => c.category))];
@@ -285,11 +285,11 @@ const StyleClassesDemo = () => {
     );
 };
 
-export const styleClassesDemo: Demo = {
-    id: "style-classes",
+export const themingStyleClassesDemo: Demo = {
+    id: "theming-style-classes",
     title: "Theming/Style Classes",
     description: "Built-in Adwaita styling classes for widgets",
-    keywords: ["css", "classes", "adwaita", "typography", "buttons", "style"],
-    component: StyleClassesDemo,
+    keywords: ["css", "classes", "adwaita", "typography", "buttons", "style", "theming"],
+    component: ThemingStyleClassesDemo,
     sourceCode,
 };

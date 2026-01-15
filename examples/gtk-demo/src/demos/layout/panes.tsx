@@ -2,9 +2,9 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-import sourceCode from "./paned.tsx?raw";
+import sourceCode from "./panes.tsx?raw";
 
-const PanedDemo = () => {
+const PanesDemo = () => {
     const [position, setPosition] = useState(200);
 
     return (
@@ -16,7 +16,7 @@ const PanedDemo = () => {
             marginTop={20}
             marginBottom={20}
         >
-            <GtkLabel label="Paned Container" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="Panes" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Horizontal Paned" cssClasses={["heading"]} halign={Gtk.Align.START} />
@@ -181,12 +181,12 @@ const PanedDemo = () => {
     );
 };
 
-export const panedDemo: Demo = {
-    id: "paned",
-    title: "Paned Widgets",
+export const panesDemo: Demo = {
+    id: "panes",
+    title: "Panes",
     description:
         "The GtkPaned Widget divides its content area into two panes with a divider in between that the user can adjust. A separate child is placed into each pane. GtkPaned widgets can be split horizontally or vertically.",
-    keywords: ["paned", "split", "resize", "divider", "sidebar", "GtkPaned"],
-    component: PanedDemo,
+    keywords: ["paned", "panes", "split", "resize", "divider", "sidebar", "GtkPaned"],
+    component: PanesDemo,
     sourceCode,
 };
