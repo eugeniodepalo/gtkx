@@ -1,3 +1,4 @@
+import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
 import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
@@ -27,6 +28,7 @@ export class List extends VirtualNode<ListProps> {
         this.selectionModel = this.createSelectionModel(props.selectionMode);
         this.selectionModel.setModel(this.store.getModel());
         this.initSelectionHandler(props.onSelectionChanged);
+        this.setSelection(props.selected);
     }
 
     private initSelectionHandler(onSelectionChanged?: (ids: string[]) => void): void {
@@ -147,23 +149,37 @@ export class List extends VirtualNode<ListProps> {
     private applySelection(): void {
         this.selectionScheduled = false;
         const ids = this.pendingSelection;
-        this.pendingSelection = undefined;
 
-        const model = this.store.getModel();
-        const nItems = model.getNItems();
-        const selected = new Gtk.Bitset();
-        const mask = Gtk.Bitset.newRange(0, nItems);
+        batch(() => {
+            const model = this.store.getModel();
+            const nItems = model.getNItems();
 
-        if (ids) {
-            for (const id of ids) {
-                const index = model.find(id);
+            if (nItems === 0 && ids && ids.length > 0) {
+                this.setSelection(ids);
+                return;
+            }
 
-                if (index < nItems) {
-                    selected.add(index);
+            this.pendingSelection = undefined;
+
+            const selected = new Gtk.Bitset();
+            const mask = Gtk.Bitset.newRange(0, nItems);
+
+            if (ids) {
+                for (const id of ids) {
+                    const index = model.find(id);
+
+                    if (index < nItems) {
+                        selected.add(index);
+                    }
                 }
             }
-        }
 
-        this.selectionModel.setSelection(selected, mask);
+            if (this.selectionModel instanceof Gtk.SingleSelection) {
+                const position = selected.getSize() > 0 ? selected.getNth(0) : Gtk.INVALID_LIST_POSITION;
+                batch(() => (this.selectionModel as Gtk.SingleSelection).setSelected(position));
+            } else {
+                batch(() => this.selectionModel.setSelection(selected, mask));
+            }
+        });
     }
 }

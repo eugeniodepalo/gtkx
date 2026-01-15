@@ -13,7 +13,13 @@ const previewStyle = css`
     padding: 12px;
 `;
 
-const gdkRgbaType = GObject.typeFromName("GdkRGBA");
+let gdkRgbaTypeCache: number | null = null;
+const getGdkRgbaType = () => {
+    if (gdkRgbaTypeCache === null) {
+        gdkRgbaTypeCache = GObject.typeFromName("GdkRGBA");
+    }
+    return gdkRgbaTypeCache;
+};
 
 const ClipboardDemo = () => {
     const [textToCopy, setTextToCopy] = useState("Hello from clipboard!");
@@ -38,7 +44,7 @@ const ClipboardDemo = () => {
         const formats = clipboard.getFormats();
         setClipboardHasText(formats.containGtype(GObject.Type.STRING));
         setClipboardHasImage(formats.containMimeType("image/png") || formats.containMimeType("image/jpeg"));
-        setClipboardHasColor(formats.containGtype(gdkRgbaType));
+        setClipboardHasColor(formats.containGtype(getGdkRgbaType()));
     }, [getClipboard]);
 
     useEffect(() => {
@@ -100,7 +106,7 @@ const ClipboardDemo = () => {
         if (!clipboard) return;
 
         try {
-            const value = await clipboard.readValueAsync(gdkRgbaType, 0);
+            const value = await clipboard.readValueAsync(getGdkRgbaType(), 0);
             const boxedPtr = value.getBoxed();
             if (boxedPtr !== null) {
                 const rgba = new Gdk.RGBA({});

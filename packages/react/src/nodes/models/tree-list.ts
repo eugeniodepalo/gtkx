@@ -1,3 +1,4 @@
+import { batch } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -39,6 +40,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         this.selectionModel = this.createSelectionModel(props.selectionMode);
         this.selectionModel.setModel(this.treeListModel);
         this.initSelectionHandler(props.onSelectionChanged);
+        this.setSelection(props.selected);
     }
 
     private initSelectionHandler(onSelectionChanged?: (ids: string[]) => void): void {
@@ -213,24 +215,38 @@ export class TreeList extends VirtualNode<TreeListProps> {
     private applySelection(): void {
         this.selectionScheduled = false;
         const ids = this.pendingSelection;
-        this.pendingSelection = undefined;
 
-        const nItems = this.treeListModel.getNItems();
-        const selected = new Gtk.Bitset();
-        const mask = Gtk.Bitset.newRange(0, nItems);
+        batch(() => {
+            const nItems = this.treeListModel.getNItems();
 
-        if (ids) {
-            for (let i = 0; i < nItems; i++) {
-                const row = this.treeListModel.getRow(i);
-                if (!row) continue;
+            if (nItems === 0 && ids && ids.length > 0) {
+                this.setSelection(ids);
+                return;
+            }
 
-                const item = row.getItem();
-                if (item instanceof Gtk.StringObject && ids.includes(item.getString())) {
-                    selected.add(i);
+            this.pendingSelection = undefined;
+
+            const selected = new Gtk.Bitset();
+            const mask = Gtk.Bitset.newRange(0, nItems);
+
+            if (ids) {
+                for (let i = 0; i < nItems; i++) {
+                    const row = this.treeListModel.getRow(i);
+                    if (!row) continue;
+
+                    const item = row.getItem();
+                    if (item instanceof Gtk.StringObject && ids.includes(item.getString())) {
+                        selected.add(i);
+                    }
                 }
             }
-        }
 
-        this.selectionModel.setSelection(selected, mask);
+            if (this.selectionModel instanceof Gtk.SingleSelection) {
+                const position = selected.getSize() > 0 ? selected.getNth(0) : Gtk.INVALID_LIST_POSITION;
+                batch(() => (this.selectionModel as Gtk.SingleSelection).setSelected(position));
+            } else {
+                batch(() => this.selectionModel.setSelection(selected, mask));
+            }
+        });
     }
 }

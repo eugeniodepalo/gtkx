@@ -1,20 +1,23 @@
 import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type * as Pango from "@gtkx/ffi/pango";
+import type { ReactNode } from "react";
+import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
+import type { TextContentChild, TextContentParent } from "./text-content.js";
+import { TextSegmentNode } from "./text-segment.js";
 import { VirtualNode } from "./virtual.js";
 
 /**
  * Props for the TextTag virtual element.
  *
- * Used to declaratively define and apply text formatting tags to a GtkTextBuffer.
+ * Used to declaratively define and apply text formatting to content within a TextBuffer.
  *
  * @example
  * ```tsx
  * <GtkTextView>
- *     <x.TextBuffer text="Hello bold world">
- *         <x.TextTag id="bold" weight={Pango.Weight.BOLD} start={6} end={10} />
- *         <x.TextTag id="red" foreground="red" start={11} end={16} />
+ *     <x.TextBuffer>
+ *         Hello <x.TextTag id="bold" weight={Pango.Weight.BOLD}>bold</x.TextTag> world
  *     </x.TextBuffer>
  * </GtkTextView>
  * ```
@@ -22,10 +25,6 @@ import { VirtualNode } from "./virtual.js";
 export type TextTagProps = {
     /** Unique identifier for this tag in the tag table */
     id: string;
-    /** Start offset (character index) to apply the tag. If omitted, tag is only defined, not applied. */
-    start?: number;
-    /** End offset (character index) to apply the tag. If omitted, tag is only defined, not applied. */
-    end?: number;
     /** Priority of this tag (higher wins when multiple tags affect same property) */
     priority?: number;
 
@@ -113,23 +112,40 @@ export type TextTagProps = {
     fontFeatures?: string;
     /** Language code (e.g., "en-US") */
     language?: string;
+
+    /** Text content and nested TextTag children */
+    children?: ReactNode;
 };
 
-type TagStyleProps = Omit<TextTagProps, "name" | "start" | "end" | "priority">;
+type TagStyleProps = Omit<TextTagProps, "id" | "priority">;
 
-export class TextTagNode extends VirtualNode<TextTagProps> {
+export class TextTagNode extends VirtualNode<TextTagProps> implements TextContentParent {
     public static override priority = 1;
 
     private buffer?: Gtk.TextBuffer;
     private tag?: Gtk.TextTag;
+    private children: TextContentChild[] = [];
+    private parent?: TextContentParent;
+
+    public bufferOffset = 0;
 
     public static override matches(type: string): boolean {
         return type === "TextTag";
     }
 
+    public setParent(parent: TextContentParent): void {
+        this.parent = parent;
+    }
+
     public setBuffer(buffer: Gtk.TextBuffer): void {
         this.buffer = buffer;
         this.setupTag();
+
+        for (const child of this.children) {
+            if (child instanceof TextTagNode) {
+                child.setBuffer(buffer);
+            }
+        }
     }
 
     private setupTag(): void {
@@ -139,7 +155,6 @@ export class TextTagNode extends VirtualNode<TextTagProps> {
         this.tag = new Gtk.TextTag(this.props.id);
 
         this.applyStyleProps(this.props);
-
         tagTable.add(this.tag);
 
         if (this.props.priority !== undefined) {
@@ -200,26 +215,44 @@ export class TextTagNode extends VirtualNode<TextTagProps> {
         if (props.language !== undefined) this.tag.setLanguage(props.language);
     }
 
+    public getText(): string {
+        let text = "";
+        for (const child of this.children) {
+            text += child.getText();
+        }
+        return text;
+    }
+
+    public getLength(): number {
+        let length = 0;
+        for (const child of this.children) {
+            length += child.getLength();
+        }
+        return length;
+    }
+
+    public getChildren(): TextContentChild[] {
+        return this.children;
+    }
+
     private applyTagToRange(): void {
         const buffer = this.buffer;
         const tag = this.tag;
         if (!buffer || !tag) return;
 
-        const { start, end } = this.props;
-        if (start === undefined || end === undefined) return;
+        const length = this.getLength();
+        if (length === 0) return;
 
         const startIter = new Gtk.TextIter();
         const endIter = new Gtk.TextIter();
 
-        batch(() => {
-            buffer.getIterAtOffset(startIter, start);
-            buffer.getIterAtOffset(endIter, end);
-        });
+        buffer.getIterAtOffset(startIter, this.bufferOffset);
+        buffer.getIterAtOffset(endIter, this.bufferOffset + length);
 
         buffer.applyTag(tag, startIter, endIter);
     }
 
-    private removeTagFromRange(): void {
+    private removeTagFromBuffer(): void {
         const buffer = this.buffer;
         const tag = this.tag;
         if (!buffer || !tag) return;
@@ -227,45 +260,140 @@ export class TextTagNode extends VirtualNode<TextTagProps> {
         const startIter = new Gtk.TextIter();
         const endIter = new Gtk.TextIter();
 
-        batch(() => {
-            buffer.getStartIter(startIter);
-            buffer.getEndIter(endIter);
-        });
+        buffer.getStartIter(startIter);
+        buffer.getEndIter(endIter);
 
         buffer.removeTag(tag, startIter, endIter);
+    }
+
+    public reapplyTag(): void {
+        if (!this.buffer || !this.tag) return;
+        console.log(`[reapplyTag] tag=${this.props.id} offset=${this.bufferOffset} length=${this.getLength()}`);
+        this.removeTagFromBuffer();
+        this.applyTagToRange();
+    }
+
+    private updateChildOffsets(startIndex: number): void {
+        let offset = this.bufferOffset;
+
+        for (let i = 0; i < startIndex; i++) {
+            const child = this.children[i];
+            if (child) offset += child.getLength();
+        }
+
+        for (let i = startIndex; i < this.children.length; i++) {
+            const child = this.children[i];
+            if (child) {
+                child.bufferOffset = offset;
+                offset += child.getLength();
+            }
+        }
+    }
+
+    public onChildInserted(child: TextContentChild): void {
+        const index = this.children.indexOf(child);
+        if (index !== -1) {
+            this.updateChildOffsets(index);
+        }
+
+        this.parent?.onChildInserted(child);
+    }
+
+    public onChildRemoved(child: TextContentChild): void {
+        this.parent?.onChildRemoved(child);
+    }
+
+    public onChildTextChanged(child: TextSegmentNode, oldLength: number, newLength: number): void {
+        const index = this.children.indexOf(child);
+        if (index !== -1) {
+            this.updateChildOffsets(index + 1);
+        }
+
+        this.parent?.onChildTextChanged(child, oldLength, newLength);
+    }
+
+    public override appendChild(child: Node): void {
+        if (this.isTextContentChild(child)) {
+            const index = this.children.length;
+            this.children.push(child);
+            this.setChildParent(child);
+
+            if (child instanceof TextTagNode && this.buffer) {
+                child.setBuffer(this.buffer);
+            }
+
+            this.updateChildOffsets(index);
+            this.parent?.onChildInserted(child);
+            return;
+        }
+        super.appendChild(child);
+    }
+
+    public override removeChild(child: Node): void {
+        const index = this.children.indexOf(child as TextContentChild);
+        if (index !== -1) {
+            this.children.splice(index, 1);
+            this.updateChildOffsets(index);
+            this.parent?.onChildRemoved(child as TextContentChild);
+            return;
+        }
+        super.removeChild(child);
+    }
+
+    public override insertBefore(child: Node, before: Node): void {
+        if (this.isTextContentChild(child)) {
+            const beforeIndex = this.children.indexOf(before as TextContentChild);
+            const insertIndex = beforeIndex !== -1 ? beforeIndex : this.children.length;
+
+            this.children.splice(insertIndex, 0, child);
+            this.setChildParent(child);
+
+            if (child instanceof TextTagNode && this.buffer) {
+                child.setBuffer(this.buffer);
+            }
+
+            this.updateChildOffsets(insertIndex);
+            this.parent?.onChildInserted(child);
+            return;
+        }
+        super.insertBefore(child, before);
+    }
+
+    private isTextContentChild(child: Node): child is TextContentChild {
+        return child instanceof TextSegmentNode || child instanceof TextTagNode || child.typeName === "TextAnchor";
+    }
+
+    private setChildParent(child: TextContentChild): void {
+        if (child instanceof TextSegmentNode || child instanceof TextTagNode) {
+            child.setParent(this);
+        }
     }
 
     public override updateProps(oldProps: TextTagProps | null, newProps: TextTagProps): void {
         super.updateProps(oldProps, newProps);
 
-        if (!this.buffer || !this.tag) return;
-
-        if (oldProps?.id !== newProps.id) {
+        if (oldProps && oldProps.id !== newProps.id) {
             throw new Error("TextTag id cannot be changed after creation");
         }
 
-        this.applyStyleProps(newProps);
+        if (this.tag) {
+            this.applyStyleProps(newProps);
 
-        if (newProps.priority !== undefined) {
-            this.tag.setPriority(newProps.priority);
-        }
-
-        const rangeChanged = oldProps?.start !== newProps.start || oldProps?.end !== newProps.end;
-
-        if (rangeChanged) {
-            this.removeTagFromRange();
-            this.applyTagToRange();
+            if (newProps.priority !== undefined) {
+                this.tag.setPriority(newProps.priority);
+            }
         }
     }
 
     public override unmount(): void {
         if (this.buffer && this.tag) {
-            this.removeTagFromRange();
+            this.removeTagFromBuffer();
             const tagTable = this.buffer.getTagTable();
             tagTable.remove(this.tag);
         }
         this.tag = undefined;
         this.buffer = undefined;
+        this.children = [];
         super.unmount();
     }
 }

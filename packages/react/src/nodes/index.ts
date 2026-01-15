@@ -40,6 +40,8 @@ import "./stack-page.js";
 import "./stack.js";
 import "./text-anchor.js";
 import "./text-buffer.js";
+import "./text-content.js";
+import "./text-segment.js";
 import "./text-tag.js";
 import "./text-view.js";
 import "./toggle.js";

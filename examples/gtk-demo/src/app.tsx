@@ -23,7 +23,7 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
-import { DemoProvider, useDemo } from "./context/demo-context.js";
+import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
 
 const InfoTab = () => {
@@ -37,9 +37,11 @@ const InfoTab = () => {
         );
     }
 
+    const { displayTitle } = parseTitle(currentDemo.title);
+
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} marginTop={20} marginStart={20} marginEnd={20} marginBottom={20}>
-            <GtkLabel label={currentDemo.title} cssClasses={["title-1"]} halign={Gtk.Align.START} />
+            <GtkLabel label={displayTitle} cssClasses={["title-1"]} halign={Gtk.Align.START} />
             <GtkLabel
                 label={currentDemo.description}
                 cssClasses={["dim-label"]}
@@ -69,9 +71,10 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     if (!currentDemo?.component || !activeWindow) return null;
 
     const DemoComponent = currentDemo.component;
+    const { displayTitle } = parseTitle(currentDemo.title);
 
     return createPortal(
-        <GtkWindow title={currentDemo.title} defaultWidth={800} defaultHeight={600} onClose={onClose}>
+        <GtkWindow title={displayTitle} defaultWidth={800} defaultHeight={600} onClose={onClose}>
             <GtkScrolledWindow vexpand hexpand>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -261,7 +264,7 @@ const AppContent = () => {
 
 const MainWindow = () => {
     const { currentDemo } = useDemo();
-    const windowTitle = currentDemo?.title ?? "GTK Demo";
+    const windowTitle = currentDemo ? parseTitle(currentDemo.title).displayTitle : "GTK Demo";
 
     return (
         <GtkApplicationWindow title={windowTitle} defaultWidth={800} defaultHeight={600} onClose={quit}>

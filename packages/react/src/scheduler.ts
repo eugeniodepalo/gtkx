@@ -5,7 +5,7 @@ export enum CommitPriority {
     HIGH = 0,
     /** Runs after HIGH priority. Used for widget additions. */
     NORMAL = 1,
-    /** Runs last. Used for model sync operations that need all data to be added first. */
+    /** Runs after NORMAL. Used for model sync operations that need all data to be added first. */
     LOW = 2,
 }
 
@@ -27,8 +27,8 @@ export const scheduleAfterCommit = (callback: Callback, priority = CommitPriorit
 
 export const flushAfterCommit = (): void => {
     for (const priority of priorities) {
-        const callbacks = queues[priority].splice(0);
-        for (const callback of callbacks) {
+        while (queues[priority].length > 0) {
+            const callback = queues[priority].shift()!;
             callback();
         }
     }

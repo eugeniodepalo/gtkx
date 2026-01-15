@@ -850,31 +850,31 @@ export const x = {
     /**
      * Declarative text buffer for a GtkTextView.
      *
+     * Text content is provided as children, with optional TextTag elements for formatting.
+     *
      * @example
      * ```tsx
      * <GtkTextView>
-     *   <x.TextBuffer
-     *     text="Hello!"
-     *     enableUndo
-     *     onTextChanged={(text) => console.log(text)}
-     *   />
+     *   <x.TextBuffer enableUndo onTextChanged={(text) => console.log(text)}>
+     *     Hello <x.TextTag id="bold" weight={Pango.Weight.BOLD}>world</x.TextTag>!
+     *   </x.TextBuffer>
      * </GtkTextView>
      * ```
      */
     TextBuffer: "TextBuffer" as const,
 
     /**
-     * Declarative text tag for styling ranges of text in a TextBuffer.
+     * Declarative text tag for styling text content.
      *
-     * Define a tag with styling properties and optionally apply it to a range
-     * by specifying `start` and `end` offsets.
+     * Wrap text content with a TextTag to apply styling. Tags can be nested.
      *
      * @example
      * ```tsx
      * <GtkTextView>
-     *   <x.TextBuffer text="Hello bold world">
-     *     <x.TextTag id="bold" weight={Pango.Weight.BOLD} start={6} end={10} />
-     *     <x.TextTag id="red" foreground="red" start={11} end={16} />
+     *   <x.TextBuffer>
+     *     Normal <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
+     *       bold <x.TextTag id="red" foreground="red">and red</x.TextTag>
+     *     </x.TextTag> text.
      *   </x.TextBuffer>
      * </GtkTextView>
      * ```
@@ -882,21 +882,17 @@ export const x = {
     TextTag: "TextTag" as const,
 
     /**
-     * Declarative anchor for embedding widgets in a TextBuffer.
+     * Declarative anchor for embedding widgets in text flow.
      *
-     * Use the Unicode object replacement character (\uFFFC) in your text as placeholders,
-     * then reference them by index.
+     * The anchor is placed at the current position in the text.
      *
      * @example
      * ```tsx
      * <GtkTextView>
-     *   <x.TextBuffer text="Click here: \uFFFC and here: \uFFFC">
-     *     <x.TextAnchor index={0}>
-     *       <GtkButton label="First" />
-     *     </x.TextAnchor>
-     *     <x.TextAnchor index={1}>
-     *       <GtkButton label="Second" />
-     *     </x.TextAnchor>
+     *   <x.TextBuffer>
+     *     Click here: <x.TextAnchor>
+     *       <GtkButton label="Click me" />
+     *     </x.TextAnchor> to continue.
      *   </x.TextBuffer>
      * </GtkTextView>
      * ```

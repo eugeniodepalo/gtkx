@@ -143,3 +143,42 @@ export interface GestureDragProps {
      */
     onGestureDragEnd?: (offsetX: number, offsetY: number) => void;
 }
+
+/**
+ * Props for GestureStylus controller.
+ *
+ * Enables handling tablet/stylus input with pressure sensitivity and tilt detection.
+ * Use this for drawing applications that need tablet support.
+ */
+export interface GestureStylusProps {
+    /**
+     * Called when the stylus touches the surface.
+     * @param x - X coordinate
+     * @param y - Y coordinate
+     * @param pressure - Pressure value (0.0 to 1.0)
+     * @param tiltX - Tilt along X axis in degrees
+     * @param tiltY - Tilt along Y axis in degrees
+     */
+    onStylusDown?: (x: number, y: number, pressure: number, tiltX: number, tiltY: number) => void;
+    /**
+     * Called when the stylus moves while touching the surface.
+     * @param x - X coordinate
+     * @param y - Y coordinate
+     * @param pressure - Pressure value (0.0 to 1.0)
+     * @param tiltX - Tilt along X axis in degrees
+     * @param tiltY - Tilt along Y axis in degrees
+     */
+    onStylusMotion?: (x: number, y: number, pressure: number, tiltX: number, tiltY: number) => void;
+    /**
+     * Called when the stylus is lifted from the surface.
+     * @param x - X coordinate
+     * @param y - Y coordinate
+     */
+    onStylusUp?: (x: number, y: number) => void;
+    /**
+     * Called when the stylus enters proximity of the surface (hovering).
+     * @param x - X coordinate
+     * @param y - Y coordinate
+     */
+    onStylusProximity?: (x: number, y: number) => void;
+}

@@ -21,7 +21,7 @@ export const useDemo = () => {
     return context;
 };
 
-function parseTitle(title: string): { category: string | null; displayTitle: string } {
+export function parseTitle(title: string): { category: string | null; displayTitle: string } {
     const spacedSlash = title.indexOf(" / ");
     if (spacedSlash !== -1) {
         return {

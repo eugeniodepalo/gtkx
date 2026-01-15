@@ -154,26 +154,24 @@ export class TreeStore {
     private sync(): void {
         this.shouldSync = false;
 
-        batch(() => {
-            const oldRootLength = this.rootIds.length;
-            this.rootModel.splice(0, oldRootLength, this.newRootIds.length > 0 ? this.newRootIds : undefined);
-            this.rootIds = [...this.newRootIds];
+        const oldRootLength = this.rootIds.length;
+        batch(() => this.rootModel.splice(0, oldRootLength, this.newRootIds.length > 0 ? this.newRootIds : undefined));
+        this.rootIds = [...this.newRootIds];
 
-            for (const [parentId, newChildIds] of this.newChildren) {
-                const model = this.childModels.get(parentId);
-                if (model) {
-                    const oldLength = model.getNItems();
-                    model.splice(0, oldLength, newChildIds.length > 0 ? newChildIds : undefined);
-                }
+        for (const [parentId, newChildIds] of this.newChildren) {
+            const model = this.childModels.get(parentId);
+            if (model) {
+                const oldLength = model.getNItems();
+                batch(() => model.splice(0, oldLength, newChildIds.length > 0 ? newChildIds : undefined));
             }
+        }
 
-            for (const [parentId] of this.children) {
-                if (!this.newChildren.has(parentId)) {
-                    this.childModels.delete(parentId);
-                }
+        for (const [parentId] of this.children) {
+            if (!this.newChildren.has(parentId)) {
+                this.childModels.delete(parentId);
             }
+        }
 
-            this.children = new Map(this.newChildren);
-        });
+        this.children = new Map(this.newChildren);
     }
 }

@@ -5,31 +5,26 @@ import { registerNodeClass } from "../registry.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-const OBJECT_REPLACEMENT_CHAR = "\uFFFC";
+const PLACEHOLDER = "\uFFFC";
 
 /**
  * Props for the TextAnchor virtual element.
  *
- * Used to declaratively embed widgets at placeholder positions in a TextBuffer.
- * Use the Unicode object replacement character (\uFFFC) in your text as placeholders.
+ * Used to declaratively embed widgets within text content in a TextBuffer.
+ * The anchor is placed at the current position in the text flow.
  *
  * @example
  * ```tsx
  * <GtkTextView>
- *     <x.TextBuffer text="Click here: \uFFFC and here: \uFFFC">
- *         <x.TextAnchor index={0}>
- *             <GtkButton label="First" />
- *         </x.TextAnchor>
- *         <x.TextAnchor index={1}>
- *             <GtkButton label="Second" />
- *         </x.TextAnchor>
+ *     <x.TextBuffer>
+ *         Click here: <x.TextAnchor>
+ *             <GtkButton label="Click me" />
+ *         </x.TextAnchor> to continue.
  *     </x.TextBuffer>
  * </GtkTextView>
  * ```
  */
 export type TextAnchorProps = {
-    /** Index of the \uFFFC placeholder character to anchor to (0-based) */
-    index: number;
     /** The widget to embed at this anchor position */
     children?: ReactNode;
 };
@@ -40,10 +35,20 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
     private textView?: Gtk.TextView;
     private buffer?: Gtk.TextBuffer;
     private anchor?: Gtk.TextChildAnchor;
-    private child?: Gtk.Widget;
+    private widgetChild?: WidgetNode;
+
+    public bufferOffset = 0;
 
     public static override matches(type: string): boolean {
         return type === "TextAnchor";
+    }
+
+    public getLength(): number {
+        return 1;
+    }
+
+    public getText(): string {
+        return PLACEHOLDER;
     }
 
     public setTextViewAndBuffer(textView: Gtk.TextView, buffer: Gtk.TextBuffer): void {
@@ -53,47 +58,16 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
     }
 
     private setupAnchor(): void {
-        if (!this.textView || !this.buffer || !this.child) return;
-
-        const text = this.getBufferText();
-        const position = this.findPlaceholderPosition(text, this.props.index);
-
-        if (position === -1) {
-            console.warn(`TextAnchor: Could not find placeholder at index ${this.props.index}`);
-            return;
-        }
+        if (!this.textView || !this.buffer) return;
 
         const iter = new Gtk.TextIter();
-        this.buffer.getIterAtOffset(iter, position);
+        this.buffer.getIterAtOffset(iter, this.bufferOffset);
 
         this.anchor = this.buffer.createChildAnchor(iter);
-        if (this.anchor) {
-            this.textView.addChildAtAnchor(this.child, this.anchor);
+
+        if (this.widgetChild?.container && this.anchor) {
+            this.textView.addChildAtAnchor(this.widgetChild.container, this.anchor);
         }
-    }
-
-    private getBufferText(): string {
-        if (!this.buffer) return "";
-
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-        this.buffer.getStartIter(startIter);
-        this.buffer.getEndIter(endIter);
-
-        return this.buffer.getText(startIter, endIter, true) ?? "";
-    }
-
-    private findPlaceholderPosition(text: string, index: number): number {
-        let count = 0;
-        for (let i = 0; i < text.length; i++) {
-            if (text[i] === OBJECT_REPLACEMENT_CHAR) {
-                if (count === index) {
-                    return i;
-                }
-                count++;
-            }
-        }
-        return -1;
     }
 
     public override appendChild(child: Node): void {
@@ -101,20 +75,22 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
             throw new Error(`TextAnchor can only contain widget children, got '${child.typeName}'`);
         }
 
-        this.child = child.container;
+        this.widgetChild = child;
 
-        if (this.textView && this.buffer) {
-            this.setupAnchor();
+        if (this.textView && this.anchor && child.container) {
+            this.textView.addChildAtAnchor(child.container, this.anchor);
         }
     }
 
-    public override removeChild(): void {
-        this.child = undefined;
+    public override removeChild(child: Node): void {
+        if (child === this.widgetChild) {
+            this.widgetChild = undefined;
+        }
     }
 
     public override unmount(): void {
         this.anchor = undefined;
-        this.child = undefined;
+        this.widgetChild = undefined;
         this.buffer = undefined;
         this.textView = undefined;
         super.unmount();

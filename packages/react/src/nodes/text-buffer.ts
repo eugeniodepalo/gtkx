@@ -5,6 +5,8 @@ import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { signalStore } from "./internal/signal-store.js";
 import { TextAnchorNode } from "./text-anchor.js";
+import type { TextContentChild, TextContentParent } from "./text-content.js";
+import { TextSegmentNode } from "./text-segment.js";
 import { TextTagNode } from "./text-tag.js";
 import { VirtualNode } from "./virtual.js";
 
@@ -12,22 +14,18 @@ import { VirtualNode } from "./virtual.js";
  * Props for the TextBuffer virtual element.
  *
  * Used to declaratively configure the text buffer for a GtkTextView.
- * For GtkSourceView with syntax highlighting, use {@link SourceBufferProps} instead.
+ * Text content is provided as children, with optional TextTag elements for formatting.
  *
  * @example
  * ```tsx
  * <GtkTextView>
- *     <x.TextBuffer
- *         text="Hello, World!"
- *         enableUndo
- *         onTextChanged={(text) => console.log("Text:", text)}
- *     />
+ *     <x.TextBuffer enableUndo onTextChanged={(text) => console.log(text)}>
+ *         Hello <x.TextTag id="bold" weight={Pango.Weight.BOLD}>world</x.TextTag>!
+ *     </x.TextBuffer>
  * </GtkTextView>
  * ```
  */
 export type TextBufferProps = {
-    /** Text content */
-    text?: string;
     /** Whether to enable undo/redo */
     enableUndo?: boolean;
     /** Callback when the text content changes */
@@ -36,17 +34,16 @@ export type TextBufferProps = {
     onCanUndoChanged?: (canUndo: boolean) => void;
     /** Callback when can-redo state changes */
     onCanRedoChanged?: (canRedo: boolean) => void;
-    /** TextTag children for declarative text formatting */
+    /** Text content and TextTag children */
     children?: ReactNode;
 };
 
-export class TextBufferNode extends VirtualNode<TextBufferProps> {
+export class TextBufferNode extends VirtualNode<TextBufferProps> implements TextContentParent {
     public static override priority = 1;
 
     private textView?: Gtk.TextView;
     private buffer?: Gtk.TextBuffer;
-    private tagChildren: TextTagNode[] = [];
-    private anchorChildren: TextAnchorNode[] = [];
+    private children: TextContentChild[] = [];
 
     public static override matches(type: string): boolean {
         return type === "TextBuffer";
@@ -67,33 +64,189 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> {
             this.buffer.setEnableUndo(this.props.enableUndo);
         }
 
-        if (this.props.text !== undefined) {
-            this.buffer.setText(this.props.text, -1);
-        }
-
         this.updateSignalHandlers();
+        this.initializeChildren();
+    }
 
-        for (const tagChild of this.tagChildren) {
-            tagChild.setBuffer(this.buffer);
-        }
+    private initializeChildren(): void {
+        if (!this.buffer) return;
 
-        for (const anchorChild of this.anchorChildren) {
-            anchorChild.setTextViewAndBuffer(this.textView, this.buffer);
+        let offset = 0;
+        for (const child of this.children) {
+            child.bufferOffset = offset;
+
+            if (child instanceof TextSegmentNode) {
+                this.insertTextAtOffset(child.getText(), offset);
+                offset += child.getLength();
+            } else if (child instanceof TextTagNode) {
+                const text = child.getText();
+                this.insertTextAtOffset(text, offset);
+                child.setBuffer(this.buffer);
+                offset += text.length;
+            } else if (child instanceof TextAnchorNode && this.textView) {
+                child.setTextViewAndBuffer(this.textView, this.buffer);
+                offset += child.getLength();
+            }
         }
     }
 
-    public override appendChild(child: Node): void {
-        if (child instanceof TextTagNode) {
-            this.tagChildren.push(child);
-            if (this.buffer) {
-                child.setBuffer(this.buffer);
-            }
-            return;
+    private insertTextAtOffset(text: string, offset: number): void {
+        if (!this.buffer || text.length === 0) return;
+
+        const iter = new Gtk.TextIter();
+        this.buffer.getIterAtOffset(iter, offset);
+        this.buffer.insert(iter, text, text.length);
+    }
+
+    private deleteTextAtRange(start: number, end: number): void {
+        const buffer = this.buffer;
+        if (!buffer || start >= end) return;
+
+        const startIter = new Gtk.TextIter();
+        const endIter = new Gtk.TextIter();
+
+        batch(() => {
+            buffer.getIterAtOffset(startIter, start);
+            buffer.getIterAtOffset(endIter, end);
+        });
+
+        buffer.delete(startIter, endIter);
+    }
+
+    private updateChildOffsets(startIndex: number): void {
+        let offset = 0;
+
+        for (let i = 0; i < startIndex; i++) {
+            const child = this.children[i];
+            if (child) offset += child.getLength();
         }
-        if (child instanceof TextAnchorNode) {
-            this.anchorChildren.push(child);
-            if (this.textView && this.buffer) {
-                child.setTextViewAndBuffer(this.textView, this.buffer);
+
+        for (let i = startIndex; i < this.children.length; i++) {
+            const child = this.children[i];
+            if (child) {
+                child.bufferOffset = offset;
+                offset += child.getLength();
+            }
+        }
+    }
+
+    private reapplyAllTagsRecursive(children: TextContentChild[]): void {
+        for (const child of children) {
+            if (child instanceof TextTagNode) {
+                child.reapplyTag();
+                this.reapplyAllTagsRecursive(child.getChildren());
+            }
+        }
+    }
+
+    private reapplyTagsFromOffset(fromOffset: number): void {
+        console.log(`[reapplyTagsFromOffset] fromOffset=${fromOffset} children=${this.children.length}`);
+        for (const child of this.children) {
+            if (child instanceof TextTagNode) {
+                console.log(`[reapplyTagsFromOffset] checking tag=${child.props?.id} offset=${child.bufferOffset} length=${child.getLength()}`);
+                if (child.bufferOffset >= fromOffset) {
+                    child.reapplyTag();
+                    this.reapplyAllTagsRecursive(child.getChildren());
+                } else if (child.bufferOffset + child.getLength() > fromOffset) {
+                    child.reapplyTag();
+                    this.reapplyAllTagsRecursive(child.getChildren());
+                }
+            }
+        }
+    }
+
+    private findDirectChildContaining(offset: number): number {
+        for (let i = 0; i < this.children.length; i++) {
+            const child = this.children[i];
+            if (child) {
+                const start = child.bufferOffset;
+                const end = start + child.getLength();
+                if (offset >= start && offset <= end) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    public onChildInserted(child: TextContentChild): void {
+        if (!this.buffer) return;
+
+        const text = child.getText();
+        if (text.length > 0) {
+            this.insertTextAtOffset(text, child.bufferOffset);
+        }
+
+        const containingIndex = this.findDirectChildContaining(child.bufferOffset);
+        if (containingIndex !== -1) {
+            this.updateChildOffsets(containingIndex + 1);
+        }
+
+        this.reapplyTagsFromOffset(child.bufferOffset);
+    }
+
+    public onChildRemoved(child: TextContentChild): void {
+        if (!this.buffer) return;
+
+        const offset = child.bufferOffset;
+        const length = child.getLength();
+
+        if (length > 0) {
+            this.deleteTextAtRange(offset, offset + length);
+        }
+
+        const containingIndex = this.findDirectChildContaining(offset);
+        if (containingIndex !== -1) {
+            this.updateChildOffsets(containingIndex + 1);
+        }
+
+        this.reapplyTagsFromOffset(offset);
+    }
+
+    public onChildTextChanged(child: TextSegmentNode, oldLength: number, _newLength: number): void {
+        if (!this.buffer) return;
+
+        const offset = child.bufferOffset;
+        console.log(`[onChildTextChanged] offset=${offset} oldLength=${oldLength} newText=${child.getText()}`);
+
+        this.deleteTextAtRange(offset, offset + oldLength);
+        this.insertTextAtOffset(child.getText(), offset);
+
+        const containingIndex = this.findDirectChildContaining(offset);
+        console.log(`[onChildTextChanged] containingIndex=${containingIndex}`);
+        if (containingIndex !== -1) {
+            this.updateChildOffsets(containingIndex + 1);
+        }
+
+        this.reapplyTagsFromOffset(offset);
+    }
+
+    private getTotalLength(): number {
+        let length = 0;
+        for (const child of this.children) {
+            length += child.getLength();
+        }
+        return length;
+    }
+
+    public override appendChild(child: Node): void {
+        if (this.isTextContentChild(child)) {
+            const offset = this.getTotalLength();
+
+            this.children.push(child);
+            (child as TextContentChild).bufferOffset = offset;
+            this.setChildParent(child);
+
+            if (this.buffer) {
+                if (child instanceof TextSegmentNode) {
+                    this.insertTextAtOffset(child.getText(), offset);
+                } else if (child instanceof TextTagNode) {
+                    const text = child.getText();
+                    this.insertTextAtOffset(text, offset);
+                    child.setBuffer(this.buffer);
+                } else if (child instanceof TextAnchorNode && this.textView) {
+                    child.setTextViewAndBuffer(this.textView, this.buffer);
+                }
             }
             return;
         }
@@ -101,60 +254,92 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> {
     }
 
     public override removeChild(child: Node): void {
-        if (child instanceof TextTagNode) {
-            const index = this.tagChildren.indexOf(child);
-            if (index !== -1) {
-                this.tagChildren.splice(index, 1);
+        const index = this.children.indexOf(child as TextContentChild);
+        if (index !== -1) {
+            const offset = (child as TextContentChild).bufferOffset;
+            const length = (child as TextContentChild).getLength();
+
+            this.children.splice(index, 1);
+
+            if (this.buffer && length > 0) {
+                this.deleteTextAtRange(offset, offset + length);
             }
-            return;
-        }
-        if (child instanceof TextAnchorNode) {
-            const index = this.anchorChildren.indexOf(child);
-            if (index !== -1) {
-                this.anchorChildren.splice(index, 1);
-            }
+
+            this.updateChildOffsets(index);
+            this.reapplyTagsFromOffset(offset);
             return;
         }
         super.removeChild(child);
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof TextTagNode) {
-            const index = before instanceof TextTagNode ? this.tagChildren.indexOf(before) : -1;
-            if (index !== -1) {
-                this.tagChildren.splice(index, 0, child);
-            } else {
-                this.tagChildren.push(child);
+        if (this.isTextContentChild(child)) {
+            const existingIndex = this.children.indexOf(child);
+            if (existingIndex !== -1) {
+                const oldOffset = (child as TextContentChild).bufferOffset;
+                const oldLength = (child as TextContentChild).getLength();
+
+                this.children.splice(existingIndex, 1);
+
+                if (this.buffer && oldLength > 0) {
+                    this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
+                }
             }
+
+            let beforeIndex = this.children.indexOf(before as TextContentChild);
+            const insertIndex = beforeIndex !== -1 ? beforeIndex : this.children.length;
+
+            let offset = 0;
+            for (let i = 0; i < insertIndex; i++) {
+                const c = this.children[i];
+                if (c) offset += c.getLength();
+            }
+
+            this.children.splice(insertIndex, 0, child);
+            (child as TextContentChild).bufferOffset = offset;
+            this.setChildParent(child);
+
             if (this.buffer) {
-                child.setBuffer(this.buffer);
+                if (child instanceof TextSegmentNode) {
+                    this.insertTextAtOffset(child.getText(), offset);
+                } else if (child instanceof TextTagNode) {
+                    const text = child.getText();
+                    this.insertTextAtOffset(text, offset);
+                    child.setBuffer(this.buffer);
+                } else if (child instanceof TextAnchorNode && this.textView) {
+                    child.setTextViewAndBuffer(this.textView, this.buffer);
+                }
             }
-            return;
-        }
-        if (child instanceof TextAnchorNode) {
-            const index = before instanceof TextAnchorNode ? this.anchorChildren.indexOf(before) : -1;
-            if (index !== -1) {
-                this.anchorChildren.splice(index, 0, child);
-            } else {
-                this.anchorChildren.push(child);
-            }
-            if (this.textView && this.buffer) {
-                child.setTextViewAndBuffer(this.textView, this.buffer);
-            }
+
+            this.updateChildOffsets(0);
+            this.reapplyTagsFromOffset(0);
             return;
         }
         super.insertBefore(child, before);
     }
 
+    private isTextContentChild(child: Node): child is TextContentChild {
+        return child instanceof TextSegmentNode || child instanceof TextTagNode || child instanceof TextAnchorNode;
+    }
+
+    private setChildParent(child: TextContentChild): void {
+        if (child instanceof TextSegmentNode || child instanceof TextTagNode) {
+            child.setParent(this);
+        }
+    }
+
     private getBufferText(): string {
         const buffer = this.buffer;
         if (!buffer) return "";
+
         const startIter = new Gtk.TextIter();
         const endIter = new Gtk.TextIter();
+
         batch(() => {
             buffer.getStartIter(startIter);
             buffer.getEndIter(endIter);
         });
+
         return buffer.getText(startIter, endIter, true);
     }
 
@@ -186,34 +371,23 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> {
 
         if (!this.buffer) return;
 
-        if (!oldProps || oldProps.enableUndo !== newProps.enableUndo) {
+        if (oldProps?.enableUndo !== newProps.enableUndo) {
             if (newProps.enableUndo !== undefined) {
                 this.buffer.setEnableUndo(newProps.enableUndo);
             }
         }
 
-        if (!oldProps || oldProps.text !== newProps.text) {
-            if (newProps.text !== undefined) {
-                const currentText = this.getBufferText();
-                if (currentText !== newProps.text) {
-                    this.buffer.setText(newProps.text, -1);
-                }
-            }
-        }
-
         if (
-            !oldProps ||
-            oldProps.onTextChanged !== newProps.onTextChanged ||
-            oldProps.onCanUndoChanged !== newProps.onCanUndoChanged ||
-            oldProps.onCanRedoChanged !== newProps.onCanRedoChanged
+            oldProps?.onTextChanged !== newProps.onTextChanged ||
+            oldProps?.onCanUndoChanged !== newProps.onCanUndoChanged ||
+            oldProps?.onCanRedoChanged !== newProps.onCanRedoChanged
         ) {
             this.updateSignalHandlers();
         }
     }
 
     public override unmount(): void {
-        this.tagChildren = [];
-        this.anchorChildren = [];
+        this.children = [];
         this.buffer = undefined;
         this.textView = undefined;
         super.unmount();

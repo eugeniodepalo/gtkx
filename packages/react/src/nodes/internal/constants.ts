@@ -21,4 +21,8 @@ export const EVENT_CONTROLLER_PROPS = new Set([
     "onGestureDragBegin",
     "onGestureDragUpdate",
     "onGestureDragEnd",
+    "onStylusDown",
+    "onStylusMotion",
+    "onStylusUp",
+    "onStylusProximity",
 ]);

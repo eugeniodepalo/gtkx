@@ -354,6 +354,32 @@ describe("render - TreeListView", () => {
                     </x.TreeListView>
                 </ScrollWrapper>,
             );
+
+            await tick();
+
+            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
+            const selection = selectionModel.getSelection();
+            expect(selection.getSize()).toBe(1);
+            expect(selection.getNth(0)).toBe(1);
+        });
+
+        it("sets initial selection on first render", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            await render(
+                <ScrollWrapper>
+                    <x.TreeListView ref={ref} renderItem={() => "Item"} selected={["first"]}>
+                        <x.TreeListItem id="first" value={{ name: "First" }} />
+                        <x.TreeListItem id="second" value={{ name: "Second" }} />
+                        <x.TreeListItem id="third" value={{ name: "Third" }} />
+                    </x.TreeListView>
+                </ScrollWrapper>,
+            );
+
+            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
+            const selection = selectionModel.getSelection();
+            expect(selection.getSize()).toBe(1);
+            expect(selection.getNth(0)).toBe(0);
         });
 
         it("calls onSelectionChanged when selection changes", async () => {

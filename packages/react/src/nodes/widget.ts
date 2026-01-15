@@ -1,4 +1,4 @@
-import { batch, isObjectEqual, NativeObject } from "@gtkx/ffi";
+import { batch, createRef, isObjectEqual, NativeObject } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -38,6 +38,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     private dragSourceController?: Gtk.DragSource;
     private dropTargetController?: Gtk.DropTarget;
     private gestureDragController?: Gtk.GestureDrag;
+    private gestureStylusController?: Gtk.GestureStylus;
     private adjustmentChild?: AdjustmentNode;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
@@ -366,6 +367,23 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 signalStore.set(this, gestureDrag, signalName, wrappedHandler);
                 break;
             }
+            case "onStylusDown":
+            case "onStylusMotion":
+            case "onStylusUp":
+            case "onStylusProximity": {
+                const gestureStylus = this.ensureGestureStylus();
+                const signalName =
+                    propName === "onStylusDown"
+                        ? "down"
+                        : propName === "onStylusMotion"
+                          ? "motion"
+                          : propName === "onStylusUp"
+                            ? "up"
+                            : "proximity";
+                const stylusHandler = this.createStylusHandler(propName, handlerOrValue as SignalHandler | null);
+                signalStore.set(this, gestureStylus, signalName, stylusHandler);
+                break;
+            }
         }
     }
 
@@ -392,6 +410,39 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             this.container.addController(this.gestureDragController);
         }
         return this.gestureDragController;
+    }
+
+    private ensureGestureStylus(): Gtk.GestureStylus {
+        if (!this.gestureStylusController) {
+            this.gestureStylusController = new Gtk.GestureStylus();
+            this.gestureStylusController.setStylusOnly(false);
+            this.container.addController(this.gestureStylusController);
+        }
+        return this.gestureStylusController;
+    }
+
+    private createStylusHandler(propName: string, handler: SignalHandler | null): SignalHandler | undefined {
+        if (!handler) return undefined;
+
+        const needsAxisData = propName === "onStylusDown" || propName === "onStylusMotion";
+
+        if (needsAxisData) {
+            return (gesture: Gtk.GestureStylus, x: number, y: number) => {
+                const pressureRef = createRef(0);
+                const tiltXRef = createRef(0);
+                const tiltYRef = createRef(0);
+
+                gesture.getAxis(Gdk.AxisUse.PRESSURE, pressureRef);
+                gesture.getAxis(Gdk.AxisUse.XTILT, tiltXRef);
+                gesture.getAxis(Gdk.AxisUse.YTILT, tiltYRef);
+
+                handler(x, y, pressureRef.value || 0.5, tiltXRef.value || 0, tiltYRef.value || 0);
+            };
+        }
+
+        return (_gesture: Gtk.GestureStylus, x: number, y: number) => {
+            handler(x, y);
+        };
     }
 
     private updateNotifyHandler(handler: SignalHandler | null): void {

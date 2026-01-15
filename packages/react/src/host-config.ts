@@ -22,7 +22,9 @@ type TextInstance = Node;
 type SuspenseInstance = never;
 type HydratableInstance = never;
 type PublicInstance = Gtk.Widget | Gtk.Application;
-type HostContext = Record<string, never>;
+type HostContext = {
+    insideTextBuffer?: boolean;
+};
 type ChildSet = never;
 type TimeoutHandle = number;
 type NoTimeout = -1;
@@ -76,12 +78,26 @@ export function createHostConfig(): HostConfig {
         isPrimaryRenderer: true,
         noTimeout: -1,
         getRootHostContext: () => ({}),
-        getChildHostContext: (parentHostContext) => parentHostContext,
+        getChildHostContext: (parentHostContext, type) => {
+            if (type === "TextBuffer" || type === "TextTag") {
+                return { insideTextBuffer: true };
+            }
+            if (parentHostContext.insideTextBuffer) {
+                return {};
+            }
+            return parentHostContext;
+        },
         shouldSetTextContent: () => false,
         createInstance: (type, props, rootContainer) => {
             return createNode(type, props, undefined, rootContainer);
         },
-        createTextInstance: (text, rootContainer) => {
+        createTextInstance: (text, rootContainer, hostContext) => {
+            if (hostContext.insideTextBuffer) {
+                const props = { text };
+                const node = createNode("TextSegment", props, undefined, rootContainer);
+                node.updateProps(null, props);
+                return node;
+            }
             const props = { label: text };
             const node = createNode("GtkLabel", props, undefined, rootContainer);
             node.updateProps(null, props);
@@ -132,7 +148,11 @@ export function createHostConfig(): HostConfig {
             signalStore.unblockAll();
         },
         commitTextUpdate: (textInstance, oldText, newText) => {
-            textInstance.updateProps({ label: oldText }, { label: newText });
+            if (textInstance.typeName === "TextSegment") {
+                textInstance.updateProps({ text: oldText }, { text: newText });
+            } else {
+                textInstance.updateProps({ label: oldText }, { label: newText });
+            }
         },
         clearContainer: () => {},
         preparePortalMount: () => {},
