@@ -1,8 +1,8 @@
-import { type Context, FontSlant, FontWeight, LineCap } from "@gtkx/ffi/cairo";
+import { type Context, LineCap } from "@gtkx/ffi/cairo";
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, GtkSpinButton, x } from "@gtkx/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-walk.tsx?raw";
 
@@ -21,37 +21,44 @@ const getCubicBezierPoint = (
     const uuu = uu * u;
     const ttt = tt * t;
 
-    const x = uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x;
-    const y = uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y;
+    const px = uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x;
+    const py = uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y;
 
     const dx = 3 * uu * (p1.x - p0.x) + 6 * u * t * (p2.x - p1.x) + 3 * tt * (p3.x - p2.x);
     const dy = 3 * uu * (p1.y - p0.y) + 6 * u * t * (p2.y - p1.y) + 3 * tt * (p3.y - p2.y);
     const angle = Math.atan2(dy, dx);
 
-    return { x, y, angle };
+    return { x: px, y: py, angle };
 };
 
+interface PathSegment {
+    p0: { x: number; y: number };
+    p1: { x: number; y: number };
+    p2: { x: number; y: number };
+    p3: { x: number; y: number };
+}
+
 const buildPathTable = (
-    p0: { x: number; y: number },
-    p1: { x: number; y: number },
-    p2: { x: number; y: number },
-    p3: { x: number; y: number },
-    numSamples: number = 500,
+    segments: PathSegment[],
+    numSamplesPerSegment: number = 100,
 ): { points: PathPoint[]; totalLength: number; lengths: number[] } => {
     const points: PathPoint[] = [];
     const lengths: number[] = [0];
     let totalLength = 0;
 
-    for (let i = 0; i <= numSamples; i++) {
-        const t = i / numSamples;
-        const point = getCubicBezierPoint(t, p0, p1, p2, p3);
-        points.push(point);
+    for (const seg of segments) {
+        for (let i = 0; i <= numSamplesPerSegment; i++) {
+            if (i === 0 && points.length > 0) continue;
+            const t = i / numSamplesPerSegment;
+            const point = getCubicBezierPoint(t, seg.p0, seg.p1, seg.p2, seg.p3);
+            points.push(point);
 
-        if (i > 0) {
-            const prev = points[i - 1] as PathPoint;
-            const segmentLength = Math.sqrt((point.x - prev.x) ** 2 + (point.y - prev.y) ** 2);
-            totalLength += segmentLength;
-            lengths.push(totalLength);
+            if (points.length > 1) {
+                const prev = points[points.length - 2] as PathPoint;
+                const segmentLength = Math.sqrt((point.x - prev.x) ** 2 + (point.y - prev.y) ** 2);
+                totalLength += segmentLength;
+                lengths.push(totalLength);
+            }
         }
     }
 
@@ -62,14 +69,16 @@ const getPointAtLength = (
     targetLength: number,
     pathTable: { points: PathPoint[]; totalLength: number; lengths: number[] },
 ): PathPoint => {
-    const { points, lengths } = pathTable;
+    const { points, lengths, totalLength } = pathTable;
+
+    const normalizedLength = ((targetLength % totalLength) + totalLength) % totalLength;
 
     let low = 0;
     let high = lengths.length - 1;
 
     while (low < high) {
         const mid = Math.floor((low + high) / 2);
-        if ((lengths[mid] as number) < targetLength) {
+        if ((lengths[mid] as number) < normalizedLength) {
             low = mid + 1;
         } else {
             high = mid;
@@ -86,7 +95,7 @@ const getPointAtLength = (
     const segmentStart = lengths[idx] as number;
     const segmentEnd = lengths[nextIdx] as number;
     const segmentLength = segmentEnd - segmentStart;
-    const t = segmentLength > 0 ? (targetLength - segmentStart) / segmentLength : 0;
+    const t = segmentLength > 0 ? (normalizedLength - segmentStart) / segmentLength : 0;
 
     const p1 = points[idx] as PathPoint;
     const p2 = points[nextIdx] as PathPoint;
@@ -98,177 +107,104 @@ const getPointAtLength = (
     };
 };
 
-const drawArrow = (cr: Context, x: number, y: number, angle: number, size: number) => {
+const drawArrow = (cr: Context, x: number, y: number, angle: number, size: number, alpha: number = 1) => {
     cr.save().translate(x, y).rotate(angle);
 
-    cr.moveTo(size * 0.6, 0)
-        .lineTo(-size * 0.4, -size * 0.4)
-        .lineTo(-size * 0.2, 0)
-        .lineTo(-size * 0.4, size * 0.4)
-        .closePath();
-
-    cr.restore();
-};
-
-const drawCar = (cr: Context, x: number, y: number, angle: number, size: number) => {
-    cr.save().translate(x, y).rotate(angle);
-
-    cr.setSourceRgb(0.2, 0.5, 0.8)
-        .rectangle(-size * 0.5, -size * 0.25, size, size * 0.5)
-        .fill();
-
-    cr.setSourceRgb(0.3, 0.6, 0.9)
-        .rectangle(-size * 0.2, -size * 0.2, size * 0.5, size * 0.4)
-        .fill();
-
-    cr.setSourceRgb(0.2, 0.2, 0.2)
-        .arc(-size * 0.3, -size * 0.3, size * 0.12, 0, 2 * Math.PI)
-        .fill();
-    cr.arc(size * 0.3, -size * 0.3, size * 0.12, 0, 2 * Math.PI).fill();
-    cr.arc(-size * 0.3, size * 0.3, size * 0.12, 0, 2 * Math.PI).fill();
-    cr.arc(size * 0.3, size * 0.3, size * 0.12, 0, 2 * Math.PI).fill();
-
-    cr.restore();
-};
-
-const drawPlane = (cr: Context, x: number, y: number, angle: number, size: number) => {
-    cr.save().translate(x, y).rotate(angle);
-
-    cr.setSourceRgb(0.9, 0.9, 0.95)
-        .moveTo(size * 0.6, 0)
-        .lineTo(-size * 0.4, -size * 0.1)
-        .lineTo(-size * 0.5, 0)
-        .lineTo(-size * 0.4, size * 0.1)
-        .closePath()
-        .fill();
-
-    cr.setSourceRgb(0.7, 0.7, 0.8)
-        .moveTo(0, 0)
-        .lineTo(-size * 0.15, -size * 0.5)
-        .lineTo(-size * 0.25, -size * 0.5)
-        .lineTo(-size * 0.15, 0)
-        .closePath()
-        .fill();
-    cr.moveTo(0, 0)
-        .lineTo(-size * 0.15, size * 0.5)
-        .lineTo(-size * 0.25, size * 0.5)
-        .lineTo(-size * 0.15, 0)
-        .closePath()
-        .fill();
-
-    cr.moveTo(-size * 0.4, 0)
-        .lineTo(-size * 0.5, -size * 0.2)
-        .lineTo(-size * 0.55, -size * 0.2)
-        .lineTo(-size * 0.5, 0)
+    cr.setSourceRgba(0.9, 0.4, 0.2, alpha)
+        .moveTo(size * 0.5, 0)
+        .lineTo(-size * 0.3, -size * 0.35)
+        .lineTo(-size * 0.1, 0)
+        .lineTo(-size * 0.3, size * 0.35)
         .closePath()
         .fill();
 
     cr.restore();
 };
+
+const CANVAS_WIDTH = 600;
+const CANVAS_HEIGHT = 400;
+const ARROW_SIZE = 12;
+const DEFAULT_ARROW_COUNT = 100;
+const DEFAULT_SPACING = 15;
 
 const PathWalkDemo = () => {
     const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const [speed, setSpeed] = useState(1);
-    const [objectType, setObjectType] = useState<"arrow" | "car" | "plane">("arrow");
+    const [arrowCount, setArrowCount] = useState(DEFAULT_ARROW_COUNT);
+    const [spacing, setSpacing] = useState(DEFAULT_SPACING);
     const [isRunning, setIsRunning] = useState(true);
     const [showPath, setShowPath] = useState(true);
     const progressRef = useRef(0);
-    const pathTableRef = useRef<ReturnType<typeof buildPathTable> | null>(null);
     const tickIdRef = useRef<number | null>(null);
     const lastFrameTimeRef = useRef<number | null>(null);
     const speedRef = useRef(speed);
     speedRef.current = speed;
 
-    const canvasWidth = 500;
-    const canvasHeight = 350;
+    const pathSegments = useMemo<PathSegment[]>(() => {
+        const padding = 50;
+        const w = CANVAS_WIDTH;
+        const h = CANVAS_HEIGHT;
 
-    const initPathTable = useCallback(() => {
-        const padding = 40;
-        const p0 = { x: padding, y: canvasHeight - padding };
-        const p1 = { x: canvasWidth * 0.25, y: padding };
-        const p2 = { x: canvasWidth * 0.75, y: canvasHeight - padding };
-        const p3 = { x: canvasWidth - padding, y: padding };
-        pathTableRef.current = buildPathTable(p0, p1, p2, p3);
+        return [
+            {
+                p0: { x: padding, y: h - padding },
+                p1: { x: w * 0.2, y: padding },
+                p2: { x: w * 0.3, y: h - padding },
+                p3: { x: w * 0.4, y: h / 2 },
+            },
+            {
+                p0: { x: w * 0.4, y: h / 2 },
+                p1: { x: w * 0.5, y: padding },
+                p2: { x: w * 0.6, y: h - padding },
+                p3: { x: w * 0.7, y: h / 2 },
+            },
+            {
+                p0: { x: w * 0.7, y: h / 2 },
+                p1: { x: w * 0.8, y: padding },
+                p2: { x: w * 0.9, y: h - padding },
+                p3: { x: w - padding, y: padding },
+            },
+        ];
     }, []);
+
+    const pathTable = useMemo(() => buildPathTable(pathSegments), [pathSegments]);
 
     const drawScene = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             const progress = progressRef.current;
-            if (!pathTableRef.current) return;
-
-            const { totalLength } = pathTableRef.current;
-            const padding = 40;
-
-            const p0 = { x: padding, y: height - padding };
-            const p1 = { x: width * 0.25, y: padding };
-            const p2 = { x: width * 0.75, y: height - padding };
-            const p3 = { x: width - padding, y: padding };
+            const { totalLength } = pathTable;
 
             if (showPath) {
-                cr.setSourceRgba(0.5, 0.5, 0.5, 0.4)
-                    .setLineWidth(3)
-                    .setLineCap(LineCap.ROUND)
-                    .moveTo(p0.x, p0.y)
-                    .curveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y)
-                    .stroke();
+                cr.setSourceRgba(0.5, 0.5, 0.5, 0.3).setLineWidth(2).setLineCap(LineCap.ROUND);
 
-                cr.setSourceRgba(0.8, 0.4, 0.4, 0.5).setLineWidth(1);
-
-                cr.moveTo(p0.x, p0.y).lineTo(p1.x, p1.y).stroke();
-                cr.moveTo(p2.x, p2.y).lineTo(p3.x, p3.y).stroke();
-
-                for (const p of [p0, p1, p2, p3]) {
-                    cr.arc(p.x, p.y, 5, 0, 2 * Math.PI).fill();
+                for (const seg of pathSegments) {
+                    cr.moveTo(seg.p0.x, seg.p0.y).curveTo(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y, seg.p3.x, seg.p3.y);
                 }
+                cr.stroke();
             }
 
-            const distance = progress * totalLength;
-            const point = getPointAtLength(distance, pathTableRef.current);
+            const baseDistance = progress * totalLength;
+            const actualSpacing = spacing;
 
-            cr.setSourceRgba(0.2, 0.6, 0.9, 0.3).setLineWidth(2);
-            const numTrailPoints = 30;
-            for (let i = numTrailPoints; i >= 0; i--) {
-                const trailProgress = Math.max(0, progress - i * 0.005);
-                const trailDistance = trailProgress * totalLength;
-                const trailPoint = getPointAtLength(trailDistance, pathTableRef.current);
-                if (i === numTrailPoints) {
-                    cr.moveTo(trailPoint.x, trailPoint.y);
-                } else {
-                    cr.lineTo(trailPoint.x, trailPoint.y);
-                }
+            for (let i = 0; i < arrowCount; i++) {
+                const distance = baseDistance - i * actualSpacing;
+                const point = getPointAtLength(distance, pathTable);
+
+                const depthFactor = 1 - i / arrowCount;
+                const alpha = 0.3 + depthFactor * 0.7;
+                const size = ARROW_SIZE * (0.6 + depthFactor * 0.4);
+
+                drawArrow(cr, point.x, point.y, point.angle, size, alpha);
             }
-            cr.stroke();
-
-            const objectSize = 25;
-            switch (objectType) {
-                case "arrow":
-                    cr.setSourceRgb(0.9, 0.4, 0.2);
-                    drawArrow(cr, point.x, point.y, point.angle, objectSize);
-                    cr.fill();
-                    break;
-                case "car":
-                    drawCar(cr, point.x, point.y, point.angle, objectSize);
-                    break;
-                case "plane":
-                    drawPlane(cr, point.x, point.y, point.angle, objectSize);
-                    break;
-            }
-
-            cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
-                .setFontSize(12)
-                .setSourceRgb(0.5, 0.5, 0.5)
-                .moveTo(10, 20)
-                .showText(`Progress: ${(progress * 100).toFixed(1)}%`);
-            cr.moveTo(10, 35).showText(`Angle: ${((point.angle * 180) / Math.PI).toFixed(1)}°`);
         },
-        [objectType, showPath],
+        [pathSegments, pathTable, showPath, arrowCount, spacing],
     );
 
     const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
         const frameTime = frameClock.getFrameTime();
         if (lastFrameTimeRef.current !== null) {
             const delta = (frameTime - lastFrameTimeRef.current) / 1_000_000;
-            progressRef.current = (progressRef.current + delta * 0.2 * speedRef.current) % 1;
+            progressRef.current = (progressRef.current + delta * 0.15 * speedRef.current) % 1;
             areaRef.current?.queueDraw();
         }
         lastFrameTimeRef.current = frameTime;
@@ -290,19 +226,13 @@ const PathWalkDemo = () => {
         lastFrameTimeRef.current = null;
     }, []);
 
-    const handleAreaRef = useCallback(
-        (area: Gtk.DrawingArea | null) => {
-            if (areaRef.current && tickIdRef.current !== null) {
-                areaRef.current.removeTickCallback(tickIdRef.current);
-                tickIdRef.current = null;
-            }
-            areaRef.current = area;
-            if (area) {
-                initPathTable();
-            }
-        },
-        [initPathTable],
-    );
+    const handleAreaRef = useCallback((area: Gtk.DrawingArea | null) => {
+        if (areaRef.current && tickIdRef.current !== null) {
+            areaRef.current.removeTickCallback(tickIdRef.current);
+            tickIdRef.current = null;
+        }
+        areaRef.current = area;
+    }, []);
 
     const handleToggleRunning = useCallback(() => {
         setIsRunning((prev) => {
@@ -324,16 +254,16 @@ const PathWalkDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Object Walking Along Path" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="Path Walk" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="Animate objects along bezier paths with proper tangent rotation. Uses arc-length parameterization for constant speed."
+                label="Multiple arrows following a bezier path with proper tangent rotation. Each arrow maintains constant spacing using arc-length parameterization."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
             />
 
-            <GtkFrame label="Path Animation">
+            <GtkFrame label="Arrow Stream">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={16}
@@ -345,11 +275,41 @@ const PathWalkDemo = () => {
                     <GtkDrawingArea
                         ref={handleAreaRef}
                         onDraw={drawScene}
-                        contentWidth={canvasWidth}
-                        contentHeight={canvasHeight}
+                        contentWidth={CANVAS_WIDTH}
+                        contentHeight={CANVAS_HEIGHT}
                         cssClasses={["card"]}
                         halign={Gtk.Align.CENTER}
                     />
+
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
+                        <GtkBox spacing={8}>
+                            <GtkLabel label="Arrows:" widthChars={8} xalign={0} cssClasses={["dim-label"]} />
+                            <GtkSpinButton widthChars={5}>
+                                <x.Adjustment
+                                    value={arrowCount}
+                                    lower={10}
+                                    upper={500}
+                                    stepIncrement={10}
+                                    pageIncrement={50}
+                                    onValueChanged={(v) => setArrowCount(Math.round(v))}
+                                />
+                            </GtkSpinButton>
+                        </GtkBox>
+
+                        <GtkBox spacing={8}>
+                            <GtkLabel label="Spacing:" widthChars={8} xalign={0} cssClasses={["dim-label"]} />
+                            <GtkSpinButton widthChars={5}>
+                                <x.Adjustment
+                                    value={spacing}
+                                    lower={5}
+                                    upper={50}
+                                    stepIncrement={1}
+                                    pageIncrement={5}
+                                    onValueChanged={(v) => setSpacing(Math.round(v))}
+                                />
+                            </GtkSpinButton>
+                        </GtkBox>
+                    </GtkBox>
 
                     <GtkBox spacing={16} halign={Gtk.Align.CENTER}>
                         <GtkBox spacing={8}>
@@ -368,7 +328,7 @@ const PathWalkDemo = () => {
                         <GtkButton
                             label={isRunning ? "Pause" : "Play"}
                             onClicked={handleToggleRunning}
-                            cssClasses={["flat"]}
+                            cssClasses={isRunning ? ["destructive-action"] : ["suggested-action"]}
                         />
                         <GtkButton
                             label={showPath ? "Hide Path" : "Show Path"}
@@ -376,57 +336,34 @@ const PathWalkDemo = () => {
                             cssClasses={["flat"]}
                         />
                     </GtkBox>
-
-                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
-                        <GtkLabel label="Object:" cssClasses={["dim-label"]} />
-                        <GtkButton
-                            label="Arrow"
-                            onClicked={() => setObjectType("arrow")}
-                            cssClasses={objectType === "arrow" ? ["suggested-action"] : ["flat"]}
-                        />
-                        <GtkButton
-                            label="Car"
-                            onClicked={() => setObjectType("car")}
-                            cssClasses={objectType === "car" ? ["suggested-action"] : ["flat"]}
-                        />
-                        <GtkButton
-                            label="Plane"
-                            onClicked={() => setObjectType("plane")}
-                            cssClasses={objectType === "plane" ? ["suggested-action"] : ["flat"]}
-                        />
-                    </GtkBox>
                 </GtkBox>
             </GtkFrame>
 
-            <GtkFrame label="How It Works">
+            <GtkFrame label="Implementation">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
-                    spacing={8}
+                    spacing={6}
                     marginTop={12}
                     marginBottom={12}
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkLabel
-                        label="1. Build a lookup table of path points with cumulative lengths"
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkLabel
-                        label="2. Use binary search to find position at any distance"
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkLabel
-                        label="3. Calculate tangent angle from path derivative"
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkLabel
-                        label="4. Rotate object to align with path direction"
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
+                    <GtkBox spacing={12}>
+                        <GtkLabel label="Arc-length table" widthChars={16} xalign={0} cssClasses={["monospace"]} />
+                        <GtkLabel label="Pre-computed cumulative path lengths" cssClasses={["dim-label"]} />
+                    </GtkBox>
+                    <GtkBox spacing={12}>
+                        <GtkLabel label="Binary search" widthChars={16} xalign={0} cssClasses={["monospace"]} />
+                        <GtkLabel label="O(log n) lookup for position at distance" cssClasses={["dim-label"]} />
+                    </GtkBox>
+                    <GtkBox spacing={12}>
+                        <GtkLabel label="Tangent angle" widthChars={16} xalign={0} cssClasses={["monospace"]} />
+                        <GtkLabel label="atan2(dy, dx) from curve derivative" cssClasses={["dim-label"]} />
+                    </GtkBox>
+                    <GtkBox spacing={12}>
+                        <GtkLabel label="Depth fade" widthChars={16} xalign={0} cssClasses={["monospace"]} />
+                        <GtkLabel label="Size and opacity decrease for trailing arrows" cssClasses={["dim-label"]} />
+                    </GtkBox>
                 </GtkBox>
             </GtkFrame>
         </GtkBox>
@@ -436,8 +373,8 @@ const PathWalkDemo = () => {
 export const pathWalkDemo: Demo = {
     id: "path-walk",
     title: "Path/Walk",
-    description: "Animate objects along paths with tangent rotation",
-    keywords: ["path", "walk", "animation", "bezier", "tangent", "rotation", "arc-length", "parameterization"],
+    description: "Multiple arrows following bezier paths with arc-length parameterization",
+    keywords: ["path", "walk", "animation", "bezier", "tangent", "rotation", "arc-length", "arrows", "stream"],
     component: PathWalkDemo,
     sourceCode,
 };

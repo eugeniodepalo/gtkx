@@ -1,6 +1,9 @@
-import { type Context, FillRule, Pattern } from "@gtkx/ffi/cairo";
+import { type Context, FillRule, Pattern, PdfSurface } from "@gtkx/ffi/cairo";
+import * as Gio from "@gtkx/ffi/gio";
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-fill.tsx?raw";
 
@@ -131,6 +134,78 @@ const drawComplexPolygon = (_self: Gtk.DrawingArea, cr: Context, width: number, 
     cr.setSource(gradient).fillPreserve().setSourceRgb(0.1, 0.4, 0.2).setLineWidth(3).stroke();
 };
 
+const GTK_LOGO_COLORS = {
+    red: { r: 0.89, g: 0.16, b: 0.16 },
+    green: { r: 0.49, g: 0.88, b: 0.2 },
+    blue: { r: 0.27, g: 0.52, b: 0.89 },
+};
+
+const drawGtkLogoPath = (cr: Context, scale: number, offsetX: number, offsetY: number) => {
+    cr.save().translate(offsetX, offsetY).scale(scale, scale);
+
+    cr.moveTo(3.12, 66.17)
+        .relLineTo(-2.06, -51.46)
+        .relLineTo(32.93, 24.7)
+        .relLineTo(0, 55.58)
+        .relLineTo(-30.87, -28.82)
+        .closePath();
+    cr.setSourceRgb(GTK_LOGO_COLORS.red.r, GTK_LOGO_COLORS.red.g, GTK_LOGO_COLORS.red.b).fill();
+
+    cr.moveTo(34, 95)
+        .relLineTo(49.4, -20.58)
+        .relLineTo(4.12, -51.46)
+        .relLineTo(-53.52, 16.47)
+        .relLineTo(0, 55.58)
+        .closePath();
+    cr.setSourceRgb(GTK_LOGO_COLORS.green.r, GTK_LOGO_COLORS.green.g, GTK_LOGO_COLORS.green.b).fill();
+
+    cr.moveTo(1.06, 14.71)
+        .relLineTo(32.93, 24.7)
+        .relLineTo(53.52, -16.47)
+        .relLineTo(-36.75, -21.88)
+        .relLineTo(-49.7, 13.65)
+        .closePath();
+    cr.setSourceRgb(GTK_LOGO_COLORS.blue.r, GTK_LOGO_COLORS.blue.g, GTK_LOGO_COLORS.blue.b).fill();
+
+    cr.setSourceRgb(1, 1, 1).setLineWidth(2.12 / scale);
+
+    cr.moveTo(3.12, 66.17)
+        .relLineTo(-2.06, -51.46)
+        .relLineTo(32.93, 24.7)
+        .relLineTo(0, 55.58)
+        .relLineTo(-30.87, -28.82)
+        .closePath()
+        .stroke();
+
+    cr.moveTo(34, 95)
+        .relLineTo(49.4, -20.58)
+        .relLineTo(4.12, -51.46)
+        .relLineTo(-53.52, 16.47)
+        .relLineTo(0, 55.58)
+        .closePath()
+        .stroke();
+
+    cr.moveTo(1.06, 14.71)
+        .relLineTo(32.93, 24.7)
+        .relLineTo(53.52, -16.47)
+        .relLineTo(-36.75, -21.88)
+        .relLineTo(-49.7, 13.65)
+        .closePath()
+        .stroke();
+
+    cr.restore();
+};
+
+const drawGtkLogo = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+    const logoWidth = 90;
+    const logoHeight = 95;
+    const scale = Math.min(width / logoWidth, height / logoHeight) * 0.8;
+    const offsetX = (width - logoWidth * scale) / 2;
+    const offsetY = (height - logoHeight * scale) / 2;
+
+    drawGtkLogoPath(cr, scale, offsetX, offsetY);
+};
+
 const DrawingCanvas = ({
     width,
     height,
@@ -151,6 +226,55 @@ const DrawingCanvas = ({
 };
 
 const PathFillDemo = () => {
+    const [exportStatus, setExportStatus] = useState<string | null>(null);
+
+    const handleExportPdf = useCallback(() => {
+        void (async () => {
+        const dialog = new Gtk.FileDialog();
+        dialog.setTitle("Export GTK Logo as PDF");
+        dialog.setInitialName("gtk-logo.pdf");
+
+        const pdfFilter = new Gtk.FileFilter();
+        pdfFilter.setName("PDF Documents");
+        pdfFilter.addPattern("*.pdf");
+        pdfFilter.addMimeType("application/pdf");
+
+        const filters = new Gio.ListStore(GObject.typeFromName("GtkFileFilter"));
+        filters.append(pdfFilter);
+        dialog.setFilters(filters);
+        dialog.setDefaultFilter(pdfFilter);
+
+        try {
+            const file = await dialog.saveAsync(null, null);
+            if (file) {
+                const path = file.getPath();
+                if (path) {
+                    const width = 200;
+                    const height = 210;
+                    const surface = new PdfSurface(path, width, height);
+                    const cr = surface.createContext();
+
+                    const logoWidth = 90;
+                    const logoHeight = 95;
+                    const scale = Math.min(width / logoWidth, height / logoHeight) * 0.8;
+                    const offsetX = (width - logoWidth * scale) / 2;
+                    const offsetY = (height - logoHeight * scale) / 2;
+
+                    drawGtkLogoPath(cr, scale, offsetX, offsetY);
+
+                    cr.showPage();
+                    surface.finish();
+
+                    setExportStatus(`Exported to ${path}`);
+                    setTimeout(() => setExportStatus(null), 3000);
+                }
+            }
+        } catch {
+            setExportStatus(null);
+        }
+        })();
+    }, []);
+
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
             <GtkLabel label="Vector Path Fills" cssClasses={["title-2"]} halign={Gtk.Align.START} />
@@ -161,6 +285,25 @@ const PathFillDemo = () => {
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
             />
+
+            <GtkFrame label="GTK Logo">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
+                        <DrawingCanvas width={200} height={210} drawFunc={drawGtkLogo} label="GTK Logo (Vector Paths)" />
+                    </GtkBox>
+                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
+                        <GtkButton label="Export as PDF" onClicked={handleExportPdf} cssClasses={["suggested-action"]} />
+                        {exportStatus && <GtkLabel label={exportStatus} cssClasses={["dim-label"]} />}
+                    </GtkBox>
+                </GtkBox>
+            </GtkFrame>
 
             <GtkFrame label="Solid & Gradient Fills">
                 <GtkBox
