@@ -44,10 +44,7 @@ impl GtkThread {
     }
 
     pub fn set_handle(&self, handle: JoinHandle<()>) {
-        self.handle
-            .lock()
-            .unwrap()
-            .replace(handle);
+        self.handle.lock().unwrap().replace(handle);
     }
 
     pub fn join(&self) {

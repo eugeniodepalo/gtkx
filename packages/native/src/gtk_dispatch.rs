@@ -73,10 +73,7 @@ impl GtkDispatcher {
     }
 
     fn push_task(&self, task: Task) {
-        self.queue
-            .lock()
-            .unwrap()
-            .push_back(task);
+        self.queue.lock().unwrap().push_back(task);
     }
 
     fn pop_task(&self) -> Option<Task> {

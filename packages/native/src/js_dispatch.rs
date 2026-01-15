@@ -64,10 +64,7 @@ impl JsDispatcher {
     }
 
     fn push_callback(&self, callback: PendingCallback) {
-        self.queue
-            .lock()
-            .unwrap()
-            .push_back(callback);
+        self.queue.lock().unwrap().push_back(callback);
     }
 
     fn pop_callback(&self) -> Option<PendingCallback> {
