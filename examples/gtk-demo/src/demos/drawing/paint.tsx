@@ -1,4 +1,4 @@
-import { type Context, type Surface, LineCap, Operator } from "@gtkx/ffi/cairo";
+import { type Context, LineCap, Operator, type Surface } from "@gtkx/ffi/cairo";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkColorDialogButton, GtkDrawingArea } from "@gtkx/react";

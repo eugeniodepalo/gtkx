@@ -26,11 +26,7 @@ const SidebarDemo = () => {
     return (
         <GtkBox>
             <GtkStackSidebar stack={stack ?? undefined} />
-            <GtkStack
-                ref={setStack}
-                transitionType={Gtk.StackTransitionType.SLIDE_UP_DOWN}
-                hexpand
-            >
+            <GtkStack ref={setStack} transitionType={Gtk.StackTransitionType.SLIDE_UP_DOWN} hexpand>
                 {pages.map((title, index) => (
                     <x.StackPage key={title} id={title} title={title}>
                         {index === 0 ? (
@@ -55,7 +51,7 @@ export const sidebarDemo: Demo = {
     id: "sidebar",
     title: "Stack Sidebar",
     description:
-        "GtkStackSidebar provides an automatic sidebar widget to control navigation of a GtkStack object. This widget automatically updates its content based on what is presently available in the GtkStack object, and using the \"title\" child property to set the display labels.",
+        'GtkStackSidebar provides an automatic sidebar widget to control navigation of a GtkStack object. This widget automatically updates its content based on what is presently available in the GtkStack object, and using the "title" child property to set the display labels.',
     keywords: ["sidebar", "GtkStackSidebar", "GtkStack", "navigation"],
     component: SidebarDemo,
     sourceCode,

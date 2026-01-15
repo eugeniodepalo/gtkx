@@ -1,176 +1,82 @@
+import path from "node:path";
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkCheckButton, GtkExpander, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useState } from "react";
+import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
 
+const DETAILS_TEXT = `Finally, the full story with all details. And all the inside information, including error codes, etc etc. Pages of information, you might have to scroll down to read it all, or even resize the window - it works !
+A second paragraph will contain even more innuendo, just to make you scroll down or resize the window.
+Do it already!`;
+
 const ExpanderDemo = () => {
-    const [basicExpanded, setBasicExpanded] = useState(false);
-    const [detailsExpanded, setDetailsExpanded] = useState(false);
-    const [settingsExpanded, setSettingsExpanded] = useState(true);
+    const textViewRef = useRef<Gtk.TextView | null>(null);
+
+    useEffect(() => {
+        const textView = textViewRef.current;
+        if (!textView) return;
+
+        const buffer = textView.getBuffer();
+        if (!buffer) return;
+
+        buffer.setText(DETAILS_TEXT, -1);
+
+        const logoPath = path.resolve(import.meta.dirname, "gtk_logo_cursor.png");
+        const texture = Gdk.Texture.newFromFilename(logoPath);
+
+        const endIter = new Gtk.TextIter();
+        buffer.getEndIter(endIter);
+        buffer.insertPaintable(endIter, texture);
+
+        const startIter = new Gtk.TextIter();
+        buffer.getEndIter(startIter);
+        startIter.backwardChar();
+
+        buffer.getEndIter(endIter);
+
+        const tag = new Gtk.TextTag(null);
+        tag.setPixelsAboveLines(200);
+        tag.setJustification(Gtk.Justification.RIGHT);
+        buffer.getTagTable().add(tag);
+        buffer.applyTag(tag, startIter, endIter);
+    }, []);
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Expander" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={10}
+            marginStart={10}
+            marginEnd={10}
+            marginTop={10}
+            marginBottom={10}
+        >
+            <GtkLabel label="<big><b>Something went wrong</b></big>" useMarkup />
+            <GtkLabel label="Here are some more details but not the full story" wrap={false} vexpand={false} />
 
-            <GtkLabel
-                label="GtkExpander is a container that can hide its child widget. It has a clickable header with an arrow indicator that shows/hides the content when clicked."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
-
-            <GtkFrame label="Basic Expander">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
+            <GtkExpander label="Details:" vexpand>
+                <GtkScrolledWindow
+                    minContentHeight={100}
+                    hasFrame
+                    hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                    vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                    propagateNaturalHeight
+                    vexpand
                 >
-                    <GtkExpander
-                        label="Click to expand"
-                        expanded={basicExpanded}
-                        onActivate={(expander: Gtk.Expander) => setBasicExpanded(!expander.getExpanded())}
-                    >
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={6}>
-                            <GtkLabel label="This is the hidden content that appears when you expand!" wrap />
-                            <GtkLabel label="You can put any widgets here." cssClasses={["dim-label"]} />
-                        </GtkBox>
-                    </GtkExpander>
-                    <GtkLabel
-                        label={`State: ${basicExpanded ? "Expanded" : "Collapsed"}`}
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
+                    <GtkTextView
+                        ref={textViewRef}
+                        editable={false}
+                        cursorVisible={false}
+                        wrapMode={Gtk.WrapMode.WORD}
+                        pixelsAboveLines={2}
+                        pixelsBelowLines={2}
+                        leftMargin={10}
+                        rightMargin={10}
+                        topMargin={10}
+                        bottomMargin={10}
                     />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Details Section">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel label="File: document.pdf" halign={Gtk.Align.START} cssClasses={["heading"]} />
-                    <GtkLabel label="A sample document file." halign={Gtk.Align.START} />
-                    <GtkExpander
-                        label="More details"
-                        expanded={detailsExpanded}
-                        onActivate={(expander: Gtk.Expander) => setDetailsExpanded(!expander.getExpanded())}
-                    >
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={6}>
-                            <GtkBox spacing={12}>
-                                <GtkLabel label="Size:" cssClasses={["dim-label"]} widthChars={12} xalign={0} />
-                                <GtkLabel label="2.4 MB" />
-                            </GtkBox>
-                            <GtkBox spacing={12}>
-                                <GtkLabel label="Created:" cssClasses={["dim-label"]} widthChars={12} xalign={0} />
-                                <GtkLabel label="December 15, 2024" />
-                            </GtkBox>
-                            <GtkBox spacing={12}>
-                                <GtkLabel label="Modified:" cssClasses={["dim-label"]} widthChars={12} xalign={0} />
-                                <GtkLabel label="December 27, 2024" />
-                            </GtkBox>
-                            <GtkBox spacing={12}>
-                                <GtkLabel label="Type:" cssClasses={["dim-label"]} widthChars={12} xalign={0} />
-                                <GtkLabel label="PDF Document" />
-                            </GtkBox>
-                        </GtkBox>
-                    </GtkExpander>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Advanced Settings">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkExpander
-                        label="Advanced Options"
-                        expanded={settingsExpanded}
-                        onActivate={(expander: Gtk.Expander) => setSettingsExpanded(!expander.getExpanded())}
-                    >
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginTop={6}>
-                            <GtkCheckButton label="Enable debug mode" />
-                            <GtkCheckButton label="Show hidden files" />
-                            <GtkCheckButton label="Auto-save on exit" active />
-                            <GtkCheckButton label="Use hardware acceleration" active />
-                        </GtkBox>
-                    </GtkExpander>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="FAQ Style">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={6}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkExpander label="What is GTKX?">
-                        <GtkLabel
-                            label="GTKX is a React framework for building native GTK4 desktop applications on Linux."
-                            wrap
-                            marginTop={6}
-                        />
-                    </GtkExpander>
-                    <GtkExpander label="How do I get started?">
-                        <GtkLabel
-                            label="Install GTKX using npm, then use the CLI to create a new project with 'npx gtkx create my-app'."
-                            wrap
-                            marginTop={6}
-                        />
-                    </GtkExpander>
-                    <GtkExpander label="Is GTKX production ready?">
-                        <GtkLabel
-                            label="GTKX is actively developed and used in production applications. Check the documentation for the latest stability information."
-                            wrap
-                            marginTop={6}
-                        />
-                    </GtkExpander>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Programmatic Control">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
-                        <GtkButton
-                            label="Expand All"
-                            onClicked={() => {
-                                setBasicExpanded(true);
-                                setDetailsExpanded(true);
-                                setSettingsExpanded(true);
-                            }}
-                        />
-                        <GtkButton
-                            label="Collapse All"
-                            onClicked={() => {
-                                setBasicExpanded(false);
-                                setDetailsExpanded(false);
-                                setSettingsExpanded(false);
-                            }}
-                        />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
+                </GtkScrolledWindow>
+            </GtkExpander>
         </GtkBox>
     );
 };
@@ -178,8 +84,9 @@ const ExpanderDemo = () => {
 export const expanderDemo: Demo = {
     id: "expander",
     title: "Expander",
-    description: "Collapsible content container",
-    keywords: ["expander", "collapse", "expand", "toggle", "GtkExpander", "hide", "show", "accordion"],
+    description:
+        'GtkExpander allows to provide additional content that is initially hidden. This is also known as "disclosure triangle". The official GTK demo also demonstrates making the window resizable only when the expander is expanded.',
+    keywords: ["expander", "collapse", "expand", "toggle", "GtkExpander", "disclosure", "triangle", "details"],
     component: ExpanderDemo,
     sourceCode,
 };

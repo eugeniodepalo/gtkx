@@ -34,15 +34,33 @@ const draw3Circles = (cr: Context, xc: number, yc: number, radius: number, alpha
     const subradius = radius * (2 / 3 - 0.1);
 
     cr.setSourceRgba(1, 0, 0, alpha);
-    ovalPath(cr, xc + (radius / 3) * Math.cos(Math.PI * 0.5), yc - (radius / 3) * Math.sin(Math.PI * 0.5), subradius, subradius);
+    ovalPath(
+        cr,
+        xc + (radius / 3) * Math.cos(Math.PI * 0.5),
+        yc - (radius / 3) * Math.sin(Math.PI * 0.5),
+        subradius,
+        subradius,
+    );
     cr.fill();
 
     cr.setSourceRgba(0, 1, 0, alpha);
-    ovalPath(cr, xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 2 / 0.3)), yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 2 / 0.3)), subradius, subradius);
+    ovalPath(
+        cr,
+        xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 2 / 0.3)),
+        yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 2 / 0.3)),
+        subradius,
+        subradius,
+    );
     cr.fill();
 
     cr.setSourceRgba(0, 0, 1, alpha);
-    ovalPath(cr, xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 4 / 0.3)), yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 4 / 0.3)), subradius, subradius);
+    ovalPath(
+        cr,
+        xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 4 / 0.3)),
+        yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 4 / 0.3)),
+        subradius,
+        subradius,
+    );
     cr.fill();
 };
 

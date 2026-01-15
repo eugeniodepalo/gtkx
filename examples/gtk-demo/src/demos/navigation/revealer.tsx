@@ -63,7 +63,7 @@ const RevealerDemo = () => {
     return (
         <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
             {revealerConfigs.map((config, index) => (
-                <x.GridChild key={index} column={config.column} row={config.row}>
+                <x.GridChild key={`${config.column}-${config.row}`} column={config.column} row={config.row}>
                     <GtkRevealer
                         transitionDuration={2000}
                         transitionType={config.transition}
@@ -80,8 +80,7 @@ const RevealerDemo = () => {
 export const revealerDemo: Demo = {
     id: "revealer",
     title: "Revealer",
-    description:
-        "GtkRevealer is a container that animates showing and hiding of its sole child with nice transitions.",
+    description: "GtkRevealer is a container that animates showing and hiding of its sole child with nice transitions.",
     keywords: ["revealer", "GtkRevealer"],
     component: RevealerDemo,
     sourceCode,

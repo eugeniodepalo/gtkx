@@ -69,7 +69,8 @@ export class TreeListItemRenderer {
             const ptr = getNativeId(listItem.handle);
 
             const expander = new Gtk.TreeExpander();
-            const box = new Gtk.Box(Gtk.Orientation.VERTICAL);
+            const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL);
+            box.setValign(Gtk.Align.CENTER);
 
             if (this.estimatedItemHeight !== undefined) {
                 box.setSizeRequest(-1, this.estimatedItemHeight);

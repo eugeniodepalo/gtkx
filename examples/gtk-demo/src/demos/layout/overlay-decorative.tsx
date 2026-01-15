@@ -21,14 +21,17 @@ const OverlayDecorativeDemo = () => {
         }
     }, []);
 
-    const handleTextViewRef = useCallback((textView: Gtk.TextView | null) => {
-        textViewRef.current = textView;
-        if (textView) {
-            const buffer = textView.getBuffer();
-            buffer.setText(INITIAL_TEXT, -1);
-            textView.setLeftMargin(Math.round(margin));
-        }
-    }, [margin]);
+    const handleTextViewRef = useCallback(
+        (textView: Gtk.TextView | null) => {
+            textViewRef.current = textView;
+            if (textView) {
+                const buffer = textView.getBuffer();
+                buffer.setText(INITIAL_TEXT, -1);
+                textView.setLeftMargin(Math.round(margin));
+            }
+        },
+        [margin],
+    );
 
     return (
         <GtkOverlay>

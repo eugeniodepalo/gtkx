@@ -58,21 +58,14 @@ const SizeGroupDemo = () => {
             marginBottom={5}
         >
             <GtkFrame label="Color Options">
-                <GtkGrid
-                    rowSpacing={5}
-                    columnSpacing={10}
-                    marginStart={5}
-                    marginEnd={5}
-                    marginTop={5}
-                    marginBottom={5}
-                >
+                <GtkGrid rowSpacing={5} columnSpacing={10} marginStart={5} marginEnd={5} marginTop={5} marginBottom={5}>
                     <x.GridChild column={0} row={0}>
                         <GtkLabel label="_Foreground" useUnderline halign={Gtk.Align.START} hexpand />
                     </x.GridChild>
                     <x.GridChild column={1} row={0}>
                         <GtkDropDown ref={dropdown1Ref} halign={Gtk.Align.END}>
-                            {COLOR_OPTIONS.map((option, index) => (
-                                <x.SimpleListItem key={index} id={String(index)} value={option} />
+                            {COLOR_OPTIONS.map((option) => (
+                                <x.SimpleListItem key={option} id={option} value={option} />
                             ))}
                         </GtkDropDown>
                     </x.GridChild>
@@ -82,8 +75,8 @@ const SizeGroupDemo = () => {
                     </x.GridChild>
                     <x.GridChild column={1} row={1}>
                         <GtkDropDown ref={dropdown2Ref} halign={Gtk.Align.END}>
-                            {COLOR_OPTIONS.map((option, index) => (
-                                <x.SimpleListItem key={index} id={String(index)} value={option} />
+                            {COLOR_OPTIONS.map((option) => (
+                                <x.SimpleListItem key={option} id={option} value={option} />
                             ))}
                         </GtkDropDown>
                     </x.GridChild>
@@ -91,21 +84,14 @@ const SizeGroupDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Line Options">
-                <GtkGrid
-                    rowSpacing={5}
-                    columnSpacing={10}
-                    marginStart={5}
-                    marginEnd={5}
-                    marginTop={5}
-                    marginBottom={5}
-                >
+                <GtkGrid rowSpacing={5} columnSpacing={10} marginStart={5} marginEnd={5} marginTop={5} marginBottom={5}>
                     <x.GridChild column={0} row={0}>
                         <GtkLabel label="_Dashing" useUnderline halign={Gtk.Align.START} hexpand />
                     </x.GridChild>
                     <x.GridChild column={1} row={0}>
                         <GtkDropDown ref={dropdown3Ref} halign={Gtk.Align.END}>
-                            {DASH_OPTIONS.map((option, index) => (
-                                <x.SimpleListItem key={index} id={String(index)} value={option} />
+                            {DASH_OPTIONS.map((option) => (
+                                <x.SimpleListItem key={option} id={option} value={option} />
                             ))}
                         </GtkDropDown>
                     </x.GridChild>
@@ -115,8 +101,8 @@ const SizeGroupDemo = () => {
                     </x.GridChild>
                     <x.GridChild column={1} row={1}>
                         <GtkDropDown ref={dropdown4Ref} halign={Gtk.Align.END}>
-                            {END_OPTIONS.map((option, index) => (
-                                <x.SimpleListItem key={index} id={String(index)} value={option} />
+                            {END_OPTIONS.map((option) => (
+                                <x.SimpleListItem key={option} id={option} value={option} />
                             ))}
                         </GtkDropDown>
                     </x.GridChild>

@@ -39,9 +39,21 @@ const ImagesDemo = () => {
                     <GtkLabel label="Dialog icons" cssClasses={["heading"]} />
                     <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
                         <GtkBox spacing={12} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
-                            <GtkImage iconName="dialog-information-symbolic" iconSize={Gtk.IconSize.LARGE} sensitive={!insensitive} />
-                            <GtkImage iconName="dialog-warning-symbolic" iconSize={Gtk.IconSize.LARGE} sensitive={!insensitive} />
-                            <GtkImage iconName="dialog-error-symbolic" iconSize={Gtk.IconSize.LARGE} sensitive={!insensitive} />
+                            <GtkImage
+                                iconName="dialog-information-symbolic"
+                                iconSize={Gtk.IconSize.LARGE}
+                                sensitive={!insensitive}
+                            />
+                            <GtkImage
+                                iconName="dialog-warning-symbolic"
+                                iconSize={Gtk.IconSize.LARGE}
+                                sensitive={!insensitive}
+                            />
+                            <GtkImage
+                                iconName="dialog-error-symbolic"
+                                iconSize={Gtk.IconSize.LARGE}
+                                sensitive={!insensitive}
+                            />
                         </GtkBox>
                     </GtkFrame>
                 </GtkBox>

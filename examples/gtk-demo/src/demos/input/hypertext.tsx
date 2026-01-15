@@ -45,7 +45,7 @@ const HypertextDemo = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const textViewRef = useRef<Gtk.TextView | null>(null);
 
-    const page = PAGES[currentPage] ?? PAGES[1];
+    const page = PAGES[currentPage] ?? PAGES[1] ?? { content: "", links: [] };
 
     const linkPositions = useMemo((): LinkPosition[] => {
         return page.links.map((link) => {

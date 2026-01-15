@@ -1201,12 +1201,7 @@ Surface.prototype.createSimilar = function (
 };
 
 Context.prototype.getTarget = function (): Surface {
-    const ptr = call(
-        LIB,
-        "cairo_get_target",
-        [{ type: CAIRO_T, value: this.handle }],
-        SURFACE_T_NONE,
-    ) as NativeHandle;
+    const ptr = call(LIB, "cairo_get_target", [{ type: CAIRO_T, value: this.handle }], SURFACE_T_NONE) as NativeHandle;
     return getNativeObject(ptr, Surface) as Surface;
 };
 

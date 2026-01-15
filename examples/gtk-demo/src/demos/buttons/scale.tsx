@@ -5,14 +5,7 @@ import sourceCode from "./scale.tsx?raw";
 
 const ScaleDemo = () => {
     return (
-        <GtkGrid
-            rowSpacing={10}
-            columnSpacing={10}
-            marginStart={20}
-            marginEnd={20}
-            marginTop={20}
-            marginBottom={20}
-        >
+        <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
             <x.GridChild column={0} row={0}>
                 <GtkLabel label="Plain" xalign={0} />
             </x.GridChild>

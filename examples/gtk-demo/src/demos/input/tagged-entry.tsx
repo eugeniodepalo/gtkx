@@ -43,7 +43,11 @@ const TaggedEntryDemo = () => {
 
             <GtkBox spacing={6} halign={Gtk.Align.END}>
                 <GtkButton label="Add Tag" onClicked={addTag} />
-                <GtkCheckButton label="Spinner" active={showSpinner} onToggled={(btn) => setShowSpinner(btn.getActive())} />
+                <GtkCheckButton
+                    label="Spinner"
+                    active={showSpinner}
+                    onToggled={(btn) => setShowSpinner(btn.getActive())}
+                />
             </GtkBox>
         </GtkBox>
     );

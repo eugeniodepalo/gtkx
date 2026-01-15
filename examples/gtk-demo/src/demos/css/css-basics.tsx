@@ -82,14 +82,7 @@ const CssBasicsDemo = () => {
 
     return (
         <GtkScrolledWindow hexpand vexpand cssClasses={["demo"]}>
-            <GtkTextView
-                ref={textViewRef}
-                monospace
-                topMargin={8}
-                bottomMargin={8}
-                leftMargin={8}
-                rightMargin={8}
-            />
+            <GtkTextView ref={textViewRef} monospace topMargin={8} bottomMargin={8} leftMargin={8} rightMargin={8} />
         </GtkScrolledWindow>
     );
 };

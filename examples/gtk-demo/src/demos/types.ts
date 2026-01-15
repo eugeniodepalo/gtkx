@@ -5,13 +5,10 @@ export interface Demo {
     title: string;
     description: string;
     keywords: string[];
-    component: ComponentType;
-    sourceCode: string;
+    component?: ComponentType;
+    sourceCode?: string;
 }
 
-export interface Category {
-    id: string;
-    title: string;
-    icon: string;
-    demos: Demo[];
-}
+export type TreeItem =
+    | { type: "category"; title: string; children: TreeItem[] }
+    | { type: "demo"; demo: Demo; displayTitle: string };

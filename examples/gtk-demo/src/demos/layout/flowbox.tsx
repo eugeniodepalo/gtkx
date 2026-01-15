@@ -163,11 +163,7 @@ const colorStyles = COLORS.map(
 const FlowBoxDemo = () => {
     return (
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-            <GtkFlowBox
-                maxChildrenPerLine={30}
-                selectionMode={Gtk.SelectionMode.NONE}
-                valign={Gtk.Align.START}
-            >
+            <GtkFlowBox maxChildrenPerLine={30} selectionMode={Gtk.SelectionMode.NONE} valign={Gtk.Align.START}>
                 {COLORS.map((color, index) => (
                     <GtkButton key={color}>
                         <GtkBox widthRequest={24} heightRequest={24} cssClasses={[colorStyles[index] ?? ""]} />

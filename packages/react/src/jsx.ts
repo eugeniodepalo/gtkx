@@ -8,8 +8,8 @@ import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
 import type { ShortcutControllerProps as ShortcutControllerNodeProps } from "./nodes/shortcut-controller.js";
 import type { SourceBufferProps } from "./nodes/source-buffer.js";
-import type { TextBufferProps } from "./nodes/text-buffer.js";
 import type { TextAnchorProps } from "./nodes/text-anchor.js";
+import type { TextBufferProps } from "./nodes/text-buffer.js";
 import type { TextTagProps } from "./nodes/text-tag.js";
 
 export type { AdjustmentProps } from "./nodes/adjustment.js";

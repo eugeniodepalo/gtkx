@@ -170,11 +170,7 @@ const MessageRow = ({ message, onFavorite, onReshare }: MessageRowProps) => {
                             <GtkBox spacing={4}>
                                 <GtkImage iconName="media-playlist-repeat-symbolic" />
                                 <GtkLabel label="Resent by" />
-                                <GtkLinkButton
-                                    label={message.resentBy}
-                                    uri="https://www.gtk.org"
-                                    hasFrame={false}
-                                />
+                                <GtkLinkButton label={message.resentBy} uri="https://www.gtk.org" hasFrame={false} />
                             </GtkBox>
                         )}
 
@@ -202,10 +198,7 @@ const MessageRow = ({ message, onFavorite, onReshare }: MessageRowProps) => {
                                     )}
                                 </GtkBox>
                                 <GtkBox>
-                                    <GtkLabel
-                                        label={formatDetailedTime(message.time)}
-                                        cssClasses={["dim-label"]}
-                                    />
+                                    <GtkLabel label={formatDetailedTime(message.time)} cssClasses={["dim-label"]} />
                                     <GtkButton label="Details" hasFrame={false} cssClasses={["dim-label"]} />
                                 </GtkBox>
                             </GtkBox>
@@ -232,8 +225,7 @@ const ListBoxDemo = () => {
         setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, nReshares: m.nReshares + 1 } : m)));
     }, []);
 
-    const handleRowActivated = useCallback((_listBox: Gtk.ListBox, _row: Gtk.ListBoxRow) => {
-    }, []);
+    const handleRowActivated = useCallback((_listBox: Gtk.ListBox, _row: Gtk.ListBoxRow) => {}, []);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -261,7 +253,8 @@ const ListBoxDemo = () => {
 export const listboxDemo: Demo = {
     id: "listbox",
     title: "List Box/Complex",
-    description: "GtkListBox allows lists with complicated layouts, using regular widgets supporting sorting and filtering.",
+    description:
+        "GtkListBox allows lists with complicated layouts, using regular widgets supporting sorting and filtering.",
     keywords: ["listbox", "list", "rows", "selection", "GtkListBox", "GtkListBoxRow", "messages", "social"],
     component: ListBoxDemo,
     sourceCode,

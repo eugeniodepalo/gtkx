@@ -5,7 +5,7 @@ import { useDemo } from "../context/demo-context.js";
 export const SourceViewer = () => {
     const { currentDemo } = useDemo();
 
-    if (!currentDemo) {
+    if (!currentDemo?.sourceCode) {
         return (
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
@@ -26,17 +26,13 @@ export const SourceViewer = () => {
                     editable={false}
                     showLineNumbers
                     tabWidth={4}
-                    leftMargin={12}
-                    rightMargin={12}
-                    topMargin={12}
-                    bottomMargin={12}
+                    leftMargin={20}
+                    rightMargin={20}
+                    topMargin={20}
+                    bottomMargin={20}
                     monospace
                 >
-                    <x.SourceBuffer
-                        text={currentDemo.sourceCode ?? ""}
-                        language="typescript"
-                        styleScheme="Adwaita-dark"
-                    />
+                    <x.SourceBuffer text={currentDemo.sourceCode} language="typescript" styleScheme="Adwaita-dark" />
                 </GtkSourceView>
             </GtkScrolledWindow>
         </GtkBox>

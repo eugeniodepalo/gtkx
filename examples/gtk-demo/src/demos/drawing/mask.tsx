@@ -10,7 +10,12 @@ const MaskDemo = () => {
 
     const drawMask = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            const gradient = Pattern.createLinear(width * progress - width * 0.5, 0, width * progress + width * 0.5, height)
+            const gradient = Pattern.createLinear(
+                width * progress - width * 0.5,
+                0,
+                width * progress + width * 0.5,
+                height,
+            )
                 .addColorStopRgb(0, 0.95, 0.26, 0.21)
                 .addColorStopRgb(0.33, 1.0, 0.76, 0.03)
                 .addColorStopRgb(0.66, 0.3, 0.69, 0.31)

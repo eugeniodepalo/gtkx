@@ -105,7 +105,7 @@ const PrintingDemo = () => {
         try {
             const printOp = new Gtk.PrintOperation();
             printOp.setNPages(totalPages);
-            printOp.setJobName("GTKX Demo Print");
+            printOp.setJobName("GTK Demo Print");
             printOp.setShowProgress(true);
 
             const pageSetup = new Gtk.PageSetup();
@@ -188,7 +188,7 @@ const PrintingDemo = () => {
         try {
             const printOp = new Gtk.PrintOperation();
             printOp.setNPages(totalPages);
-            printOp.setJobName("GTKX Demo Preview");
+            printOp.setJobName("GTK Demo Preview");
 
             const result = printOp.run(Gtk.PrintOperationAction.PREVIEW, app.getActiveWindow() ?? undefined);
 

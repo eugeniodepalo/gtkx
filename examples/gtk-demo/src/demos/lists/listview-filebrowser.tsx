@@ -15,7 +15,7 @@ interface FileItem {
     contentType: string | null;
 }
 
-const HOME_DIR = GLib.getHomeDir() ?? "/";
+const getHomeDir = () => GLib.getHomeDir() ?? "/";
 const ATTRIBUTES =
     "standard::name,standard::display-name,standard::type,standard::size,standard::icon,standard::content-type";
 
@@ -37,7 +37,7 @@ const getIconName = (icon: Gio.Icon | null): string => {
 };
 
 const ListViewFilebrowserDemo = () => {
-    const [currentPath, setCurrentPath] = useState(HOME_DIR);
+    const [currentPath, setCurrentPath] = useState(getHomeDir);
     const [files, setFiles] = useState<FileItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -128,7 +128,7 @@ const ListViewFilebrowserDemo = () => {
     }, [currentPath]);
 
     const navigateToHome = useCallback(() => {
-        setCurrentPath(HOME_DIR);
+        setCurrentPath(getHomeDir());
     }, []);
 
     const navigateToRoot = useCallback(() => {
