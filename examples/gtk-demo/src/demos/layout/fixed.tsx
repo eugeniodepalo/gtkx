@@ -1,4 +1,4 @@
-import { css, cx } from "@gtkx/css";
+import { css } from "@gtkx/css";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
@@ -8,43 +8,37 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed.tsx?raw";
 
+const faceStyles: Record<string, string> = {
+    front: css`frame& { border: 2px solid white; background-color: rgba(228, 0, 0, 0.8); }`,
+    back: css`frame& { border: 2px solid white; background-color: rgba(228, 0, 0, 0.8); }`,
+    left: css`frame& { border: 2px solid white; background-color: rgba(127, 231, 25, 0.8); }`,
+    right: css`frame& { border: 2px solid white; background-color: rgba(127, 231, 25, 0.8); }`,
+    top: css`frame& { border: 2px solid white; background-color: rgba(114, 159, 207, 0.8); }`,
+    bottom: css`frame& { border: 2px solid white; background-color: rgba(114, 159, 207, 0.8); }`,
+};
+
 const canvasStyle = css`
     background: linear-gradient(135deg, alpha(@window_bg_color, 0.95), alpha(@window_bg_color, 0.85));
     border-radius: 12px;
 `;
 
-const faceStyle = css`
-    min-width: 120px;
-    min-height: 120px;
-    border-radius: 8px;
-    font-size: 24px;
-    font-weight: bold;
-`;
-
-const faceColors: Record<string, string> = {
-    front: css`background-color: alpha(@accent_bg_color, 0.9); color: @accent_fg_color;`,
-    back: css`background-color: alpha(@success_bg_color, 0.9); color: @success_fg_color;`,
-    left: css`background-color: alpha(@warning_bg_color, 0.9); color: @warning_fg_color;`,
-    right: css`background-color: alpha(@error_bg_color, 0.9); color: @error_fg_color;`,
-    top: css`background-color: alpha(@purple_3, 0.9); color: white;`,
-    bottom: css`background-color: alpha(@blue_3, 0.9); color: white;`,
-};
+const FACE_SIZE = 200;
+const HALF_FACE = FACE_SIZE / 2;
 
 interface CubeFace {
     name: string;
     label: string;
     rotateX: number;
     rotateY: number;
-    translateZ: number;
 }
 
 const CUBE_FACES: CubeFace[] = [
-    { name: "front", label: "Front", rotateX: 0, rotateY: 0, translateZ: 60 },
-    { name: "back", label: "Back", rotateX: 0, rotateY: 180, translateZ: 60 },
-    { name: "left", label: "Left", rotateX: 0, rotateY: -90, translateZ: 60 },
-    { name: "right", label: "Right", rotateX: 0, rotateY: 90, translateZ: 60 },
-    { name: "top", label: "Top", rotateX: 90, rotateY: 0, translateZ: 60 },
-    { name: "bottom", label: "Bottom", rotateX: -90, rotateY: 0, translateZ: 60 },
+    { name: "front", label: "Front", rotateX: 0, rotateY: 0 },
+    { name: "back", label: "Back", rotateX: 0, rotateY: 180 },
+    { name: "left", label: "Left", rotateX: 0, rotateY: -90 },
+    { name: "right", label: "Right", rotateX: 0, rotateY: 90 },
+    { name: "top", label: "Top", rotateX: 90, rotateY: 0 },
+    { name: "bottom", label: "Bottom", rotateX: -90, rotateY: 0 },
 ];
 
 let AXIS_X: Graphene.Vec3 | null = null;
@@ -67,37 +61,47 @@ function getAxisY(): Graphene.Vec3 {
 }
 
 function createCubeTransform(
-    rotationX: number,
-    rotationY: number,
-    face: CubeFace,
-    perspective: number,
     centerX: number,
     centerY: number,
+    globalRotationX: number,
+    globalRotationY: number,
+    face: CubeFace,
+    perspectiveDepth: number,
 ): Gsk.Transform {
-    const translateToCenter = new Graphene.Point3D();
-    translateToCenter.init(centerX, centerY, 0);
+    const w = HALF_FACE;
+    const h = HALF_FACE;
+    const d = HALF_FACE;
 
-    const translateBack = new Graphene.Point3D();
-    translateBack.init(-centerX, -centerY, 0);
+    const centerPoint = new Graphene.Point();
+    centerPoint.init(centerX, centerY);
 
-    const faceTranslate = new Graphene.Point3D();
-    faceTranslate.init(0, 0, face.translateZ);
+    const depthAdjust = new Graphene.Point3D();
+    depthAdjust.init(0, 0, -FACE_SIZE / 6);
 
-    const identity = new Gsk.Transform();
-    const t1 = identity.translate3d(translateToCenter) ?? identity;
-    const t2 = t1.perspective(perspective) ?? t1;
-    const t3 = t2.rotate3d(rotationX + face.rotateX, getAxisX()) ?? t2;
-    const t4 = t3.rotate3d(rotationY + face.rotateY, getAxisY()) ?? t3;
-    const t5 = t4.translate3d(faceTranslate) ?? t4;
-    const t6 = t5.translate3d(translateBack) ?? t5;
+    const forwardOffset = new Graphene.Point3D();
+    forwardOffset.init(0, 0, d);
 
-    return t6;
+    const centeringOffset = new Graphene.Point3D();
+    centeringOffset.init(-w, -h, 0);
+
+    let t = new Gsk.Transform();
+    t = t.translate(centerPoint) ?? t;
+    t = t.perspective(perspectiveDepth) ?? t;
+    t = t.rotate3d(globalRotationX, getAxisX()) ?? t;
+    t = t.rotate3d(globalRotationY, getAxisY()) ?? t;
+    t = t.translate3d(depthAdjust) ?? t;
+    t = t.rotate3d(face.rotateX, getAxisX()) ?? t;
+    t = t.rotate3d(face.rotateY, getAxisY()) ?? t;
+    t = t.translate3d(forwardOffset) ?? t;
+    t = t.translate3d(centeringOffset) ?? t;
+
+    return t;
 }
 
 const FixedDemo = () => {
-    const [rotationX, setRotationX] = useState(15);
-    const [rotationY, setRotationY] = useState(25);
-    const [perspective, setPerspective] = useState(800);
+    const [rotationX, setRotationX] = useState(-30);
+    const [rotationY, setRotationY] = useState(135);
+    const [perspective, setPerspective] = useState(FACE_SIZE * 3);
     const [isAnimating, setIsAnimating] = useState(false);
 
     const fixedRef = useRef<Gtk.Fixed | null>(null);
@@ -107,8 +111,8 @@ const FixedDemo = () => {
 
     rotationYRef.current = rotationY;
 
-    const centerX = 190;
-    const centerY = 140;
+    const centerX = 250;
+    const centerY = 200;
 
     const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
         const frameTime = frameClock.getFrameTime();
@@ -169,13 +173,13 @@ const FixedDemo = () => {
     const faceTransforms = useMemo(() => {
         return CUBE_FACES.map((face) => ({
             face,
-            transform: createCubeTransform(rotationX, rotationY, face, perspective, centerX, centerY),
+            transform: createCubeTransform(centerX, centerY, rotationX, rotationY, face, perspective),
         }));
-    }, [rotationX, rotationY, perspective, centerX, centerY]);
+    }, [centerX, centerY, rotationX, rotationY, perspective]);
 
     const resetRotation = useCallback(() => {
-        setRotationX(15);
-        setRotationY(25);
+        setRotationX(-30);
+        setRotationY(135);
     }, []);
 
     return (
@@ -187,20 +191,11 @@ const FixedDemo = () => {
             marginTop={20}
             marginBottom={20}
         >
-            <GtkLabel label="3D Cube Transform" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <GtkLabel
-                label="GtkFixed supports 3D transforms via GskTransform. Each face of this cube is a widget with perspective projection and 3D rotation applied."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
-
             <GtkFrame label="3D Cube">
                 <GtkFixed
                     ref={handleFixedRef}
-                    widthRequest={380}
-                    heightRequest={280}
+                    widthRequest={500}
+                    heightRequest={400}
                     cssClasses={[canvasStyle]}
                     marginTop={12}
                     marginBottom={12}
@@ -208,13 +203,25 @@ const FixedDemo = () => {
                     marginEnd={12}
                 >
                     {faceTransforms.map(({ face, transform }) => (
-                        <x.FixedChild key={face.name} x={centerX - 60} y={centerY - 60} transform={transform}>
-                            <GtkLabel
-                                label={face.label}
-                                cssClasses={[cx(faceStyle, faceColors[face.name])]}
-                                halign={Gtk.Align.CENTER}
-                                valign={Gtk.Align.CENTER}
-                            />
+                        <x.FixedChild
+                            key={face.name}
+                            x={0}
+                            y={0}
+                            transform={transform}
+                        >
+                            <GtkFrame
+                                widthRequest={FACE_SIZE}
+                                heightRequest={FACE_SIZE}
+                                cssClasses={[faceStyles[face.name] ?? ""]}
+                            >
+                                <GtkLabel
+                                    label={face.label}
+                                    halign={Gtk.Align.CENTER}
+                                    valign={Gtk.Align.CENTER}
+                                    hexpand
+                                    vexpand
+                                />
+                            </GtkFrame>
                         </x.FixedChild>
                     ))}
                 </GtkFixed>
@@ -251,7 +258,7 @@ const FixedDemo = () => {
                                 onValueChanged={setRotationX}
                             />
                         </GtkScale>
-                        <GtkLabel label={`${Math.round(rotationX)}°`} widthChars={5} xalign={1} />
+                        <GtkLabel label={`${Math.round(rotationX)}°`} widthChars={6} xalign={1} />
                     </GtkBox>
 
                     <GtkBox spacing={12}>
@@ -259,14 +266,14 @@ const FixedDemo = () => {
                         <GtkScale orientation={Gtk.Orientation.HORIZONTAL} hexpand drawValue={false}>
                             <x.Adjustment
                                 value={rotationY}
-                                lower={-180}
-                                upper={180}
+                                lower={0}
+                                upper={360}
                                 stepIncrement={1}
                                 pageIncrement={10}
                                 onValueChanged={setRotationY}
                             />
                         </GtkScale>
-                        <GtkLabel label={`${Math.round(rotationY)}°`} widthChars={5} xalign={1} />
+                        <GtkLabel label={`${Math.round(rotationY)}°`} widthChars={6} xalign={1} />
                     </GtkBox>
 
                     <GtkBox spacing={12}>
@@ -274,8 +281,8 @@ const FixedDemo = () => {
                         <GtkScale orientation={Gtk.Orientation.HORIZONTAL} hexpand drawValue={false}>
                             <x.Adjustment
                                 value={perspective}
-                                lower={200}
-                                upper={2000}
+                                lower={300}
+                                upper={1500}
                                 stepIncrement={50}
                                 pageIncrement={100}
                                 onValueChanged={setPerspective}
