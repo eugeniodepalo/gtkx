@@ -567,8 +567,8 @@ describe("render - TextBuffer", () => {
                                 <x.TextTag id="inner" weight={Pango.Weight.BOLD}>
                                     {innerText}
                                 </x.TextTag>
-                            </x.TextTag>
-                            {" "}After
+                            </x.TextTag>{" "}
+                            After
                         </x.TextBuffer>
                     </GtkTextView>
                 );

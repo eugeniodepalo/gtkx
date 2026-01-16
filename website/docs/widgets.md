@@ -314,10 +314,10 @@ const TabbedView = () => (
 
 ### x.NotebookPage Props
 
-| Prop        | Type    | Description                                   |
-| ----------- | ------- | --------------------------------------------- |
-| `label`     | string  | Tab label text                                |
-| `tabExpand` | boolean | Whether the tab should expand to fill space   |
+| Prop        | Type    | Description                                     |
+| ----------- | ------- | ----------------------------------------------- |
+| `label`     | string  | Tab label text                                  |
+| `tabExpand` | boolean | Whether the tab should expand to fill space     |
 | `tabFill`   | boolean | Whether the tab should fill its allocated space |
 
 ### x.NotebookPageTab
@@ -368,17 +368,17 @@ For a complete example with visual feedback, see the drag-and-drop demo in `exam
 
 Create typed values for drag-and-drop content and signal emission:
 
-| Factory                        | Description                        |
-| ------------------------------ | ---------------------------------- |
-| `Value.newFromString(str)`     | String values                      |
-| `Value.newFromDouble(num)`     | 64-bit floating point              |
-| `Value.newFromInt(num)`        | 32-bit signed integer              |
-| `Value.newFromUint(num)`       | 32-bit unsigned integer            |
-| `Value.newFromBoolean(bool)`   | Boolean values                     |
-| `Value.newFromObject(obj)`     | GObject instances                  |
-| `Value.newFromBoxed(boxed)`    | Boxed types (Gdk.RGBA, etc.)       |
-| `Value.newFromEnum(gtype, n)`  | Enum values (requires GType)       |
-| `Value.newFromFlags(gtype, n)` | Flags values (requires GType)      |
+| Factory                        | Description                   |
+| ------------------------------ | ----------------------------- |
+| `Value.newFromString(str)`     | String values                 |
+| `Value.newFromDouble(num)`     | 64-bit floating point         |
+| `Value.newFromInt(num)`        | 32-bit signed integer         |
+| `Value.newFromUint(num)`       | 32-bit unsigned integer       |
+| `Value.newFromBoolean(bool)`   | Boolean values                |
+| `Value.newFromObject(obj)`     | GObject instances             |
+| `Value.newFromBoxed(boxed)`    | Boxed types (Gdk.RGBA, etc.)  |
+| `Value.newFromEnum(gtype, n)`  | Enum values (requires GType)  |
+| `Value.newFromFlags(gtype, n)` | Flags values (requires GType) |
 
 Type constants for `dropTypes`:
 
@@ -391,7 +391,7 @@ import { Type } from "@gtkx/ffi/gobject";
     console.log(value.getString());
     return true;
   }}
-/>
+/>;
 ```
 
 ## Custom Drawing
@@ -404,31 +404,31 @@ import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 const CustomCanvas = () => {
-    const handleDraw = (
-        self: Gtk.DrawingArea,
-        cr: Context,
-        width: number,
-        height: number,
-    ) => {
-        cr.setSourceRgb(0.2, 0.4, 0.8);
-        cr.rectangle(10, 10, width - 20, height - 20);
-        cr.fill();
+  const handleDraw = (
+    self: Gtk.DrawingArea,
+    cr: Context,
+    width: number,
+    height: number,
+  ) => {
+    cr.setSourceRgb(0.2, 0.4, 0.8);
+    cr.rectangle(10, 10, width - 20, height - 20);
+    cr.fill();
 
-        cr.setSourceRgb(1, 1, 1);
-        cr.moveTo(width / 2, 20);
-        cr.lineTo(width - 20, height - 20);
-        cr.lineTo(20, height - 20);
-        cr.closePath();
-        cr.fill();
-    };
+    cr.setSourceRgb(1, 1, 1);
+    cr.moveTo(width / 2, 20);
+    cr.lineTo(width - 20, height - 20);
+    cr.lineTo(20, height - 20);
+    cr.closePath();
+    cr.fill();
+  };
 
-    return (
-        <GtkDrawingArea
-            contentWidth={400}
-            contentHeight={300}
-            onDraw={handleDraw}
-        />
-    );
+  return (
+    <GtkDrawingArea
+      contentWidth={400}
+      contentHeight={300}
+      onDraw={handleDraw}
+    />
+  );
 };
 ```
 
@@ -443,59 +443,59 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { useRef, useState } from "react";
 
 interface Point {
-    x: number;
-    y: number;
+  x: number;
+  y: number;
 }
 
 const PaintCanvas = () => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
-    const [points, setPoints] = useState<Point[]>([]);
-    const startRef = useRef<Point | null>(null);
+  const ref = useRef<Gtk.DrawingArea | null>(null);
+  const [points, setPoints] = useState<Point[]>([]);
+  const startRef = useRef<Point | null>(null);
 
-    const handleDraw = (
-        self: Gtk.DrawingArea,
-        cr: Context,
-        width: number,
-        height: number,
-    ) => {
-        cr.setSourceRgb(1, 1, 1);
-        cr.rectangle(0, 0, width, height);
-        cr.fill();
+  const handleDraw = (
+    self: Gtk.DrawingArea,
+    cr: Context,
+    width: number,
+    height: number,
+  ) => {
+    cr.setSourceRgb(1, 1, 1);
+    cr.rectangle(0, 0, width, height);
+    cr.fill();
 
-        if (points.length > 1) {
-            cr.setSourceRgb(0, 0, 0);
-            cr.setLineWidth(2);
-            cr.moveTo(points[0].x, points[0].y);
-            for (const point of points.slice(1)) {
-                cr.lineTo(point.x, point.y);
-            }
-            cr.stroke();
+    if (points.length > 1) {
+      cr.setSourceRgb(0, 0, 0);
+      cr.setLineWidth(2);
+      cr.moveTo(points[0].x, points[0].y);
+      for (const point of points.slice(1)) {
+        cr.lineTo(point.x, point.y);
+      }
+      cr.stroke();
+    }
+  };
+
+  return (
+    <GtkDrawingArea
+      ref={ref}
+      contentWidth={400}
+      contentHeight={300}
+      onDraw={handleDraw}
+      onGestureDragBegin={(startX, startY) => {
+        startRef.current = { x: startX, y: startY };
+        setPoints([{ x: startX, y: startY }]);
+      }}
+      onGestureDragUpdate={(offsetX, offsetY) => {
+        if (startRef.current) {
+          const x = startRef.current.x + offsetX;
+          const y = startRef.current.y + offsetY;
+          setPoints((prev) => [...prev, { x, y }]);
+          ref.current?.queueDraw();
         }
-    };
-
-    return (
-        <GtkDrawingArea
-            ref={ref}
-            contentWidth={400}
-            contentHeight={300}
-            onDraw={handleDraw}
-            onGestureDragBegin={(startX, startY) => {
-                startRef.current = { x: startX, y: startY };
-                setPoints([{ x: startX, y: startY }]);
-            }}
-            onGestureDragUpdate={(offsetX, offsetY) => {
-                if (startRef.current) {
-                    const x = startRef.current.x + offsetX;
-                    const y = startRef.current.y + offsetY;
-                    setPoints((prev) => [...prev, { x, y }]);
-                    ref.current?.queueDraw();
-                }
-            }}
-            onGestureDragEnd={() => {
-                startRef.current = null;
-            }}
-        />
-    );
+      }}
+      onGestureDragEnd={() => {
+        startRef.current = null;
+      }}
+    />
+  );
 };
 ```
 
@@ -535,14 +535,14 @@ const VolumeControl = () => {
 
 ### x.Adjustment Props
 
-| Prop            | Type                    | Description                              |
-| --------------- | ----------------------- | ---------------------------------------- |
-| `value`         | number                  | Current value                            |
-| `lower`         | number                  | Minimum value (default: 0)               |
-| `upper`         | number                  | Maximum value (default: 100)             |
-| `stepIncrement` | number                  | Increment for arrow keys (default: 1)    |
-| `pageIncrement` | number                  | Increment for page up/down (default: 10) |
-| `pageSize`      | number                  | Page size, usually 0 for scales          |
+| Prop             | Type                    | Description                              |
+| ---------------- | ----------------------- | ---------------------------------------- |
+| `value`          | number                  | Current value                            |
+| `lower`          | number                  | Minimum value (default: 0)               |
+| `upper`          | number                  | Maximum value (default: 100)             |
+| `stepIncrement`  | number                  | Increment for arrow keys (default: 1)    |
+| `pageIncrement`  | number                  | Increment for page up/down (default: 10) |
+| `pageSize`       | number                  | Page size, usually 0 for scales          |
 | `onValueChanged` | (value: number) => void | Callback when value changes              |
 
 ## TextBuffer
@@ -620,7 +620,10 @@ const TextWithWidgets = () => {
         <x.TextBuffer>
           Click here:{" "}
           <x.TextAnchor>
-            <GtkButton label="Click me" onClicked={() => console.log("Clicked!")} />
+            <GtkButton
+              label="Click me"
+              onClicked={() => console.log("Clicked!")}
+            />
           </x.TextAnchor>{" "}
           to continue.
         </x.TextBuffer>
@@ -632,57 +635,53 @@ const TextWithWidgets = () => {
 
 ### x.TextBuffer Props
 
-| Prop               | Type                       | Description                             |
-| ------------------ | -------------------------- | --------------------------------------- |
-| `enableUndo`       | boolean                    | Enable undo/redo functionality          |
-| `onTextChanged`    | (text: string) => void     | Callback when text changes              |
-| `onCanUndoChanged` | (canUndo: boolean) => void | Callback when undo availability changes |
-| `onCanRedoChanged` | (canRedo: boolean) => void | Callback when redo availability changes |
+| Prop               | Type                       | Description                                    |
+| ------------------ | -------------------------- | ---------------------------------------------- |
+| `enableUndo`       | boolean                    | Enable undo/redo functionality                 |
+| `onTextChanged`    | (text: string) => void     | Callback when text changes                     |
+| `onCanUndoChanged` | (canUndo: boolean) => void | Callback when undo availability changes        |
+| `onCanRedoChanged` | (canRedo: boolean) => void | Callback when redo availability changes        |
 | `children`         | ReactNode                  | Text content, TextTag, and TextAnchor elements |
 
 ### x.TextTag Props
 
-| Prop                  | Type                 | Description                                    |
-| --------------------- | -------------------- | ---------------------------------------------- |
-| `id`                  | string               | Unique identifier for the tag (required)       |
-| `priority`            | number               | Tag priority (higher wins for same property)   |
-| `foreground`          | string               | Text color (e.g., "red", "#ff0000")            |
-| `background`          | string               | Background color                               |
-| `weight`              | Pango.Weight         | Font weight (e.g., `Pango.Weight.BOLD`)        |
-| `style`               | Pango.Style          | Font style (e.g., `Pango.Style.ITALIC`)        |
-| `underline`           | Pango.Underline      | Underline style                                |
-| `strikethrough`       | boolean              | Whether to strike through text                 |
-| `family`              | string               | Font family (e.g., "Monospace")                |
-| `size`                | number               | Font size in Pango units                       |
-| `sizePoints`          | number               | Font size in points                            |
-| `scale`               | number               | Font scale factor                              |
-| `rise`                | number               | Baseline offset in Pango units                 |
-| `letterSpacing`       | number               | Extra character spacing in Pango units         |
-| `justification`       | Gtk.Justification    | Text justification                             |
-| `leftMargin`          | number               | Left margin in pixels                          |
-| `rightMargin`         | number               | Right margin in pixels                         |
-| `indent`              | number               | Paragraph indent in pixels                     |
-| `pixelsAboveLines`    | number               | Spacing above paragraphs                       |
-| `pixelsBelowLines`    | number               | Spacing below paragraphs                       |
-| `editable`            | boolean              | Whether text can be modified                   |
-| `invisible`           | boolean              | Whether text is hidden                         |
+| Prop               | Type              | Description                                  |
+| ------------------ | ----------------- | -------------------------------------------- |
+| `id`               | string            | Unique identifier for the tag (required)     |
+| `priority`         | number            | Tag priority (higher wins for same property) |
+| `foreground`       | string            | Text color (e.g., "red", "#ff0000")          |
+| `background`       | string            | Background color                             |
+| `weight`           | Pango.Weight      | Font weight (e.g., `Pango.Weight.BOLD`)      |
+| `style`            | Pango.Style       | Font style (e.g., `Pango.Style.ITALIC`)      |
+| `underline`        | Pango.Underline   | Underline style                              |
+| `strikethrough`    | boolean           | Whether to strike through text               |
+| `family`           | string            | Font family (e.g., "Monospace")              |
+| `size`             | number            | Font size in Pango units                     |
+| `sizePoints`       | number            | Font size in points                          |
+| `scale`            | number            | Font scale factor                            |
+| `rise`             | number            | Baseline offset in Pango units               |
+| `letterSpacing`    | number            | Extra character spacing in Pango units       |
+| `justification`    | Gtk.Justification | Text justification                           |
+| `leftMargin`       | number            | Left margin in pixels                        |
+| `rightMargin`      | number            | Right margin in pixels                       |
+| `indent`           | number            | Paragraph indent in pixels                   |
+| `pixelsAboveLines` | number            | Spacing above paragraphs                     |
+| `pixelsBelowLines` | number            | Spacing below paragraphs                     |
+| `editable`         | boolean           | Whether text can be modified                 |
+| `invisible`        | boolean           | Whether text is hidden                       |
 
 ### x.TextAnchor Props
 
-| Prop       | Type      | Description                              |
-| ---------- | --------- | ---------------------------------------- |
-| `children` | ReactNode | Widget to embed at the anchor position   |
+| Prop       | Type      | Description                            |
+| ---------- | --------- | -------------------------------------- |
+| `children` | ReactNode | Widget to embed at the anchor position |
 
 ## SourceBuffer
 
 Configure a `GtkSourceView` buffer declaratively using `x.SourceBuffer`. This extends TextBuffer with syntax highlighting, bracket matching, and language-specific features for source code editing.
 
 ```tsx
-import {
-  x,
-  GtkSourceView,
-  GtkScrolledWindow,
-} from "@gtkx/react";
+import { x, GtkSourceView, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -715,20 +714,20 @@ const CodeEditor = () => {
 
 ### x.SourceBuffer Props
 
-| Prop                       | Type                                   | Description                                        |
-| -------------------------- | -------------------------------------- | -------------------------------------------------- |
-| `text`                     | string                                 | Text content                                       |
-| `language`                 | string \| GtkSource.Language           | Language ID (e.g., "typescript", "python", "rust") |
-| `styleScheme`              | string \| GtkSource.StyleScheme        | Color scheme ID (e.g., "Adwaita-dark", "classic")  |
-| `highlightSyntax`          | boolean                                | Enable syntax highlighting (default: true if language set) |
-| `highlightMatchingBrackets`| boolean                                | Highlight matching brackets (default: true)        |
-| `enableUndo`               | boolean                                | Enable undo/redo functionality                     |
-| `implicitTrailingNewline`  | boolean                                | Handle trailing newlines automatically             |
-| `onTextChanged`            | (text: string) => void                 | Callback when text changes                         |
-| `onCanUndoChanged`         | (canUndo: boolean) => void             | Callback when undo availability changes            |
-| `onCanRedoChanged`         | (canRedo: boolean) => void             | Callback when redo availability changes            |
-| `onCursorMoved`            | () => void                             | Callback when cursor position changes              |
-| `onHighlightUpdated`       | (start, end: Gtk.TextIter) => void     | Callback when highlighting is updated              |
+| Prop                        | Type                               | Description                                                |
+| --------------------------- | ---------------------------------- | ---------------------------------------------------------- |
+| `text`                      | string                             | Text content                                               |
+| `language`                  | string \| GtkSource.Language       | Language ID (e.g., "typescript", "python", "rust")         |
+| `styleScheme`               | string \| GtkSource.StyleScheme    | Color scheme ID (e.g., "Adwaita-dark", "classic")          |
+| `highlightSyntax`           | boolean                            | Enable syntax highlighting (default: true if language set) |
+| `highlightMatchingBrackets` | boolean                            | Highlight matching brackets (default: true)                |
+| `enableUndo`                | boolean                            | Enable undo/redo functionality                             |
+| `implicitTrailingNewline`   | boolean                            | Handle trailing newlines automatically                     |
+| `onTextChanged`             | (text: string) => void             | Callback when text changes                                 |
+| `onCanUndoChanged`          | (canUndo: boolean) => void         | Callback when undo availability changes                    |
+| `onCanRedoChanged`          | (canRedo: boolean) => void         | Callback when redo availability changes                    |
+| `onCursorMoved`             | () => void                         | Callback when cursor position changes                      |
+| `onHighlightUpdated`        | (start, end: Gtk.TextIter) => void | Callback when highlighting is updated                      |
 
 ## Keyboard Shortcuts
 

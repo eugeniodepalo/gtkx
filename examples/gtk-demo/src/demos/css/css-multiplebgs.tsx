@@ -48,7 +48,7 @@ const PRESETS: Record<string, string> = {
   min-height: 200px;
   border-radius: 12px;
 }`,
-    "Spotlight": `/* Top spotlight effect */
+    Spotlight: `/* Top spotlight effect */
 .multi-bg-demo {
   background:
     radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,255,255,0.4) 0%, transparent 70%),
@@ -120,8 +120,21 @@ const CssMultiplebgsDemo = () => {
     }, []);
 
     return (
-        <GtkPaned orientation={Gtk.Orientation.VERTICAL} shrinkStartChild={false} shrinkEndChild={false} vexpand hexpand>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginTop={12} marginStart={12} marginEnd={12} marginBottom={12}>
+        <GtkPaned
+            orientation={Gtk.Orientation.VERTICAL}
+            shrinkStartChild={false}
+            shrinkEndChild={false}
+            vexpand
+            hexpand
+        >
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={12}
+                marginTop={12}
+                marginStart={12}
+                marginEnd={12}
+                marginBottom={12}
+            >
                 <GtkLabel label="Multiple Backgrounds" cssClasses={["title-3"]} halign={Gtk.Align.START} />
                 <GtkLabel
                     label="CSS allows stacking multiple background layers. Each layer can be a gradient, image, or color. The first layer appears on top. Edit the CSS below to experiment."
@@ -131,7 +144,14 @@ const CssMultiplebgsDemo = () => {
                 />
 
                 <GtkBox cssClasses={["multi-bg-demo"]} hexpand vexpand>
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} hexpand vexpand>
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={8}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        hexpand
+                        vexpand
+                    >
                         <GtkLabel label="Live Preview" cssClasses={["title-3"]} />
                         <GtkLabel label="Edit CSS below to see changes" cssClasses={["dim-label"]} />
                     </GtkBox>
@@ -140,12 +160,7 @@ const CssMultiplebgsDemo = () => {
                 <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                     <GtkLabel label="Presets:" cssClasses={["dim-label"]} />
                     {Object.keys(PRESETS).map((name) => (
-                        <GtkButton
-                            key={name}
-                            label={name}
-                            cssClasses={["flat"]}
-                            onClicked={() => handlePreset(name)}
-                        />
+                        <GtkButton key={name} label={name} cssClasses={["flat"]} onClicked={() => handlePreset(name)} />
                     ))}
                 </GtkBox>
 
@@ -172,7 +187,8 @@ const CssMultiplebgsDemo = () => {
 export const cssMultiplebgsDemo: Demo = {
     id: "css-multiplebgs",
     title: "Theming/Multiple Backgrounds",
-    description: "Stack multiple CSS background layers with live editing. Experiment with linear, radial, and repeating gradients.",
+    description:
+        "Stack multiple CSS background layers with live editing. Experiment with linear, radial, and repeating gradients.",
     keywords: ["css", "background", "gradient", "layers", "multiple", "radial", "linear", "live", "editing"],
     component: CssMultiplebgsDemo,
     sourceCode,

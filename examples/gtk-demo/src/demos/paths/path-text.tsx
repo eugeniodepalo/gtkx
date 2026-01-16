@@ -27,6 +27,12 @@ const getQuadraticBezierTangent = (t: number, p0: Point, p1: Point, p2: Point) =
     return Math.atan2(dy, dx);
 };
 
+const isPointNear = (px: number, py: number, point: Point) => {
+    const dx = px - point.x;
+    const dy = py - point.y;
+    return Math.sqrt(dx * dx + dy * dy) <= CONTROL_POINT_RADIUS + 5;
+};
+
 const InteractiveBezierDemo = () => {
     const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const [text, setText] = useState("Drag the control points!");
@@ -37,18 +43,15 @@ const InteractiveBezierDemo = () => {
     const [dragging, setDragging] = useState<"p0" | "p1" | "p2" | null>(null);
     const [hovering, setHovering] = useState<"p0" | "p1" | "p2" | null>(null);
 
-    const isPointNear = (px: number, py: number, point: Point) => {
-        const dx = px - point.x;
-        const dy = py - point.y;
-        return Math.sqrt(dx * dx + dy * dy) <= CONTROL_POINT_RADIUS + 5;
-    };
-
-    const findNearestPoint = (x: number, y: number): "p0" | "p1" | "p2" | null => {
-        if (isPointNear(x, y, p1)) return "p1";
-        if (isPointNear(x, y, p0)) return "p0";
-        if (isPointNear(x, y, p2)) return "p2";
-        return null;
-    };
+    const findNearestPoint = useCallback(
+        (x: number, y: number): "p0" | "p1" | "p2" | null => {
+            if (isPointNear(x, y, p1)) return "p1";
+            if (isPointNear(x, y, p0)) return "p0";
+            if (isPointNear(x, y, p2)) return "p2";
+            return null;
+        },
+        [p0, p1, p2],
+    );
 
     const handleDragBegin = useCallback(
         (startX: number, startY: number) => {
@@ -57,7 +60,7 @@ const InteractiveBezierDemo = () => {
                 setDragging(point);
             }
         },
-        [p0, p1, p2],
+        [findNearestPoint],
     );
 
     const handleDragUpdate = useCallback(
@@ -90,7 +93,7 @@ const InteractiveBezierDemo = () => {
             const point = findNearestPoint(x, y);
             setHovering(point);
         },
-        [p0, p1, p2],
+        [findNearestPoint],
     );
 
     const handleLeave = useCallback(() => {
@@ -167,7 +170,11 @@ const InteractiveBezierDemo = () => {
             }
 
             const drawControlPoint = (point: Point, label: string, isHovered: boolean, isDragged: boolean) => {
-                const radius = isDragged ? CONTROL_POINT_RADIUS + 3 : isHovered ? CONTROL_POINT_RADIUS + 2 : CONTROL_POINT_RADIUS;
+                const radius = isDragged
+                    ? CONTROL_POINT_RADIUS + 3
+                    : isHovered
+                      ? CONTROL_POINT_RADIUS + 2
+                      : CONTROL_POINT_RADIUS;
 
                 if (label === "Control") {
                     cr.setSourceRgba(0.9, 0.5, 0.1, isDragged ? 1 : isHovered ? 0.9 : 0.7);

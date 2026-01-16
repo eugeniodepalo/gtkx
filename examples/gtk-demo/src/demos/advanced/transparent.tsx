@@ -140,7 +140,9 @@ const OverlayDemo = () => {
 
         const provider = new Gtk.CssProvider();
         providerRef.current = provider;
-        provider.loadFromString(`.overlay-card-dynamic { background-color: alpha(@card_bg_color, ${overlayOpacity}); }`);
+        provider.loadFromString(
+            `.overlay-card-dynamic { background-color: alpha(@card_bg_color, ${overlayOpacity}); }`,
+        );
         Gtk.StyleContext.addProviderForDisplay(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         return () => {
@@ -364,14 +366,8 @@ const TransparentDemo = () => {
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} cssClasses={[transparencyInfoStyle]}>
                         <GtkLabel label="alpha(color, opacity) - Set opacity of a color" halign={Gtk.Align.START} />
-                        <GtkLabel
-                            label="shade(color, factor) - Lighten/darken a color"
-                            halign={Gtk.Align.START}
-                        />
-                        <GtkLabel
-                            label="mix(color1, color2, factor) - Blend two colors"
-                            halign={Gtk.Align.START}
-                        />
+                        <GtkLabel label="shade(color, factor) - Lighten/darken a color" halign={Gtk.Align.START} />
+                        <GtkLabel label="mix(color1, color2, factor) - Blend two colors" halign={Gtk.Align.START} />
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

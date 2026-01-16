@@ -155,6 +155,16 @@ export class CallExpressionBuilder {
         }
 
         if (mappedType.ffi.type === "hashtable") {
+            const valueType = mappedType.ffi.valueType?.type;
+            const valueNeedsPtr =
+                valueType === "gobject" ||
+                valueType === "boxed" ||
+                valueType === "struct" ||
+                valueType === "fundamental";
+
+            if (valueNeedsPtr) {
+                return `${valueName} ? Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
+            }
             return `${valueName} ? Array.from(${valueName}) : null`;
         }
 

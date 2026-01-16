@@ -158,8 +158,21 @@ const CssPixbufsDemo = () => {
     }, []);
 
     return (
-        <GtkPaned orientation={Gtk.Orientation.VERTICAL} shrinkStartChild={false} shrinkEndChild={false} vexpand hexpand>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginTop={12} marginStart={12} marginEnd={12} marginBottom={12}>
+        <GtkPaned
+            orientation={Gtk.Orientation.VERTICAL}
+            shrinkStartChild={false}
+            shrinkEndChild={false}
+            vexpand
+            hexpand
+        >
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={12}
+                marginTop={12}
+                marginStart={12}
+                marginEnd={12}
+                marginBottom={12}
+            >
                 <GtkLabel label="Animated Backgrounds" cssClasses={["title-3"]} halign={Gtk.Align.START} />
                 <GtkLabel
                     label="GTK CSS supports @keyframes animations for continuous motion effects. Animate gradients, icons, filters, and transforms. Edit the CSS below to experiment."
@@ -169,7 +182,14 @@ const CssPixbufsDemo = () => {
                 />
 
                 <GtkBox cssClasses={["animated-bg"]} hexpand vexpand>
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} hexpand vexpand>
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={8}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        hexpand
+                        vexpand
+                    >
                         <GtkLabel label="Live Preview" cssClasses={["title-3"]} />
                         <GtkLabel label="Watch the animation" cssClasses={["dim-label"]} />
                     </GtkBox>
@@ -177,12 +197,7 @@ const CssPixbufsDemo = () => {
 
                 <GtkBox spacing={4} halign={Gtk.Align.CENTER}>
                     {Object.keys(PRESETS).map((name) => (
-                        <GtkButton
-                            key={name}
-                            label={name}
-                            cssClasses={["flat"]}
-                            onClicked={() => handlePreset(name)}
-                        />
+                        <GtkButton key={name} label={name} cssClasses={["flat"]} onClicked={() => handlePreset(name)} />
                     ))}
                 </GtkBox>
 
@@ -209,7 +224,8 @@ const CssPixbufsDemo = () => {
 export const cssPixbufsDemo: Demo = {
     id: "css-pixbufs",
     title: "Theming/Animated Backgrounds",
-    description: "CSS @keyframes animations for gradient shifts, hue rotation, icon pulsing, and more. Edit CSS to experiment with animations.",
+    description:
+        "CSS @keyframes animations for gradient shifts, hue rotation, icon pulsing, and more. Edit CSS to experiment with animations.",
     keywords: ["css", "animation", "keyframes", "gradient", "icon", "pixbuf", "background", "live", "editing"],
     component: CssPixbufsDemo,
     sourceCode,

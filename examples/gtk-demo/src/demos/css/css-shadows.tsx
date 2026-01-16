@@ -76,8 +76,21 @@ const CssShadowsDemo = () => {
     }, []);
 
     return (
-        <GtkPaned orientation={Gtk.Orientation.VERTICAL} shrinkStartChild={false} shrinkEndChild={false} vexpand hexpand>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} marginTop={8} marginStart={8} marginEnd={8} marginBottom={8}>
+        <GtkPaned
+            orientation={Gtk.Orientation.VERTICAL}
+            shrinkStartChild={false}
+            shrinkEndChild={false}
+            vexpand
+            hexpand
+        >
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={8}
+                marginTop={8}
+                marginStart={8}
+                marginEnd={8}
+                marginBottom={8}
+            >
                 <GtkLabel label="CSS Shadows" cssClasses={["title-3"]} halign={Gtk.Align.START} />
                 <GtkLabel
                     label="Edit the CSS below to experiment with box-shadow effects. Changes are applied in real-time to the buttons."
@@ -118,7 +131,8 @@ const CssShadowsDemo = () => {
 export const cssShadowsDemo: Demo = {
     id: "css-shadows",
     title: "Theming/Shadows",
-    description: "Live CSS editing for box-shadow effects. Edit the CSS to experiment with shadows on buttons in real-time.",
+    description:
+        "Live CSS editing for box-shadow effects. Edit the CSS to experiment with shadows on buttons in real-time.",
     keywords: ["css", "shadow", "box-shadow", "elevation", "depth", "glow", "live", "editing"],
     component: CssShadowsDemo,
     sourceCode,

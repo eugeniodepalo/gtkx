@@ -27,9 +27,10 @@ export const scheduleAfterCommit = (callback: Callback, priority = CommitPriorit
 
 export const flushAfterCommit = (): void => {
     for (const priority of priorities) {
-        while (queues[priority].length > 0) {
-            const callback = queues[priority].shift()!;
-            callback();
+        const queue = queues[priority];
+        while (queue.length > 0) {
+            const callback = queue.shift();
+            if (callback) callback();
         }
     }
 };

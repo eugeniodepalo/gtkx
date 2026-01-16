@@ -116,8 +116,8 @@ const ListViewWordsDemo = () => {
                         />
                     )}
                 >
-                    {filteredWords.map((word, index) => (
-                        <x.ListItem key={`${word}-${index}`} id={`${word}-${index}`} value={word} />
+                    {filteredWords.map((word) => (
+                        <x.ListItem key={word} id={word} value={word} />
                     ))}
                 </x.ListView>
             </GtkScrolledWindow>

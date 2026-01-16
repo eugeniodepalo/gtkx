@@ -91,12 +91,13 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
     }
 
     private insertTextAtOffset(text: string, offset: number): void {
-        if (!this.buffer || text.length === 0) return;
+        const buffer = this.buffer;
+        if (!buffer || text.length === 0) return;
 
         const iter = new Gtk.TextIter();
         batch(() => {
-            this.buffer!.getIterAtOffset(iter, offset);
-            this.buffer!.insert(iter, text, text.length);
+            buffer.getIterAtOffset(iter, offset);
+            buffer.insert(iter, text, text.length);
         });
     }
 
@@ -310,7 +311,7 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> implements Text
                 this.updateChildOffsets(existingIndex);
             }
 
-            let beforeIndex = this.children.indexOf(before as TextContentChild);
+            const beforeIndex = this.children.indexOf(before as TextContentChild);
             const insertIndex = beforeIndex !== -1 ? beforeIndex : this.children.length;
 
             let offset = 0;

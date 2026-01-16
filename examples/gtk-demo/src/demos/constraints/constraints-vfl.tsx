@@ -72,7 +72,14 @@ const ConstraintsVflDemo = () => {
     }, []);
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={12}
+            marginStart={12}
+            marginEnd={12}
+            marginTop={12}
+            marginBottom={12}
+        >
             <GtkLabel label="Visual Format Language (VFL)" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
@@ -83,7 +90,14 @@ const ConstraintsVflDemo = () => {
             />
 
             <GtkFrame label="VFL Definition">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8}>
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={8}
+                    marginTop={8}
+                    marginBottom={8}
+                    marginStart={8}
+                    marginEnd={8}
+                >
                     <GtkTextView
                         heightRequest={120}
                         monospace
@@ -121,17 +135,20 @@ const ConstraintsVflDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="VFL Syntax Reference">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8}>
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={4}
+                    marginTop={8}
+                    marginBottom={8}
+                    marginStart={8}
+                    marginEnd={8}
+                >
                     <GtkLabel
                         label="<b>Orientation:</b> H: (horizontal), V: (vertical)"
                         useMarkup
                         halign={Gtk.Align.START}
                     />
-                    <GtkLabel
-                        label="<b>Superview:</b> | represents parent edges"
-                        useMarkup
-                        halign={Gtk.Align.START}
-                    />
+                    <GtkLabel label="<b>Superview:</b> | represents parent edges" useMarkup halign={Gtk.Align.START} />
                     <GtkLabel
                         label="<b>Views:</b> [viewName] or [viewName(predicate)]"
                         useMarkup
@@ -143,7 +160,7 @@ const ConstraintsVflDemo = () => {
                         halign={Gtk.Align.START}
                     />
                     <GtkLabel
-                        label="<b>Predicates:</b> (==100), (>=50), (==otherView), (<=200@strong)"
+                        label={`<b>Predicates:</b> (==100), (\x26gt;=50), (==otherView), (\x26lt;=200@strong)`}
                         useMarkup
                         halign={Gtk.Align.START}
                     />

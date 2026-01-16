@@ -73,6 +73,37 @@ impl HashTableEncoder for IntEncoder {
     }
 }
 
+struct NativeHandleEncoder;
+
+impl HashTableEncoder for NativeHandleEncoder {
+    fn hash_func() -> glib::ffi::GHashFunc {
+        Some(glib::ffi::g_direct_hash)
+    }
+
+    fn equal_func() -> glib::ffi::GEqualFunc {
+        Some(glib::ffi::g_direct_equal)
+    }
+
+    fn free_func() -> glib::ffi::GDestroyNotify {
+        None
+    }
+
+    fn encode(val: &value::Value) -> anyhow::Result<(*mut c_void, HashTableStorage)> {
+        match val {
+            value::Value::Object(handle) => {
+                let ptr = handle.get_ptr().ok_or_else(|| {
+                    anyhow::anyhow!("Native object in GHashTable has been garbage collected")
+                })?;
+                Ok((ptr, HashTableStorage::NativeHandles))
+            }
+            value::Value::Null | value::Value::Undefined => {
+                Ok((std::ptr::null_mut(), HashTableStorage::NativeHandles))
+            }
+            _ => bail!("Expected native object in GHashTable, got {:?}", val),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct HashTableType {
     pub key_type: Box<Type>,
@@ -187,6 +218,14 @@ impl ffi::FfiEncode for HashTableType {
             (Type::Integer(_), Type::String(_)) => {
                 Self::encode_hashtable::<IntEncoder, StringEncoder>(tuples)
             }
+            (
+                Type::String(_),
+                Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_),
+            ) => Self::encode_hashtable::<StringEncoder, NativeHandleEncoder>(tuples),
+            (
+                Type::Integer(_),
+                Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_),
+            ) => Self::encode_hashtable::<IntEncoder, NativeHandleEncoder>(tuples),
             _ => bail!(
                 "Unsupported GHashTable key/value types: {:?}/{:?}",
                 self.key_type,

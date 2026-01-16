@@ -26,7 +26,8 @@ interface Page {
 
 const PAGES: Record<number, Page> = {
     1: {
-        content: "Some text to show that simple hypertext can easily be realized with tags. This demo also shows embedded widgets like a volume indicator: [WIDGET] and replaceable text like the 👻 ghost.",
+        content:
+            "Some text to show that simple hypertext can easily be realized with tags. This demo also shows embedded widgets like a volume indicator: [WIDGET] and replaceable text like the 👻 ghost.",
         links: [
             { text: "hypertext", page: 3 },
             { text: "tags", page: 2 },
@@ -68,15 +69,12 @@ type TextSegment =
     | { type: "link"; link: LinkPosition; linkIndex: number }
     | { type: "widget"; widget: EmbeddedWidget };
 
-const buildTextSegments = (
-    content: string,
-    links: LinkPosition[],
-    widgets: EmbeddedWidget[],
-): TextSegment[] => {
+const buildTextSegments = (content: string, links: LinkPosition[], widgets: EmbeddedWidget[]): TextSegment[] => {
     const markers: Array<{ position: number; length: number; segment: TextSegment }> = [];
 
     for (let i = 0; i < links.length; i++) {
-        const link = links[i]!;
+        const link = links[i];
+        if (!link) continue;
         markers.push({
             position: link.start,
             length: link.end - link.start,
@@ -232,7 +230,7 @@ const HypertextDemo = () => {
                 const w = segment.widget;
                 if (w.type === "levelbar") {
                     return (
-                        <x.TextAnchor key={`widget-${index}`}>
+                        <x.TextAnchor key={`widget-${w.type}-${w.position}`}>
                             <GtkLevelBar
                                 value={(w.props?.value as number) ?? 0.5}
                                 minValue={(w.props?.minValue as number) ?? 0}
@@ -244,7 +242,7 @@ const HypertextDemo = () => {
                 }
                 if (w.type === "label") {
                     return (
-                        <x.TextAnchor key={`widget-${index}`}>
+                        <x.TextAnchor key={`widget-${w.type}-${w.position}`}>
                             <GtkButton cssClasses={["flat", "pill"]}>
                                 <GtkLabel
                                     label={(w.props?.label as string) ?? "Widget"}
@@ -299,7 +297,18 @@ export const hypertextDemo: Demo = {
     title: "Text View/Hypertext",
     description:
         "Usually, tags modify the appearance of text in the view, e.g. making it bold or colored or underlined. But tags are not restricted to appearance. They can also affect the behavior of mouse and key presses, as this demo shows. It also demonstrates embedded widgets using GtkTextChildAnchor.",
-    keywords: ["text", "link", "hypertext", "GtkTextTag", "GtkTextView", "clickable", "embedded", "widget", "anchor", "keyboard"],
+    keywords: [
+        "text",
+        "link",
+        "hypertext",
+        "GtkTextTag",
+        "GtkTextView",
+        "clickable",
+        "embedded",
+        "widget",
+        "anchor",
+        "keyboard",
+    ],
     component: HypertextDemo,
     sourceCode,
 };

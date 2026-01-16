@@ -361,7 +361,10 @@ const MazeDemo = () => {
                 }
                 cr.arc(px, py, playerRadius, 0, 2 * Math.PI).fill();
 
-                cr.setSourceRgb(1, 1, 1).setLineWidth(2).arc(px, py, playerRadius, 0, 2 * Math.PI).stroke();
+                cr.setSourceRgb(1, 1, 1)
+                    .setLineWidth(2)
+                    .arc(px, py, playerRadius, 0, 2 * Math.PI)
+                    .stroke();
             }
         },
         [maze, solution, animationStep, playMode, player],
@@ -560,14 +563,12 @@ const MazeDemo = () => {
                         />
                         <GtkButton label="Generate" onClicked={handleGenerate} cssClasses={["flat"]} />
                         {!playMode && (
-                            <>
-                                <GtkButton
-                                    label="Solve"
-                                    onClicked={handleSolve}
-                                    cssClasses={["suggested-action"]}
-                                    sensitive={!isAnimating}
-                                />
-                            </>
+                            <GtkButton
+                                label="Solve"
+                                onClicked={handleSolve}
+                                cssClasses={["suggested-action"]}
+                                sensitive={!isAnimating}
+                            />
                         )}
                         <GtkButton label="Reset" onClicked={handleReset} cssClasses={["flat"]} />
                     </GtkBox>

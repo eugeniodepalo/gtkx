@@ -35,9 +35,10 @@ interface CursorBoxProps {
     cursorName: string;
     description: string;
     isActive: boolean;
+    onHover: () => void;
 }
 
-const CursorBox = ({ cursorName, description, isActive }: CursorBoxProps) => {
+const CursorBox = ({ cursorName, description, isActive, onHover }: CursorBoxProps) => {
     const cursor = useMemo(() => new Gdk.Cursor(cursorName), [cursorName]);
 
     return (
@@ -54,12 +55,21 @@ const CursorBox = ({ cursorName, description, isActive }: CursorBoxProps) => {
             marginTop={8}
             marginBottom={8}
             cursor={cursor}
+            onEnter={onHover}
         >
-            <GtkLabel label={cursorName} cssClasses={["heading"]} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
+            <GtkLabel
+                label={cursorName}
+                cssClasses={["heading"]}
+                halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.END}
+                vexpand
+            />
             <GtkLabel
                 label={description}
                 cssClasses={["caption", "dim-label"]}
                 halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.START}
+                vexpand
                 wrap
                 lines={2}
             />
@@ -68,7 +78,7 @@ const CursorBox = ({ cursorName, description, isActive }: CursorBoxProps) => {
 };
 
 const CursorsDemo = () => {
-    const [activeCursor] = useState<string>("default");
+    const [activeCursor, setActiveCursor] = useState<string>("default");
     const [customCursor, setCustomCursor] = useState<string | null>(null);
     const previewCursor = useMemo(() => (customCursor ? new Gdk.Cursor(customCursor) : undefined), [customCursor]);
 
@@ -105,6 +115,7 @@ const CursorsDemo = () => {
                             cursorName={cursor.name}
                             description={cursor.description}
                             isActive={activeCursor === cursor.name}
+                            onHover={() => setActiveCursor(cursor.name)}
                         />
                     ))}
                 </GtkBox>
@@ -125,6 +136,7 @@ const CursorsDemo = () => {
                             cursorName={cursor.name}
                             description={cursor.description}
                             isActive={activeCursor === cursor.name}
+                            onHover={() => setActiveCursor(cursor.name)}
                         />
                     ))}
                 </GtkBox>

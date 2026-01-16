@@ -18,10 +18,19 @@ export const SourceViewer = () => {
                     bottomMargin={20}
                     monospace
                 >
-                    <x.SourceBuffer text={currentDemo.sourceCode} language="typescript-jsx" styleScheme="Adwaita-dark" />
+                    <x.SourceBuffer
+                        text={currentDemo.sourceCode}
+                        language="typescript-jsx"
+                        styleScheme="Adwaita-dark"
+                    />
                 </GtkSourceView>
             ) : (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} vexpand>
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    valign={Gtk.Align.CENTER}
+                    halign={Gtk.Align.CENTER}
+                    vexpand
+                >
                     <GtkLabel label="No source" cssClasses={["dim-label"]} />
                 </GtkBox>
             )}

@@ -159,7 +159,8 @@ const PaintDemo = () => {
 export const paintDemo: Demo = {
     id: "paint",
     title: "Drawing/Paint",
-    description: "Drawing with tablet/stylus support. Uses GtkGestureStylus for pressure sensitivity and tilt detection via declarative props (onStylusDown, onStylusMotion, onStylusUp).",
+    description:
+        "Drawing with tablet/stylus support. Uses GtkGestureStylus for pressure sensitivity and tilt detection via declarative props (onStylusDown, onStylusMotion, onStylusUp).",
     keywords: ["paint", "drawing", "stylus", "tablet", "pressure", "GtkGestureStylus", "GtkDrawingArea", "cairo"],
     component: PaintDemo,
     sourceCode,

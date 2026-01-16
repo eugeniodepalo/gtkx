@@ -2,7 +2,16 @@ import { css } from "@gtkx/css";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkColorDialogButton, GtkEntry, GtkFrame, GtkImage, GtkLabel, GtkPicture } from "@gtkx/react";
+import {
+    GtkBox,
+    GtkButton,
+    GtkColorDialogButton,
+    GtkEntry,
+    GtkFrame,
+    GtkImage,
+    GtkLabel,
+    GtkPicture,
+} from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
@@ -29,7 +38,9 @@ const ClipboardDemo = () => {
     const [clipboardHasImage, setClipboardHasImage] = useState(false);
     const [clipboardHasColor, setClipboardHasColor] = useState(false);
     const [pastedTexture, setPastedTexture] = useState<Gdk.Texture | null>(null);
-    const [selectedColor, setSelectedColor] = useState<Gdk.RGBA>(new Gdk.RGBA({ red: 0.2, green: 0.6, blue: 0.9, alpha: 1.0 }));
+    const [selectedColor, setSelectedColor] = useState<Gdk.RGBA>(
+        new Gdk.RGBA({ red: 0.2, green: 0.6, blue: 0.9, alpha: 1.0 }),
+    );
     const [pastedColor, setPastedColor] = useState<Gdk.RGBA | null>(null);
 
     const getClipboard = useCallback(() => {
@@ -393,7 +404,19 @@ export const clipboardDemo: Demo = {
     id: "clipboard",
     title: "Clipboard",
     description: "Copy and paste text, colors, and images with GdkClipboard",
-    keywords: ["clipboard", "copy", "paste", "cut", "GdkClipboard", "ContentProvider", "text", "image", "color", "GdkRGBA", "transfer"],
+    keywords: [
+        "clipboard",
+        "copy",
+        "paste",
+        "cut",
+        "GdkClipboard",
+        "ContentProvider",
+        "text",
+        "image",
+        "color",
+        "GdkRGBA",
+        "transfer",
+    ],
     component: ClipboardDemo,
     sourceCode,
 };
