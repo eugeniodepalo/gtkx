@@ -377,7 +377,7 @@ export class RawGirParser {
                 name: "array",
                 isArray: true,
                 elementType: typeNode.type ? this.parseType(typeNode.type as Record<string, unknown>) : undefined,
-                lengthParamIndex: lengthAttr !== undefined ? Number(lengthAttr) : undefined,
+                sizeParamIndex: lengthAttr !== undefined ? Number(lengthAttr) : undefined,
                 zeroTerminated: zeroTerminatedAttr !== undefined ? zeroTerminatedAttr !== "0" : undefined,
                 fixedSize: fixedSizeAttr !== undefined ? Number(fixedSizeAttr) : undefined,
             };

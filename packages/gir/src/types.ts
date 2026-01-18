@@ -1040,7 +1040,7 @@ export class GirType {
     readonly containerType?: ContainerType;
     readonly transferOwnership?: "none" | "full" | "container";
     readonly nullable: boolean;
-    readonly lengthParamIndex?: number;
+    readonly sizeParamIndex?: number;
     readonly zeroTerminated?: boolean;
     readonly fixedSize?: number;
 
@@ -1053,7 +1053,7 @@ export class GirType {
         containerType?: ContainerType;
         transferOwnership?: "none" | "full" | "container";
         nullable: boolean;
-        lengthParamIndex?: number;
+        sizeParamIndex?: number;
         zeroTerminated?: boolean;
         fixedSize?: number;
     }) {
@@ -1065,7 +1065,7 @@ export class GirType {
         this.containerType = data.containerType;
         this.transferOwnership = data.transferOwnership;
         this.nullable = data.nullable;
-        this.lengthParamIndex = data.lengthParamIndex;
+        this.sizeParamIndex = data.sizeParamIndex;
         this.zeroTerminated = data.zeroTerminated;
         this.fixedSize = data.fixedSize;
     }

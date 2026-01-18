@@ -5,7 +5,10 @@
  * This module owns all FFI-specific type logic, separate from the pure GIR data layer.
  */
 
-import type { TrampolineName } from "@gtkx/native";
+import type { TypeKind } from "@gtkx/gir";
+import type { CallbackType, Type } from "@gtkx/native";
+
+export type ImportType = TypeKind;
 
 /**
  * Describes how a type should be marshalled for FFI calls.
@@ -15,9 +18,9 @@ import type { TrampolineName } from "@gtkx/native";
  */
 export type FfiTypeDescriptor = {
     /**
-     * The FFI type: "int", "float", "string", "boolean", "boxed", "struct", "gobject", etc.
+     * The FFI type discriminant, matching native Type["type"].
      */
-    type: string;
+    type: Type["type"];
 
     /**
      * Size in bits for numeric types, or bytes for struct types.
@@ -39,30 +42,34 @@ export type FfiTypeDescriptor = {
 
     getTypeFn?: string;
 
-    refFunc?: string;
+    refFn?: string;
 
-    unrefFunc?: string;
+    unrefFn?: string;
 
     itemType?: FfiTypeDescriptor;
 
     /**
-     * List container type:
+     * Array container type:
      * - "array": C-style null-terminated array
      * - "glist": GLib doubly-linked list
      * - "gslist": GLib singly-linked list
      * - "gptrarray": GLib pointer array
      * - "garray": GLib array with sized elements
-     * - "ghashtable": GLib hash table (for HashTableType)
      * - "sized": Array with length from a parameter
      * - "fixed": Array with compile-time known fixed size
      */
-    listType?: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "ghashtable" | "sized" | "fixed";
+    arrayType?: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed";
+
+    /**
+     * Hash table container type.
+     */
+    hashTableType?: "ghashtable";
 
     /**
      * For sized arrays, the index of the parameter that contains the length.
      * This is the parameter index in the FFI call arguments array.
      */
-    lengthParamIndex?: number;
+    sizeParamIndex?: number;
 
     /**
      * For fixed-size arrays, the compile-time known size.
@@ -75,7 +82,7 @@ export type FfiTypeDescriptor = {
 
     elementSize?: number;
 
-    trampoline?: TrampolineName;
+    callbackType?: CallbackType["callbackType"];
 
     sourceType?: FfiTypeDescriptor;
 
@@ -89,18 +96,13 @@ export type FfiTypeDescriptor = {
 };
 
 /**
- * The kind of a type for import tracking purposes.
- */
-export type TypeKind = "class" | "interface" | "enum" | "flags" | "record" | "callback";
-
-/**
  * Represents a type import required by generated code.
  *
  * Used to collect all necessary imports during type mapping.
  */
 export type TypeImport = {
     /** The kind of type being imported */
-    kind: TypeKind;
+    kind: ImportType;
 
     /** Original GIR name */
     name: string;
@@ -143,7 +145,7 @@ export type MappedType = {
     imports: TypeImport[];
 
     /** Original type kind if applicable */
-    kind?: TypeKind;
+    kind?: ImportType;
 
     /** Whether the type is nullable */
     nullable?: boolean;
@@ -275,20 +277,20 @@ export const gobjectType = (transferFull: boolean): FfiTypeDescriptor => ({
 /**
  * Creates a fundamental type FFI descriptor for types with custom ref/unref functions.
  * @param lib - library containing the ref/unref functions
- * @param refFunc - name of the ref function
- * @param unrefFunc - name of the unref function
+ * @param refFn - name of the ref function
+ * @param unrefFn - name of the unref function
  * @param transferFull - true for transfer full, false for transfer none
  */
 export const fundamentalType = (
     lib: string,
-    refFunc: string,
-    unrefFunc: string,
+    refFn: string,
+    unrefFn: string,
     transferFull: boolean,
 ): FfiTypeDescriptor => ({
     type: "fundamental",
     library: lib,
-    refFunc,
-    unrefFunc,
+    refFn,
+    unrefFn,
     ownership: toOwnership(transferFull),
 });
 
@@ -323,25 +325,25 @@ export const structType = (innerType: string, transferFull: boolean, size?: numb
 /**
  * Creates an array FFI type descriptor.
  * @param transferFull - true for transfer full, false for transfer none
- * @param lengthParamIndex - for sized arrays, the index of the parameter containing the length
+ * @param sizeParamIndex - for sized arrays, the index of the parameter containing the length
  * @param fixedSize - for fixed-size arrays, the compile-time known size
  */
 export const arrayType = (
     itemType: FfiTypeDescriptor,
-    listType: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed" = "array",
+    containerType: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed" = "array",
     transferFull: boolean = true,
-    lengthParamIndex?: number,
+    sizeParamIndex?: number,
     fixedSize?: number,
     elementSize?: number,
 ): FfiTypeDescriptor => {
     const result: FfiTypeDescriptor = {
         type: "array",
         itemType,
-        listType,
+        arrayType: containerType,
         ownership: toOwnership(transferFull),
     };
-    if (lengthParamIndex !== undefined) {
-        result.lengthParamIndex = lengthParamIndex;
+    if (sizeParamIndex !== undefined) {
+        result.sizeParamIndex = sizeParamIndex;
     }
     if (fixedSize !== undefined) {
         result.fixedSize = fixedSize;
@@ -359,7 +361,7 @@ export const arrayType = (
 export const ptrArrayType = (itemType: FfiTypeDescriptor, transferFull: boolean): FfiTypeDescriptor => ({
     type: "array",
     itemType,
-    listType: "gptrarray",
+    arrayType: "gptrarray",
     ownership: toOwnership(transferFull),
 });
 
@@ -374,7 +376,7 @@ export const gArrayType = (
 ): FfiTypeDescriptor => ({
     type: "array",
     itemType,
-    listType: "garray",
+    arrayType: "garray",
     elementSize,
     ownership: toOwnership(transferFull),
 });
@@ -391,7 +393,7 @@ export const hashTableType = (
     type: "hashtable",
     keyType,
     valueType,
-    listType: "ghashtable",
+    hashTableType: "ghashtable",
     ownership: toOwnership(transferFull),
 });
 
@@ -503,7 +505,7 @@ export const getSyntheticSetterPrimitiveInfo = (typeName: string): SyntheticSett
  */
 export type SelfTypeDescriptor =
     | { type: "gobject"; ownership: "borrowed" | "full" }
-    | { type: "fundamental"; ownership: "borrowed" | "full"; lib: string; refFunc: string; unrefFunc: string }
+    | { type: "fundamental"; ownership: "borrowed" | "full"; lib: string; refFn: string; unrefFn: string }
     | { type: "boxed"; ownership: "borrowed" | "full"; innerType: string; lib: string; getTypeFn?: string };
 
 /** Self type descriptor for GObject instance methods. */
@@ -514,15 +516,15 @@ export const SELF_TYPE_GOBJECT: SelfTypeDescriptor = { type: "gobject", ownershi
  */
 export const fundamentalSelfType = (
     lib: string,
-    refFunc: string,
-    unrefFunc: string,
+    refFn: string,
+    unrefFn: string,
     ownership: "borrowed" | "full" = "borrowed",
 ): SelfTypeDescriptor => ({
     type: "fundamental",
     ownership,
     lib,
-    refFunc,
-    unrefFunc,
+    refFn,
+    unrefFn,
 });
 
 /**

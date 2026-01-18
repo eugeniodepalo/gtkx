@@ -203,7 +203,7 @@ describe("FfiMapper", () => {
 
                 expect(result.ffi.type).toBe("array");
                 if (result.ffi.type === "array") {
-                    expect(result.ffi.listType).toBe("glist");
+                    expect(result.ffi.arrayType).toBe("glist");
                 }
             });
 
@@ -219,7 +219,7 @@ describe("FfiMapper", () => {
 
                 expect(result.ffi.type).toBe("array");
                 if (result.ffi.type === "array") {
-                    expect(result.ffi.listType).toBe("gslist");
+                    expect(result.ffi.arrayType).toBe("gslist");
                 }
             });
 
@@ -263,7 +263,7 @@ describe("FfiMapper", () => {
                 expect(result.ts).toBe("string[]");
                 expect(result.ffi.type).toBe("array");
                 if (result.ffi.type === "array") {
-                    expect(result.ffi.listType).toBe("gptrarray");
+                    expect(result.ffi.arrayType).toBe("gptrarray");
                 }
             });
 
@@ -280,7 +280,7 @@ describe("FfiMapper", () => {
                 expect(result.ts).toBe("number[]");
                 expect(result.ffi.type).toBe("array");
                 if (result.ffi.type === "array") {
-                    expect(result.ffi.listType).toBe("garray");
+                    expect(result.ffi.arrayType).toBe("garray");
                     expect(result.ffi.elementSize).toBeDefined();
                 }
             });
@@ -297,7 +297,7 @@ describe("FfiMapper", () => {
 
                 expect(result.ffi.type).toBe("array");
                 if (result.ffi.type === "array") {
-                    expect(result.ffi.listType).toBe("glist");
+                    expect(result.ffi.arrayType).toBe("glist");
                 }
             });
 
@@ -313,7 +313,7 @@ describe("FfiMapper", () => {
 
                 expect(result.ffi.type).toBe("array");
                 if (result.ffi.type === "array") {
-                    expect(result.ffi.listType).toBe("gslist");
+                    expect(result.ffi.arrayType).toBe("gslist");
                 }
             });
         });
@@ -726,7 +726,7 @@ describe("FfiMapper", () => {
 
                 expect(result.ffi.type).toBe("callback");
                 if (result.ffi.type === "callback") {
-                    expect(result.ffi.trampoline).toBe("asyncReady");
+                    expect(result.ffi.callbackType).toBe("asyncReadyCallback");
                 }
             });
 
@@ -1213,38 +1213,38 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ts).toBe("number[]");
             expect(result.ffi.type).toBe("array");
-            expect(result.ffi.listType).toBe("fixed");
+            expect(result.ffi.arrayType).toBe("fixed");
             expect(result.ffi.fixedSize).toBe(4);
         });
 
-        it("maps sized array with length param index", () => {
+        it("maps sized array with size param index", () => {
             const { mapper } = createTestSetup();
             const type = createNormalizedType({
                 name: "gint",
                 isArray: true,
                 elementType: createNormalizedType({ name: "gint" }),
-                lengthParamIndex: 1,
+                sizeParamIndex: 1,
                 zeroTerminated: false,
             });
             const result = mapper.mapType(type);
 
             expect(result.ffi.type).toBe("array");
-            expect(result.ffi.listType).toBe("sized");
-            expect(result.ffi.lengthParamIndex).toBe(1);
+            expect(result.ffi.arrayType).toBe("sized");
+            expect(result.ffi.sizeParamIndex).toBe(1);
         });
 
-        it("adjusts length param index with offset for instance methods", () => {
+        it("adjusts size param index with offset for instance methods", () => {
             const { mapper } = createTestSetup();
             const type = createNormalizedType({
                 name: "gint",
                 isArray: true,
                 elementType: createNormalizedType({ name: "gint" }),
-                lengthParamIndex: 0,
+                sizeParamIndex: 0,
                 zeroTerminated: false,
             });
             const result = mapper.mapType(type, false, undefined, 1);
 
-            expect(result.ffi.lengthParamIndex).toBe(1);
+            expect(result.ffi.sizeParamIndex).toBe(1);
         });
 
         it("maps array of strings with element ownership", () => {
@@ -1297,7 +1297,7 @@ describe("FfiMapper - Extended Coverage", () => {
             const result = mapper.mapType(type);
 
             expect(result.ts).toBe("number[]");
-            expect(result.ffi.listType).toBe("fixed");
+            expect(result.ffi.arrayType).toBe("fixed");
             expect(result.ffi.fixedSize).toBe(16);
             if (result.ffi.itemType) {
                 expect(result.ffi.itemType.type).toBe("float");
@@ -1323,7 +1323,7 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ts).toBe("Button[]");
             expect(result.ffi.type).toBe("array");
-            expect(result.ffi.listType).toBe("gptrarray");
+            expect(result.ffi.arrayType).toBe("gptrarray");
         });
 
         it("maps GArray with sized elements", () => {
@@ -1338,7 +1338,7 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ts).toBe("number[]");
             expect(result.ffi.type).toBe("array");
-            expect(result.ffi.listType).toBe("garray");
+            expect(result.ffi.arrayType).toBe("garray");
             expect(result.ffi.elementSize).toBe(4);
         });
 
@@ -1353,8 +1353,8 @@ describe("FfiMapper - Extended Coverage", () => {
             const result = mapper.mapType(type);
 
             expect(result.ffi.type).toBe("array");
-            expect(result.ffi.listType).toBe("array");
-            expect(result.ffi.lengthParamIndex).toBeUndefined();
+            expect(result.ffi.arrayType).toBe("array");
+            expect(result.ffi.sizeParamIndex).toBeUndefined();
         });
     });
 
@@ -1439,8 +1439,8 @@ describe("FfiMapper - Extended Coverage", () => {
             const result = mapper.mapType(type);
 
             expect(result.ffi.type).toBe("fundamental");
-            expect(result.ffi.refFunc).toBe("g_param_spec_ref_sink");
-            expect(result.ffi.unrefFunc).toBe("g_param_spec_unref");
+            expect(result.ffi.refFn).toBe("g_param_spec_ref_sink");
+            expect(result.ffi.unrefFn).toBe("g_param_spec_unref");
             expect(result.ffi.ownership).toBe("full");
         });
 
@@ -1465,8 +1465,8 @@ describe("FfiMapper - Extended Coverage", () => {
             const result = mapper.mapType(type, true);
 
             expect(result.ffi.type).toBe("fundamental");
-            expect(result.ffi.refFunc).toBe("g_variant_ref_sink");
-            expect(result.ffi.unrefFunc).toBe("g_variant_unref");
+            expect(result.ffi.refFn).toBe("g_variant_ref_sink");
+            expect(result.ffi.unrefFn).toBe("g_variant_unref");
             expect(result.ffi.ownership).toBe("borrowed");
         });
     });

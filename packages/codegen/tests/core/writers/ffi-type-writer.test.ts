@@ -313,25 +313,25 @@ describe("FfiTypeWriter", () => {
                 expect(output).toContain('"string"');
             });
 
-            it("writes array type with listType", () => {
+            it("writes array type with arrayType", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "array",
-                    listType: "glist",
+                    arrayType: "glist",
                     ownership: "full",
                 });
 
                 expect(output).toContain('"glist"');
             });
 
-            it("defaults listType to array", () => {
+            it("defaults arrayType to array", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "array",
                     ownership: "full",
                 });
 
-                expect(output).toContain('listType: "array"');
+                expect(output).toContain('arrayType: "array"');
             });
 
             it("writes array of gobjects", () => {
@@ -347,11 +347,11 @@ describe("FfiTypeWriter", () => {
         });
 
         describe("callback type", () => {
-            it("writes callback type with trampoline", () => {
+            it("writes callback type with callbackType", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "callback",
-                    trampoline: "closure",
+                    callbackType: "closure",
                 });
 
                 expect(output).toContain('"callback"');
@@ -362,7 +362,7 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "callback",
-                    trampoline: "closure",
+                    callbackType: "closure",
                     argTypes: [
                         { type: "gobject", ownership: "borrowed" },
                         { type: "string", ownership: "borrowed" },
@@ -378,7 +378,7 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "callback",
-                    trampoline: "closure",
+                    callbackType: "closure",
                     sourceType: { type: "gobject", ownership: "borrowed" },
                 });
 
@@ -389,7 +389,7 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "callback",
-                    trampoline: "closure",
+                    callbackType: "closure",
                     resultType: { type: "boolean" },
                 });
 
@@ -400,14 +400,14 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "callback",
-                    trampoline: "closure",
+                    callbackType: "closure",
                     returnType: { type: "int", size: 32, unsigned: false },
                 });
 
                 expect(output).toContain("returnType:");
             });
 
-            it("defaults trampoline to closure", () => {
+            it("defaults callbackType to closure", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, { type: "callback" } as FfiTypeDescriptor);
 
@@ -603,7 +603,7 @@ describe("FfiTypeWriter", () => {
             const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
             const output = getWriterOutput(writer, {
                 type: "callback",
-                trampoline: "closure",
+                callbackType: "closure",
                 argTypes: [
                     { type: "gobject", ownership: "borrowed" },
                     {

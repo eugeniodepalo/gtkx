@@ -8,7 +8,7 @@
 
 import type { GirCallback, GirNamespace, GirParameter, GirRepository, GirType, QualifiedName } from "@gtkx/gir";
 import { isIntrinsicType, isStringType, parseQualifiedName } from "@gtkx/gir";
-import { getTrampolineName, isSupportedCallback, type TrampolineName } from "../constants/index.js";
+import { type CallbackName, getTrampolineName, isSupportedCallback } from "../constants/index.js";
 import { normalizeClassName, toPascalCase } from "../utils/naming.js";
 import {
     arrayType,
@@ -30,7 +30,7 @@ import {
     stringType,
     structType,
     type TypeImport,
-    type TypeKind,
+    type ImportType,
 } from "./ffi-types.js";
 
 /**
@@ -66,10 +66,10 @@ export class FfiMapper {
      * @param type - The normalized type to map
      * @param isReturn - Whether this is a return type (affects ownership)
      * @param parentTransferOwnership - Transfer ownership from parent context
-     * @param lengthParamOffset - Offset to add to lengthParamIndex for sized arrays (e.g., 1 for instance methods)
+     * @param sizeParamOffset - Offset to add to sizeParamIndex for sized arrays (e.g., 1 for instance methods)
      * @returns Mapped type with TypeScript string, FFI descriptor, and required imports
      */
-    mapType(type: GirType, isReturn = false, parentTransferOwnership?: string, lengthParamOffset = 0): MappedType {
+    mapType(type: GirType, isReturn = false, parentTransferOwnership?: string, sizeParamOffset = 0): MappedType {
         const imports: TypeImport[] = [];
 
         if (type.isHashTable()) {
@@ -104,7 +104,7 @@ export class FfiMapper {
             const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
 
             const isSizedArray =
-                type.lengthParamIndex !== undefined &&
+                type.sizeParamIndex !== undefined &&
                 (type.zeroTerminated === false || type.zeroTerminated === undefined);
 
             const isFixedSizeArray = type.fixedSize !== undefined;
@@ -123,8 +123,8 @@ export class FfiMapper {
                 listType = "sized";
             }
 
-            const adjustedLengthParamIndex =
-                type.lengthParamIndex !== undefined ? type.lengthParamIndex + lengthParamOffset : undefined;
+            const adjustedSizeParamIndex =
+                type.sizeParamIndex !== undefined ? type.sizeParamIndex + sizeParamOffset : undefined;
 
             if (type.elementType) {
                 const elementTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
@@ -132,7 +132,7 @@ export class FfiMapper {
                     type.elementType,
                     isReturn,
                     elementTransferOwnership,
-                    lengthParamOffset,
+                    sizeParamOffset,
                 );
                 imports.push(...elementResult.imports);
 
@@ -144,7 +144,7 @@ export class FfiMapper {
                         elementResult.ffi,
                         listType,
                         transferFull,
-                        adjustedLengthParamIndex,
+                        adjustedSizeParamIndex,
                         type.fixedSize,
                         elementSize,
                     ),
@@ -154,7 +154,7 @@ export class FfiMapper {
 
             return {
                 ts: "unknown[]",
-                ffi: arrayType(FFI_VOID, listType, transferFull, adjustedLengthParamIndex, type.fixedSize),
+                ffi: arrayType(FFI_VOID, listType, transferFull, adjustedSizeParamIndex, type.fixedSize),
                 imports,
             };
         }
@@ -667,10 +667,10 @@ export class FfiMapper {
 
     private buildCallbackFfiDescriptor(
         callback: GirCallback,
-        trampoline: TrampolineName,
+        callbackType: CallbackName,
     ): {
         type: "callback";
-        trampoline: TrampolineName;
+        callbackType: CallbackName;
         argTypes?: FfiTypeDescriptor[];
         returnType?: FfiTypeDescriptor;
     } {
@@ -685,7 +685,7 @@ export class FfiMapper {
 
         return {
             type: "callback",
-            trampoline,
+            callbackType,
             argTypes: argTypes.length > 0 ? argTypes : undefined,
             returnType,
         };
@@ -734,7 +734,7 @@ export class FfiMapper {
  * Internal type for resolved type information.
  */
 type ResolvedType = {
-    kind: TypeKind;
+    kind: ImportType;
     name: string;
     namespace: string;
     transformedName: string;

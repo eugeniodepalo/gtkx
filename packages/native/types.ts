@@ -26,17 +26,17 @@ type FundamentalType = {
     type: "fundamental";
     ownership: Ownership;
     library: string;
-    refFunc: string;
-    unrefFunc: string;
+    refFn: string;
+    unrefFn: string;
 };
 
 type ArrayType = {
     type: "array";
     itemType: Type;
-    listType: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed";
+    arrayType: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed";
     ownership: Ownership;
     elementSize?: number;
-    lengthParamIndex?: number;
+    sizeParamIndex?: number;
     fixedSize?: number;
 };
 
@@ -44,7 +44,7 @@ type HashTableType = {
     type: "hashtable";
     keyType: Type;
     valueType: Type;
-    listType: "ghashtable";
+    hashTableType: "ghashtable";
     ownership: Ownership;
 };
 
@@ -54,21 +54,19 @@ type NullType = { type: "null" };
 
 type UndefinedType = { type: "undefined" };
 
-export type TrampolineName =
-    | "animationTargetFunc"
-    | "asyncReady"
-    | "closure"
-    | "destroy"
-    | "drawFunc"
-    | "pathIntersectionFunc"
-    | "scaleFormatValueFunc"
-    | "shortcutFunc"
-    | "tickCallback"
-    | "treeListModelCreateFunc";
-
-type CallbackType = {
+export type CallbackType = {
     type: "callback";
-    trampoline: TrampolineName;
+    callbackType:
+        | "animationTargetFunc"
+        | "asyncReadyCallback"
+        | "closure"
+        | "destroyNotify"
+        | "drawingAreaDrawFunc"
+        | "pathIntersectionFunc"
+        | "scaleFormatValueFunc"
+        | "shortcutFunc"
+        | "tickCallback"
+        | "treeListModelCreateModelFunc";
     argTypes?: Type[];
     sourceType?: Type;
     resultType?: Type;

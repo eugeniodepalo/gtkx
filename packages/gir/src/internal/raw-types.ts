@@ -204,7 +204,7 @@ export type RawType = {
     containerType?: ContainerType;
     transferOwnership?: "none" | "full" | "container";
     nullable?: boolean;
-    lengthParamIndex?: number;
+    sizeParamIndex?: number;
     zeroTerminated?: boolean;
     fixedSize?: number;
 };

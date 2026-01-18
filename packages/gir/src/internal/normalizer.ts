@@ -227,7 +227,7 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
             elementType: normalizeType(raw.elementType, currentNamespace, ctx),
             transferOwnership: raw.transferOwnership,
             nullable: raw.nullable ?? false,
-            lengthParamIndex: raw.lengthParamIndex,
+            sizeParamIndex: raw.sizeParamIndex,
             zeroTerminated: raw.zeroTerminated,
             fixedSize: raw.fixedSize,
         });
@@ -241,7 +241,7 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
             elementType: null,
             transferOwnership: raw.transferOwnership,
             nullable: raw.nullable ?? false,
-            lengthParamIndex: raw.lengthParamIndex,
+            sizeParamIndex: raw.sizeParamIndex,
             zeroTerminated: raw.zeroTerminated,
             fixedSize: raw.fixedSize,
         });

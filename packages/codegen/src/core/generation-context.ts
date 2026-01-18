@@ -6,7 +6,7 @@
  * gets its own context that is reset between modules.
  */
 
-import type { TypeImport, TypeKind } from "./type-system/ffi-types.js";
+import type { ImportType, TypeImport } from "./type-system/ffi-types.js";
 
 /**
  * Represents external type usage for imports.
@@ -15,7 +15,7 @@ export type ExternalTypeUsage = {
     namespace: string;
     name: string;
     transformedName: string;
-    kind: TypeKind;
+    kind: ImportType;
 };
 
 /**

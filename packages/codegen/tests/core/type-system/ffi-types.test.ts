@@ -185,7 +185,7 @@ describe("arrayType", () => {
         expect(arrayType(itemType)).toEqual({
             type: "array",
             itemType,
-            listType: "array",
+            arrayType: "array",
             ownership: "full",
         });
     });
@@ -195,7 +195,7 @@ describe("arrayType", () => {
         expect(arrayType(itemType, "glist", false)).toEqual({
             type: "array",
             itemType,
-            listType: "glist",
+            arrayType: "glist",
             ownership: "borrowed",
         });
     });
@@ -205,7 +205,7 @@ describe("arrayType", () => {
         expect(arrayType(itemType, "gslist", true)).toEqual({
             type: "array",
             itemType,
-            listType: "gslist",
+            arrayType: "gslist",
             ownership: "full",
         });
     });
@@ -238,8 +238,8 @@ describe("Self type descriptors", () => {
             type: "fundamental",
             ownership: "borrowed",
             lib: "libgobject-2.0.so.0",
-            refFunc: "g_param_spec_ref_sink",
-            unrefFunc: "g_param_spec_unref",
+            refFn: "g_param_spec_ref_sink",
+            unrefFn: "g_param_spec_unref",
         });
     });
 

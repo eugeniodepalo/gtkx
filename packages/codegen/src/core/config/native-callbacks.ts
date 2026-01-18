@@ -1,22 +1,22 @@
-import type { TrampolineName } from "@gtkx/native";
+import type { CallbackType } from "@gtkx/native";
 
-export type { TrampolineName };
+export type CallbackName = CallbackType["callbackType"];
 
 export const APPLICATION_PARAM_NAME = "application";
 
-const CALLBACK_TRAMPOLINES: Record<string, TrampolineName> = {
+const CALLBACK_TRAMPOLINES: Record<string, CallbackName> = {
     "Adw.AnimationTargetFunc": "animationTargetFunc",
-    "Gio.AsyncReadyCallback": "asyncReady",
-    "GLib.DestroyNotify": "destroy",
+    "Gio.AsyncReadyCallback": "asyncReadyCallback",
+    "GLib.DestroyNotify": "destroyNotify",
     "Gsk.PathIntersectionFunc": "pathIntersectionFunc",
-    "Gtk.DrawingAreaDrawFunc": "drawFunc",
+    "Gtk.DrawingAreaDrawFunc": "drawingAreaDrawFunc",
     "Gtk.ScaleFormatValueFunc": "scaleFormatValueFunc",
     "Gtk.ShortcutFunc": "shortcutFunc",
     "Gtk.TickCallback": "tickCallback",
-    "Gtk.TreeListModelCreateModelFunc": "treeListModelCreateFunc",
+    "Gtk.TreeListModelCreateModelFunc": "treeListModelCreateModelFunc",
 };
 
-export const getTrampolineName = (qualifiedName: string): TrampolineName | null => {
+export const getTrampolineName = (qualifiedName: string): CallbackName | null => {
     return CALLBACK_TRAMPOLINES[qualifiedName] ?? null;
 };
 

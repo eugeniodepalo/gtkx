@@ -30,7 +30,7 @@ describe("call - callback types", () => {
                 [
                     { type: GOBJECT_NONE, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", trampoline: "closure" }, value: () => {} },
+                    { type: { type: "callback", callbackType: "closure" }, value: () => {} },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },
@@ -55,7 +55,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            trampoline: "closure",
+                            callbackType: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                         },
                         value: () => {
@@ -85,7 +85,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            trampoline: "closure",
+                            callbackType: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                         },
                         value: (arg: unknown) => {
@@ -111,7 +111,7 @@ describe("call - callback types", () => {
                 [
                     { type: GOBJECT_NONE, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", trampoline: "closure" }, value: () => {} },
+                    { type: { type: "callback", callbackType: "closure" }, value: () => {} },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },
@@ -148,7 +148,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            trampoline: "closure",
+                            callbackType: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                         },
                         value: () => {
@@ -169,7 +169,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            trampoline: "closure",
+                            callbackType: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                         },
                         value: () => {
@@ -200,7 +200,7 @@ describe("call - callback types", () => {
                     { type: GOBJECT_NONE, value: button },
                     { type: STRING, value: "test-data" },
                     {
-                        type: { type: "callback", trampoline: "destroy" },
+                        type: { type: "callback", callbackType: "destroyNotify" },
                         value: () => {
                             destroyCalled = true;
                         },
@@ -238,7 +238,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            trampoline: "closure",
+                            callbackType: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                         },
                         value: (obj: unknown) => {
@@ -294,7 +294,7 @@ describe("call - callback types", () => {
                         { type: GOBJECT_NONE, value: button },
                         { type: STRING, value: "data" },
                         {
-                            type: { type: "callback", trampoline: "destroy" },
+                            type: { type: "callback", callbackType: "destroyNotify" },
                             value: () => {},
                         },
                     ],
@@ -330,7 +330,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            trampoline: "closure",
+                            callbackType: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                         },
                         value: () => {
@@ -383,7 +383,7 @@ describe("call - callback types", () => {
                 [
                     { type: GOBJECT_NONE, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", trampoline: "closure" }, value: () => {} },
+                    { type: { type: "callback", callbackType: "closure" }, value: () => {} },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },

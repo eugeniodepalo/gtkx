@@ -19,7 +19,7 @@ pub enum ListType {
     GSList,
     GPtrArray,
     GArray,
-    Sized { length_index: usize },
+    Sized { size_index: usize },
     Fixed { size: usize },
 }
 
@@ -33,10 +33,10 @@ impl std::str::FromStr for ListType {
             "gslist" => Ok(ListType::GSList),
             "gptrarray" => Ok(ListType::GPtrArray),
             "garray" => Ok(ListType::GArray),
-            "sized" => Ok(ListType::Sized { length_index: 0 }),
+            "sized" => Ok(ListType::Sized { size_index: 0 }),
             "fixed" => Ok(ListType::Fixed { size: 0 }),
             _ => Err(format!(
-                "'listType' must be 'array', 'glist', 'gslist', 'gptrarray', 'garray', 'sized', or 'fixed'; got '{}'",
+                "'arrayType' must be 'array', 'glist', 'gslist', 'gptrarray', 'garray', 'sized', or 'fixed'; got '{}'",
                 s
             )),
         }
@@ -66,10 +66,10 @@ impl ArrayType {
         let item_type_value: Handle<'_, JsValue> = obj.prop(cx, "itemType").get()?;
         let item_type = Type::from_js_value(cx, item_type_value)?;
 
-        let list_type_prop: Handle<'_, JsValue> = obj.prop(cx, "listType").get()?;
+        let list_type_prop: Handle<'_, JsValue> = obj.prop(cx, "arrayType").get()?;
         let list_type_str = list_type_prop
             .downcast::<JsString, _>(cx)
-            .or_else(|_| cx.throw_type_error("'listType' property is required for array types"))?
+            .or_else(|_| cx.throw_type_error("'arrayType' property is required for array types"))?
             .value(cx);
 
         let list_type: ListType = list_type_str
@@ -78,15 +78,15 @@ impl ArrayType {
 
         let list_type = match list_type {
             ListType::Sized { .. } => {
-                let length_index: Handle<JsNumber> =
-                    obj.get_opt(cx, "lengthParamIndex")?.ok_or_else(|| {
+                let size_index: Handle<JsNumber> =
+                    obj.get_opt(cx, "sizeParamIndex")?.ok_or_else(|| {
                         cx.throw_type_error::<_, ()>(
-                            "'lengthParamIndex' is required for sized arrays",
+                            "'sizeParamIndex' is required for sized arrays",
                         )
                         .unwrap_err()
                     })?;
                 ListType::Sized {
-                    length_index: length_index.value(cx) as usize,
+                    size_index: size_index.value(cx) as usize,
                 }
             }
             ListType::Fixed { .. } => {
@@ -316,8 +316,8 @@ impl ffi::FfiDecode for ArrayType {
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
         match &self.list_type {
-            ListType::Sized { length_index } => {
-                let length = self.length_from_args(ffi_args, args, *length_index)?;
+            ListType::Sized { size_index } => {
+                let length = self.size_from_args(ffi_args, args, *size_index)?;
 
                 if let ffi::FfiValue::Ptr(ptr) = ffi_value {
                     if ptr.is_null() {
@@ -464,35 +464,35 @@ impl ArrayType {
         Ok(value::Value::Array(values))
     }
 
-    fn length_from_args(
+    fn size_from_args(
         &self,
         ffi_args: &[ffi::FfiValue],
         args: &[Arg],
-        length_index: usize,
+        size_index: usize,
     ) -> anyhow::Result<usize> {
-        if length_index >= ffi_args.len() {
+        if size_index >= ffi_args.len() {
             bail!(
-                "Length parameter index {} is out of bounds (args count: {})",
-                length_index,
+                "Size parameter index {} is out of bounds (args count: {})",
+                size_index,
                 ffi_args.len()
             );
         }
 
-        let ffi_arg = &ffi_args[length_index];
-        let arg = &args[length_index];
+        let ffi_arg = &ffi_args[size_index];
+        let arg = &args[size_index];
 
         if let Type::Ref(ref_type) = &arg.ty
             && let Type::Integer(int_type) = &*ref_type.inner_type
         {
             match ffi_arg {
                 ffi::FfiValue::Storage(storage) => {
-                    let length = int_type.kind.read_ptr(storage.ptr() as *const u8);
-                    return Ok(length as usize);
+                    let size = int_type.kind.read_ptr(storage.ptr() as *const u8);
+                    return Ok(size as usize);
                 }
                 ffi::FfiValue::Ptr(ptr) => {
                     if !ptr.is_null() {
-                        let length = int_type.kind.read_ptr(*ptr as *const u8);
-                        return Ok(length as usize);
+                        let size = int_type.kind.read_ptr(*ptr as *const u8);
+                        return Ok(size as usize);
                     }
                 }
                 _ => {}
@@ -506,8 +506,8 @@ impl ArrayType {
         }
 
         bail!(
-            "Could not extract length from parameter at index {}: expected Ref<Integer> or Integer, got type {:?} with ffi value {:?}",
-            length_index,
+            "Could not extract size from parameter at index {}: expected Ref<Integer> or Integer, got type {:?} with ffi value {:?}",
+            size_index,
             arg.ty,
             ffi_arg
         );

@@ -167,17 +167,17 @@ impl std::str::FromStr for CallbackTrampoline {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "closure" => Ok(CallbackTrampoline::Closure),
-            "asyncReady" => Ok(CallbackTrampoline::AsyncReady),
-            "destroy" => Ok(CallbackTrampoline::Destroy),
-            "drawFunc" => Ok(CallbackTrampoline::DrawFunc),
+            "asyncReadyCallback" => Ok(CallbackTrampoline::AsyncReady),
+            "destroyNotify" => Ok(CallbackTrampoline::Destroy),
+            "drawingAreaDrawFunc" => Ok(CallbackTrampoline::DrawFunc),
             "shortcutFunc" => Ok(CallbackTrampoline::ShortcutFunc),
-            "treeListModelCreateFunc" => Ok(CallbackTrampoline::TreeListModelCreateFunc),
+            "treeListModelCreateModelFunc" => Ok(CallbackTrampoline::TreeListModelCreateFunc),
             "animationTargetFunc" => Ok(CallbackTrampoline::AnimationTargetFunc),
             "tickCallback" => Ok(CallbackTrampoline::TickCallback),
             "pathIntersectionFunc" => Ok(CallbackTrampoline::PathIntersectionFunc),
             "scaleFormatValueFunc" => Ok(CallbackTrampoline::ScaleFormatValueFunc),
             _ => Err(format!(
-                "'trampoline' must be one of: 'closure', 'asyncReady', 'destroy', 'drawFunc', 'shortcutFunc', 'treeListModelCreateFunc', 'animationTargetFunc', 'tickCallback', 'pathIntersectionFunc', 'scaleFormatValueFunc'; got '{}'",
+                "'callbackType' must be one of: 'closure', 'asyncReadyCallback', 'destroyNotify', 'drawingAreaDrawFunc', 'shortcutFunc', 'treeListModelCreateModelFunc', 'animationTargetFunc', 'tickCallback', 'pathIntersectionFunc', 'scaleFormatValueFunc'; got '{}'",
                 s
             )),
         }
@@ -391,11 +391,11 @@ impl CallbackType {
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
 
-        let trampoline_prop: Handle<'_, JsValue> = obj.prop(cx, "trampoline").get()?;
+        let trampoline_prop: Handle<'_, JsValue> = obj.prop(cx, "callbackType").get()?;
         let trampoline_str = trampoline_prop
             .downcast::<JsString, _>(cx)
             .or_else(|_| {
-                cx.throw_type_error("'trampoline' property is required for callback types")
+                cx.throw_type_error("'callbackType' property is required for callback types")
             })?
             .value(cx);
 

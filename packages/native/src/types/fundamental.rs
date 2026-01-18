@@ -41,8 +41,8 @@ impl FundamentalType {
         let ownership = Ownership::from_js_value(cx, obj, "fundamental")?;
 
         let library: Handle<JsString> = obj.get(cx, "library")?;
-        let ref_func: Handle<JsString> = obj.get(cx, "refFunc")?;
-        let unref_func: Handle<JsString> = obj.get(cx, "unrefFunc")?;
+        let ref_func: Handle<JsString> = obj.get(cx, "refFn")?;
+        let unref_func: Handle<JsString> = obj.get(cx, "unrefFn")?;
 
         Ok(Self::new(
             ownership,

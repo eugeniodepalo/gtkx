@@ -142,8 +142,8 @@ export class FfiTypeWriter {
                 type: '"fundamental"',
                 ownership: '"borrowed"',
                 library: `"${options.fundamentalLib}"`,
-                refFunc: `"${options.fundamentalRefFunc}"`,
-                unrefFunc: `"${options.fundamentalUnrefFunc}"`,
+                refFn: `"${options.fundamentalRefFunc}"`,
+                unrefFn: `"${options.fundamentalUnrefFunc}"`,
             });
         }
         return Writers.object({ type: '"gobject"', ownership: '"borrowed"' });
@@ -218,8 +218,8 @@ export class FfiTypeWriter {
         const props: ObjectProperty[] = [{ name: "type", value: '"fundamental"' }];
         props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
         props.push({ name: "library", value: `"${type.library ?? ""}"` });
-        props.push({ name: "refFunc", value: `"${type.refFunc ?? ""}"` });
-        props.push({ name: "unrefFunc", value: `"${type.unrefFunc ?? ""}"` });
+        props.push({ name: "refFn", value: `"${type.refFn ?? ""}"` });
+        props.push({ name: "unrefFn", value: `"${type.unrefFn ?? ""}"` });
         return props;
     }
 
@@ -269,10 +269,10 @@ export class FfiTypeWriter {
             props.push({ name: "itemType", value: this.toWriter(type.itemType) });
         }
 
-        props.push({ name: "listType", value: `"${type.listType ?? "array"}"` });
+        props.push({ name: "arrayType", value: `"${type.arrayType ?? "array"}"` });
 
-        if (type.lengthParamIndex !== undefined) {
-            props.push({ name: "lengthParamIndex", value: type.lengthParamIndex });
+        if (type.sizeParamIndex !== undefined) {
+            props.push({ name: "sizeParamIndex", value: type.sizeParamIndex });
         }
 
         if (type.fixedSize !== undefined) {
@@ -299,7 +299,7 @@ export class FfiTypeWriter {
             props.push({ name: "valueType", value: this.toWriter(type.valueType) });
         }
 
-        props.push({ name: "listType", value: '"ghashtable"' });
+        props.push({ name: "hashTableType", value: '"ghashtable"' });
 
         props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
 
@@ -309,7 +309,7 @@ export class FfiTypeWriter {
     private buildCallbackProperties(type: FfiTypeDescriptor): ObjectProperty[] {
         const props: ObjectProperty[] = [{ name: "type", value: '"callback"' }];
 
-        props.push({ name: "trampoline", value: `"${type.trampoline ?? "closure"}"` });
+        props.push({ name: "callbackType", value: `"${type.callbackType ?? "closure"}"` });
 
         if (type.argTypes && type.argTypes.length > 0) {
             props.push({

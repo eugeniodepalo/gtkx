@@ -118,7 +118,7 @@ describe("call - error handling", () => {
                     [
                         { type: GOBJECT_BORROWED, value: createLabel("Test") },
                         { type: STRING, value: "clicked" },
-                        { type: { type: "callback", trampoline: "closure" }, value: "not a function" },
+                        { type: { type: "callback", callbackType: "closure" }, value: "not a function" },
                         { type: { type: "null" }, value: null },
                         { type: { type: "null" }, value: null },
                         { type: INT32, value: 0 },

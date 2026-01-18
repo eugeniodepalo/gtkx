@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
-import type { Arg, NativeHandle, Ref, TrampolineName, Type } from "./types.js";
+import type { Arg, CallbackType, NativeHandle, Ref, Type } from "./types.js";
 
 const require = createRequire(import.meta.url);
 
@@ -171,4 +171,4 @@ export function poll(): void {
     native.poll();
 }
 
-export type { NativeHandle, Ref, Arg, Type, TrampolineName };
+export type { NativeHandle, Ref, Arg, Type, CallbackType };

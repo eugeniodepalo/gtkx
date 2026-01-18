@@ -3,7 +3,7 @@ export {
     APPLICATION_PARAM_NAME,
     getTrampolineName,
     isSupportedCallback,
-    type TrampolineName,
+    type CallbackName,
 } from "./native-callbacks.js";
 export {
     COLUMN_VIEW_WIDGET_NAMES,
