@@ -19,7 +19,7 @@ class NotebookNode extends WidgetNode<Gtk.Notebook> {
             throw new Error(`Cannot append '${child.typeName}' to 'Notebook': expected x.NotebookPage`);
         }
 
-        child.setNotebook(this.container);
+        child.setParent(this.container);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -29,7 +29,7 @@ class NotebookNode extends WidgetNode<Gtk.Notebook> {
 
         const beforePosition = this.container.pageNum(before.getChild());
         child.setPosition(beforePosition);
-        child.setNotebook(this.container);
+        child.setParent(this.container);
     }
 
     public override removeChild(child: Node): void {

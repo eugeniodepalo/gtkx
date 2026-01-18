@@ -1,6 +1,6 @@
 import { type Context, FontSlant, FontWeight, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkDrawingArea, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkDrawingArea, GtkScale } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./mask.tsx?raw";
@@ -38,16 +38,15 @@ const MaskDemo = () => {
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkDrawingArea hexpand vexpand onDraw={drawMask} />
-            <GtkScale orientation={Gtk.Orientation.HORIZONTAL}>
-                <x.Adjustment
-                    value={progress}
-                    lower={0}
-                    upper={1}
-                    stepIncrement={0.1}
-                    pageIncrement={0.1}
-                    onValueChanged={setProgress}
-                />
-            </GtkScale>
+            <GtkScale
+                orientation={Gtk.Orientation.HORIZONTAL}
+                value={progress}
+                lower={0}
+                upper={1}
+                stepIncrement={0.1}
+                pageIncrement={0.1}
+                onValueChanged={setProgress}
+            />
         </GtkBox>
     );
 };

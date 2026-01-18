@@ -1,7 +1,7 @@
 import * as Adw from "@gtkx/ffi/adw";
 import { ColorScheme } from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./themes.tsx?raw";
@@ -110,16 +110,19 @@ const ThemesDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Switch Interval (ms):" halign={Gtk.Align.START} />
-                        <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT} digits={0} sensitive={!isRunning}>
-                            <x.Adjustment
-                                value={intervalMs}
-                                lower={10}
-                                upper={1000}
-                                stepIncrement={10}
-                                pageIncrement={100}
-                                onValueChanged={(val) => setIntervalMs(Math.round(val))}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            hexpand
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            digits={0}
+                            sensitive={!isRunning}
+                            value={intervalMs}
+                            lower={10}
+                            upper={1000}
+                            stepIncrement={10}
+                            pageIncrement={100}
+                            onValueChanged={(val: number) => setIntervalMs(Math.round(val))}
+                        />
                     </GtkBox>
 
                     <GtkBox spacing={12}>

@@ -1,7 +1,7 @@
 import { type Context, LineCap, Operator, type Surface } from "@gtkx/ffi/cairo";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkColorDialogButton, GtkDrawingArea, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkColorDialogButton, GtkDrawingArea, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paint.tsx?raw";
@@ -106,16 +106,17 @@ const PaintDemo = () => {
             <GtkBox halign={Gtk.Align.END} marginTop={8} marginEnd={8} marginStart={8} spacing={12}>
                 <GtkBox spacing={8} hexpand>
                     <GtkLabel label="Width:" cssClasses={["dim-label"]} />
-                    <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} widthRequest={100}>
-                        <x.Adjustment
-                            value={baseWidth}
-                            lower={1}
-                            upper={20}
-                            stepIncrement={1}
-                            pageIncrement={2}
-                            onValueChanged={setBaseWidth}
-                        />
-                    </GtkScale>
+                    <GtkScale
+                        drawValue
+                        valuePos={Gtk.PositionType.RIGHT}
+                        widthRequest={100}
+                        value={baseWidth}
+                        lower={1}
+                        upper={20}
+                        stepIncrement={1}
+                        pageIncrement={2}
+                        onValueChanged={setBaseWidth}
+                    />
                 </GtkBox>
 
                 {stylusInfo.isStylus && (

@@ -1,5 +1,15 @@
 type Callback = () => void;
 
+/**
+ * Priority levels for scheduling operations after React commit.
+ *
+ * Priority guidelines:
+ * - HIGH: Removals and detachments (must run before additions to avoid conflicts)
+ * - NORMAL: Additions and attachments (standard widget operations)
+ * - LOW: Sync operations that depend on all additions being complete (e.g., model updates)
+ *
+ * Within the same priority level, callbacks execute in FIFO order.
+ */
 export enum CommitPriority {
     /** Runs first. Used for widget removals to unparent before reparenting. */
     HIGH = 0,

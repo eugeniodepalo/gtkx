@@ -1,7 +1,7 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkGLArea, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
@@ -533,29 +533,31 @@ const GearsDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Rotation X:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
-                            <x.Adjustment
-                                value={viewRotX}
-                                lower={-90}
-                                upper={90}
-                                stepIncrement={1}
-                                pageIncrement={10}
-                                onValueChanged={setViewRotX}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            hexpand
+                            value={viewRotX}
+                            lower={-90}
+                            upper={90}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChanged={setViewRotX}
+                        />
                     </GtkBox>
                     <GtkBox spacing={12}>
                         <GtkLabel label="Rotation Y:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
-                            <x.Adjustment
-                                value={viewRotY}
-                                lower={-180}
-                                upper={180}
-                                stepIncrement={1}
-                                pageIncrement={10}
-                                onValueChanged={setViewRotY}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            hexpand
+                            value={viewRotY}
+                            lower={-180}
+                            upper={180}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChanged={setViewRotY}
+                        />
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

@@ -1,14 +1,27 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkScrolledWindow, GtkSourceView, x } from "@gtkx/react";
+import type * as GtkSource from "@gtkx/ffi/gtksource";
+import { GtkBox, GtkLabel, GtkScrolledWindow, GtkSourceView } from "@gtkx/react";
+import { useCallback } from "react";
 import { useDemo } from "../context/demo-context.js";
 
 export const SourceViewer = () => {
     const { currentDemo } = useDemo();
 
+    const handleRef = useCallback(
+        (view: GtkSource.View | null) => {
+            if (view && currentDemo?.sourceCode) {
+                const buffer = view.getBuffer();
+                buffer.setText(currentDemo.sourceCode, -1);
+            }
+        },
+        [currentDemo?.sourceCode],
+    );
+
     return (
         <GtkScrolledWindow vexpand hexpand>
             {currentDemo?.sourceCode ? (
                 <GtkSourceView
+                    ref={handleRef}
                     editable={false}
                     showLineNumbers
                     tabWidth={4}
@@ -17,13 +30,9 @@ export const SourceViewer = () => {
                     topMargin={20}
                     bottomMargin={20}
                     monospace
-                >
-                    <x.SourceBuffer
-                        text={currentDemo.sourceCode}
-                        language="typescript-jsx"
-                        styleScheme="Adwaita-dark"
-                    />
-                </GtkSourceView>
+                    language="typescript-jsx"
+                    styleScheme="Adwaita-dark"
+                />
             ) : (
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

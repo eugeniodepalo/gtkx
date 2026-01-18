@@ -1,6 +1,6 @@
 import { css, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkCheckButton, GtkEntry, GtkFrame, GtkLabel, GtkSpinButton, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkCheckButton, GtkEntry, GtkFrame, GtkLabel, GtkSpinButton } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
@@ -183,15 +183,12 @@ const ErrorstatesDemo = () => {
                             digits={0}
                             cssClasses={validation.age.error ? ["error"] : []}
                             onValueChanged={handleAgeChange}
-                        >
-                            <x.Adjustment
-                                value={validation.age.value}
-                                lower={0}
-                                upper={150}
-                                stepIncrement={1}
-                                pageIncrement={10}
-                            />
-                        </GtkSpinButton>
+                            value={validation.age.value}
+                            lower={0}
+                            upper={150}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                        />
                         {validation.age.error && (
                             <GtkLabel
                                 label={validation.age.error}

@@ -9,7 +9,6 @@ import {
     GtkScale,
     GtkScrolledWindow,
     GtkToggleButton,
-    x,
 } from "@gtkx/react";
 import { useCallback, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
@@ -159,16 +158,16 @@ const ImageScalingDemo = () => {
                         marginStart={12}
                         marginEnd={12}
                     >
-                        <GtkScale digits={0} drawValue>
-                            <x.Adjustment
-                                value={zoom * 100}
-                                lower={25}
-                                upper={400}
-                                stepIncrement={25}
-                                pageIncrement={100}
-                                onValueChanged={(v) => setZoom(v / 100)}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            digits={0}
+                            drawValue
+                            value={zoom * 100}
+                            lower={25}
+                            upper={400}
+                            stepIncrement={25}
+                            pageIncrement={100}
+                            onValueChanged={(v) => setZoom(v / 100)}
+                        />
                         <GtkBox spacing={4} halign={Gtk.Align.CENTER}>
                             {ZOOM_LEVELS.map((level) => (
                                 <GtkButton
@@ -191,16 +190,16 @@ const ImageScalingDemo = () => {
                         marginStart={12}
                         marginEnd={12}
                     >
-                        <GtkScale digits={0} drawValue>
-                            <x.Adjustment
-                                value={rotation}
-                                lower={0}
-                                upper={360}
-                                stepIncrement={15}
-                                pageIncrement={90}
-                                onValueChanged={setRotation}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            digits={0}
+                            drawValue
+                            value={rotation}
+                            lower={0}
+                            upper={360}
+                            stepIncrement={15}
+                            pageIncrement={90}
+                            onValueChanged={setRotation}
+                        />
                         <GtkBox spacing={4} halign={Gtk.Align.CENTER}>
                             {[0, 90, 180, 270].map((angle) => (
                                 <GtkButton

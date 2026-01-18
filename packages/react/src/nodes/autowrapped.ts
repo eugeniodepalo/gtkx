@@ -79,9 +79,7 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         }
 
         if (!(child instanceof WidgetNode) || !(before instanceof WidgetNode)) {
-            throw new Error(
-                `Cannot insert '${child.typeName}' before '${before.typeName}' in 'ListBox/FlowBox': expected Widget`,
-            );
+            throw new Error(`Cannot insert '${child.typeName}' into 'ListBox/FlowBox': expected Widget`);
         }
 
         batch(() => {

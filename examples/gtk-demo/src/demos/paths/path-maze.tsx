@@ -1,7 +1,7 @@
 import { CallbackAnimationTarget, TimedAnimation } from "@gtkx/ffi/adw";
 import { type Context, LineCap, LineJoin } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-maze.tsx?raw";
@@ -526,19 +526,20 @@ const MazeDemo = () => {
 
                     <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkLabel label="Size:" cssClasses={["dim-label"]} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} widthRequest={150}>
-                            <x.Adjustment
-                                value={mazeSize}
-                                lower={11}
-                                upper={41}
-                                stepIncrement={2}
-                                pageIncrement={4}
-                                onValueChanged={(val) => {
-                                    const rounded = Math.round(val);
-                                    setMazeSize(rounded % 2 === 0 ? rounded + 1 : rounded);
-                                }}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            widthRequest={150}
+                            value={mazeSize}
+                            lower={11}
+                            upper={41}
+                            stepIncrement={2}
+                            pageIncrement={4}
+                            onValueChanged={(val: number) => {
+                                const rounded = Math.round(val);
+                                setMazeSize(rounded % 2 === 0 ? rounded + 1 : rounded);
+                            }}
+                        />
                     </GtkBox>
 
                     <GtkBox spacing={8} halign={Gtk.Align.CENTER}>

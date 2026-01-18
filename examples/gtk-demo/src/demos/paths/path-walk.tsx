@@ -1,7 +1,7 @@
 import { type Context, LineCap } from "@gtkx/ffi/cairo";
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, GtkSpinButton, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, GtkSpinButton } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-walk.tsx?raw";
@@ -284,46 +284,46 @@ const PathWalkDemo = () => {
                     <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkBox spacing={8}>
                             <GtkLabel label="Arrows:" widthChars={8} xalign={0} cssClasses={["dim-label"]} />
-                            <GtkSpinButton widthChars={5}>
-                                <x.Adjustment
-                                    value={arrowCount}
-                                    lower={10}
-                                    upper={500}
-                                    stepIncrement={10}
-                                    pageIncrement={50}
-                                    onValueChanged={(v) => setArrowCount(Math.round(v))}
-                                />
-                            </GtkSpinButton>
+                            <GtkSpinButton
+                                widthChars={5}
+                                value={arrowCount}
+                                lower={10}
+                                upper={500}
+                                stepIncrement={10}
+                                pageIncrement={50}
+                                onValueChanged={(self) => setArrowCount(Math.round(self.getValue()))}
+                            />
                         </GtkBox>
 
                         <GtkBox spacing={8}>
                             <GtkLabel label="Spacing:" widthChars={8} xalign={0} cssClasses={["dim-label"]} />
-                            <GtkSpinButton widthChars={5}>
-                                <x.Adjustment
-                                    value={spacing}
-                                    lower={5}
-                                    upper={50}
-                                    stepIncrement={1}
-                                    pageIncrement={5}
-                                    onValueChanged={(v) => setSpacing(Math.round(v))}
-                                />
-                            </GtkSpinButton>
+                            <GtkSpinButton
+                                widthChars={5}
+                                value={spacing}
+                                lower={5}
+                                upper={50}
+                                stepIncrement={1}
+                                pageIncrement={5}
+                                onValueChanged={(self) => setSpacing(Math.round(self.getValue()))}
+                            />
                         </GtkBox>
                     </GtkBox>
 
                     <GtkBox spacing={16} halign={Gtk.Align.CENTER}>
                         <GtkBox spacing={8}>
                             <GtkLabel label="Speed:" cssClasses={["dim-label"]} />
-                            <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} digits={1} widthRequest={120}>
-                                <x.Adjustment
-                                    value={speed}
-                                    lower={0.2}
-                                    upper={3}
-                                    stepIncrement={0.1}
-                                    pageIncrement={0.5}
-                                    onValueChanged={setSpeed}
-                                />
-                            </GtkScale>
+                            <GtkScale
+                                drawValue
+                                valuePos={Gtk.PositionType.RIGHT}
+                                digits={1}
+                                widthRequest={120}
+                                value={speed}
+                                lower={0.2}
+                                upper={3}
+                                stepIncrement={0.1}
+                                pageIncrement={0.5}
+                                onValueChanged={setSpeed}
+                            />
                         </GtkBox>
                         <GtkButton
                             label={isRunning ? "Pause" : "Play"}

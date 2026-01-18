@@ -1,9 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
 import type { Container } from "../types.js";
-import { Menu, type MenuProps, type MenuType } from "./models/menu.js";
+import { MenuModel, type MenuProps, type MenuType } from "./models/menu.js";
 
-export class MenuNode extends Menu {
+export class MenuNode extends MenuModel {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {

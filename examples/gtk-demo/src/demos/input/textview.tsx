@@ -5,7 +5,7 @@ import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";
 
 const FormattedTextBuffer = ({ viewId }: { viewId: string }) => (
-    <x.TextBuffer>
+    <>
         The text widget can display text with all kinds of nifty attributes. It also supports multiple views of the same
         buffer; this demo is showing the same buffer in two places.{"\n\n"}
         <x.TextTag id={`heading1-${viewId}`} weight={Pango.Weight.BOLD} scale={1.2}>
@@ -60,9 +60,15 @@ const FormattedTextBuffer = ({ viewId }: { viewId: string }) => (
         </x.TextAnchor>
         {" and a scale: "}
         <x.TextAnchor>
-            <GtkScale orientation={Gtk.Orientation.HORIZONTAL} widthRequest={100}>
-                <x.Adjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />
-            </GtkScale>
+            <GtkScale
+                orientation={Gtk.Orientation.HORIZONTAL}
+                widthRequest={100}
+                value={50}
+                lower={0}
+                upper={100}
+                stepIncrement={1}
+                pageIncrement={10}
+            />
         </x.TextAnchor>
         {" and a text entry: "}
         <x.TextAnchor>
@@ -71,7 +77,7 @@ const FormattedTextBuffer = ({ viewId }: { viewId: string }) => (
         {
             ".\n\nThis demo doesn't demonstrate all the GtkTextBuffer features; it leaves out, for example: invisible/hidden text, tab stops, application-drawn areas on the sides of the widget for displaying breakpoints and such..."
         }
-    </x.TextBuffer>
+    </>
 );
 
 const TextViewDemo = () => {

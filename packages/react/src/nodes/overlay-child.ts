@@ -1,68 +1,54 @@
-import { batch, isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
-import { SlotNode } from "./slot.js";
+import { PositionalChildNode } from "./abstract/positional-child.js";
+import { hasChanged } from "./internal/utils.js";
 
 type Props = Partial<OverlayChildProps>;
 
-class OverlayChildNode extends SlotNode<Props> {
+class OverlayChildNode extends PositionalChildNode<Props> {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
         return type === "OverlayChild";
     }
 
-    private getOverlay(): Gtk.Overlay {
-        if (!this.parent) {
-            throw new Error("Expected parent widget to be set on OverlayChildNode");
+    protected override attachToParent(parent: Gtk.Widget, child: Gtk.Widget): void {
+        const overlay = parent as Gtk.Overlay;
+        overlay.addOverlay(child);
+
+        if (this.props.measure !== undefined) {
+            overlay.setMeasureOverlay(child, this.props.measure);
         }
 
-        return this.parent as Gtk.Overlay;
+        if (this.props.clipOverlay !== undefined) {
+            overlay.setClipOverlay(child, this.props.clipOverlay);
+        }
+    }
+
+    protected override detachFromParent(parent: Gtk.Widget, child: Gtk.Widget): void {
+        (parent as Gtk.Overlay).removeOverlay(child);
     }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
+    }
 
+    protected applyOwnProps(oldProps: Props | null, newProps: Props): void {
         if (!this.parent || !this.child) {
             return;
         }
 
-        const overlay = this.getOverlay();
+        const overlay = this.getTypedParent<Gtk.Overlay>();
 
-        if (!oldProps || oldProps.measure !== newProps.measure) {
+        if (hasChanged(oldProps, newProps, "measure")) {
             overlay.setMeasureOverlay(this.child, newProps.measure ?? false);
         }
 
-        if (!oldProps || oldProps.clipOverlay !== newProps.clipOverlay) {
+        if (hasChanged(oldProps, newProps, "clipOverlay")) {
             overlay.setClipOverlay(this.child, newProps.clipOverlay ?? false);
         }
-    }
-
-    protected override onChildChange(oldChild: Gtk.Widget | null): void {
-        const overlay = this.getOverlay();
-
-        batch(() => {
-            if (oldChild) {
-                const parent = oldChild.getParent();
-
-                if (parent && isObjectEqual(parent, overlay)) {
-                    overlay.removeOverlay(oldChild);
-                }
-            }
-
-            if (this.child) {
-                overlay.addOverlay(this.child);
-
-                if (this.props.measure !== undefined) {
-                    overlay.setMeasureOverlay(this.child, this.props.measure);
-                }
-
-                if (this.props.clipOverlay !== undefined) {
-                    overlay.setClipOverlay(this.child, this.props.clipOverlay);
-                }
-            }
-        });
     }
 }
 

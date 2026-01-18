@@ -3,7 +3,8 @@ import * as GtkSource from "@gtkx/ffi/gtksource";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { signalStore } from "./internal/signal-store.js";
-import { isContainerType } from "./internal/utils.js";
+import { TextBufferController } from "./internal/text-buffer-controller.js";
+import { hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { TextViewNode } from "./text-view.js";
 
 type SourceViewProps = Props & {
@@ -25,19 +26,21 @@ type SourceViewProps = Props & {
 class SourceViewNode extends TextViewNode {
     public static override priority = 1;
 
-    protected declare buffer?: GtkSource.Buffer;
-
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return isContainerType(GtkSource.View, containerOrClass);
+        return matchesAnyClass([GtkSource.View], containerOrClass);
     }
 
-    protected override createBuffer(): GtkSource.Buffer {
-        return new GtkSource.Buffer();
+    protected override createBufferController(): TextBufferController<GtkSource.Buffer> {
+        return new TextBufferController<GtkSource.Buffer>(this, this.container, () => new GtkSource.Buffer());
     }
 
-    public override updateProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
-        super.updateProps(oldProps, newProps);
-        this.updateSourceViewProps(oldProps, newProps);
+    protected override ensureBufferController(): TextBufferController<GtkSource.Buffer> {
+        return super.ensureBufferController() as TextBufferController<GtkSource.Buffer>;
+    }
+
+    protected override applyOwnProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
+        super.applyOwnProps(oldProps, newProps);
+        this.applySourceViewProps(oldProps, newProps);
     }
 
     private resolveLanguage(language: string | GtkSource.Language): GtkSource.Language | null {
@@ -56,7 +59,7 @@ class SourceViewNode extends TextViewNode {
         return scheme;
     }
 
-    private updateSourceViewProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
+    private applySourceViewProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
         const hasSourceViewProps =
             newProps.language !== undefined ||
             newProps.styleScheme !== undefined ||
@@ -72,9 +75,9 @@ class SourceViewNode extends TextViewNode {
             return;
         }
 
-        const buffer = this.ensureBuffer() as GtkSource.Buffer;
+        const buffer = this.ensureBufferController().ensureBuffer();
 
-        if (!oldProps || oldProps.language !== newProps.language) {
+        if (hasChanged(oldProps, newProps, "language")) {
             if (newProps.language !== undefined) {
                 const language = this.resolveLanguage(newProps.language);
                 buffer.setLanguage(language);
@@ -83,7 +86,7 @@ class SourceViewNode extends TextViewNode {
             }
         }
 
-        if (!oldProps || oldProps.styleScheme !== newProps.styleScheme) {
+        if (hasChanged(oldProps, newProps, "styleScheme")) {
             if (newProps.styleScheme !== undefined) {
                 const scheme = this.resolveStyleScheme(newProps.styleScheme);
                 buffer.setStyleScheme(scheme);
@@ -92,39 +95,31 @@ class SourceViewNode extends TextViewNode {
             }
         }
 
-        if (
-            !oldProps ||
-            oldProps.highlightSyntax !== newProps.highlightSyntax ||
-            oldProps.language !== newProps.language
-        ) {
+        if (hasChanged(oldProps, newProps, "highlightSyntax") || hasChanged(oldProps, newProps, "language")) {
             const highlightSyntax = newProps.highlightSyntax ?? newProps.language !== undefined;
             buffer.setHighlightSyntax(highlightSyntax);
         }
 
-        if (!oldProps || oldProps.highlightMatchingBrackets !== newProps.highlightMatchingBrackets) {
+        if (hasChanged(oldProps, newProps, "highlightMatchingBrackets")) {
             const highlightMatchingBrackets = newProps.highlightMatchingBrackets ?? true;
             buffer.setHighlightMatchingBrackets(highlightMatchingBrackets);
         }
 
-        if (!oldProps || oldProps.implicitTrailingNewline !== newProps.implicitTrailingNewline) {
+        if (hasChanged(oldProps, newProps, "implicitTrailingNewline")) {
             if (newProps.implicitTrailingNewline !== undefined) {
                 buffer.setImplicitTrailingNewline(newProps.implicitTrailingNewline);
             }
         }
 
-        if (
-            !oldProps ||
-            oldProps.onCursorMoved !== newProps.onCursorMoved ||
-            oldProps.onHighlightUpdated !== newProps.onHighlightUpdated
-        ) {
+        if (hasChanged(oldProps, newProps, "onCursorMoved") || hasChanged(oldProps, newProps, "onHighlightUpdated")) {
             this.updateSourceViewSignalHandlers(newProps);
         }
     }
 
     private updateSourceViewSignalHandlers(props: SourceViewProps): void {
-        if (!this.buffer) return;
+        const buffer = this.ensureBufferController().getBuffer();
+        if (!buffer) return;
 
-        const buffer = this.buffer;
         const { onCursorMoved, onHighlightUpdated } = props;
 
         signalStore.set(this, buffer, "cursor-moved", onCursorMoved ?? null);

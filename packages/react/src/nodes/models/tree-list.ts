@@ -1,12 +1,10 @@
-import { batch } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
-import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
-import { signalStore } from "../internal/signal-store.js";
+import { SelectionModelManager } from "../internal/selection-model.js";
 import { TreeStore } from "../internal/tree-store.js";
-import { TreeListItemNode } from "../tree-list-item.js";
+import { createTreeItemData, TreeListItemNode } from "../tree-list-item.js";
 import { VirtualNode } from "../virtual.js";
 
 export type TreeListProps = {
@@ -16,15 +14,10 @@ export type TreeListProps = {
     onSelectionChanged?: (ids: string[]) => void;
 };
 
-type SelectionModel = Gtk.NoSelection | Gtk.SingleSelection | Gtk.MultiSelection;
-
 export class TreeList extends VirtualNode<TreeListProps> {
     private store: TreeStore;
     private treeListModel: Gtk.TreeListModel;
-    private selectionModel: SelectionModel;
-    private handleSelectionChange?: () => void;
-    private pendingSelection?: string[];
-    private selectionScheduled = false;
+    private selectionManager: SelectionModelManager;
 
     constructor(props: TreeListProps = {}) {
         super("", {}, undefined);
@@ -37,23 +30,13 @@ export class TreeList extends VirtualNode<TreeListProps> {
             (item: GObject.GObject) => this.createChildModel(item),
         );
 
-        this.selectionModel = this.createSelectionModel(props.selectionMode);
-        this.selectionModel.setModel(this.treeListModel);
-        this.initSelectionHandler(props.onSelectionChanged);
-        this.setSelection(props.selected);
-    }
-
-    private initSelectionHandler(onSelectionChanged?: (ids: string[]) => void): void {
-        if (!onSelectionChanged) {
-            signalStore.set(this, this.selectionModel, "selection-changed", null);
-            return;
-        }
-
-        this.handleSelectionChange = () => {
-            onSelectionChanged(this.getSelection());
-        };
-
-        signalStore.set(this, this.selectionModel, "selection-changed", this.handleSelectionChange);
+        this.selectionManager = new SelectionModelManager(
+            { owner: this, ...props },
+            this.treeListModel,
+            () => this.getSelection(),
+            (ids) => this.resolveSelectionIndices(ids),
+            () => this.treeListModel.getNItems(),
+        );
     }
 
     private createChildModel(item: GObject.GObject): Gio.ListModel | null {
@@ -70,8 +53,8 @@ export class TreeList extends VirtualNode<TreeListProps> {
         return this.treeListModel;
     }
 
-    public getSelectionModel(): SelectionModel {
-        return this.selectionModel;
+    public getSelectionModel(): Gtk.NoSelection | Gtk.SingleSelection | Gtk.MultiSelection {
+        return this.selectionManager.getSelectionModel();
     }
 
     public override appendChild(child: Node): void {
@@ -83,17 +66,19 @@ export class TreeList extends VirtualNode<TreeListProps> {
             throw new Error("Cannot append 'TreeListItem' to 'TreeList': missing required 'id' prop");
         }
 
-        const id = child.props.id;
         child.setStore(this.store);
+        this.addItemWithChildren(child);
+    }
 
-        scheduleAfterCommit(() => {
-            this.store.addItem(id, {
-                value: child.props.value,
-                indentForDepth: child.props.indentForDepth,
-                indentForIcon: child.props.indentForIcon,
-                hideExpander: child.props.hideExpander,
-            });
-        });
+    private addItemWithChildren(node: TreeListItemNode, parentId?: string): void {
+        const id = node.props.id;
+        if (id === undefined) return;
+
+        this.store.addItem(id, createTreeItemData(node.props), parentId);
+
+        for (const child of node.getChildNodes()) {
+            this.addItemWithChildren(child, id);
+        }
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -112,15 +97,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         const id = child.props.id;
         const beforeId = before.props.id;
         child.setStore(this.store);
-
-        scheduleAfterCommit(() => {
-            this.store.insertItemBefore(id, beforeId, {
-                value: child.props.value,
-                indentForDepth: child.props.indentForDepth,
-                indentForIcon: child.props.indentForIcon,
-                hideExpander: child.props.hideExpander,
-            });
-        });
+        this.store.insertItemBefore(id, beforeId, createTreeItemData(child.props));
     }
 
     public override removeChild(child: Node): void {
@@ -133,11 +110,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         }
 
         const id = child.props.id;
-
-        scheduleAfterCommit(() => {
-            this.store.removeItem(id);
-        });
-
+        this.store.removeItem(id);
         child.setStore(null);
     }
 
@@ -148,44 +121,11 @@ export class TreeList extends VirtualNode<TreeListProps> {
             this.treeListModel.setAutoexpand(newProps.autoexpand ?? false);
         }
 
-        if (oldProps && oldProps.selectionMode !== newProps.selectionMode) {
-            signalStore.set(this, this.selectionModel, "selection-changed", null);
-            this.selectionModel = this.createSelectionModel(newProps.selectionMode);
-            this.selectionModel.setModel(this.treeListModel);
-            this.initSelectionHandler(newProps.onSelectionChanged);
-            this.setSelection(newProps.selected);
-            return;
-        }
-
-        if (!oldProps || oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
-            this.initSelectionHandler(newProps.onSelectionChanged);
-        }
-
-        if (!oldProps || oldProps.selected !== newProps.selected) {
-            this.setSelection(newProps.selected);
-        }
-    }
-
-    private createSelectionModel(mode?: Gtk.SelectionMode): SelectionModel {
-        const selectionMode = mode ?? Gtk.SelectionMode.SINGLE;
-
-        if (selectionMode === Gtk.SelectionMode.NONE) {
-            return new Gtk.NoSelection(this.treeListModel);
-        }
-
-        if (selectionMode === Gtk.SelectionMode.MULTIPLE) {
-            return new Gtk.MultiSelection(this.treeListModel);
-        }
-
-        const selectionModel = new Gtk.SingleSelection(this.treeListModel);
-        selectionModel.setAutoselect(selectionMode === Gtk.SelectionMode.BROWSE);
-        selectionModel.setCanUnselect(selectionMode !== Gtk.SelectionMode.BROWSE);
-
-        return selectionModel;
+        this.selectionManager.update({ owner: this, ...oldProps }, { owner: this, ...newProps }, this.treeListModel);
     }
 
     private getSelection(): string[] {
-        const selection = this.selectionModel.getSelection();
+        const selection = this.selectionManager.getSelectionModel().getSelection();
         const size = selection.getSize();
         const ids: string[] = [];
 
@@ -203,50 +143,20 @@ export class TreeList extends VirtualNode<TreeListProps> {
         return ids;
     }
 
-    private setSelection(ids?: string[]): void {
-        this.pendingSelection = ids;
+    private resolveSelectionIndices(ids: string[]): Gtk.Bitset {
+        const nItems = this.treeListModel.getNItems();
+        const selected = new Gtk.Bitset();
 
-        if (!this.selectionScheduled) {
-            this.selectionScheduled = true;
-            scheduleAfterCommit(() => this.applySelection(), CommitPriority.LOW);
+        for (let i = 0; i < nItems; i++) {
+            const row = this.treeListModel.getRow(i);
+            if (!row) continue;
+
+            const item = row.getItem();
+            if (item instanceof Gtk.StringObject && ids.includes(item.getString())) {
+                selected.add(i);
+            }
         }
-    }
 
-    private applySelection(): void {
-        this.selectionScheduled = false;
-        const ids = this.pendingSelection;
-
-        batch(() => {
-            const nItems = this.treeListModel.getNItems();
-
-            if (nItems === 0 && ids && ids.length > 0) {
-                this.setSelection(ids);
-                return;
-            }
-
-            this.pendingSelection = undefined;
-
-            const selected = new Gtk.Bitset();
-            const mask = Gtk.Bitset.newRange(0, nItems);
-
-            if (ids) {
-                for (let i = 0; i < nItems; i++) {
-                    const row = this.treeListModel.getRow(i);
-                    if (!row) continue;
-
-                    const item = row.getItem();
-                    if (item instanceof Gtk.StringObject && ids.includes(item.getString())) {
-                        selected.add(i);
-                    }
-                }
-            }
-
-            if (this.selectionModel instanceof Gtk.SingleSelection) {
-                const position = selected.getSize() > 0 ? selected.getNth(0) : Gtk.INVALID_LIST_POSITION;
-                batch(() => (this.selectionModel as Gtk.SingleSelection).setSelected(position));
-            } else {
-                batch(() => this.selectionModel.setSelection(selected, mask));
-            }
-        });
+        return selected;
     }
 }

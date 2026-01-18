@@ -3,6 +3,9 @@ import type * as Pango from "@gtkx/ffi/pango";
 import type { ReactNode } from "react";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
+import { applyStyleChanges, type TagStyleProps } from "./internal/text-tag-styles.js";
+import { hasChanged } from "./internal/utils.js";
+import { TextAnchorNode } from "./text-anchor.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
 import { TextSegmentNode } from "./text-segment.js";
 import { VirtualNode } from "./virtual.js";
@@ -116,15 +119,13 @@ export type TextTagProps = {
     children?: ReactNode;
 };
 
-type TagStyleProps = Omit<TextTagProps, "id" | "priority">;
-
 export class TextTagNode extends VirtualNode<TextTagProps> implements TextContentParent {
     public static override priority = 1;
 
-    private buffer?: Gtk.TextBuffer;
-    private tag?: Gtk.TextTag;
+    private buffer: Gtk.TextBuffer | null = null;
+    private tag: Gtk.TextTag | null = null;
     private children: TextContentChild[] = [];
-    private parent?: TextContentParent;
+    private parent: TextContentParent | null = null;
 
     public bufferOffset = 0;
 
@@ -149,7 +150,7 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
     }
 
     public hasBuffer(): boolean {
-        return this.buffer !== undefined;
+        return this.buffer !== null;
     }
 
     private setupTag(): void {
@@ -158,7 +159,7 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
         const tagTable = this.buffer.getTagTable();
         this.tag = new Gtk.TextTag(this.props.id);
 
-        this.applyStyleProps(this.props);
+        this.applyStyleProps(null, this.props);
         tagTable.add(this.tag);
 
         if (this.props.priority !== undefined) {
@@ -168,55 +169,9 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
         this.applyTagToRange();
     }
 
-    private applyStyleProps(props: TagStyleProps): void {
+    private applyStyleProps(oldProps: TagStyleProps | null, newProps: TagStyleProps): void {
         if (!this.tag) return;
-
-        if (props.background !== undefined) this.tag.setBackground(props.background);
-        if (props.backgroundFullHeight !== undefined) this.tag.setBackgroundFullHeight(props.backgroundFullHeight);
-        if (props.foreground !== undefined) this.tag.setForeground(props.foreground);
-
-        if (props.family !== undefined) this.tag.setFamily(props.family);
-        if (props.font !== undefined) this.tag.setFont(props.font);
-        if (props.sizePoints !== undefined) this.tag.setSizePoints(props.sizePoints);
-        if (props.size !== undefined) this.tag.setSize(props.size);
-        if (props.scale !== undefined) this.tag.setScale(props.scale);
-        if (props.weight !== undefined) this.tag.setWeight(props.weight);
-        if (props.style !== undefined) this.tag.setStyle(props.style);
-        if (props.stretch !== undefined) this.tag.setStretch(props.stretch);
-        if (props.variant !== undefined) this.tag.setVariant(props.variant);
-
-        if (props.strikethrough !== undefined) this.tag.setStrikethrough(props.strikethrough);
-        if (props.underline !== undefined) this.tag.setUnderline(props.underline);
-        if (props.overline !== undefined) this.tag.setOverline(props.overline);
-
-        if (props.rise !== undefined) this.tag.setRise(props.rise);
-        if (props.letterSpacing !== undefined) this.tag.setLetterSpacing(props.letterSpacing);
-        if (props.lineHeight !== undefined) this.tag.setLineHeight(props.lineHeight);
-
-        if (props.leftMargin !== undefined) this.tag.setLeftMargin(props.leftMargin);
-        if (props.rightMargin !== undefined) this.tag.setRightMargin(props.rightMargin);
-        if (props.indent !== undefined) this.tag.setIndent(props.indent);
-        if (props.pixelsAboveLines !== undefined) this.tag.setPixelsAboveLines(props.pixelsAboveLines);
-        if (props.pixelsBelowLines !== undefined) this.tag.setPixelsBelowLines(props.pixelsBelowLines);
-        if (props.pixelsInsideWrap !== undefined) this.tag.setPixelsInsideWrap(props.pixelsInsideWrap);
-
-        if (props.justification !== undefined) this.tag.setJustification(props.justification);
-        if (props.direction !== undefined) this.tag.setDirection(props.direction);
-        if (props.wrapMode !== undefined) this.tag.setWrapMode(props.wrapMode);
-
-        if (props.editable !== undefined) this.tag.setEditable(props.editable);
-        if (props.invisible !== undefined) this.tag.setInvisible(props.invisible);
-        if (props.allowBreaks !== undefined) this.tag.setAllowBreaks(props.allowBreaks);
-        if (props.insertHyphens !== undefined) this.tag.setInsertHyphens(props.insertHyphens);
-        if (props.fallback !== undefined) this.tag.setFallback(props.fallback);
-        if (props.accumulativeMargin !== undefined) this.tag.setAccumulativeMargin(props.accumulativeMargin);
-
-        if (props.paragraphBackground !== undefined) this.tag.setParagraphBackground(props.paragraphBackground);
-        if (props.showSpaces !== undefined) this.tag.setShowSpaces(props.showSpaces);
-        if (props.textTransform !== undefined) this.tag.setTextTransform(props.textTransform);
-
-        if (props.fontFeatures !== undefined) this.tag.setFontFeatures(props.fontFeatures);
-        if (props.language !== undefined) this.tag.setLanguage(props.language);
+        applyStyleChanges(this.tag, oldProps, newProps);
     }
 
     public getText(): string {
@@ -363,7 +318,7 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
     }
 
     private isTextContentChild(child: Node): child is TextContentChild {
-        return child instanceof TextSegmentNode || child instanceof TextTagNode || child.typeName === "TextAnchor";
+        return child instanceof TextSegmentNode || child instanceof TextTagNode || child instanceof TextAnchorNode;
     }
 
     private setChildParent(child: TextContentChild): void {
@@ -380,9 +335,9 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
         }
 
         if (this.tag) {
-            this.applyStyleProps(newProps);
+            this.applyStyleProps(oldProps, newProps);
 
-            if (newProps.priority !== undefined) {
+            if (hasChanged(oldProps, newProps, "priority") && newProps.priority !== undefined) {
                 this.tag.setPriority(newProps.priority);
             }
         }
@@ -394,8 +349,8 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
             const tagTable = this.buffer.getTagTable();
             tagTable.remove(this.tag);
         }
-        this.tag = undefined;
-        this.buffer = undefined;
+        this.tag = null;
+        this.buffer = null;
         this.children = [];
         super.unmount();
     }

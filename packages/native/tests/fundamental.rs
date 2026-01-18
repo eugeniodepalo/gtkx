@@ -65,7 +65,7 @@ fn from_glib_full_drop_calls_unref() {
     let ref_after_extra = get_param_spec_refcount(ptr);
 
     {
-        let fundamental =
+        let _fundamental =
             Fundamental::from_glib_full(ptr, Some(param_spec_ref), Some(param_spec_unref));
         assert_eq!(get_param_spec_refcount(ptr), ref_after_extra);
     }
@@ -147,7 +147,7 @@ fn drop_without_unref_fn_does_not_crash() {
     let ref_after_extra = get_param_spec_refcount(ptr);
 
     {
-        let fundamental = Fundamental::from_glib_full(ptr, Some(param_spec_ref), None);
+        let _fundamental = Fundamental::from_glib_full(ptr, Some(param_spec_ref), None);
         assert_eq!(get_param_spec_refcount(ptr), ref_after_extra);
     }
 

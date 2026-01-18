@@ -1,6 +1,6 @@
 import { type Context, FontSlant, FontWeight, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkEntry, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkEntry, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-text.tsx?raw";
@@ -239,16 +239,17 @@ const InteractiveBezierDemo = () => {
 
                 <GtkBox spacing={12}>
                     <GtkLabel label="Size:" cssClasses={["dim-label"]} />
-                    <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
-                        <x.Adjustment
-                            value={fontSize}
-                            lower={10}
-                            upper={40}
-                            stepIncrement={1}
-                            pageIncrement={5}
-                            onValueChanged={setFontSize}
-                        />
-                    </GtkScale>
+                    <GtkScale
+                        drawValue
+                        valuePos={Gtk.PositionType.RIGHT}
+                        hexpand
+                        value={fontSize}
+                        lower={10}
+                        upper={40}
+                        stepIncrement={1}
+                        pageIncrement={5}
+                        onValueChanged={setFontSize}
+                    />
                     <GtkButton label="Reset" cssClasses={["flat"]} onClicked={handleReset} />
                 </GtkBox>
             </GtkBox>

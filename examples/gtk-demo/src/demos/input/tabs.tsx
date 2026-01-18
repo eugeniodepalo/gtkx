@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
-import { GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./tabs.tsx?raw";
@@ -30,7 +30,7 @@ const TabsDemo = () => {
                 leftMargin={20}
                 rightMargin={20}
             >
-                <x.TextBuffer>{"one\t2.0\tthree\nfour\t5.555\tsix\nseven\t88.88\tnine"}</x.TextBuffer>
+                {"one\t2.0\tthree\nfour\t5.555\tsix\nseven\t88.88\tnine"}
             </GtkTextView>
         </GtkScrolledWindow>
     );

@@ -2,31 +2,37 @@ import type * as cairo from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { filterProps, isContainerType } from "./internal/utils.js";
+import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type DrawFunc = (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
-
-const PROPS = ["onDraw"];
 
 interface DrawingAreaProps extends Props {
     onDraw?: DrawFunc;
 }
 
+const OWN_PROPS = ["onDraw"] as const;
+
 class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {
     public static override priority = 1;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return isContainerType(Gtk.DrawingArea, containerOrClass);
+        return matchesAnyClass([Gtk.DrawingArea], containerOrClass);
     }
 
     public override updateProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
-        if (newProps.onDraw && (!oldProps || oldProps.onDraw !== newProps.onDraw)) {
+        super.updateProps(
+            oldProps ? (filterProps(oldProps, OWN_PROPS) as DrawingAreaProps) : null,
+            filterProps(newProps, OWN_PROPS) as DrawingAreaProps,
+        );
+        this.applyOwnProps(oldProps, newProps);
+    }
+
+    protected applyOwnProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
+        if (hasChanged(oldProps, newProps, "onDraw") && newProps.onDraw) {
             this.container.setDrawFunc(newProps.onDraw);
             this.container.queueDraw();
         }
-
-        super.updateProps(filterProps(oldProps ?? {}, PROPS), filterProps(newProps, PROPS));
     }
 }
 

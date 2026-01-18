@@ -165,9 +165,7 @@ const ListBoxControlsDemo = () => {
                                         {setting.type === "slider" && (
                                             <GtkScale
                                                 widthRequest={150}
-                                                onValueChanged={(range: Gtk.Range) =>
-                                                    updateSetting(setting.id, range.getValue())
-                                                }
+                                                onValueChanged={(value) => updateSetting(setting.id, value)}
                                                 drawValue
                                                 valign={Gtk.Align.CENTER}
                                             />

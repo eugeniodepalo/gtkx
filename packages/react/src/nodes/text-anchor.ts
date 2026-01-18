@@ -32,10 +32,10 @@ export type TextAnchorProps = {
 export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
     public static override priority = 1;
 
-    private textView?: Gtk.TextView;
-    private buffer?: Gtk.TextBuffer;
-    private anchor?: Gtk.TextChildAnchor;
-    private widgetChild?: WidgetNode;
+    private textView: Gtk.TextView | null = null;
+    private buffer: Gtk.TextBuffer | null = null;
+    private anchor: Gtk.TextChildAnchor | null = null;
+    private widgetChild: WidgetNode | null = null;
 
     public bufferOffset = 0;
 
@@ -84,15 +84,15 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
 
     public override removeChild(child: Node): void {
         if (child === this.widgetChild) {
-            this.widgetChild = undefined;
+            this.widgetChild = null;
         }
     }
 
     public override unmount(): void {
-        this.anchor = undefined;
-        this.widgetChild = undefined;
-        this.buffer = undefined;
-        this.textView = undefined;
+        this.anchor = null;
+        this.widgetChild = null;
+        this.buffer = null;
+        this.textView = null;
         super.unmount();
     }
 }

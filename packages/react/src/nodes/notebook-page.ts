@@ -1,9 +1,9 @@
-import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { NotebookPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import { scheduleAfterCommit } from "../scheduler.js";
+import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
+import { hasChanged } from "./internal/utils.js";
 import { NotebookPageTabNode } from "./notebook-page-tab.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
@@ -13,19 +13,19 @@ type Props = Partial<NotebookPageProps>;
 export class NotebookPageNode extends SlotNode<Props> {
     public static override priority = 1;
 
-    position?: number | null;
-    private tabNode?: NotebookPageTabNode;
+    position: number | null = null;
+    private tabNode: NotebookPageTabNode | null = null;
 
     public static override matches(type: string): boolean {
         return type === "NotebookPage";
     }
 
-    public setNotebook(notebook?: Gtk.Notebook): void {
-        this.setParent(notebook);
+    public override setParent(parent: Gtk.Widget | null): void {
+        super.setParent(parent);
         this.updateTabNode();
     }
 
-    public setPosition(position?: number | null): void {
+    public setPosition(position: number | null): void {
         this.position = position;
     }
 
@@ -39,7 +39,7 @@ export class NotebookPageNode extends SlotNode<Props> {
 
     private updateTabNode(): void {
         if (this.tabNode) {
-            this.tabNode.setPage(this.parent as Gtk.Notebook | undefined, this.child);
+            this.tabNode.setPage(this.parent as Gtk.Notebook | null, this.child);
         }
     }
 
@@ -48,7 +48,7 @@ export class NotebookPageNode extends SlotNode<Props> {
             this.tabNode = child;
             scheduleAfterCommit(() => {
                 this.updateTabNode();
-            });
+            }, CommitPriority.NORMAL);
             return;
         }
 
@@ -66,38 +66,37 @@ export class NotebookPageNode extends SlotNode<Props> {
                 this.onChildChange(oldChild ?? null);
             }
             this.updateTabNode();
-        });
+        }, CommitPriority.NORMAL);
     }
 
-    public override removeChild(child?: Node): void {
+    public override removeChild(child: Node): void {
         if (child instanceof NotebookPageTabNode) {
-            this.tabNode = undefined;
+            this.tabNode = null;
             return;
         }
 
-        super.removeChild();
+        super.removeChild(child);
     }
 
     public override unmount(): void {
-        this.tabNode = undefined;
+        this.tabNode = null;
         super.unmount();
     }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
+    }
 
-        if (!oldProps || oldProps.label !== newProps.label) {
-            if (this.child && this.parent && !this.tabNode?.child) {
-                const tabLabel = this.getNotebook().getTabLabel(this.child) as Gtk.Label;
-                tabLabel.setLabel(newProps.label ?? "");
-            }
+    protected applyOwnProps(oldProps: Props | null, newProps: Props): void {
+        if (hasChanged(oldProps, newProps, "label") && this.child && this.parent && !this.tabNode?.child) {
+            const tabLabel = this.getNotebook().getTabLabel(this.child) as Gtk.Label;
+            tabLabel.setLabel(newProps.label ?? "");
         }
 
-        if (
-            this.child &&
-            this.parent &&
-            (!oldProps || oldProps.tabExpand !== newProps.tabExpand || oldProps.tabFill !== newProps.tabFill)
-        ) {
+        const pagePropsChanged =
+            hasChanged(oldProps, newProps, "tabExpand") || hasChanged(oldProps, newProps, "tabFill");
+        if (this.child && this.parent && pagePropsChanged) {
             this.applyPageProps();
         }
     }
@@ -149,15 +148,13 @@ export class NotebookPageNode extends SlotNode<Props> {
     }
 
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
-        batch(() => {
-            if (oldChild) {
-                this.detachPage(oldChild);
-            }
+        if (oldChild) {
+            this.detachPage(oldChild);
+        }
 
-            if (this.child) {
-                this.attachPage();
-            }
-        });
+        if (this.child) {
+            this.attachPage();
+        }
     }
 }
 

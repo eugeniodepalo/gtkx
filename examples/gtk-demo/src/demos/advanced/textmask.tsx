@@ -3,7 +3,7 @@ import { type Context, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkEntry, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkEntry, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textmask.tsx?raw";
@@ -166,16 +166,17 @@ const TextmaskDemo = () => {
                 >
                     <GtkBox spacing={16}>
                         <GtkLabel label="Font Size:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
-                            <x.Adjustment
-                                value={fontSize}
-                                lower={48}
-                                upper={200}
-                                stepIncrement={4}
-                                pageIncrement={16}
-                                onValueChanged={setFontSize}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            hexpand
+                            value={fontSize}
+                            lower={48}
+                            upper={200}
+                            stepIncrement={4}
+                            pageIncrement={16}
+                            onValueChanged={setFontSize}
+                        />
                     </GtkBox>
 
                     <GtkBox spacing={16} halign={Gtk.Align.CENTER}>

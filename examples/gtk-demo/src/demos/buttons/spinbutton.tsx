@@ -57,16 +57,19 @@ const SpinButtonDemo = () => {
                     <GtkLabel label="_Numeric" useUnderline xalign={1} />
                 </x.GridChild>
                 <x.GridChild column={1} row={0}>
-                    <GtkSpinButton halign={Gtk.Align.START} widthChars={5} digits={2} climbRate={1} numeric>
-                        <x.Adjustment
-                            value={numericValue}
-                            lower={-10000}
-                            upper={10000}
-                            stepIncrement={0.5}
-                            pageIncrement={100}
-                            onValueChanged={setNumericValue}
-                        />
-                    </GtkSpinButton>
+                    <GtkSpinButton
+                        halign={Gtk.Align.START}
+                        widthChars={5}
+                        digits={2}
+                        climbRate={1}
+                        numeric
+                        value={numericValue}
+                        lower={-10000}
+                        upper={10000}
+                        stepIncrement={0.5}
+                        pageIncrement={100}
+                        onValueChanged={(self) => setNumericValue(self.getValue())}
+                    />
                 </x.GridChild>
                 <x.GridChild column={2} row={0}>
                     <GtkLabel label={String(numericValue)} widthChars={10} xalign={1} />
@@ -76,16 +79,18 @@ const SpinButtonDemo = () => {
                     <GtkLabel label="_Hexadecimal" useUnderline xalign={1} />
                 </x.GridChild>
                 <x.GridChild column={1} row={1}>
-                    <GtkSpinButton halign={Gtk.Align.START} widthChars={4} wrap text={formatHex(hexValue)}>
-                        <x.Adjustment
-                            value={hexValue}
-                            lower={0}
-                            upper={255}
-                            stepIncrement={1}
-                            pageIncrement={16}
-                            onValueChanged={setHexValue}
-                        />
-                    </GtkSpinButton>
+                    <GtkSpinButton
+                        halign={Gtk.Align.START}
+                        widthChars={4}
+                        wrap
+                        text={formatHex(hexValue)}
+                        value={hexValue}
+                        lower={0}
+                        upper={255}
+                        stepIncrement={1}
+                        pageIncrement={16}
+                        onValueChanged={(self) => setHexValue(self.getValue())}
+                    />
                 </x.GridChild>
                 <x.GridChild column={2} row={1}>
                     <GtkLabel label={String(hexValue)} widthChars={10} xalign={1} />
@@ -95,16 +100,18 @@ const SpinButtonDemo = () => {
                     <GtkLabel label="_Time" useUnderline xalign={1} />
                 </x.GridChild>
                 <x.GridChild column={1} row={2}>
-                    <GtkSpinButton halign={Gtk.Align.START} widthChars={5} wrap text={formatTime(timeValue)}>
-                        <x.Adjustment
-                            value={timeValue}
-                            lower={0}
-                            upper={1410}
-                            stepIncrement={30}
-                            pageIncrement={60}
-                            onValueChanged={setTimeValue}
-                        />
-                    </GtkSpinButton>
+                    <GtkSpinButton
+                        halign={Gtk.Align.START}
+                        widthChars={5}
+                        wrap
+                        text={formatTime(timeValue)}
+                        value={timeValue}
+                        lower={0}
+                        upper={1410}
+                        stepIncrement={30}
+                        pageIncrement={60}
+                        onValueChanged={(self) => setTimeValue(self.getValue())}
+                    />
                 </x.GridChild>
                 <x.GridChild column={2} row={2}>
                     <GtkLabel label={String(timeValue)} widthChars={10} xalign={1} />
@@ -120,16 +127,13 @@ const SpinButtonDemo = () => {
                         wrap
                         updatePolicy={Gtk.SpinButtonUpdatePolicy.IF_VALID}
                         text={formatMonth(monthValue)}
-                    >
-                        <x.Adjustment
-                            value={monthValue}
-                            lower={1}
-                            upper={12}
-                            stepIncrement={1}
-                            pageIncrement={5}
-                            onValueChanged={setMonthValue}
-                        />
-                    </GtkSpinButton>
+                        value={monthValue}
+                        lower={1}
+                        upper={12}
+                        stepIncrement={1}
+                        pageIncrement={5}
+                        onValueChanged={(self) => setMonthValue(self.getValue())}
+                    />
                 </x.GridChild>
                 <x.GridChild column={2} row={3}>
                     <GtkLabel label={String(monthValue)} widthChars={10} xalign={1} />

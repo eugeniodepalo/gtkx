@@ -4,15 +4,6 @@
 //! on the GTK main thread. GTK requires all widget operations to happen on
 //! its main thread, so this dispatcher bridges the gap from the Neon JS thread.
 //!
-//! Access the singleton dispatcher via [`GtkDispatcher::global()`] and call methods on it:
-//!
-//! ```ignore
-//! use crate::gtk_dispatch;
-//!
-//! GtkDispatcher::global().schedule(|| { /* GTK work */ });
-//! GtkDispatcher::global().enter_js_wait();
-//! ```
-//!
 //! ## Scheduling Modes
 //!
 //! - [`GtkDispatcher::schedule`]: Queue a task for execution during the next GTK idle cycle.

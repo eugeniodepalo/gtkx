@@ -1,31 +1,31 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
-import { VirtualChildNode } from "./virtual-child.js";
+import { VirtualContainerNode } from "./abstract/virtual-container.js";
+import type { PackableWidget } from "./pack.js";
 
-type PackableWidget = Gtk.Widget & {
-    packStart(child: Gtk.Widget): void;
-    packEnd(child: Gtk.Widget): void;
-    remove(child: Gtk.Widget): void;
-};
-
-export class PackChild extends VirtualChildNode<PackableWidget> {
+class PackStartNode extends VirtualContainerNode<PackableWidget> {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
-        return type === "PackStart" || type === "PackEnd";
-    }
-
-    protected override getPositionLabel(): string {
-        return this.typeName === "PackStart" ? "start" : "end";
+        return type === "PackStart";
     }
 
     protected override attachChild(parent: PackableWidget, widget: Gtk.Widget): void {
-        if (this.getPositionLabel() === "start") {
-            parent.packStart(widget);
-        } else {
-            parent.packEnd(widget);
-        }
+        parent.packStart(widget);
     }
 }
 
-registerNodeClass(PackChild);
+class PackEndNode extends VirtualContainerNode<PackableWidget> {
+    public static override priority = 1;
+
+    public static override matches(type: string): boolean {
+        return type === "PackEnd";
+    }
+
+    protected override attachChild(parent: PackableWidget, widget: Gtk.Widget): void {
+        parent.packEnd(widget);
+    }
+}
+
+registerNodeClass(PackStartNode);
+registerNodeClass(PackEndNode);

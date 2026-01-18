@@ -15,22 +15,22 @@ export type MenuProps = {
     onActivate?: () => void;
 };
 
-export class Menu extends VirtualNode<MenuProps> {
-    private actionMap?: Gio.ActionMap;
+export class MenuModel extends VirtualNode<MenuProps> {
+    private actionMap: Gio.ActionMap | null = null;
     private actionPrefix: string;
-    private parent?: Gio.Menu;
+    private parent: Gio.Menu | null = null;
     private menu: Gio.Menu;
     private type: MenuType;
-    private application?: Gtk.Application;
-    private action?: Gio.SimpleAction;
-    private children: Menu[] = [];
+    private application: Gtk.Application | null = null;
+    private action: Gio.SimpleAction | null = null;
+    private children: MenuModel[] = [];
 
     constructor(type: MenuType, props: MenuProps, actionMap?: Gio.ActionMap, application?: Gtk.Application) {
         super("", props, undefined);
         this.type = type;
-        this.actionMap = actionMap;
+        this.actionMap = actionMap ?? null;
         this.actionPrefix = application ? "app" : "menu";
-        this.application = application;
+        this.application = application ?? null;
         this.menu = new Gio.Menu();
     }
 
@@ -96,7 +96,7 @@ export class Menu extends VirtualNode<MenuProps> {
     public createAction(): void {
         batch(() => {
             if (this.action) {
-                signalStore.set(this, this.action, "activate", undefined);
+                signalStore.set(this, this.action, "activate", null);
             }
 
             this.action = new Gio.SimpleAction(this.getId());
@@ -117,8 +117,8 @@ export class Menu extends VirtualNode<MenuProps> {
 
             if (this.action) {
                 this.getActionMap().removeAction(this.getId());
-                signalStore.set(this, this.action, "activate", undefined);
-                this.action = undefined;
+                signalStore.set(this, this.action, "activate", null);
+                this.action = null;
             }
         });
     }
@@ -167,7 +167,7 @@ export class Menu extends VirtualNode<MenuProps> {
         if (!this.parent) return;
 
         const parent = this.parent;
-        this.parent = undefined;
+        this.parent = null;
 
         scheduleAfterCommit(() => {
             const position = this.findPositionIn(parent);
@@ -178,7 +178,7 @@ export class Menu extends VirtualNode<MenuProps> {
         }, CommitPriority.HIGH);
     }
 
-    public insertInParentBefore(before: Menu): void {
+    public insertInParentBefore(before: MenuModel): void {
         if (this.type === "item" && this.actionMap) {
             this.createAction();
         }
@@ -199,7 +199,7 @@ export class Menu extends VirtualNode<MenuProps> {
                     parent.insertSubmenu(beforePosition, this.menu, this.props.label);
                     break;
             }
-        });
+        }, CommitPriority.NORMAL);
     }
 
     public appendToParent(): void {
@@ -221,11 +221,11 @@ export class Menu extends VirtualNode<MenuProps> {
                     parent.appendSubmenu(this.menu, this.props.label);
                     break;
             }
-        });
+        }, CommitPriority.NORMAL);
     }
 
     public override appendChild(child: Node): void {
-        if (!(child instanceof Menu)) {
+        if (!(child instanceof MenuModel)) {
             return;
         }
 
@@ -240,7 +240,7 @@ export class Menu extends VirtualNode<MenuProps> {
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof Menu) || !(before instanceof Menu)) {
+        if (!(child instanceof MenuModel) || !(before instanceof MenuModel)) {
             return;
         }
 
@@ -261,7 +261,7 @@ export class Menu extends VirtualNode<MenuProps> {
     }
 
     public override removeChild(child: Node): void {
-        if (!(child instanceof Menu)) {
+        if (!(child instanceof MenuModel)) {
             return;
         }
 

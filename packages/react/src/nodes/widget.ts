@@ -1,45 +1,37 @@
-import { batch, createRef, isObjectEqual, NativeObject } from "@gtkx/ffi";
-import * as Gdk from "@gtkx/ffi/gdk";
+import { batch, isObjectEqual, NativeObject } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { EVENT_CONTROLLER_PROPS } from "./internal/constants.js";
 import {
-    hasSingleContent,
+    getAttachmentStrategy,
+    attachChild as performAttachment,
+    detachChild as performDetachment,
+} from "./internal/child-attachment.js";
+import { EVENT_CONTROLLER_PROPS, EventControllerManager } from "./internal/event-controller-manager.js";
+import {
     type InsertableWidget,
-    isAddable,
-    isAppendable,
+    isAttachable,
     isEditable,
     isInsertable,
     isRemovable,
     isReorderable,
-    isSingleChild,
     type ReorderableWidget,
 } from "./internal/predicates.js";
 import { type SignalHandler, signalStore } from "./internal/signal-store.js";
-import { filterProps, isContainerType, resolvePropMeta, resolveSignal } from "./internal/utils.js";
-import { ShortcutControllerNode } from "./shortcut-controller.js";
-import { SlotNode } from "./slot.js";
+import { filterProps, matchesAnyClass, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 
-const PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
+const EXCLUDED_PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
 
 export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Props> extends Node<T, P> {
     public static override priority = 3;
 
-    private motionController?: Gtk.EventControllerMotion;
-    private clickController?: Gtk.GestureClick;
-    private keyController?: Gtk.EventControllerKey;
-    private scrollController?: Gtk.EventControllerScroll;
-    private dragSourceController?: Gtk.DragSource;
-    private dropTargetController?: Gtk.DropTarget;
-    private gestureDragController?: Gtk.GestureDrag;
-    private gestureStylusController?: Gtk.GestureStylus;
+    private eventControllerManager: EventControllerManager | null = null;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return isContainerType(Gtk.Widget, containerOrClass);
+        return matchesAnyClass([Gtk.Widget], containerOrClass);
     }
 
     public static override createContainer(props: Props, containerClass: typeof Gtk.Widget): Container | null {
@@ -51,18 +43,13 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public appendChild(child: Node): void {
-        if (child instanceof ShortcutControllerNode) {
-            child.setParent(this.container);
-            return;
-        }
-
-        if (child instanceof SlotNode) {
-            child.setParent(this.container);
+        if (isAttachable(child) && child.canBeChildOf(this)) {
+            child.attachTo(this);
             return;
         }
 
         if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'Widget': expected WidgetNode child`);
+            throw new Error(`Cannot append '${child.typeName}' to 'Widget': expected Widget`);
         }
 
         if (child.container instanceof Gtk.Window) {
@@ -73,17 +60,13 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public removeChild(child: Node): void {
-        if (child instanceof ShortcutControllerNode) {
-            child.setParent(undefined);
-            return;
-        }
-
-        if (child instanceof SlotNode) {
+        if (isAttachable(child) && child.canBeChildOf(this)) {
+            child.detachFrom(this);
             return;
         }
 
         if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'Widget': expected WidgetNode child`);
+            throw new Error(`Cannot remove '${child.typeName}' from 'Widget': expected Widget`);
         }
 
         if (child.container instanceof Gtk.Window) {
@@ -94,20 +77,13 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public insertBefore(child: Node, before: Node): void {
-        if (child instanceof ShortcutControllerNode) {
-            child.setParent(this.container);
-            return;
-        }
-
-        if (child instanceof SlotNode) {
-            child.setParent(this.container);
+        if (isAttachable(child) && child.canBeChildOf(this)) {
+            child.attachTo(this);
             return;
         }
 
         if (!(child instanceof WidgetNode) || !(before instanceof WidgetNode)) {
-            throw new Error(
-                `Cannot insert '${child.typeName}' before '${before.typeName}': expected WidgetNode children`,
-            );
+            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected Widget`);
         }
 
         if (child.container instanceof Gtk.Window) {
@@ -149,8 +125,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         this.updateGrabFocus(oldProps, newProps);
 
         const propNames = new Set([
-            ...Object.keys(filterProps(oldProps ?? {}, PROPS)),
-            ...Object.keys(filterProps(newProps ?? {}, PROPS)),
+            ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
+            ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
         ]);
 
         const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
@@ -183,9 +159,9 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
         for (const { name, newValue } of pendingSignals) {
             if (EVENT_CONTROLLER_PROPS.has(name)) {
-                this.updateEventControllerProp(name, (newValue as SignalHandler) ?? null);
+                this.ensureEventControllerManager().updateProp(name, (newValue as SignalHandler) ?? null);
             } else if (name === "onNotify") {
-                this.updateNotifyHandler((newValue as SignalHandler) ?? null);
+                this.setNotifyHandler((newValue as SignalHandler) ?? null);
             } else {
                 const signalName = this.propNameToSignalName(name);
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
@@ -208,6 +184,18 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
     }
 
+    public override unmount(): void {
+        this.eventControllerManager?.dispose();
+        super.unmount();
+    }
+
+    private ensureEventControllerManager(): EventControllerManager {
+        if (!this.eventControllerManager) {
+            this.eventControllerManager = new EventControllerManager(this, this.container);
+        }
+        return this.eventControllerManager;
+    }
+
     private updateSizeRequest(oldProps: P | null, newProps: P): void {
         const oldWidth = oldProps?.widthRequest as number | undefined;
         const oldHeight = oldProps?.heightRequest as number | undefined;
@@ -228,190 +216,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
     }
 
-    private updateEventControllerProp(propName: string, handlerOrValue: SignalHandler | unknown | null): void {
-        const wrappedHandler =
-            typeof handlerOrValue === "function"
-                ? (_self: unknown, ...args: unknown[]) => (handlerOrValue as SignalHandler)(...args)
-                : undefined;
-
-        switch (propName) {
-            case "onEnter":
-            case "onLeave":
-            case "onMotion": {
-                if (!this.motionController) {
-                    this.motionController = new Gtk.EventControllerMotion();
-                    this.container.addController(this.motionController);
-                }
-                const signalName = propName === "onEnter" ? "enter" : propName === "onLeave" ? "leave" : "motion";
-                signalStore.set(this, this.motionController, signalName, wrappedHandler);
-                break;
-            }
-            case "onPressed":
-            case "onReleased": {
-                if (!this.clickController) {
-                    this.clickController = new Gtk.GestureClick();
-                    this.container.addController(this.clickController);
-                }
-                const signalName = propName === "onPressed" ? "pressed" : "released";
-                signalStore.set(this, this.clickController, signalName, wrappedHandler);
-                break;
-            }
-            case "onKeyPressed":
-            case "onKeyReleased": {
-                if (!this.keyController) {
-                    this.keyController = new Gtk.EventControllerKey();
-                    this.container.addController(this.keyController);
-                }
-                const signalName = propName === "onKeyPressed" ? "key-pressed" : "key-released";
-                signalStore.set(this, this.keyController, signalName, wrappedHandler);
-                break;
-            }
-            case "onScroll": {
-                if (!this.scrollController) {
-                    this.scrollController = new Gtk.EventControllerScroll(Gtk.EventControllerScrollFlags.BOTH_AXES);
-                    this.container.addController(this.scrollController);
-                }
-                signalStore.set(this, this.scrollController, "scroll", wrappedHandler);
-                break;
-            }
-            case "onDragPrepare":
-            case "onDragBegin":
-            case "onDragEnd":
-            case "onDragCancel":
-            case "dragActions": {
-                const dragSource = this.ensureDragSource();
-                if (propName === "dragActions") {
-                    dragSource.setActions((handlerOrValue as Gdk.DragAction) ?? Gdk.DragAction.COPY);
-                } else {
-                    const signalName =
-                        propName === "onDragPrepare"
-                            ? "prepare"
-                            : propName === "onDragBegin"
-                              ? "drag-begin"
-                              : propName === "onDragEnd"
-                                ? "drag-end"
-                                : "drag-cancel";
-                    signalStore.set(this, dragSource, signalName, wrappedHandler);
-                }
-                break;
-            }
-            case "onDrop":
-            case "onDropEnter":
-            case "onDropLeave":
-            case "onDropMotion":
-            case "dropActions":
-            case "dropTypes": {
-                const dropTarget = this.ensureDropTarget();
-                if (propName === "dropActions") {
-                    dropTarget.setActions((handlerOrValue as Gdk.DragAction) ?? Gdk.DragAction.COPY);
-                } else if (propName === "dropTypes") {
-                    const types = (handlerOrValue as number[]) ?? [];
-                    dropTarget.setGtypes(types.length, types);
-                } else {
-                    const signalName =
-                        propName === "onDrop"
-                            ? "drop"
-                            : propName === "onDropEnter"
-                              ? "enter"
-                              : propName === "onDropLeave"
-                                ? "leave"
-                                : "motion";
-                    signalStore.set(this, dropTarget, signalName, wrappedHandler);
-                }
-                break;
-            }
-            case "onGestureDragBegin":
-            case "onGestureDragUpdate":
-            case "onGestureDragEnd": {
-                const gestureDrag = this.ensureGestureDrag();
-                const signalName =
-                    propName === "onGestureDragBegin"
-                        ? "drag-begin"
-                        : propName === "onGestureDragUpdate"
-                          ? "drag-update"
-                          : "drag-end";
-                signalStore.set(this, gestureDrag, signalName, wrappedHandler);
-                break;
-            }
-            case "onStylusDown":
-            case "onStylusMotion":
-            case "onStylusUp":
-            case "onStylusProximity": {
-                const gestureStylus = this.ensureGestureStylus();
-                const signalName =
-                    propName === "onStylusDown"
-                        ? "down"
-                        : propName === "onStylusMotion"
-                          ? "motion"
-                          : propName === "onStylusUp"
-                            ? "up"
-                            : "proximity";
-                const stylusHandler = this.createStylusHandler(propName, handlerOrValue as SignalHandler | null);
-                signalStore.set(this, gestureStylus, signalName, stylusHandler);
-                break;
-            }
-        }
-    }
-
-    private ensureDragSource(): Gtk.DragSource {
-        if (!this.dragSourceController) {
-            this.dragSourceController = new Gtk.DragSource();
-            this.dragSourceController.setActions(Gdk.DragAction.COPY);
-            this.container.addController(this.dragSourceController);
-        }
-        return this.dragSourceController;
-    }
-
-    private ensureDropTarget(): Gtk.DropTarget {
-        if (!this.dropTargetController) {
-            this.dropTargetController = new Gtk.DropTarget(0, Gdk.DragAction.COPY);
-            this.container.addController(this.dropTargetController);
-        }
-        return this.dropTargetController;
-    }
-
-    private ensureGestureDrag(): Gtk.GestureDrag {
-        if (!this.gestureDragController) {
-            this.gestureDragController = new Gtk.GestureDrag();
-            this.container.addController(this.gestureDragController);
-        }
-        return this.gestureDragController;
-    }
-
-    private ensureGestureStylus(): Gtk.GestureStylus {
-        if (!this.gestureStylusController) {
-            this.gestureStylusController = new Gtk.GestureStylus();
-            this.gestureStylusController.setStylusOnly(false);
-            this.container.addController(this.gestureStylusController);
-        }
-        return this.gestureStylusController;
-    }
-
-    private createStylusHandler(propName: string, handler: SignalHandler | null): SignalHandler | undefined {
-        if (!handler) return undefined;
-
-        const needsAxisData = propName === "onStylusDown" || propName === "onStylusMotion";
-
-        if (needsAxisData) {
-            return (gesture: Gtk.GestureStylus, x: number, y: number) => {
-                const pressureRef = createRef(0);
-                const tiltXRef = createRef(0);
-                const tiltYRef = createRef(0);
-
-                gesture.getAxis(Gdk.AxisUse.PRESSURE, pressureRef);
-                gesture.getAxis(Gdk.AxisUse.XTILT, tiltXRef);
-                gesture.getAxis(Gdk.AxisUse.YTILT, tiltYRef);
-
-                handler(x, y, pressureRef.value || 0.5, tiltXRef.value || 0, tiltYRef.value || 0);
-            };
-        }
-
-        return (_gesture: Gtk.GestureStylus, x: number, y: number) => {
-            handler(x, y);
-        };
-    }
-
-    private updateNotifyHandler(handler: SignalHandler | null): void {
+    private setNotifyHandler(handler: SignalHandler | null): void {
         const wrappedHandler = handler
             ? (obj: Gtk.Widget, pspec: GObject.ParamSpec) => {
                   handler(obj, pspec.getName());
@@ -480,35 +285,26 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     private attachChild(child: WidgetNode): void {
-        if (isAppendable(this.container)) {
-            this.detachChildFromParent(child);
-            this.container.append(child.container);
-        } else if (isAddable(this.container)) {
-            this.detachChildFromParent(child);
-            this.container.add(child.container);
-        } else if (hasSingleContent(this.container)) {
-            this.container.setContent(child.container);
-        } else if (isSingleChild(this.container)) {
-            this.container.setChild(child.container);
-        } else {
+        const strategy = getAttachmentStrategy(this.container);
+        if (!strategy) {
             throw new Error(
                 `Cannot append '${child.typeName}' to '${this.container.constructor.name}': container does not support children`,
             );
         }
+        if (strategy.type === "appendable" || strategy.type === "addable") {
+            this.detachChildFromParent(child);
+        }
+        performAttachment(child.container, strategy);
     }
 
     private detachChild(child: WidgetNode): void {
-        if (isRemovable(this.container)) {
-            this.container.remove(child.container);
-        } else if (hasSingleContent(this.container)) {
-            this.container.setContent(null);
-        } else if (isSingleChild(this.container)) {
-            this.container.setChild(null);
-        } else {
+        const strategy = getAttachmentStrategy(this.container);
+        if (!strategy) {
             throw new Error(
                 `Cannot remove '${child.typeName}' from '${this.container.constructor.name}': container does not support child removal`,
             );
         }
+        performDetachment(child.container, strategy);
     }
 
     private findPreviousSibling(before: WidgetNode): Gtk.Widget | undefined {

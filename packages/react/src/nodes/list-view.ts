@@ -4,12 +4,12 @@ import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { ListItemRenderer, type RenderItemFn } from "./internal/list-item-renderer.js";
-import { filterProps, matchesAnyClass } from "./internal/utils.js";
+import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { ListItemNode } from "./list-item.js";
-import { List, type ListProps } from "./models/list.js";
+import { ListModel, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
-const PROP_NAMES = ["renderItem", "estimatedItemHeight"];
+const OWN_PROPS = ["renderItem", "estimatedItemHeight"] as const;
 
 type ListViewProps = ListProps & {
     renderItem?: RenderItemFn<unknown>;
@@ -20,7 +20,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
     public static override priority = 1;
 
     private itemRenderer: ListItemRenderer;
-    private list: List;
+    private list: ListModel;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return matchesAnyClass(LIST_WIDGET_CLASSES, containerOrClass);
@@ -33,7 +33,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
         rootContainer?: Container,
     ) {
         super(typeName, props, container, rootContainer);
-        this.list = new List({
+        this.list = new ListModel({
             selectionMode: props.selectionMode,
             selected: props.selected,
             onSelectionChanged: props.onSelectionChanged,
@@ -78,23 +78,26 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
     }
 
     public override updateProps(oldProps: ListViewProps | null, newProps: ListViewProps): void {
-        if (!oldProps || oldProps.renderItem !== newProps.renderItem) {
-            this.itemRenderer.setRenderFn(newProps.renderItem);
+        super.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        this.applyOwnProps(oldProps, newProps);
+    }
+
+    protected applyOwnProps(oldProps: ListViewProps | null, newProps: ListViewProps): void {
+        if (hasChanged(oldProps, newProps, "renderItem")) {
+            this.itemRenderer.setRenderFn(newProps.renderItem ?? null);
         }
 
-        if (!oldProps || oldProps.estimatedItemHeight !== newProps.estimatedItemHeight) {
-            this.itemRenderer.setEstimatedItemHeight(newProps.estimatedItemHeight);
+        if (hasChanged(oldProps, newProps, "estimatedItemHeight")) {
+            this.itemRenderer.setEstimatedItemHeight(newProps.estimatedItemHeight ?? null);
         }
 
         const previousModel = this.list.getSelectionModel();
-        this.list.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
+        this.list.updateProps(oldProps, newProps);
         const currentModel = this.list.getSelectionModel();
 
         if (previousModel !== currentModel) {
             this.container.setModel(currentModel);
         }
-
-        super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
     }
 }
 

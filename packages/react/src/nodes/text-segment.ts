@@ -1,4 +1,5 @@
 import { registerNodeClass } from "../registry.js";
+import { hasChanged } from "./internal/utils.js";
 import type { TextContentParent } from "./text-content.js";
 import { VirtualNode } from "./virtual.js";
 
@@ -9,7 +10,7 @@ export type TextSegmentProps = {
 export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
     public static override priority = 1;
 
-    private parent?: TextContentParent;
+    private parent: TextContentParent | null = null;
 
     public bufferOffset = 0;
 
@@ -35,7 +36,7 @@ export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
 
         super.updateProps(oldProps, newProps);
 
-        if (oldText !== newText && this.parent) {
+        if (hasChanged(oldProps, newProps, "text") && this.parent) {
             this.parent.onChildTextChanged(this, oldText.length, newText.length);
         }
     }

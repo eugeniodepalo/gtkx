@@ -9,14 +9,14 @@ type Props = Partial<SlotProps>;
 export class NotebookPageTabNode extends SlotNode<Props> {
     public static override priority = 1;
 
-    private notebook?: Gtk.Notebook;
-    private page?: Gtk.Widget;
+    private notebook: Gtk.Notebook | null = null;
+    private page: Gtk.Widget | null = null;
 
     public static override matches(type: string): boolean {
         return type === "NotebookPageTab";
     }
 
-    public setPage(notebook?: Gtk.Notebook, page?: Gtk.Widget): void {
+    public setPage(notebook: Gtk.Notebook | null, page: Gtk.Widget | null): void {
         this.notebook = notebook;
         this.page = page;
         this.setParent(notebook);

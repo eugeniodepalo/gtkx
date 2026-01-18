@@ -1,10 +1,311 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkButton, GtkEntry, GtkLabel, GtkSwitch } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkCheckButton, GtkEntry, GtkImage, GtkLabel, GtkSwitch } from "@gtkx/react";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-describe("render - signals", () => {
+describe("widget - creation", () => {
+    describe("basic widgets", () => {
+        it("creates Label widget with text", async () => {
+            await render(<GtkLabel label="Hello World" />);
+
+            const label = await screen.findByText("Hello World");
+            expect(label).toBeDefined();
+        });
+
+        it("creates Button widget with label", async () => {
+            await render(<GtkButton label="Click Me" />);
+
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click Me" });
+            expect(button).toBeDefined();
+        });
+
+        it("creates Box widget with orientation", async () => {
+            const ref = createRef<Gtk.Box>();
+
+            await render(<GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL} />);
+
+            expect(ref.current).not.toBeNull();
+            expect(ref.current?.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+        });
+
+        it("creates Entry widget", async () => {
+            await render(<GtkEntry placeholderText="Enter text" />);
+
+            const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+            expect(entry).toBeDefined();
+        });
+
+        it("creates Image widget", async () => {
+            const ref = createRef<Gtk.Image>();
+
+            await render(<GtkImage ref={ref} iconName="dialog-information" />);
+
+            expect(ref.current).not.toBeNull();
+            expect(ref.current?.getIconName()).toBe("dialog-information");
+        });
+    });
+
+    describe("constructor parameters", () => {
+        it("passes constructor parameters from props", async () => {
+            const ref = createRef<Gtk.Box>();
+
+            await render(<GtkBox ref={ref} spacing={10} />);
+
+            expect(ref.current?.getSpacing()).toBe(10);
+        });
+
+        it("handles widgets with no constructor parameters", async () => {
+            const ref = createRef<Gtk.Button>();
+
+            await render(<GtkButton ref={ref} />);
+
+            expect(ref.current).not.toBeNull();
+        });
+
+        it("handles widgets with optional constructor parameters", async () => {
+            const ref = createRef<Gtk.Label>();
+
+            await render(<GtkLabel ref={ref} />);
+
+            expect(ref.current).not.toBeNull();
+        });
+    });
+
+    describe("ref access", () => {
+        it("provides GTK widget via ref", async () => {
+            const ref = createRef<Gtk.Label>();
+
+            await render(<GtkLabel ref={ref} label="Test" />);
+
+            expect(ref.current).not.toBeNull();
+            expect(typeof ref.current?.getLabel).toBe("function");
+        });
+
+        it("ref.current is the actual GTK widget instance", async () => {
+            const ref = createRef<Gtk.Label>();
+
+            await render(<GtkLabel ref={ref} label="Widget Instance" />);
+
+            expect(ref.current?.handle).toBeDefined();
+            expect(ref.current?.getLabel()).toBe("Widget Instance");
+        });
+    });
+
+    describe("screen queries", () => {
+        it("finds multiple buttons by role", async () => {
+            await render(
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkButton label="First" />
+                    <GtkButton label="Second" />
+                    <GtkButton label="Third" />
+                </GtkBox>,
+            );
+
+            const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
+            expect(buttons).toHaveLength(3);
+        });
+
+        it("finds button by name filter", async () => {
+            await render(
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkButton label="Submit" />
+                    <GtkButton label="Cancel" />
+                </GtkBox>,
+            );
+
+            const submitButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Submit" });
+            expect(submitButton).toBeDefined();
+
+            const cancelButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Cancel" });
+            expect(cancelButton).toBeDefined();
+        });
+
+        it("returns null for non-existent widget with queryBy", async () => {
+            await render(<GtkButton label="Only Button" />);
+
+            const nonExistent = screen.queryByRole(Gtk.AccessibleRole.TEXT_BOX);
+            expect(nonExistent).toBeNull();
+        });
+
+        it("finds widgets by text content", async () => {
+            await render(
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel label="Welcome Message" />
+                    <GtkLabel label="Description Text" />
+                </GtkBox>,
+            );
+
+            const welcome = await screen.findByText("Welcome Message");
+            expect(welcome).toBeDefined();
+
+            const allLabels = await screen.findAllByText(/Message|Text/);
+            expect(allLabels).toHaveLength(2);
+        });
+
+        it("uses regex for partial text matching", async () => {
+            await render(<GtkLabel label="Error: Something went wrong" />);
+
+            const errorLabel = await screen.findByText(/^Error:/);
+            expect(errorLabel).toBeDefined();
+        });
+    });
+});
+
+describe("widget - props", () => {
+    describe("property setting", () => {
+        it("sets string properties", async () => {
+            await render(<GtkLabel label="Test Label" />);
+
+            const label = await screen.findByText("Test Label");
+            expect(label).toBeDefined();
+        });
+
+        it("sets boolean properties", async () => {
+            const ref = createRef<Gtk.Label>();
+
+            await render(<GtkLabel ref={ref} selectable={true} />);
+
+            expect(ref.current?.getSelectable()).toBe(true);
+        });
+
+        it("sets numeric properties", async () => {
+            const ref = createRef<Gtk.Label>();
+
+            await render(<GtkLabel ref={ref} maxWidthChars={20} />);
+
+            expect(ref.current?.getMaxWidthChars()).toBe(20);
+        });
+
+        it("sets enum properties", async () => {
+            const ref = createRef<Gtk.Box>();
+
+            await render(<GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL} />);
+
+            expect(ref.current?.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+        });
+    });
+
+    describe("change detection", () => {
+        it("skips update when value unchanged", async () => {
+            function App() {
+                return <GtkLabel label="Same" />;
+            }
+
+            const { rerender } = await render(<App />);
+
+            const label = await screen.findByText("Same");
+            expect(label).toBeDefined();
+
+            await rerender(<App />);
+
+            expect(screen.queryByText("Same")).not.toBeNull();
+        });
+
+        it("applies update when value changed", async () => {
+            function App({ text }: { text: string }) {
+                return <GtkLabel label={text} />;
+            }
+
+            const { rerender } = await render(<App text="Initial" />);
+            await screen.findByText("Initial");
+
+            await rerender(<App text="Updated" />);
+
+            await waitFor(() => {
+                expect(screen.queryByText("Updated")).not.toBeNull();
+            });
+        });
+
+        it("handles undefined to value transition", async () => {
+            function App({ label }: { label?: string }) {
+                return <GtkLabel label={label} />;
+            }
+
+            const { rerender } = await render(<App label={undefined} />);
+
+            await rerender(<App label="Now Set" />);
+
+            await screen.findByText("Now Set");
+        });
+
+        it("handles value to undefined transition", async () => {
+            const ref = createRef<Gtk.Label>();
+
+            function App({ label }: { label?: string }) {
+                return <GtkLabel ref={ref} label={label} />;
+            }
+
+            const { rerender } = await render(<App label="Has Value" />);
+            await screen.findByText("Has Value");
+
+            await rerender(<App label={undefined} />);
+        });
+    });
+
+    describe("consumed props", () => {
+        it("does not pass children prop to widget", async () => {
+            const ref = createRef<Gtk.Box>();
+
+            await render(
+                <GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL}>
+                    Child
+                </GtkBox>,
+            );
+
+            expect(ref.current).not.toBeNull();
+        });
+
+        it("handles node-specific consumed props", async () => {
+            await render(<GtkSwitch active={true} />);
+
+            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
+            expect(switchWidget).toBeDefined();
+        });
+    });
+
+    describe("accessible state queries", () => {
+        it("finds checkbox by checked state", async () => {
+            await render(
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkCheckButton label="Unchecked" />
+                    <GtkCheckButton label="Checked" active={true} />
+                </GtkBox>,
+            );
+
+            const checkedBox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
+            expect(checkedBox).toBeDefined();
+
+            const uncheckedBox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
+            expect(uncheckedBox).toBeDefined();
+        });
+
+        it("updates checkbox state after user interaction", async () => {
+            await render(<GtkCheckButton label="Toggle Me" />);
+
+            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
+            await userEvent.click(checkbox);
+
+            await waitFor(() => {
+                const checkedBox = screen.queryByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
+                expect(checkedBox).not.toBeNull();
+            });
+        });
+
+        it("finds switch by accessible role", async () => {
+            await render(<GtkSwitch />);
+
+            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
+            await userEvent.click(switchWidget);
+
+            await waitFor(() => {
+                expect((switchWidget as Gtk.Switch).getActive()).toBe(true);
+            });
+        });
+    });
+});
+
+describe("widget - signals", () => {
     describe("connection", () => {
         it("connects onClicked handler to clicked signal", async () => {
             const handleClick = vi.fn();

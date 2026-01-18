@@ -6,7 +6,7 @@ import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { matchesAnyClass } from "./internal/utils.js";
 import { MenuNode } from "./menu.js";
-import { Menu } from "./models/menu.js";
+import { MenuModel } from "./models/menu.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
@@ -15,7 +15,7 @@ const ACTION_PREFIX = "menu";
 class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton> {
     public static override priority = 1;
 
-    private menu: Menu;
+    private menu: MenuModel;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return matchesAnyClass(POPOVER_MENU_CLASSES, containerOrClass);
@@ -34,7 +34,7 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | 
         const prefix = application ? "app" : ACTION_PREFIX;
 
         this.container.insertActionGroup(prefix, actionGroup);
-        this.menu = new Menu("root", {}, actionGroup, application);
+        this.menu = new MenuModel("root", {}, actionGroup, application);
         this.container.setMenuModel(this.menu.getMenu());
     }
 

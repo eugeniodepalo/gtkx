@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { isContainerType } from "./internal/utils.js";
+import { filterProps, matchesAnyClass, shallowArrayEqual } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type LevelBarOffset = {
@@ -13,24 +13,33 @@ type LevelBarProps = Props & {
     offsets?: LevelBarOffset[] | null;
 };
 
+const OWN_PROPS = ["offsets"] as const;
+
 class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
     public static override priority = 1;
 
     private appliedOffsetIds = new Set<string>();
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return isContainerType(Gtk.LevelBar, containerOrClass);
+        return matchesAnyClass([Gtk.LevelBar], containerOrClass);
     }
 
     public override updateProps(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
-        super.updateProps(oldProps, newProps);
-        this.updateOffsets(oldProps, newProps);
+        super.updateProps(
+            oldProps ? (filterProps(oldProps, OWN_PROPS) as LevelBarProps) : null,
+            filterProps(newProps, OWN_PROPS) as LevelBarProps,
+        );
+        this.applyOwnProps(oldProps, newProps);
     }
 
-    private updateOffsets(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
+    protected applyOwnProps(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
+        this.applyOffsets(oldProps, newProps);
+    }
+
+    private applyOffsets(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
         const newOffsets = newProps.offsets ?? [];
 
-        if (this.offsetsEqual(oldProps?.offsets ?? [], newOffsets)) {
+        if (shallowArrayEqual(oldProps?.offsets ?? [], newOffsets)) {
             return;
         }
 
@@ -43,18 +52,6 @@ class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
             this.container.addOffsetValue(offset.id, offset.value);
             this.appliedOffsetIds.add(offset.id);
         }
-    }
-
-    private offsetsEqual(a: LevelBarOffset[], b: LevelBarOffset[]): boolean {
-        if (a.length !== b.length) return false;
-        for (let i = 0; i < a.length; i++) {
-            const offsetA = a[i];
-            const offsetB = b[i];
-            if (!offsetA || !offsetB) return false;
-            if (offsetA.id !== offsetB.id) return false;
-            if (offsetA.value !== offsetB.value) return false;
-        }
-        return true;
     }
 }
 

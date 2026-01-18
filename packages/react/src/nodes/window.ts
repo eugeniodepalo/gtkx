@@ -4,11 +4,11 @@ import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { signalStore } from "./internal/signal-store.js";
-import { filterProps, isContainerType } from "./internal/utils.js";
-import { Menu } from "./models/menu.js";
+import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { MenuModel } from "./models/menu.js";
 import { WidgetNode } from "./widget.js";
 
-const PROPS = ["defaultWidth", "defaultHeight", "onClose"];
+const OWN_PROPS = ["defaultWidth", "defaultHeight", "onClose"] as const;
 
 type WindowProps = Props & {
     defaultWidth?: number;
@@ -19,10 +19,10 @@ type WindowProps = Props & {
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     public static override priority = 1;
 
-    private menu: Menu;
+    private menu: MenuModel;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return isContainerType(Gtk.Window, containerOrClass);
+        return matchesAnyClass([Gtk.Window], containerOrClass);
     }
 
     public static override createContainer(
@@ -33,14 +33,14 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         const WindowClass = containerClass as typeof Gtk.Window;
 
         if (
-            isContainerType(Gtk.ApplicationWindow, WindowClass) ||
-            isContainerType(Adw.ApplicationWindow, WindowClass)
+            matchesAnyClass([Gtk.ApplicationWindow], WindowClass) ||
+            matchesAnyClass([Adw.ApplicationWindow], WindowClass)
         ) {
             if (!(rootContainer instanceof Gtk.Application)) {
                 throw new Error("Expected ApplicationWindow to be created within Application");
             }
 
-            if (isContainerType(Adw.ApplicationWindow, WindowClass)) {
+            if (matchesAnyClass([Adw.ApplicationWindow], WindowClass)) {
                 return new Adw.ApplicationWindow(rootContainer);
             }
 
@@ -54,7 +54,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         super(typeName, props, container, rootContainer);
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
         const actionMap = container instanceof Gtk.ApplicationWindow ? container : undefined;
-        this.menu = new Menu("root", {}, actionMap, application);
+        this.menu = new MenuModel("root", {}, actionMap, application);
     }
 
     public override appendChild(child: Node): void {
@@ -93,17 +93,18 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     }
 
     public override updateProps(oldProps: WindowProps | null, newProps: WindowProps): void {
-        if (
-            !oldProps ||
-            oldProps.defaultWidth !== newProps.defaultWidth ||
-            oldProps.defaultHeight !== newProps.defaultHeight
-        ) {
+        super.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        this.applyOwnProps(oldProps, newProps);
+    }
+
+    protected applyOwnProps(oldProps: WindowProps | null, newProps: WindowProps): void {
+        if (hasChanged(oldProps, newProps, "defaultWidth") || hasChanged(oldProps, newProps, "defaultHeight")) {
             const width = newProps.defaultWidth ?? -1;
             const height = newProps.defaultHeight ?? -1;
             this.container.setDefaultSize(width, height);
         }
 
-        if (!oldProps || oldProps.onClose !== newProps.onClose) {
+        if (hasChanged(oldProps, newProps, "onClose")) {
             const userHandler = newProps.onClose;
             const wrappedHandler = userHandler
                 ? () => {
@@ -113,8 +114,6 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
                 : undefined;
             signalStore.set(this, this.container, "close-request", wrappedHandler);
         }
-
-        super.updateProps(filterProps(oldProps ?? {}, PROPS), filterProps(newProps, PROPS));
     }
 }
 

@@ -6,10 +6,6 @@ import sourceCode from "./overlay-decorative.tsx?raw";
 
 const INITIAL_TEXT = "Dear diary...";
 
-/**
- * Overlay/Decorative Overlay demo matching the official GTK gtk-demo.
- * Another example of an overlay with some decorative and some interactive controls.
- */
 const OverlayDecorativeDemo = () => {
     const [margin, setMargin] = useState(100);
     const textViewRef = useRef<Gtk.TextView | null>(null);
@@ -73,16 +69,13 @@ const OverlayDecorativeDemo = () => {
                     marginEnd={20}
                     marginBottom={20}
                     tooltipText="Margin"
-                >
-                    <x.Adjustment
-                        value={margin}
-                        lower={0}
-                        upper={100}
-                        stepIncrement={1}
-                        pageIncrement={1}
-                        onValueChanged={handleMarginChanged}
-                    />
-                </GtkScale>
+                    value={margin}
+                    lower={0}
+                    upper={100}
+                    stepIncrement={1}
+                    pageIncrement={1}
+                    onValueChanged={handleMarginChanged}
+                />
             </x.OverlayChild>
         </GtkOverlay>
     );

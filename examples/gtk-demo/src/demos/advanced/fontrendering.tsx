@@ -330,30 +330,32 @@ const FontRenderingDemo = () => {
                 >
                     <GtkBox spacing={16}>
                         <GtkLabel label="Font Size:" widthRequest={100} halign={Gtk.Align.START} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
-                            <x.Adjustment
-                                value={fontSize}
-                                lower={8}
-                                upper={72}
-                                stepIncrement={1}
-                                pageIncrement={4}
-                                onValueChanged={(val) => setFontSize(Math.round(val))}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            hexpand
+                            value={fontSize}
+                            lower={8}
+                            upper={72}
+                            stepIncrement={1}
+                            pageIncrement={4}
+                            onValueChanged={(val) => setFontSize(Math.round(val))}
+                        />
                     </GtkBox>
 
                     <GtkBox spacing={16}>
                         <GtkLabel label="Magnification:" widthRequest={100} halign={Gtk.Align.START} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
-                            <x.Adjustment
-                                value={scale}
-                                lower={1}
-                                upper={16}
-                                stepIncrement={1}
-                                pageIncrement={2}
-                                onValueChanged={(val) => setScale(Math.round(val))}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            hexpand
+                            value={scale}
+                            lower={1}
+                            upper={16}
+                            stepIncrement={1}
+                            pageIncrement={2}
+                            onValueChanged={(val) => setScale(Math.round(val))}
+                        />
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./image-filtering.tsx?raw";
@@ -46,16 +46,17 @@ const FilterSlider = ({
 }) => (
     <GtkBox spacing={8}>
         <GtkLabel label={label} widthRequest={100} xalign={1} cssClasses={["dim-label"]} />
-        <GtkScale hexpand digits={step < 1 ? 1 : 0} drawValue>
-            <x.Adjustment
-                value={value}
-                lower={min}
-                upper={max}
-                stepIncrement={step}
-                pageIncrement={step * 10}
-                onValueChanged={onChange}
-            />
-        </GtkScale>
+        <GtkScale
+            hexpand
+            digits={step < 1 ? 1 : 0}
+            drawValue
+            value={value}
+            lower={min}
+            upper={max}
+            stepIncrement={step}
+            pageIncrement={step * 10}
+            onValueChanged={onChange}
+        />
         <GtkLabel
             label={`${value.toFixed(step < 1 ? 1 : 0)}${unit}`}
             widthRequest={60}

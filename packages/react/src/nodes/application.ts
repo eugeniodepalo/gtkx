@@ -3,24 +3,24 @@ import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { isContainerType } from "./internal/utils.js";
+import { matchesAnyClass } from "./internal/utils.js";
 import { MenuNode } from "./menu.js";
-import { Menu } from "./models/menu.js";
+import { MenuModel } from "./models/menu.js";
 import { WindowNode } from "./window.js";
 
 class ApplicationNode extends Node<Gtk.Application> {
     static override priority = 0;
 
-    private menu: Menu;
+    private menu: MenuModel;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null) {
-        return isContainerType(Gtk.Application, containerOrClass);
+        return matchesAnyClass([Gtk.Application], containerOrClass);
     }
 
     constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer?: Container) {
         super(typeName, props, container, rootContainer);
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
-        this.menu = new Menu("root", {}, container, application);
+        this.menu = new MenuModel("root", {}, container, application);
     }
 
     public override appendChild(child: Node): void {

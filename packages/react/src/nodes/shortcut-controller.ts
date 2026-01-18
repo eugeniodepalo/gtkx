@@ -2,8 +2,10 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Props } from "../types.js";
+import { hasChanged } from "./internal/utils.js";
 import { ShortcutNode } from "./shortcut.js";
 import { VirtualNode } from "./virtual.js";
+import { WidgetNode } from "./widget.js";
 
 /**
  * Props for the ShortcutController virtual element.
@@ -25,18 +27,18 @@ export interface ShortcutControllerProps extends Props {
     scope?: Gtk.ShortcutScope;
 }
 
-export class ShortcutControllerNode extends VirtualNode<ShortcutControllerProps> {
+class ShortcutControllerNode extends VirtualNode<ShortcutControllerProps> {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
         return type === "ShortcutController";
     }
 
-    private controller?: Gtk.ShortcutController;
-    private parentWidget?: Gtk.Widget;
+    private controller: Gtk.ShortcutController | null = null;
+    private parentWidget: Gtk.Widget | null = null;
     private shortcuts: ShortcutNode[] = [];
 
-    public setParent(widget?: Gtk.Widget): void {
+    public setParent(widget: Gtk.Widget | null): void {
         if (this.parentWidget && this.controller) {
             this.parentWidget.removeController(this.controller);
         }
@@ -52,7 +54,7 @@ export class ShortcutControllerNode extends VirtualNode<ShortcutControllerProps>
                 this.addShortcutToController(shortcut);
             }
         } else {
-            this.controller = undefined;
+            this.controller = null;
         }
     }
 
@@ -81,14 +83,32 @@ export class ShortcutControllerNode extends VirtualNode<ShortcutControllerProps>
 
     public override updateProps(oldProps: ShortcutControllerProps | null, newProps: ShortcutControllerProps): void {
         super.updateProps(oldProps, newProps);
-        if (!oldProps || oldProps.scope !== newProps.scope) {
+        this.applyOwnProps(oldProps, newProps);
+    }
+
+    protected applyOwnProps(oldProps: ShortcutControllerProps | null, newProps: ShortcutControllerProps): void {
+        if (hasChanged(oldProps, newProps, "scope")) {
             this.applyScope();
         }
     }
 
     public override unmount(): void {
-        this.setParent(undefined);
+        this.setParent(null);
         super.unmount();
+    }
+
+    public canBeChildOf(parent: Node): boolean {
+        return parent instanceof WidgetNode;
+    }
+
+    public attachTo(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.setParent(parent.container);
+        }
+    }
+
+    public detachFrom(_parent: Node): void {
+        this.setParent(null);
     }
 
     private applyScope(): void {

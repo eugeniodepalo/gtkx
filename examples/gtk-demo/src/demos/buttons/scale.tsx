@@ -10,37 +10,63 @@ const ScaleDemo = () => {
                 <GtkLabel label="Plain" xalign={0} />
             </x.GridChild>
             <x.GridChild column={1} row={0}>
-                <GtkScale widthRequest={200} drawValue={false} hexpand>
-                    <x.Adjustment value={2} lower={0} upper={4} stepIncrement={0.1} pageIncrement={1} />
-                </GtkScale>
+                <GtkScale
+                    widthRequest={200}
+                    drawValue={false}
+                    hexpand
+                    value={2}
+                    lower={0}
+                    upper={4}
+                    stepIncrement={0.1}
+                    pageIncrement={1}
+                />
             </x.GridChild>
 
             <x.GridChild column={0} row={1}>
                 <GtkLabel label="Marks" xalign={0} />
             </x.GridChild>
             <x.GridChild column={1} row={1}>
-                <GtkScale widthRequest={200} drawValue={false} hexpand>
-                    <x.Adjustment value={2} lower={0} upper={4} stepIncrement={0.1} pageIncrement={1} />
-                    <x.ScaleMark value={0} position={Gtk.PositionType.BOTTOM} />
-                    <x.ScaleMark value={1} position={Gtk.PositionType.BOTTOM} />
-                    <x.ScaleMark value={2} position={Gtk.PositionType.BOTTOM} />
-                    <x.ScaleMark value={3} position={Gtk.PositionType.BOTTOM} />
-                    <x.ScaleMark value={4} position={Gtk.PositionType.BOTTOM} />
-                </GtkScale>
+                <GtkScale
+                    widthRequest={200}
+                    drawValue={false}
+                    hexpand
+                    value={2}
+                    lower={0}
+                    upper={4}
+                    stepIncrement={0.1}
+                    pageIncrement={1}
+                    marks={[
+                        { value: 0, position: Gtk.PositionType.BOTTOM },
+                        { value: 1, position: Gtk.PositionType.BOTTOM },
+                        { value: 2, position: Gtk.PositionType.BOTTOM },
+                        { value: 3, position: Gtk.PositionType.BOTTOM },
+                        { value: 4, position: Gtk.PositionType.BOTTOM },
+                    ]}
+                />
             </x.GridChild>
 
             <x.GridChild column={0} row={2}>
                 <GtkLabel label="Discrete" xalign={0} />
             </x.GridChild>
             <x.GridChild column={1} row={2}>
-                <GtkScale widthRequest={200} roundDigits={0} drawValue={false} hexpand>
-                    <x.Adjustment value={2} lower={0} upper={4} stepIncrement={0.1} pageIncrement={1} />
-                    <x.ScaleMark value={0} position={Gtk.PositionType.BOTTOM} />
-                    <x.ScaleMark value={1} position={Gtk.PositionType.BOTTOM} />
-                    <x.ScaleMark value={2} position={Gtk.PositionType.BOTTOM} />
-                    <x.ScaleMark value={3} position={Gtk.PositionType.BOTTOM} />
-                    <x.ScaleMark value={4} position={Gtk.PositionType.BOTTOM} />
-                </GtkScale>
+                <GtkScale
+                    widthRequest={200}
+                    roundDigits={0}
+                    drawValue={false}
+                    hexpand
+                    value={2}
+                    lower={0}
+                    upper={4}
+                    stepIncrement={0.1}
+                    pageIncrement={1}
+                    marks={[
+                        { value: 0, position: Gtk.PositionType.BOTTOM },
+                        { value: 1, position: Gtk.PositionType.BOTTOM },
+                        { value: 2, position: Gtk.PositionType.BOTTOM },
+                        { value: 3, position: Gtk.PositionType.BOTTOM },
+                        { value: 4, position: Gtk.PositionType.BOTTOM },
+                    ]}
+                />
             </x.GridChild>
         </GtkGrid>
     );

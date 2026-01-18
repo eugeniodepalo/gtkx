@@ -20,9 +20,6 @@ export const matchesAnyClass = (
     );
 };
 
-export const isContainerType = (cls: AnyClass, containerOrClass?: Container | ContainerClass | null): boolean =>
-    matchesAnyClass([cls], containerOrClass);
-
 export const matchesInterface = (
     methods: readonly string[],
     containerOrClass?: Container | ContainerClass | null,
@@ -35,7 +32,7 @@ export const matchesInterface = (
     return methods.every((method) => method in proto);
 };
 
-export const filterProps = (props: Props, excludeKeys: string[]): Props => {
+export const filterProps = (props: Props, excludeKeys: readonly string[]): Props => {
     const result: Props = {};
 
     for (const key of Object.keys(props)) {
@@ -76,3 +73,41 @@ export const resolvePropMeta = (container: Container, key: string): [string | nu
 
 export const resolveSignal = (container: Container, signalName: string): boolean =>
     walkPrototypeChain(container, (typeName) => (SIGNALS[typeName]?.has(signalName) ? true : null)) ?? false;
+
+export const hasChanged = <T>(oldProps: T | null, newProps: T, key: keyof T): boolean =>
+    !oldProps || oldProps[key] !== newProps[key];
+
+export const shallowArrayEqual = <T extends Record<string, unknown>>(a: T[], b: T[]): boolean => {
+    if (a.length !== b.length) return false;
+
+    for (let i = 0; i < a.length; i++) {
+        const itemA = a[i];
+        const itemB = b[i];
+        if (!itemA || !itemB) return false;
+
+        const keysA = Object.keys(itemA);
+        const keysB = Object.keys(itemB);
+        if (keysA.length !== keysB.length) return false;
+
+        for (const key of keysA) {
+            if (itemA[key] !== itemB[key]) return false;
+        }
+    }
+
+    return true;
+};
+
+export const primitiveArrayEqual = <T extends string | number | boolean>(
+    a: T[] | null | undefined,
+    b: T[] | null | undefined,
+): boolean => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+
+    return true;
+};

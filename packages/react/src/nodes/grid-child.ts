@@ -2,43 +2,62 @@ import { batch, isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GridChildProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
-import { SlotNode } from "./slot.js";
+import { PositionalChildNode } from "./abstract/positional-child.js";
+import { hasChanged } from "./internal/utils.js";
 
 type Props = Partial<GridChildProps>;
 
-class GridChildNode extends SlotNode<Props> {
+class GridChildNode extends PositionalChildNode<Props> {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
         return type === "GridChild";
     }
 
+    protected override attachToParent(parent: Gtk.Widget, child: Gtk.Widget): void {
+        const grid = parent as Gtk.Grid;
+        const column = this.props.column ?? 0;
+        const row = this.props.row ?? 0;
+        const columnSpan = this.props.columnSpan ?? 1;
+        const rowSpan = this.props.rowSpan ?? 1;
+
+        const existingChild = grid.getChildAt(column, row);
+        if (existingChild && !isObjectEqual(existingChild, child)) {
+            grid.remove(existingChild);
+        }
+
+        grid.attach(child, column, row, columnSpan, rowSpan);
+    }
+
+    protected override detachFromParent(parent: Gtk.Widget, child: Gtk.Widget): void {
+        (parent as Gtk.Grid).remove(child);
+    }
+
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
+    }
 
-        if (
-            !oldProps ||
-            oldProps.column !== newProps.column ||
-            oldProps.row !== newProps.row ||
-            oldProps.columnSpan !== newProps.columnSpan ||
-            oldProps.rowSpan !== newProps.rowSpan
-        ) {
-            if (this.parent && this.child) {
-                this.attachChild();
-            }
+    protected applyOwnProps(oldProps: Props | null, newProps: Props): void {
+        const positionChanged =
+            hasChanged(oldProps, newProps, "column") ||
+            hasChanged(oldProps, newProps, "row") ||
+            hasChanged(oldProps, newProps, "columnSpan") ||
+            hasChanged(oldProps, newProps, "rowSpan");
+
+        if (positionChanged && this.parent && this.child) {
+            this.reattachChild();
         }
     }
 
-    private getGrid(): Gtk.Grid {
-        if (!this.parent) {
-            throw new Error("Expected Grid reference to be set on GridChildNode");
+    private reattachChild(): void {
+        const grid = this.getTypedParent<Gtk.Grid>();
+        const child = this.child;
+
+        if (!child) {
+            return;
         }
 
-        return this.parent as Gtk.Grid;
-    }
-
-    private attachChild(): void {
-        const grid = this.getGrid();
         const column = this.props.column ?? 0;
         const row = this.props.row ?? 0;
         const columnSpan = this.props.columnSpan ?? 1;
@@ -46,38 +65,12 @@ class GridChildNode extends SlotNode<Props> {
 
         batch(() => {
             const existingChild = grid.getChildAt(column, row);
-
-            if (existingChild && this.child && !isObjectEqual(existingChild, this.child)) {
+            if (existingChild && !isObjectEqual(existingChild, child)) {
                 grid.remove(existingChild);
             }
 
-            if (this.child) {
-                const currentParent = this.child.getParent();
-
-                if (currentParent && isObjectEqual(currentParent, grid)) {
-                    grid.remove(this.child);
-                }
-
-                grid.attach(this.child, column, row, columnSpan, rowSpan);
-            }
-        });
-    }
-
-    protected override onChildChange(oldChild: Gtk.Widget | null): void {
-        const grid = this.getGrid();
-
-        batch(() => {
-            if (oldChild) {
-                const parent = oldChild.getParent();
-
-                if (parent && isObjectEqual(parent, grid)) {
-                    grid.remove(oldChild);
-                }
-            }
-
-            if (this.child) {
-                this.attachChild();
-            }
+            grid.remove(child);
+            grid.attach(child, column, row, columnSpan, rowSpan);
         });
     }
 }

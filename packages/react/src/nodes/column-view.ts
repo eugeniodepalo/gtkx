@@ -7,10 +7,10 @@ import { ColumnViewColumnNode } from "./column-view-column.js";
 import { signalStore } from "./internal/signal-store.js";
 import { filterProps, matchesAnyClass } from "./internal/utils.js";
 import { ListItemNode } from "./list-item.js";
-import { List, type ListProps } from "./models/list.js";
+import { ListModel, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
-const PROP_NAMES = ["sortColumn", "sortOrder", "onSortChanged", "estimatedRowHeight"];
+const PROP_NAMES = ["sortColumn", "sortOrder", "onSortChanged", "estimatedRowHeight"] as const;
 
 type ColumnViewProps = ListProps & {
     sortColumn?: string;
@@ -22,10 +22,10 @@ type ColumnViewProps = ListProps & {
 class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
     public static override priority = 1;
 
-    private handleSortChange?: () => void;
-    private list: List;
+    private handleSortChange: (() => void) | null = null;
+    private list: ListModel;
     private columnNodes = new Set<ColumnViewColumnNode>();
-    private estimatedRowHeight?: number;
+    private estimatedRowHeight: number | null = null;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return matchesAnyClass(COLUMN_VIEW_CLASSES, containerOrClass);
@@ -33,7 +33,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
 
     constructor(typeName: string, props: ColumnViewProps, container: Gtk.ColumnView, rootContainer?: Container) {
         super(typeName, props, container, rootContainer);
-        this.list = new List({
+        this.list = new ListModel({
             selectionMode: props.selectionMode,
             selected: props.selected,
             onSelectionChanged: props.onSelectionChanged,
@@ -117,11 +117,17 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             this.container.removeColumn(existingColumn);
         }
 
-        child.setStore(undefined);
+        child.setStore(null);
         this.columnNodes.delete(child);
     }
 
     public override updateProps(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
+        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        this.applyOwnProps(oldProps, newProps);
+        this.list.updateProps(oldProps, newProps);
+    }
+
+    protected applyOwnProps(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
         if (!oldProps || oldProps.onSortChanged !== newProps.onSortChanged) {
             const sorter = this.container.getSorter() as Gtk.ColumnViewSorter | null;
             const onSortChanged = newProps.onSortChanged;
@@ -147,65 +153,48 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         if (!oldProps || oldProps.estimatedRowHeight !== newProps.estimatedRowHeight) {
-            this.estimatedRowHeight = newProps.estimatedRowHeight;
+            this.estimatedRowHeight = newProps.estimatedRowHeight ?? null;
             for (const column of this.columnNodes) {
                 column.setEstimatedRowHeight(this.estimatedRowHeight);
             }
         }
+    }
 
-        this.list.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
-        super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
+    private findColumn<T>(predicate: (column: Gtk.ColumnViewColumn, index: number) => T | null): T | null {
+        const columns = this.container.getColumns();
+        for (let i = 0; i < columns.getNItems(); i++) {
+            const column = columns.getObject(i) as Gtk.ColumnViewColumn;
+            const result = predicate(column, i);
+            if (result !== null) return result;
+        }
+        return null;
     }
 
     private getColumn(columnId: string): Gtk.ColumnViewColumn {
-        const columns = this.container.getColumns();
-
-        for (let i = 0; i < columns.getNItems(); i++) {
-            const column = columns.getObject(i) as Gtk.ColumnViewColumn;
-
-            if (column.getId() === columnId) {
-                return column;
-            }
+        const column = this.findColumn((col) => (col.getId() === columnId ? col : null));
+        if (!column) {
+            throw new Error(`Unable to find column '${columnId}' in ColumnView`);
         }
-
-        throw new Error(`Unable to find column '${columnId}' in ColumnView`);
+        return column;
     }
 
     private getColumnIndex(column: Gtk.ColumnViewColumn): number {
-        const index = this.findColumnIndex(column);
-        if (index === -1) {
-            throw new Error(`Unable to find column '${column.getId()}' in ColumnView`);
+        const targetId = column.getId();
+        const index = this.findColumn((col, i) => (col.getId() === targetId ? i : null));
+        if (index === null) {
+            throw new Error(`Unable to find column '${targetId}' in ColumnView`);
         }
         return index;
     }
 
-    private findColumnIndex(column: Gtk.ColumnViewColumn): number {
-        const columns = this.container.getColumns();
-
-        for (let i = 0; i < columns.getNItems(); i++) {
-            const col = columns.getObject(i) as Gtk.ColumnViewColumn;
-
-            if (col.getId() === column.getId()) {
-                return i;
-            }
-        }
-
-        return -1;
+    private findColumnInView(column: Gtk.ColumnViewColumn): Gtk.ColumnViewColumn | null {
+        const targetId = column.getId();
+        return this.findColumn((col) => (col.getId() === targetId ? col : null));
     }
 
-    private findColumnInView(column: Gtk.ColumnViewColumn): Gtk.ColumnViewColumn | null {
-        const columns = this.container.getColumns();
-        const targetId = column.getId();
-
-        for (let i = 0; i < columns.getNItems(); i++) {
-            const col = columns.getObject(i) as Gtk.ColumnViewColumn;
-
-            if (col.getId() === targetId) {
-                return col;
-            }
-        }
-
-        return null;
+    public override unmount(): void {
+        this.columnNodes.clear();
+        super.unmount();
     }
 }
 

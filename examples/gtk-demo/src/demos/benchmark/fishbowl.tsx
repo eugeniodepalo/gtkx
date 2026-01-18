@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFlowBox, GtkFrame, GtkLabel, GtkScale, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFlowBox, GtkFrame, GtkLabel, GtkScale, GtkScrolledWindow } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fishbowl.tsx?raw";
@@ -92,16 +92,18 @@ const FishbowlDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Fish Count:" halign={Gtk.Align.START} />
-                        <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT} digits={0}>
-                            <x.Adjustment
-                                value={fishCount}
-                                lower={10}
-                                upper={500}
-                                stepIncrement={10}
-                                pageIncrement={50}
-                                onValueChanged={(val) => setFishCount(Math.round(val))}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            hexpand
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            digits={0}
+                            value={fishCount}
+                            lower={10}
+                            upper={500}
+                            stepIncrement={10}
+                            pageIncrement={50}
+                            onValueChanged={(val: number) => setFishCount(Math.round(val))}
+                        />
                     </GtkBox>
 
                     <GtkBox spacing={12}>

@@ -1,15 +1,15 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import { scheduleAfterCommit } from "../scheduler.js";
+import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { signalStore } from "./internal/signal-store.js";
-import { filterProps, isContainerType } from "./internal/utils.js";
+import { filterProps, hasChanged, matchesAnyClass, primitiveArrayEqual } from "./internal/utils.js";
 import { NavigationPageNode } from "./navigation-page.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-const PROPS = ["history", "onHistoryChanged"];
+const OWN_PROPS = ["history", "onHistoryChanged"] as const;
 
 type NavigationViewProps = Props & {
     history?: string[] | null;
@@ -20,7 +20,7 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
     public static override priority = 1;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return isContainerType(Adw.NavigationView, containerOrClass);
+        return matchesAnyClass([Adw.NavigationView], containerOrClass);
     }
 
     public override appendChild(child: Node): void {
@@ -65,14 +65,22 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
     }
 
     public override updateProps(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
+        super.updateProps(
+            oldProps ? (filterProps(oldProps, OWN_PROPS) as NavigationViewProps) : null,
+            filterProps(newProps, OWN_PROPS) as NavigationViewProps,
+        );
+        this.applyOwnProps(oldProps, newProps);
+    }
+
+    protected applyOwnProps(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
         const oldHistory = oldProps?.history;
         const newHistory = newProps.history;
 
-        if (newHistory && !this.arraysEqual(oldHistory, newHistory)) {
+        if (newHistory && !primitiveArrayEqual(oldHistory, newHistory)) {
             this.syncHistory(newHistory);
         }
 
-        if (!oldProps || oldProps.onHistoryChanged !== newProps.onHistoryChanged) {
+        if (hasChanged(oldProps, newProps, "onHistoryChanged")) {
             const onHistoryChanged = newProps.onHistoryChanged;
 
             if (onHistoryChanged) {
@@ -90,8 +98,6 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
                 signalStore.set(this, this.container, "replaced", null);
             }
         }
-
-        super.updateProps(filterProps(oldProps ?? {}, PROPS), filterProps(newProps, PROPS) as NavigationViewProps);
     }
 
     private syncHistory(history: string[]): void {
@@ -99,7 +105,7 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
 
         scheduleAfterCommit(() => {
             container.replaceWithTags(history, history.length);
-        });
+        }, CommitPriority.NORMAL);
     }
 
     private getCurrentHistory(): string[] {
@@ -116,18 +122,6 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
         }
 
         return history;
-    }
-
-    private arraysEqual(a: string[] | null | undefined, b: string[] | null | undefined): boolean {
-        if (a === b) return true;
-        if (!a || !b) return false;
-        if (a.length !== b.length) return false;
-
-        for (let i = 0; i < a.length; i++) {
-            if (a[i] !== b[i]) return false;
-        }
-
-        return true;
     }
 }
 

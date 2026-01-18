@@ -482,7 +482,13 @@ const ShadertoyDemo = () => {
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} widthRequest={400}>
                                 <GtkScrolledWindow vexpand hexpand heightRequest={300}>
                                     <GtkSourceView
-                                        ref={sourceViewRef}
+                                        ref={(view: GtkSource.View | null) => {
+                                            sourceViewRef.current = view;
+                                            if (view) {
+                                                const buffer = view.getBuffer();
+                                                buffer.setText(shaderCode, -1);
+                                            }
+                                        }}
                                         showLineNumbers
                                         highlightCurrentLine
                                         tabWidth={4}
@@ -491,9 +497,9 @@ const ShadertoyDemo = () => {
                                         topMargin={8}
                                         bottomMargin={8}
                                         monospace
-                                    >
-                                        <x.SourceBuffer text={shaderCode} language="glsl" styleScheme="Adwaita-dark" />
-                                    </GtkSourceView>
+                                        language="glsl"
+                                        styleScheme="Adwaita-dark"
+                                    />
                                 </GtkScrolledWindow>
 
                                 {compileError && (

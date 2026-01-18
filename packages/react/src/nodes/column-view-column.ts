@@ -30,11 +30,11 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
         super.unmount();
     }
 
-    public setStore(model?: ListStore): void {
+    public setStore(model: ListStore | null): void {
         this.itemRenderer.setStore(model);
     }
 
-    public setEstimatedRowHeight(height?: number): void {
+    public setEstimatedRowHeight(height: number | null): void {
         this.itemRenderer.setEstimatedItemHeight(height);
     }
 

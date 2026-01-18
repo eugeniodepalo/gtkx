@@ -1,13 +1,11 @@
 import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
+import { BaseStore } from "./base-store.js";
 
-export class ListStore {
-    private items: Map<string, unknown> = new Map();
+export class ListStore extends BaseStore<unknown> {
     private model: Gtk.StringList = new Gtk.StringList();
     private newSortedIds: string[] = [];
     private sortedIds: string[] = [];
-    private shouldSync = false;
 
     public addItem(id: string, item: unknown): void {
         this.items.set(id, item);
@@ -52,7 +50,7 @@ export class ListStore {
         this.scheduleSync();
     }
 
-    public updateItem(id: string, item: unknown): void {
+    public override updateItem(id: string, item: unknown): void {
         if (this.items.has(id)) {
             this.items.set(id, item);
         } else {
@@ -60,25 +58,11 @@ export class ListStore {
         }
     }
 
-    public getItem(id: string) {
-        return this.items.get(id);
-    }
-
     public getModel(): Gtk.StringList {
         return this.model;
     }
 
-    private scheduleSync(): void {
-        if (this.shouldSync) {
-            return;
-        }
-
-        this.shouldSync = true;
-        scheduleAfterCommit(() => this.sync(), CommitPriority.LOW);
-    }
-
-    private sync(): void {
-        this.shouldSync = false;
+    protected override sync(): void {
         const newOrder = this.newSortedIds;
         const oldLength = this.sortedIds.length;
         batch(() => this.model.splice(0, oldLength, newOrder.length > 0 ? newOrder : undefined));

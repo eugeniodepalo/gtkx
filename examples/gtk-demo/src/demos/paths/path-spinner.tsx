@@ -1,7 +1,7 @@
 import { CallbackAnimationTarget, TimedAnimation } from "@gtkx/ffi/adw";
 import { type Context, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-spinner.tsx?raw";
@@ -265,29 +265,32 @@ const ConfigurableSpinner = () => {
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
                     <GtkBox spacing={8}>
                         <GtkLabel label="Stroke:" cssClasses={["dim-label"]} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} widthRequest={120}>
-                            <x.Adjustment
-                                value={strokeWidth}
-                                lower={2}
-                                upper={16}
-                                stepIncrement={1}
-                                pageIncrement={1}
-                                onValueChanged={setStrokeWidth}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            widthRequest={120}
+                            value={strokeWidth}
+                            lower={2}
+                            upper={16}
+                            stepIncrement={1}
+                            pageIncrement={1}
+                            onValueChanged={setStrokeWidth}
+                        />
                     </GtkBox>
                     <GtkBox spacing={8}>
                         <GtkLabel label="Speed:" cssClasses={["dim-label"]} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} digits={1} widthRequest={120}>
-                            <x.Adjustment
-                                value={speed}
-                                lower={0.2}
-                                upper={3}
-                                stepIncrement={0.1}
-                                pageIncrement={0.5}
-                                onValueChanged={setSpeed}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            digits={1}
+                            widthRequest={120}
+                            value={speed}
+                            lower={0.2}
+                            upper={3}
+                            stepIncrement={0.1}
+                            pageIncrement={0.5}
+                            onValueChanged={setSpeed}
+                        />
                     </GtkBox>
                     <GtkButton label={isRunning ? "Pause" : "Resume"} onClicked={handleToggle} cssClasses={["flat"]} />
                 </GtkBox>

@@ -8,8 +8,8 @@ import { TreeList, type TreeListProps } from "./models/tree-list.js";
 import { TreeListItemNode } from "./tree-list-item.js";
 import { WidgetNode } from "./widget.js";
 
-const RENDERER_PROP_NAMES = ["renderItem", "estimatedItemHeight"];
-const PROP_NAMES = [...RENDERER_PROP_NAMES, "autoexpand", "selectionMode", "selected", "onSelectionChanged"];
+const RENDERER_PROP_NAMES = ["renderItem", "estimatedItemHeight"] as const;
+const PROP_NAMES = [...RENDERER_PROP_NAMES, "autoexpand", "selectionMode", "selected", "onSelectionChanged"] as const;
 
 type TreeListViewProps = TreeListProps & {
     renderItem?: TreeRenderItemFn<unknown>;
@@ -80,16 +80,16 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
 
     public override updateProps(oldProps: TreeListViewProps | null, newProps: TreeListViewProps): void {
         if (!oldProps || oldProps.renderItem !== newProps.renderItem) {
-            this.itemRenderer.setRenderFn(newProps.renderItem);
+            this.itemRenderer.setRenderFn(newProps.renderItem ?? null);
         }
 
         if (!oldProps || oldProps.estimatedItemHeight !== newProps.estimatedItemHeight) {
-            this.itemRenderer.setEstimatedItemHeight(newProps.estimatedItemHeight);
+            this.itemRenderer.setEstimatedItemHeight(newProps.estimatedItemHeight ?? null);
         }
 
         const previousModel = this.treeList.getSelectionModel();
         this.treeList.updateProps(
-            filterProps(oldProps ?? {}, RENDERER_PROP_NAMES),
+            oldProps ? filterProps(oldProps, RENDERER_PROP_NAMES) : null,
             filterProps(newProps, RENDERER_PROP_NAMES),
         );
         const currentModel = this.treeList.getSelectionModel();
@@ -98,7 +98,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
             this.container.setModel(currentModel);
         }
 
-        super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
+        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 }
 

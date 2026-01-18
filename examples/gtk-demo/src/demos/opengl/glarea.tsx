@@ -1,7 +1,7 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./glarea.tsx?raw";
@@ -236,42 +236,48 @@ const GLAreaDemo = () => {
             >
                 <GtkBox spacing={12}>
                     <GtkLabel label="X axis" widthRequest={60} halign={Gtk.Align.START} />
-                    <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT} digits={0}>
-                        <x.Adjustment
-                            value={0}
-                            lower={0}
-                            upper={360}
-                            stepIncrement={1}
-                            pageIncrement={10}
-                            onValueChanged={handleXChange}
-                        />
-                    </GtkScale>
+                    <GtkScale
+                        hexpand
+                        drawValue
+                        valuePos={Gtk.PositionType.RIGHT}
+                        digits={0}
+                        value={0}
+                        lower={0}
+                        upper={360}
+                        stepIncrement={1}
+                        pageIncrement={10}
+                        onValueChanged={handleXChange}
+                    />
                 </GtkBox>
                 <GtkBox spacing={12}>
                     <GtkLabel label="Y axis" widthRequest={60} halign={Gtk.Align.START} />
-                    <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT} digits={0}>
-                        <x.Adjustment
-                            value={0}
-                            lower={0}
-                            upper={360}
-                            stepIncrement={1}
-                            pageIncrement={10}
-                            onValueChanged={handleYChange}
-                        />
-                    </GtkScale>
+                    <GtkScale
+                        hexpand
+                        drawValue
+                        valuePos={Gtk.PositionType.RIGHT}
+                        digits={0}
+                        value={0}
+                        lower={0}
+                        upper={360}
+                        stepIncrement={1}
+                        pageIncrement={10}
+                        onValueChanged={handleYChange}
+                    />
                 </GtkBox>
                 <GtkBox spacing={12}>
                     <GtkLabel label="Z axis" widthRequest={60} halign={Gtk.Align.START} />
-                    <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT} digits={0}>
-                        <x.Adjustment
-                            value={0}
-                            lower={0}
-                            upper={360}
-                            stepIncrement={1}
-                            pageIncrement={10}
-                            onValueChanged={handleZChange}
-                        />
-                    </GtkScale>
+                    <GtkScale
+                        hexpand
+                        drawValue
+                        valuePos={Gtk.PositionType.RIGHT}
+                        digits={0}
+                        value={0}
+                        lower={0}
+                        upper={360}
+                        stepIncrement={1}
+                        pageIncrement={10}
+                        onValueChanged={handleZChange}
+                    />
                 </GtkBox>
             </GtkBox>
         </GtkBox>

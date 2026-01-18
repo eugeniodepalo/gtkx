@@ -2,6 +2,7 @@ import { batch } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import type { NavigationPageProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
+import { hasChanged } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 
 type Props = Partial<NavigationPageProps>;
@@ -15,29 +16,26 @@ export class NavigationPageNode extends SlotNode<Props> {
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
+    }
 
+    protected applyOwnProps(oldProps: Props | null, newProps: Props): void {
         const child = this.child;
 
         if (!(child instanceof Adw.NavigationPage)) {
             return;
         }
 
-        if (!oldProps || oldProps.id !== newProps.id) {
-            if (newProps.id !== undefined) {
-                child.setTag(newProps.id);
-            }
+        if (hasChanged(oldProps, newProps, "id") && newProps.id !== undefined) {
+            child.setTag(newProps.id);
         }
 
-        if (!oldProps || oldProps.title !== newProps.title) {
-            if (newProps.title !== undefined) {
-                child.setTitle(newProps.title);
-            }
+        if (hasChanged(oldProps, newProps, "title") && newProps.title !== undefined) {
+            child.setTitle(newProps.title);
         }
 
-        if (!oldProps || oldProps.canPop !== newProps.canPop) {
-            if (newProps.canPop !== undefined) {
-                child.setCanPop(newProps.canPop);
-            }
+        if (hasChanged(oldProps, newProps, "canPop") && newProps.canPop !== undefined) {
+            child.setCanPop(newProps.canPop);
         }
     }
 

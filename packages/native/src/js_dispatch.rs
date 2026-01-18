@@ -4,16 +4,6 @@
 //! thread. When GTK signals fire, they trigger closures that queue callbacks
 //! here for execution in the JavaScript context.
 //!
-//! Access the singleton dispatcher via [`JsDispatcher::global()`] and call methods on it:
-//!
-//! ```ignore
-//! use crate::js_dispatch;
-//!
-//! JsDispatcher::global().queue(callback, args, capture_result);
-//! JsDispatcher::global().process_pending(cx);
-//! JsDispatcher::global().invoke_and_wait(&channel, &callback, args, true, |result| { ... });
-//! ```
-//!
 //! ## Flow
 //!
 //! 1. GTK signal handler calls [`JsDispatcher::queue`] or [`JsDispatcher::queue_with_wakeup`] with callback and args

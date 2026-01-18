@@ -3,6 +3,7 @@ import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { StackPageProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
+import { hasChanged } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 
 type Props = Partial<StackPageProps>;
@@ -10,7 +11,7 @@ type Props = Partial<StackPageProps>;
 class StackPageNode extends SlotNode<Props> {
     public static override priority = 1;
 
-    private page?: Gtk.StackPage | Adw.ViewStackPage;
+    private page: Gtk.StackPage | Adw.ViewStackPage | null = null;
 
     public static override matches(type: string): boolean {
         return type === "StackPage";
@@ -18,38 +19,47 @@ class StackPageNode extends SlotNode<Props> {
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
+    }
 
+    protected applyOwnProps(oldProps: Props | null, newProps: Props): void {
         if (!this.page) {
             return;
         }
 
-        if (!oldProps || oldProps.title !== newProps.title) {
-            if (newProps.title !== undefined) {
-                this.page.setTitle(newProps.title);
-            }
+        if (hasChanged(oldProps, newProps, "title") && newProps.title !== undefined) {
+            this.page.setTitle(newProps.title);
         }
 
-        if (!oldProps || oldProps.iconName !== newProps.iconName) {
-            if (newProps.iconName !== undefined) {
-                this.page.setIconName(newProps.iconName);
-            }
+        if (hasChanged(oldProps, newProps, "iconName") && newProps.iconName !== undefined) {
+            this.page.setIconName(newProps.iconName);
         }
 
-        if (!oldProps || oldProps.needsAttention !== newProps.needsAttention) {
+        if (hasChanged(oldProps, newProps, "needsAttention")) {
             this.page.setNeedsAttention(newProps.needsAttention ?? false);
         }
 
-        if (!oldProps || oldProps.visible !== newProps.visible) {
+        if (hasChanged(oldProps, newProps, "visible")) {
             this.page.setVisible(newProps.visible ?? true);
         }
 
-        if (!oldProps || oldProps.useUnderline !== newProps.useUnderline) {
+        if (hasChanged(oldProps, newProps, "useUnderline")) {
             this.page.setUseUnderline(newProps.useUnderline ?? false);
         }
 
-        if ("setBadgeNumber" in this.page && (!oldProps || oldProps.badgeNumber !== newProps.badgeNumber)) {
+        if ("setBadgeNumber" in this.page && hasChanged(oldProps, newProps, "badgeNumber")) {
             this.page.setBadgeNumber?.(newProps.badgeNumber ?? 0);
         }
+    }
+
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
+        batch(() => {
+            this.removePage(oldChild);
+
+            if (this.child) {
+                this.addPage();
+            }
+        });
     }
 
     private addPage(): void {
@@ -94,16 +104,6 @@ class StackPageNode extends SlotNode<Props> {
         if (currentParent && isObjectEqual(currentParent, parent)) {
             parent.remove(oldChild);
         }
-    }
-
-    protected override onChildChange(oldChild: Gtk.Widget | null): void {
-        batch(() => {
-            this.removePage(oldChild);
-
-            if (this.child) {
-                this.addPage();
-            }
-        });
     }
 }
 

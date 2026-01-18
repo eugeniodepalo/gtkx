@@ -2,7 +2,7 @@ import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
-import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./rotated-text.tsx?raw";
@@ -98,44 +98,47 @@ const RotatedTextDemo = () => {
                 >
                     <GtkBox spacing={16}>
                         <GtkLabel label="Rotation:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
-                            <x.Adjustment
-                                value={rotation}
-                                lower={0}
-                                upper={360}
-                                stepIncrement={1}
-                                pageIncrement={15}
-                                onValueChanged={setRotation}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            hexpand
+                            value={rotation}
+                            lower={0}
+                            upper={360}
+                            stepIncrement={1}
+                            pageIncrement={15}
+                            onValueChanged={setRotation}
+                        />
                     </GtkBox>
 
                     <GtkBox spacing={16}>
                         <GtkLabel label="Font Size:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
-                            <x.Adjustment
-                                value={fontSize}
-                                lower={12}
-                                upper={72}
-                                stepIncrement={1}
-                                pageIncrement={4}
-                                onValueChanged={setFontSize}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            hexpand
+                            value={fontSize}
+                            lower={12}
+                            upper={72}
+                            stepIncrement={1}
+                            pageIncrement={4}
+                            onValueChanged={setFontSize}
+                        />
                     </GtkBox>
 
                     <GtkBox spacing={16}>
                         <GtkLabel label="Spacing:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
-                            <x.Adjustment
-                                value={spacing}
-                                lower={0}
-                                upper={90}
-                                stepIncrement={5}
-                                pageIncrement={15}
-                                onValueChanged={setSpacing}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            valuePos={Gtk.PositionType.RIGHT}
+                            hexpand
+                            value={spacing}
+                            lower={0}
+                            upper={90}
+                            stepIncrement={5}
+                            pageIncrement={15}
+                            onValueChanged={setSpacing}
+                        />
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

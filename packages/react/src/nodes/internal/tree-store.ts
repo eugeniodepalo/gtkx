@@ -1,6 +1,6 @@
 import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
+import { BaseStore } from "./base-store.js";
 
 export interface TreeItemData<T = unknown> {
     value: T;
@@ -9,17 +9,16 @@ export interface TreeItemData<T = unknown> {
     hideExpander?: boolean;
 }
 
-export class TreeStore {
-    private items: Map<string, TreeItemData> = new Map();
+export class TreeStore extends BaseStore<TreeItemData> {
     private rootIds: string[] = [];
     private newRootIds: string[] = [];
     private children: Map<string, string[]> = new Map();
     private newChildren: Map<string, string[]> = new Map();
     private rootModel: Gtk.StringList;
     private childModels: Map<string, Gtk.StringList> = new Map();
-    private shouldSync = false;
 
     constructor() {
+        super();
         this.rootModel = new Gtk.StringList();
     }
 
@@ -108,14 +107,8 @@ export class TreeStore {
         this.scheduleSync();
     }
 
-    public updateItem(id: string, data: TreeItemData): void {
-        if (this.items.has(id)) {
-            this.items.set(id, data);
-        }
-    }
-
-    public getItem(id: string): TreeItemData | null {
-        return this.items.get(id) ?? null;
+    public override getItem(id: string): TreeItemData | undefined {
+        return this.items.get(id);
     }
 
     public getRootModel(): Gtk.StringList {
@@ -142,18 +135,7 @@ export class TreeStore {
         return childIds !== undefined && childIds.length > 0;
     }
 
-    private scheduleSync(): void {
-        if (this.shouldSync) {
-            return;
-        }
-
-        this.shouldSync = true;
-        scheduleAfterCommit(() => this.sync(), CommitPriority.LOW);
-    }
-
-    private sync(): void {
-        this.shouldSync = false;
-
+    protected override sync(): void {
         const oldRootLength = this.rootIds.length;
         batch(() => this.rootModel.splice(0, oldRootLength, this.newRootIds.length > 0 ? this.newRootIds : undefined));
         this.rootIds = [...this.newRootIds];

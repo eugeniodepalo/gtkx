@@ -10,7 +10,7 @@ import { filterProps, matchesAnyClass } from "./internal/utils.js";
 import { SimpleListItemNode } from "./simple-list-item.js";
 import { WidgetNode } from "./widget.js";
 
-const PROP_NAMES = ["selectedId", "onSelectionChanged"];
+const PROP_NAMES = ["selectedId", "onSelectionChanged"] as const;
 
 type SimpleListViewProps = Props & {
     selectedId?: string;
@@ -61,7 +61,7 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
             }
         }
 
-        super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
+        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 
     public override appendChild(child: Node): void {

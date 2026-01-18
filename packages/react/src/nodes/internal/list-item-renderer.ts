@@ -1,113 +1,52 @@
-import { getNativeId } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
-import { createFiberRoot } from "../../fiber-root.js";
 import { reconciler } from "../../reconciler.js";
+import { BaseItemRenderer } from "./base-item-renderer.js";
 import type { ListStore } from "./list-store.js";
-import { signalStore } from "./signal-store.js";
 
 export type RenderItemFn<T> = (item: T | null) => ReactNode;
 
-export class ListItemRenderer {
-    private factory: Gtk.SignalListItemFactory;
-    private store?: ListStore | null;
-    private fiberRoots = new Map<number, Reconciler.FiberRoot>();
-    private tornDown = new Set<number>();
-    private renderFn?: RenderItemFn<unknown> = () => null as never;
-    private estimatedItemHeight?: number;
+export class ListItemRenderer extends BaseItemRenderer<ListStore> {
+    private renderFn: RenderItemFn<unknown> | null = () => null;
 
-    constructor() {
-        this.factory = new Gtk.SignalListItemFactory();
-        this.initialize();
-    }
-
-    public getFactory(): Gtk.SignalListItemFactory {
-        return this.factory;
-    }
-
-    public setRenderFn(renderFn?: RenderItemFn<unknown>): void {
+    public setRenderFn(renderFn: RenderItemFn<unknown> | null): void {
         this.renderFn = renderFn;
     }
 
-    public setStore(store?: ListStore | null): void {
-        this.store = store;
+    protected override getStoreTypeName(): string {
+        return "list store";
     }
 
-    public setEstimatedItemHeight(height?: number): void {
-        this.estimatedItemHeight = height;
+    protected override renderItem(_ptr: number): ReactNode {
+        return this.renderFn?.(null);
     }
 
-    private getStore(): ListStore {
-        if (!this.store) {
-            throw new Error("Expected list store to be set on ListItemRenderer");
-        }
-
-        return this.store;
+    protected override getItemFromListItem(listItem: Gtk.ListItem): unknown {
+        const stringObject = listItem.getItem();
+        if (!(stringObject instanceof Gtk.StringObject)) return null;
+        return this.getStore().getItem(stringObject.getString());
     }
 
-    public dispose(): void {
-        signalStore.clear(this);
-        this.fiberRoots.clear();
-        this.tornDown.clear();
+    protected override onSetup(listItem: Gtk.ListItem, _ptr: number): Gtk.Widget {
+        const box = this.createBox();
+        listItem.setChild(box);
+        return box;
     }
 
-    private initialize(): void {
-        signalStore.set(this, this.factory, "setup", (_self, listItem: Gtk.ListItem) => {
-            const ptr = getNativeId(listItem.handle);
+    protected override onBind(listItem: Gtk.ListItem, ptr: number, fiberRoot: Reconciler.FiberRoot): void {
+        const item = this.getItemFromListItem(listItem);
+        const element = this.renderFn?.(item);
 
-            const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL);
-            box.setValign(Gtk.Align.CENTER);
-
-            if (this.estimatedItemHeight !== undefined) {
-                box.setSizeRequest(-1, this.estimatedItemHeight);
-            }
-
-            listItem.setChild(box);
-
-            const fiberRoot = createFiberRoot(box);
-            this.fiberRoots.set(ptr, fiberRoot);
-            const element = this.renderFn?.(null);
-
-            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
-        });
-
-        signalStore.set(this, this.factory, "bind", (_self, listItem: Gtk.ListItem) => {
-            const ptr = getNativeId(listItem.handle);
-            const fiberRoot = this.fiberRoots.get(ptr);
-
-            if (!fiberRoot) return;
-
-            const stringObject = listItem.getItem();
-            if (!(stringObject instanceof Gtk.StringObject)) return;
-            const item = this.getStore().getItem(stringObject.getString());
-            const element = this.renderFn?.(item);
-
-            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
-                if (this.tornDown.has(ptr)) return;
-                const currentFiberRoot = this.fiberRoots.get(ptr);
-                if (!currentFiberRoot) return;
-                const box = currentFiberRoot.containerInfo;
-                if (box instanceof Gtk.Box) {
-                    box.setSizeRequest(-1, -1);
-                }
-            });
-        });
-
-        signalStore.set(this, this.factory, "unbind", () => {});
-
-        signalStore.set(this, this.factory, "teardown", (_self, listItem) => {
-            const ptr = getNativeId(listItem.handle);
-            const fiberRoot = this.fiberRoots.get(ptr);
-
-            if (fiberRoot) {
-                this.tornDown.add(ptr);
-                reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
-                queueMicrotask(() => {
-                    this.fiberRoots.delete(ptr);
-                    this.tornDown.delete(ptr);
-                });
-            }
+        reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
+            if (this.tornDown.has(ptr)) return;
+            const currentFiberRoot = this.fiberRoots.get(ptr);
+            if (!currentFiberRoot) return;
+            this.clearBoxSizeRequest(currentFiberRoot.containerInfo);
         });
     }
+
+    protected override onUnbind(_listItem: Gtk.ListItem): void {}
+
+    protected override onTeardown(_listItem: Gtk.ListItem, _ptr: number): void {}
 }

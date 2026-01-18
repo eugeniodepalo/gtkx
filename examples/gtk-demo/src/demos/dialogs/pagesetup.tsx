@@ -1,6 +1,6 @@
 import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkSpinButton, useApplication, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkSpinButton, useApplication } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./pagesetup.tsx?raw";
@@ -270,55 +270,59 @@ const PageSetupDemo = () => {
                         >
                             <GtkBox spacing={12}>
                                 <GtkLabel label="Top:" widthChars={8} xalign={0} />
-                                <GtkSpinButton climbRate={1} digits={1} hexpand>
-                                    <x.Adjustment
-                                        value={topMargin}
-                                        lower={0}
-                                        upper={100}
-                                        stepIncrement={1}
-                                        pageIncrement={10}
-                                        onValueChanged={setTopMargin}
-                                    />
-                                </GtkSpinButton>
+                                <GtkSpinButton
+                                    climbRate={1}
+                                    digits={1}
+                                    hexpand
+                                    value={topMargin}
+                                    lower={0}
+                                    upper={100}
+                                    stepIncrement={1}
+                                    pageIncrement={10}
+                                    onValueChanged={(self) => setTopMargin(self.getValue())}
+                                />
                             </GtkBox>
                             <GtkBox spacing={12}>
                                 <GtkLabel label="Bottom:" widthChars={8} xalign={0} />
-                                <GtkSpinButton climbRate={1} digits={1} hexpand>
-                                    <x.Adjustment
-                                        value={bottomMargin}
-                                        lower={0}
-                                        upper={100}
-                                        stepIncrement={1}
-                                        pageIncrement={10}
-                                        onValueChanged={setBottomMargin}
-                                    />
-                                </GtkSpinButton>
+                                <GtkSpinButton
+                                    climbRate={1}
+                                    digits={1}
+                                    hexpand
+                                    value={bottomMargin}
+                                    lower={0}
+                                    upper={100}
+                                    stepIncrement={1}
+                                    pageIncrement={10}
+                                    onValueChanged={(self) => setBottomMargin(self.getValue())}
+                                />
                             </GtkBox>
                             <GtkBox spacing={12}>
                                 <GtkLabel label="Left:" widthChars={8} xalign={0} />
-                                <GtkSpinButton climbRate={1} digits={1} hexpand>
-                                    <x.Adjustment
-                                        value={leftMargin}
-                                        lower={0}
-                                        upper={100}
-                                        stepIncrement={1}
-                                        pageIncrement={10}
-                                        onValueChanged={setLeftMargin}
-                                    />
-                                </GtkSpinButton>
+                                <GtkSpinButton
+                                    climbRate={1}
+                                    digits={1}
+                                    hexpand
+                                    value={leftMargin}
+                                    lower={0}
+                                    upper={100}
+                                    stepIncrement={1}
+                                    pageIncrement={10}
+                                    onValueChanged={(self) => setLeftMargin(self.getValue())}
+                                />
                             </GtkBox>
                             <GtkBox spacing={12}>
                                 <GtkLabel label="Right:" widthChars={8} xalign={0} />
-                                <GtkSpinButton climbRate={1} digits={1} hexpand>
-                                    <x.Adjustment
-                                        value={rightMargin}
-                                        lower={0}
-                                        upper={100}
-                                        stepIncrement={1}
-                                        pageIncrement={10}
-                                        onValueChanged={setRightMargin}
-                                    />
-                                </GtkSpinButton>
+                                <GtkSpinButton
+                                    climbRate={1}
+                                    digits={1}
+                                    hexpand
+                                    value={rightMargin}
+                                    lower={0}
+                                    upper={100}
+                                    stepIncrement={1}
+                                    pageIncrement={10}
+                                    onValueChanged={(self) => setRightMargin(self.getValue())}
+                                />
                             </GtkBox>
                             <GtkButton label="Reset Margins" onClicked={resetMargins} halign={Gtk.Align.END} />
                         </GtkBox>

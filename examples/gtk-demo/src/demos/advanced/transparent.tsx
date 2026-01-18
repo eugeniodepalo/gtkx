@@ -230,16 +230,18 @@ const OverlayDemo = () => {
 
                 <GtkBox spacing={12}>
                     <GtkLabel label="Overlay Opacity:" widthRequest={120} halign={Gtk.Align.START} />
-                    <GtkScale drawValue digits={0} valuePos={Gtk.PositionType.RIGHT} hexpand>
-                        <x.Adjustment
-                            value={overlayOpacity * 100}
-                            lower={10}
-                            upper={100}
-                            stepIncrement={5}
-                            pageIncrement={10}
-                            onValueChanged={(v) => setOverlayOpacity(v / 100)}
-                        />
-                    </GtkScale>
+                    <GtkScale
+                        drawValue
+                        digits={0}
+                        valuePos={Gtk.PositionType.RIGHT}
+                        hexpand
+                        value={overlayOpacity * 100}
+                        lower={10}
+                        upper={100}
+                        stepIncrement={5}
+                        pageIncrement={10}
+                        onValueChanged={(v) => setOverlayOpacity(v / 100)}
+                    />
                 </GtkBox>
 
                 <GtkToggleButton
@@ -303,16 +305,18 @@ const TransparentDemo = () => {
 
                     <GtkBox spacing={12}>
                         <GtkLabel label="Alpha:" widthRequest={60} halign={Gtk.Align.START} />
-                        <GtkScale drawValue digits={2} valuePos={Gtk.PositionType.RIGHT} hexpand>
-                            <x.Adjustment
-                                value={alpha}
-                                lower={0}
-                                upper={1}
-                                stepIncrement={0.05}
-                                pageIncrement={0.1}
-                                onValueChanged={setAlpha}
-                            />
-                        </GtkScale>
+                        <GtkScale
+                            drawValue
+                            digits={2}
+                            valuePos={Gtk.PositionType.RIGHT}
+                            hexpand
+                            value={alpha}
+                            lower={0}
+                            upper={1}
+                            stepIncrement={0.05}
+                            pageIncrement={0.1}
+                            onValueChanged={setAlpha}
+                        />
                     </GtkBox>
 
                     <GtkBox spacing={8} halign={Gtk.Align.CENTER}>

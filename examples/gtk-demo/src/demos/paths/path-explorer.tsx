@@ -460,16 +460,13 @@ const PathExplorerDemo = () => {
                                 drawValue
                                 digits={0}
                                 valuePos={Gtk.PositionType.RIGHT}
-                            >
-                                <x.Adjustment
-                                    value={strokeWidth}
-                                    lower={1}
-                                    upper={20}
-                                    stepIncrement={1}
-                                    pageIncrement={5}
-                                    onValueChanged={setStrokeWidth}
-                                />
-                            </GtkScale>
+                                value={strokeWidth}
+                                lower={1}
+                                upper={20}
+                                stepIncrement={1}
+                                pageIncrement={5}
+                                onValueChanged={setStrokeWidth}
+                            />
                         </GtkBox>
 
                         <GtkBox spacing={8}>

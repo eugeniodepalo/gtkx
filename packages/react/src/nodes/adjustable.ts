@@ -3,8 +3,10 @@ import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { type AdjustableWidget, isAdjustable } from "./internal/predicates.js";
 import { signalStore } from "./internal/signal-store.js";
-import { isContainerType } from "./internal/utils.js";
+import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
+
+const OWN_PROPS = ["value", "lower", "upper", "stepIncrement", "pageIncrement", "pageSize", "onValueChanged"] as const;
 
 type AdjustableProps = Props & {
     value?: number;
@@ -16,58 +18,61 @@ type AdjustableProps = Props & {
     onValueChanged?: ((value: number) => void) | null;
 };
 
-export class AdjustableNode<T extends Gtk.Widget = Gtk.Widget> extends WidgetNode<T, AdjustableProps> {
+export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
     public static override priority = 2;
 
-    private adjustment?: Gtk.Adjustment;
+    private adjustment: Gtk.Adjustment | null = null;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return isContainerType(Gtk.Widget, containerOrClass) && isAdjustable(containerOrClass);
+        return matchesAnyClass([Gtk.Widget], containerOrClass) && isAdjustable(containerOrClass);
     }
 
     public override updateProps(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
-        super.updateProps(oldProps, newProps);
-        this.updateAdjustment(oldProps, newProps);
+        super.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        this.applyOwnProps(oldProps, newProps);
     }
 
-    private updateAdjustment(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
+    protected ensureAdjustment(props: AdjustableProps): Gtk.Adjustment {
         if (!this.adjustment) {
             this.adjustment = new Gtk.Adjustment(
-                newProps.value ?? 0,
-                newProps.lower ?? 0,
-                newProps.upper ?? 100,
-                newProps.stepIncrement ?? 1,
-                newProps.pageIncrement ?? 10,
-                newProps.pageSize ?? 0,
+                props.value ?? 0,
+                props.lower ?? 0,
+                props.upper ?? 100,
+                props.stepIncrement ?? 1,
+                props.pageIncrement ?? 10,
+                props.pageSize ?? 0,
             );
-            (this.container as unknown as AdjustableWidget).setAdjustment(this.adjustment);
+            this.container.setAdjustment(this.adjustment);
+        }
+        return this.adjustment;
+    }
+
+    protected applyOwnProps(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
+        const adjustment = this.ensureAdjustment(newProps);
+
+        if (hasChanged(oldProps, newProps, "onValueChanged")) {
             this.updateValueChangedHandler(newProps);
-            return;
         }
 
-        if (!oldProps || oldProps.lower !== newProps.lower) {
-            this.adjustment.setLower(newProps.lower ?? 0);
-        }
-        if (!oldProps || oldProps.upper !== newProps.upper) {
-            this.adjustment.setUpper(newProps.upper ?? 100);
-        }
-        if (!oldProps || oldProps.stepIncrement !== newProps.stepIncrement) {
-            this.adjustment.setStepIncrement(newProps.stepIncrement ?? 1);
-        }
-        if (!oldProps || oldProps.pageIncrement !== newProps.pageIncrement) {
-            this.adjustment.setPageIncrement(newProps.pageIncrement ?? 10);
-        }
-        if (!oldProps || oldProps.pageSize !== newProps.pageSize) {
-            this.adjustment.setPageSize(newProps.pageSize ?? 0);
-        }
-        if (!oldProps || oldProps.value !== newProps.value) {
-            if (newProps.value !== undefined) {
-                this.adjustment.setValue(newProps.value);
-            }
-        }
+        if (!oldProps) return;
 
-        if (!oldProps || oldProps.onValueChanged !== newProps.onValueChanged) {
-            this.updateValueChangedHandler(newProps);
+        if (hasChanged(oldProps, newProps, "lower")) {
+            adjustment.setLower(newProps.lower ?? 0);
+        }
+        if (hasChanged(oldProps, newProps, "upper")) {
+            adjustment.setUpper(newProps.upper ?? 100);
+        }
+        if (hasChanged(oldProps, newProps, "stepIncrement")) {
+            adjustment.setStepIncrement(newProps.stepIncrement ?? 1);
+        }
+        if (hasChanged(oldProps, newProps, "pageIncrement")) {
+            adjustment.setPageIncrement(newProps.pageIncrement ?? 10);
+        }
+        if (hasChanged(oldProps, newProps, "pageSize")) {
+            adjustment.setPageSize(newProps.pageSize ?? 0);
+        }
+        if (hasChanged(oldProps, newProps, "value") && newProps.value !== undefined) {
+            adjustment.setValue(newProps.value);
         }
     }
 

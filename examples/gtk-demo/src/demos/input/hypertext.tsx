@@ -286,7 +286,7 @@ const HypertextDemo = () => {
                 onMotion={handleMotion}
                 onKeyPressed={handleKeyPress}
             >
-                <x.TextBuffer key={`${currentPage}-${focusedLinkIndex}`}>{renderTextContent()}</x.TextBuffer>
+                {renderTextContent()}
             </GtkTextView>
         </GtkScrolledWindow>
     );

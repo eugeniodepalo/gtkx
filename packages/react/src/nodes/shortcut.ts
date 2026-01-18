@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
 import type { Props } from "../types.js";
+import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 
 /**
@@ -37,8 +38,8 @@ export class ShortcutNode extends VirtualNode<ShortcutProps> {
         return type === "Shortcut";
     }
 
-    public shortcut?: Gtk.Shortcut;
-    private action?: Gtk.CallbackAction;
+    public shortcut: Gtk.Shortcut | null = null;
+    private action: Gtk.CallbackAction | null = null;
 
     public createShortcut(): void {
         const trigger = this.createTrigger();
@@ -51,14 +52,20 @@ export class ShortcutNode extends VirtualNode<ShortcutProps> {
 
     public override updateProps(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
         super.updateProps(oldProps, newProps);
-        if (this.shortcut && (oldProps?.trigger !== newProps.trigger || oldProps?.disabled !== newProps.disabled)) {
+        this.applyOwnProps(oldProps, newProps);
+    }
+
+    protected applyOwnProps(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
+        if (!this.shortcut) return;
+
+        if (hasChanged(oldProps, newProps, "trigger") || hasChanged(oldProps, newProps, "disabled")) {
             this.shortcut.setTrigger(this.createTrigger());
         }
     }
 
     public override unmount(): void {
-        this.shortcut = undefined;
-        this.action = undefined;
+        this.shortcut = null;
+        this.action = null;
         super.unmount();
     }
 
