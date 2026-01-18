@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { resolveContainerClass } from "../../factory.js";
 
 type AppendableWidget = Gtk.Widget & { append: (child: Gtk.Widget) => void };
 type AddableWidget = Gtk.Widget & { add: (child: Gtk.Widget) => void };
@@ -20,6 +21,10 @@ type EditableWidget = Gtk.Widget & {
 };
 export type AdjustableWidget = Gtk.Widget & {
     setAdjustment: (adjustment: Gtk.Adjustment) => void;
+};
+export type BufferedWidget = Gtk.Widget & {
+    getBuffer: () => Gtk.TextBuffer;
+    setBuffer: (buffer?: Gtk.TextBuffer | null) => void;
 };
 
 export const isAppendable = (obj: unknown): obj is AppendableWidget => {
@@ -76,4 +81,19 @@ export const isEditable = (obj: unknown): obj is EditableWidget => {
 
 export const isAdjustable = (obj: unknown): obj is AdjustableWidget => {
     return obj instanceof Gtk.Widget && "setAdjustment" in obj && typeof obj.setAdjustment === "function";
+};
+
+export const isBuffered = (obj: unknown): obj is BufferedWidget => {
+    return (
+        obj instanceof Gtk.Widget &&
+        "getBuffer" in obj &&
+        typeof obj.getBuffer === "function" &&
+        "setBuffer" in obj &&
+        typeof obj.setBuffer === "function"
+    );
+};
+
+export const isBufferedType = (type: string): boolean => {
+    const containerClass = resolveContainerClass(type);
+    return containerClass !== null && isBuffered(containerClass.prototype);
 };

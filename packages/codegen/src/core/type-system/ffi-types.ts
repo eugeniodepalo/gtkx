@@ -49,21 +49,11 @@ export type FfiTypeDescriptor = {
     itemType?: FfiTypeDescriptor;
 
     /**
-     * Array container type:
-     * - "array": C-style null-terminated array
-     * - "glist": GLib doubly-linked list
-     * - "gslist": GLib singly-linked list
-     * - "gptrarray": GLib pointer array
-     * - "garray": GLib array with sized elements
-     * - "sized": Array with length from a parameter
-     * - "fixed": Array with compile-time known fixed size
+     * Container kind discriminant:
+     * - For arrays: "array", "glist", "gslist", "gptrarray", "garray", "sized", "fixed"
+     * - For callbacks: the callback name (e.g., "closure", "asyncReadyCallback")
      */
-    arrayType?: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed";
-
-    /**
-     * Hash table container type.
-     */
-    hashTableType?: "ghashtable";
+    kind?: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed" | CallbackType["kind"];
 
     /**
      * For sized arrays, the index of the parameter that contains the length.
@@ -81,8 +71,6 @@ export type FfiTypeDescriptor = {
     valueType?: FfiTypeDescriptor;
 
     elementSize?: number;
-
-    callbackType?: CallbackType["callbackType"];
 
     sourceType?: FfiTypeDescriptor;
 
@@ -330,7 +318,7 @@ export const structType = (innerType: string, transferFull: boolean, size?: numb
  */
 export const arrayType = (
     itemType: FfiTypeDescriptor,
-    containerType: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed" = "array",
+    containerKind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed" = "array",
     transferFull: boolean = true,
     sizeParamIndex?: number,
     fixedSize?: number,
@@ -339,7 +327,7 @@ export const arrayType = (
     const result: FfiTypeDescriptor = {
         type: "array",
         itemType,
-        arrayType: containerType,
+        kind: containerKind,
         ownership: toOwnership(transferFull),
     };
     if (sizeParamIndex !== undefined) {
@@ -361,7 +349,7 @@ export const arrayType = (
 export const ptrArrayType = (itemType: FfiTypeDescriptor, transferFull: boolean): FfiTypeDescriptor => ({
     type: "array",
     itemType,
-    arrayType: "gptrarray",
+    kind: "gptrarray",
     ownership: toOwnership(transferFull),
 });
 
@@ -376,7 +364,7 @@ export const gArrayType = (
 ): FfiTypeDescriptor => ({
     type: "array",
     itemType,
-    arrayType: "garray",
+    kind: "garray",
     elementSize,
     ownership: toOwnership(transferFull),
 });
@@ -393,7 +381,6 @@ export const hashTableType = (
     type: "hashtable",
     keyType,
     valueType,
-    hashTableType: "ghashtable",
     ownership: toOwnership(transferFull),
 });
 

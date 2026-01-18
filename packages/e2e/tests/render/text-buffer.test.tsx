@@ -289,7 +289,7 @@ describe("render - TextBuffer", () => {
     });
 
     describe("callbacks", () => {
-        it("calls onTextChanged when buffer content changes programmatically", async () => {
+        it("does not call onTextChanged during React reconciliation", async () => {
             const ref = createRef<Gtk.TextView>();
             const onTextChanged = vi.fn();
 
@@ -305,7 +305,7 @@ describe("render - TextBuffer", () => {
 
             await rerender(<App text="Updated" />);
 
-            expect(onTextChanged).toHaveBeenCalled();
+            expect(onTextChanged).not.toHaveBeenCalled();
         });
     });
 

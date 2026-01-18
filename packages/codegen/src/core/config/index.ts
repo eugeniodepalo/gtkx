@@ -1,7 +1,7 @@
 export { getHiddenPropNames } from "./hidden-props.js";
 export {
     APPLICATION_PARAM_NAME,
-    getTrampolineName,
+    getNativeCallbackName,
     isSupportedCallback,
     type CallbackName,
 } from "./native-callbacks.js";

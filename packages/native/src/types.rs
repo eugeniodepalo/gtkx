@@ -50,9 +50,9 @@ mod numeric;
 mod ref_type;
 mod string;
 
-pub use array::{ArrayType, ListType};
+pub use array::{ArrayKind, ArrayType};
 pub use boxed::{BoxedType, StructType};
-pub use callback::{CallbackTrampoline, CallbackType};
+pub use callback::{CallbackKind, CallbackType};
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
 pub use hashtable::HashTableType;
@@ -160,7 +160,7 @@ impl std::fmt::Display for Type {
             Type::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
             Type::Array(_) => write!(f, "Array"),
             Type::HashTable(_) => write!(f, "HashTable"),
-            Type::Callback(t) => write!(f, "Callback({:?})", t.trampoline),
+            Type::Callback(t) => write!(f, "Callback({:?})", t.kind),
             Type::Ref(t) => write!(f, "Ref({})", t.inner_type),
         }
     }
@@ -246,15 +246,15 @@ impl Type {
     pub fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         match self {
             Type::Callback(callback_type)
-                if callback_type.trampoline != CallbackTrampoline::Closure =>
+                if callback_type.kind != CallbackKind::Closure =>
             {
                 types.push(libffi::Type::pointer());
                 types.push(libffi::Type::pointer());
 
-                if callback_type.trampoline == CallbackTrampoline::DrawFunc
-                    || callback_type.trampoline == CallbackTrampoline::ShortcutFunc
-                    || callback_type.trampoline == CallbackTrampoline::TreeListModelCreateFunc
-                    || callback_type.trampoline == CallbackTrampoline::TickCallback
+                if callback_type.kind == CallbackKind::DrawFunc
+                    || callback_type.kind == CallbackKind::ShortcutFunc
+                    || callback_type.kind == CallbackKind::TreeListModelCreateFunc
+                    || callback_type.kind == CallbackKind::TickCallback
                 {
                     types.push(libffi::Type::pointer());
                 }

@@ -4,7 +4,7 @@ use std::ffi::{CString, c_void};
 
 use native::arg::Arg;
 use native::ffi::{FfiStorage, FfiStorageKind, FfiValue};
-use native::types::{ArrayType, FloatKind, IntegerKind, ListType, Ownership, StringType, Type};
+use native::types::{ArrayType, FloatKind, IntegerKind, ArrayKind, Ownership, StringType, Type};
 use native::value;
 
 #[test]
@@ -273,7 +273,7 @@ fn try_from_array_u8() {
     let arg = Arg::new(
         Type::Array(ArrayType {
             item_type: Box::new(Type::Integer(IntegerKind::U8.into())),
-            list_type: ListType::Array,
+            kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
         }),
@@ -301,7 +301,7 @@ fn try_from_array_i32() {
     let arg = Arg::new(
         Type::Array(ArrayType {
             item_type: Box::new(Type::Integer(IntegerKind::I32.into())),
-            list_type: ListType::Array,
+            kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
         }),
@@ -329,7 +329,7 @@ fn try_from_array_f64() {
     let arg = Arg::new(
         Type::Array(ArrayType {
             item_type: Box::new(Type::Float(FloatKind::F64)),
-            list_type: ListType::Array,
+            kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
         }),
@@ -357,7 +357,7 @@ fn try_from_array_string() {
                 ownership: Ownership::Full,
                 length: None,
             })),
-            list_type: ListType::Array,
+            kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
         }),
@@ -388,7 +388,7 @@ fn try_from_array_boolean() {
     let arg = Arg::new(
         Type::Array(ArrayType {
             item_type: Box::new(Type::Boolean),
-            list_type: ListType::Array,
+            kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
         }),

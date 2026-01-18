@@ -58,6 +58,13 @@ GIR files in `/girs` are processed by `packages/codegen` to generate:
 
 Run codegen with: `turbo codegen`
 
+## Testing
+
+**IMPORTANT:** Do NOT run `turbo test` at the root level - it will run recursively and cause issues. Instead:
+
+- Run all tests: `turbo test:all` (at root level)
+- Run specific package tests: `turbo test --filter=<package-name>`
+
 ## Debugging Guidelines
 
 When investigating errors, **ALWAYS** trace exactly where and why the error occurs. Do not search blindly through the codebase.

@@ -269,7 +269,7 @@ export class FfiTypeWriter {
             props.push({ name: "itemType", value: this.toWriter(type.itemType) });
         }
 
-        props.push({ name: "arrayType", value: `"${type.arrayType ?? "array"}"` });
+        props.push({ name: "kind", value: `"${type.kind ?? "array"}"` });
 
         if (type.sizeParamIndex !== undefined) {
             props.push({ name: "sizeParamIndex", value: type.sizeParamIndex });
@@ -299,8 +299,6 @@ export class FfiTypeWriter {
             props.push({ name: "valueType", value: this.toWriter(type.valueType) });
         }
 
-        props.push({ name: "hashTableType", value: '"ghashtable"' });
-
         props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
 
         return props;
@@ -309,7 +307,7 @@ export class FfiTypeWriter {
     private buildCallbackProperties(type: FfiTypeDescriptor): ObjectProperty[] {
         const props: ObjectProperty[] = [{ name: "type", value: '"callback"' }];
 
-        props.push({ name: "callbackType", value: `"${type.callbackType ?? "closure"}"` });
+        props.push({ name: "kind", value: `"${type.kind ?? "closure"}"` });
 
         props.push({
             name: "argTypes",

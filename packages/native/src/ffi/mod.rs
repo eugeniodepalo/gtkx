@@ -17,7 +17,7 @@ mod value;
 
 pub use encode::{FfiDecode, FfiEncode};
 pub use storage::{FfiStorage, FfiStorageKind, HashTableData, HashTableStorage};
-pub use value::{FfiValue, TrampolineCallbackValue};
+pub use value::{CallbackValue, FfiValue};
 
 use crate::arg::Arg;
 use crate::state::GtkThreadState;

@@ -185,7 +185,7 @@ describe("arrayType", () => {
         expect(arrayType(itemType)).toEqual({
             type: "array",
             itemType,
-            arrayType: "array",
+            kind: "array",
             ownership: "full",
         });
     });
@@ -195,7 +195,7 @@ describe("arrayType", () => {
         expect(arrayType(itemType, "glist", false)).toEqual({
             type: "array",
             itemType,
-            arrayType: "glist",
+            kind: "glist",
             ownership: "borrowed",
         });
     });
@@ -205,7 +205,7 @@ describe("arrayType", () => {
         expect(arrayType(itemType, "gslist", true)).toEqual({
             type: "array",
             itemType,
-            arrayType: "gslist",
+            kind: "gslist",
             ownership: "full",
         });
     });

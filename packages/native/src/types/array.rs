@@ -13,7 +13,7 @@ use crate::types::{FloatKind, Type};
 use crate::{ffi, value};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ListType {
+pub enum ArrayKind {
     Array,
     GList,
     GSList,
@@ -23,20 +23,20 @@ pub enum ListType {
     Fixed { size: usize },
 }
 
-impl std::str::FromStr for ListType {
+impl std::str::FromStr for ArrayKind {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "array" => Ok(ListType::Array),
-            "glist" => Ok(ListType::GList),
-            "gslist" => Ok(ListType::GSList),
-            "gptrarray" => Ok(ListType::GPtrArray),
-            "garray" => Ok(ListType::GArray),
-            "sized" => Ok(ListType::Sized { size_index: 0 }),
-            "fixed" => Ok(ListType::Fixed { size: 0 }),
+            "array" => Ok(ArrayKind::Array),
+            "glist" => Ok(ArrayKind::GList),
+            "gslist" => Ok(ArrayKind::GSList),
+            "gptrarray" => Ok(ArrayKind::GPtrArray),
+            "garray" => Ok(ArrayKind::GArray),
+            "sized" => Ok(ArrayKind::Sized { size_index: 0 }),
+            "fixed" => Ok(ArrayKind::Fixed { size: 0 }),
             _ => Err(format!(
-                "'arrayType' must be 'array', 'glist', 'gslist', 'gptrarray', 'garray', 'sized', or 'fixed'; got '{}'",
+                "'kind' must be 'array', 'glist', 'gslist', 'gptrarray', 'garray', 'sized', or 'fixed'; got '{}'",
                 s
             )),
         }
@@ -46,16 +46,16 @@ impl std::str::FromStr for ListType {
 #[derive(Debug, Clone)]
 pub struct ArrayType {
     pub item_type: Box<Type>,
-    pub list_type: ListType,
+    pub kind: ArrayKind,
     pub ownership: Ownership,
     pub element_size: Option<usize>,
 }
 
 impl ArrayType {
-    pub fn new(item_type: Type, list_type: ListType, ownership: Ownership) -> Self {
+    pub fn new(item_type: Type, kind: ArrayKind, ownership: Ownership) -> Self {
         ArrayType {
             item_type: Box::new(item_type),
-            list_type,
+            kind,
             ownership,
             element_size: None,
         }
@@ -66,18 +66,18 @@ impl ArrayType {
         let item_type_value: Handle<'_, JsValue> = obj.prop(cx, "itemType").get()?;
         let item_type = Type::from_js_value(cx, item_type_value)?;
 
-        let list_type_prop: Handle<'_, JsValue> = obj.prop(cx, "arrayType").get()?;
-        let list_type_str = list_type_prop
+        let kind_prop: Handle<'_, JsValue> = obj.prop(cx, "kind").get()?;
+        let kind_str = kind_prop
             .downcast::<JsString, _>(cx)
-            .or_else(|_| cx.throw_type_error("'arrayType' property is required for array types"))?
+            .or_else(|_| cx.throw_type_error("'kind' property is required for array types"))?
             .value(cx);
 
-        let list_type: ListType = list_type_str
+        let kind: ArrayKind = kind_str
             .parse()
             .map_err(|e: String| cx.throw_type_error::<_, ()>(e).unwrap_err())?;
 
-        let list_type = match list_type {
-            ListType::Sized { .. } => {
+        let kind = match kind {
+            ArrayKind::Sized { .. } => {
                 let size_index: Handle<JsNumber> =
                     obj.get_opt(cx, "sizeParamIndex")?.ok_or_else(|| {
                         cx.throw_type_error::<_, ()>(
@@ -85,17 +85,17 @@ impl ArrayType {
                         )
                         .unwrap_err()
                     })?;
-                ListType::Sized {
+                ArrayKind::Sized {
                     size_index: size_index.value(cx) as usize,
                 }
             }
-            ListType::Fixed { .. } => {
+            ArrayKind::Fixed { .. } => {
                 let fixed_size: Handle<JsNumber> =
                     obj.get_opt(cx, "fixedSize")?.ok_or_else(|| {
                         cx.throw_type_error::<_, ()>("'fixedSize' is required for fixed arrays")
                             .unwrap_err()
                     })?;
-                ListType::Fixed {
+                ArrayKind::Fixed {
                     size: fixed_size.value(cx) as usize,
                 }
             }
@@ -111,7 +111,7 @@ impl ArrayType {
 
         Ok(ArrayType {
             item_type: Box::new(item_type),
-            list_type,
+            kind,
             ownership,
             element_size,
         })
@@ -279,7 +279,7 @@ impl ffi::FfiEncode for ArrayType {
 
 impl ffi::FfiDecode for ArrayType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        if self.list_type == ListType::GList || self.list_type == ListType::GSList {
+        if self.kind == ArrayKind::GList || self.kind == ArrayKind::GSList {
             return self.decode_glist(ffi_value);
         }
 
@@ -315,8 +315,8 @@ impl ffi::FfiDecode for ArrayType {
         ffi_args: &[ffi::FfiValue],
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
-        match &self.list_type {
-            ListType::Sized { size_index } => {
+        match &self.kind {
+            ArrayKind::Sized { size_index } => {
                 let length = self.size_from_args(ffi_args, args, *size_index)?;
 
                 if let ffi::FfiValue::Ptr(ptr) = ffi_value {
@@ -334,7 +334,7 @@ impl ffi::FfiDecode for ArrayType {
                     );
                 }
             }
-            ListType::Fixed { size } => {
+            ArrayKind::Fixed { size } => {
                 if let ffi::FfiValue::Ptr(ptr) = ffi_value {
                     if ptr.is_null() {
                         return Ok(value::Value::Array(vec![]));

@@ -8,7 +8,7 @@
 
 import type { GirCallback, GirNamespace, GirParameter, GirRepository, GirType, QualifiedName } from "@gtkx/gir";
 import { isIntrinsicType, isStringType, parseQualifiedName } from "@gtkx/gir";
-import { type CallbackName, getTrampolineName, isSupportedCallback } from "../constants/index.js";
+import { type CallbackName, getNativeCallbackName, isSupportedCallback } from "../constants/index.js";
 import { normalizeClassName, toPascalCase } from "../utils/naming.js";
 import {
     arrayType,
@@ -287,7 +287,7 @@ export class FfiMapper {
 
     /**
      * Checks if a parameter has an unsupported callback type.
-     * Supported callbacks are those with trampolines in CALLBACK_TRAMPOLINES.
+     * Supported callbacks are those with native implementations in NATIVE_CALLBACKS.
      */
     hasUnsupportedCallback(param: GirParameter): boolean {
         const qualifiedName = this.qualifyTypeName(param.type.name);
@@ -622,8 +622,8 @@ export class FfiMapper {
     }
 
     private mapCallback(qualifiedName: string, imports: TypeImport[]): MappedType | null {
-        const trampoline = getTrampolineName(qualifiedName);
-        if (!trampoline) {
+        const callbackName = getNativeCallbackName(qualifiedName);
+        if (!callbackName) {
             return null;
         }
 
@@ -635,7 +635,7 @@ export class FfiMapper {
         const tsParams = this.buildCallbackTsParams(callback, imports);
         const tsReturn = this.buildCallbackTsReturn(callback.returnType);
         const ts = `(${tsParams.join(", ")}) => ${tsReturn}`;
-        const ffi = this.buildCallbackFfiDescriptor(callback, trampoline);
+        const ffi = this.buildCallbackFfiDescriptor(callback, callbackName);
 
         return { ts, ffi, imports };
     }
@@ -667,10 +667,10 @@ export class FfiMapper {
 
     private buildCallbackFfiDescriptor(
         callback: GirCallback,
-        callbackType: CallbackName,
+        callbackKind: CallbackName,
     ): {
         type: "callback";
-        callbackType: CallbackName;
+        kind: CallbackName;
         argTypes: FfiTypeDescriptor[];
         returnType: FfiTypeDescriptor;
     } {
@@ -685,7 +685,7 @@ export class FfiMapper {
 
         return {
             type: "callback",
-            callbackType,
+            kind: callbackKind,
             argTypes,
             returnType,
         };

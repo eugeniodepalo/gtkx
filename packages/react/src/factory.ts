@@ -4,7 +4,7 @@ import { NODE_CLASSES } from "./registry.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 import "./nodes/index.js";
 
-const resolveContainerClass = (type: string): ContainerClass | null => {
+export const resolveContainerClass = (type: string): ContainerClass | null => {
     for (const [prefix, namespace] of NAMESPACE_REGISTRY) {
         if (type.startsWith(prefix)) {
             const className = type.slice(prefix.length);

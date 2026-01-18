@@ -4,6 +4,7 @@ import React from "react";
 import type ReactReconciler from "react-reconciler";
 import { createNode } from "./factory.js";
 import type { Node } from "./node.js";
+import { isBufferedType } from "./nodes/internal/predicates.js";
 import { signalStore } from "./nodes/internal/signal-store.js";
 import { flushAfterCommit } from "./scheduler.js";
 import type { Container, ContainerClass, Props } from "./types.js";
@@ -79,7 +80,7 @@ export function createHostConfig(): HostConfig {
         noTimeout: -1,
         getRootHostContext: () => ({}),
         getChildHostContext: (parentHostContext, type) => {
-            if (type === "TextBuffer" || type === "TextTag") {
+            if (isBufferedType(type) || type === "TextTag") {
                 return { insideTextBuffer: true };
             }
             if (parentHostContext.insideTextBuffer) {

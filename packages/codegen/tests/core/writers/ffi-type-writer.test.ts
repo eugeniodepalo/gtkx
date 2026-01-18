@@ -313,25 +313,25 @@ describe("FfiTypeWriter", () => {
                 expect(output).toContain('"string"');
             });
 
-            it("writes array type with arrayType", () => {
+            it("writes array type with kind", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "array",
-                    arrayType: "glist",
+                    kind: "glist",
                     ownership: "full",
                 });
 
                 expect(output).toContain('"glist"');
             });
 
-            it("defaults arrayType to array", () => {
+            it("defaults kind to array", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "array",
                     ownership: "full",
                 });
 
-                expect(output).toContain('arrayType: "array"');
+                expect(output).toContain('kind: "array"');
             });
 
             it("writes array of gobjects", () => {
@@ -347,11 +347,11 @@ describe("FfiTypeWriter", () => {
         });
 
         describe("callback type", () => {
-            it("writes callback type with callbackType", () => {
+            it("writes callback type with kind", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "callback",
-                    callbackType: "closure",
+                    kind: "closure",
                 });
 
                 expect(output).toContain('"callback"');
@@ -362,7 +362,7 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "callback",
-                    callbackType: "closure",
+                    kind: "closure",
                     argTypes: [
                         { type: "gobject", ownership: "borrowed" },
                         { type: "string", ownership: "borrowed" },
@@ -378,7 +378,7 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "callback",
-                    callbackType: "closure",
+                    kind: "closure",
                     sourceType: { type: "gobject", ownership: "borrowed" },
                 });
 
@@ -389,7 +389,7 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "callback",
-                    callbackType: "closure",
+                    kind: "closure",
                     resultType: { type: "boolean" },
                 });
 
@@ -400,14 +400,14 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "callback",
-                    callbackType: "closure",
+                    kind: "closure",
                     returnType: { type: "int", size: 32, unsigned: false },
                 });
 
                 expect(output).toContain("returnType:");
             });
 
-            it("defaults callbackType to closure", () => {
+            it("defaults kind to closure", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, { type: "callback" } as FfiTypeDescriptor);
 
@@ -603,7 +603,7 @@ describe("FfiTypeWriter", () => {
             const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
             const output = getWriterOutput(writer, {
                 type: "callback",
-                callbackType: "closure",
+                kind: "closure",
                 argTypes: [
                     { type: "gobject", ownership: "borrowed" },
                     {

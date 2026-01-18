@@ -33,7 +33,7 @@ type FundamentalType = {
 type ArrayType = {
     type: "array";
     itemType: Type;
-    arrayType: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed";
+    kind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed";
     ownership: Ownership;
     elementSize?: number;
     sizeParamIndex?: number;
@@ -44,7 +44,6 @@ type HashTableType = {
     type: "hashtable";
     keyType: Type;
     valueType: Type;
-    hashTableType: "ghashtable";
     ownership: Ownership;
 };
 
@@ -56,7 +55,7 @@ type UndefinedType = { type: "undefined" };
 
 export type CallbackType = {
     type: "callback";
-    callbackType:
+    kind:
         | "animationTargetFunc"
         | "asyncReadyCallback"
         | "closure"

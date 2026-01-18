@@ -31,19 +31,6 @@ export class AdjustableNode<T extends Gtk.Widget = Gtk.Widget> extends WidgetNod
     }
 
     private updateAdjustment(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
-        const hasAdjustmentProps =
-            newProps.value !== undefined ||
-            newProps.lower !== undefined ||
-            newProps.upper !== undefined ||
-            newProps.stepIncrement !== undefined ||
-            newProps.pageIncrement !== undefined ||
-            newProps.pageSize !== undefined ||
-            newProps.onValueChanged !== undefined;
-
-        if (!hasAdjustmentProps) {
-            return;
-        }
-
         if (!this.adjustment) {
             this.adjustment = new Gtk.Adjustment(
                 newProps.value ?? 0,

@@ -14,11 +14,11 @@
 //! 6. Convert the result back to a [`Value`] for JavaScript
 //! 7. Update any `Ref` type out-parameters with modified values
 //!
-//! ## Callback Trampolines
+//! ## Callbacks
 //!
-//! Special handling is required for callback arguments with trampolines
-//! (AsyncReady, Destroy, DrawFunc). These expand to multiple FFI arguments:
-//! the trampoline function pointer, user data, and optionally a destroy notify.
+//! Special handling is required for callback arguments (AsyncReady, Destroy,
+//! DrawFunc). These expand to multiple FFI arguments: the callback function
+//! pointer, user data, and optionally a destroy notify.
 
 use std::{
     ffi::{c_char, c_void},

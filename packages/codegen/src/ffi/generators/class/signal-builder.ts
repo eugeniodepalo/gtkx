@@ -274,7 +274,7 @@ export class SignalBuilder {
             this.writeArgTypes(w, paramData);
             w.write(", ");
             this.writeReturnType(w, signal);
-            w.write(', callbackType: "closure"');
+            w.write(', kind: "closure"');
         });
     }
 
@@ -319,7 +319,7 @@ export class SignalBuilder {
         writer.writeLine("};");
         this.writeSignalConnectCall(writer, (w) => {
             w.write(
-                'type: "callback", argTypes: [{ type: "gobject", ownership: "borrowed" }], returnType: { type: "undefined" }, callbackType: "closure"',
+                'type: "callback", argTypes: [{ type: "gobject", ownership: "borrowed" }], returnType: { type: "undefined" }, kind: "closure"',
             );
         });
     }

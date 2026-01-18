@@ -9,7 +9,7 @@ use gtk4::prelude::ObjectType as _;
 use gtk4::prelude::StaticType as _;
 
 use native::ffi;
-use native::types::{ArrayType, BoxedType, GObjectType, ListType, Ownership, StringType, Type};
+use native::types::{ArrayType, BoxedType, GObjectType, ArrayKind, Ownership, StringType, Type};
 use native::value::Value;
 
 use common::get_gobject_refcount;
@@ -267,7 +267,7 @@ fn glist_transfer_none_does_not_free_list() {
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::GObject(gobject_type)),
-        list_type: ListType::GList,
+        kind: ArrayKind::GList,
         ownership: Ownership::Borrowed,
         element_size: None,
     };
@@ -319,7 +319,7 @@ fn glist_full_transfer_frees_list() {
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::GObject(gobject_type)),
-        list_type: ListType::GList,
+        kind: ArrayKind::GList,
         ownership: Ownership::Full,
         element_size: None,
     };
@@ -345,7 +345,7 @@ fn glist_null_returns_empty_array() {
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::GObject(gobject_type)),
-        list_type: ListType::GList,
+        kind: ArrayKind::GList,
         ownership: Ownership::Full,
         element_size: None,
     };
@@ -381,7 +381,7 @@ fn strv_transfer_none_does_not_free() {
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::String(string_type)),
-        list_type: ListType::Array,
+        kind: ArrayKind::Array,
         ownership: Ownership::Borrowed,
         element_size: None,
     };
@@ -432,7 +432,7 @@ fn strv_full_transfer_frees_strings() {
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::String(string_type)),
-        list_type: ListType::Array,
+        kind: ArrayKind::Array,
         ownership: Ownership::Full,
         element_size: None,
     };
@@ -855,7 +855,7 @@ fn glist_with_string_items() {
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::String(string_type)),
-        list_type: ListType::GList,
+        kind: ArrayKind::GList,
         ownership: Ownership::Borrowed,
         element_size: None,
     };

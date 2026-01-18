@@ -9,7 +9,7 @@ use gtk4::glib::{
 };
 use neon::prelude::*;
 
-use crate::ffi::{FfiStorage, FfiStorageKind, TrampolineCallbackValue};
+use crate::ffi::{CallbackValue, FfiStorage, FfiStorageKind};
 use crate::js_dispatch;
 use crate::trampoline::{ClosureCallbackData, ClosureGuard};
 use crate::types::Type;
@@ -148,7 +148,7 @@ impl ClosureContext {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CallbackTrampoline {
+pub enum CallbackKind {
     Closure,
     AsyncReady,
     Destroy,
@@ -161,30 +161,30 @@ pub enum CallbackTrampoline {
     ScaleFormatValueFunc,
 }
 
-impl std::str::FromStr for CallbackTrampoline {
+impl std::str::FromStr for CallbackKind {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "closure" => Ok(CallbackTrampoline::Closure),
-            "asyncReadyCallback" => Ok(CallbackTrampoline::AsyncReady),
-            "destroyNotify" => Ok(CallbackTrampoline::Destroy),
-            "drawingAreaDrawFunc" => Ok(CallbackTrampoline::DrawFunc),
-            "shortcutFunc" => Ok(CallbackTrampoline::ShortcutFunc),
-            "treeListModelCreateModelFunc" => Ok(CallbackTrampoline::TreeListModelCreateFunc),
-            "animationTargetFunc" => Ok(CallbackTrampoline::AnimationTargetFunc),
-            "tickCallback" => Ok(CallbackTrampoline::TickCallback),
-            "pathIntersectionFunc" => Ok(CallbackTrampoline::PathIntersectionFunc),
-            "scaleFormatValueFunc" => Ok(CallbackTrampoline::ScaleFormatValueFunc),
+            "closure" => Ok(CallbackKind::Closure),
+            "asyncReadyCallback" => Ok(CallbackKind::AsyncReady),
+            "destroyNotify" => Ok(CallbackKind::Destroy),
+            "drawingAreaDrawFunc" => Ok(CallbackKind::DrawFunc),
+            "shortcutFunc" => Ok(CallbackKind::ShortcutFunc),
+            "treeListModelCreateModelFunc" => Ok(CallbackKind::TreeListModelCreateFunc),
+            "animationTargetFunc" => Ok(CallbackKind::AnimationTargetFunc),
+            "tickCallback" => Ok(CallbackKind::TickCallback),
+            "pathIntersectionFunc" => Ok(CallbackKind::PathIntersectionFunc),
+            "scaleFormatValueFunc" => Ok(CallbackKind::ScaleFormatValueFunc),
             _ => Err(format!(
-                "'callbackType' must be one of: 'closure', 'asyncReadyCallback', 'destroyNotify', 'drawingAreaDrawFunc', 'shortcutFunc', 'treeListModelCreateModelFunc', 'animationTargetFunc', 'tickCallback', 'pathIntersectionFunc', 'scaleFormatValueFunc'; got '{}'",
+                "'kind' must be one of: 'closure', 'asyncReadyCallback', 'destroyNotify', 'drawingAreaDrawFunc', 'shortcutFunc', 'treeListModelCreateModelFunc', 'animationTargetFunc', 'tickCallback', 'pathIntersectionFunc', 'scaleFormatValueFunc'; got '{}'",
                 s
             )),
         }
     }
 }
 
-impl CallbackTrampoline {
+impl CallbackKind {
     fn build_closure_value(closure_ptr: *mut gobject_ffi::GClosure) -> ffi::FfiValue {
         ffi::FfiValue::Storage(FfiStorage::new(
             closure_ptr as *mut c_void,
@@ -192,16 +192,16 @@ impl CallbackTrampoline {
         ))
     }
 
-    fn build_trampoline_value(
+    fn build_callback_value(
         closure: glib::Closure,
-        trampoline_ptr: *mut c_void,
+        callback_fn: *mut c_void,
         destroy_ptr: Option<*mut c_void>,
         data_first: bool,
     ) -> ffi::FfiValue {
         let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
 
-        ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
-            trampoline_ptr,
+        ffi::FfiValue::Callback(CallbackValue {
+            callback_fn,
             closure: FfiStorage::new(closure_ptr as *mut c_void, FfiStorageKind::Unit),
             destroy_ptr,
             data_first,
@@ -210,13 +210,13 @@ impl CallbackTrampoline {
 
     fn build_custom_data_value<T>(
         data: T,
-        trampoline_ptr: *mut c_void,
+        callback_fn: *mut c_void,
         release_ptr: *mut c_void,
     ) -> ffi::FfiValue {
         let data_ptr = Box::into_raw(Box::new(data)) as *mut c_void;
 
-        ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
-            trampoline_ptr,
+        ffi::FfiValue::Callback(CallbackValue {
+            callback_fn,
             closure: FfiStorage::new(data_ptr, FfiStorageKind::Callback(data_ptr)),
             destroy_ptr: Some(release_ptr),
             data_first: false,
@@ -231,13 +231,13 @@ impl CallbackTrampoline {
         let ctx = ClosureContext::from_callback(callback, callback_type);
 
         match self {
-            CallbackTrampoline::Closure => {
+            CallbackKind::Closure => {
                 let closure = ctx.build_closure_with_guard(callback_type.return_type.clone());
                 let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
                 Self::build_closure_value(closure_ptr)
             }
 
-            CallbackTrampoline::AsyncReady => {
+            CallbackKind::AsyncReady => {
                 let source_type = callback_type
                     .source_type
                     .clone()
@@ -276,7 +276,7 @@ impl CallbackTrampoline {
                     )
                 });
 
-                Self::build_trampoline_value(
+                Self::build_callback_value(
                     closure,
                     crate::trampoline::async_ready_trampoline as *mut c_void,
                     None,
@@ -284,7 +284,7 @@ impl CallbackTrampoline {
                 )
             }
 
-            CallbackTrampoline::Destroy => {
+            CallbackKind::Destroy => {
                 let channel = callback.channel.clone();
                 let js_func = callback.js_func.clone();
 
@@ -298,7 +298,7 @@ impl CallbackTrampoline {
                     )
                 });
 
-                Self::build_trampoline_value(
+                Self::build_callback_value(
                     closure,
                     crate::trampoline::destroy_trampoline as *mut c_void,
                     None,
@@ -306,39 +306,39 @@ impl CallbackTrampoline {
                 )
             }
 
-            CallbackTrampoline::DrawFunc => {
+            CallbackKind::DrawFunc => {
                 let closure = ctx.build_void_closure();
-                TrampolineCallbackValue::build(
+                CallbackValue::build(
                     closure,
                     ClosureCallbackData::draw_func as *mut c_void,
                 )
             }
 
-            CallbackTrampoline::ShortcutFunc => {
+            CallbackKind::ShortcutFunc => {
                 let closure = ctx.build_bool_closure();
-                TrampolineCallbackValue::build(
+                CallbackValue::build(
                     closure,
                     ClosureCallbackData::shortcut_func as *mut c_void,
                 )
             }
 
-            CallbackTrampoline::TreeListModelCreateFunc => {
+            CallbackKind::TreeListModelCreateFunc => {
                 let closure = ctx.build_object_closure();
-                TrampolineCallbackValue::build(
+                CallbackValue::build(
                     closure,
                     ClosureCallbackData::tree_list_model_create_func as *mut c_void,
                 )
             }
 
-            CallbackTrampoline::AnimationTargetFunc => {
+            CallbackKind::AnimationTargetFunc => {
                 let closure = ctx.build_void_closure();
-                TrampolineCallbackValue::build(
+                CallbackValue::build(
                     closure,
                     ClosureCallbackData::animation_target_func as *mut c_void,
                 )
             }
 
-            CallbackTrampoline::TickCallback => {
+            CallbackKind::TickCallback => {
                 let tick_data = crate::trampoline::TickCallbackData {
                     channel: callback.channel.clone(),
                     js_func: callback.js_func.clone(),
@@ -352,7 +352,7 @@ impl CallbackTrampoline {
                 )
             }
 
-            CallbackTrampoline::PathIntersectionFunc => {
+            CallbackKind::PathIntersectionFunc => {
                 let data = crate::trampoline::PathIntersectionCallbackData {
                     channel: callback.channel.clone(),
                     js_func: callback.js_func.clone(),
@@ -367,9 +367,9 @@ impl CallbackTrampoline {
                 )
             }
 
-            CallbackTrampoline::ScaleFormatValueFunc => {
+            CallbackKind::ScaleFormatValueFunc => {
                 let closure = ctx.build_string_closure();
-                TrampolineCallbackValue::build(
+                CallbackValue::build(
                     closure,
                     ClosureCallbackData::scale_format_value_func as *mut c_void,
                 )
@@ -380,7 +380,7 @@ impl CallbackTrampoline {
 
 #[derive(Debug, Clone)]
 pub struct CallbackType {
-    pub trampoline: CallbackTrampoline,
+    pub kind: CallbackKind,
     pub arg_types: Vec<Type>,
     pub return_type: Box<Type>,
     pub source_type: Option<Box<Type>>,
@@ -391,15 +391,13 @@ impl CallbackType {
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
 
-        let trampoline_prop: Handle<'_, JsValue> = obj.prop(cx, "callbackType").get()?;
-        let trampoline_str = trampoline_prop
+        let kind_prop: Handle<'_, JsValue> = obj.prop(cx, "kind").get()?;
+        let kind_str = kind_prop
             .downcast::<JsString, _>(cx)
-            .or_else(|_| {
-                cx.throw_type_error("'callbackType' property is required for callback types")
-            })?
+            .or_else(|_| cx.throw_type_error("'kind' property is required for callback types"))?
             .value(cx);
 
-        let trampoline: CallbackTrampoline = trampoline_str
+        let kind: CallbackKind = kind_str
             .parse()
             .map_err(|e: String| cx.throw_type_error::<_, ()>(e).unwrap_err())?;
 
@@ -431,7 +429,7 @@ impl CallbackType {
         };
 
         Ok(CallbackType {
-            trampoline,
+            kind,
             arg_types,
             return_type,
             source_type,
@@ -452,6 +450,6 @@ impl ffi::FfiEncode for CallbackType {
             _ => bail!("Expected a Callback for callback type, got {:?}", val),
         };
 
-        Ok(self.trampoline.build_ffi_value(callback, self))
+        Ok(self.kind.build_ffi_value(callback, self))
     }
 }

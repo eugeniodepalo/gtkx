@@ -340,7 +340,7 @@ describe("call - integer types", () => {
                 [
                     { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", callbackType: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
+                    { type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },
@@ -363,7 +363,7 @@ describe("call - integer types", () => {
                 [
                     { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", callbackType: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
+                    { type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },
@@ -384,7 +384,7 @@ describe("call - integer types", () => {
                 [
                     { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", callbackType: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
+                    { type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },

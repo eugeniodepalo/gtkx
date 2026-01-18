@@ -30,7 +30,7 @@ describe("call - callback types", () => {
                 [
                     { type: GOBJECT_NONE, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", callbackType: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
+                    { type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },
@@ -55,7 +55,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            callbackType: "closure",
+                            kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                             returnType: { type: "undefined" },
                         },
@@ -86,7 +86,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            callbackType: "closure",
+                            kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                             returnType: { type: "undefined" },
                         },
@@ -113,7 +113,7 @@ describe("call - callback types", () => {
                 [
                     { type: GOBJECT_NONE, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", callbackType: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
+                    { type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },
@@ -150,7 +150,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            callbackType: "closure",
+                            kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                             returnType: { type: "undefined" },
                         },
@@ -172,7 +172,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            callbackType: "closure",
+                            kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                             returnType: { type: "undefined" },
                         },
@@ -204,7 +204,7 @@ describe("call - callback types", () => {
                     { type: GOBJECT_NONE, value: button },
                     { type: STRING, value: "test-data" },
                     {
-                        type: { type: "callback", callbackType: "destroyNotify", argTypes: [], returnType: { type: "undefined" } },
+                        type: { type: "callback", kind: "destroyNotify", argTypes: [], returnType: { type: "undefined" } },
                         value: () => {
                             destroyCalled = true;
                         },
@@ -242,7 +242,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            callbackType: "closure",
+                            kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                             returnType: { type: "undefined" },
                         },
@@ -299,7 +299,7 @@ describe("call - callback types", () => {
                         { type: GOBJECT_NONE, value: button },
                         { type: STRING, value: "data" },
                         {
-                            type: { type: "callback", callbackType: "destroyNotify", argTypes: [], returnType: { type: "undefined" } },
+                            type: { type: "callback", kind: "destroyNotify", argTypes: [], returnType: { type: "undefined" } },
                             value: () => {},
                         },
                     ],
@@ -335,7 +335,7 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "callback",
-                            callbackType: "closure",
+                            kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
                             returnType: { type: "undefined" },
                         },
@@ -389,7 +389,7 @@ describe("call - callback types", () => {
                 [
                     { type: GOBJECT_NONE, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", callbackType: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
+                    { type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },

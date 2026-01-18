@@ -1,10 +1,10 @@
 import type { CallbackType } from "@gtkx/native";
 
-export type CallbackName = CallbackType["callbackType"];
+export type CallbackName = CallbackType["kind"];
 
 export const APPLICATION_PARAM_NAME = "application";
 
-const CALLBACK_TRAMPOLINES: Record<string, CallbackName> = {
+const NATIVE_CALLBACKS: Record<string, CallbackName> = {
     "Adw.AnimationTargetFunc": "animationTargetFunc",
     "Gio.AsyncReadyCallback": "asyncReadyCallback",
     "GLib.DestroyNotify": "destroyNotify",
@@ -16,10 +16,10 @@ const CALLBACK_TRAMPOLINES: Record<string, CallbackName> = {
     "Gtk.TreeListModelCreateModelFunc": "treeListModelCreateModelFunc",
 };
 
-export const getTrampolineName = (qualifiedName: string): CallbackName | null => {
-    return CALLBACK_TRAMPOLINES[qualifiedName] ?? null;
+export const getNativeCallbackName = (qualifiedName: string): CallbackName | null => {
+    return NATIVE_CALLBACKS[qualifiedName] ?? null;
 };
 
 export const isSupportedCallback = (typeName: string): boolean => {
-    return typeName in CALLBACK_TRAMPOLINES;
+    return typeName in NATIVE_CALLBACKS;
 };

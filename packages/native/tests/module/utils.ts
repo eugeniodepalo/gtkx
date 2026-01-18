@@ -31,16 +31,16 @@ export const UNDEFINED = { type: "undefined" as const };
 export const STRING_ARRAY = {
     type: "array" as const,
     itemType: STRING,
-    arrayType: "array" as const,
+    kind: "array" as const,
     ownership: "full" as const,
 };
 export const STRING_ARRAY_BORROWED = {
     type: "array" as const,
     itemType: STRING_BORROWED,
-    arrayType: "array" as const,
+    kind: "array" as const,
     ownership: "borrowed" as const,
 };
-export const CALLBACK_CLOSURE = { type: "callback" as const, callbackType: "closure" as const };
+export const CALLBACK_CLOSURE = { type: "callback" as const, kind: "closure" as const };
 
 export function createLabel(text: string = "Test"): unknown {
     return call(GTK_LIB, "gtk_label_new", [{ type: STRING, value: text }], GOBJECT);
@@ -127,7 +127,7 @@ export function connectSignal(obj: unknown, signalName: string, callback: (...ar
             { type: GOBJECT_NONE, value: obj },
             { type: STRING, value: signalName },
             {
-                type: { type: "callback", callbackType: "closure", argTypes: [], returnType: { type: "undefined" } },
+                type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
                 value: callback,
             },
             { type: NULL, value: null },
