@@ -1,16 +1,3 @@
-//! Callback type handling for FFI.
-//!
-//! GTK and GLib use callbacks extensively for signals, async operations,
-//! and customization points. This module provides [`CallbackType`] and
-//! [`CallbackTrampoline`] to bridge JavaScript functions to native callbacks.
-//!
-//! Different callback patterns require different trampolines:
-//! - `Closure`: Standard GLib closure with arbitrary arguments
-//! - `AsyncReady`: For `GAsyncReadyCallback` async completion handlers
-//! - `DrawFunc`: For `GtkDrawingArea` draw functions
-//! - `ShortcutFunc`: For `GtkShortcut` handlers
-//! - `TreeListModelCreateFunc`: For `GtkTreeListModel` child creation
-
 use std::ffi::c_void;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, Ordering};
@@ -27,6 +14,119 @@ use crate::trampoline::{CallbackData, ClosureGuard};
 use crate::types::Type;
 use crate::value::Callback;
 use crate::{ffi, value};
+
+struct ClosureContext {
+    channel: neon::event::Channel,
+    js_func: Arc<neon::handle::Root<neon::types::JsFunction>>,
+    arg_types: Option<Vec<Type>>,
+}
+
+impl ClosureContext {
+    fn from_callback(callback: &Callback, callback_type: &CallbackType) -> Self {
+        Self {
+            channel: callback.channel.clone(),
+            js_func: callback.js_func.clone(),
+            arg_types: callback_type.arg_types.clone(),
+        }
+    }
+
+    fn build_void_closure(self) -> glib::Closure {
+        glib::Closure::new(move |args: &[glib::Value]| {
+            let args_values = value::Value::from_glib_values(args, &self.arg_types)
+                .expect("Failed to convert GLib callback arguments");
+
+            js_dispatch::JsDispatcher::global().invoke_and_wait(
+                &self.channel,
+                &self.js_func,
+                args_values,
+                false,
+                |_| None::<glib::Value>,
+            )
+        })
+    }
+
+    fn build_bool_closure(self) -> glib::Closure {
+        glib::Closure::new(move |args: &[glib::Value]| {
+            let args_values = value::Value::from_glib_values(args, &self.arg_types)
+                .expect("Failed to convert GLib callback arguments");
+
+            js_dispatch::JsDispatcher::global().invoke_and_wait(
+                &self.channel,
+                &self.js_func,
+                args_values,
+                true,
+                |result| match result {
+                    Ok(value::Value::Boolean(b)) => Some(b.to_value()),
+                    _ => Some(false.to_value()),
+                },
+            )
+        })
+    }
+
+    fn build_object_closure(self) -> glib::Closure {
+        glib::Closure::new(move |args: &[glib::Value]| {
+            let args_values = value::Value::from_glib_values(args, &self.arg_types)
+                .expect("Failed to convert GLib callback arguments");
+
+            js_dispatch::JsDispatcher::global().invoke_and_wait(
+                &self.channel,
+                &self.js_func,
+                args_values,
+                true,
+                |result| match result {
+                    Ok(value::Value::Object(obj_id)) => {
+                        if let Some(ptr) = obj_id.get_ptr() {
+                            let obj: glib::Object = unsafe {
+                                glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
+                            };
+                            Some(obj.to_value())
+                        } else {
+                            Some(None::<glib::Object>.to_value())
+                        }
+                    }
+                    _ => Some(None::<glib::Object>.to_value()),
+                },
+            )
+        })
+    }
+
+    fn build_closure_with_guard(self, return_type: Option<Box<Type>>) -> glib::Closure {
+        let closure_holder: Arc<AtomicPtr<gobject_ffi::GClosure>> =
+            Arc::new(AtomicPtr::new(std::ptr::null_mut()));
+        let closure_holder_for_callback = closure_holder.clone();
+
+        let closure = glib::Closure::new(move |args: &[glib::Value]| {
+            let return_type_inner = *return_type.clone().unwrap_or(Box::new(Type::Undefined));
+
+            let args_values = value::Value::from_glib_values(args, &self.arg_types)
+                .expect("Failed to convert GLib callback arguments");
+
+            let _guard =
+                ClosureGuard::from_ptr(closure_holder_for_callback.load(Ordering::Acquire));
+
+            js_dispatch::JsDispatcher::global().invoke_and_wait(
+                &self.channel,
+                &self.js_func,
+                args_values,
+                true,
+                |result| match result {
+                    Ok(value) => {
+                        value::Value::into_glib_value_with_default(value, Some(&return_type_inner))
+                    }
+                    Err(_) => value::Value::into_glib_value_with_default(
+                        value::Value::Undefined,
+                        Some(&return_type_inner),
+                    ),
+                },
+            )
+        });
+
+        let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
+        closure_holder.store(closure_ptr, Ordering::Release);
+
+        unsafe { glib::Closure::from_glib_none(closure_ptr) }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CallbackTrampoline {
@@ -64,58 +164,56 @@ impl std::str::FromStr for CallbackTrampoline {
 }
 
 impl CallbackTrampoline {
+    fn build_closure_value(closure_ptr: *mut gobject_ffi::GClosure) -> ffi::FfiValue {
+        ffi::FfiValue::Storage(FfiStorage::new(
+            closure_ptr as *mut c_void,
+            FfiStorageKind::Unit,
+        ))
+    }
+
+    fn build_trampoline_value(
+        closure: glib::Closure,
+        trampoline_ptr: *mut c_void,
+        destroy_ptr: Option<*mut c_void>,
+        data_first: bool,
+    ) -> ffi::FfiValue {
+        let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
+
+        ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
+            trampoline_ptr,
+            closure: FfiStorage::new(closure_ptr as *mut c_void, FfiStorageKind::Unit),
+            destroy_ptr,
+            data_first,
+        })
+    }
+
+    fn build_custom_data_value<T>(
+        data: T,
+        trampoline_ptr: *mut c_void,
+        release_ptr: *mut c_void,
+    ) -> ffi::FfiValue {
+        let data_ptr = Box::into_raw(Box::new(data)) as *mut c_void;
+
+        ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
+            trampoline_ptr,
+            closure: FfiStorage::new(data_ptr, FfiStorageKind::Callback(data_ptr)),
+            destroy_ptr: Some(release_ptr),
+            data_first: false,
+        })
+    }
+
     pub fn build_ffi_value(
         &self,
         callback: &Callback,
         callback_type: &CallbackType,
     ) -> ffi::FfiValue {
-        let channel = callback.channel.clone();
-        let js_func = callback.js_func.clone();
+        let ctx = ClosureContext::from_callback(callback, callback_type);
 
         match self {
             CallbackTrampoline::Closure => {
-                let arg_types = callback_type.arg_types.clone();
-                let return_type = callback_type.return_type.clone();
-
-                let closure_holder: Arc<AtomicPtr<gobject_ffi::GClosure>> =
-                    Arc::new(AtomicPtr::new(std::ptr::null_mut()));
-                let closure_holder_for_callback = closure_holder.clone();
-
-                let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let return_type_inner =
-                        *return_type.clone().unwrap_or(Box::new(Type::Undefined));
-
-                    let args_values = value::Value::from_glib_values(args, &arg_types)
-                        .expect("Failed to convert GLib callback arguments");
-
-                    let _guard =
-                        ClosureGuard::from_ptr(closure_holder_for_callback.load(Ordering::Acquire));
-
-                    js_dispatch::JsDispatcher::global().invoke_and_wait(
-                        &channel,
-                        &js_func,
-                        args_values,
-                        true,
-                        |result| match result {
-                            Ok(value) => value::Value::into_glib_value_with_default(
-                                value,
-                                Some(&return_type_inner),
-                            ),
-                            Err(_) => value::Value::into_glib_value_with_default(
-                                value::Value::Undefined,
-                                Some(&return_type_inner),
-                            ),
-                        },
-                    )
-                });
-
+                let closure = ctx.build_closure_with_guard(callback_type.return_type.clone());
                 let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
-                closure_holder.store(closure_ptr, Ordering::Release);
-
-                ffi::FfiValue::Storage(FfiStorage::new(
-                    closure_ptr as *mut c_void,
-                    FfiStorageKind::Unit,
-                ))
+                Self::build_closure_value(closure_ptr)
             }
 
             CallbackTrampoline::AsyncReady => {
@@ -127,6 +225,9 @@ impl CallbackTrampoline {
                     .result_type
                     .clone()
                     .unwrap_or(Box::new(Type::Null));
+
+                let channel = callback.channel.clone();
+                let js_func = callback.js_func.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
                     let source_value = args
@@ -154,18 +255,18 @@ impl CallbackTrampoline {
                     )
                 });
 
-                let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
-                let trampoline_ptr = crate::trampoline::async_ready_trampoline as *mut c_void;
-
-                ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
-                    trampoline_ptr,
-                    closure: FfiStorage::new(closure_ptr as *mut c_void, FfiStorageKind::Unit),
-                    destroy_ptr: None,
-                    data_first: false,
-                })
+                Self::build_trampoline_value(
+                    closure,
+                    crate::trampoline::async_ready_trampoline as *mut c_void,
+                    None,
+                    false,
+                )
             }
 
             CallbackTrampoline::Destroy => {
+                let channel = callback.channel.clone();
+                let js_func = callback.js_func.clone();
+
                 let closure = glib::Closure::new(move |_args: &[glib::Value]| {
                     js_dispatch::JsDispatcher::global().invoke_and_wait(
                         &channel,
@@ -176,88 +277,26 @@ impl CallbackTrampoline {
                     )
                 });
 
-                let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
-                let trampoline_ptr = crate::trampoline::destroy_trampoline as *mut c_void;
-
-                ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
-                    trampoline_ptr,
-                    closure: FfiStorage::new(closure_ptr as *mut c_void, FfiStorageKind::Unit),
-                    destroy_ptr: None,
-                    data_first: true,
-                })
+                Self::build_trampoline_value(
+                    closure,
+                    crate::trampoline::destroy_trampoline as *mut c_void,
+                    None,
+                    true,
+                )
             }
 
             CallbackTrampoline::DrawFunc => {
-                let arg_types = callback_type.arg_types.clone();
-
-                let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let args_values = value::Value::from_glib_values(args, &arg_types)
-                        .expect("Failed to convert GLib draw callback arguments");
-
-                    js_dispatch::JsDispatcher::global().invoke_and_wait(
-                        &channel,
-                        &js_func,
-                        args_values,
-                        false,
-                        |_| None::<glib::Value>,
-                    )
-                });
-
+                let closure = ctx.build_void_closure();
                 TrampolineCallbackValue::build(closure, CallbackData::draw_func as *mut c_void)
             }
 
             CallbackTrampoline::ShortcutFunc => {
-                let arg_types = callback_type.arg_types.clone();
-
-                let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let args_values = value::Value::from_glib_values(args, &arg_types)
-                        .expect("Failed to convert GLib shortcut callback arguments");
-
-                    js_dispatch::JsDispatcher::global().invoke_and_wait(
-                        &channel,
-                        &js_func,
-                        args_values,
-                        true,
-                        |result| match result {
-                            Ok(value::Value::Boolean(b)) => Some(b.to_value()),
-                            _ => Some(false.to_value()),
-                        },
-                    )
-                });
-
+                let closure = ctx.build_bool_closure();
                 TrampolineCallbackValue::build(closure, CallbackData::shortcut_func as *mut c_void)
             }
 
             CallbackTrampoline::TreeListModelCreateFunc => {
-                let arg_types = callback_type.arg_types.clone();
-
-                let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let args_values = value::Value::from_glib_values(args, &arg_types)
-                        .expect("Failed to convert GLib tree list model callback arguments");
-
-                    js_dispatch::JsDispatcher::global().invoke_and_wait(
-                        &channel,
-                        &js_func,
-                        args_values,
-                        true,
-                        |result| match result {
-                            Ok(value::Value::Object(obj_id)) => {
-                                if let Some(ptr) = obj_id.get_ptr() {
-                                    let obj: glib::Object = unsafe {
-                                        glib::Object::from_glib_none(
-                                            ptr as *mut glib::gobject_ffi::GObject,
-                                        )
-                                    };
-                                    Some(obj.to_value())
-                                } else {
-                                    Some(None::<glib::Object>.to_value())
-                                }
-                            }
-                            _ => Some(None::<glib::Object>.to_value()),
-                        },
-                    )
-                });
-
+                let closure = ctx.build_object_closure();
                 TrampolineCallbackValue::build(
                     closure,
                     CallbackData::tree_list_model_create_func as *mut c_void,
@@ -265,21 +304,7 @@ impl CallbackTrampoline {
             }
 
             CallbackTrampoline::AnimationTargetFunc => {
-                let arg_types = callback_type.arg_types.clone();
-
-                let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let args_values = value::Value::from_glib_values(args, &arg_types)
-                        .expect("Failed to convert animation target callback arguments");
-
-                    js_dispatch::JsDispatcher::global().invoke_and_wait(
-                        &channel,
-                        &js_func,
-                        args_values,
-                        false,
-                        |_| None::<glib::Value>,
-                    )
-                });
-
+                let closure = ctx.build_void_closure();
                 TrampolineCallbackValue::build(
                     closure,
                     CallbackData::animation_target_func as *mut c_void,
@@ -287,42 +312,31 @@ impl CallbackTrampoline {
             }
 
             CallbackTrampoline::TickCallback => {
-                let arg_types = callback_type.arg_types.clone();
+                let tick_data = crate::trampoline::TickCallbackData {
+                    channel: callback.channel.clone(),
+                    js_func: callback.js_func.clone(),
+                    arg_types: callback_type.arg_types.clone(),
+                };
 
-                let tick_data = Box::new(crate::trampoline::TickCallbackData {
-                    channel: channel.clone(),
-                    js_func: js_func.clone(),
-                    arg_types,
-                });
-                let data_ptr = Box::into_raw(tick_data) as *mut c_void;
-
-                ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
-                    trampoline_ptr: crate::trampoline::TickCallbackData::trampoline as *mut c_void,
-                    closure: FfiStorage::new(data_ptr, FfiStorageKind::Callback(data_ptr)),
-                    destroy_ptr: Some(crate::trampoline::TickCallbackData::release as *mut c_void),
-                    data_first: false,
-                })
+                Self::build_custom_data_value(
+                    tick_data,
+                    crate::trampoline::TickCallbackData::trampoline as *mut c_void,
+                    crate::trampoline::TickCallbackData::release as *mut c_void,
+                )
             }
 
             CallbackTrampoline::PathIntersectionFunc => {
-                let arg_types = callback_type.arg_types.clone();
+                let data = crate::trampoline::PathIntersectionCallbackData {
+                    channel: callback.channel.clone(),
+                    js_func: callback.js_func.clone(),
+                    arg_types: callback_type.arg_types.clone(),
+                };
 
-                let data = Box::new(crate::trampoline::PathIntersectionCallbackData {
-                    channel: channel.clone(),
-                    js_func: js_func.clone(),
-                    arg_types,
-                });
-                let data_ptr = Box::into_raw(data) as *mut c_void;
-
-                ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
-                    trampoline_ptr: crate::trampoline::PathIntersectionCallbackData::trampoline
-                        as *mut c_void,
-                    closure: FfiStorage::new(data_ptr, FfiStorageKind::Callback(data_ptr)),
-                    destroy_ptr: Some(
-                        crate::trampoline::PathIntersectionCallbackData::release as *mut c_void,
-                    ),
-                    data_first: false,
-                })
+                Self::build_custom_data_value(
+                    data,
+                    crate::trampoline::PathIntersectionCallbackData::trampoline as *mut c_void,
+                    crate::trampoline::PathIntersectionCallbackData::release as *mut c_void,
+                )
             }
         }
     }
