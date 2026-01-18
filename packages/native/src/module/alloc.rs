@@ -49,8 +49,12 @@ impl AllocRequest {
 
     fn execute(self) -> anyhow::Result<NativeHandle> {
         let gtype = self.type_name.as_ref().map(|name| {
-            let boxed_type =
-                BoxedType::new(Ownership::Full, name.clone(), self.library_name.clone(), None);
+            let boxed_type = BoxedType::new(
+                Ownership::Full,
+                name.clone(),
+                self.library_name.clone(),
+                None,
+            );
             boxed_type.gtype()
         });
 

@@ -35,7 +35,8 @@ fn boxed_from_glib_none_copies_pointer() {
     let gtype = gtk4::gdk::RGBA::static_type();
     let original_ptr = common::allocate_test_boxed(gtype);
 
-    let boxed = Boxed::from_glib_none(Some(gtype), original_ptr).expect("from_glib_none should succeed");
+    let boxed =
+        Boxed::from_glib_none(Some(gtype), original_ptr).expect("from_glib_none should succeed");
 
     assert_ne!(boxed.as_ptr(), original_ptr);
     assert!(boxed.is_owned());

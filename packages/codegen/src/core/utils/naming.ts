@@ -63,8 +63,7 @@ export const kebabToSnake = (str: string): string => str.replace(/-/g, "_");
 
 export const snakeToKebab = (str: string): string => str.replace(/_/g, "-");
 
-export const capitalize = (str: string): string =>
-    str.length === 0 ? str : str.charAt(0).toUpperCase() + str.slice(1);
+const capitalize = (str: string): string => (str.length === 0 ? str : str.charAt(0).toUpperCase() + str.slice(1));
 
 export const toPascalCase = (str: string): string => capitalize(toCamelCase(str));
 

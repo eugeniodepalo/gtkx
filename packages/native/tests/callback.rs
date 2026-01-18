@@ -11,7 +11,9 @@ use gtk4::glib;
 use gtk4::glib::translate::FromGlibPtrFull as _;
 use gtk4::glib::value::ToValue as _;
 
-use native::trampoline::{ClosureCallbackData, ClosureGuard, async_ready_trampoline, destroy_trampoline};
+use native::trampoline::{
+    ClosureCallbackData, ClosureGuard, async_ready_trampoline, destroy_trampoline,
+};
 
 fn create_test_closure_with_flag(flag: Arc<AtomicBool>) -> NonNull<glib::gobject_ffi::GClosure> {
     common::ensure_gtk_init();
@@ -106,7 +108,9 @@ fn get_trampoline_ptrs_not_null() {
     assert!((ClosureCallbackData::draw_func as *mut c_void) != std::ptr::null_mut());
     assert!((ClosureCallbackData::release as *mut c_void) != std::ptr::null_mut());
     assert!((ClosureCallbackData::shortcut_func as *mut c_void) != std::ptr::null_mut());
-    assert!((ClosureCallbackData::tree_list_model_create_func as *mut c_void) != std::ptr::null_mut());
+    assert!(
+        (ClosureCallbackData::tree_list_model_create_func as *mut c_void) != std::ptr::null_mut()
+    );
 }
 
 #[test]
@@ -199,8 +203,10 @@ fn tree_list_model_create_func_trampoline_null_safe() {
     common::ensure_gtk_init();
 
     unsafe {
-        let result =
-            ClosureCallbackData::tree_list_model_create_func(std::ptr::null_mut(), std::ptr::null_mut());
+        let result = ClosureCallbackData::tree_list_model_create_func(
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+        );
         assert!(result.is_null());
     }
 }
@@ -388,7 +394,9 @@ fn scale_format_value_func_trampoline_null_safe() {
     }
 }
 
-fn create_string_returning_closure(return_str: &'static str) -> NonNull<glib::gobject_ffi::GClosure> {
+fn create_string_returning_closure(
+    return_str: &'static str,
+) -> NonNull<glib::gobject_ffi::GClosure> {
     common::ensure_gtk_init();
 
     let closure = glib::Closure::new(move |_| Some(return_str.to_value()));

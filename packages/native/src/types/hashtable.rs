@@ -186,9 +186,10 @@ impl ffi::FfiEncode for HashTableType {
         let key_encoder = HashTableEntryEncoder::from_type(&self.key_type).ok_or_else(|| {
             anyhow::anyhow!("Unsupported GHashTable key type: {:?}", self.key_type)
         })?;
-        let value_encoder = HashTableEntryEncoder::from_type(&self.value_type).ok_or_else(|| {
-            anyhow::anyhow!("Unsupported GHashTable value type: {:?}", self.value_type)
-        })?;
+        let value_encoder =
+            HashTableEntryEncoder::from_type(&self.value_type).ok_or_else(|| {
+                anyhow::anyhow!("Unsupported GHashTable value type: {:?}", self.value_type)
+            })?;
 
         Self::encode_hashtable(tuples, key_encoder, value_encoder)
     }

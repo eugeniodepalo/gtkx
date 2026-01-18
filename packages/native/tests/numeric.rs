@@ -5,7 +5,10 @@ use native::types::{FloatKind, IntegerKind};
 fn integer_dispatch_ffi_type_u8() {
     let kind = IntegerKind::U8;
     let ffi_type = kind.ffi_type();
-    assert_eq!(ffi_type.as_raw_ptr(), libffi::middle::Type::u8().as_raw_ptr());
+    assert_eq!(
+        ffi_type.as_raw_ptr(),
+        libffi::middle::Type::u8().as_raw_ptr()
+    );
 }
 
 #[test]

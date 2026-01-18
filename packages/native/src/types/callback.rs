@@ -308,12 +308,18 @@ impl CallbackTrampoline {
 
             CallbackTrampoline::DrawFunc => {
                 let closure = ctx.build_void_closure();
-                TrampolineCallbackValue::build(closure, ClosureCallbackData::draw_func as *mut c_void)
+                TrampolineCallbackValue::build(
+                    closure,
+                    ClosureCallbackData::draw_func as *mut c_void,
+                )
             }
 
             CallbackTrampoline::ShortcutFunc => {
                 let closure = ctx.build_bool_closure();
-                TrampolineCallbackValue::build(closure, ClosureCallbackData::shortcut_func as *mut c_void)
+                TrampolineCallbackValue::build(
+                    closure,
+                    ClosureCallbackData::shortcut_func as *mut c_void,
+                )
             }
 
             CallbackTrampoline::TreeListModelCreateFunc => {
@@ -355,7 +361,8 @@ impl CallbackTrampoline {
 
                 Self::build_custom_data_value(
                     data,
-                    crate::trampoline::PathIntersectionCallbackData::path_intersection_func as *mut c_void,
+                    crate::trampoline::PathIntersectionCallbackData::path_intersection_func
+                        as *mut c_void,
                     crate::trampoline::PathIntersectionCallbackData::release as *mut c_void,
                 )
             }

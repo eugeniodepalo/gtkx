@@ -1,4 +1,4 @@
-export { getHiddenPropNames, getHiddenProps } from "./hidden-props.js";
+export { getHiddenPropNames } from "./hidden-props.js";
 export {
     APPLICATION_PARAM_NAME,
     getTrampolineName,
@@ -19,6 +19,6 @@ export {
     STACK_WIDGET_NAMES,
     VIRTUAL_CHILDREN_WIDGET_NAMES,
     WIDGET_CLASSIFICATIONS,
-    type WidgetClassificationType,
     WINDOW_WIDGET_NAMES,
+    type WidgetClassificationType,
 } from "./widget-classifications.js";

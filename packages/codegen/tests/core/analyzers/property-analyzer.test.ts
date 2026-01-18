@@ -4,6 +4,7 @@ import { FfiMapper } from "../../../src/core/type-system/ffi-mapper.js";
 import {
     createNormalizedClass,
     createNormalizedConstructor,
+    createNormalizedEnumeration,
     createNormalizedInterface,
     createNormalizedMethod,
     createNormalizedNamespace,
@@ -474,6 +475,322 @@ describe("PropertyAnalyzer", () => {
             const result = analyzer.analyzeWidgetProperties(widgetClass);
 
             expect(result[0]?.type).toBe("Gdk.Rectangle");
+        });
+    });
+});
+
+describe("PropertyAnalyzer - Extended Coverage", () => {
+    describe("construct-only properties", () => {
+        it("does not generate synthetic setter for construct-only property", () => {
+            const cls = createNormalizedClass({
+                name: "ApplicationWindow",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "application",
+                        type: createNormalizedType({ name: "gpointer" }),
+                        writable: true,
+                        constructOnly: true,
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["ApplicationWindow", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.hasSyntheticSetter).toBe(false);
+        });
+
+        it("generates synthetic setter for writable non-construct-only property", () => {
+            const cls = createNormalizedClass({
+                name: "Button",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "label",
+                        type: createNormalizedType({ name: "utf8" }),
+                        writable: true,
+                        constructOnly: false,
+                        setter: undefined,
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Button", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.hasSyntheticSetter).toBe(true);
+            expect(result[0]?.setter).toBe("setLabel");
+        });
+    });
+
+    describe("synthetic setter generation for different types", () => {
+        it("generates synthetic setter for enum property", () => {
+            const enumType = createNormalizedEnumeration({ name: "Orientation" });
+            const cls = createNormalizedClass({
+                name: "Box",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "orientation",
+                        type: createNormalizedType({ name: "Orientation" }),
+                        writable: true,
+                        setter: undefined,
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                enumerations: new Map([["Orientation", enumType]]),
+                classes: new Map([["Box", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.hasSyntheticSetter).toBe(true);
+        });
+
+        it("generates synthetic setter for flags property", () => {
+            const flags = createNormalizedEnumeration({ name: "StateFlags" });
+            const cls = createNormalizedClass({
+                name: "Widget",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "state-flags",
+                        type: createNormalizedType({ name: "StateFlags" }),
+                        writable: true,
+                        setter: undefined,
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                bitfields: new Map([["StateFlags", flags]]),
+                classes: new Map([["Widget", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.hasSyntheticSetter).toBe(true);
+        });
+
+        it("generates synthetic setter for class property", () => {
+            const buttonClass = createNormalizedClass({
+                name: "Button",
+                qualifiedName: qualifiedName("Gtk", "Button"),
+            });
+            const containerClass = createNormalizedClass({
+                name: "Container",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "child",
+                        type: createNormalizedType({ name: "Button" }),
+                        writable: true,
+                        setter: undefined,
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([
+                    ["Button", buttonClass],
+                    ["Container", containerClass],
+                ]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(containerClass);
+
+            expect(result[0]?.hasSyntheticSetter).toBe(true);
+        });
+
+        it("generates synthetic setter for numeric primitives", () => {
+            const cls = createNormalizedClass({
+                name: "Scale",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "value",
+                        type: createNormalizedType({ name: "gdouble" }),
+                        writable: true,
+                        setter: undefined,
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Scale", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.hasSyntheticSetter).toBe(true);
+        });
+
+        it("does not generate synthetic setter when explicit setter exists", () => {
+            const cls = createNormalizedClass({
+                name: "Entry",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "text",
+                        type: createNormalizedType({ name: "utf8" }),
+                        writable: true,
+                        setter: "set_text",
+                    }),
+                ],
+                methods: [
+                    createNormalizedMethod({
+                        name: "set_text",
+                        cIdentifier: "gtk_entry_set_text",
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Entry", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.hasSyntheticSetter).toBe(false);
+            expect(result[0]?.setter).toBe("set_text");
+        });
+    });
+
+    describe("nullability inference", () => {
+        it("infers nullability from getter return type", () => {
+            const cls = createNormalizedClass({
+                name: "Image",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "file",
+                        type: createNormalizedType({ name: "utf8", nullable: false }),
+                        getter: "get_file",
+                    }),
+                ],
+                methods: [
+                    createNormalizedMethod({
+                        name: "get_file",
+                        cIdentifier: "gtk_image_get_file",
+                        returnType: createNormalizedType({ name: "utf8", nullable: true }),
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Image", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.isNullable).toBe(true);
+        });
+
+        it("uses property type nullability when getter not present", () => {
+            const cls = createNormalizedClass({
+                name: "Button",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "icon-name",
+                        type: createNormalizedType({ name: "utf8", nullable: true }),
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Button", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.isNullable).toBe(true);
+        });
+
+        it("marks property as non-nullable when both type and getter are non-nullable", () => {
+            const cls = createNormalizedClass({
+                name: "Button",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "label",
+                        type: createNormalizedType({ name: "utf8", nullable: false }),
+                        getter: "get_label",
+                    }),
+                ],
+                methods: [
+                    createNormalizedMethod({
+                        name: "get_label",
+                        returnType: createNormalizedType({ name: "utf8", nullable: false }),
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Button", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.isNullable).toBe(false);
+        });
+    });
+
+    describe("property defaults", () => {
+        it("marks property as not required when it has a default value", () => {
+            const widgetClass = createNormalizedClass({
+                name: "Widget",
+                qualifiedName: qualifiedName("Gtk", "Widget"),
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "visible",
+                        type: createNormalizedType({ name: "gboolean" }),
+                        defaultValue: "TRUE",
+                    }),
+                ],
+                constructors: [
+                    createNormalizedConstructor({
+                        name: "new",
+                        parameters: [
+                            createNormalizedParameter({
+                                name: "visible",
+                                type: createNormalizedType({ name: "gboolean" }),
+                                nullable: false,
+                                optional: false,
+                            }),
+                        ],
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Widget", widgetClass]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(widgetClass);
+
+            expect(result.find((p) => p.name === "visible")?.isRequired).toBe(false);
         });
     });
 });

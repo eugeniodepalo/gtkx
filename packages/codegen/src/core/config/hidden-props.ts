@@ -17,10 +17,6 @@ const HIDDEN_PROPS: Readonly<Record<string, readonly string[]>> = {
     TextView: ["buffer"],
 };
 
-export const getHiddenProps = (widgetName: string): Set<string> => {
-    return new Set(HIDDEN_PROPS[widgetName] ?? []);
-};
-
 export const getHiddenPropNames = (widgetName: string): readonly string[] => {
     return HIDDEN_PROPS[widgetName] ?? [];
 };

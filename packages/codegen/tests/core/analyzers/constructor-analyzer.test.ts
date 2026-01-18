@@ -309,3 +309,129 @@ describe("ConstructorAnalyzer", () => {
         });
     });
 });
+
+describe("ConstructorAnalyzer - Extended Coverage", () => {
+    describe("parameter ordering", () => {
+        it("orders required parameters before optional parameters", () => {
+            const cls = createNormalizedClass({
+                name: "Dialog",
+                properties: [
+                    createNormalizedProperty({ name: "title" }),
+                    createNormalizedProperty({ name: "transient-for" }),
+                    createNormalizedProperty({ name: "modal" }),
+                ],
+                constructors: [
+                    createNormalizedConstructor({
+                        name: "new",
+                        parameters: [
+                            createNormalizedParameter({
+                                name: "title",
+                                type: createNormalizedType({ name: "utf8" }),
+                                nullable: true,
+                                optional: true,
+                            }),
+                            createNormalizedParameter({
+                                name: "transient_for",
+                                type: createNormalizedType({ name: "Gtk.Window" }),
+                                nullable: false,
+                                optional: false,
+                            }),
+                            createNormalizedParameter({
+                                name: "modal",
+                                type: createNormalizedType({ name: "gboolean" }),
+                                nullable: true,
+                                optional: true,
+                            }),
+                        ],
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Dialog", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.getConstructorParamNames(cls);
+
+            expect(result[0]).toBe("transientFor");
+            expect(result.slice(1)).toContain("title");
+            expect(result.slice(1)).toContain("modal");
+        });
+
+        it("handles all required parameters correctly", () => {
+            const cls = createNormalizedClass({
+                name: "Box",
+                properties: [
+                    createNormalizedProperty({ name: "orientation" }),
+                    createNormalizedProperty({ name: "spacing" }),
+                ],
+                constructors: [
+                    createNormalizedConstructor({
+                        name: "new",
+                        parameters: [
+                            createNormalizedParameter({
+                                name: "orientation",
+                                type: createNormalizedType({ name: "gint" }),
+                                nullable: false,
+                                optional: false,
+                            }),
+                            createNormalizedParameter({
+                                name: "spacing",
+                                type: createNormalizedType({ name: "gint" }),
+                                nullable: false,
+                                optional: false,
+                            }),
+                        ],
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Box", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.getConstructorParamNames(cls);
+
+            expect(result).toEqual(["orientation", "spacing"]);
+        });
+
+        it("handles all optional parameters correctly", () => {
+            const cls = createNormalizedClass({
+                name: "Button",
+                properties: [
+                    createNormalizedProperty({ name: "label" }),
+                    createNormalizedProperty({ name: "icon-name" }),
+                ],
+                constructors: [
+                    createNormalizedConstructor({
+                        name: "new",
+                        parameters: [
+                            createNormalizedParameter({
+                                name: "label",
+                                type: createNormalizedType({ name: "utf8" }),
+                                nullable: true,
+                            }),
+                            createNormalizedParameter({
+                                name: "icon_name",
+                                type: createNormalizedType({ name: "utf8" }),
+                                optional: true,
+                            }),
+                        ],
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Button", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.getConstructorParamNames(cls);
+
+            expect(result).toContain("label");
+            expect(result).toContain("iconName");
+        });
+    });
+});

@@ -235,3 +235,185 @@ describe("SignalBuilder", () => {
         });
     });
 });
+
+describe("SignalBuilder - Extended Coverage", () => {
+    describe("signal return types", () => {
+        it("handles signal with boolean return type", () => {
+            const { builder } = createTestSetup({
+                signals: [
+                    createNormalizedSignal({
+                        name: "query-tooltip",
+                        returnType: createNormalizedType({ name: "gboolean" }),
+                    }),
+                ],
+            });
+
+            const structures = builder.buildConnectMethodStructures();
+
+            const overload = structures[0].overloads?.[0];
+            expect(overload?.parameters?.[1]?.type).toContain("=> boolean");
+        });
+
+        it("handles signal with void return type", () => {
+            const { builder } = createTestSetup({
+                signals: [
+                    createNormalizedSignal({
+                        name: "clicked",
+                        returnType: null,
+                    }),
+                ],
+            });
+
+            const structures = builder.buildConnectMethodStructures();
+
+            const overload = structures[0].overloads?.[0];
+            expect(overload?.parameters?.[1]?.type).toContain("=> void");
+        });
+
+        it("handles signal with string return type", () => {
+            const { builder } = createTestSetup({
+                signals: [
+                    createNormalizedSignal({
+                        name: "format-value",
+                        returnType: createNormalizedType({ name: "utf8", transferOwnership: "full" }),
+                    }),
+                ],
+            });
+
+            const structures = builder.buildConnectMethodStructures();
+
+            const overload = structures[0].overloads?.[0];
+            expect(overload?.parameters?.[1]?.type).toContain("=> string");
+        });
+    });
+
+    describe("signal with GObject parameters", () => {
+        it("handles signal with GObject parameter", () => {
+            const buttonClass = createNormalizedClass({
+                name: "Button",
+                qualifiedName: qualifiedName("Gtk", "Button"),
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Button", buttonClass]]),
+            });
+
+            const { builder } = createTestSetup(
+                {
+                    signals: [
+                        createNormalizedSignal({
+                            name: "child-added",
+                            parameters: [
+                                createNormalizedParameter({
+                                    name: "child",
+                                    type: createNormalizedType({ name: "Button" }),
+                                }),
+                            ],
+                        }),
+                    ],
+                },
+                new Map([["Gtk", ns]]),
+            );
+
+            const structures = builder.buildConnectMethodStructures();
+
+            expect(structures).toHaveLength(1);
+            const overload = structures[0].overloads?.[0];
+            expect(overload?.parameters?.[1]?.type).toContain("child:");
+        });
+    });
+
+    describe("varargs filtering", () => {
+        it("filters out varargs from signal parameters", () => {
+            const { builder } = createTestSetup({
+                signals: [
+                    createNormalizedSignal({
+                        name: "custom",
+                        parameters: [
+                            createNormalizedParameter({
+                                name: "first",
+                                type: createNormalizedType({ name: "gint" }),
+                            }),
+                            createNormalizedParameter({
+                                name: "...",
+                                varargs: true,
+                                type: createNormalizedType({ name: "none" }),
+                            }),
+                        ],
+                    }),
+                ],
+            });
+
+            const structures = builder.buildConnectMethodStructures();
+
+            const overload = structures[0].overloads?.[0];
+            expect(overload?.parameters?.[1]?.type).not.toContain("...");
+        });
+    });
+
+    describe("collectOwnSignals", () => {
+        it("returns only signals defined on the class, not parent", () => {
+            const parentClass = createNormalizedClass({
+                name: "Widget",
+                qualifiedName: qualifiedName("Gtk", "Widget"),
+                parent: null,
+                signals: [createNormalizedSignal({ name: "destroy" })],
+            });
+
+            parentClass._setRepository({
+                resolveClass: () => undefined,
+                resolveInterface: () => undefined,
+                findClasses: () => [],
+            } as Parameters<typeof parentClass._setRepository>[0]);
+
+            const childClass = createNormalizedClass({
+                name: "Button",
+                qualifiedName: qualifiedName("Gtk", "Button"),
+                parent: qualifiedName("Gtk", "Widget"),
+                signals: [createNormalizedSignal({ name: "clicked" })],
+            });
+
+            childClass._setRepository({
+                resolveClass: () => parentClass,
+                resolveInterface: () => undefined,
+                findClasses: () => [],
+            } as Parameters<typeof childClass._setRepository>[0]);
+
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([
+                    ["Widget", parentClass],
+                    ["Button", childClass],
+                ]),
+            });
+
+            const repo = createMockRepository(new Map([["Gtk", ns]]));
+            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const ctx = new GenerationContext();
+            const writers = createWriters({
+                sharedLibrary: "libgtk-4.so.1",
+                glibLibrary: "libglib-2.0.so.0",
+            });
+            const options = {
+                namespace: "Gtk",
+                sharedLibrary: "libgtk-4.so.1",
+                glibLibrary: "libglib-2.0.so.0",
+                gobjectLibrary: "libgobject-2.0.so.0",
+            };
+
+            const builder = new SignalBuilder(
+                childClass,
+                ffiMapper,
+                ctx,
+                repo as Parameters<typeof FfiMapper>[0],
+                writers,
+                options,
+            );
+
+            const ownSignals = builder.collectOwnSignals();
+
+            expect(ownSignals.map((s) => s.name)).toContain("clicked");
+            expect(ownSignals.map((s) => s.name)).not.toContain("destroy");
+        });
+    });
+});

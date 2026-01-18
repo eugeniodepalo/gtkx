@@ -11,7 +11,11 @@
  */
 
 import { type SourceFile, type WriterFunction, Writers } from "ts-morph";
-import { PACK_INTERFACE_METHODS, PREFIX_SUFFIX_INTERFACE_METHODS, WIDGET_CLASSIFICATIONS } from "../../core/config/index.js";
+import {
+    PACK_INTERFACE_METHODS,
+    PREFIX_SUFFIX_INTERFACE_METHODS,
+    WIDGET_CLASSIFICATIONS,
+} from "../../core/config/index.js";
 import type { CodegenProject } from "../../core/project.js";
 import { toCamelCase } from "../../core/utils/naming.js";
 import {
