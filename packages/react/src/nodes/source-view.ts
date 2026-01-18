@@ -8,7 +8,9 @@ import { TextViewNode } from "./text-view.js";
 
 type SourceViewProps = Props & {
     enableUndo?: boolean;
-    onTextChanged?: ((text: string) => void) | null;
+    onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
+    onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
+    onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
     onCanUndoChanged?: ((canUndo: boolean) => void) | null;
     onCanRedoChanged?: ((canRedo: boolean) => void) | null;
     language?: string | GtkSource.Language;

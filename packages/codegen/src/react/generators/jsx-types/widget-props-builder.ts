@@ -277,10 +277,22 @@ export class WidgetPropsBuilder {
                     doc: "Whether to enable undo/redo",
                 },
                 {
-                    name: "onTextChanged",
-                    type: "((text: string) => void) | null",
+                    name: "onBufferChanged",
+                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer) => void) | null',
                     optional: true,
-                    doc: "Callback when the text content changes",
+                    doc: "Callback when the buffer content changes. Use buffer.getText() to extract text.",
+                },
+                {
+                    name: "onTextInserted",
+                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer, offset: number, text: string) => void) | null',
+                    optional: true,
+                    doc: "Callback when text is inserted into the buffer",
+                },
+                {
+                    name: "onTextDeleted",
+                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer, startOffset: number, endOffset: number) => void) | null',
+                    optional: true,
+                    doc: "Callback when text is deleted from the buffer",
                 },
                 {
                     name: "onCanUndoChanged",
@@ -300,22 +312,28 @@ export class WidgetPropsBuilder {
         if (widget.hasBuffer && widget.namespace === "GtkSource") {
             props.push(
                 {
-                    name: "text",
-                    type: "string",
-                    optional: true,
-                    doc: "Text content",
-                },
-                {
                     name: "enableUndo",
                     type: "boolean",
                     optional: true,
                     doc: "Whether to enable undo/redo",
                 },
                 {
-                    name: "onTextChanged",
-                    type: "((text: string) => void) | null",
+                    name: "onBufferChanged",
+                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer) => void) | null',
                     optional: true,
-                    doc: "Callback when the text content changes",
+                    doc: "Callback when the buffer content changes. Use buffer.getText() to extract text.",
+                },
+                {
+                    name: "onTextInserted",
+                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer, offset: number, text: string) => void) | null',
+                    optional: true,
+                    doc: "Callback when text is inserted into the buffer",
+                },
+                {
+                    name: "onTextDeleted",
+                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer, startOffset: number, endOffset: number) => void) | null',
+                    optional: true,
+                    doc: "Callback when text is deleted from the buffer",
                 },
                 {
                     name: "onCanUndoChanged",

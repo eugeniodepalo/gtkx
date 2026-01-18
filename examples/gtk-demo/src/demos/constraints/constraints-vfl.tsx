@@ -1,5 +1,6 @@
+import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkTextView, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkTextView } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./constraints-vfl.tsx?raw";
@@ -63,8 +64,14 @@ const ConstraintsVflDemo = () => {
         applyConstraints();
     }, [applyConstraints]);
 
-    const handleTextChanged = useCallback((text: string) => {
-        setVflText(text);
+    const handleBufferChanged = useCallback((buffer: Gtk.TextBuffer) => {
+        const startIter = new Gtk.TextIter();
+        const endIter = new Gtk.TextIter();
+        batch(() => {
+            buffer.getStartIter(startIter);
+            buffer.getEndIter(endIter);
+        });
+        setVflText(buffer.getText(startIter, endIter, true));
     }, []);
 
     const handleReset = useCallback(() => {
@@ -106,8 +113,9 @@ const ConstraintsVflDemo = () => {
                         bottomMargin={8}
                         leftMargin={8}
                         rightMargin={8}
+                        onBufferChanged={handleBufferChanged}
                     >
-                        <x.TextBuffer onTextChanged={handleTextChanged}>{vflText}</x.TextBuffer>
+                        {vflText}
                     </GtkTextView>
 
                     <GtkBox spacing={12}>

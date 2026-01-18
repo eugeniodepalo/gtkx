@@ -14,7 +14,9 @@ import { WidgetNode } from "./widget.js";
 
 type TextViewProps = Props & {
     enableUndo?: boolean;
-    onTextChanged?: ((text: string) => void) | null;
+    onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
+    onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
+    onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
     onCanUndoChanged?: ((canUndo: boolean) => void) | null;
     onCanRedoChanged?: ((canRedo: boolean) => void) | null;
 };
@@ -50,7 +52,9 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
     private updateBufferProps(oldProps: TextViewProps | null, newProps: TextViewProps): void {
         const hasBufferProps =
             newProps.enableUndo !== undefined ||
-            newProps.onTextChanged !== undefined ||
+            newProps.onBufferChanged !== undefined ||
+            newProps.onTextInserted !== undefined ||
+            newProps.onTextDeleted !== undefined ||
             newProps.onCanUndoChanged !== undefined ||
             newProps.onCanRedoChanged !== undefined;
 
@@ -68,7 +72,9 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
 
         if (
             !oldProps ||
-            oldProps.onTextChanged !== newProps.onTextChanged ||
+            oldProps.onBufferChanged !== newProps.onBufferChanged ||
+            oldProps.onTextInserted !== newProps.onTextInserted ||
+            oldProps.onTextDeleted !== newProps.onTextDeleted ||
             oldProps.onCanUndoChanged !== newProps.onCanUndoChanged ||
             oldProps.onCanRedoChanged !== newProps.onCanRedoChanged
         ) {
@@ -80,9 +86,29 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
         if (!this.buffer) return;
 
         const buffer = this.buffer;
-        const { onTextChanged, onCanUndoChanged, onCanRedoChanged } = props;
+        const { onBufferChanged, onTextInserted, onTextDeleted, onCanUndoChanged, onCanRedoChanged } = props;
 
-        signalStore.set(this, buffer, "changed", onTextChanged ? () => onTextChanged(this.getBufferText()) : null);
+        signalStore.set(this, buffer, "changed", onBufferChanged ? () => onBufferChanged(buffer) : null);
+
+        signalStore.set(
+            this,
+            buffer,
+            "insert-text",
+            onTextInserted
+                ? (_buffer: Gtk.TextBuffer, location: Gtk.TextIter, text: string, _len: number) =>
+                      onTextInserted(buffer, location.getOffset(), text)
+                : null,
+        );
+
+        signalStore.set(
+            this,
+            buffer,
+            "delete-range",
+            onTextDeleted
+                ? (_buffer: Gtk.TextBuffer, start: Gtk.TextIter, end: Gtk.TextIter) =>
+                      onTextDeleted(buffer, start.getOffset(), end.getOffset())
+                : null,
+        );
 
         signalStore.set(
             this,
@@ -97,21 +123,6 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
             "notify::can-redo",
             onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null,
         );
-    }
-
-    protected getBufferText(): string {
-        const buffer = this.buffer;
-        if (!buffer) return "";
-
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-
-        batch(() => {
-            buffer.getStartIter(startIter);
-            buffer.getEndIter(endIter);
-        });
-
-        return buffer.getText(startIter, endIter, true);
     }
 
     public override appendChild(child: Node): void {

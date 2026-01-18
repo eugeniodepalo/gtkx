@@ -282,27 +282,27 @@ describe("render - SourceView", () => {
     });
 
     describe("callbacks", () => {
-        it("calls onTextChanged when text changes programmatically", async () => {
+        it("calls onBufferChanged when text changes programmatically", async () => {
             const ref = createRef<GtkSource.View>();
-            const onTextChanged = vi.fn();
+            const onBufferChanged = vi.fn();
 
-            await render(<GtkSourceView ref={ref} onTextChanged={onTextChanged} />);
+            await render(<GtkSourceView ref={ref} onBufferChanged={onBufferChanged} />);
 
             const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
             buffer.setText("New text", -1);
 
             await waitFor(() => {
-                expect(onTextChanged).toHaveBeenCalledWith("New text");
+                expect(onBufferChanged).toHaveBeenCalledWith(buffer);
             });
         });
 
-        it("does not call onTextChanged during React reconciliation", async () => {
+        it("does not call onBufferChanged during React reconciliation", async () => {
             const ref = createRef<GtkSource.View>();
-            const onTextChanged = vi.fn();
+            const onBufferChanged = vi.fn();
 
             function App({ text }: { text: string }) {
                 return (
-                    <GtkSourceView ref={ref} onTextChanged={onTextChanged}>
+                    <GtkSourceView ref={ref} onBufferChanged={onBufferChanged}>
                         {text}
                     </GtkSourceView>
                 );
@@ -312,7 +312,7 @@ describe("render - SourceView", () => {
 
             await rerender(<App text="Updated" />);
 
-            expect(onTextChanged).not.toHaveBeenCalled();
+            expect(onBufferChanged).not.toHaveBeenCalled();
         });
 
         it("calls onCursorMoved when cursor position changes", async () => {
@@ -355,10 +355,10 @@ describe("render - SourceView", () => {
 
         it("removes callback when set to null", async () => {
             const ref = createRef<GtkSource.View>();
-            const onTextChanged = vi.fn();
+            const onBufferChanged = vi.fn();
 
             function App({ hasCallback }: { hasCallback: boolean }) {
-                return <GtkSourceView ref={ref} onTextChanged={hasCallback ? onTextChanged : null} />;
+                return <GtkSourceView ref={ref} onBufferChanged={hasCallback ? onBufferChanged : null} />;
             }
 
             const { rerender } = await render(<App hasCallback={true} />);
@@ -367,17 +367,17 @@ describe("render - SourceView", () => {
 
             buffer.setText("Change 1", -1);
             await waitFor(() => {
-                expect(onTextChanged).toHaveBeenCalled();
+                expect(onBufferChanged).toHaveBeenCalled();
             });
 
-            const callCountBeforeRemoval = onTextChanged.mock.calls.length;
+            const callCountBeforeRemoval = onBufferChanged.mock.calls.length;
 
             await rerender(<App hasCallback={false} />);
 
             buffer.setText("Change 2", -1);
 
             await new Promise((resolve) => setTimeout(resolve, 50));
-            expect(onTextChanged.mock.calls.length).toBe(callCountBeforeRemoval);
+            expect(onBufferChanged.mock.calls.length).toBe(callCountBeforeRemoval);
         });
     });
 

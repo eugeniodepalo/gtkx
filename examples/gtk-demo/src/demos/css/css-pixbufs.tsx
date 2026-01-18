@@ -1,7 +1,8 @@
 import { injectGlobal } from "@gtkx/css";
+import { batch } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-pixbufs.tsx?raw";
@@ -146,8 +147,14 @@ const CssPixbufsDemo = () => {
         };
     }, [applyCss]);
 
-    const handleTextChanged = useCallback((text: string) => {
-        setCssText(text);
+    const handleBufferChanged = useCallback((buffer: Gtk.TextBuffer) => {
+        const startIter = new Gtk.TextIter();
+        const endIter = new Gtk.TextIter();
+        batch(() => {
+            buffer.getStartIter(startIter);
+            buffer.getEndIter(endIter);
+        });
+        setCssText(buffer.getText(startIter, endIter, true));
     }, []);
 
     const handlePreset = useCallback((presetName: string) => {
@@ -213,8 +220,9 @@ const CssPixbufsDemo = () => {
                     bottomMargin={8}
                     leftMargin={8}
                     rightMargin={8}
+                    onBufferChanged={handleBufferChanged}
                 >
-                    <x.TextBuffer onTextChanged={handleTextChanged}>{cssText}</x.TextBuffer>
+                    {cssText}
                 </GtkTextView>
             </GtkScrolledWindow>
         </GtkPaned>

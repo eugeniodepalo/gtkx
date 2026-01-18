@@ -289,13 +289,13 @@ describe("render - TextView", () => {
     });
 
     describe("callbacks", () => {
-        it("does not call onTextChanged during React reconciliation", async () => {
+        it("does not call onBufferChanged during React reconciliation", async () => {
             const ref = createRef<Gtk.TextView>();
-            const onTextChanged = vi.fn();
+            const onBufferChanged = vi.fn();
 
             function App({ text }: { text: string }) {
                 return (
-                    <GtkTextView ref={ref} onTextChanged={onTextChanged}>
+                    <GtkTextView ref={ref} onBufferChanged={onBufferChanged}>
                         {text}
                     </GtkTextView>
                 );
@@ -305,7 +305,7 @@ describe("render - TextView", () => {
 
             await rerender(<App text="Updated" />);
 
-            expect(onTextChanged).not.toHaveBeenCalled();
+            expect(onBufferChanged).not.toHaveBeenCalled();
         });
     });
 
