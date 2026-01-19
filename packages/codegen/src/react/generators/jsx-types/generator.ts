@@ -44,6 +44,8 @@ export type JsxWidget = {
     hasBuffer: boolean;
     hasMarks: boolean;
     hasOffsets: boolean;
+    hasColorDialog: boolean;
+    hasFontDialog: boolean;
     slots: readonly string[];
     hiddenProps: Set<string>;
     meta: CodegenWidgetMeta;
@@ -107,6 +109,8 @@ export class JsxTypesGenerator {
             hasBuffer: meta.hasBuffer,
             hasMarks: meta.hasMarks,
             hasOffsets: meta.hasOffsets,
+            hasColorDialog: meta.hasColorDialog,
+            hasFontDialog: meta.hasFontDialog,
             slots: filteredSlots,
             hiddenProps,
             meta,

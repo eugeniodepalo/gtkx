@@ -522,6 +522,85 @@ export class WidgetPropsBuilder {
             });
         }
 
+        if (widget.hasColorDialog) {
+            this.usedNamespaces.add("Gdk");
+            props.push(
+                {
+                    name: "onRgbaChanged",
+                    type: "((rgba: Gdk.RGBA) => void) | null",
+                    optional: true,
+                    doc: "Callback when the selected color changes",
+                },
+                {
+                    name: "title",
+                    type: "string",
+                    optional: true,
+                    doc: "Title for the color dialog",
+                },
+                {
+                    name: "modal",
+                    type: "boolean",
+                    optional: true,
+                    doc: "Whether the dialog is modal",
+                },
+                {
+                    name: "withAlpha",
+                    type: "boolean",
+                    optional: true,
+                    doc: "Whether to show the alpha channel selector",
+                },
+            );
+        }
+
+        if (widget.hasFontDialog) {
+            this.usedNamespaces.add("Gtk");
+            this.usedNamespaces.add("Pango");
+            props.push(
+                {
+                    name: "onFontDescChanged",
+                    type: "((fontDesc: Pango.FontDescription) => void) | null",
+                    optional: true,
+                    doc: "Callback when the selected font changes",
+                },
+                {
+                    name: "title",
+                    type: "string",
+                    optional: true,
+                    doc: "Title for the font dialog",
+                },
+                {
+                    name: "modal",
+                    type: "boolean",
+                    optional: true,
+                    doc: "Whether the dialog is modal",
+                },
+                {
+                    name: "language",
+                    type: "Pango.Language | null",
+                    optional: true,
+                    doc: "The language for which font features are used",
+                },
+                {
+                    name: "useFont",
+                    type: "boolean",
+                    optional: true,
+                    doc: "Whether the button label renders in the selected font",
+                },
+                {
+                    name: "useSize",
+                    type: "boolean",
+                    optional: true,
+                    doc: "Whether the button label renders at the selected size",
+                },
+                {
+                    name: "level",
+                    type: "Gtk.FontLevel",
+                    optional: true,
+                    doc: "The level of font selection (family, face, font, or features)",
+                },
+            );
+        }
+
         return props;
     }
 

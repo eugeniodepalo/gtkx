@@ -31,7 +31,7 @@ export {
     STRING_TYPES,
     VOID_TYPES,
 } from "./intrinsics.js";
-export { GirRepository } from "./repository.js";
+export { GirRepository, type RepositoryOptions } from "./repository.js";
 export type {
     ContainerType,
     DefaultValue,

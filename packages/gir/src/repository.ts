@@ -8,7 +8,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type NormalizerContext, normalizeNamespace } from "./internal/normalizer.js";
-import { RawGirParser } from "./internal/parser.js";
+import { type ParserOptions, RawGirParser } from "./internal/parser.js";
 import type { RawNamespace } from "./internal/raw-types.js";
 import { isIntrinsicType } from "./intrinsics.js";
 import {
@@ -43,11 +43,17 @@ import {
  * // ["Gtk.Button", "Gtk.Widget", "GObject.InitiallyUnowned", "GObject.Object"]
  * ```
  */
+export type RepositoryOptions = ParserOptions;
+
 export class GirRepository {
     private rawNamespaces = new Map<string, RawNamespace>();
     private normalizedNamespaces = new Map<string, GirNamespace>();
-    private parser = new RawGirParser();
+    private parser: RawGirParser;
     private resolved = false;
+
+    constructor(options: RepositoryOptions = {}) {
+        this.parser = new RawGirParser(options);
+    }
 
     /**
      * Loads a single GIR file from XML content.

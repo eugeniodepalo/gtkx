@@ -27,7 +27,7 @@ class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialo
     }
 
     public static override createContainer(
-        props: ColorDialogButtonProps,
+        _props: ColorDialogButtonProps,
         containerClass: typeof Gtk.Widget,
     ): Container | null {
         const dialog = new Gtk.ColorDialog();
@@ -37,7 +37,11 @@ class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialo
 
     constructor(type: string, props: ColorDialogButtonProps, container: Gtk.ColorDialogButton) {
         super(type, props, container);
-        this.dialog = container.getDialog()!;
+        const dialog = container.getDialog();
+        if (!dialog) {
+            throw new Error("ColorDialogButton must have a dialog");
+        }
+        this.dialog = dialog;
     }
 
     public override updateProps(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {

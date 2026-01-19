@@ -39,7 +39,7 @@ class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogBu
     }
 
     public static override createContainer(
-        props: FontDialogButtonProps,
+        _props: FontDialogButtonProps,
         containerClass: typeof Gtk.Widget,
     ): Container | null {
         const dialog = new Gtk.FontDialog();
@@ -49,7 +49,11 @@ class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogBu
 
     constructor(type: string, props: FontDialogButtonProps, container: Gtk.FontDialogButton) {
         super(type, props, container);
-        this.dialog = container.getDialog()!;
+        const dialog = container.getDialog();
+        if (!dialog) {
+            throw new Error("FontDialogButton must have a dialog");
+        }
+        this.dialog = dialog;
     }
 
     public override updateProps(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {

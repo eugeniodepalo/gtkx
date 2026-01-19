@@ -35,6 +35,10 @@ export type CodegenWidgetMeta = {
     readonly hasMarks: boolean;
     /** Widget supports offsets (LevelBar) */
     readonly hasOffsets: boolean;
+    /** Widget is a ColorDialogButton */
+    readonly hasColorDialog: boolean;
+    /** Widget is a FontDialogButton */
+    readonly hasFontDialog: boolean;
     /** Named slots for child widgets (kebab-case) */
     readonly slots: readonly string[];
     /** All writable property names (kebab-case) - for internal.ts PROPS map */

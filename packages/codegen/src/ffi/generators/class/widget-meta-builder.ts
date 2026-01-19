@@ -58,6 +58,8 @@ export class WidgetMetaBuilder {
             hasBuffer: this.detectHasBuffer(),
             hasMarks: this.detectHasMarks(className),
             hasOffsets: this.detectHasOffsets(className),
+            hasColorDialog: this.detectHasColorDialog(className),
+            hasFontDialog: this.detectHasFontDialog(className),
             slots: this.detectSlots(),
             propNames,
             signalNames: signals.map((s) => s.name),
@@ -121,6 +123,14 @@ export class WidgetMetaBuilder {
 
     private detectHasOffsets(className: string): boolean {
         return className === "LevelBar";
+    }
+
+    private detectHasColorDialog(className: string): boolean {
+        return className === "ColorDialogButton";
+    }
+
+    private detectHasFontDialog(className: string): boolean {
+        return className === "FontDialogButton";
     }
 
     private detectSlots(): string[] {

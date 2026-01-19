@@ -77,6 +77,10 @@ const extractDoc = (node: Record<string, unknown>): string | undefined => {
 const ensureArray = (value: unknown): Record<string, unknown>[] =>
     Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
 
+export type ParserOptions = {
+    includeNonIntrospectableNamespaces?: Set<string>;
+};
+
 /**
  * Parser for GObject Introspection XML (GIR) files.
  *
@@ -84,8 +88,11 @@ const ensureArray = (value: unknown): Record<string, unknown>[] =>
  */
 export class RawGirParser {
     private parser: XMLParser;
+    private includeNonIntrospectableNamespaces: Set<string>;
+    private currentNamespace: string = "";
 
-    constructor() {
+    constructor(options: ParserOptions = {}) {
+        this.includeNonIntrospectableNamespaces = options.includeNonIntrospectableNamespaces ?? new Set();
         this.parser = new XMLParser({
             ignoreAttributes: false,
             attributeNamePrefix: "@_",
@@ -95,6 +102,17 @@ export class RawGirParser {
                 return ARRAY_ELEMENT_PATHS.has(path);
             },
         });
+    }
+
+    private shouldIncludeNonIntrospectable(): boolean {
+        return this.includeNonIntrospectableNamespaces.has(this.currentNamespace);
+    }
+
+    private isIntrospectable(node: Record<string, unknown>): boolean {
+        if (node["@_introspectable"] === "0") {
+            return this.shouldIncludeNonIntrospectable();
+        }
+        return true;
     }
 
     /**
@@ -109,6 +127,7 @@ export class RawGirParser {
         }
 
         const namespace = repository.namespace;
+        this.currentNamespace = namespace["@_name"];
 
         return {
             name: namespace["@_name"],
@@ -131,7 +150,7 @@ export class RawGirParser {
             return [];
         }
         return callbacks
-            .filter((cb) => cb["@_introspectable"] !== "0")
+            .filter((cb) => this.isIntrospectable(cb))
             .map((cb) => ({
                 name: String(cb["@_name"] ?? ""),
                 cType: String(cb["@_c:type"] ?? ""),
@@ -206,7 +225,7 @@ export class RawGirParser {
             return [];
         }
         return methods
-            .filter((method) => method["@_introspectable"] !== "0")
+            .filter((method) => this.isIntrospectable(method))
             .map((method) => {
                 const returnValue = method["return-value"] as Record<string, unknown> | undefined;
                 const finishFunc = method["@_glib:finish-func"] as string | undefined;
@@ -237,7 +256,7 @@ export class RawGirParser {
             return [];
         }
         return constructors
-            .filter((ctor) => ctor["@_introspectable"] !== "0")
+            .filter((ctor) => this.isIntrospectable(ctor))
             .map((ctor) => {
                 const returnValue = ctor["return-value"] as Record<string, unknown> | undefined;
                 const shadows = ctor["@_shadows"] as string | undefined;
@@ -265,7 +284,7 @@ export class RawGirParser {
             return [];
         }
         return functions
-            .filter((func) => func["@_introspectable"] !== "0")
+            .filter((func) => this.isIntrospectable(func))
             .map((func) => {
                 const returnValue = func["return-value"] as Record<string, unknown> | undefined;
                 const shadows = func["@_shadows"] as string | undefined;

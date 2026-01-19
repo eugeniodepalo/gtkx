@@ -13,11 +13,13 @@
 
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { GirRepository } from "@gtkx/gir";
+import { GirRepository, type RepositoryOptions } from "@gtkx/gir";
 import { FfiGenerator } from "../ffi/ffi-generator.js";
 import { ReactGenerator } from "../react/react-generator.js";
 import type { CodegenWidgetMeta } from "./codegen-metadata.js";
 import { CodegenProject } from "./project.js";
+
+const NON_INTROSPECTABLE_NAMESPACES = new Set(["Pango"]);
 
 /**
  * Options for the codegen orchestrator.
@@ -80,7 +82,10 @@ export class CodegenOrchestrator {
     constructor(options: CodegenOrchestratorOptions) {
         this.options = options;
         this.project = new CodegenProject();
-        this.repository = new GirRepository();
+        const repositoryOptions: RepositoryOptions = {
+            includeNonIntrospectableNamespaces: NON_INTROSPECTABLE_NAMESPACES,
+        };
+        this.repository = new GirRepository(repositoryOptions);
     }
 
     /**

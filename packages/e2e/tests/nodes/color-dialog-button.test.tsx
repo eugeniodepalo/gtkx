@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { x } from "@gtkx/react";
+import { GtkColorDialogButton } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -10,7 +10,7 @@ describe("render - ColorDialogButton", () => {
         it("creates ColorDialogButton widget", async () => {
             const ref = createRef<Gtk.ColorDialogButton>();
 
-            await render(<x.ColorDialogButton ref={ref} />);
+            await render(<GtkColorDialogButton ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -19,7 +19,7 @@ describe("render - ColorDialogButton", () => {
             const ref = createRef<Gtk.ColorDialogButton>();
             const rgba = new Gdk.RGBA({ red: 1.0, green: 0.5, blue: 0.25, alpha: 1.0 });
 
-            await render(<x.ColorDialogButton ref={ref} rgba={rgba} />);
+            await render(<GtkColorDialogButton ref={ref} rgba={rgba} />);
 
             expect(ref.current).not.toBeNull();
             const currentRgba = ref.current?.getRgba();
@@ -33,7 +33,7 @@ describe("render - ColorDialogButton", () => {
             const ref = createRef<Gtk.ColorDialogButton>();
 
             function App({ color }: { color: Gdk.RGBA }) {
-                return <x.ColorDialogButton ref={ref} rgba={color} />;
+                return <GtkColorDialogButton ref={ref} rgba={color} />;
             }
 
             const initialColor = new Gdk.RGBA({ red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0 });
@@ -54,7 +54,7 @@ describe("render - ColorDialogButton", () => {
         it("sets dialog title", async () => {
             const ref = createRef<Gtk.ColorDialogButton>();
 
-            await render(<x.ColorDialogButton ref={ref} title="Pick a Color" />);
+            await render(<GtkColorDialogButton ref={ref} title="Pick a Color" />);
 
             expect(ref.current).not.toBeNull();
             const dialog = ref.current?.getDialog();
@@ -65,7 +65,7 @@ describe("render - ColorDialogButton", () => {
             const ref = createRef<Gtk.ColorDialogButton>();
 
             function App({ title }: { title: string }) {
-                return <x.ColorDialogButton ref={ref} title={title} />;
+                return <GtkColorDialogButton ref={ref} title={title} />;
             }
 
             await render(<App title="First Title" />);
@@ -78,7 +78,7 @@ describe("render - ColorDialogButton", () => {
         it("sets dialog modal property", async () => {
             const ref = createRef<Gtk.ColorDialogButton>();
 
-            await render(<x.ColorDialogButton ref={ref} modal={false} />);
+            await render(<GtkColorDialogButton ref={ref} modal={false} />);
 
             expect(ref.current).not.toBeNull();
             const dialog = ref.current?.getDialog();
@@ -88,7 +88,7 @@ describe("render - ColorDialogButton", () => {
         it("sets dialog withAlpha property", async () => {
             const ref = createRef<Gtk.ColorDialogButton>();
 
-            await render(<x.ColorDialogButton ref={ref} withAlpha={false} />);
+            await render(<GtkColorDialogButton ref={ref} withAlpha={false} />);
 
             expect(ref.current).not.toBeNull();
             const dialog = ref.current?.getDialog();
@@ -99,7 +99,7 @@ describe("render - ColorDialogButton", () => {
             const ref = createRef<Gtk.ColorDialogButton>();
 
             function App({ withAlpha }: { withAlpha: boolean }) {
-                return <x.ColorDialogButton ref={ref} withAlpha={withAlpha} />;
+                return <GtkColorDialogButton ref={ref} withAlpha={withAlpha} />;
             }
 
             await render(<App withAlpha={true} />);
