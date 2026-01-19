@@ -1,0 +1,112 @@
+import * as Gdk from "@gtkx/ffi/gdk";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { x } from "@gtkx/react";
+import { render } from "@gtkx/testing";
+import { createRef } from "react";
+import { describe, expect, it } from "vitest";
+
+describe("render - ColorDialogButton", () => {
+    describe("ColorDialogButtonNode", () => {
+        it("creates ColorDialogButton widget", async () => {
+            const ref = createRef<Gtk.ColorDialogButton>();
+
+            await render(<x.ColorDialogButton ref={ref} />);
+
+            expect(ref.current).not.toBeNull();
+        });
+
+        it("creates ColorDialogButton with initial rgba", async () => {
+            const ref = createRef<Gtk.ColorDialogButton>();
+            const rgba = new Gdk.RGBA({ red: 1.0, green: 0.5, blue: 0.25, alpha: 1.0 });
+
+            await render(<x.ColorDialogButton ref={ref} rgba={rgba} />);
+
+            expect(ref.current).not.toBeNull();
+            const currentRgba = ref.current?.getRgba();
+            expect(currentRgba?.red).toBeCloseTo(1.0);
+            expect(currentRgba?.green).toBeCloseTo(0.5);
+            expect(currentRgba?.blue).toBeCloseTo(0.25);
+            expect(currentRgba?.alpha).toBeCloseTo(1.0);
+        });
+
+        it("updates rgba when prop changes", async () => {
+            const ref = createRef<Gtk.ColorDialogButton>();
+
+            function App({ color }: { color: Gdk.RGBA }) {
+                return <x.ColorDialogButton ref={ref} rgba={color} />;
+            }
+
+            const initialColor = new Gdk.RGBA({ red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0 });
+            await render(<App color={initialColor} />);
+
+            const rgba1 = ref.current?.getRgba();
+            expect(rgba1?.red).toBeCloseTo(1.0);
+            expect(rgba1?.green).toBeCloseTo(0.0);
+
+            const newColor = new Gdk.RGBA({ red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0 });
+            await render(<App color={newColor} />);
+
+            const rgba2 = ref.current?.getRgba();
+            expect(rgba2?.red).toBeCloseTo(0.0);
+            expect(rgba2?.green).toBeCloseTo(1.0);
+        });
+
+        it("sets dialog title", async () => {
+            const ref = createRef<Gtk.ColorDialogButton>();
+
+            await render(<x.ColorDialogButton ref={ref} title="Pick a Color" />);
+
+            expect(ref.current).not.toBeNull();
+            const dialog = ref.current?.getDialog();
+            expect(dialog?.getTitle()).toBe("Pick a Color");
+        });
+
+        it("updates dialog title when prop changes", async () => {
+            const ref = createRef<Gtk.ColorDialogButton>();
+
+            function App({ title }: { title: string }) {
+                return <x.ColorDialogButton ref={ref} title={title} />;
+            }
+
+            await render(<App title="First Title" />);
+            expect(ref.current?.getDialog()?.getTitle()).toBe("First Title");
+
+            await render(<App title="Second Title" />);
+            expect(ref.current?.getDialog()?.getTitle()).toBe("Second Title");
+        });
+
+        it("sets dialog modal property", async () => {
+            const ref = createRef<Gtk.ColorDialogButton>();
+
+            await render(<x.ColorDialogButton ref={ref} modal={false} />);
+
+            expect(ref.current).not.toBeNull();
+            const dialog = ref.current?.getDialog();
+            expect(dialog?.getModal()).toBe(false);
+        });
+
+        it("sets dialog withAlpha property", async () => {
+            const ref = createRef<Gtk.ColorDialogButton>();
+
+            await render(<x.ColorDialogButton ref={ref} withAlpha={false} />);
+
+            expect(ref.current).not.toBeNull();
+            const dialog = ref.current?.getDialog();
+            expect(dialog?.getWithAlpha()).toBe(false);
+        });
+
+        it("updates withAlpha when prop changes", async () => {
+            const ref = createRef<Gtk.ColorDialogButton>();
+
+            function App({ withAlpha }: { withAlpha: boolean }) {
+                return <x.ColorDialogButton ref={ref} withAlpha={withAlpha} />;
+            }
+
+            await render(<App withAlpha={true} />);
+            expect(ref.current?.getDialog()?.getWithAlpha()).toBe(true);
+
+            await render(<App withAlpha={false} />);
+            expect(ref.current?.getDialog()?.getWithAlpha()).toBe(false);
+        });
+    });
+});

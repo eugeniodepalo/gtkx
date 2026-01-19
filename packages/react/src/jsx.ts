@@ -1,5 +1,6 @@
 import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Pango from "@gtkx/ffi/pango";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
 import type {
@@ -7,6 +8,8 @@ import type {
     GtkListViewProps as GeneratedGtkListViewProps,
     WidgetSlotNames,
 } from "./generated/jsx.js";
+import type { ColorDialogButtonProps as ColorDialogButtonNodeProps } from "./nodes/color-dialog-button.js";
+import type { FontDialogButtonProps as FontDialogButtonNodeProps } from "./nodes/font-dialog-button.js";
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
@@ -14,6 +17,8 @@ import type { ShortcutControllerProps as ShortcutControllerNodeProps } from "./n
 import type { TextAnchorProps } from "./nodes/text-anchor.js";
 import type { TextTagProps } from "./nodes/text-tag.js";
 
+export type { ColorDialogButtonProps } from "./nodes/color-dialog-button.js";
+export type { FontDialogButtonProps } from "./nodes/font-dialog-button.js";
 export type { TextAnchorProps } from "./nodes/text-anchor.js";
 export type { TextTagProps } from "./nodes/text-tag.js";
 export type { DragSourceProps, DropTargetProps, EventControllerProps, GestureDragProps } from "./types.js";
@@ -890,6 +895,51 @@ export const x = {
      * ```
      */
     Shortcut: "Shortcut" as const,
+
+    /**
+     * Font picker button with integrated dialog management.
+     *
+     * Creates a font selection button that internally manages its FontDialog,
+     * preventing dialog re-creation on re-renders.
+     *
+     * @example
+     * ```tsx
+     * const [fontDesc, setFontDesc] = useState<Pango.FontDescription | null>(null);
+     *
+     * <x.FontDialogButton
+     *     fontDesc={fontDesc}
+     *     onFontDescChanged={setFontDesc}
+     *     title="Select Font"
+     *     useFont
+     *     useSize
+     * />
+     * ```
+     */
+    FontDialogButton(props: FontDialogButtonNodeProps): ReactElement {
+        return createElement("GtkFontDialogButton", props);
+    },
+
+    /**
+     * Color picker button with integrated dialog management.
+     *
+     * Creates a color selection button that internally manages its ColorDialog,
+     * preventing dialog re-creation on re-renders.
+     *
+     * @example
+     * ```tsx
+     * const [color, setColor] = useState<Gdk.RGBA | null>(null);
+     *
+     * <x.ColorDialogButton
+     *     rgba={color}
+     *     onRgbaChanged={setColor}
+     *     title="Select Color"
+     *     withAlpha
+     * />
+     * ```
+     */
+    ColorDialogButton(props: ColorDialogButtonNodeProps): ReactElement {
+        return createElement("GtkColorDialogButton", props);
+    },
 };
 
 declare global {
