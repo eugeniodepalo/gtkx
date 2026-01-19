@@ -1,4 +1,4 @@
-import { alloc, call, type NativeHandle, read } from "@gtkx/native";
+import { alloc, call, createRef, type NativeHandle, read } from "@gtkx/native";
 import { Context } from "../generated/cairo/context.js";
 import type {
     Antialias,
@@ -1234,8 +1234,8 @@ Context.prototype.getCurrentPoint = function (): { x: number; y: number } | null
         return null;
     }
 
-    const xRef = alloc(8);
-    const yRef = alloc(8);
+    const xRef = createRef(0.0);
+    const yRef = createRef(0.0);
 
     call(
         LIB,
@@ -1249,8 +1249,8 @@ Context.prototype.getCurrentPoint = function (): { x: number; y: number } | null
     );
 
     return {
-        x: read(xRef, DOUBLE_TYPE, 0) as number,
-        y: read(yRef, DOUBLE_TYPE, 0) as number,
+        x: xRef.value,
+        y: yRef.value,
     };
 };
 
