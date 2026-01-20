@@ -82,7 +82,7 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] textview.tsx ↔ textview.c (🟠 Major - features, i18n)
 
 ## Layout
-- [x] aspect-frame.tsx ↔ aspect_frame.c (🔴 Critical - missing GtkPicture)
+- [✓] aspect-frame.tsx ↔ aspect_frame.c (FIXED - uses GtkPicture with ducky.png)
 - [✓] fixed.tsx ↔ fixed.c (matches well)
 - [x] fixed2.tsx ↔ fixed2.c (🟠 Major - timing, window size)
 - [x] flowbox.tsx ↔ flowbox.c (🟠 Major - dataset size)
@@ -145,7 +145,7 @@ The following demos were removed because they require custom GObject subclasses 
 ## Summary
 - Total demos: 77 (10 removed - require GObject subclassing)
 - Not started: 0
-- Reviewed: 56
-- Fully matched: 21
-- Critical issues: 8
+- Reviewed: 55
+- Fully matched: 22
+- Critical issues: 7
 - Major issues: 37
