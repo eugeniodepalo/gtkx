@@ -87,6 +87,7 @@ impl FfiValue {
     pub fn as_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
             FfiValue::Ptr(ptr) => Ok(*ptr),
+            FfiValue::Storage(storage) => Ok(storage.ptr()),
             _ => anyhow::bail!(
                 "Expected a pointer FfiValue for {}, got {:?}",
                 type_name,

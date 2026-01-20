@@ -1416,6 +1416,76 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ts).toBe("Map<string, Orientation>");
         });
+
+        it("maps hashtable with boolean values", () => {
+            const { mapper } = createTestSetup();
+            const type = createNormalizedType({
+                name: qualifiedName("GLib", "HashTable"),
+                isArray: false,
+                containerType: "ghashtable",
+                typeParameters: [createNormalizedType({ name: "utf8" }), createNormalizedType({ name: "gboolean" })],
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ts).toBe("Map<string, boolean>");
+            expect(result.ffi.type).toBe("hashtable");
+            if (result.ffi.valueType) {
+                expect(result.ffi.valueType.type).toBe("boolean");
+            }
+        });
+
+        it("maps hashtable with boolean keys", () => {
+            const { mapper } = createTestSetup();
+            const type = createNormalizedType({
+                name: qualifiedName("GLib", "HashTable"),
+                isArray: false,
+                containerType: "ghashtable",
+                typeParameters: [createNormalizedType({ name: "gboolean" }), createNormalizedType({ name: "utf8" })],
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ts).toBe("Map<boolean, string>");
+            expect(result.ffi.type).toBe("hashtable");
+            if (result.ffi.keyType) {
+                expect(result.ffi.keyType.type).toBe("boolean");
+            }
+        });
+
+        it("maps hashtable with float values", () => {
+            const { mapper } = createTestSetup();
+            const type = createNormalizedType({
+                name: qualifiedName("GLib", "HashTable"),
+                isArray: false,
+                containerType: "ghashtable",
+                typeParameters: [createNormalizedType({ name: "utf8" }), createNormalizedType({ name: "gdouble" })],
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ts).toBe("Map<string, number>");
+            expect(result.ffi.type).toBe("hashtable");
+            if (result.ffi.valueType) {
+                expect(result.ffi.valueType.type).toBe("float");
+                expect(result.ffi.valueType.size).toBe(64);
+            }
+        });
+
+        it("maps hashtable with float keys", () => {
+            const { mapper } = createTestSetup();
+            const type = createNormalizedType({
+                name: qualifiedName("GLib", "HashTable"),
+                isArray: false,
+                containerType: "ghashtable",
+                typeParameters: [createNormalizedType({ name: "gfloat" }), createNormalizedType({ name: "gint" })],
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ts).toBe("Map<number, number>");
+            expect(result.ffi.type).toBe("hashtable");
+            if (result.ffi.keyType) {
+                expect(result.ffi.keyType.type).toBe("float");
+                expect(result.ffi.keyType.size).toBe(32);
+            }
+        });
     });
 
     describe("mapType - fundamental types", () => {

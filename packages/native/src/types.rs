@@ -55,7 +55,7 @@ pub use boxed::{BoxedType, StructType};
 pub use callback::{CallbackKind, CallbackType};
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
-pub use hashtable::HashTableType;
+pub use hashtable::{HashTableEntryEncoder, HashTableType};
 pub use numeric::{FloatKind, IntegerKind, IntegerPrimitive, IntegerType, NumericPrimitive};
 pub use ref_type::RefType;
 pub use string::StringType;
@@ -235,6 +235,39 @@ impl Type {
                 let boxed = crate::managed::Boxed::from_glib_none(gtype, ptr)?;
                 Ok(value::Value::Object(
                     crate::managed::NativeValue::Boxed(boxed).into(),
+                ))
+            }
+            Type::Boolean => {
+                let boolean = ptr as isize != 0;
+                Ok(value::Value::Boolean(boolean))
+            }
+            Type::Float(_) => {
+                let float_val = unsafe { *(ptr as *const f64) };
+                Ok(value::Value::Number(float_val))
+            }
+            Type::Struct(struct_type) => {
+                if ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+                let boxed = crate::managed::Boxed::from_glib_none_with_size(
+                    None,
+                    ptr,
+                    struct_type.size,
+                    Some(&struct_type.type_name),
+                )?;
+                Ok(value::Value::Object(
+                    crate::managed::NativeValue::Boxed(boxed).into(),
+                ))
+            }
+            Type::Fundamental(fundamental_type) => {
+                if ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+                let (ref_fn, unref_fn) = fundamental_type.lookup_fns()?;
+                let fundamental =
+                    crate::managed::Fundamental::from_glib_none(ptr, ref_fn, unref_fn);
+                Ok(value::Value::Object(
+                    crate::managed::NativeValue::Fundamental(fundamental).into(),
                 ))
             }
             _ => bail!("Unsupported {} type: {:?}", context, self),

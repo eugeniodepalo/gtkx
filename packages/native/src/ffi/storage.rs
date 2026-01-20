@@ -51,6 +51,8 @@ pub struct HashTableData {
 pub enum HashTableStorage {
     Strings(Vec<std::ffi::CString>),
     Integers,
+    Booleans,
+    Floats,
     NativeHandles,
 }
 

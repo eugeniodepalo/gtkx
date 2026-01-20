@@ -10,10 +10,12 @@ use crate::ffi::{FfiStorage, FfiStorageKind, HashTableData, HashTableStorage};
 use crate::types::Type;
 use crate::{ffi, value};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HashTableEntryEncoder {
     String,
     Integer,
+    Boolean,
+    Float,
     NativeHandle,
 }
 
@@ -22,6 +24,8 @@ impl HashTableEntryEncoder {
         match ty {
             Type::String(_) => Some(Self::String),
             Type::Integer(_) => Some(Self::Integer),
+            Type::Boolean => Some(Self::Boolean),
+            Type::Float(_) => Some(Self::Float),
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                 Some(Self::NativeHandle)
             }
@@ -32,21 +36,23 @@ impl HashTableEntryEncoder {
     pub fn hash_func(&self) -> glib::ffi::GHashFunc {
         match self {
             Self::String => Some(glib::ffi::g_str_hash),
-            Self::Integer | Self::NativeHandle => Some(glib::ffi::g_direct_hash),
+            Self::Float => Some(glib::ffi::g_double_hash),
+            Self::Integer | Self::Boolean | Self::NativeHandle => Some(glib::ffi::g_direct_hash),
         }
     }
 
     pub fn equal_func(&self) -> glib::ffi::GEqualFunc {
         match self {
             Self::String => Some(glib::ffi::g_str_equal),
-            Self::Integer | Self::NativeHandle => Some(glib::ffi::g_direct_equal),
+            Self::Float => Some(glib::ffi::g_double_equal),
+            Self::Integer | Self::Boolean | Self::NativeHandle => Some(glib::ffi::g_direct_equal),
         }
     }
 
     pub fn free_func(&self) -> glib::ffi::GDestroyNotify {
         match self {
-            Self::String => Some(glib::ffi::g_free),
-            Self::Integer | Self::NativeHandle => None,
+            Self::String | Self::Float => Some(glib::ffi::g_free),
+            Self::Integer | Self::Boolean | Self::NativeHandle => None,
         }
     }
 
@@ -66,6 +72,23 @@ impl HashTableEntryEncoder {
                     Ok((*n as isize as *mut c_void, HashTableStorage::Integers))
                 }
                 _ => bail!("Expected number in GHashTable, got {:?}", val),
+            },
+            Self::Boolean => match val {
+                value::Value::Boolean(b) => {
+                    Ok((*b as isize as *mut c_void, HashTableStorage::Booleans))
+                }
+                _ => bail!("Expected boolean in GHashTable, got {:?}", val),
+            },
+            Self::Float => match val {
+                value::Value::Number(n) => {
+                    let ptr = unsafe {
+                        let mem = glib::ffi::g_malloc(std::mem::size_of::<f64>()) as *mut f64;
+                        *mem = *n;
+                        mem as *mut c_void
+                    };
+                    Ok((ptr, HashTableStorage::Floats))
+                }
+                _ => bail!("Expected number in GHashTable for float, got {:?}", val),
             },
             Self::NativeHandle => match val {
                 value::Value::Object(handle) => {
