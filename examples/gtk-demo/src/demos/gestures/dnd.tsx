@@ -148,8 +148,6 @@ interface ContextMenuState {
 
 interface EditState {
     itemId: string;
-    label: string;
-    angle: number;
 }
 
 let nextId = 4;
@@ -222,9 +220,9 @@ function getItemStyleClass(style: ItemStyle): string {
 
 const DndDemo = () => {
     const [items, setItems] = useState<CanvasItem[]>([
-        { id: "1", label: "A", style: { type: "preset", color: "accent" }, x: 50, y: 50, angle: 0, angleDelta: 0 },
-        { id: "2", label: "B", style: { type: "preset", color: "success" }, x: 150, y: 80, angle: 0, angleDelta: 0 },
-        { id: "3", label: "C", style: { type: "preset", color: "warning" }, x: 250, y: 50, angle: 0, angleDelta: 0 },
+        { id: "1", label: "Item 1", style: { type: "preset", color: "accent" }, x: 40, y: 40, angle: 0, angleDelta: 0 },
+        { id: "2", label: "Item 2", style: { type: "preset", color: "success" }, x: 190, y: 140, angle: 0, angleDelta: 0 },
+        { id: "3", label: "Item 3", style: { type: "preset", color: "warning" }, x: 340, y: 240, angle: 0, angleDelta: 0 },
     ]);
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [editState, setEditState] = useState<EditState | null>(null);
@@ -232,7 +230,6 @@ const DndDemo = () => {
     const [trashHovering, setTrashHovering] = useState(false);
 
     const contextMenuRef = useRef<Gtk.Popover | null>(null);
-    const editPopoverRef = useRef<Gtk.Popover | null>(null);
     const buttonRefs = useRef<Map<string, Gtk.Button>>(new Map());
     const dragHotspotRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -279,8 +276,9 @@ const DndDemo = () => {
     const handleAddItem = useCallback(
         (presetColor: "accent" | "success" | "warning" | "error") => {
             if (!contextMenu) return;
-            const id = String(nextId++);
-            const label = String.fromCharCode(65 + ((nextId - 1) % 26));
+            const id = String(nextId);
+            const label = `Item ${nextId}`;
+            nextId++;
             setItems((prev) => [
                 ...prev,
                 {
@@ -301,13 +299,9 @@ const DndDemo = () => {
 
     const handleEditItem = useCallback(() => {
         if (!contextMenu?.itemId) return;
-        const item = items.find((i) => i.id === contextMenu.itemId);
-        if (item) {
-            setEditState({ itemId: item.id, label: item.label, angle: item.angle });
-            contextMenuRef.current?.popdown();
-            setTimeout(() => editPopoverRef.current?.popup(), 0);
-        }
-    }, [contextMenu, items]);
+        setEditState({ itemId: contextMenu.itemId });
+        contextMenuRef.current?.popdown();
+    }, [contextMenu]);
 
     const handleDeleteItem = useCallback(() => {
         if (!contextMenu?.itemId) return;
@@ -316,17 +310,17 @@ const DndDemo = () => {
         setContextMenu(null);
     }, [contextMenu]);
 
-    const handleEditSave = useCallback(() => {
-        if (!editState) return;
-        setItems((prev) =>
-            prev.map((item) =>
-                item.id === editState.itemId ? { ...item, label: editState.label, angle: editState.angle } : item,
-            ),
-        );
-        editPopoverRef.current?.popdown();
-        setEditState(null);
-        setContextMenu(null);
-    }, [editState]);
+    const toggleEditing = useCallback((itemId: string) => {
+        setEditState((prev) => (prev?.itemId === itemId ? null : { itemId }));
+    }, []);
+
+    const updateItemLabel = useCallback((itemId: string, label: string) => {
+        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, label } : item)));
+    }, []);
+
+    const updateItemAngle = useCallback((itemId: string, angle: number) => {
+        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angle } : item)));
+    }, []);
 
     const handleRotateAngleChanged = useCallback(
         (itemId: string) => (_angle: number, angleDelta: number) => {
@@ -417,7 +411,7 @@ const DndDemo = () => {
             <GtkLabel label="Drag-and-Drop" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="Drag items to reposition. Use two-finger rotation to rotate items. Right-click for context menu. Drag colors from the palette onto items to change their color."
+                label="Drag items to reposition. Click to edit. Use two-finger rotation to rotate items. Right-click for context menu. Drag colors from the palette onto items."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
@@ -468,7 +462,10 @@ const DndDemo = () => {
                             onDrop={(value: GObject.Value) => handleItemColorDrop(item.id, value)}
                             onRotateAngleChanged={handleRotateAngleChanged(item.id)}
                             onRotateEnd={handleRotateEnd(item.id)}
-                            onReleased={() => bringToFront(item.id)}
+                            onReleased={() => {
+                                bringToFront(item.id);
+                                toggleEditing(item.id);
+                            }}
                         />
                     </x.FixedChild>
                 ))}
@@ -534,52 +531,23 @@ const DndDemo = () => {
                 </x.FixedChild>
 
                 {editingItem && (
-                    <x.FixedChild x={editingItem.x} y={editingItem.y + ITEM_SIZE}>
-                        <GtkPopover
-                            ref={editPopoverRef}
-                            hasArrow
-                            autohide
-                            onClosed={() => {
-                                setEditState(null);
-                                setContextMenu(null);
-                            }}
-                        >
-                            <GtkBox
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={12}
-                                marginTop={6}
-                                marginBottom={6}
-                                marginStart={6}
-                                marginEnd={6}
-                            >
-                                <GtkBox spacing={8}>
-                                    <GtkLabel label="Label:" widthChars={8} xalign={0} />
-                                    <GtkEntry
-                                        text={editState?.label ?? ""}
-                                        onChanged={(entry) =>
-                                            setEditState((prev) => (prev ? { ...prev, label: entry.getText() } : null))
-                                        }
-                                        widthChars={10}
-                                    />
-                                </GtkBox>
-                                <GtkBox spacing={8}>
-                                    <GtkLabel label="Angle:" widthChars={8} xalign={0} />
-                                    <GtkScale
-                                        orientation={Gtk.Orientation.HORIZONTAL}
-                                        lower={0}
-                                        upper={360}
-                                        value={editState?.angle ?? 0}
-                                        onValueChanged={(val) =>
-                                            setEditState((prev) => (prev ? { ...prev, angle: val } : null))
-                                        }
-                                        hexpand
-                                        digits={0}
-                                        drawValue
-                                    />
-                                </GtkBox>
-                                <GtkButton label="Apply" cssClasses={["suggested-action"]} onClicked={handleEditSave} />
-                            </GtkBox>
-                        </GtkPopover>
+                    <x.FixedChild x={editingItem.x} y={editingItem.y + ITEM_SIZE + 10}>
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                            <GtkEntry
+                                text={editingItem.label}
+                                onChanged={(entry) => updateItemLabel(editingItem.id, entry.getText())}
+                                widthChars={12}
+                                onActivate={() => setEditState(null)}
+                            />
+                            <GtkScale
+                                orientation={Gtk.Orientation.HORIZONTAL}
+                                lower={0}
+                                upper={360}
+                                value={editingItem.angle % 360}
+                                onValueChanged={(val) => updateItemAngle(editingItem.id, val)}
+                                drawValue={false}
+                            />
+                        </GtkBox>
                     </x.FixedChild>
                 )}
             </GtkFixed>
