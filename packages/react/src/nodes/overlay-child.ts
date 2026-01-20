@@ -1,7 +1,7 @@
 import { batch, isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import type { OverlayChildProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Attachable } from "./internal/predicates.js";

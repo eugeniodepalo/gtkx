@@ -780,15 +780,13 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 **Required Changes**: Minor spacing/padding adjustments for exact visual match.
 
 ### overlay-decorative.tsx
-**Status**: Reviewed
+**Status**: ✅ FIXED
 **Files Compared**: overlay-decorative.tsx ↔ overlay_decorative.c
 
-**Differences Found**:
-- 🔴 **Critical**: Decorative image source differs. Official uses PNG resources (decor1.png, decor2.png); gtkx uses starred-symbolic icon.
-- 🟠 **Major**: Text tag margin implementation missing. Official modifies pixels-above-lines; gtkx only changes left_margin.
-- 🟡 **Minor**: Initial margin value matches (100).
-
-**Required Changes**: Replace symbolic icon with PNG image resources. Implement text tag modification.
+**Resolution**: Now matches official GTK4 demo:
+- Uses proper PNG image resources (decor1.png, decor2.png) instead of symbolic icons
+- Implements text tag modification with `pixelsAboveLines` via `x.TextTag`
+- Scale controls margin for both left margin and top paragraph spacing
 
 ### panes.tsx
 **Status**: Reviewed
@@ -849,16 +847,17 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 **Required Changes**: Consider using ListView for consistency.
 
 ### listview-colors.tsx
-**Status**: Reviewed
+**Status**: ✅ FIXED
 **Files Compared**: listview-colors.tsx ↔ listview_colors.c
 
-**Differences Found**:
-- 🔴 **Critical**: gtkx uses ListView while official uses GtkGridView.
-- 🟠 **Major**: Static 23-color palette vs up to 16.7M dynamic colors.
-- 🟠 **Major**: Single selection vs multi-selection with grid display.
-- 🟠 **Major**: No sort options; official has comprehensive multi-column sorting.
-
-**Required Changes**: Switch to GridView, implement sorting, expand color model.
+**Resolution**: Completely rewritten to match official GTK4 demo:
+- Switched from ListView to GridView with multi-selection and rubberband
+- Generates up to 4,096 random colors (configurable: 512/1024/2048/4096)
+- Implements all 10 sort modes (Unsorted, Name, R, G, B, RGB, H, S, V, HSV)
+- Opens in separate window with HeaderBar controls (dropdowns for limit/sort/display)
+- Two display factories: "Colors" (compact 32px swatches) and "Everything" (with RGB/HSV labels)
+- Selection info revealer panel showing mini swatches, count, and average color
+- Refill button regenerates colors with new random seed
 
 ### listview-filebrowser.tsx
 **Status**: Reviewed
@@ -1139,13 +1138,13 @@ The following demos were removed because they require custom GObject subclasses 
 - ~~**rotated-text**: Missing heart shape renderer, two-pane layout~~ ✅ **FIXED** - shape renderer scaling
 - ~~**transparent**: Missing backdrop-filter blur~~ ✅ **FIXED** - backdrop blur implementation
 - ~~**minesweeper**: Flood-fill behavior differs~~ ✅ **FIXED** - removed flood-fill, 8×8 grid, matches official
-- **listview-colors**: Wrong view type (ListView vs GridView)
+- ~~**listview-colors**: Wrong view type (ListView vs GridView)~~ ✅ **FIXED** - uses GridView with multi-selection and sorting
 - **dnd**: Missing GtkGestureRotate, context menus, item editing
 - **gestures**: Too elaborate - needs simplification
 - **hypertext**: Missing pages, embedded widgets
 - ~~**headerbar**: Missing window titlebar integration~~ ✅ **FIXED** - uses `<x.Slot id="titlebar">` pattern
 - **aspect-frame**: Missing GtkPicture widget
-- **overlay-decorative**: Wrong decorative images
+- ~~**overlay-decorative**: Wrong decorative images~~ ✅ **FIXED** - uses proper PNG resources
 - **peg-solitaire**: Click-to-move vs drag-and-drop
 - **gears**: Missing FPS display overlay
 - **path-maze, path-sweep**: Grid-based vs GSK Path

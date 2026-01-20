@@ -1,7 +1,17 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
-import { useState } from "react";
+import {
+    GtkBox,
+    GtkButton,
+    GtkDropDown,
+    GtkHeaderBar,
+    GtkLabel,
+    GtkRevealer,
+    GtkScrolledWindow,
+    GtkWindow,
+    x,
+} from "@gtkx/react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-colors.tsx?raw";
 
@@ -9,232 +19,374 @@ interface ColorItem {
     id: string;
     name: string;
     hex: string;
-    rgb: string;
-    category: string;
+    r: number;
+    g: number;
+    b: number;
+    h: number;
+    s: number;
+    v: number;
 }
 
-const colorPalette: ColorItem[] = [
-    { id: "red-1", name: "Light Coral", hex: "#f66151", rgb: "246, 97, 81", category: "Red" },
-    { id: "red-2", name: "Red", hex: "#e01b24", rgb: "224, 27, 36", category: "Red" },
-    { id: "red-3", name: "Dark Red", hex: "#a51d2d", rgb: "165, 29, 45", category: "Red" },
-    { id: "orange-1", name: "Light Orange", hex: "#ffbe6f", rgb: "255, 190, 111", category: "Orange" },
-    { id: "orange-2", name: "Orange", hex: "#ff7800", rgb: "255, 120, 0", category: "Orange" },
-    { id: "orange-3", name: "Dark Orange", hex: "#c64600", rgb: "198, 70, 0", category: "Orange" },
-    { id: "yellow-1", name: "Light Yellow", hex: "#f9f06b", rgb: "249, 240, 107", category: "Yellow" },
-    { id: "yellow-2", name: "Yellow", hex: "#f5c211", rgb: "245, 194, 17", category: "Yellow" },
-    { id: "yellow-3", name: "Dark Yellow", hex: "#e5a50a", rgb: "229, 165, 10", category: "Yellow" },
-    { id: "green-1", name: "Light Green", hex: "#8ff0a4", rgb: "143, 240, 164", category: "Green" },
-    { id: "green-2", name: "Green", hex: "#33d17a", rgb: "51, 209, 122", category: "Green" },
-    { id: "green-3", name: "Dark Green", hex: "#26a269", rgb: "38, 162, 105", category: "Green" },
-    { id: "blue-1", name: "Light Blue", hex: "#99c1f1", rgb: "153, 193, 241", category: "Blue" },
-    { id: "blue-2", name: "Blue", hex: "#3584e4", rgb: "53, 132, 228", category: "Blue" },
-    { id: "blue-3", name: "Dark Blue", hex: "#1c71d8", rgb: "28, 113, 216", category: "Blue" },
-    { id: "purple-1", name: "Light Purple", hex: "#dc8add", rgb: "220, 138, 221", category: "Purple" },
-    { id: "purple-2", name: "Purple", hex: "#9141ac", rgb: "145, 65, 172", category: "Purple" },
-    { id: "purple-3", name: "Dark Purple", hex: "#813d9c", rgb: "129, 61, 156", category: "Purple" },
-    { id: "brown-1", name: "Light Brown", hex: "#cdab8f", rgb: "205, 171, 143", category: "Brown" },
-    { id: "brown-2", name: "Brown", hex: "#986a44", rgb: "152, 106, 68", category: "Brown" },
-    { id: "brown-3", name: "Dark Brown", hex: "#63452c", rgb: "99, 69, 44", category: "Brown" },
-    { id: "gray-1", name: "Light Gray", hex: "#c0bfbc", rgb: "192, 191, 188", category: "Gray" },
-    { id: "gray-2", name: "Gray", hex: "#9a9996", rgb: "154, 153, 150", category: "Gray" },
-    { id: "gray-3", name: "Dark Gray", hex: "#5e5c64", rgb: "94, 92, 100", category: "Gray" },
+type SortMode = "unsorted" | "name" | "red" | "green" | "blue" | "rgb" | "hue" | "saturation" | "value" | "hsv";
+type DisplayFactory = "colors" | "everything";
+type ColorLimit = 512 | 1024 | 2048 | 4096;
+
+const SORT_MODES: { id: SortMode; label: string }[] = [
+    { id: "unsorted", label: "Unsorted" },
+    { id: "name", label: "Name" },
+    { id: "red", label: "Red" },
+    { id: "green", label: "Green" },
+    { id: "blue", label: "Blue" },
+    { id: "rgb", label: "RGB" },
+    { id: "hue", label: "Hue" },
+    { id: "saturation", label: "Saturation" },
+    { id: "value", label: "Value" },
+    { id: "hsv", label: "HSV" },
 ];
 
-const categories = ["All", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Brown", "Gray"];
+const DISPLAY_FACTORIES: { id: DisplayFactory; label: string }[] = [
+    { id: "colors", label: "Colors" },
+    { id: "everything", label: "Everything" },
+];
 
-const ColorSwatch = ({ color, size = 48 }: { color: string; size?: number }) => {
-    const swatchStyle = css`
- background-color: ${color};
- border-radius: 8px;
- min-width: ${size}px;
- min-height: ${size}px;
- `;
+const COLOR_LIMITS: { id: string; value: ColorLimit; label: string }[] = [
+    { id: "512", value: 512, label: "512" },
+    { id: "1024", value: 1024, label: "1024" },
+    { id: "2048", value: 2048, label: "2048" },
+    { id: "4096", value: 4096, label: "4096" },
+];
+
+function rgbToHsv(r: number, g: number, b: number): { h: number; s: number; v: number } {
+    const rNorm = r / 255;
+    const gNorm = g / 255;
+    const bNorm = b / 255;
+
+    const max = Math.max(rNorm, gNorm, bNorm);
+    const min = Math.min(rNorm, gNorm, bNorm);
+    const delta = max - min;
+
+    let h = 0;
+    if (delta !== 0) {
+        if (max === rNorm) {
+            h = 60 * (((gNorm - bNorm) / delta) % 6);
+        } else if (max === gNorm) {
+            h = 60 * ((bNorm - rNorm) / delta + 2);
+        } else {
+            h = 60 * ((rNorm - gNorm) / delta + 4);
+        }
+    }
+    if (h < 0) h += 360;
+
+    const s = max === 0 ? 0 : (delta / max) * 100;
+    const v = max * 100;
+
+    return { h: Math.round(h), s: Math.round(s), v: Math.round(v) };
+}
+
+function componentToHex(c: number): string {
+    const hex = c.toString(16);
+    return hex.length === 1 ? `0${hex}` : hex;
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+    return `#${componentToHex(r)}${componentToHex(g)}${componentToHex(b)}`;
+}
+
+function generateColorName(r: number, g: number, b: number): string {
+    return `#${componentToHex(r).toUpperCase()}${componentToHex(g).toUpperCase()}${componentToHex(b).toUpperCase()}`;
+}
+
+function seededRandom(seed: number): () => number {
+    let state = seed;
+    return () => {
+        state = (state * 1103515245 + 12345) & 0x7fffffff;
+        return state / 0x7fffffff;
+    };
+}
+
+function generateColors(limit: ColorLimit, seed: number): ColorItem[] {
+    const colors: ColorItem[] = [];
+    const random = seededRandom(seed);
+
+    for (let i = 0; i < limit; i++) {
+        const r = Math.floor(random() * 256);
+        const g = Math.floor(random() * 256);
+        const b = Math.floor(random() * 256);
+        const hex = rgbToHex(r, g, b);
+        const hsv = rgbToHsv(r, g, b);
+
+        colors.push({
+            id: `color-${i}-${r}-${g}-${b}`,
+            name: generateColorName(r, g, b),
+            hex,
+            r,
+            g,
+            b,
+            h: hsv.h,
+            s: hsv.s,
+            v: hsv.v,
+        });
+    }
+
+    return colors;
+}
+
+function sortColors(colors: ColorItem[], mode: SortMode): ColorItem[] {
+    if (mode === "unsorted") return colors;
+
+    const sorted = [...colors];
+    sorted.sort((a, b) => {
+        switch (mode) {
+            case "name":
+                return a.name.localeCompare(b.name);
+            case "red":
+                return a.r - b.r;
+            case "green":
+                return a.g - b.g;
+            case "blue":
+                return a.b - b.b;
+            case "rgb":
+                return a.r - b.r || a.g - b.g || a.b - b.b;
+            case "hue":
+                return a.h - b.h;
+            case "saturation":
+                return a.s - b.s;
+            case "value":
+                return a.v - b.v;
+            case "hsv":
+                return a.h - b.h || a.s - b.s || a.v - b.v;
+            default:
+                return 0;
+        }
+    });
+    return sorted;
+}
+
+function calculateAverageColor(colors: ColorItem[]): { r: number; g: number; b: number; hex: string } {
+    if (colors.length === 0) return { r: 128, g: 128, b: 128, hex: "#808080" };
+
+    const sum = colors.reduce((acc, c) => ({ r: acc.r + c.r, g: acc.g + c.g, b: acc.b + c.b }), { r: 0, g: 0, b: 0 });
+
+    const r = Math.round(sum.r / colors.length);
+    const g = Math.round(sum.g / colors.length);
+    const b = Math.round(sum.b / colors.length);
+
+    return { r, g, b, hex: rgbToHex(r, g, b) };
+}
+
+const colorSwatchStyle = (color: string, size: number) => css`
+    background-color: ${color};
+    min-width: ${size}px;
+    min-height: ${size}px;
+`;
+
+const gridItemStyle = css`
+    padding: 2px;
+`;
+
+const ColorGridItem = ({ item, showDetails }: { item: ColorItem | null; showDetails: boolean }) => {
+    if (!item) return null;
+
+    if (showDetails) {
+        return (
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={4}
+                cssClasses={[gridItemStyle]}
+                halign={Gtk.Align.CENTER}
+            >
+                <GtkBox cssClasses={[colorSwatchStyle(item.hex, 48)]} />
+                <GtkLabel label={item.name} cssClasses={["caption"]} ellipsize={3} maxWidthChars={10} />
+                <GtkLabel
+                    label={`${item.r}, ${item.g}, ${item.b}`}
+                    cssClasses={["dim-label", "caption", "monospace"]}
+                />
+                <GtkLabel
+                    label={`${item.h}° ${item.s}% ${item.v}%`}
+                    cssClasses={["dim-label", "caption", "monospace"]}
+                />
+            </GtkBox>
+        );
+    }
+
+    return <GtkBox cssClasses={[colorSwatchStyle(item.hex, 32)]} />;
+};
+
+const SelectionInfoPanel = ({
+    selectedColors,
+    averageColor,
+}: {
+    selectedColors: ColorItem[];
+    averageColor: { r: number; g: number; b: number; hex: string };
+}) => {
+    const miniSwatchStyle = (color: string) => css`
+        background-color: ${color};
+        min-width: 8px;
+        min-height: 8px;
+    `;
+
+    const averageSwatchStyle = css`
+        background-color: ${averageColor.hex};
+        min-width: 32px;
+        min-height: 32px;
+        border-radius: 4px;
+    `;
 
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            cssClasses={[swatchStyle, "card"]}
-            widthRequest={size}
-            heightRequest={size}
-        />
+        <GtkBox spacing={12} marginStart={12} marginEnd={12} marginTop={8} marginBottom={8} valign={Gtk.Align.CENTER}>
+            <GtkBox spacing={2} cssClasses={["card"]} marginStart={4} marginEnd={4} marginTop={4} marginBottom={4}>
+                {selectedColors.slice(0, 64).map((c) => (
+                    <GtkBox key={c.id} cssClasses={[miniSwatchStyle(c.hex)]} />
+                ))}
+                {selectedColors.length > 64 && (
+                    <GtkLabel label={`+${selectedColors.length - 64}`} cssClasses={["dim-label", "caption"]} />
+                )}
+            </GtkBox>
+
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2} valign={Gtk.Align.CENTER}>
+                <GtkLabel label={`${selectedColors.length} selected`} cssClasses={["dim-label"]} />
+            </GtkBox>
+
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2} valign={Gtk.Align.CENTER}>
+                <GtkBox cssClasses={[averageSwatchStyle]} />
+                <GtkLabel label="Average" cssClasses={["dim-label", "caption"]} />
+            </GtkBox>
+        </GtkBox>
+    );
+};
+
+const ColorsWindow = ({ onClose }: { onClose: () => void }) => {
+    const [colorLimit, setColorLimit] = useState<ColorLimit>(512);
+    const [sortMode, setSortMode] = useState<SortMode>("unsorted");
+    const [displayFactory, setDisplayFactory] = useState<DisplayFactory>("colors");
+    const [showSelectionInfo, setShowSelectionInfo] = useState(false);
+    const [selected, setSelected] = useState<string[]>([]);
+    const [colorSeed, setColorSeed] = useState(0);
+
+    const baseColors = useMemo(() => generateColors(colorLimit, colorSeed), [colorLimit, colorSeed]);
+    const sortedColors = useMemo(() => sortColors(baseColors, sortMode), [baseColors, sortMode]);
+
+    const colorMap = useMemo(() => {
+        const map = new Map<string, ColorItem>();
+        for (const c of baseColors) {
+            map.set(c.id, c);
+        }
+        return map;
+    }, [baseColors]);
+
+    const selectedColors = useMemo(() => {
+        return selected.map((id) => colorMap.get(id)).filter((c): c is ColorItem => c !== undefined);
+    }, [selected, colorMap]);
+
+    const averageColor = useMemo(() => calculateAverageColor(selectedColors), [selectedColors]);
+
+    const handleRefill = () => {
+        setColorSeed((s) => s + 1);
+        setSelected([]);
+    };
+
+    const handleLimitChange = (id: string) => {
+        const limit = COLOR_LIMITS.find((l) => l.id === id);
+        if (limit) {
+            setColorLimit(limit.value);
+            setSelected([]);
+        }
+    };
+
+    return (
+        <GtkWindow title="Colors" defaultWidth={800} defaultHeight={600} onClose={onClose}>
+            <x.Slot for="GtkWindow" id="titlebar">
+                <GtkHeaderBar>
+                    <x.PackStart>
+                        <GtkButton
+                            iconName="view-refresh-symbolic"
+                            tooltipText="Refill colors"
+                            onClicked={handleRefill}
+                        />
+                        <GtkButton
+                            iconName={showSelectionInfo ? "go-up-symbolic" : "go-down-symbolic"}
+                            tooltipText={showSelectionInfo ? "Hide selection info" : "Show selection info"}
+                            onClicked={() => setShowSelectionInfo(!showSelectionInfo)}
+                            cssClasses={showSelectionInfo ? ["suggested-action"] : []}
+                        />
+                    </x.PackStart>
+                    <x.Slot for={GtkHeaderBar} id="titleWidget">
+                        <GtkLabel label={`${selected.length} / ${sortedColors.length}`} />
+                    </x.Slot>
+                    <x.PackEnd>
+                        <GtkDropDown
+                            selectedId={displayFactory}
+                            onSelectionChanged={(id) => setDisplayFactory(id as DisplayFactory)}
+                            tooltipText="Display style"
+                        >
+                            {DISPLAY_FACTORIES.map((f) => (
+                                <x.SimpleListItem key={f.id} id={f.id} value={f.label} />
+                            ))}
+                        </GtkDropDown>
+                        <GtkDropDown
+                            selectedId={sortMode}
+                            onSelectionChanged={(id) => setSortMode(id as SortMode)}
+                            tooltipText="Sort order"
+                        >
+                            {SORT_MODES.map((m) => (
+                                <x.SimpleListItem key={m.id} id={m.id} value={m.label} />
+                            ))}
+                        </GtkDropDown>
+                        <GtkDropDown
+                            selectedId={String(colorLimit)}
+                            onSelectionChanged={handleLimitChange}
+                            tooltipText="Number of colors"
+                        >
+                            {COLOR_LIMITS.map((l) => (
+                                <x.SimpleListItem key={l.id} id={l.id} value={l.label} />
+                            ))}
+                        </GtkDropDown>
+                    </x.PackEnd>
+                </GtkHeaderBar>
+            </x.Slot>
+
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkRevealer revealChild={showSelectionInfo && selected.length > 0}>
+                    <SelectionInfoPanel selectedColors={selectedColors} averageColor={averageColor} />
+                </GtkRevealer>
+
+                <GtkScrolledWindow vexpand hexpand>
+                    <x.GridView<ColorItem>
+                        estimatedItemHeight={displayFactory === "everything" ? 120 : 40}
+                        minColumns={displayFactory === "everything" ? 4 : 8}
+                        maxColumns={displayFactory === "everything" ? 12 : 24}
+                        selectionMode={Gtk.SelectionMode.MULTIPLE}
+                        selected={selected}
+                        onSelectionChanged={setSelected}
+                        enableRubberband
+                        renderItem={(item) => (
+                            <ColorGridItem item={item} showDetails={displayFactory === "everything"} />
+                        )}
+                    >
+                        {sortedColors.map((color) => (
+                            <x.ListItem key={color.id} id={color.id} value={color} />
+                        ))}
+                    </x.GridView>
+                </GtkScrolledWindow>
+            </GtkBox>
+        </GtkWindow>
     );
 };
 
 const ListViewColorsDemo = () => {
-    const [searchText, setSearchText] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("All");
-    const [selectedColor, setSelectedColor] = useState<ColorItem | null>(null);
-    const [copiedId, setCopiedId] = useState<string | null>(null);
-
-    const filteredColors = colorPalette.filter((color) => {
-        const matchesSearch =
-            searchText === "" ||
-            color.name.toLowerCase().includes(searchText.toLowerCase()) ||
-            color.hex.toLowerCase().includes(searchText.toLowerCase());
-        const matchesCategory = selectedCategory === "All" || color.category === selectedCategory;
-        return matchesSearch && matchesCategory;
-    });
-
-    const handleActivate = (_list: Gtk.ListView, position: number) => {
-        const color = filteredColors[position];
-        if (color) {
-            setSelectedColor(color);
-        }
-    };
-
-    const copyToClipboard = (color: ColorItem) => {
-        setCopiedId(color.id);
-        setTimeout(() => setCopiedId(null), 2000);
-    };
+    const [showWindow, setShowWindow] = useState(false);
 
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={24}
-            marginStart={20}
-            marginEnd={20}
-            marginTop={20}
-            marginBottom={20}
-        >
-            <GtkLabel label="Color Palette Browser" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER}>
             <GtkLabel
-                label="ListView displays items in a vertical list with custom rendering. This demo shows a color palette browser with search, filtering, and selection."
+                label="This demo displays a grid of generated colors with multi-selection support. Use the header bar controls to change the number of colors, sort order, and display style."
                 wrap
-                halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
+                maxWidthChars={60}
             />
+            <GtkButton label="Open Colors Window" onClicked={() => setShowWindow(true)} />
 
-            <GtkFrame label="Color Palette">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkSearchEntry
-                        text={searchText}
-                        placeholderText="Search colors by name or hex..."
-                        onSearchChanged={(entry) => setSearchText(entry.getText())}
-                    />
-
-                    <GtkScrolledWindow
-                        hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                        vscrollbarPolicy={Gtk.PolicyType.NEVER}
-                    >
-                        <GtkBox spacing={4}>
-                            {categories.map((cat) => (
-                                <GtkButton
-                                    key={cat}
-                                    label={cat}
-                                    onClicked={() => setSelectedCategory(cat)}
-                                    cssClasses={selectedCategory === cat ? ["suggested-action"] : ["flat"]}
-                                />
-                            ))}
-                        </GtkBox>
-                    </GtkScrolledWindow>
-
-                    <GtkLabel
-                        label={`Showing ${filteredColors.length} colors`}
-                        cssClasses={["dim-label"]}
-                        halign={Gtk.Align.START}
-                    />
-
-                    <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <x.ListView<ColorItem>
-                            estimatedItemHeight={64}
-                            showSeparators
-                            onActivate={handleActivate}
-                            renderItem={(item) => (
-                                <GtkBox spacing={16} marginTop={8} marginBottom={8} marginStart={12} marginEnd={12}>
-                                    <ColorSwatch color={item?.hex ?? "#fff"} />
-                                    <GtkBox
-                                        orientation={Gtk.Orientation.VERTICAL}
-                                        spacing={4}
-                                        hexpand
-                                        valign={Gtk.Align.CENTER}
-                                    >
-                                        <GtkLabel label={item?.name ?? ""} halign={Gtk.Align.START} />
-                                        <GtkBox spacing={16}>
-                                            <GtkLabel
-                                                label={item?.hex ?? ""}
-                                                cssClasses={["dim-label", "caption", "monospace"]}
-                                            />
-                                            <GtkLabel
-                                                label={`rgb(${item?.rgb ?? ""})`}
-                                                cssClasses={["dim-label", "caption", "monospace"]}
-                                            />
-                                        </GtkBox>
-                                    </GtkBox>
-                                    <GtkButton
-                                        iconName={copiedId === item?.id ? "emblem-ok-symbolic" : "edit-copy-symbolic"}
-                                        cssClasses={["flat", "circular"]}
-                                        onClicked={() => item && copyToClipboard(item)}
-                                        valign={Gtk.Align.CENTER}
-                                        tooltipText="Copy hex value"
-                                    />
-                                </GtkBox>
-                            )}
-                        >
-                            {filteredColors.map((color) => (
-                                <x.ListItem key={color.id} id={color.id} value={color} />
-                            ))}
-                        </x.ListView>
-                    </GtkScrolledWindow>
-
-                    {selectedColor && (
-                        <GtkBox
-                            spacing={16}
-                            cssClasses={["card"]}
-                            marginTop={8}
-                            marginBottom={8}
-                            marginStart={12}
-                            marginEnd={12}
-                        >
-                            <ColorSwatch color={selectedColor.hex} size={64} />
-                            <GtkBox
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={4}
-                                valign={Gtk.Align.CENTER}
-                                hexpand
-                            >
-                                <GtkLabel
-                                    label={selectedColor.name}
-                                    halign={Gtk.Align.START}
-                                    cssClasses={["heading"]}
-                                />
-                                <GtkLabel
-                                    label={`Category: ${selectedColor.category}`}
-                                    cssClasses={["dim-label"]}
-                                    halign={Gtk.Align.START}
-                                />
-                                <GtkBox spacing={16}>
-                                    <GtkLabel
-                                        label={`HEX: ${selectedColor.hex}`}
-                                        cssClasses={["monospace", "caption"]}
-                                    />
-                                    <GtkLabel
-                                        label={`RGB: ${selectedColor.rgb}`}
-                                        cssClasses={["monospace", "caption"]}
-                                    />
-                                </GtkBox>
-                            </GtkBox>
-                        </GtkBox>
-                    )}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="showSeparators: Display dividers between items. onActivate: Called when item is activated (double-click or Enter). renderItem: Function to render each list row. ListView is virtualized for efficient rendering of large lists."
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-            </GtkBox>
+            {showWindow && <ColorsWindow onClose={() => setShowWindow(false)} />}
         </GtkBox>
     );
 };
@@ -242,8 +394,8 @@ const ListViewColorsDemo = () => {
 export const listviewColorsDemo: Demo = {
     id: "listview-colors",
     title: "Lists/Colors",
-    description: "ListView showing a color palette browser with search and filtering",
-    keywords: ["listview", "colors", "palette", "GtkListView", "search", "filter"],
+    description: "GridView showing generated colors with multi-selection, sorting, and various display styles",
+    keywords: ["gridview", "colors", "palette", "GtkGridView", "selection", "sort", "multi-select"],
     component: ListViewColorsDemo,
     sourceCode,
 };

@@ -88,7 +88,7 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] flowbox.tsx ↔ flowbox.c (🟠 Major - dataset size)
 - [✓] headerbar.tsx ↔ headerbar.c (FIXED - proper titlebar integration)
 - [x] overlay.tsx ↔ overlay.c (🟡 Minor - spacing)
-- [x] overlay-decorative.tsx ↔ overlay_decorative.c (🔴 Critical - wrong images)
+- [✓] overlay-decorative.tsx ↔ overlay_decorative.c (FIXED - proper PNG resources and text tag)
 - [✓] panes.tsx ↔ panes.c (matches well)
 - [x] sizegroup.tsx ↔ sizegroup.c (🟡 Minor - baseline alignment)
 
@@ -96,7 +96,7 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] listbox.tsx ↔ listbox.c (🟠 Major - sort function)
 - [x] listbox-controls.tsx ↔ listbox_controls.c (🟠 Major - rich-list)
 - [x] listview-applauncher.tsx ↔ listview_applauncher.c (🟠 Major - GridView)
-- [x] listview-colors.tsx ↔ listview_colors.c (🔴 Critical - wrong view type)
+- [✓] listview-colors.tsx ↔ listview_colors.c (FIXED - GridView with multi-selection and sorting)
 - [x] listview-filebrowser.tsx ↔ listview_filebrowser.c (🟠 Major - polling)
 - [x] listview-selections.tsx ↔ listview_selections.c (🟠 Major - suggestion)
 - [x] listview-settings.tsx ↔ listview_settings.c (🟠 Major - tree model)
@@ -145,7 +145,7 @@ The following demos were removed because they require custom GObject subclasses 
 ## Summary
 - Total demos: 77 (10 removed - require GObject subclassing)
 - Not started: 0
-- Reviewed: 54
-- Fully matched: 23
-- Critical issues: 6
+- Reviewed: 52
+- Fully matched: 25
+- Critical issues: 4
 - Major issues: 37

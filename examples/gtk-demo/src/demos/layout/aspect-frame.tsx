@@ -24,9 +24,7 @@ const AspectFrameDemo = () => {
     const [ratio, setRatio] = useState(1.5);
 
     const texture = useMemo(() => {
-        return Gdk.Texture.newFromFilename(
-            new URL("./ducky.png", import.meta.url).pathname
-        );
+        return Gdk.Texture.newFromFilename(new URL("./ducky.png", import.meta.url).pathname);
     }, []);
 
     return (

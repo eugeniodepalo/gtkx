@@ -10,14 +10,8 @@ const DIARY_TEXT = " diary...";
 const OverlayDecorativeDemo = () => {
     const [margin, setMargin] = useState(100);
 
-    const decor1 = useMemo(
-        () => Gdk.Texture.newFromFilename(new URL("./decor1.png", import.meta.url).pathname),
-        [],
-    );
-    const decor2 = useMemo(
-        () => Gdk.Texture.newFromFilename(new URL("./decor2.png", import.meta.url).pathname),
-        [],
-    );
+    const decor1 = useMemo(() => Gdk.Texture.newFromFilename(new URL("./decor1.png", import.meta.url).pathname), []);
+    const decor2 = useMemo(() => Gdk.Texture.newFromFilename(new URL("./decor2.png", import.meta.url).pathname), []);
 
     return (
         <GtkOverlay>
