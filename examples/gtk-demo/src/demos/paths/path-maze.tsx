@@ -1,24 +1,39 @@
-import { CallbackAnimationTarget, TimedAnimation } from "@gtkx/ffi/adw";
-import { type Context, LineCap, LineJoin } from "@gtkx/ffi/cairo";
+import { createRef } from "@gtkx/ffi";
+import { type Context, Pattern } from "@gtkx/ffi/cairo";
+import * as Graphene from "@gtkx/ffi/graphene";
+import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkLabel, GtkWindow } from "@gtkx/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-maze.tsx?raw";
 
-const WALL = 1;
-const PATH = 0;
-const START = 2;
-const END = 3;
-const SOLUTION = 4;
-const VISITED = 5;
+const MAZE_GRID_SIZE = 20;
+const MAZE_WIDTH = 31;
+const MAZE_HEIGHT = 21;
+const STROKE_SIZE_ACTIVE = MAZE_GRID_SIZE - 4;
+const STROKE_SIZE_INACTIVE = MAZE_GRID_SIZE - 12;
 
-type Cell = typeof WALL | typeof PATH | typeof START | typeof END | typeof SOLUTION | typeof VISITED;
+function shuffle<T>(arr: T[]): T[] {
+    const result = [...arr];
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = result[i];
+        const swapVal = result[j];
+        if (temp !== undefined && swapVal !== undefined) {
+            result[i] = swapVal;
+            result[j] = temp;
+        }
+    }
+    return result;
+}
 
-const generateMaze = (width: number, height: number): Cell[][] => {
-    const maze: Cell[][] = Array(height)
+function createMazePath(): Gsk.Path {
+    const builder = new Gsk.PathBuilder();
+    const visited = new Set<string>();
+    const walls: boolean[][] = Array(MAZE_HEIGHT)
         .fill(null)
-        .map(() => Array(width).fill(WALL));
+        .map(() => Array(MAZE_WIDTH).fill(true));
 
     const directions: [number, number][] = [
         [0, -2],
@@ -27,600 +42,209 @@ const generateMaze = (width: number, height: number): Cell[][] => {
         [-2, 0],
     ];
 
-    const shuffle = <T,>(arr: T[]): T[] => {
-        const result = [...arr];
-        for (let i = result.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            const temp = result[i];
-            const swapVal = result[j];
-            if (temp !== undefined && swapVal !== undefined) {
-                result[i] = swapVal;
-                result[j] = temp;
-            }
-        }
-        return result;
-    };
-
-    const carve = (x: number, y: number) => {
-        const row = maze[y];
-        if (row) row[x] = PATH;
+    function carve(x: number, y: number) {
+        visited.add(`${x},${y}`);
+        const row = walls[y];
+        if (row) row[x] = false;
 
         for (const [dx, dy] of shuffle(directions)) {
             const nx = x + dx;
             const ny = y + dy;
-
-            if (nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1 && maze[ny]?.[nx] === WALL) {
-                const midRow = maze[y + dy / 2];
-                if (midRow) midRow[x + dx / 2] = PATH;
+            if (nx >= 1 && nx < MAZE_WIDTH - 1 && ny >= 1 && ny < MAZE_HEIGHT - 1 && !visited.has(`${nx},${ny}`)) {
+                const midRow = walls[y + dy / 2];
+                if (midRow) midRow[x + dx / 2] = false;
                 carve(nx, ny);
             }
         }
-    };
+    }
 
     carve(1, 1);
 
-    const startRow = maze[1];
-    if (startRow) startRow[1] = START;
-    const endRow = maze[height - 2];
-    if (endRow) endRow[width - 2] = END;
+    for (let y = 0; y < MAZE_HEIGHT; y++) {
+        for (let x = 0; x < MAZE_WIDTH; x++) {
+            if (!walls[y]?.[x]) {
+                const px = (x + 0.5) * MAZE_GRID_SIZE;
+                const py = (y + 0.5) * MAZE_GRID_SIZE;
 
-    return maze;
-};
-
-const solveMazeBFS = (maze: Cell[][]): { path: [number, number][]; visited: [number, number][] } => {
-    const height = maze.length;
-    const firstRow = maze[0];
-    if (!firstRow) return { path: [], visited: [] };
-    const width = firstRow.length;
-    const visited: [number, number][] = [];
-
-    let startX = 1,
-        startY = 1;
-    let endX = width - 2,
-        endY = height - 2;
-
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            if (maze[y]?.[x] === START) {
-                startX = x;
-                startY = y;
-            }
-            if (maze[y]?.[x] === END) {
-                endX = x;
-                endY = y;
+                if (!walls[y]?.[x + 1]) {
+                    builder.moveTo(px, py);
+                    builder.lineTo(px + MAZE_GRID_SIZE, py);
+                }
+                if (!walls[y + 1]?.[x]) {
+                    builder.moveTo(px, py);
+                    builder.lineTo(px, py + MAZE_GRID_SIZE);
+                }
             }
         }
     }
 
-    const queue: [number, number, [number, number][]][] = [[startX, startY, [[startX, startY]]]];
-    const seen = new Set<string>();
-    seen.add(`${startX},${startY}`);
+    builder.moveTo(1.5 * MAZE_GRID_SIZE, 0.5 * MAZE_GRID_SIZE);
+    builder.lineTo(1.5 * MAZE_GRID_SIZE, -0.5 * MAZE_GRID_SIZE);
 
-    const directions: [number, number][] = [
-        [0, -1],
-        [1, 0],
-        [0, 1],
-        [-1, 0],
-    ];
+    builder.moveTo((MAZE_WIDTH - 1.5) * MAZE_GRID_SIZE, (MAZE_HEIGHT - 1.5) * MAZE_GRID_SIZE);
+    builder.lineTo((MAZE_WIDTH - 1.5) * MAZE_GRID_SIZE, (MAZE_HEIGHT - 0.5) * MAZE_GRID_SIZE);
 
-    while (queue.length > 0) {
-        const item = queue.shift();
-        if (!item) break;
-        const [x, y, currentPath] = item;
-        visited.push([x, y]);
-
-        if (x === endX && y === endY) {
-            return { path: currentPath, visited };
-        }
-
-        for (const [dx, dy] of directions) {
-            const nx = x + dx;
-            const ny = y + dy;
-            const key = `${nx},${ny}`;
-
-            if (
-                nx >= 0 &&
-                nx < width &&
-                ny >= 0 &&
-                ny < height &&
-                !seen.has(key) &&
-                (maze[ny]?.[nx] === PATH || maze[ny]?.[nx] === END)
-            ) {
-                seen.add(key);
-                queue.push([nx, ny, [...currentPath, [nx, ny]]]);
-            }
-        }
-    }
-
-    return { path: [], visited };
-};
-
-const solveMazeAStar = (maze: Cell[][]): { path: [number, number][]; visited: [number, number][] } => {
-    const height = maze.length;
-    const firstRow = maze[0];
-    if (!firstRow) return { path: [], visited: [] };
-    const width = firstRow.length;
-    const visited: [number, number][] = [];
-
-    let startX = 1,
-        startY = 1;
-    let endX = width - 2,
-        endY = height - 2;
-
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            if (maze[y]?.[x] === START) {
-                startX = x;
-                startY = y;
-            }
-            if (maze[y]?.[x] === END) {
-                endX = x;
-                endY = y;
-            }
-        }
-    }
-
-    const heuristic = (x: number, y: number) => Math.abs(x - endX) + Math.abs(y - endY);
-
-    const openSet: { x: number; y: number; g: number; f: number; path: [number, number][] }[] = [
-        { x: startX, y: startY, g: 0, f: heuristic(startX, startY), path: [[startX, startY]] },
-    ];
-    const closedSet = new Set<string>();
-
-    const directions: [number, number][] = [
-        [0, -1],
-        [1, 0],
-        [0, 1],
-        [-1, 0],
-    ];
-
-    while (openSet.length > 0) {
-        openSet.sort((a, b) => a.f - b.f);
-        const current = openSet.shift();
-        if (!current) break;
-        const { x, y, g, path } = current;
-
-        const key = `${x},${y}`;
-        if (closedSet.has(key)) continue;
-        closedSet.add(key);
-        visited.push([x, y]);
-
-        if (x === endX && y === endY) {
-            return { path, visited };
-        }
-
-        for (const [dx, dy] of directions) {
-            const nx = x + dx;
-            const ny = y + dy;
-            const nkey = `${nx},${ny}`;
-
-            if (
-                nx >= 0 &&
-                nx < width &&
-                ny >= 0 &&
-                ny < height &&
-                !closedSet.has(nkey) &&
-                (maze[ny]?.[nx] === PATH || maze[ny]?.[nx] === END)
-            ) {
-                const newG = g + 1;
-                openSet.push({
-                    x: nx,
-                    y: ny,
-                    g: newG,
-                    f: newG + heuristic(nx, ny),
-                    path: [...path, [nx, ny]],
-                });
-            }
-        }
-    }
-
-    return { path: [], visited };
-};
-
-interface PlayerState {
-    x: number;
-    y: number;
-    pathTraveled: [number, number][];
-    hasWon: boolean;
-    hasFailed: boolean;
+    return builder.toPath();
 }
 
-const MazeDemo = () => {
+const MazeWindow = ({ onClose }: { onClose: () => void }) => {
     const areaRef = useRef<Gtk.DrawingArea | null>(null);
-    const [mazeSize, setMazeSize] = useState(21);
-    const [maze, setMaze] = useState<Cell[][]>(() => generateMaze(21, 21));
-    const [solution, setSolution] = useState<{ path: [number, number][]; visited: [number, number][] }>({
-        path: [],
-        visited: [],
-    });
-    const [animationStep, setAnimationStep] = useState(0);
-    const [isAnimating, setIsAnimating] = useState(false);
-    const [algorithm, setAlgorithm] = useState<"bfs" | "astar">("bfs");
-    const [playMode, setPlayMode] = useState(false);
-    const [player, setPlayer] = useState<PlayerState>({
-        x: 1,
-        y: 1,
-        pathTraveled: [[1, 1]],
-        hasWon: false,
-        hasFailed: false,
-    });
+    const [path, setPath] = useState<Gsk.Path | null>(null);
+    const [active, setActive] = useState(false);
+    const [seed, setSeed] = useState(0);
+
+    useEffect(() => {
+        void seed;
+        setPath(createMazePath());
+    }, [seed]);
+
+    const activeStroke = useMemo(() => {
+        const stroke = new Gsk.Stroke(STROKE_SIZE_ACTIVE);
+        stroke.setLineJoin(Gsk.LineJoin.ROUND);
+        stroke.setLineCap(Gsk.LineCap.ROUND);
+        return stroke;
+    }, []);
+
+    const inactiveStroke = useMemo(() => {
+        const stroke = new Gsk.Stroke(STROKE_SIZE_INACTIVE);
+        stroke.setLineJoin(Gsk.LineJoin.ROUND);
+        stroke.setLineCap(Gsk.LineCap.ROUND);
+        return stroke;
+    }, []);
+
+    const queryPoint = useMemo(() => {
+        const point = new Graphene.Point();
+        point.init(0, 0);
+        return point;
+    }, []);
+
+    const pathPointRef = useRef<Gsk.PathPoint | null>(null);
+
+    const handleMotion = useCallback(
+        (mouseX: number, mouseY: number) => {
+            if (!path || !active) return;
+
+            queryPoint.init(mouseX, mouseY);
+            const distanceRef = createRef(0.0);
+
+            if (!pathPointRef.current) {
+                pathPointRef.current = new Gsk.PathPoint();
+            }
+
+            const found = path.getClosestPoint(queryPoint, Infinity, pathPointRef.current, distanceRef);
+
+            if (found && distanceRef.value > STROKE_SIZE_ACTIVE / 2) {
+                setActive(false);
+                areaRef.current?.queueDraw();
+            }
+        },
+        [path, active, queryPoint],
+    );
+
+    const handleEnter = useCallback(
+        (_x: number, _y: number) => {
+            if (!active) {
+                setActive(true);
+                areaRef.current?.queueDraw();
+            }
+        },
+        [active],
+    );
+
+    const handleLeave = useCallback(() => {
+        if (active) {
+            setActive(false);
+            areaRef.current?.queueDraw();
+        }
+    }, [active]);
 
     const drawMaze = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            const mazeWidth = maze[0]?.length ?? 1;
-            const cellWidth = width / mazeWidth;
-            const cellHeight = height / maze.length;
+            if (!path) return;
 
-            for (let y = 0; y < maze.length; y++) {
-                for (let x = 0; x < mazeWidth; x++) {
-                    const cell = maze[y]?.[x];
-                    const px = x * cellWidth;
-                    const py = y * cellHeight;
+            const currentStroke = active ? activeStroke : inactiveStroke;
+            currentStroke.toCairo(cr);
+            path.toCairo(cr);
 
-                    switch (cell) {
-                        case WALL:
-                            cr.setSourceRgb(0.2, 0.2, 0.25);
-                            break;
-                        case PATH:
-                            cr.setSourceRgb(0.95, 0.95, 0.9);
-                            break;
-                        case START:
-                            cr.setSourceRgb(0.2, 0.7, 0.3);
-                            break;
-                        case END:
-                            cr.setSourceRgb(0.8, 0.2, 0.3);
-                            break;
-                        default:
-                            cr.setSourceRgb(0.95, 0.95, 0.9);
-                    }
-                    cr.rectangle(px, py, cellWidth, cellHeight).fill();
-                }
-            }
+            const gradient = Pattern.createLinear(0, 0, width, height)
+                .addColorStopRgb(0.0, 1.0, 0.0, 0.0)
+                .addColorStopRgb(0.17, 1.0, 1.0, 0.0)
+                .addColorStopRgb(0.33, 0.0, 1.0, 0.0)
+                .addColorStopRgb(0.5, 0.0, 1.0, 1.0)
+                .addColorStopRgb(0.67, 0.0, 0.0, 1.0)
+                .addColorStopRgb(0.83, 1.0, 0.0, 1.0)
+                .addColorStopRgb(1.0, 1.0, 0.0, 0.0);
 
-            if (animationStep > 0 && solution.visited.length > 0) {
-                const visitedCount = Math.min(animationStep, solution.visited.length);
-                cr.setSourceRgba(0.6, 0.8, 1, 0.5);
-
-                for (let i = 0; i < visitedCount; i++) {
-                    const visitedCell = solution.visited[i];
-                    if (visitedCell) {
-                        const [x, y] = visitedCell;
-                        if (maze[y]?.[x] !== START && maze[y]?.[x] !== END) {
-                            cr.rectangle(x * cellWidth + 1, y * cellHeight + 1, cellWidth - 2, cellHeight - 2).fill();
-                        }
-                    }
-                }
-            }
-
-            if (solution.path.length > 1 && animationStep >= solution.visited.length) {
-                const pathProgress = animationStep - solution.visited.length;
-                const pathCount = Math.min(pathProgress, solution.path.length);
-
-                if (pathCount > 1) {
-                    cr.setSourceRgb(0.9, 0.6, 0.1)
-                        .setLineWidth(Math.min(cellWidth, cellHeight) * 0.4)
-                        .setLineCap(LineCap.ROUND)
-                        .setLineJoin(LineJoin.ROUND);
-
-                    const firstCell = solution.path[0];
-                    if (firstCell) {
-                        const [firstX, firstY] = firstCell;
-                        cr.moveTo((firstX + 0.5) * cellWidth, (firstY + 0.5) * cellHeight);
-
-                        for (let i = 1; i < pathCount; i++) {
-                            const pathCell = solution.path[i];
-                            if (pathCell) {
-                                const [x, y] = pathCell;
-                                cr.lineTo((x + 0.5) * cellWidth, (y + 0.5) * cellHeight);
-                            }
-                        }
-                        cr.stroke();
-                    }
-                }
-            }
-
-            cr.setSourceRgba(0, 0, 0, 0.1).setLineWidth(0.5);
-            for (let x = 0; x <= mazeWidth; x++) {
-                cr.moveTo(x * cellWidth, 0).lineTo(x * cellWidth, height);
-            }
-            for (let y = 0; y <= maze.length; y++) {
-                cr.moveTo(0, y * cellHeight).lineTo(width, y * cellHeight);
-            }
+            cr.setSource(gradient);
             cr.stroke();
-
-            if (playMode) {
-                if (player.pathTraveled.length > 1) {
-                    cr.setSourceRgba(0.3, 0.7, 0.9, 0.6)
-                        .setLineWidth(Math.min(cellWidth, cellHeight) * 0.3)
-                        .setLineCap(LineCap.ROUND)
-                        .setLineJoin(LineJoin.ROUND);
-
-                    const firstCell = player.pathTraveled[0];
-                    if (firstCell) {
-                        cr.moveTo((firstCell[0] + 0.5) * cellWidth, (firstCell[1] + 0.5) * cellHeight);
-                        for (let i = 1; i < player.pathTraveled.length; i++) {
-                            const pathCell = player.pathTraveled[i];
-                            if (pathCell) {
-                                cr.lineTo((pathCell[0] + 0.5) * cellWidth, (pathCell[1] + 0.5) * cellHeight);
-                            }
-                        }
-                        cr.stroke();
-                    }
-                }
-
-                const playerRadius = Math.min(cellWidth, cellHeight) * 0.35;
-                const px = (player.x + 0.5) * cellWidth;
-                const py = (player.y + 0.5) * cellHeight;
-
-                if (player.hasWon) {
-                    cr.setSourceRgb(0.2, 0.8, 0.3);
-                } else if (player.hasFailed) {
-                    cr.setSourceRgb(0.9, 0.2, 0.2);
-                } else {
-                    cr.setSourceRgb(0.2, 0.6, 0.9);
-                }
-                cr.arc(px, py, playerRadius, 0, 2 * Math.PI).fill();
-
-                cr.setSourceRgb(1, 1, 1)
-                    .setLineWidth(2)
-                    .arc(px, py, playerRadius, 0, 2 * Math.PI)
-                    .stroke();
-            }
         },
-        [maze, solution, animationStep, playMode, player],
+        [path, active, activeStroke, inactiveStroke],
     );
 
-    const animationRef = useRef<TimedAnimation | null>(null);
-
-    const startAnimation = useCallback((totalSteps: number) => {
-        const area = areaRef.current;
-        if (!area || totalSteps === 0) return;
-
-        animationRef.current?.reset();
-
-        const durationMs = totalSteps * 30;
-        const target = new CallbackAnimationTarget((value: number) => {
-            const step = Math.floor(value * totalSteps);
-            setAnimationStep(step);
-            area.queueDraw();
-        });
-
-        const animation = new TimedAnimation(area, 0, 1, durationMs, target);
-        animation.connect("done", () => {
-            setIsAnimating(false);
-        });
-        animationRef.current = animation;
-        animation.play();
+    const handleRegenerate = useCallback(() => {
+        setSeed((s) => s + 1);
+        setActive(false);
     }, []);
-
-    const handleMouseMotion = useCallback(
-        (mouseX: number, mouseY: number) => {
-            if (!playMode || player.hasWon || player.hasFailed) return;
-
-            const area = areaRef.current;
-            if (!area) return;
-
-            const width = area.getWidth();
-            const height = area.getHeight();
-            const mazeWidth = maze[0]?.length ?? 1;
-            const cellWidth = width / mazeWidth;
-            const cellHeight = height / maze.length;
-
-            const cellX = Math.floor(mouseX / cellWidth);
-            const cellY = Math.floor(mouseY / cellHeight);
-
-            if (cellX < 0 || cellX >= mazeWidth || cellY < 0 || cellY >= maze.length) return;
-            if (cellX === player.x && cellY === player.y) return;
-
-            const dx = Math.abs(cellX - player.x);
-            const dy = Math.abs(cellY - player.y);
-            if (dx + dy !== 1) return;
-
-            const cell = maze[cellY]?.[cellX];
-
-            if (cell === WALL) {
-                setPlayer((p) => ({ ...p, hasFailed: true }));
-                return;
-            }
-
-            if (cell === END) {
-                setPlayer((p) => ({
-                    ...p,
-                    x: cellX,
-                    y: cellY,
-                    pathTraveled: [...p.pathTraveled, [cellX, cellY]],
-                    hasWon: true,
-                }));
-                return;
-            }
-
-            if (cell === PATH || cell === START) {
-                setPlayer((p) => ({
-                    ...p,
-                    x: cellX,
-                    y: cellY,
-                    pathTraveled: [...p.pathTraveled, [cellX, cellY]],
-                }));
-            }
-        },
-        [playMode, player, maze],
-    );
-
-    const resetPlayer = useCallback(() => {
-        setPlayer({
-            x: 1,
-            y: 1,
-            pathTraveled: [[1, 1]],
-            hasWon: false,
-            hasFailed: false,
-        });
-    }, []);
-
-    const handleGenerate = () => {
-        animationRef.current?.reset();
-        const size = mazeSize % 2 === 0 ? mazeSize + 1 : mazeSize;
-        const newMaze = generateMaze(size, size);
-        setMaze(newMaze);
-        setSolution({ path: [], visited: [] });
-        setAnimationStep(0);
-        setIsAnimating(false);
-        resetPlayer();
-    };
-
-    const handleSolve = () => {
-        const result = algorithm === "bfs" ? solveMazeBFS(maze) : solveMazeAStar(maze);
-        setSolution(result);
-        setAnimationStep(0);
-        setIsAnimating(true);
-        const totalSteps = result.visited.length + result.path.length;
-        startAnimation(totalSteps);
-    };
-
-    const handleReset = () => {
-        animationRef.current?.reset();
-        setSolution({ path: [], visited: [] });
-        setAnimationStep(0);
-        setIsAnimating(false);
-        resetPlayer();
-        if (areaRef.current) {
-            areaRef.current.queueDraw();
-        }
-    };
-
-    const togglePlayMode = () => {
-        setPlayMode((p) => !p);
-        resetPlayer();
-        setSolution({ path: [], visited: [] });
-        setAnimationStep(0);
-    };
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Maze Generation & Path Finding" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkWindow title="Follow the maze with the mouse" resizable={false} onClose={onClose}>
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={8}
+                marginTop={8}
+                marginBottom={8}
+                marginStart={8}
+                marginEnd={8}
+            >
+                <GtkDrawingArea
+                    ref={areaRef}
+                    contentWidth={MAZE_WIDTH * MAZE_GRID_SIZE}
+                    contentHeight={MAZE_HEIGHT * MAZE_GRID_SIZE}
+                    onDraw={drawMaze}
+                    onMotion={handleMotion}
+                    onEnter={handleEnter}
+                    onLeave={handleLeave}
+                />
+                <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkButton label="New Maze" onClicked={handleRegenerate} />
+                </GtkBox>
+                <GtkLabel
+                    label={
+                        active
+                            ? "Stay on the path! Move from the top entrance to the bottom exit."
+                            : "Move your mouse into the maze to start. Try to reach the exit!"
+                    }
+                    cssClasses={active ? [] : ["dim-label"]}
+                    halign={Gtk.Align.CENTER}
+                    wrap
+                />
+            </GtkBox>
+        </GtkWindow>
+    );
+};
+
+const PathMazeDemo = () => {
+    const [showWindow, setShowWindow] = useState(false);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER}>
+            <GtkLabel label="Path Maze Game" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="Generate random mazes and visualize pathfinding algorithms. Watch BFS or A* explore the maze and find the solution."
+                label="This demo demonstrates GSK Path API usage for collision detection. The maze is built using GskPathBuilder and rendered with gsk_path_to_cairo(). Mouse tracking uses gsk_path_get_closest_point() to detect when the cursor leaves the path."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
+                maxWidthChars={60}
             />
 
-            <GtkFrame label="Maze">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkDrawingArea
-                        ref={areaRef}
-                        onDraw={drawMaze}
-                        contentWidth={400}
-                        contentHeight={400}
-                        cssClasses={["card"]}
-                        halign={Gtk.Align.CENTER}
-                        onMotion={playMode ? handleMouseMotion : undefined}
-                    />
+            <GtkButton
+                label="Open Maze Window"
+                onClicked={() => setShowWindow(true)}
+                cssClasses={["suggested-action"]}
+            />
 
-                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
-                        <GtkLabel label="Size:" cssClasses={["dim-label"]} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            widthRequest={150}
-                            value={mazeSize}
-                            lower={11}
-                            upper={41}
-                            stepIncrement={2}
-                            pageIncrement={4}
-                            onValueChanged={(val: number) => {
-                                const rounded = Math.round(val);
-                                setMazeSize(rounded % 2 === 0 ? rounded + 1 : rounded);
-                            }}
-                        />
-                    </GtkBox>
-
-                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
-                        <GtkLabel label="Algorithm:" cssClasses={["dim-label"]} />
-                        <GtkButton
-                            label="BFS"
-                            onClicked={() => setAlgorithm("bfs")}
-                            cssClasses={algorithm === "bfs" ? ["suggested-action"] : ["flat"]}
-                        />
-                        <GtkButton
-                            label="A*"
-                            onClicked={() => setAlgorithm("astar")}
-                            cssClasses={algorithm === "astar" ? ["suggested-action"] : ["flat"]}
-                        />
-                    </GtkBox>
-
-                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
-                        <GtkButton
-                            label={playMode ? "Watch Mode" : "Play Mode"}
-                            onClicked={togglePlayMode}
-                            cssClasses={playMode ? ["destructive-action"] : ["suggested-action"]}
-                        />
-                        <GtkButton label="Generate" onClicked={handleGenerate} cssClasses={["flat"]} />
-                        {!playMode && (
-                            <GtkButton
-                                label="Solve"
-                                onClicked={handleSolve}
-                                cssClasses={["suggested-action"]}
-                                sensitive={!isAnimating}
-                            />
-                        )}
-                        <GtkButton label="Reset" onClicked={handleReset} cssClasses={["flat"]} />
-                    </GtkBox>
-
-                    {playMode && (
-                        <GtkLabel
-                            label={
-                                player.hasWon
-                                    ? `You won! Steps taken: ${player.pathTraveled.length}`
-                                    : player.hasFailed
-                                      ? "You hit a wall! Click Reset to try again."
-                                      : "Move your mouse through the maze to reach the red exit!"
-                            }
-                            cssClasses={player.hasWon ? ["success"] : player.hasFailed ? ["error"] : ["dim-label"]}
-                            halign={Gtk.Align.CENTER}
-                        />
-                    )}
-
-                    {!playMode && solution.path.length > 0 && !isAnimating && (
-                        <GtkLabel
-                            label={`Solution found! Path length: ${solution.path.length}, Cells explored: ${solution.visited.length}`}
-                            cssClasses={["dim-label"]}
-                            halign={Gtk.Align.CENTER}
-                        />
-                    )}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Legend">
-                <GtkBox
-                    spacing={24}
-                    marginTop={8}
-                    marginBottom={8}
-                    marginStart={12}
-                    marginEnd={12}
-                    halign={Gtk.Align.CENTER}
-                >
-                    <GtkBox spacing={4}>
-                        <GtkLabel label="Start" cssClasses={["dim-label", "caption"]} />
-                    </GtkBox>
-                    <GtkBox spacing={4}>
-                        <GtkLabel label="End" cssClasses={["dim-label", "caption"]} />
-                    </GtkBox>
-                    <GtkBox spacing={4}>
-                        <GtkLabel label="Explored" cssClasses={["dim-label", "caption"]} />
-                    </GtkBox>
-                    <GtkBox spacing={4}>
-                        <GtkLabel label="Solution" cssClasses={["dim-label", "caption"]} />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
+            {showWindow && <MazeWindow onClose={() => setShowWindow(false)} />}
         </GtkBox>
     );
 };
@@ -629,20 +253,8 @@ export const pathMazeDemo: Demo = {
     id: "path-maze",
     title: "Path/Maze",
     description:
-        "Maze generation and pathfinding visualization with interactive play mode. Navigate the maze with your mouse or watch BFS/A* algorithms solve it.",
-    keywords: [
-        "maze",
-        "pathfinding",
-        "bfs",
-        "astar",
-        "algorithm",
-        "generation",
-        "animation",
-        "recursive",
-        "game",
-        "interactive",
-        "mouse",
-    ],
-    component: MazeDemo,
+        "Follow the maze with your mouse. Uses GskPathBuilder to construct the maze and gsk_path_get_closest_point() for collision detection.",
+    keywords: ["maze", "path", "gsk", "PathBuilder", "getClosestPoint", "collision", "detection", "game", "mouse"],
+    component: PathMazeDemo,
     sourceCode,
 };

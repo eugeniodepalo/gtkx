@@ -408,6 +408,7 @@ export class RawGirParser {
     private extractTypeParameters(typeNode: Record<string, unknown>): RawType[] {
         const types: RawType[] = [];
         const typeChildren = typeNode.type;
+        const arrayChildren = typeNode.array;
 
         if (Array.isArray(typeChildren)) {
             for (const child of typeChildren) {
@@ -415,6 +416,14 @@ export class RawGirParser {
             }
         } else if (typeChildren) {
             types.push(this.parseType(typeChildren as Record<string, unknown>));
+        }
+
+        if (Array.isArray(arrayChildren)) {
+            for (const child of arrayChildren) {
+                types.push(this.parseType(child as Record<string, unknown>));
+            }
+        } else if (arrayChildren) {
+            types.push(this.parseType(arrayChildren as Record<string, unknown>));
         }
 
         return types;

@@ -6,15 +6,9 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [ ] Not started
 - [~] In progress
 - [x] Reviewed (findings documented)
-- [✓] Fully matched (no changes needed or fixes applied)
 
 ## Advanced
-- [✓] font-features.tsx ↔ font_features.c (FIXED - full feature parity)
-- [✓] fontrendering.tsx ↔ fontrendering.c (matches)
 - [x] markup.tsx ↔ markup.c (🟠 Major - add editable source)
-- [✓] rotated-text.tsx ↔ rotated_text.c (FIXED - shape renderer scaling)
-- [✓] textmask.tsx ↔ textmask.c (gtkx superset)
-- [✓] transparent.tsx ↔ transparent.c (FIXED - backdrop blur implementation)
 
 ## Benchmark
 - [x] frames.tsx ↔ frames.c (🟠 Major - frame clock timing)
@@ -24,16 +18,12 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] expander.tsx ↔ expander.c (🟢 Trivial - matches)
 - [x] scale.tsx ↔ scale.c (🟢 Trivial - matches)
 - [x] spinbutton.tsx ↔ spinbutton.c (🟠 Major - input validation)
-- [✓] spinner.tsx ↔ spinner.c (matches well)
 
 ## Constraints
-- [✓] constraints.tsx ↔ constraints.c (matches)
-- [✓] constraints-interactive.tsx ↔ constraints_interactive.c (matches)
 - [x] constraints-vfl.tsx ↔ constraints_vfl.c (🟠 Major - extra live editor)
 
 ## CSS
 - [x] css-accordion.tsx ↔ css_accordion.c (🟠 Major - different approach)
-- [✓] css-basics.tsx ↔ css_basics.c (matches)
 - [x] css-blendmodes.tsx ↔ css_blendmodes.c (🟠 Major - no visual demo)
 - [x] css-multiplebgs.tsx ↔ css_multiplebgs.c (🟡 Minor)
 - [x] css-pixbufs.tsx ↔ css_pixbufs.c (🟡 Minor - misleading title)
@@ -42,8 +32,6 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] theming-style-classes.tsx ↔ theming_style_classes.c (🟠 Major - enhanced)
 
 ## Dialogs
-- [✓] dialog.tsx ↔ dialog.c (FIXED - interactive dialog added)
-- [✓] pagesetup.tsx ↔ pagesetup.c (uses modern GTK4 API)
 - [x] pickers.tsx ↔ pickers.c (🟡 Minor - missing drag-drop)
 - [x] printing.tsx ↔ printing.c (🟠 Major - hardcoded text)
 
@@ -51,29 +39,22 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] drawingarea.tsx ↔ drawingarea.c (🟡 Minor)
 - [x] image-scaling.tsx ↔ image_scaling.c (gtkx enhancement)
 - [x] images.tsx ↔ images.c (🟠 Major - missing features)
-- [✓] mask.tsx ↔ mask.c (matches)
 - [x] paint.tsx ↔ paint.c (🟠 Major - missing tablet features)
 - [x] paintable.tsx ↔ paintable.c (🟡 Minor)
 - [x] paintable-animated.tsx ↔ paintable_animated.c (improved)
 - [x] paintable-svg.tsx ↔ paintable_svg.c (🟡 Minor)
 
 ## Games
-- [✓] listview-minesweeper.tsx ↔ listview_minesweeper.c (FIXED - matches official behavior)
-- [✓] peg-solitaire.tsx ↔ peg_solitaire.c (FIXED - matches official behavior)
 - [x] sliding-puzzle.tsx ↔ sliding_puzzle.c (🟡 Major - multi-tile, keyboard)
 
 ## Gestures
 - [x] clipboard.tsx ↔ clipboard.c (🟡 Minor - different organization)
 - [x] cursors.tsx ↔ cursors.c (🟠 Major - missing custom cursor)
-- [✓] dnd.tsx ↔ dnd.c (FIXED - matches official behavior)
-- [✓] gestures.tsx ↔ gestures.c (FIXED - single DrawingArea with Cairo feedback)
 - [x] links.tsx ↔ links.c (🟡 Minor - different organization)
 - [x] shortcuts.tsx ↔ shortcuts.c (🟠 Major - uses AdwShortcutsDialog)
-- [✓] shortcut-triggers.tsx ↔ shortcut_triggers.c (gtkx superset)
 
 ## Input
 - [x] entry-undo.tsx ↔ entry_undo.c (🟡 Minor)
-- [✓] hypertext.tsx ↔ hypertext.c (FIXED - matches GTK4 3-page layout with inline paintables)
 - [x] password-entry.tsx ↔ password_entry.c (🟠 Major - header bar)
 - [x] search-entry.tsx ↔ search_entry.c (🟠 Major - header bar)
 - [x] tabs.tsx ↔ tabs.c (🟡 Minor)
@@ -82,21 +63,15 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] textview.tsx ↔ textview.c (🟠 Major - features, i18n)
 
 ## Layout
-- [✓] aspect-frame.tsx ↔ aspect_frame.c (FIXED - uses GtkPicture with ducky.png)
-- [✓] fixed.tsx ↔ fixed.c (matches well)
 - [x] fixed2.tsx ↔ fixed2.c (🟠 Major - timing, window size)
 - [x] flowbox.tsx ↔ flowbox.c (🟠 Major - dataset size)
-- [✓] headerbar.tsx ↔ headerbar.c (FIXED - proper titlebar integration)
 - [x] overlay.tsx ↔ overlay.c (🟡 Minor - spacing)
-- [✓] overlay-decorative.tsx ↔ overlay_decorative.c (FIXED - proper PNG resources and text tag)
-- [✓] panes.tsx ↔ panes.c (matches well)
 - [x] sizegroup.tsx ↔ sizegroup.c (🟡 Minor - baseline alignment)
 
 ## Lists
 - [x] listbox.tsx ↔ listbox.c (🟠 Major - sort function)
 - [x] listbox-controls.tsx ↔ listbox_controls.c (🟠 Major - rich-list)
 - [x] listview-applauncher.tsx ↔ listview_applauncher.c (🟠 Major - GridView)
-- [✓] listview-colors.tsx ↔ listview_colors.c (FIXED - GridView with multi-selection and sorting)
 - [x] listview-filebrowser.tsx ↔ listview_filebrowser.c (🟠 Major - polling)
 - [x] listview-selections.tsx ↔ listview_selections.c (🟠 Major - suggestion)
 - [x] listview-settings.tsx ↔ listview_settings.c (🟠 Major - tree model)
@@ -110,20 +85,14 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 
 ## Navigation
 - [x] revealer.tsx ↔ revealer.c (🟠 Major - animation timing)
-- [✓] sidebar.tsx ↔ sidebar.c (matches)
-- [✓] stack.tsx ↔ stack.c (matches)
 
 ## OpenGL
-- [x] gears.tsx ↔ gears.c (🔴 Critical - FPS display)
-- [✓] glarea.tsx ↔ glarea.c (matches)
 - [x] shadertoy.tsx ↔ shadertoy.c (gtkx extension)
 
 ## Paths
 - [x] path-explorer.tsx ↔ path_explorer_demo.c (🟠 Major - Cairo vs GSK)
 - [x] path-fill.tsx ↔ path_fill.c (🟠 Major - Cairo vs GSK)
-- [x] path-maze.tsx ↔ path_maze.c (🔴 Critical - grid vs GSK path)
 - [x] path-spinner.tsx ↔ path_spinner.c (🟠 Major - Cairo vs GSK)
-- [x] path-sweep.tsx ↔ path_sweep.c (🔴 Critical - manual vs GSK)
 - [x] path-text.tsx ↔ path_text.c (🟠 Major - manual Bezier)
 - [x] path-walk.tsx ↔ path_walk.c (🟠 Major - lookup table)
 
@@ -144,8 +113,6 @@ The following demos were removed because they require custom GObject subclasses 
 
 ## Summary
 - Total demos: 77 (10 removed - require GObject subclassing)
-- Not started: 0
-- Reviewed: 52
-- Fully matched: 25
-- Critical issues: 4
-- Major issues: 37
+- Remaining to address: 49
+- Major issues: 30
+- Minor issues: 19

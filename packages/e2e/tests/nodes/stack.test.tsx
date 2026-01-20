@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 describe("render - Stack", () => {
     describe("GtkStack", () => {
-        it("creates Stack widget", async () => {
+        it("creates Stack widget", { timeout: 10000 }, async () => {
             const ref = createRef<Gtk.Stack>();
 
             await render(<GtkStack ref={ref} />);

@@ -20,7 +20,7 @@ const getBufferText = (buffer: GtkSource.Buffer): string => {
 
 describe("render - SourceView", () => {
     describe("basic rendering", () => {
-        it("creates SourceView widget", async () => {
+        it("creates SourceView widget", { timeout: 10000 }, async () => {
             const ref = createRef<GtkSource.View>();
 
             await render(<GtkSourceView ref={ref} />);

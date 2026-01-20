@@ -50,7 +50,8 @@ mod numeric;
 mod ref_type;
 mod string;
 
-pub use array::{ArrayKind, ArrayType};
+pub use array::ArrayKind;
+pub use array::ArrayType;
 pub use boxed::{BoxedType, StructType};
 pub use callback::{CallbackKind, CallbackType};
 pub use fundamental::FundamentalType;
@@ -269,6 +270,23 @@ impl Type {
                 Ok(value::Value::Object(
                     crate::managed::NativeValue::Fundamental(fundamental).into(),
                 ))
+            }
+            Type::Array(array_type) if array_type.kind == ArrayKind::GPtrArray => {
+                if ptr.is_null() {
+                    return Ok(value::Value::Array(vec![]));
+                }
+                let ptr_array = ptr as *mut glib::ffi::GPtrArray;
+                let len = unsafe { (*ptr_array).len as usize };
+                let pdata = unsafe { (*ptr_array).pdata };
+                let mut values = Vec::with_capacity(len);
+                for i in 0..len {
+                    let item_ptr = unsafe { *pdata.add(i) };
+                    let item_value = array_type
+                        .item_type
+                        .ptr_to_value(item_ptr, "GPtrArray item")?;
+                    values.push(item_value);
+                }
+                Ok(value::Value::Array(values))
             }
             _ => bail!("Unsupported {} type: {:?}", context, self),
         }

@@ -54,6 +54,7 @@ pub enum HashTableStorage {
     Booleans,
     Floats,
     NativeHandles,
+    PtrArrays,
 }
 
 impl FfiStorage {

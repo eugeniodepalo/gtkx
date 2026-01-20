@@ -8,15 +8,23 @@ use neon::prelude::*;
 use super::Ownership;
 use crate::ffi::{FfiStorage, FfiStorageKind, HashTableData, HashTableStorage};
 use crate::types::Type;
+use crate::types::array::ArrayKind;
 use crate::{ffi, value};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum HashTableEntryEncoder {
     String,
     Integer,
     Boolean,
     Float,
     NativeHandle,
+    PtrArray(Box<Type>),
+}
+
+impl PartialEq for HashTableEntryEncoder {
+    fn eq(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
 }
 
 impl HashTableEntryEncoder {
@@ -29,6 +37,9 @@ impl HashTableEntryEncoder {
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                 Some(Self::NativeHandle)
             }
+            Type::Array(array_type) if array_type.kind == ArrayKind::GPtrArray => {
+                Some(Self::PtrArray(array_type.item_type.clone()))
+            }
             _ => None,
         }
     }
@@ -37,7 +48,9 @@ impl HashTableEntryEncoder {
         match self {
             Self::String => Some(glib::ffi::g_str_hash),
             Self::Float => Some(glib::ffi::g_double_hash),
-            Self::Integer | Self::Boolean | Self::NativeHandle => Some(glib::ffi::g_direct_hash),
+            Self::Integer | Self::Boolean | Self::NativeHandle | Self::PtrArray(_) => {
+                Some(glib::ffi::g_direct_hash)
+            }
         }
     }
 
@@ -45,7 +58,9 @@ impl HashTableEntryEncoder {
         match self {
             Self::String => Some(glib::ffi::g_str_equal),
             Self::Float => Some(glib::ffi::g_double_equal),
-            Self::Integer | Self::Boolean | Self::NativeHandle => Some(glib::ffi::g_direct_equal),
+            Self::Integer | Self::Boolean | Self::NativeHandle | Self::PtrArray(_) => {
+                Some(glib::ffi::g_direct_equal)
+            }
         }
     }
 
@@ -53,6 +68,7 @@ impl HashTableEntryEncoder {
         match self {
             Self::String | Self::Float => Some(glib::ffi::g_free),
             Self::Integer | Self::Boolean | Self::NativeHandle => None,
+            Self::PtrArray(_) => Some(g_ptr_array_unref_wrapper),
         }
     }
 
@@ -102,7 +118,31 @@ impl HashTableEntryEncoder {
                 }
                 _ => bail!("Expected native object in GHashTable, got {:?}", val),
             },
+            Self::PtrArray(_item_type) => {
+                let items = match val {
+                    value::Value::Array(arr) => arr,
+                    _ => bail!("Expected Array for GPtrArray in GHashTable, got {:?}", val),
+                };
+                let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
+                for item in items {
+                    let item_ptr = match item {
+                        value::Value::Object(handle) => handle.get_ptr().ok_or_else(|| {
+                            anyhow::anyhow!("Native object in GPtrArray has been garbage collected")
+                        })?,
+                        value::Value::Null | value::Value::Undefined => std::ptr::null_mut(),
+                        _ => bail!("Expected Object in GPtrArray, got {:?}", item),
+                    };
+                    unsafe { glib::ffi::g_ptr_array_add(ptr_array, item_ptr) };
+                }
+                Ok((ptr_array as *mut c_void, HashTableStorage::PtrArrays))
+            }
         }
+    }
+}
+
+unsafe extern "C" fn g_ptr_array_unref_wrapper(ptr: *mut c_void) {
+    unsafe {
+        glib::ffi::g_ptr_array_unref(ptr as *mut glib::ffi::GPtrArray);
     }
 }
 

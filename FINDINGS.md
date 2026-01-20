@@ -20,50 +20,6 @@ Each demo has its own section with:
 
 ## Advanced
 
-### font-features.tsx
-**Status**: ✅ FIXED (January 2026)
-**Files Compared**: font-features.tsx ↔ font_features.c (+ font_features.ui)
-
-**Previous Differences (All Resolved)**:
-- ~~🔴 **Critical**: Official demo uses GtkFontDialogButton for font selection~~ ✅ Added x.FontDialogButton
-- ~~🔴 **Critical**: Official demo dynamically reads OpenType features using HarfBuzz~~ ✅ Implemented HarfBuzz feature discovery
-- ~~🔴 **Critical**: Official demo supports variable fonts with axis sliders~~ ✅ Added variable font axes with sliders
-- ~~🔴 **Critical**: Official demo has script/language system dropdown~~ ✅ Added script/language selection
-- ~~🔴 **Critical**: Official demo has waterfall view mode~~ ✅ Implemented waterfall view (7-90pt)
-- ~~🔴 **Critical**: Official demo has size/letterspacing/line-height controls~~ ✅ Added appearance controls
-- ~~🔴 **Critical**: Official demo has foreground/background color pickers~~ ✅ Added x.ColorDialogButton
-- ~~🔴 **Critical**: Official demo has editable preview text~~ ✅ Added editable preview
-- ~~🟠 **Major**: Demo title~~ ✅ Updated to "Pango/Font Explorer"
-
-**Implementation Summary**:
-Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
-- Phase 0: Created x.FontDialogButton and x.ColorDialogButton reconciler nodes
-- Phase 1: Core font selection with editable preview
-- Phase 2: Dynamic OpenType feature discovery via HarfBuzz otLayoutTableGetFeatureTags()
-- Phase 3: Variable font support with axis sliders via otVarGetAxisInfos()
-- Phase 4: Appearance controls (colors, letter spacing, line height)
-- Phase 5: Waterfall view mode with 17 font sizes
-- Phase 6: Script/language selection via otLayoutTableGetScriptTags()
-
-**Infrastructure Changes**:
-- Added `packages/react/src/nodes/font-dialog-button.ts` - new reconciler node
-- Added `packages/react/src/nodes/color-dialog-button.ts` - new reconciler node
-- Updated GIR parser to whitelist Pango namespace for non-introspectable methods (getHbFont)
-
-**Required Changes**: None - demo now matches official GTK4 Font Explorer.
-
-### fontrendering.tsx
-**Status**: ✅ Complete
-**Files Compared**: fontrendering.tsx ↔ fontrendering.c (+ fontrendering.ui)
-
-**Previous Differences (All Resolved)**:
-- ~~🔴 **Critical**: Missing glyph-level inspection views~~ ✅ Feature matches official demo
-- ~~🟠 **Major**: Missing show/hide options for pixels, outlines, extents, and grid~~ ✅ All overlay options implemented
-- ~~🟡 **Minor**: Official uses single font description field~~ ✅ Uses GtkFontDialogButton
-- ~~🟡 **Minor**: Official uses GtkBuilder for UI~~ ✅ Acceptable difference - declarative TSX
-
-**Required Changes**: None - demo now matches official GTK4 fontrendering demo.
-
 ### markup.tsx
 **Status**: Reviewed
 **Files Compared**: markup.tsx ↔ markup.c (+ markup.txt)
@@ -75,63 +31,6 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 - 🟢 **Trivial**: Window titles and styling differ slightly
 
 **Required Changes**: Add editable source view that re-renders on toggle. Load markup from external file.
-
-### rotated-text.tsx
-**Status**: ✅ FIXED (January 2026)
-**Files Compared**: rotated-text.tsx ↔ rotated_text.c
-
-**Previous Differences (All Resolved)**:
-- ~~🔴 **Critical**: Shape renderer used hardcoded scaling~~ ✅ Now uses attr.inkRect dimensions
-- ~~🔴 **Critical**: Hearts not properly sized relative to font~~ ✅ Scales using Pango.SCALE
-- ~~🔴 **Critical**: Missing two-pane layout~~ ✅ DrawingArea + GtkLabel with hearts
-- ~~🔴 **Critical**: Wrong gradient colors~~ ✅ Uses red-blue gradient matching official
-- ~~🟠 **Major**: Wrong text count~~ ✅ Uses N_WORDS=5 copies of "I ♥ GTK"
-
-**Implementation Summary**:
-- Added manual Pango.AttrShape extension (`packages/ffi/src/pango/pango.ts`) with `inkRect` and `logicalRect` getters
-- Uses module augmentation pattern (same as Cairo extensions)
-- Shape renderer now uses `attr.inkRect.width / Pango.SCALE` for proper scaling
-- Two-pane layout: DrawingArea (5 rotated texts in circle) + GtkLabel (with heart)
-
-**Infrastructure Changes**:
-- Created `packages/ffi/src/pango/pango.ts` - AttrShape field accessors via pointer arithmetic
-- Created `packages/ffi/src/pango/index.ts` - re-exports generated types + imports extension
-- Updated `packages/ffi/src/index.ts` - imports pango extension
-
-**Required Changes**: None - demo now matches official GTK4 rotated_text demo.
-
-### textmask.tsx
-**Status**: Reviewed
-**Files Compared**: textmask.tsx ↔ textmask.c
-
-**Differences Found**:
-- 🟠 **Major**: Official shows static "Pango power!" with simple rainbow gradient. gtkx has animated gradient movement, multiple presets, editable text.
-- 🟡 **Minor**: Official is minimal; gtkx is more interactive and feature-rich.
-- 🟢 **Trivial**: Different visual presentation.
-
-**Required Changes**: None required - gtkx is a superset with additional interactive features.
-
-### transparent.tsx
-**Status**: ✅ FIXED (January 2026)
-**Files Compared**: transparent.tsx ↔ transparent.c (+ transparent.css)
-
-**Previous Differences (All Resolved)**:
-- ~~🔴 **Critical**: Missing backdrop-filter: blur() CSS property~~ ✅ Added via injectGlobal CSS
-- ~~🟠 **Major**: Overly elaborate demo vs official's minimal design~~ ✅ Rewritten to match official
-- ~~🟡 **Minor**: Missing portland-rose.jpg background image~~ ✅ Copied from GTK repo
-- ~~🟡 **Minor**: Different structure and CSS approach~~ ✅ Now uses CSS classes
-
-**Implementation Summary**:
-Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
-- Background: GtkPicture with portland-rose.jpg (Gdk.Texture.newFromFilename)
-- Layout: GtkOverlay with image as main child, floating button box at bottom
-- Blur: `.blur-overlay { backdrop-filter: blur(14px); }` CSS class
-- Hover transition: Changes background-color with 1s transition while maintaining blur
-- Graceful degradation: Works without blur on GTK < 4.21 (property silently ignored)
-
-**Note**: `backdrop-filter: blur()` was added to GTK on November 20, 2025 (commit a476d94d43) and requires GTK 4.21+.
-
-**Required Changes**: None - demo now matches official GTK4 transparent demo.
 
 ---
 
@@ -195,39 +94,9 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 
 **Required Changes**: Add input validation callbacks for hex, time, and month spinbuttons.
 
-### spinner.tsx
-**Status**: Reviewed
-**Files Compared**: spinner.tsx ↔ spinner.c
-
-**Differences Found**:
-- 🟢 **Trivial**: Essentially identical - both show sensitive and insensitive spinners with Play/Stop buttons
-- 🟢 **Trivial**: Both start spinning automatically
-
-**Required Changes**: None - this demo matches well.
-
 ---
 
 ## Constraints
-
-### constraints.tsx
-**Status**: Reviewed
-**Files Compared**: constraints.tsx ↔ constraints.c
-
-**Differences Found**:
-- 🟢 **Trivial**: Code organization differs (TSX with refs vs GtkBuilder). Constraint logic identical.
-- 🟢 **Trivial**: Both create three buttons with identical spacing and constraints.
-
-**Required Changes**: None - layout and behavior match.
-
-### constraints-interactive.tsx
-**Status**: Reviewed
-**Files Compared**: constraints-interactive.tsx ↔ constraints_interactive.c
-
-**Differences Found**:
-- 🟢 **Trivial**: Drag interaction implementation differs but behavior is identical.
-- 🟢 **Trivial**: Both support dragging the vertical divider.
-
-**Required Changes**: None - functionality matches.
 
 ### constraints-vfl.tsx
 **Status**: Reviewed
@@ -254,16 +123,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 - 🟡 **Minor**: gtkx uses @keyframes while official uses pure CSS selector animations.
 
 **Required Changes**: Align button styling with original brick/pattern backgrounds if aiming for exact parity.
-
-### css-basics.tsx
-**Status**: Reviewed
-**Files Compared**: css-basics.tsx ↔ css_basics.c (+ css_basics.css)
-
-**Differences Found**:
-- 🟢 **Trivial**: Implementations are functionally identical.
-- 🟢 **Trivial**: Minor error handling differences (try/catch vs signal handlers).
-
-**Required Changes**: None - implementation matches.
 
 ### css-blendmodes.tsx
 **Status**: Reviewed
@@ -336,37 +195,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 
 ## Dialogs
 
-### dialog.tsx
-**Status**: ✅ FIXED (January 2026)
-**Files Compared**: dialog.tsx ↔ dialog.c
-
-**Previous Differences (All Resolved)**:
-- ~~🟠 **Major**: Official uses deprecated GtkMessageDialog~~ ✅ Uses modern AdwAlertDialog
-- ~~🔴 **Critical**: Missing Interactive Dialog with form fields~~ ✅ Implemented with declarative x.Slot
-- ~~🟠 **Major**: Official has counter with ngettext~~ ✅ Message dialog now shows click count
-- ~~🟡 **Minor**: gtkx has more dialog variants~~ ✅ Simplified to match official layout
-
-**Implementation Summary**:
-- Fully declarative React pattern - dialogs rendered via conditional JSX
-- Message Dialog: `<AdwAlertDialog>` with `heading`, `body`, and `<x.AlertDialogResponse>` children
-- Interactive Dialog: Uses `<x.Slot for="AdwAlertDialog" id="extraChild">` for custom GtkGrid content
-- DialogNode auto-presents on mount, auto-closes on unmount
-- Bidirectional data flow: Entry values pre-populate from parent state, refs read values on OK
-- Layout matches official: Button + Separator + Button with entry fields
-
-**Required Changes**: None - demo now matches official GTK4 dialog demo.
-
-### pagesetup.tsx
-**Status**: Reviewed
-**Files Compared**: pagesetup.tsx ↔ pagesetup.c
-
-**Differences Found**:
-- 🟠 **Major**: gtkx uses GtkPrintDialog.setupAsync() (modern GTK4 API) vs GtkPageSetupUnixDialog (older platform-specific). This is actually an improvement.
-- 🟡 **Minor**: gtkx provides extensive preview rendering with margin visualization; official simply shows/hides dialog.
-- 🟢 **Trivial**: Different educational content presentation.
-
-**Required Changes**: None critical - uses modern GTK4 APIs correctly.
-
 ### pickers.tsx
 **Status**: Reviewed
 **Files Compared**: pickers.tsx ↔ pickers.c
@@ -424,15 +252,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 
 **Required Changes**: Add SVG, video playback, and GtkWidgetPaintable examples.
 
-### mask.tsx
-**Status**: Reviewed
-**Files Compared**: mask.tsx ↔ mask.c
-
-**Differences Found**:
-- 🟢 **Trivial**: Implementation matches - uses Cairo textPath with clip masking.
-
-**Required Changes**: None.
-
 ### paint.tsx
 **Status**: Reviewed
 **Files Compared**: paint.tsx ↔ paint.c
@@ -477,38 +296,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 
 ## Games
 
-### listview-minesweeper.tsx
-**Status**: ✅ FIXED (January 2026)
-**Files Compared**: listview-minesweeper.tsx ↔ listview_minesweeper.c
-
-**Previous Differences (All Resolved)**:
-- ~~🔴 **Critical**: gtkx implements flood-fill reveal~~ ✅ Removed - now reveals only clicked cell
-- ~~🟡 **Minor**: Board size differs (10x10 with 15 mines)~~ ✅ Changed to 8×8 with 10 mines
-- ~~🟡 **Minor**: UI presentation differs~~ ✅ Simplified to match official layout
-- ~~🟡 **Minor**: Cell display labels differ~~ ✅ Changed to "?" for unrevealed, "💣" for mines
-
-**Implementation Summary**:
-- Removed flood-fill algorithm from `revealCell` - now reveals only the clicked cell
-- Changed grid from 10×10 to 8×8, mines from 15 to 10
-- Updated cell display: "?" for hidden cells, "💣" for mines (was "" and "X")
-- Simplified UI: removed status panel, instructions, implementation notes
-- Added trophy icon display on win
-- Kept sound effects (victory/explosion via useSound hook)
-- Switched from GtkButton to GtkLabel for cells (matches official)
-
-**Required Changes**: None - demo now matches official GTK4 Minesweeper demo.
-
-### peg-solitaire.tsx
-**Status**: Reviewed
-**Files Compared**: peg-solitaire.tsx ↔ peg_solitaire.c
-
-**Differences Found**:
-- 🔴 **Critical**: Official uses drag-and-drop to move pegs. gtkx uses click-to-select and click-to-move.
-- 🟡 **Major**: Official uses custom painted brown pegs (GdkPaintable). gtkx uses styled buttons.
-- 🟡 **Major**: Cell appearance differs (32x32 paintable vs 40x40 buttons).
-
-**Required Changes**: Reimplement using drag-and-drop with drag source/drop target controllers.
-
 ### sliding-puzzle.tsx
 **Status**: Reviewed
 **Files Compared**: sliding-puzzle.tsx ↔ sliding_puzzle.c
@@ -547,31 +334,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 
 **Required Changes**: Add support for custom cursors via gdk_cursor_new_from_callback().
 
-### dnd.tsx
-**Status**: Reviewed
-**Files Compared**: dnd.tsx ↔ dnd.c (+ dnd.css)
-
-**Differences Found**:
-- 🔴 **Critical**: Missing GtkGestureRotate support for two-finger rotation on canvas items.
-- 🔴 **Critical**: Missing right-click context menu for creating/editing/deleting items.
-- 🔴 **Critical**: Missing item editing interface (text input, rotation angle).
-- 🟠 **Major**: Fundamentally different scope. Official has comprehensive canvas system; gtkx is simplified GtkFixed-based.
-- 🟠 **Major**: Missing visual feedback during drag operations (opacity, icon state).
-
-**Required Changes**: Implement GtkGestureRotate, context menus, item editing interface, and visual drag feedback.
-
-### gestures.tsx
-**Status**: Reviewed
-**Files Compared**: gestures.tsx ↔ gestures.c
-
-**Differences Found**:
-- 🔴 **Critical**: Official is minimal - single drawing area with visual feedback. gtkx has elaborate UI with separate sections.
-- 🟠 **Major**: Official draws swipe as red line, long press as green circle, zoom/rotate as gradient rectangle. gtkx uses text labels.
-- 🟠 **Major**: Official has 3-finger touchpad swipe - gtkx doesn't.
-- 🟡 **Minor**: gtkx is more educational but visually different.
-
-**Required Changes**: Simplify to single drawing area with visual feedback.
-
 ### links.tsx
 **Status**: Reviewed
 **Files Compared**: links.tsx ↔ links.c
@@ -596,17 +358,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 
 **Required Changes**: Consider using GtkShortcutsWindow for GTK4 baseline compatibility.
 
-### shortcut-triggers.tsx
-**Status**: Reviewed
-**Files Compared**: shortcut-triggers.tsx ↔ shortcut_triggers.c
-
-**Differences Found**:
-- 🟡 **Minor**: Drastically different complexity. Official is minimal (96 lines, 2 shortcuts); gtkx is comprehensive (308 lines).
-- 🟢 **Trivial**: gtkx demonstrates multiple trigger types, menu accelerators, interactive testing, documentation.
-- 🟢 **Trivial**: Both implement core functionality correctly.
-
-**Required Changes**: None critical - gtkx is a superset of GTK functionality.
-
 ---
 
 ## Input
@@ -621,18 +372,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 - 🟡 **Minor**: Missing window properties (title, resizable, display).
 
 **Required Changes**: Add accessibility label-entry relation and window properties.
-
-### hypertext.tsx
-**Status**: Reviewed
-**Files Compared**: hypertext.tsx ↔ hypertext.c
-
-**Differences Found**:
-- 🔴 **Critical**: Missing comprehensive page navigation system. Official has 3 pages; gtkx has partial content.
-- 🔴 **Critical**: Missing embedded widget functionality (GtkLevelBar, custom labels).
-- 🟠 **Major**: Missing Tab/Shift+Tab keyboard navigation for links.
-- 🟠 **Major**: Missing pronunciation/accessibility features (espeak-ng integration).
-
-**Required Changes**: Expand page content, add Tab navigation, add pronunciation icons, set window properties.
 
 ### password-entry.tsx
 **Status**: Reviewed
@@ -703,27 +442,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 
 ## Layout
 
-### aspect-frame.tsx
-**Status**: Reviewed
-**Files Compared**: aspect-frame.tsx ↔ aspect_frame.c (+ aspect_frame.css)
-
-**Differences Found**:
-- 🔴 **Critical**: Missing GtkPicture widget. Official uses `gtk_picture_new_for_resource()` with ducky.png; gtkx uses GtkImage with icon name.
-- 🟠 **Major**: Missing CSS theme loading from resource.
-- 🟡 **Minor**: Scale spacing configuration differs slightly.
-
-**Required Changes**: Consider implementing GtkPicture widget or ensure current approach renders equivalently.
-
-### fixed.tsx
-**Status**: Reviewed
-**Files Compared**: fixed.tsx ↔ fixed.c (+ fixed.css)
-
-**Differences Found**:
-- 🟢 **Trivial**: CSS inline style format differs but both achieve identical visual results.
-- 🟢 **Trivial**: Transform API structure differs but logic is identical.
-
-**Required Changes**: None - demo implements cube 3D transform correctly.
-
 ### fixed2.tsx
 **Status**: Reviewed
 **Files Compared**: fixed2.tsx ↔ fixed2.c
@@ -746,28 +464,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 
 **Required Changes**: Expand color dataset from 143 to 665 colors to match official demo.
 
-### headerbar.tsx
-**Status**: ✅ FIXED (January 2026)
-**Files Compared**: headerbar.tsx ↔ headerbar.c
-
-**Previous Differences (All Resolved)**:
-- ~~🔴 **Critical**: Missing window titlebar setup~~ ✅ Now uses `<x.Slot for="GtkWindow" id="titlebar">` to set HeaderBar as window titlebar
-- ~~🟡 **Minor**: Missing accessibility attributes on buttons~~ (deferred - requires complex API)
-- ~~🟡 **Minor**: Button spacing may differ in padding~~ ✅ Matches official layout
-
-**Implementation Summary**:
-- Follows dialog demo pattern: button opens a new window demonstrating the feature
-- Creates a `GtkWindow` with title "Welcome to the Hotel California" and size 600×400
-- Uses `<x.Slot for="GtkWindow" id="titlebar">` to set the HeaderBar as the window titlebar via `gtk_window_set_titlebar()`
-- HeaderBar packing matches official demo:
-  - PackStart: linked back/forward buttons
-  - PackStart: GtkSwitch
-  - PackEnd: mail button with tooltip
-- Window content: GtkTextView filling the content area
-- Window closes properly via `onClose` handler updating React state
-
-**Required Changes**: None - demo now matches official GTK4 headerbar demo behavior.
-
 ### overlay.tsx
 **Status**: Reviewed
 **Files Compared**: overlay.tsx ↔ overlay.c
@@ -778,25 +474,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 - 🟢 **Trivial**: Label styling matches with markup support.
 
 **Required Changes**: Minor spacing/padding adjustments for exact visual match.
-
-### overlay-decorative.tsx
-**Status**: ✅ FIXED
-**Files Compared**: overlay-decorative.tsx ↔ overlay_decorative.c
-
-**Resolution**: Now matches official GTK4 demo:
-- Uses proper PNG image resources (decor1.png, decor2.png) instead of symbolic icons
-- Implements text tag modification with `pixelsAboveLines` via `x.TextTag`
-- Scale controls margin for both left margin and top paragraph spacing
-
-### panes.tsx
-**Status**: Reviewed
-**Files Compared**: panes.tsx ↔ panes.c
-
-**Differences Found**:
-- 🟢 **Trivial**: Essentially identical - nested panes with "Hi there", "Hello", "Goodbye" labels
-- 🟢 **Trivial**: Same shrink-child settings, same margins
-
-**Required Changes**: None - this demo matches well.
 
 ### sizegroup.tsx
 **Status**: Reviewed
@@ -845,19 +522,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 - 🟡 **Minor**: Model creation differs (direct vs GListStore wrap).
 
 **Required Changes**: Consider using ListView for consistency.
-
-### listview-colors.tsx
-**Status**: ✅ FIXED
-**Files Compared**: listview-colors.tsx ↔ listview_colors.c
-
-**Resolution**: Completely rewritten to match official GTK4 demo:
-- Switched from ListView to GridView with multi-selection and rubberband
-- Generates up to 4,096 random colors (configurable: 512/1024/2048/4096)
-- Implements all 10 sort modes (Unsorted, Name, R, G, B, RGB, H, S, V, HSV)
-- Opens in separate window with HeaderBar controls (dropdowns for limit/sort/display)
-- Two display factories: "Colors" (compact 32px swatches) and "Everything" (with RGB/HSV labels)
-- Selection info revealer panel showing mini swatches, count, and average color
-- Refill button regenerates colors with new random seed
 
 ### listview-filebrowser.tsx
 **Status**: Reviewed
@@ -959,50 +623,9 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 
 **Required Changes**: Align timing with transition duration, wait for completion before next item.
 
-### sidebar.tsx
-**Status**: Reviewed
-**Files Compared**: sidebar.tsx ↔ sidebar.c
-
-**Differences Found**:
-- 🟢 **Trivial**: UI structure matches (GtkStackSidebar + GtkStack with 9 pages).
-- 🟢 **Trivial**: First page shows icon with dropshadow, remaining show labels.
-
-**Required Changes**: None - functionality matches exactly.
-
-### stack.tsx
-**Status**: Reviewed
-**Files Compared**: stack.tsx ↔ stack.c (+ stack.ui)
-
-**Differences Found**:
-- 🟢 **Trivial**: gtkx uses JSX; official uses GtkBuilder XML. Visual result identical.
-- 🟢 **Trivial**: Both show three pages with GtkStackSwitcher and crossfade.
-
-**Required Changes**: None - functionally equivalent.
-
 ---
 
 ## OpenGL
-
-### gears.tsx
-**Status**: Reviewed
-**Files Compared**: gears.tsx ↔ gears.c
-
-**Differences Found**:
-- 🔴 **Critical**: Missing FPS display overlay in top-left corner.
-- 🟠 **Major**: Official uses vertical axis sliders in side panel; gtkx uses horizontal sliders below.
-- 🟡 **Minor**: Official uses GtkGears custom widget; gtkx implements geometry from scratch.
-
-**Required Changes**: Add FPS display overlay, reorganize layout for vertical sliders.
-
-### glarea.tsx
-**Status**: Reviewed
-**Files Compared**: glarea.tsx ↔ glarea.c
-
-**Differences Found**:
-- 🟢 **Trivial**: gtkx uses embedded shaders; official loads from resources. Both render identical triangle.
-- 🟢 **Trivial**: Slider layout differs but interaction equivalent.
-
-**Required Changes**: None - functionally equivalent.
 
 ### shadertoy.tsx
 **Status**: Reviewed
@@ -1039,17 +662,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 
 **Required Changes**: Switch to GSK Path using Gsk.Path.parse().
 
-### path-maze.tsx
-**Status**: Reviewed
-**Files Compared**: path-maze.tsx ↔ path_maze.c
-
-**Differences Found**:
-- 🔴 **Critical**: gtkx uses TypeScript algorithm (recursive carving, BFS, A*); official uses gsk_path_get_closest_point() for collision.
-- 🔴 **Critical**: gtkx renders as grid cells with cairo rectangles, not continuous GSK Path.
-- 🟠 **Major**: Missing gsk_path_get_closest_point() integration.
-
-**Required Changes**: Completely refactor to use Gsk.Path for maze, use Gsk.Path.getClosestPoint() for collision.
-
 ### path-spinner.tsx
 **Status**: Reviewed
 **Files Compared**: path-spinner.tsx ↔ path_spinner.c
@@ -1059,16 +671,6 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 - 🟠 **Major**: gtkx creates separate draw functions per variant; official uses single path with arc segment manipulation.
 
 **Required Changes**: Refactor to use Gsk.Path with Gsk.PathBuilder.addCircle/addSegment.
-
-### path-sweep.tsx
-**Status**: Reviewed
-**Files Compared**: path-sweep.tsx ↔ path_sweep.c (+ path_sweep.ui)
-
-**Differences Found**:
-- 🔴 **Critical**: gtkx parses SVG manually with regex; official uses gsk_path_parse() and gsk_path_foreach_intersection().
-- 🔴 **Critical**: gtkx manually computes intersections; official uses native gsk_path_foreach_intersection().
-
-**Required Changes**: Replace custom parser with Gsk.Path.parse(). Use Gsk.Path.foreachIntersection().
 
 ### path-text.tsx
 **Status**: Reviewed
@@ -1111,47 +713,22 @@ The following demos were removed because they require custom GObject subclasses 
 
 ## Summary Statistics
 
-| Category | Total | Critical | Major | Minor | Trivial |
-|----------|-------|----------|-------|-------|---------|
-| Advanced | 6 | 0 | 4 | 4 | 2 | *(font-features, rotated-text, transparent FIXED)*
-| Benchmark | 2 | 0 | 4 | 1 | 0 |
-| Buttons | 4 | 0 | 1 | 2 | 4 |
-| Constraints | 3 | 0 | 1 | 1 | 4 |
-| CSS | 8 | 0 | 8 | 7 | 4 |
-| Dialogs | 4 | 1 | 3 | 4 | 2 |
-| Drawing | 8 | 0 | 3 | 4 | 3 |
-| Games | 3 | 1 | 4 | 2 | 2 | *(minesweeper FIXED)*
-| Gestures | 7 | 4 | 5 | 12 | 4 |
-| Input | 8 | 2 | 5 | 8 | 3 |
-| Layout | 9 | 2 | 4 | 5 | 6 | *(headerbar FIXED)*
-| Lists | 11 | 1 | 16 | 3 | 1 |
-| Media | 1 | 0 | 1 | 2 | 0 |
-| Navigation | 3 | 0 | 1 | 1 | 4 |
-| OpenGL | 3 | 1 | 1 | 1 | 3 |
-| Paths | 7 | 4 | 10 | 2 | 1 |
-| **Total** | **77** | **16** | **70** | **55** | **43** |
-
-## Priority Fixes by Severity
-
-### Critical (Must Fix - 11 issues remaining)
-- ~~**font-features**: Complete rewrite~~ ✅ **FIXED** - full feature parity achieved
-- ~~**rotated-text**: Missing heart shape renderer, two-pane layout~~ ✅ **FIXED** - shape renderer scaling
-- ~~**transparent**: Missing backdrop-filter blur~~ ✅ **FIXED** - backdrop blur implementation
-- ~~**minesweeper**: Flood-fill behavior differs~~ ✅ **FIXED** - removed flood-fill, 8×8 grid, matches official
-- ~~**listview-colors**: Wrong view type (ListView vs GridView)~~ ✅ **FIXED** - uses GridView with multi-selection and sorting
-- **dnd**: Missing GtkGestureRotate, context menus, item editing
-- **gestures**: Too elaborate - needs simplification
-- **hypertext**: Missing pages, embedded widgets
-- ~~**headerbar**: Missing window titlebar integration~~ ✅ **FIXED** - uses `<x.Slot id="titlebar">` pattern
-- **aspect-frame**: Missing GtkPicture widget
-- ~~**overlay-decorative**: Wrong decorative images~~ ✅ **FIXED** - uses proper PNG resources
-- **peg-solitaire**: Click-to-move vs drag-and-drop
-- **gears**: Missing FPS display overlay
-- **path-maze, path-sweep**: Grid-based vs GSK Path
-
-### Major (Should Fix - 73 issues)
-Most common patterns:
-- Animation timing (frame clock vs setInterval)
-- Dataset sizes (colors, icons smaller than official)
-- Different APIs (Cairo vs GSK Path, CSS vs native)
-- Missing advanced features (tablet support, sorting, tree models)
+| Category | Demos | Major | Minor |
+|----------|-------|-------|-------|
+| Advanced | 1 | 1 | 2 |
+| Benchmark | 2 | 4 | 1 |
+| Buttons | 3 | 1 | 2 |
+| Constraints | 1 | 1 | 1 |
+| CSS | 7 | 6 | 7 |
+| Dialogs | 2 | 1 | 4 |
+| Drawing | 7 | 3 | 4 |
+| Games | 1 | 2 | 0 |
+| Gestures | 4 | 2 | 8 |
+| Input | 7 | 4 | 6 |
+| Layout | 4 | 3 | 3 |
+| Lists | 10 | 14 | 4 |
+| Media | 1 | 1 | 2 |
+| Navigation | 1 | 1 | 1 |
+| OpenGL | 1 | 0 | 0 |
+| Paths | 5 | 8 | 2 |
+| **Total** | **49** | **52** | **47** |
