@@ -86,7 +86,7 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [✓] fixed.tsx ↔ fixed.c (matches well)
 - [x] fixed2.tsx ↔ fixed2.c (🟠 Major - timing, window size)
 - [x] flowbox.tsx ↔ flowbox.c (🟠 Major - dataset size)
-- [x] headerbar.tsx ↔ headerbar.c (🔴 Critical - titlebar integration)
+- [✓] headerbar.tsx ↔ headerbar.c (FIXED - proper titlebar integration)
 - [x] overlay.tsx ↔ overlay.c (🟡 Minor - spacing)
 - [x] overlay-decorative.tsx ↔ overlay_decorative.c (🔴 Critical - wrong images)
 - [✓] panes.tsx ↔ panes.c (matches well)
@@ -145,7 +145,7 @@ The following demos were removed because they require custom GObject subclasses 
 ## Summary
 - Total demos: 77 (10 removed - require GObject subclassing)
 - Not started: 0
-- Reviewed: 55
-- Fully matched: 22
-- Critical issues: 7
+- Reviewed: 54
+- Fully matched: 23
+- Critical issues: 6
 - Major issues: 37
