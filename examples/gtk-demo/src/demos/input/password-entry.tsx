@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkPasswordEntry } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkPasswordEntry, x } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./password-entry.tsx?raw";
@@ -9,7 +9,6 @@ const PasswordEntryDemo = () => {
     const [confirm, setConfirm] = useState("");
 
     const passwordsMatch = password.length > 0 && password === confirm;
-    const showMismatch = confirm.length > 0 && password !== confirm;
 
     const handlePasswordChanged = useCallback((entry: Gtk.PasswordEntry) => {
         setPassword(entry.getText());
@@ -19,45 +18,42 @@ const PasswordEntryDemo = () => {
         setConfirm(entry.getText());
     }, []);
 
-    const handleDone = useCallback(() => {
-        console.log("Password accepted!");
-    }, []);
-
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={6}
-            marginStart={18}
-            marginEnd={18}
-            marginTop={18}
-            marginBottom={18}
-        >
-            <GtkLabel label="Enter a new password:" halign={Gtk.Align.START} />
-            <GtkPasswordEntry
-                showPeekIcon
-                placeholderText="Password"
-                activatesDefault
-                onChanged={handlePasswordChanged}
-            />
-            <GtkPasswordEntry
-                showPeekIcon
-                placeholderText="Confirm"
-                activatesDefault
-                cssClasses={showMismatch ? ["error"] : []}
-                onChanged={handleConfirmChanged}
-            />
-            {showMismatch && (
-                <GtkLabel label="Passwords do not match" cssClasses={["error"]} halign={Gtk.Align.START} />
-            )}
-            <GtkButton
-                label="Done"
-                cssClasses={["suggested-action"]}
-                sensitive={passwordsMatch}
-                halign={Gtk.Align.END}
-                marginTop={12}
-                onClicked={handleDone}
-            />
-        </GtkBox>
+        <>
+            <x.Slot for="GtkWindow" id="titlebar">
+                <GtkHeaderBar showTitleButtons={false}>
+                    <x.PackEnd>
+                        <GtkButton
+                            label="_Done"
+                            useUnderline
+                            cssClasses={["suggested-action"]}
+                            sensitive={passwordsMatch}
+                        />
+                    </x.PackEnd>
+                </GtkHeaderBar>
+            </x.Slot>
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={6}
+                marginStart={18}
+                marginEnd={18}
+                marginTop={18}
+                marginBottom={18}
+            >
+                <GtkPasswordEntry
+                    showPeekIcon
+                    placeholderText="Password"
+                    activatesDefault
+                    onChanged={handlePasswordChanged}
+                />
+                <GtkPasswordEntry
+                    showPeekIcon
+                    placeholderText="Confirm"
+                    activatesDefault
+                    onChanged={handleConfirmChanged}
+                />
+            </GtkBox>
+        </>
     );
 };
 

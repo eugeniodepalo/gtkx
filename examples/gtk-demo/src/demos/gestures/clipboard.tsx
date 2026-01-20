@@ -1,26 +1,35 @@
-import { css } from "@gtkx/css";
+import { getNativeObject } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
+import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
     GtkButton,
     GtkColorDialogButton,
+    GtkDropDown,
     GtkEntry,
-    GtkFrame,
     GtkImage,
     GtkLabel,
-    GtkPicture,
+    GtkSeparator,
+    GtkStack,
+    GtkToggleButton,
+    useApplication,
+    x,
 } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 
-const previewStyle = css`
-    background-color: alpha(@window_fg_color, 0.05);
-    border-radius: 8px;
-    padding: 12px;
-`;
+type SourceType = "Text" | "Color" | "Image" | "File";
+type PastedContentType = "" | "Text" | "Color" | "File";
+
+interface PastedContent {
+    type: PastedContentType;
+    text?: string;
+    color?: Gdk.RGBA;
+    filePath?: string;
+}
 
 let gdkRgbaTypeCache: number | null = null;
 const getGdkRgbaType = () => {
@@ -30,123 +39,159 @@ const getGdkRgbaType = () => {
     return gdkRgbaTypeCache;
 };
 
+let gFileTypeCache: number | null = null;
+const getGFileType = () => {
+    if (gFileTypeCache === null) {
+        gFileTypeCache = GObject.typeFromName("GFile");
+    }
+    return gFileTypeCache;
+};
+
+const SOURCE_TYPES: SourceType[] = ["Text", "Color", "Image", "File"];
+
 const ClipboardDemo = () => {
-    const [textToCopy, setTextToCopy] = useState("Hello from clipboard!");
-    const [pastedText, setPastedText] = useState<string | null>(null);
-    const [copyStatus, setCopyStatus] = useState<string | null>(null);
-    const [clipboardHasText, setClipboardHasText] = useState(false);
-    const [clipboardHasImage, setClipboardHasImage] = useState(false);
-    const [clipboardHasColor, setClipboardHasColor] = useState(false);
-    const [pastedTexture, setPastedTexture] = useState<Gdk.Texture | null>(null);
-    const [selectedColor, setSelectedColor] = useState<Gdk.RGBA>(
-        new Gdk.RGBA({ red: 0.2, green: 0.6, blue: 0.9, alpha: 1.0 }),
+    const app = useApplication();
+    const [sourceType, setSourceType] = useState<SourceType>("Text");
+    const [sourceText, setSourceText] = useState("Copy this!");
+    const [sourceColor, setSourceColor] = useState<Gdk.RGBA>(
+        new Gdk.RGBA({ red: 0.5, green: 0.0, blue: 0.5, alpha: 1.0 }),
     );
-    const [pastedColor, setPastedColor] = useState<Gdk.RGBA | null>(null);
+    const [selectedImage, setSelectedImage] = useState(0);
+    const [sourceFile, setSourceFile] = useState<Gio.File | null>(null);
+    const [pastedContent, setPastedContent] = useState<PastedContent>({ type: "" });
+    const [canPaste, setCanPaste] = useState(false);
+    const [canCopy, setCanCopy] = useState(true);
 
     const getClipboard = useCallback(() => {
         const display = Gdk.Display.getDefault();
         return display?.getClipboard() ?? null;
     }, []);
 
-    const checkClipboardContents = useCallback(() => {
+    const updatePasteButtonSensitivity = useCallback(() => {
         const clipboard = getClipboard();
-        if (!clipboard) return;
+        if (!clipboard) {
+            setCanPaste(false);
+            return;
+        }
 
         const formats = clipboard.getFormats();
-        setClipboardHasText(formats.containGtype(GObject.Type.STRING));
-        setClipboardHasImage(formats.containMimeType("image/png") || formats.containMimeType("image/jpeg"));
-        setClipboardHasColor(formats.containGtype(getGdkRgbaType()));
+        const canPasteContent =
+            formats.containGtype(GObject.Type.STRING) ||
+            formats.containGtype(getGdkRgbaType()) ||
+            formats.containGtype(getGFileType());
+        setCanPaste(canPasteContent);
     }, [getClipboard]);
 
     useEffect(() => {
         const clipboard = getClipboard();
         if (!clipboard) return;
 
-        checkClipboardContents();
+        updatePasteButtonSensitivity();
         clipboard.connect("changed", () => {
-            checkClipboardContents();
+            updatePasteButtonSensitivity();
         });
-    }, [getClipboard, checkClipboardContents]);
+    }, [getClipboard, updatePasteButtonSensitivity]);
 
-    const handleCopyText = useCallback(() => {
-        const clipboard = getClipboard();
-        if (!clipboard) return;
-
-        const value = GObject.Value.newFromString(textToCopy);
-        clipboard.setValue(value);
-        setCopyStatus("Text copied!");
-        setTimeout(() => setCopyStatus(null), 2000);
-    }, [textToCopy, getClipboard]);
-
-    const handlePasteText = useCallback(async () => {
-        const clipboard = getClipboard();
-        if (!clipboard) return;
-
-        try {
-            const text = await clipboard.readTextAsync();
-            setPastedText(text);
-        } catch {
-            setPastedText("[Failed to read clipboard]");
+    useEffect(() => {
+        if (sourceType === "Text") {
+            setCanCopy(sourceText.length > 0);
+        } else if (sourceType === "File") {
+            setCanCopy(sourceFile !== null);
+        } else {
+            setCanCopy(true);
         }
-    }, [getClipboard]);
+    }, [sourceType, sourceText, sourceFile]);
 
-    const handlePasteImage = useCallback(async () => {
+    const handleCopy = useCallback(() => {
         const clipboard = getClipboard();
         if (!clipboard) return;
 
-        try {
-            const texture = await clipboard.readTextureAsync();
-            setPastedTexture(texture);
-        } catch {
-            setPastedTexture(null);
-        }
-    }, [getClipboard]);
-
-    const handleCopyColor = useCallback(() => {
-        const clipboard = getClipboard();
-        if (!clipboard) return;
-
-        const value = GObject.Value.newFromBoxed(selectedColor);
-        clipboard.setValue(value);
-        setCopyStatus(`Color copied: ${selectedColor.toString()}`);
-        setTimeout(() => setCopyStatus(null), 2000);
-    }, [selectedColor, getClipboard]);
-
-    const handlePasteColor = useCallback(async () => {
-        const clipboard = getClipboard();
-        if (!clipboard) return;
-
-        try {
-            const value = await clipboard.readValueAsync(getGdkRgbaType(), 0);
-            const rgba = value.getBoxed(Gdk.RGBA);
-            if (rgba !== null) {
-                setPastedColor(
-                    new Gdk.RGBA({
-                        red: rgba.getRed(),
-                        green: rgba.getGreen(),
-                        blue: rgba.getBlue(),
-                        alpha: rgba.getAlpha(),
-                    }),
+        if (sourceType === "Text") {
+            const value = GObject.Value.newFromString(sourceText);
+            clipboard.setValue(value);
+        } else if (sourceType === "Color") {
+            const value = GObject.Value.newFromBoxed(sourceColor);
+            clipboard.setValue(value);
+        } else if (sourceType === "Image") {
+            const iconNames = ["weather-clear-symbolic", "media-floppy-symbolic", "applications-games-symbolic"];
+            const display = Gdk.Display.getDefault();
+            if (display) {
+                const iconTheme = Gtk.IconTheme.getForDisplay(display);
+                const paintable = iconTheme.lookupIcon(
+                    iconNames[selectedImage] ?? "weather-clear-symbolic",
+                    64,
+                    1,
+                    Gtk.TextDirection.NONE,
+                    0,
                 );
+                if (paintable) {
+                    const value = GObject.Value.newFromObject(paintable);
+                    clipboard.setValue(value);
+                }
             }
-        } catch {
-            setPastedColor(null);
+        } else if (sourceType === "File" && sourceFile) {
+            const fileAsGObject = getNativeObject(sourceFile.handle, GObject.GObject);
+            const value = GObject.Value.newFromObject(fileAsGObject);
+            clipboard.setValue(value);
         }
-    }, [getClipboard]);
+    }, [sourceType, sourceText, sourceColor, selectedImage, sourceFile, getClipboard]);
 
-    const handleClearClipboard = useCallback(() => {
+    const handlePaste = useCallback(async () => {
         const clipboard = getClipboard();
         if (!clipboard) return;
 
-        clipboard.setContent(null);
-        setCopyStatus("Clipboard cleared!");
-        setTimeout(() => setCopyStatus(null), 2000);
+        const formats = clipboard.getFormats();
+
+        try {
+            if (formats.containGtype(getGdkRgbaType())) {
+                const value = await clipboard.readValueAsync(getGdkRgbaType(), 0);
+                const rgba = value.getBoxed(Gdk.RGBA);
+                if (rgba) {
+                    setPastedContent({
+                        type: "Color",
+                        color: new Gdk.RGBA({
+                            red: rgba.getRed(),
+                            green: rgba.getGreen(),
+                            blue: rgba.getBlue(),
+                            alpha: rgba.getAlpha(),
+                        }),
+                    });
+                    return;
+                }
+            }
+
+            if (formats.containGtype(getGFileType())) {
+                const value = await clipboard.readValueAsync(getGFileType(), 0);
+                const obj = value.getObject();
+                if (obj) {
+                    const file = getNativeObject(obj.handle, Gio.File);
+                    setPastedContent({ type: "File", filePath: file.getPath() ?? file.getUri() });
+                    return;
+                }
+            }
+
+            if (formats.containGtype(GObject.Type.STRING)) {
+                const text = await clipboard.readTextAsync();
+                if (text !== null) {
+                    setPastedContent({ type: "Text", text });
+                    return;
+                }
+            }
+        } catch {}
     }, [getClipboard]);
+
+    const handleDropDownChanged = useCallback((dropdown: Gtk.DropDown) => {
+        const selected = dropdown.getSelected();
+        const type = SOURCE_TYPES[selected];
+        if (type !== undefined) {
+            setSourceType(type);
+        }
+    }, []);
 
     const handleColorChanged = useCallback((button: Gtk.ColorDialogButton) => {
         const rgba = button.getRgba();
         if (rgba) {
-            setSelectedColor(
+            setSourceColor(
                 new Gdk.RGBA({
                     red: rgba.getRed(),
                     green: rgba.getGreen(),
@@ -157,257 +202,158 @@ const ClipboardDemo = () => {
         }
     }, []);
 
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24} marginStart={20} marginEnd={20} marginTop={20}>
-            <GtkLabel label="Clipboard" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+    const handleFileSelect = useCallback(async () => {
+        const dialog = new Gtk.FileDialog();
+        try {
+            const file = await dialog.openAsync(app.getActiveWindow() ?? undefined);
+            setSourceFile(file);
+        } catch {}
+    }, [app]);
 
+    return (
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={12}
+            marginStart={12}
+            marginEnd={12}
+            marginTop={12}
+            marginBottom={12}
+        >
             <GtkLabel
-                label="GTK provides clipboard access through GdkClipboard. Copy text, colors, or images to the system clipboard and paste them back."
+                label={
+                    '"Copy" will copy the selected data to the clipboard, "Paste" will show the current clipboard contents.'
+                }
                 wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
+                maxWidthChars={40}
             />
 
-            {copyStatus && <GtkLabel label={copyStatus} cssClasses={["success"]} halign={Gtk.Align.START} />}
-
-            <GtkFrame label="Text Clipboard">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
+            <GtkBox spacing={12}>
+                <GtkDropDown
+                    valign={Gtk.Align.CENTER}
+                    onNotify={(self, pspec) => {
+                        if (pspec === "selected") {
+                            handleDropDownChanged(self);
+                        }
+                    }}
                 >
-                    <GtkLabel
-                        label="Copy and paste text programmatically using clipboard.setValue() and clipboard.readTextAsync()."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
+                    {SOURCE_TYPES.map((type) => (
+                        <x.SimpleListItem key={type} id={type} value={type} />
+                    ))}
+                </GtkDropDown>
 
-                    <GtkBox spacing={12}>
+                <GtkStack page={sourceType} vexpand hexpand>
+                    <x.StackPage id="Text">
                         <GtkEntry
-                            text={textToCopy}
-                            onChanged={(entry) => setTextToCopy(entry.getText())}
-                            hexpand
-                            placeholderText="Text to copy..."
+                            text={sourceText}
+                            valign={Gtk.Align.CENTER}
+                            onChanged={(entry) => setSourceText(entry.getText())}
                         />
-                        <GtkButton onClicked={handleCopyText}>
-                            <GtkBox spacing={6}>
-                                <GtkImage iconName="edit-copy-symbolic" />
-                                <GtkLabel label="Copy" />
-                            </GtkBox>
-                        </GtkButton>
-                    </GtkBox>
-
-                    <GtkBox spacing={12}>
-                        <GtkButton onClicked={() => void handlePasteText()} sensitive={clipboardHasText}>
-                            <GtkBox spacing={6}>
-                                <GtkImage iconName="edit-paste-symbolic" />
-                                <GtkLabel label="Paste Text" />
-                            </GtkBox>
-                        </GtkButton>
-                        {pastedText && (
-                            <GtkLabel
-                                label={`Pasted: "${pastedText}"`}
-                                cssClasses={["dim-label"]}
-                                ellipsize={3}
-                                hexpand
-                            />
-                        )}
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Color Clipboard">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Colors can be copied to the clipboard as GdkRGBA values using GObject.Value.newFromBoxed()."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox spacing={12} valign={Gtk.Align.CENTER}>
-                        <GtkLabel label="Select color:" />
+                    </x.StackPage>
+                    <x.StackPage id="Color">
                         <GtkColorDialogButton
                             dialog={new Gtk.ColorDialog()}
-                            rgba={selectedColor}
+                            rgba={sourceColor}
+                            valign={Gtk.Align.CENTER}
                             onNotify={(self, pspec) => {
                                 if (pspec === "rgba") {
                                     handleColorChanged(self as Gtk.ColorDialogButton);
                                 }
                             }}
                         />
-                        <GtkButton onClicked={handleCopyColor}>
-                            <GtkBox spacing={6}>
-                                <GtkImage iconName="edit-copy-symbolic" />
-                                <GtkLabel label="Copy Color" />
-                            </GtkBox>
-                        </GtkButton>
-                    </GtkBox>
-
-                    <GtkBox spacing={12} valign={Gtk.Align.CENTER}>
-                        <GtkButton onClicked={() => void handlePasteColor()} sensitive={clipboardHasColor}>
-                            <GtkBox spacing={6}>
-                                <GtkImage iconName="edit-paste-symbolic" />
-                                <GtkLabel label="Paste Color" />
-                            </GtkBox>
-                        </GtkButton>
-                        {pastedColor && (
-                            <GtkBox spacing={8} valign={Gtk.Align.CENTER}>
-                                <GtkLabel label={`Pasted: ${pastedColor.toString()}`} cssClasses={["dim-label"]} />
-                            </GtkBox>
-                        )}
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Image Clipboard">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Images can be read from the clipboard as GdkTexture. Copy an image from another application and paste it here."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox spacing={12}>
-                        <GtkButton onClicked={() => void handlePasteImage()} sensitive={clipboardHasImage}>
-                            <GtkBox spacing={6}>
-                                <GtkImage iconName="edit-paste-symbolic" />
-                                <GtkLabel label="Paste Image" />
-                            </GtkBox>
-                        </GtkButton>
-                        <GtkLabel
-                            label={clipboardHasImage ? "Image available in clipboard" : "No image in clipboard"}
-                            cssClasses={["dim-label"]}
-                        />
-                    </GtkBox>
-
-                    {pastedTexture && (
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} cssClasses={[previewStyle]}>
-                            <GtkLabel label="Pasted image:" halign={Gtk.Align.START} cssClasses={["heading"]} />
-                            <GtkPicture
-                                paintable={pastedTexture}
-                                contentFit={Gtk.ContentFit.SCALE_DOWN}
-                                widthRequest={200}
-                                heightRequest={150}
-                            />
+                    </x.StackPage>
+                    <x.StackPage id="Image">
+                        <GtkBox valign={Gtk.Align.CENTER} cssClasses={["linked"]}>
+                            <GtkToggleButton
+                                active={selectedImage === 0}
+                                onToggled={(btn) => {
+                                    if (btn.getActive()) setSelectedImage(0);
+                                }}
+                            >
+                                <GtkImage iconName="weather-clear-symbolic" pixelSize={48} />
+                            </GtkToggleButton>
+                            <GtkToggleButton
+                                active={selectedImage === 1}
+                                onToggled={(btn) => {
+                                    if (btn.getActive()) setSelectedImage(1);
+                                }}
+                            >
+                                <GtkImage iconName="media-floppy-symbolic" pixelSize={48} />
+                            </GtkToggleButton>
+                            <GtkToggleButton
+                                active={selectedImage === 2}
+                                onToggled={(btn) => {
+                                    if (btn.getActive()) setSelectedImage(2);
+                                }}
+                            >
+                                <GtkImage iconName="applications-games-symbolic" pixelSize={48} />
+                            </GtkToggleButton>
+                        </GtkBox>
+                    </x.StackPage>
+                    <x.StackPage id="File">
+                        <GtkButton valign={Gtk.Align.CENTER} onClicked={() => void handleFileSelect()}>
                             <GtkLabel
-                                label={`Size: ${pastedTexture.getWidth()}×${pastedTexture.getHeight()}`}
-                                cssClasses={["dim-label", "caption"]}
+                                label={sourceFile ? (sourceFile.getPath() ?? "—") : "—"}
+                                xalign={0}
+                                ellipsize={1}
                             />
-                        </GtkBox>
-                    )}
-                </GtkBox>
-            </GtkFrame>
+                        </GtkButton>
+                    </x.StackPage>
+                </GtkStack>
 
-            <GtkFrame label="Clipboard Status">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="The clipboard emits a 'changed' signal when its contents change. This demo monitors the clipboard and updates the UI accordingly."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
+                <GtkButton
+                    label="_Copy"
+                    useUnderline
+                    valign={Gtk.Align.CENTER}
+                    sensitive={canCopy}
+                    onClicked={handleCopy}
+                />
+            </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox spacing={12}>
-                            <GtkImage
-                                iconName={clipboardHasText ? "emblem-ok-symbolic" : "window-close-symbolic"}
-                                cssClasses={clipboardHasText ? ["success"] : ["dim-label"]}
-                            />
-                            <GtkLabel label="Text content" />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkImage
-                                iconName={clipboardHasColor ? "emblem-ok-symbolic" : "window-close-symbolic"}
-                                cssClasses={clipboardHasColor ? ["success"] : ["dim-label"]}
-                            />
-                            <GtkLabel label="Color content (GdkRGBA)" />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkImage
-                                iconName={clipboardHasImage ? "emblem-ok-symbolic" : "window-close-symbolic"}
-                                cssClasses={clipboardHasImage ? ["success"] : ["dim-label"]}
-                            />
-                            <GtkLabel label="Image content" />
-                        </GtkBox>
-                    </GtkBox>
+            <GtkSeparator />
 
-                    <GtkButton
-                        onClicked={handleClearClipboard}
-                        cssClasses={["destructive-action"]}
-                        halign={Gtk.Align.START}
-                    >
-                        <GtkBox spacing={6}>
-                            <GtkImage iconName="edit-clear-symbolic" />
-                            <GtkLabel label="Clear Clipboard" />
-                        </GtkBox>
-                    </GtkButton>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Built-in Widget Support">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Text widgets have built-in clipboard support. Select text and use standard shortcuts."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <GtkEntry placeholderText="Type here, select text, and use Ctrl+C to copy..." />
-                        <GtkEntry placeholderText="Use Ctrl+V to paste here..." />
-                    </GtkBox>
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="Ctrl+C" widthChars={10} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Copy selected text" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="Ctrl+X" widthChars={10} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Cut selected text" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="Ctrl+V" widthChars={10} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Paste from clipboard" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
+            <GtkBox spacing={12}>
+                <GtkButton
+                    label="_Paste"
+                    useUnderline
+                    valign={Gtk.Align.CENTER}
+                    sensitive={canPaste}
+                    onClicked={() => void handlePaste()}
+                />
+                <GtkLabel label={pastedContent.type} xalign={0} />
+                <GtkStack page={pastedContent.type} halign={Gtk.Align.END} valign={Gtk.Align.CENTER} hexpand>
+                    <x.StackPage id="">
+                        <GtkLabel label="" />
+                    </x.StackPage>
+                    <x.StackPage id="Text">
+                        <GtkLabel
+                            label={pastedContent.text ?? ""}
+                            halign={Gtk.Align.END}
+                            valign={Gtk.Align.CENTER}
+                            xalign={0}
+                            ellipsize={2}
+                        />
+                    </x.StackPage>
+                    <x.StackPage id="Color">
+                        <GtkColorDialogButton
+                            dialog={new Gtk.ColorDialog()}
+                            rgba={pastedContent.color ?? new Gdk.RGBA({ red: 1, green: 1, blue: 1, alpha: 1 })}
+                            halign={Gtk.Align.END}
+                            valign={Gtk.Align.CENTER}
+                            sensitive={false}
+                        />
+                    </x.StackPage>
+                    <x.StackPage id="File">
+                        <GtkLabel
+                            label={pastedContent.filePath ?? ""}
+                            halign={Gtk.Align.END}
+                            valign={Gtk.Align.CENTER}
+                            xalign={0}
+                            hexpand
+                            ellipsize={1}
+                        />
+                    </x.StackPage>
+                </GtkStack>
+            </GtkBox>
         </GtkBox>
     );
 };
@@ -415,20 +361,9 @@ const ClipboardDemo = () => {
 export const clipboardDemo: Demo = {
     id: "clipboard",
     title: "Clipboard",
-    description: "Copy and paste text, colors, and images with GdkClipboard",
-    keywords: [
-        "clipboard",
-        "copy",
-        "paste",
-        "cut",
-        "GdkClipboard",
-        "ContentProvider",
-        "text",
-        "image",
-        "color",
-        "GdkRGBA",
-        "transfer",
-    ],
+    description:
+        "GdkClipboard is used for clipboard handling. This demo shows how to copy and paste text, images, colors or files to and from the clipboard.",
+    keywords: ["clipboard", "copy", "paste", "GdkClipboard", "text", "image", "color", "file", "transfer"],
     component: ClipboardDemo,
     sourceCode,
 };

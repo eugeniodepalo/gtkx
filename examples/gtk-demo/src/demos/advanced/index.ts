@@ -4,13 +4,5 @@ import { fontRenderingDemo } from "./fontrendering.js";
 import { markupDemo } from "./markup.js";
 import { rotatedTextDemo } from "./rotated-text.js";
 import { textmaskDemo } from "./textmask.js";
-import { transparentDemo } from "./transparent.js";
 
-export const advancedDemos: Demo[] = [
-    fontFeaturesDemo,
-    fontRenderingDemo,
-    markupDemo,
-    rotatedTextDemo,
-    textmaskDemo,
-    transparentDemo,
-];
+export const advancedDemos: Demo[] = [fontFeaturesDemo, fontRenderingDemo, markupDemo, rotatedTextDemo, textmaskDemo];

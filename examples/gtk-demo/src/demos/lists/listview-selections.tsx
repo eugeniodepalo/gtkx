@@ -3,14 +3,16 @@ import {
     GtkBox,
     GtkButton,
     GtkDropDown,
+    GtkEntry,
     GtkFrame,
     GtkImage,
     GtkLabel,
+    GtkPopover,
     GtkScrolledWindow,
     GtkSearchEntry,
     x,
 } from "@gtkx/react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
 
@@ -114,6 +116,155 @@ const selectionModes = [
         description: "Select multiple items (Ctrl+click, Shift+click)",
     },
 ];
+
+const words = [
+    "application",
+    "automatic",
+    "beautiful",
+    "button",
+    "calendar",
+    "callback",
+    "checkbox",
+    "colorful",
+    "complete",
+    "configuration",
+    "container",
+    "custom",
+    "default",
+    "dialog",
+    "display",
+    "dropdown",
+    "dynamic",
+    "editable",
+    "element",
+    "entry",
+    "example",
+    "expandable",
+    "filter",
+    "function",
+    "gesture",
+    "graphical",
+    "grid",
+    "handler",
+    "header",
+    "highlight",
+    "horizontal",
+    "icon",
+    "interactive",
+    "interface",
+    "label",
+    "layout",
+    "list",
+    "listbox",
+    "listview",
+    "margin",
+    "menu",
+    "model",
+    "navigation",
+    "notification",
+    "orientation",
+    "overlay",
+    "padding",
+    "pane",
+    "popover",
+    "progress",
+    "property",
+    "reactive",
+    "render",
+    "scrollable",
+    "search",
+    "selection",
+    "separator",
+    "sidebar",
+    "signal",
+    "slider",
+    "spinner",
+    "stack",
+    "suggestion",
+    "switch",
+    "text",
+    "toolbar",
+    "tooltip",
+    "transition",
+    "tree",
+    "user",
+    "vertical",
+    "view",
+    "widget",
+    "window",
+];
+
+const SuggestionEntry = () => {
+    const [text, setText] = useState("");
+    const [showPopover, setShowPopover] = useState(false);
+    const entryRef = useRef<Gtk.Entry | null>(null);
+    const popoverRef = useRef<Gtk.Popover | null>(null);
+
+    const suggestions = useMemo(() => {
+        if (text.length < 1) return [];
+        const lower = text.toLowerCase();
+        return words.filter((w) => w.toLowerCase().includes(lower)).slice(0, 10);
+    }, [text]);
+
+    useEffect(() => {
+        if (entryRef.current && popoverRef.current) {
+            popoverRef.current.setParent(entryRef.current);
+        }
+        return () => {
+            if (popoverRef.current) {
+                popoverRef.current.unparent();
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        setShowPopover(text.length >= 1 && suggestions.length > 0);
+    }, [text, suggestions.length]);
+
+    const handleTextChange = (entry: Gtk.Entry) => {
+        const newText = entry.getText();
+        setText(newText);
+    };
+
+    const handleSelect = (word: string) => {
+        setText(word);
+        setShowPopover(false);
+        entryRef.current?.grabFocus();
+    };
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+            <GtkEntry
+                ref={entryRef}
+                text={text}
+                placeholderText="Type to see suggestions..."
+                onChanged={handleTextChange}
+            />
+            <GtkPopover
+                ref={popoverRef}
+                hasArrow={false}
+                autohide={false}
+                visible={showPopover}
+                position={Gtk.PositionType.BOTTOM}
+            >
+                <GtkScrolledWindow heightRequest={200} widthRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                        {suggestions.map((word) => (
+                            <GtkButton key={word} cssClasses={["flat"]} onClicked={() => handleSelect(word)}>
+                                <GtkLabel label={word} halign={Gtk.Align.START} hexpand />
+                            </GtkButton>
+                        ))}
+                    </GtkBox>
+                </GtkScrolledWindow>
+            </GtkPopover>
+            <GtkLabel
+                label={text ? `Current text: "${text}"` : "Start typing to see suggestions"}
+                cssClasses={["dim-label", "caption"]}
+                halign={Gtk.Align.START}
+            />
+        </GtkBox>
+    );
+};
 
 const ListViewSelectionsDemo = () => {
     const [selectedFruit, setSelectedFruit] = useState("apple");
@@ -284,6 +435,25 @@ const ListViewSelectionsDemo = () => {
                             <GtkLabel label={`Selected: ${selectedIconInfo.name}`} cssClasses={["dim-label"]} />
                         </GtkBox>
                     )}
+                </GtkBox>
+            </GtkFrame>
+
+            <GtkFrame label="Suggestion Entry">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="A suggestion entry provides autocomplete suggestions as you type. Matching words are shown in a dropdown that can be selected."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+                    <SuggestionEntry />
                 </GtkBox>
             </GtkFrame>
 

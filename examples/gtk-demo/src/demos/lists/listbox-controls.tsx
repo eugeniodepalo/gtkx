@@ -1,248 +1,221 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
-    GtkButton,
     GtkCheckButton,
-    GtkFrame,
+    GtkDropDown,
+    GtkEntry,
+    GtkImage,
     GtkLabel,
     GtkListBox,
     GtkListBoxRow,
     GtkScale,
     GtkScrolledWindow,
+    GtkSpinButton,
     GtkSwitch,
+    GtkViewport,
+    x,
 } from "@gtkx/react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox-controls.tsx?raw";
 
-interface SettingItem {
-    id: string;
-    title: string;
-    subtitle: string;
-    type: "switch" | "checkbox" | "slider";
-    value: boolean | number;
-}
-
 const ListBoxControlsDemo = () => {
-    const [settings, setSettings] = useState<SettingItem[]>([
-        {
-            id: "notifications",
-            title: "Enable Notifications",
-            subtitle: "Receive alerts and updates",
-            type: "switch",
-            value: true,
-        },
-        {
-            id: "dark-mode",
-            title: "Dark Mode",
-            subtitle: "Use dark color scheme",
-            type: "switch",
-            value: false,
-        },
-        {
-            id: "auto-save",
-            title: "Auto-save Documents",
-            subtitle: "Automatically save changes",
-            type: "checkbox",
-            value: true,
-        },
-        {
-            id: "spell-check",
-            title: "Spell Check",
-            subtitle: "Check spelling while typing",
-            type: "checkbox",
-            value: true,
-        },
-        {
-            id: "volume",
-            title: "Volume",
-            subtitle: "Adjust system volume",
-            type: "slider",
-            value: 75,
-        },
-        {
-            id: "brightness",
-            title: "Brightness",
-            subtitle: "Adjust screen brightness",
-            type: "slider",
-            value: 50,
-        },
-    ]);
+    const [switchActive, setSwitchActive] = useState(false);
+    const [checkActive, setCheckActive] = useState(true);
+    const [imageOpacity, setImageOpacity] = useState(0);
 
-    const [tasks, setTasks] = useState([
-        { id: 1, text: "Review pull request", completed: false },
-        { id: 2, text: "Update documentation", completed: true },
-        { id: 3, text: "Fix bug #123", completed: false },
-        { id: 4, text: "Write unit tests", completed: false },
-        { id: 5, text: "Deploy to staging", completed: true },
-    ]);
+    const switchRef = useRef<Gtk.Switch | null>(null);
+    const checkRef = useRef<Gtk.CheckButton | null>(null);
+    const imageRef = useRef<Gtk.Image | null>(null);
 
-    const updateSetting = (id: string, value: boolean | number) => {
-        setSettings(settings.map((s) => (s.id === id ? { ...s, value } : s)));
-    };
+    const handleRowActivated = useCallback((_listbox: Gtk.ListBox, row: Gtk.ListBoxRow) => {
+        const sw = switchRef.current;
+        const chk = checkRef.current;
+        const img = imageRef.current;
 
-    const toggleTask = (id: number) => {
-        setTasks(tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
-    };
-
-    const removeTask = (id: number) => {
-        setTasks(tasks.filter((t) => t.id !== id));
-    };
-
-    const completedCount = tasks.filter((t) => t.completed).length;
+        if (sw?.isAncestor(row)) {
+            setSwitchActive((prev) => !prev);
+        } else if (chk?.isAncestor(row)) {
+            setCheckActive((prev) => !prev);
+        } else if (img?.isAncestor(row)) {
+            setImageOpacity((prev) => (prev === 0 ? 1 : 0));
+        }
+    }, []);
 
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={24}
-            marginStart={20}
-            marginEnd={20}
-            marginTop={20}
-            marginBottom={20}
-        >
-            <GtkLabel label="ListBox with Controls" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <GtkLabel
-                label="ListBox rows can contain interactive controls like switches, checkboxes, and sliders. This pattern is common for settings panels and task lists."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
-
-            <GtkFrame label="Settings Panel">
+        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} minContentHeight={200} vexpand>
+            <GtkViewport scrollToFocus>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
+                    marginStart={60}
+                    marginEnd={60}
+                    marginTop={30}
+                    marginBottom={30}
                 >
-                    <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
-                            {settings.map((setting) => (
-                                <GtkListBoxRow key={setting.id} activatable={false}>
-                                    <GtkBox
-                                        spacing={12}
-                                        marginTop={12}
-                                        marginBottom={12}
-                                        marginStart={12}
-                                        marginEnd={12}
-                                    >
-                                        <GtkBox
-                                            orientation={Gtk.Orientation.VERTICAL}
-                                            spacing={4}
-                                            hexpand
-                                            valign={Gtk.Align.CENTER}
-                                        >
-                                            <GtkLabel label={setting.title} halign={Gtk.Align.START} />
-                                            <GtkLabel
-                                                label={setting.subtitle}
-                                                cssClasses={["dim-label", "caption"]}
-                                                halign={Gtk.Align.START}
-                                            />
-                                        </GtkBox>
+                    <GtkLabel label="Group 1" xalign={0} marginBottom={10} cssClasses={["title-2"]} />
 
-                                        {setting.type === "switch" && (
-                                            <GtkSwitch
-                                                active={setting.value as boolean}
-                                                onStateSet={() => {
-                                                    updateSetting(setting.id, !(setting.value as boolean));
-                                                    return true;
-                                                }}
-                                                valign={Gtk.Align.CENTER}
-                                            />
-                                        )}
+                    <GtkListBox
+                        selectionMode={Gtk.SelectionMode.NONE}
+                        cssClasses={["rich-list", "boxed-list"]}
+                        onRowActivated={handleRowActivated}
+                    >
+                        <GtkListBoxRow selectable={false}>
+                            <GtkBox>
+                                <GtkLabel
+                                    label="Switch"
+                                    xalign={0}
+                                    halign={Gtk.Align.START}
+                                    valign={Gtk.Align.CENTER}
+                                    hexpand
+                                />
+                                <GtkSwitch
+                                    ref={switchRef}
+                                    halign={Gtk.Align.END}
+                                    valign={Gtk.Align.CENTER}
+                                    active={switchActive}
+                                    onStateSet={() => {
+                                        setSwitchActive((prev) => !prev);
+                                        return true;
+                                    }}
+                                />
+                            </GtkBox>
+                        </GtkListBoxRow>
 
-                                        {setting.type === "checkbox" && (
-                                            <GtkCheckButton
-                                                active={setting.value as boolean}
-                                                onToggled={() => updateSetting(setting.id, !(setting.value as boolean))}
-                                                valign={Gtk.Align.CENTER}
-                                            />
-                                        )}
+                        <GtkListBoxRow selectable={false}>
+                            <GtkBox>
+                                <GtkLabel
+                                    label="Check"
+                                    xalign={0}
+                                    halign={Gtk.Align.START}
+                                    valign={Gtk.Align.CENTER}
+                                    hexpand
+                                />
+                                <GtkCheckButton
+                                    ref={checkRef}
+                                    halign={Gtk.Align.END}
+                                    valign={Gtk.Align.CENTER}
+                                    marginStart={10}
+                                    marginEnd={10}
+                                    active={checkActive}
+                                    onToggled={() => setCheckActive((prev) => !prev)}
+                                />
+                            </GtkBox>
+                        </GtkListBoxRow>
 
-                                        {setting.type === "slider" && (
-                                            <GtkScale
-                                                widthRequest={150}
-                                                onValueChanged={(value) => updateSetting(setting.id, value)}
-                                                drawValue
-                                                valign={Gtk.Align.CENTER}
-                                            />
-                                        )}
-                                    </GtkBox>
-                                </GtkListBoxRow>
-                            ))}
-                        </GtkListBox>
-                    </GtkScrolledWindow>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Task List">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label={`${completedCount} of ${tasks.length} tasks completed`}
-                        cssClasses={["dim-label"]}
-                        halign={Gtk.Align.START}
-                    />
-
-                    <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
-                        {tasks.map((task) => (
-                            <GtkListBoxRow key={task.id} activatable={false}>
-                                <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={12} marginEnd={12}>
-                                    <GtkCheckButton
-                                        active={task.completed}
-                                        onToggled={() => toggleTask(task.id)}
-                                        valign={Gtk.Align.CENTER}
-                                    />
-                                    <GtkLabel
-                                        label={task.text}
-                                        hexpand
-                                        halign={Gtk.Align.START}
-                                        cssClasses={task.completed ? ["dim-label"] : []}
-                                    />
-                                    <GtkButton
-                                        iconName="edit-delete-symbolic"
-                                        cssClasses={["flat", "circular"]}
-                                        onClicked={() => removeTask(task.id)}
-                                        valign={Gtk.Align.CENTER}
-                                    />
-                                </GtkBox>
-                            </GtkListBoxRow>
-                        ))}
+                        <GtkListBoxRow selectable={false}>
+                            <GtkBox>
+                                <GtkLabel
+                                    label="Click here!"
+                                    xalign={0}
+                                    halign={Gtk.Align.START}
+                                    valign={Gtk.Align.CENTER}
+                                    hexpand
+                                />
+                                <GtkImage
+                                    ref={imageRef}
+                                    iconName="object-select-symbolic"
+                                    halign={Gtk.Align.END}
+                                    valign={Gtk.Align.CENTER}
+                                    marginStart={10}
+                                    marginEnd={10}
+                                    opacity={imageOpacity}
+                                />
+                            </GtkBox>
+                        </GtkListBoxRow>
                     </GtkListBox>
 
-                    {tasks.length === 0 && (
-                        <GtkLabel label="No tasks remaining" cssClasses={["dim-label"]} marginTop={12} />
-                    )}
-                </GtkBox>
-            </GtkFrame>
+                    <GtkLabel label="Group 2" xalign={0} marginTop={30} marginBottom={10} cssClasses={["title-2"]} />
 
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="Key Patterns" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="Use selectionMode=NONE for interactive rows with controls. Set activatable=false on rows that shouldn't respond to clicks. Position controls at the end of rows for consistent layout. Use GtkSwitch for on/off toggles, GtkCheckButton for multiple selections, and GtkScale for value adjustments."
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-            </GtkBox>
-        </GtkBox>
+                    <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
+                        <GtkListBoxRow selectable={false} activatable={false}>
+                            <GtkBox>
+                                <GtkLabel
+                                    label="Scale"
+                                    xalign={0}
+                                    halign={Gtk.Align.START}
+                                    valign={Gtk.Align.CENTER}
+                                    hexpand
+                                />
+                                <GtkScale
+                                    halign={Gtk.Align.END}
+                                    valign={Gtk.Align.CENTER}
+                                    drawValue={false}
+                                    widthRequest={150}
+                                    upper={100}
+                                    value={50}
+                                    stepIncrement={1}
+                                    pageIncrement={10}
+                                />
+                            </GtkBox>
+                        </GtkListBoxRow>
+
+                        <GtkListBoxRow selectable={false} activatable={false}>
+                            <GtkBox>
+                                <GtkLabel
+                                    label="Spinbutton"
+                                    xalign={0}
+                                    halign={Gtk.Align.START}
+                                    valign={Gtk.Align.CENTER}
+                                    hexpand
+                                />
+                                <GtkSpinButton
+                                    halign={Gtk.Align.END}
+                                    valign={Gtk.Align.CENTER}
+                                    upper={100}
+                                    value={50}
+                                    stepIncrement={1}
+                                    pageIncrement={10}
+                                />
+                            </GtkBox>
+                        </GtkListBoxRow>
+
+                        <GtkListBoxRow selectable={false} activatable={false}>
+                            <GtkBox>
+                                <GtkLabel
+                                    label="Dropdown"
+                                    xalign={0}
+                                    halign={Gtk.Align.START}
+                                    valign={Gtk.Align.CENTER}
+                                    hexpand
+                                />
+                                <GtkDropDown halign={Gtk.Align.END} valign={Gtk.Align.CENTER}>
+                                    <x.SimpleListItem id="1" value="Choice 1" />
+                                    <x.SimpleListItem id="2" value="Choice 2" />
+                                    <x.SimpleListItem id="3" value="Choice 3" />
+                                    <x.SimpleListItem id="4" value="Choice 4" />
+                                </GtkDropDown>
+                            </GtkBox>
+                        </GtkListBoxRow>
+
+                        <GtkListBoxRow selectable={false} activatable={false}>
+                            <GtkBox>
+                                <GtkLabel
+                                    label="Entry"
+                                    xalign={0}
+                                    halign={Gtk.Align.START}
+                                    valign={Gtk.Align.CENTER}
+                                    hexpand
+                                />
+                                <GtkEntry
+                                    halign={Gtk.Align.END}
+                                    valign={Gtk.Align.CENTER}
+                                    placeholderText="Type here…"
+                                />
+                            </GtkBox>
+                        </GtkListBoxRow>
+                    </GtkListBox>
+                </GtkBox>
+            </GtkViewport>
+        </GtkScrolledWindow>
     );
 };
 
 export const listboxControlsDemo: Demo = {
     id: "listbox-controls",
     title: "List Box/Controls",
-    description: "List rows with inline switches, checkboxes, and sliders",
-    keywords: ["listbox", "settings", "switch", "checkbox", "controls", "GtkListBox", "GtkSwitch"],
+    description:
+        "GtkListBox is well-suited for creating button strips — lists of controls for use in preference dialogs or settings panels.",
+    keywords: ["listbox", "controls", "switch", "check", "scale", "spinbutton", "dropdown", "entry", "rich-list"],
     component: ListBoxControlsDemo,
     sourceCode,
 };

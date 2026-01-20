@@ -13,7 +13,6 @@ import { listsDemos } from "./lists/index.js";
 import { mediaDemos } from "./media/index.js";
 import { navigationDemos } from "./navigation/index.js";
 import { openglDemos } from "./opengl/index.js";
-import { pathsDemos } from "./paths/index.js";
 import type { Demo } from "./types.js";
 
 const introDemo: Demo = {
@@ -47,5 +46,4 @@ export const demos: Demo[] = [
     ...mediaDemos,
     ...navigationDemos,
     ...openglDemos,
-    ...pathsDemos,
 ];

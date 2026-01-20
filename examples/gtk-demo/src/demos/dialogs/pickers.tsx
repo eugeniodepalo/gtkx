@@ -1,15 +1,14 @@
-import type * as Gdk from "@gtkx/ffi/gdk";
-import * as Gio from "@gtkx/ffi/gio";
+import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
     GtkButton,
     GtkColorDialogButton,
-    GtkEntry,
     GtkFontDialogButton,
-    GtkFrame,
+    GtkGrid,
     GtkLabel,
     useApplication,
+    x,
 } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
@@ -17,349 +16,124 @@ import sourceCode from "./pickers.tsx?raw";
 
 const PickersDemo = () => {
     const app = useApplication();
-    const [selectedColor, setSelectedColor] = useState<string | null>(null);
-    const [selectedFont, setSelectedFont] = useState<string | null>(null);
-    const [selectedFile, setSelectedFile] = useState<string | null>(null);
-    const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-    const [saveLocation, setSaveLocation] = useState<string | null>(null);
-    const [launchFile, setLaunchFile] = useState<string | null>(null);
-    const [uri, setUri] = useState("https://gtk.org");
+    const [selectedFile, setSelectedFile] = useState<Gio.File | null>(null);
+    const [fileName, setFileName] = useState("None");
+    const [isPdf, setIsPdf] = useState(false);
 
-    const formatRgba = (rgba: Gdk.RGBA) => {
-        return `rgba(${Math.round(rgba.getRed() * 255)}, ${Math.round(rgba.getGreen() * 255)}, ${Math.round(rgba.getBlue() * 255)}, ${rgba.getAlpha().toFixed(2)})`;
-    };
-
-    const handleColorButtonNotify = (button: Gtk.ColorDialogButton, propName: string) => {
-        if (propName === "rgba") {
-            const rgba = button.getRgba();
-            setSelectedColor(formatRgba(rgba));
+    const handleOpenFile = async () => {
+        try {
+            const fileDialog = new Gtk.FileDialog();
+            const file = await fileDialog.openAsync(app.getActiveWindow() ?? undefined);
+            setSelectedFile(file);
+            setFileName(file.getBasename() ?? file.getUri());
+            const info = file.queryInfo("standard::content-type", 0, null);
+            setIsPdf(info.getContentType() === "application/pdf");
+        } catch {
+            setSelectedFile(null);
+            setFileName("None");
+            setIsPdf(false);
         }
     };
 
-    const handleFontButtonNotify = (button: Gtk.FontDialogButton, propName: string) => {
-        if (propName === "font-desc") {
-            const fontDesc = button.getFontDesc();
-            if (fontDesc) {
-                setSelectedFont(fontDesc.toString());
-            }
-        }
-    };
-
-    const handleColorPick = async () => {
+    const handleLaunchApp = useCallback(async () => {
+        if (!selectedFile) return;
         try {
-            const colorDialog = new Gtk.ColorDialog();
-            colorDialog.setTitle("Choose a Color");
-            colorDialog.setModal(true);
-
-            const rgba = await colorDialog.chooseRgbaAsync(app.getActiveWindow() ?? undefined);
-            setSelectedColor(formatRgba(rgba));
-        } catch {}
-    };
-
-    const handleFontPick = async () => {
-        try {
-            const fontDialog = new Gtk.FontDialog();
-            fontDialog.setTitle("Choose a Font");
-            fontDialog.setModal(true);
-
-            const fontDesc = await fontDialog.chooseFontAsync(app.getActiveWindow() ?? undefined);
-            setSelectedFont(fontDesc.toString());
-        } catch {}
-    };
-
-    const handleFileOpen = async () => {
-        try {
-            const fileDialog = new Gtk.FileDialog();
-            fileDialog.setTitle("Open File");
-            fileDialog.setModal(true);
-
-            const file = await fileDialog.openAsync(app.getActiveWindow() ?? undefined);
-            setSelectedFile(file.getPath() ?? file.getUri());
-        } catch {}
-    };
-
-    const handleFolderSelect = async () => {
-        try {
-            const fileDialog = new Gtk.FileDialog();
-            fileDialog.setTitle("Select Folder");
-            fileDialog.setModal(true);
-
-            const folder = await fileDialog.selectFolderAsync(app.getActiveWindow() ?? undefined);
-            setSelectedFolder(folder.getPath() ?? folder.getUri());
-        } catch {}
-    };
-
-    const handleFileSave = async () => {
-        try {
-            const fileDialog = new Gtk.FileDialog();
-            fileDialog.setTitle("Save File");
-            fileDialog.setModal(true);
-            fileDialog.setInitialName("untitled.txt");
-
-            const file = await fileDialog.saveAsync(app.getActiveWindow() ?? undefined);
-            setSaveLocation(file.getPath() ?? file.getUri());
-        } catch {}
-    };
-
-    const handleMultipleFiles = async () => {
-        try {
-            const fileDialog = new Gtk.FileDialog();
-            fileDialog.setTitle("Select Multiple Files");
-            fileDialog.setModal(true);
-
-            const files = await fileDialog.openMultipleAsync(app.getActiveWindow() ?? undefined);
-            const count = files.getNItems();
-            setSelectedFile(`${count} file(s) selected`);
-        } catch {}
-    };
-
-    const handleSelectFileToLaunch = async () => {
-        try {
-            const fileDialog = new Gtk.FileDialog();
-            fileDialog.setTitle("Select File to Launch");
-            fileDialog.setModal(true);
-
-            const file = await fileDialog.openAsync(app.getActiveWindow() ?? undefined);
-            setLaunchFile(file.getPath() ?? file.getUri());
-        } catch {}
-    };
-
-    const handleLaunchFile = useCallback(async () => {
-        if (!launchFile) return;
-        try {
-            const file = Gio.fileNewForPath(launchFile);
-            const launcher = new Gtk.FileLauncher(file);
+            const launcher = new Gtk.FileLauncher(selectedFile);
             await launcher.launchAsync(app.getActiveWindow() ?? undefined);
         } catch {}
-    }, [app, launchFile]);
+    }, [app, selectedFile]);
 
-    const handleOpenContainingFolder = useCallback(async () => {
-        if (!launchFile) return;
+    const handleOpenFolder = useCallback(async () => {
+        if (!selectedFile) return;
         try {
-            const file = Gio.fileNewForPath(launchFile);
-            const launcher = new Gtk.FileLauncher(file);
+            const launcher = new Gtk.FileLauncher(selectedFile);
             await launcher.openContainingFolderAsync(app.getActiveWindow() ?? undefined);
         } catch {}
-    }, [app, launchFile]);
+    }, [app, selectedFile]);
+
+    const handlePrintFile = useCallback(async () => {
+        if (!selectedFile || !isPdf) return;
+        try {
+            const printDialog = new Gtk.PrintDialog();
+            await printDialog.printFileAsync(selectedFile, app.getActiveWindow());
+        } catch {}
+    }, [app, selectedFile, isPdf]);
 
     const handleLaunchUri = useCallback(async () => {
         try {
-            const launcher = new Gtk.UriLauncher(uri);
+            const launcher = new Gtk.UriLauncher("http://www.gtk.org");
             await launcher.launchAsync(app.getActiveWindow() ?? undefined);
         } catch {}
-    }, [app, uri]);
+    }, [app]);
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Picker Dialogs" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkGrid rowSpacing={6} columnSpacing={6} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
+            <x.GridChild column={0} row={0}>
+                <GtkLabel label="_Color:" useUnderline halign={Gtk.Align.START} hexpand />
+            </x.GridChild>
+            <x.GridChild column={1} row={0}>
+                <GtkColorDialogButton dialog={new Gtk.ColorDialog()} />
+            </x.GridChild>
 
-            <GtkLabel
-                label="GTK4 provides specialized dialogs for picking colors, fonts, and files. These dialogs use async/await patterns and integrate with the native file system."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
+            <x.GridChild column={0} row={1}>
+                <GtkLabel label="_Font:" useUnderline halign={Gtk.Align.START} hexpand />
+            </x.GridChild>
+            <x.GridChild column={1} row={1}>
+                <GtkFontDialogButton dialog={new Gtk.FontDialog()} />
+            </x.GridChild>
 
-            <GtkFrame label="Color Picker">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="GtkColorDialog opens a color chooser. GtkColorDialogButton provides a convenient button that shows the selected color."
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                        wrap
+            <x.GridChild column={0} row={2}>
+                <GtkLabel label="_File:" useUnderline halign={Gtk.Align.START} hexpand />
+            </x.GridChild>
+            <x.GridChild column={1} row={2}>
+                <GtkBox spacing={6}>
+                    <GtkLabel label={fileName} xalign={0} ellipsize={3} hexpand />
+                    <GtkButton iconName="document-open-symbolic" onClicked={() => void handleOpenFile()} />
+                    <GtkButton
+                        iconName="emblem-system-symbolic"
+                        sensitive={selectedFile !== null}
+                        onClicked={() => void handleLaunchApp()}
                     />
-                    <GtkBox spacing={12}>
-                        <GtkButton label="Choose Color..." onClicked={() => void handleColorPick()} />
-                        <GtkColorDialogButton dialog={new Gtk.ColorDialog()} onNotify={handleColorButtonNotify} />
-                    </GtkBox>
-                    {selectedColor && (
-                        <GtkLabel
-                            label={`Selected: ${selectedColor}`}
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                    )}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Font Picker">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="GtkFontDialog opens a font chooser. GtkFontDialogButton provides a button that displays the selected font name."
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                        wrap
+                    <GtkButton
+                        iconName="folder-symbolic"
+                        sensitive={selectedFile !== null}
+                        onClicked={() => void handleOpenFolder()}
                     />
-                    <GtkBox spacing={12}>
-                        <GtkButton label="Choose Font..." onClicked={() => void handleFontPick()} />
-                        <GtkFontDialogButton dialog={new Gtk.FontDialog()} onNotify={handleFontButtonNotify} />
-                    </GtkBox>
-                    {selectedFont && (
-                        <GtkLabel
-                            label={`Selected: ${selectedFont}`}
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                    )}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="File Picker">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="GtkFileDialog provides methods for opening files, selecting folders, saving files, and selecting multiple files."
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                        wrap
+                    <GtkButton
+                        iconName="printer-symbolic"
+                        tooltipText="Print file"
+                        sensitive={isPdf}
+                        onClicked={() => void handlePrintFile()}
                     />
-                    <GtkBox spacing={8}>
-                        <GtkButton label="Open File" onClicked={() => void handleFileOpen()} />
-                        <GtkButton label="Select Multiple" onClicked={() => void handleMultipleFiles()} />
-                        <GtkButton label="Select Folder" onClicked={() => void handleFolderSelect()} />
-                        <GtkButton label="Save As..." onClicked={() => void handleFileSave()} />
-                    </GtkBox>
-                    {selectedFile && (
-                        <GtkLabel
-                            label={`File: ${selectedFile}`}
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                            ellipsize={3}
-                        />
-                    )}
-                    {selectedFolder && (
-                        <GtkLabel
-                            label={`Folder: ${selectedFolder}`}
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                            ellipsize={3}
-                        />
-                    )}
-                    {saveLocation && (
-                        <GtkLabel
-                            label={`Save to: ${saveLocation}`}
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                            ellipsize={3}
-                        />
-                    )}
                 </GtkBox>
-            </GtkFrame>
+            </x.GridChild>
 
-            <GtkFrame label="File Launcher">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="GtkFileLauncher opens files with the default application or shows their containing folder in the file manager."
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                        wrap
-                    />
-                    <GtkBox spacing={8}>
-                        <GtkButton label="Select File..." onClicked={() => void handleSelectFileToLaunch()} />
-                        <GtkButton
-                            label="Launch"
-                            sensitive={!!launchFile}
-                            onClicked={() => void handleLaunchFile()}
-                            cssClasses={["suggested-action"]}
-                        />
-                        <GtkButton
-                            label="Open Folder"
-                            sensitive={!!launchFile}
-                            onClicked={() => void handleOpenContainingFolder()}
-                        />
-                    </GtkBox>
-                    {launchFile && (
-                        <GtkLabel
-                            label={`Selected: ${launchFile}`}
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                            ellipsize={3}
-                        />
-                    )}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="URI Launcher">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="GtkUriLauncher opens URIs with the appropriate application (browser for http, email client for mailto, etc)."
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                        wrap
-                    />
-                    <GtkBox spacing={8}>
-                        <GtkEntry
-                            text={uri}
-                            onChanged={(entry: Gtk.Entry) => setUri(entry.getText())}
-                            hexpand
-                            placeholderText="Enter URI (https://..., mailto:..., etc)"
-                        />
-                        <GtkButton
-                            label="Launch"
-                            onClicked={() => void handleLaunchUri()}
-                            cssClasses={["suggested-action"]}
-                        />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-        </GtkBox>
+            <x.GridChild column={0} row={3}>
+                <GtkLabel label="_URI:" useUnderline halign={Gtk.Align.START} hexpand />
+            </x.GridChild>
+            <x.GridChild column={1} row={3}>
+                <GtkButton label="www.gtk.org" onClicked={() => void handleLaunchUri()} />
+            </x.GridChild>
+        </GtkGrid>
     );
 };
 
 export const pickersDemo: Demo = {
     id: "pickers",
     title: "Pickers and Launchers",
-    description: "Color, font, and file picker dialogs",
+    description:
+        "The dialogs are mainly intended for use in preference dialogs. They allow to select colors, fonts and files.",
     keywords: [
         "color",
         "font",
         "file",
         "picker",
-        "chooser",
-        "dialog",
         "GtkColorDialog",
         "GtkFontDialog",
         "GtkFileDialog",
+        "GtkPrintDialog",
         "GtkFileLauncher",
         "GtkUriLauncher",
-        "open",
-        "save",
-        "launch",
-        "uri",
     ],
     component: PickersDemo,
     sourceCode,

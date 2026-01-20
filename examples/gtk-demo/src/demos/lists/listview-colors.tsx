@@ -6,12 +6,12 @@ import {
     GtkDropDown,
     GtkHeaderBar,
     GtkLabel,
+    GtkProgressBar,
     GtkRevealer,
     GtkScrolledWindow,
-    GtkWindow,
     x,
 } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-colors.tsx?raw";
 
@@ -131,37 +131,6 @@ function generateColors(limit: ColorLimit, seed: number): ColorItem[] {
     return colors;
 }
 
-function sortColors(colors: ColorItem[], mode: SortMode): ColorItem[] {
-    if (mode === "unsorted") return colors;
-
-    const sorted = [...colors];
-    sorted.sort((a, b) => {
-        switch (mode) {
-            case "name":
-                return a.name.localeCompare(b.name);
-            case "red":
-                return a.r - b.r;
-            case "green":
-                return a.g - b.g;
-            case "blue":
-                return a.b - b.b;
-            case "rgb":
-                return a.r - b.r || a.g - b.g || a.b - b.b;
-            case "hue":
-                return a.h - b.h;
-            case "saturation":
-                return a.s - b.s;
-            case "value":
-                return a.v - b.v;
-            case "hsv":
-                return a.h - b.h || a.s - b.s || a.v - b.v;
-            default:
-                return 0;
-        }
-    });
-    return sorted;
-}
-
 function calculateAverageColor(colors: ColorItem[]): { r: number; g: number; b: number; hex: string } {
     if (colors.length === 0) return { r: 128, g: 128, b: 128, hex: "#808080" };
 
@@ -255,7 +224,100 @@ const SelectionInfoPanel = ({
     );
 };
 
-const ColorsWindow = ({ onClose }: { onClose: () => void }) => {
+const SORT_CHUNK_SIZE = 64;
+
+function useIncrementalSort(colors: ColorItem[], mode: SortMode): { sorted: ColorItem[]; progress: number } {
+    const [sorted, setSorted] = useState<ColorItem[]>(colors);
+    const [progress, setProgress] = useState(1);
+    const sortingRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+
+    useEffect(() => {
+        sortingRef.current.cancelled = true;
+        const ctx = { cancelled: false };
+        sortingRef.current = ctx;
+
+        if (mode === "unsorted") {
+            setSorted(colors);
+            setProgress(1);
+            return;
+        }
+
+        const compareFn = (a: ColorItem, b: ColorItem): number => {
+            switch (mode) {
+                case "name":
+                    return a.name.localeCompare(b.name);
+                case "red":
+                    return a.r - b.r;
+                case "green":
+                    return a.g - b.g;
+                case "blue":
+                    return a.b - b.b;
+                case "rgb":
+                    return a.r - b.r || a.g - b.g || a.b - b.b;
+                case "hue":
+                    return a.h - b.h;
+                case "saturation":
+                    return a.s - b.s;
+                case "value":
+                    return a.v - b.v;
+                case "hsv":
+                    return a.h - b.h || a.s - b.s || a.v - b.v;
+                default:
+                    return 0;
+            }
+        };
+
+        const arr = [...colors];
+        const n = arr.length;
+        let sortedCount = 0;
+
+        setProgress(0);
+        setSorted(arr);
+
+        const sortStep = () => {
+            if (ctx.cancelled) return;
+
+            const end = Math.min(sortedCount + SORT_CHUNK_SIZE, n);
+            for (let i = sortedCount; i < end; i++) {
+                let minIdx = i;
+                for (let j = i + 1; j < n; j++) {
+                    const itemJ = arr[j];
+                    const itemMin = arr[minIdx];
+                    if (itemJ && itemMin && compareFn(itemJ, itemMin) < 0) {
+                        minIdx = j;
+                    }
+                }
+                if (minIdx !== i) {
+                    const tmp = arr[i];
+                    const minItem = arr[minIdx];
+                    if (tmp !== undefined && minItem !== undefined) {
+                        arr[i] = minItem;
+                        arr[minIdx] = tmp;
+                    }
+                }
+            }
+            sortedCount = end;
+
+            const currentProgress = sortedCount / n;
+            setProgress(currentProgress);
+            setSorted([...arr]);
+
+            if (sortedCount < n) {
+                setTimeout(sortStep, 0);
+            }
+        };
+
+        setTimeout(sortStep, 0);
+
+        return () => {
+            ctx.cancelled = true;
+        };
+    }, [colors, mode]);
+
+    return { sorted, progress };
+}
+
+const ListViewColorsDemo = () => {
     const [colorLimit, setColorLimit] = useState<ColorLimit>(512);
     const [sortMode, setSortMode] = useState<SortMode>("unsorted");
     const [displayFactory, setDisplayFactory] = useState<DisplayFactory>("colors");
@@ -264,7 +326,8 @@ const ColorsWindow = ({ onClose }: { onClose: () => void }) => {
     const [colorSeed, setColorSeed] = useState(0);
 
     const baseColors = useMemo(() => generateColors(colorLimit, colorSeed), [colorLimit, colorSeed]);
-    const sortedColors = useMemo(() => sortColors(baseColors, sortMode), [baseColors, sortMode]);
+    const { sorted: sortedColors, progress: sortProgress } = useIncrementalSort(baseColors, sortMode);
+    const isSorting = sortProgress < 1 && sortMode !== "unsorted";
 
     const colorMap = useMemo(() => {
         const map = new Map<string, ColorItem>();
@@ -294,7 +357,7 @@ const ColorsWindow = ({ onClose }: { onClose: () => void }) => {
     };
 
     return (
-        <GtkWindow title="Colors" defaultWidth={800} defaultHeight={600} onClose={onClose}>
+        <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
                     <x.PackStart>
@@ -346,6 +409,10 @@ const ColorsWindow = ({ onClose }: { onClose: () => void }) => {
             </x.Slot>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkRevealer revealChild={isSorting} transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}>
+                    <GtkProgressBar fraction={sortProgress} />
+                </GtkRevealer>
+
                 <GtkRevealer revealChild={showSelectionInfo && selected.length > 0}>
                     <SelectionInfoPanel selectedColors={selectedColors} averageColor={averageColor} />
                 </GtkRevealer>
@@ -369,25 +436,7 @@ const ColorsWindow = ({ onClose }: { onClose: () => void }) => {
                     </x.GridView>
                 </GtkScrolledWindow>
             </GtkBox>
-        </GtkWindow>
-    );
-};
-
-const ListViewColorsDemo = () => {
-    const [showWindow, setShowWindow] = useState(false);
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER}>
-            <GtkLabel
-                label="This demo displays a grid of generated colors with multi-selection support. Use the header bar controls to change the number of colors, sort order, and display style."
-                wrap
-                cssClasses={["dim-label"]}
-                maxWidthChars={60}
-            />
-            <GtkButton label="Open Colors Window" onClicked={() => setShowWindow(true)} />
-
-            {showWindow && <ColorsWindow onClose={() => setShowWindow(false)} />}
-        </GtkBox>
+        </>
     );
 };
 

@@ -1,14 +1,31 @@
+import { getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkToggleButton } from "@gtkx/react";
-import { useState } from "react";
+import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkToggleButton, GtkVideo } from "@gtkx/react";
+import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./images.tsx?raw";
 
 const ImagesDemo = () => {
     const [insensitive, setInsensitive] = useState(false);
+    const [widgetPaintable, setWidgetPaintable] = useState<Gtk.WidgetPaintable | null>(null);
+    const boxRef = useRef<Gtk.Box | null>(null);
+
+    useEffect(() => {
+        if (boxRef.current) {
+            const root = boxRef.current.getRoot();
+            if (root) {
+                const window = getNativeObject(root.handle, Gtk.Window);
+                if (window) {
+                    const paintable = new Gtk.WidgetPaintable(window);
+                    setWidgetPaintable(paintable);
+                }
+            }
+        }
+    }, []);
 
     return (
         <GtkBox
+            ref={boxRef}
             orientation={Gtk.Orientation.VERTICAL}
             spacing={8}
             marginStart={16}
@@ -17,6 +34,17 @@ const ImagesDemo = () => {
             marginBottom={16}
         >
             <GtkBox spacing={16}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                    <GtkLabel label="Image from icon theme" cssClasses={["heading"]} />
+                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                        <GtkImage
+                            iconName="org.gnome.Settings-symbolic"
+                            iconSize={Gtk.IconSize.LARGE}
+                            sensitive={!insensitive}
+                        />
+                    </GtkFrame>
+                </GtkBox>
+
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <GtkLabel label="Symbolic themed icon" cssClasses={["heading"]} />
                     <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
@@ -29,42 +57,29 @@ const ImagesDemo = () => {
                 </GtkBox>
 
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Icon from theme" cssClasses={["heading"]} />
+                    <GtkLabel label="Displaying video" cssClasses={["heading"]} />
                     <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkImage iconName="folder-symbolic" pixelSize={64} sensitive={!insensitive} />
+                        <GtkVideo autoplay loop widthRequest={200} heightRequest={150} sensitive={!insensitive} />
                     </GtkFrame>
                 </GtkBox>
 
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Dialog icons" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkBox spacing={12} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
-                            <GtkImage
-                                iconName="dialog-information-symbolic"
-                                iconSize={Gtk.IconSize.LARGE}
-                                sensitive={!insensitive}
-                            />
-                            <GtkImage
-                                iconName="dialog-warning-symbolic"
-                                iconSize={Gtk.IconSize.LARGE}
-                                sensitive={!insensitive}
-                            />
-                            <GtkImage
-                                iconName="dialog-error-symbolic"
-                                iconSize={Gtk.IconSize.LARGE}
-                                sensitive={!insensitive}
-                            />
-                        </GtkBox>
-                    </GtkFrame>
+                    <GtkLabel label="GtkWidgetPaintable" cssClasses={["heading"]} />
+                    <GtkPicture
+                        paintable={widgetPaintable}
+                        widthRequest={100}
+                        heightRequest={100}
+                        canShrink
+                        valign={Gtk.Align.START}
+                        sensitive={!insensitive}
+                    />
                 </GtkBox>
             </GtkBox>
 
             <GtkToggleButton
                 label="_Insensitive"
                 useUnderline
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.END}
-                vexpand
+                halign={Gtk.Align.START}
                 active={insensitive}
                 onToggled={(btn) => setInsensitive(btn.getActive())}
             />
@@ -77,7 +92,7 @@ export const imagesDemo: Demo = {
     title: "Images",
     description:
         "GtkImage and GtkPicture are used to display an image; the image can be in a number of formats. GtkImage is the widget used to display icons or images that should be sized and styled like an icon, while GtkPicture is used for images that should be displayed as-is.",
-    keywords: ["GdkPaintable", "GtkWidgetPaintable"],
+    keywords: ["GdkPaintable", "GtkWidgetPaintable", "GtkImage", "GtkPicture", "GtkVideo"],
     component: ImagesDemo,
     sourceCode,
 };

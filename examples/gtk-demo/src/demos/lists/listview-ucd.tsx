@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
+import { GtkBox, GtkColumnView, GtkFrame, GtkLabel, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-ucd.tsx?raw";
@@ -10,6 +10,8 @@ interface UnicodeChar {
     char: string;
     name: string;
     category: string;
+    generalCategory: string;
+    breakType: string;
     block: string;
 }
 
@@ -33,19 +35,59 @@ const unicodeBlocks: { name: string; start: number; end: number }[] = [
     { name: "Dingbats", start: 0x2700, end: 0x27bf },
 ];
 
+function getGeneralCategory(cp: number): string {
+    if (cp >= 0x41 && cp <= 0x5a) return "Lu";
+    if (cp >= 0x61 && cp <= 0x7a) return "Ll";
+    if (cp >= 0x30 && cp <= 0x39) return "Nd";
+    if (cp === 0x20) return "Zs";
+    if (cp >= 0x21 && cp <= 0x2f) return "Po";
+    if (cp >= 0x3a && cp <= 0x40) return "Po";
+    if (cp >= 0x5b && cp <= 0x60) return "Ps";
+    if (cp >= 0x7b && cp <= 0x7e) return "Pe";
+    if (cp >= 0x2000 && cp <= 0x200a) return "Zs";
+    if (cp >= 0x2190 && cp <= 0x21ff) return "Sm";
+    if (cp >= 0x2200 && cp <= 0x22ff) return "Sm";
+    if (cp >= 0x2500 && cp <= 0x257f) return "So";
+    if (cp >= 0x2600 && cp <= 0x26ff) return "So";
+    return "Lo";
+}
+
+function getBreakType(cp: number): string {
+    if (cp === 0x20) return "SP";
+    if (cp >= 0x30 && cp <= 0x39) return "NU";
+    if ((cp >= 0x41 && cp <= 0x5a) || (cp >= 0x61 && cp <= 0x7a)) return "AL";
+    if (cp >= 0x2000 && cp <= 0x200a) return "BA";
+    if (cp >= 0x2028 && cp <= 0x2029) return "BK";
+    if (cp === 0x2d || cp === 0x2010 || cp === 0x2011) return "HY";
+    if (cp >= 0x21 && cp <= 0x2f) return "EX";
+    return "XX";
+}
+
 const generateBlockChars = (block: { name: string; start: number; end: number }): UnicodeChar[] => {
     const chars: UnicodeChar[] = [];
-    const limit = Math.min(block.end, block.start + 63);
-    for (let cp = block.start; cp <= limit; cp++) {
+    for (let cp = block.start; cp <= block.end; cp++) {
         try {
             const char = String.fromCodePoint(cp);
             if (cp < 0x0020 || (cp >= 0x007f && cp < 0x00a0)) continue;
+            const generalCategory = getGeneralCategory(cp);
             chars.push({
                 id: `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`,
                 codepoint: cp,
                 char,
                 name: `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`,
-                category: "Letter",
+                category: generalCategory.startsWith("L")
+                    ? "Letter"
+                    : generalCategory.startsWith("N")
+                      ? "Number"
+                      : generalCategory.startsWith("P")
+                        ? "Punctuation"
+                        : generalCategory.startsWith("S")
+                          ? "Symbol"
+                          : generalCategory.startsWith("Z")
+                            ? "Separator"
+                            : "Other",
+                generalCategory,
+                breakType: getBreakType(cp),
                 block: block.name,
             });
         } catch {}
@@ -57,7 +99,6 @@ const ListViewUcdDemo = () => {
     const [selectedBlock, setSelectedBlock] = useState(unicodeBlocks[0]?.name ?? "Basic Latin");
     const [searchText, setSearchText] = useState("");
     const [selectedChar, setSelectedChar] = useState<UnicodeChar | null>(null);
-    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
     const characters = useMemo(() => {
         const block = unicodeBlocks.find((b) => b.name === selectedBlock);
@@ -76,7 +117,7 @@ const ListViewUcdDemo = () => {
         );
     }, [characters, searchText]);
 
-    const handleActivate = (_view: Gtk.GridView | Gtk.ListView, position: number) => {
+    const handleActivate = (_view: Gtk.ColumnView, position: number) => {
         const char = filteredCharacters[position];
         if (char) {
             setSelectedChar(char);
@@ -96,10 +137,10 @@ const ListViewUcdDemo = () => {
             marginTop={20}
             marginBottom={20}
         >
-            <GtkLabel label="Unicode Character Browser" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="Unicode Character Database" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="Browse Unicode characters by block. Demonstrates a character database browser with both grid and list views, showing character glyphs, codepoints, and names."
+                label="Browse Unicode characters by block using a ColumnView with multiple property columns including general category and line break type."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
@@ -116,7 +157,7 @@ const ListViewUcdDemo = () => {
                         marginEnd={8}
                         widthRequest={200}
                     >
-                        <GtkScrolledWindow heightRequest={400} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                        <GtkScrolledWindow heightRequest={450} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             <x.ListView<{ name: string }>
                                 estimatedItemHeight={40}
                                 showSeparators
@@ -162,18 +203,6 @@ const ListViewUcdDemo = () => {
                                 onSearchChanged={(entry) => setSearchText(entry.getText())}
                                 hexpand
                             />
-                            <GtkButton
-                                iconName="view-grid-symbolic"
-                                onClicked={() => setViewMode("grid")}
-                                cssClasses={viewMode === "grid" ? ["suggested-action"] : ["flat"]}
-                                tooltipText="Grid view"
-                            />
-                            <GtkButton
-                                iconName="view-list-symbolic"
-                                onClicked={() => setViewMode("list")}
-                                cssClasses={viewMode === "list" ? ["suggested-action"] : ["flat"]}
-                                tooltipText="List view"
-                            />
                         </GtkBox>
 
                         <GtkLabel
@@ -182,77 +211,100 @@ const ListViewUcdDemo = () => {
                             halign={Gtk.Align.START}
                         />
 
-                        <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                            {viewMode === "grid" ? (
-                                <x.GridView<UnicodeChar>
-                                    estimatedItemHeight={78}
-                                    minColumns={6}
-                                    maxColumns={12}
-                                    onActivate={handleActivate}
-                                    renderItem={(item) => (
-                                        <GtkBox
-                                            orientation={Gtk.Orientation.VERTICAL}
-                                            spacing={2}
-                                            cssClasses={["card"]}
-                                            halign={Gtk.Align.CENTER}
-                                            valign={Gtk.Align.CENTER}
-                                            widthRequest={60}
-                                            heightRequest={70}
-                                            marginTop={4}
-                                            marginBottom={4}
-                                            marginStart={4}
-                                            marginEnd={4}
-                                        >
-                                            <GtkLabel label={item?.char ?? ""} cssClasses={["title-1"]} marginTop={4} />
-                                            <GtkLabel
-                                                label={item?.id ?? ""}
-                                                cssClasses={["dim-label", "caption", "monospace"]}
-                                                marginBottom={4}
-                                            />
-                                        </GtkBox>
+                        <GtkScrolledWindow heightRequest={350}>
+                            <GtkColumnView estimatedRowHeight={40} onActivate={handleActivate}>
+                                <x.ColumnViewColumn<UnicodeChar>
+                                    id="char"
+                                    title="Char"
+                                    fixedWidth={60}
+                                    renderCell={(item) => (
+                                        <GtkLabel
+                                            label={item?.char ?? ""}
+                                            cssClasses={["title-3"]}
+                                            marginTop={6}
+                                            marginBottom={6}
+                                            marginStart={8}
+                                        />
                                     )}
-                                >
-                                    {filteredCharacters.map((char) => (
-                                        <x.ListItem key={char.id} id={char.id} value={char} />
-                                    ))}
-                                </x.GridView>
-                            ) : (
-                                <x.ListView<UnicodeChar>
-                                    estimatedItemHeight={48}
-                                    showSeparators
-                                    onActivate={handleActivate}
-                                    renderItem={(item) => (
-                                        <GtkBox
-                                            spacing={16}
-                                            marginTop={8}
-                                            marginBottom={8}
-                                            marginStart={12}
-                                            marginEnd={12}
-                                        >
-                                            <GtkLabel
-                                                label={item?.char ?? ""}
-                                                cssClasses={["title-2"]}
-                                                widthRequest={40}
-                                            />
-                                            <GtkLabel
-                                                label={item?.id ?? ""}
-                                                cssClasses={["monospace"]}
-                                                widthRequest={80}
-                                            />
-                                            <GtkLabel
-                                                label={item?.name ?? ""}
-                                                cssClasses={["dim-label"]}
-                                                hexpand
-                                                halign={Gtk.Align.START}
-                                            />
-                                        </GtkBox>
+                                />
+                                <x.ColumnViewColumn<UnicodeChar>
+                                    id="codepoint"
+                                    title="Codepoint"
+                                    fixedWidth={90}
+                                    renderCell={(item) => (
+                                        <GtkLabel
+                                            label={item?.id ?? ""}
+                                            cssClasses={["monospace"]}
+                                            halign={Gtk.Align.START}
+                                            marginTop={6}
+                                            marginBottom={6}
+                                            marginStart={8}
+                                        />
                                     )}
-                                >
-                                    {filteredCharacters.map((char) => (
-                                        <x.ListItem key={char.id} id={char.id} value={char} />
-                                    ))}
-                                </x.ListView>
-                            )}
+                                />
+                                <x.ColumnViewColumn<UnicodeChar>
+                                    id="category"
+                                    title="Category"
+                                    fixedWidth={100}
+                                    renderCell={(item) => (
+                                        <GtkLabel
+                                            label={item?.category ?? ""}
+                                            halign={Gtk.Align.START}
+                                            marginTop={6}
+                                            marginBottom={6}
+                                            marginStart={8}
+                                        />
+                                    )}
+                                />
+                                <x.ColumnViewColumn<UnicodeChar>
+                                    id="generalCategory"
+                                    title="GC"
+                                    fixedWidth={50}
+                                    renderCell={(item) => (
+                                        <GtkLabel
+                                            label={item?.generalCategory ?? ""}
+                                            cssClasses={["monospace", "dim-label"]}
+                                            halign={Gtk.Align.START}
+                                            marginTop={6}
+                                            marginBottom={6}
+                                            marginStart={8}
+                                        />
+                                    )}
+                                />
+                                <x.ColumnViewColumn<UnicodeChar>
+                                    id="breakType"
+                                    title="Break"
+                                    fixedWidth={60}
+                                    renderCell={(item) => (
+                                        <GtkLabel
+                                            label={item?.breakType ?? ""}
+                                            cssClasses={["monospace", "dim-label"]}
+                                            halign={Gtk.Align.START}
+                                            marginTop={6}
+                                            marginBottom={6}
+                                            marginStart={8}
+                                        />
+                                    )}
+                                />
+                                <x.ColumnViewColumn<UnicodeChar>
+                                    id="decimal"
+                                    title="Decimal"
+                                    fixedWidth={70}
+                                    renderCell={(item) => (
+                                        <GtkLabel
+                                            label={item ? String(item.codepoint) : ""}
+                                            cssClasses={["monospace", "dim-label"]}
+                                            halign={Gtk.Align.END}
+                                            marginTop={6}
+                                            marginBottom={6}
+                                            marginEnd={8}
+                                        />
+                                    )}
+                                />
+                                {filteredCharacters.map((char) => (
+                                    <x.ListItem key={char.id} id={char.id} value={char} />
+                                ))}
+                            </GtkColumnView>
                         </GtkScrolledWindow>
 
                         {selectedChar && (
@@ -281,7 +333,7 @@ const ListViewUcdDemo = () => {
                                         halign={Gtk.Align.START}
                                     />
                                     <GtkLabel
-                                        label={`Decimal: ${selectedChar.codepoint}`}
+                                        label={`Category: ${selectedChar.category} (${selectedChar.generalCategory})`}
                                         cssClasses={["dim-label", "caption"]}
                                         halign={Gtk.Align.START}
                                     />
@@ -290,20 +342,19 @@ const ListViewUcdDemo = () => {
                                     <GtkLabel label="HTML Entity" cssClasses={["dim-label", "caption"]} />
                                     <GtkLabel label={`&#${selectedChar.codepoint};`} cssClasses={["monospace"]} />
                                 </GtkBox>
+                                <GtkBox
+                                    orientation={Gtk.Orientation.VERTICAL}
+                                    spacing={4}
+                                    valign={Gtk.Align.CENTER}
+                                    marginEnd={16}
+                                >
+                                    <GtkLabel label="Break Type" cssClasses={["dim-label", "caption"]} />
+                                    <GtkLabel label={selectedChar.breakType} cssClasses={["monospace"]} />
+                                </GtkBox>
                             </GtkBox>
                         )}
                     </GtkBox>
                 </GtkFrame>
-            </GtkBox>
-
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="Implementation Notes" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="Characters are generated dynamically for each Unicode block using String.fromCodePoint(). The view toggles between GridView for visual browsing and ListView for detailed inspection. useMemo optimizes character generation and filtering."
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
             </GtkBox>
         </GtkBox>
     );

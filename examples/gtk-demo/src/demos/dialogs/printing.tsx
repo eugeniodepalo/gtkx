@@ -1,426 +1,98 @@
-import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, useApplication } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { useApplication } from "@gtkx/react";
+import { useEffect } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./printing.tsx?raw";
 
-const SAMPLE_LINES = [
-    "GTKX Printing Demo",
-    "",
-    "This is a demonstration of GTK4's printing capabilities.",
-    "The PrintOperation API provides a high-level interface for printing.",
-    "",
-    "Features demonstrated:",
-    "- Print dialog integration",
-    "- Page rendering with Cairo",
-    "- Print preview functionality",
-    "- Multi-page document support",
-    "",
-    "Page rendering uses the same Cairo API as GtkDrawingArea,",
-    "making it easy to create consistent printed output.",
-    "",
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-    "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-    "Ut enim ad minim veniam, quis nostrud exercitation ullamco.",
-    "Laboris nisi ut aliquip ex ea commodo consequat.",
-    "Duis aute irure dolor in reprehenderit in voluptate velit.",
-    "Esse cillum dolore eu fugiat nulla pariatur.",
-];
-
-const LINES_PER_PAGE = 15;
-const MARGIN = 50;
-const LINE_HEIGHT = 20;
+const HEADER_HEIGHT = (10 * 72) / 25.4;
+const HEADER_GAP = (3 * 72) / 25.4;
+const FONT_SIZE = 12.0;
 
 const PrintingDemo = () => {
     const app = useApplication();
-    const [printStatus, setPrintStatus] = useState<string | null>(null);
-    const [lastResult, setLastResult] = useState<string | null>(null);
-    const [previewPage, setPreviewPage] = useState(0);
 
-    const totalPages = Math.ceil(SAMPLE_LINES.length / LINES_PER_PAGE);
+    useEffect(() => {
+        const lines = sourceCode.split("\n");
+        const numLines = lines.length;
 
-    const drawPreview = useCallback(
-        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            cr.setSourceRgb(1, 1, 1).rectangle(0, 0, width, height).fill();
+        const printOp = new Gtk.PrintOperation();
+        printOp.setUseFullPage(false);
+        printOp.setUnit(Gtk.Unit.POINTS);
+        printOp.setEmbedPageSetup(true);
 
-            cr.setSourceRgb(0.8, 0.8, 0.8)
-                .setLineWidth(1)
-                .rectangle(0.5, 0.5, width - 1, height - 1)
-                .stroke();
+        const settings = new Gtk.PrintSettings();
+        settings.set(Gtk.PRINT_SETTINGS_OUTPUT_BASENAME, "gtk-demo");
+        printOp.setPrintSettings(settings);
 
-            const scale = Math.min(width / 612, height / 792);
-            const offsetX = (width - 612 * scale) / 2;
-            const offsetY = (height - 792 * scale) / 2;
+        let linesPerPage = 0;
+        let numPages = 0;
 
-            cr.save().translate(offsetX, offsetY).scale(scale, scale);
+        printOp.connect("begin-print", (_self: Gtk.PrintOperation, context: Gtk.PrintContext) => {
+            const height = context.getHeight() - HEADER_HEIGHT - HEADER_GAP;
+            linesPerPage = Math.floor(height / FONT_SIZE);
+            numPages = Math.ceil(numLines / linesPerPage);
+            printOp.setNPages(numPages);
+        });
 
-            cr.setSourceRgba(0.9, 0.9, 0.9, 0.5)
-                .rectangle(0, 0, MARGIN, 792)
-                .fill()
-                .rectangle(612 - MARGIN, 0, MARGIN, 792)
-                .fill()
-                .rectangle(0, 0, 612, MARGIN)
-                .fill()
-                .rectangle(0, 792 - MARGIN, 612, MARGIN)
-                .fill();
+        printOp.connect("draw-page", (_self: Gtk.PrintOperation, context: Gtk.PrintContext, pageNr: number) => {
+            const cr = context.getCairoContext();
+            const width = context.getWidth();
 
-            const startLine = previewPage * LINES_PER_PAGE;
-            const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
+            cr.rectangle(0, 0, width, HEADER_HEIGHT).setSourceRgb(0.8, 0.8, 0.8).fillPreserve();
+            cr.setSourceRgb(0, 0, 0).setLineWidth(1).stroke();
 
-            for (let i = startLine; i < endLine; i++) {
-                const y = MARGIN + (i - startLine) * LINE_HEIGHT;
-                const line = SAMPLE_LINES[i];
+            const headerLayout = PangoCairo.createLayout(cr);
+            headerLayout.setFontDescription(Pango.FontDescription.fromString("sans 14"));
+            headerLayout.setText("printing.tsx", -1);
 
-                const layout = PangoCairo.createLayout(cr);
-                layout.setText(line ?? "", -1);
+            const logicalRect = new Pango.Rectangle();
+            headerLayout.getPixelExtents(undefined, logicalRect);
+            const textWidth = logicalRect.getWidth();
+            const textHeight = logicalRect.getHeight();
 
-                if (i === startLine && previewPage === 0) {
-                    cr.setSourceRgb(0.2, 0.4, 0.8);
-                    layout.setFontDescription(Pango.FontDescription.fromString("Sans Bold 14"));
-                } else {
-                    cr.setSourceRgb(0, 0, 0);
-                    layout.setFontDescription(Pango.FontDescription.fromString("Sans 10"));
-                }
+            cr.moveTo((width - textWidth) / 2, (HEADER_HEIGHT - textHeight) / 2);
+            PangoCairo.showLayout(cr, headerLayout);
 
-                cr.moveTo(MARGIN, y);
-                PangoCairo.showLayout(cr, layout);
+            const pageStr = `${pageNr + 1}/${numPages}`;
+            headerLayout.setText(pageStr, -1);
+            headerLayout.getPixelExtents(undefined, logicalRect);
+            cr.moveTo(width - logicalRect.getWidth() - 4, (HEADER_HEIGHT - logicalRect.getHeight()) / 2);
+            PangoCairo.showLayout(cr, headerLayout);
+
+            const bodyLayout = PangoCairo.createLayout(cr);
+            const bodyDesc = Pango.FontDescription.fromString("monospace");
+            bodyDesc.setSize(FONT_SIZE * Pango.SCALE);
+            bodyLayout.setFontDescription(bodyDesc);
+
+            cr.moveTo(0, HEADER_HEIGHT + HEADER_GAP);
+
+            const startLine = pageNr * linesPerPage;
+            for (let i = 0; i < linesPerPage && startLine + i < numLines; i++) {
+                bodyLayout.setText(lines[startLine + i] ?? "", -1);
+                PangoCairo.showLayout(cr, bodyLayout);
+                cr.relMoveTo(0, FONT_SIZE);
             }
+        });
 
-            const pageLayout = PangoCairo.createLayout(cr);
-            pageLayout.setText(`Page ${previewPage + 1} of ${totalPages}`, -1);
-            pageLayout.setFontDescription(Pango.FontDescription.fromString("Sans 8"));
-            cr.setSourceRgb(0.5, 0.5, 0.5);
-            cr.moveTo(270, 792 - 30);
-            PangoCairo.showLayout(cr, pageLayout);
-
-            cr.restore();
-        },
-        [previewPage, totalPages],
-    );
-
-    const handlePrint = () => {
         try {
-            const printOp = new Gtk.PrintOperation();
-            printOp.setNPages(totalPages);
-            printOp.setJobName("GTK Demo Print");
-            printOp.setShowProgress(true);
-
-            const pageSetup = new Gtk.PageSetup();
-            pageSetup.setOrientation(Gtk.PageOrientation.PORTRAIT);
-            printOp.setDefaultPageSetup(pageSetup);
-
-            printOp.connect("begin-print", (_self: Gtk.PrintOperation, context: Gtk.PrintContext) => {
-                setPrintStatus("Preparing print job...");
-                const pageHeight = context.getHeight();
-                const linesPerPage = Math.floor((pageHeight - 2 * MARGIN) / LINE_HEIGHT);
-                const pages = Math.ceil(SAMPLE_LINES.length / linesPerPage);
-                printOp.setNPages(pages);
-            });
-
-            printOp.connect("draw-page", (_self: Gtk.PrintOperation, context: Gtk.PrintContext, pageNr: number) => {
-                setPrintStatus(`Rendering page ${pageNr + 1}...`);
-                const cr = context.getCairoContext();
-                const width = context.getWidth();
-
-                cr.setSourceRgb(0.2, 0.4, 0.8)
-                    .setLineWidth(2)
-                    .moveTo(MARGIN, MARGIN - 10)
-                    .lineTo(width - MARGIN, MARGIN - 10)
-                    .stroke();
-
-                const startLine = pageNr * LINES_PER_PAGE;
-                const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
-
-                for (let i = startLine; i < endLine; i++) {
-                    const y = MARGIN + (i - startLine) * LINE_HEIGHT;
-                    const line = SAMPLE_LINES[i];
-
-                    const layout = PangoCairo.createLayout(cr);
-                    layout.setText(line ?? "", -1);
-
-                    if (i === 0 && pageNr === 0) {
-                        cr.setSourceRgb(0.2, 0.4, 0.8);
-                        layout.setFontDescription(Pango.FontDescription.fromString("Sans Bold 14"));
-                    } else {
-                        cr.setSourceRgb(0, 0, 0);
-                        layout.setFontDescription(Pango.FontDescription.fromString("Sans 10"));
-                    }
-
-                    cr.moveTo(MARGIN, y);
-                    PangoCairo.showLayout(cr, layout);
-                }
-
-                const pageLayout = PangoCairo.createLayout(cr);
-                pageLayout.setText(`Page ${pageNr + 1} of ${totalPages}`, -1);
-                pageLayout.setFontDescription(Pango.FontDescription.fromString("Sans 8"));
-                cr.setSourceRgb(0.5, 0.5, 0.5);
-                cr.moveTo(width / 2 - 30, context.getHeight() - 30);
-                PangoCairo.showLayout(cr, pageLayout);
-            });
-
-            printOp.connect("end-print", () => {
-                setPrintStatus("Print job completed");
-            });
-
-            printOp.connect("status-changed", (self: Gtk.PrintOperation) => {
-                setPrintStatus(self.getStatusString());
-            });
-
-            const result = printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, app.getActiveWindow() ?? undefined);
-
-            const resultMap: Record<number, string> = {
-                [Gtk.PrintOperationResult.ERROR]: "Error occurred",
-                [Gtk.PrintOperationResult.APPLY]: "Print job sent",
-                [Gtk.PrintOperationResult.CANCEL]: "Print cancelled",
-                [Gtk.PrintOperationResult.IN_PROGRESS]: "Printing in progress",
-            };
-            setLastResult(resultMap[result] ?? `Result: ${result}`);
+            printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, app.getActiveWindow() ?? undefined);
         } catch (error) {
-            setLastResult(`Error: ${error}`);
-            setPrintStatus(null);
+            const dialog = new Gtk.AlertDialog();
+            dialog.setMessage(`${error}`);
+            dialog.show(app.getActiveWindow() ?? undefined);
         }
-    };
+    }, [app]);
 
-    const handlePrintPreview = () => {
-        try {
-            const printOp = new Gtk.PrintOperation();
-            printOp.setNPages(totalPages);
-            printOp.setJobName("GTK Demo Preview");
-
-            const result = printOp.run(Gtk.PrintOperationAction.PREVIEW, app.getActiveWindow() ?? undefined);
-
-            const resultMap: Record<number, string> = {
-                [Gtk.PrintOperationResult.ERROR]: "Error occurred",
-                [Gtk.PrintOperationResult.APPLY]: "Preview closed",
-                [Gtk.PrintOperationResult.CANCEL]: "Preview cancelled",
-                [Gtk.PrintOperationResult.IN_PROGRESS]: "Preview in progress",
-            };
-            setLastResult(resultMap[result] ?? `Result: ${result}`);
-        } catch (error) {
-            setLastResult(`Error: ${error}`);
-        }
-    };
-
-    const handleExportPdf = async () => {
-        try {
-            const fileDialog = new Gtk.FileDialog();
-            fileDialog.setTitle("Export to PDF");
-            fileDialog.setModal(true);
-            fileDialog.setInitialName("document.pdf");
-
-            const file = await fileDialog.saveAsync(app.getActiveWindow() ?? undefined);
-            const filePath = file.getPath();
-
-            if (filePath) {
-                const printOp = new Gtk.PrintOperation();
-                printOp.setNPages(totalPages);
-                printOp.setExportFilename(filePath);
-
-                printOp.connect("draw-page", (_self: Gtk.PrintOperation, context: Gtk.PrintContext, pageNr: number) => {
-                    const cr = context.getCairoContext();
-                    const width = context.getWidth();
-
-                    cr.setSourceRgb(0.2, 0.4, 0.8)
-                        .setLineWidth(2)
-                        .moveTo(MARGIN, MARGIN - 10)
-                        .lineTo(width - MARGIN, MARGIN - 10)
-                        .stroke();
-
-                    const startLine = pageNr * LINES_PER_PAGE;
-                    const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
-
-                    for (let i = startLine; i < endLine; i++) {
-                        const y = MARGIN + (i - startLine) * LINE_HEIGHT;
-                        const line = SAMPLE_LINES[i];
-
-                        const layout = PangoCairo.createLayout(cr);
-                        layout.setText(line ?? "", -1);
-
-                        if (i === 0 && pageNr === 0) {
-                            cr.setSourceRgb(0.2, 0.4, 0.8);
-                            layout.setFontDescription(Pango.FontDescription.fromString("Sans Bold 14"));
-                        } else {
-                            cr.setSourceRgb(0, 0, 0);
-                            layout.setFontDescription(Pango.FontDescription.fromString("Sans 10"));
-                        }
-
-                        cr.moveTo(MARGIN, y);
-                        PangoCairo.showLayout(cr, layout);
-                    }
-
-                    const pageLayout = PangoCairo.createLayout(cr);
-                    pageLayout.setText(`Page ${pageNr + 1} of ${totalPages}`, -1);
-                    pageLayout.setFontDescription(Pango.FontDescription.fromString("Sans 8"));
-                    cr.setSourceRgb(0.5, 0.5, 0.5);
-                    cr.moveTo(width / 2 - 30, context.getHeight() - 30);
-                    PangoCairo.showLayout(cr, pageLayout);
-                });
-
-                const result = printOp.run(Gtk.PrintOperationAction.EXPORT, app.getActiveWindow() ?? undefined);
-
-                if (result === Gtk.PrintOperationResult.APPLY) {
-                    setLastResult(`Exported to: ${filePath}`);
-                } else {
-                    setLastResult("Export cancelled");
-                }
-            }
-        } catch {}
-    };
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Print Operations" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <GtkLabel
-                label="GtkPrintOperation provides a high-level API for printing documents. It handles the print dialog, page rendering callbacks, and printer communication."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
-
-            <GtkFrame label="Print Actions">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Use GtkPrintOperation to show the print dialog, preview documents, or export directly to PDF."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkBox spacing={12}>
-                        <GtkButton label="Print..." onClicked={handlePrint} />
-                        <GtkButton label="Print Preview" onClicked={handlePrintPreview} />
-                        <GtkButton label="Export to PDF..." onClicked={() => void handleExportPdf()} />
-                    </GtkBox>
-                    {printStatus && (
-                        <GtkLabel
-                            label={`Status: ${printStatus}`}
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                    )}
-                    {lastResult && (
-                        <GtkLabel label={`Result: ${lastResult}`} halign={Gtk.Align.START} cssClasses={["dim-label"]} />
-                    )}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Page Preview">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                    halign={Gtk.Align.CENTER}
-                >
-                    <GtkDrawingArea onDraw={drawPreview} contentWidth={200} contentHeight={260} cssClasses={["card"]} />
-                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
-                        <GtkButton
-                            iconName="go-previous-symbolic"
-                            onClicked={() => setPreviewPage((p) => Math.max(0, p - 1))}
-                            sensitive={previewPage > 0}
-                        />
-                        <GtkLabel label={`Page ${previewPage + 1} of ${totalPages}`} />
-                        <GtkButton
-                            iconName="go-next-symbolic"
-                            onClicked={() => setPreviewPage((p) => Math.min(totalPages - 1, p + 1))}
-                            sensitive={previewPage < totalPages - 1}
-                        />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="PrintOperation Signals">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={8}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Key signals for print operations:"
-                        halign={Gtk.Align.START}
-                        cssClasses={["heading"]}
-                    />
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkLabel
-                            label="begin-print: Called when printing starts, set page count here"
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                        <GtkLabel
-                            label="draw-page: Called for each page, render content with Cairo"
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                        <GtkLabel
-                            label="end-print: Called when printing completes"
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                        <GtkLabel
-                            label="status-changed: Track print job progress"
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                        <GtkLabel
-                            label="request-page-setup: Customize page setup per page"
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Print Settings">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={8}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="PrintOperation configuration options:"
-                        halign={Gtk.Align.START}
-                        cssClasses={["heading"]}
-                    />
-                    <GtkLabel
-                        label={`setNPages(n) - Set total page count
-setJobName(name) - Set print job name
-setShowProgress(true) - Show progress dialog
-setDefaultPageSetup(setup) - Configure page layout
-setPrintSettings(settings) - Apply saved settings
-setExportFilename(path) - Export to PDF
-setAllowAsync(true) - Enable async printing`}
-                        halign={Gtk.Align.START}
-                        cssClasses={["monospace"]}
-                    />
-                </GtkBox>
-            </GtkFrame>
-        </GtkBox>
-    );
+    return null;
 };
 
 export const printingDemo: Demo = {
     id: "printing",
     title: "Printing/Printing",
-    description: "Print dialog and document printing with GtkPrintOperation",
-    keywords: ["print", "printing", "dialog", "GtkPrintOperation", "pdf", "export", "preview", "page", "document"],
+    description: "GtkPrintOperation offers a simple API to support printing in a cross-platform way.",
+    keywords: ["print", "printing", "dialog", "GtkPrintOperation"],
     component: PrintingDemo,
     sourceCode,
 };

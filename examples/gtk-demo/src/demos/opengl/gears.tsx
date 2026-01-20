@@ -1,19 +1,7 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    createPortal,
-    GtkBox,
-    GtkButton,
-    GtkFrame,
-    GtkGLArea,
-    GtkLabel,
-    GtkOverlay,
-    GtkScale,
-    GtkWindow,
-    useApplication,
-    x,
-} from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkGLArea, GtkHeaderBar, GtkLabel, GtkOverlay, GtkScale, x } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
@@ -333,9 +321,7 @@ const AxisSlider = ({ axis, value, onChange }: { axis: string; value: number; on
     </GtkBox>
 );
 
-const GearsWindow = ({ onClose }: { onClose: () => void }) => {
-    const app = useApplication();
-    const activeWindow = app.getActiveWindow();
+const GearsDemo = () => {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
     const [viewRotX, setViewRotX] = useState(20);
@@ -497,28 +483,30 @@ const GearsWindow = ({ onClose }: { onClose: () => void }) => {
         return true;
     }, []);
 
-    if (!activeWindow) return null;
-
     if (error) {
-        return createPortal(
-            <GtkWindow title="Gears" defaultWidth={640} defaultHeight={640} onClose={onClose}>
-                <GtkFrame marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
-                    <GtkLabel
-                        label={error}
-                        cssClasses={["error"]}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    />
-                </GtkFrame>
-            </GtkWindow>,
-            activeWindow,
+        return (
+            <GtkFrame marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                <GtkLabel
+                    label={error}
+                    cssClasses={["error"]}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                />
+            </GtkFrame>
         );
     }
 
-    return createPortal(
-        <GtkWindow title="Gears" defaultWidth={640} defaultHeight={640} onClose={onClose}>
+    return (
+        <>
+            <x.Slot for="GtkWindow" id="titlebar">
+                <GtkHeaderBar>
+                    <x.PackEnd>
+                        <GtkLabel label={fps > 0 ? `${fps.toFixed(1)} fps` : "--- fps"} />
+                    </x.PackEnd>
+                </GtkHeaderBar>
+            </x.Slot>
             <GtkOverlay marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
                     <GtkGLArea
@@ -534,36 +522,8 @@ const GearsWindow = ({ onClose }: { onClose: () => void }) => {
                     <AxisSlider axis="Y" value={viewRotY} onChange={setViewRotY} />
                     <AxisSlider axis="Z" value={viewRotZ} onChange={setViewRotZ} />
                 </GtkBox>
-
-                <x.OverlayChild>
-                    <GtkFrame cssClasses={["app-notification"]} halign={Gtk.Align.START} valign={Gtk.Align.START}>
-                        <GtkLabel label={fps > 0 ? `FPS: ${fps.toFixed(1)}` : "FPS: ---"} />
-                    </GtkFrame>
-                </x.OverlayChild>
             </GtkOverlay>
-        </GtkWindow>,
-        activeWindow,
-    );
-};
-
-const GearsDemo = () => {
-    const [showWindow, setShowWindow] = useState(false);
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Gears" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <GtkLabel
-                label="The classic OpenGL gears demo, rendered with GtkGLArea. Three interlocking gears rotate with proper lighting and shading. This demonstrates 3D rendering, matrix transformations, and diffuse lighting calculations."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
-
-            <GtkButton label="Open Gears Window" onClicked={() => setShowWindow(true)} />
-
-            {showWindow && <GearsWindow onClose={() => setShowWindow(false)} />}
-        </GtkBox>
+        </>
     );
 };
 

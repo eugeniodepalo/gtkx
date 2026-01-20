@@ -1,41 +1,42 @@
 import { batch } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-shadows.tsx?raw";
 
-const DEFAULT_CSS = `/* Edit this CSS to see shadow changes in real-time */
-.button1 {
-  box-shadow: 0 1px 2px 1px alpha(@theme_fg_color, 0.1);
+const DEFAULT_CSS = `/* You can edit the text in this window to change the
+ * appearance of this Window.
+ * Be careful, if you screw it up, nothing might be visible
+ * anymore. :)
+ */
+
+window button {
+  color: black;
+  padding: 10px;
+  border-radius: 5px;
+  transition: all 250ms ease-in;
+  border: 1px transparent solid;
 }
 
-.button1:hover {
-  box-shadow: 0 2px 5px 2px alpha(@theme_fg_color, 0.2);
+window button:hover {
+  text-shadow: 3px 3px 5px alpha(black, 0.75);
+  -gtk-icon-shadow: 3px 3px 5px alpha(black, 0.75);
+  box-shadow: 3px 3px 5px alpha(black, 0.5) inset;
+  border: solid 1px alpha(black, 0.75);
 }
 
-.button1:active {
-  box-shadow: none;
-}
-
-.button2 {
-  box-shadow: 0 0 10px 5px alpha(@accent_bg_color, 0.5);
-}
-
-.button2:hover {
-  box-shadow: 0 0 15px 8px alpha(@accent_bg_color, 0.7);
-}
-
-.button2:active {
-  box-shadow: none;
+window button:active {
+  padding: 11px 9px 9px 11px;
+  text-shadow: 1px 1px 2.5px alpha(black, 0.6);
+  -gtk-icon-shadow: 1px 1px 2.5px alpha(black, 0.6);
 }`;
 
 const CssShadowsDemo = () => {
     const textViewRef = useRef<Gtk.TextView | null>(null);
     const providerRef = useRef<Gtk.CssProvider | null>(null);
     const [cssText, setCssText] = useState(DEFAULT_CSS);
-    const [hasError, setHasError] = useState(false);
 
     const applyCss = useCallback(() => {
         const display = Gdk.Display.getDefault();
@@ -47,14 +48,7 @@ const CssShadowsDemo = () => {
 
         const provider = new Gtk.CssProvider();
         providerRef.current = provider;
-
-        try {
-            provider.loadFromString(cssText);
-            setHasError(false);
-        } catch {
-            setHasError(true);
-        }
-
+        provider.loadFromString(cssText);
         Gtk.StyleContext.addProviderForDisplay(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
     }, [cssText]);
 
@@ -78,10 +72,6 @@ const CssShadowsDemo = () => {
         setCssText(buffer.getText(startIter, endIter, true));
     }, []);
 
-    const handleReset = useCallback(() => {
-        setCssText(DEFAULT_CSS);
-    }, []);
-
     return (
         <GtkPaned
             orientation={Gtk.Orientation.VERTICAL}
@@ -90,32 +80,10 @@ const CssShadowsDemo = () => {
             vexpand
             hexpand
         >
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={8}
-                marginTop={8}
-                marginStart={8}
-                marginEnd={8}
-                marginBottom={8}
-            >
-                <GtkLabel label="CSS Shadows" cssClasses={["title-3"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="Edit the CSS below to experiment with box-shadow effects. Changes are applied in real-time to the buttons."
-                    wrap
-                    halign={Gtk.Align.START}
-                    cssClasses={["dim-label"]}
-                />
-
-                <GtkBox spacing={16} halign={Gtk.Align.CENTER} marginTop={16} marginBottom={16}>
-                    <GtkButton label="Prev" cssClasses={["button1"]} />
-                    <GtkButton label="Hello World" cssClasses={["button1", "button2"]} />
-                    <GtkButton label="Next" cssClasses={["button1"]} />
-                </GtkBox>
-
-                <GtkBox spacing={8}>
-                    <GtkButton label="Reset CSS" onClicked={handleReset} />
-                    {hasError && <GtkLabel label="CSS has errors" cssClasses={["error"]} />}
-                </GtkBox>
+            <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
+                <GtkButton iconName="go-next" />
+                <GtkButton iconName="go-previous" />
+                <GtkButton label="Hello World" />
             </GtkBox>
 
             <GtkScrolledWindow vexpand hexpand>

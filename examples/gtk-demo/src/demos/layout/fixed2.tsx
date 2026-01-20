@@ -1,3 +1,4 @@
+import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -9,17 +10,21 @@ import sourceCode from "./fixed2.tsx?raw";
 const CONTAINER_WIDTH = 400;
 const CONTAINER_HEIGHT = 300;
 
-/**
- * Fixed Layout / Transformations demo matching the official GTK gtk-demo.
- * Shows how to rotate and scale a child widget using a transform.
- */
 const Fixed2Demo = () => {
-    const startTimeRef = useRef(Date.now());
+    const startTimeRef = useRef<number | null>(null);
     const [transform, setTransform] = useState<Gsk.Transform | undefined>(undefined);
     const labelRef = useRef<Gtk.Label | null>(null);
+    const fixedRef = useRef<Gtk.Fixed | null>(null);
+    const tickIdRef = useRef<number | null>(null);
 
-    const updateTransform = useCallback(() => {
-        const duration = (Date.now() - startTimeRef.current) / 1000;
+    const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+        const now = frameClock.getFrameTime();
+
+        if (startTimeRef.current === null) {
+            startTimeRef.current = now;
+        }
+
+        const duration = (now - startTimeRef.current) / 1_000_000;
         const angle = duration * 90;
         const scale = 2 + Math.sin(duration * Math.PI);
 
@@ -39,21 +44,40 @@ const Fixed2Demo = () => {
         t = t?.translate(offsetPoint) ?? undefined;
 
         setTransform(t);
+        return true;
     }, []);
 
     useEffect(() => {
-        startTimeRef.current = Date.now();
-        const interval = setInterval(updateTransform, 16);
-        return () => clearInterval(interval);
-    }, [updateTransform]);
+        const fixed = fixedRef.current;
+        if (!fixed) return;
+
+        startTimeRef.current = null;
+        tickIdRef.current = fixed.addTickCallback(tickCallback);
+
+        return () => {
+            if (tickIdRef.current !== null) {
+                fixed.removeTickCallback(tickIdRef.current);
+                tickIdRef.current = null;
+            }
+        };
+    }, [tickCallback]);
 
     const handleLabelRef = useCallback((label: Gtk.Label | null) => {
         labelRef.current = label;
     }, []);
 
+    const handleFixedRef = useCallback((fixed: Gtk.Fixed | null) => {
+        fixedRef.current = fixed;
+    }, []);
+
     return (
         <GtkScrolledWindow hexpand vexpand>
-            <GtkFixed widthRequest={CONTAINER_WIDTH} heightRequest={CONTAINER_HEIGHT} overflow={Gtk.Overflow.VISIBLE}>
+            <GtkFixed
+                ref={handleFixedRef}
+                widthRequest={CONTAINER_WIDTH}
+                heightRequest={CONTAINER_HEIGHT}
+                overflow={Gtk.Overflow.VISIBLE}
+            >
                 <x.FixedChild x={0} y={0} transform={transform}>
                     <GtkLabel ref={handleLabelRef} label="All fixed?" />
                 </x.FixedChild>
@@ -65,8 +89,8 @@ const Fixed2Demo = () => {
 export const fixed2Demo: Demo = {
     id: "fixed2",
     title: "Fixed Layout / Transformations",
-    description: "GtkFixed is a container that allows placing and transforming widgets manually.",
-    keywords: ["fixed", "transform", "GskTransform", "GtkLayoutManager"],
+    description: "GtkFixed with GskTransform using GdkFrameClock for smooth animation.",
+    keywords: ["fixed", "transform", "GskTransform", "GdkFrameClock", "addTickCallback", "animation"],
     component: Fixed2Demo,
     sourceCode,
 };

@@ -1,17 +1,7 @@
 import type { Context } from "@gtkx/ffi/cairo";
-import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    createPortal,
-    GtkBox,
-    GtkButton,
-    GtkDrawingArea,
-    GtkFrame,
-    GtkHeaderBar,
-    GtkLabel,
-    GtkWindow,
-    useApplication,
-    x,
-} from "@gtkx/react";
+import type * as Gdk from "@gtkx/ffi/gdk";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { GtkBox, GtkDrawingArea, GtkHeaderBar, GtkLabel, x } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./frames.tsx?raw";
@@ -34,117 +24,78 @@ const lerpColor = (c1: Color, c2: Color, t: number): Color => ({
     b: c1.b * (1 - t) + c2.b * t,
 });
 
-const TIME_SPAN = 3000;
+const TIME_SPAN_US = 3_000_000;
 
-const FramesWindow = ({ onClose }: { onClose: () => void }) => {
-    const app = useApplication();
-    const activeWindow = app.getActiveWindow();
+const FramesDemo = () => {
     const drawingRef = useRef<Gtk.DrawingArea>(null);
     const [fps, setFps] = useState(0);
+    const tickIdRef = useRef<number | null>(null);
+    const fpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const color1Ref = useRef<Color>(randomColor());
     const color2Ref = useRef<Color>(randomColor());
-    const time2Ref = useRef<number>(Date.now() + TIME_SPAN);
-    const frameCountRef = useRef(0);
-    const lastFpsTimeRef = useRef(Date.now());
+    const time2Ref = useRef<number>(0);
 
     const draw = useCallback((_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-        const now = Date.now();
+        const t = 1 - time2Ref.current / TIME_SPAN_US;
+        const color = lerpColor(color1Ref.current, color2Ref.current, Math.max(0, Math.min(1, t)));
+        cr.setSourceRgb(color.r, color.g, color.b).rectangle(0, 0, width, height).fill();
+    }, []);
+
+    const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+        const now = frameClock.getFrameTime();
+
+        if (time2Ref.current === 0) {
+            time2Ref.current = now + TIME_SPAN_US;
+        }
 
         if (now >= time2Ref.current) {
-            time2Ref.current = now + TIME_SPAN;
+            time2Ref.current = now + TIME_SPAN_US;
             color1Ref.current = color2Ref.current;
             color2Ref.current = randomColor();
         }
 
-        const t = 1 - (time2Ref.current - now) / TIME_SPAN;
-        const color = lerpColor(color1Ref.current, color2Ref.current, t);
-
-        cr.setSourceRgb(color.r, color.g, color.b).rectangle(0, 0, width, height).fill();
+        drawingRef.current?.queueDraw();
+        return true;
     }, []);
 
     useEffect(() => {
         const area = drawingRef.current;
         if (!area) return;
 
-        const interval = setInterval(() => {
-            area.queueDraw();
-            frameCountRef.current++;
+        tickIdRef.current = area.addTickCallback(tickCallback);
 
-            const now = Date.now();
-            const elapsed = now - lastFpsTimeRef.current;
-            if (elapsed >= 500) {
-                setFps(Math.round((frameCountRef.current * 1000) / elapsed));
-                frameCountRef.current = 0;
-                lastFpsTimeRef.current = now;
+        fpsIntervalRef.current = setInterval(() => {
+            const frameClock = area.getFrameClock();
+            if (frameClock) {
+                setFps(frameClock.getFps());
             }
-        }, 16);
+        }, 500);
 
-        return () => clearInterval(interval);
-    }, []);
-
-    if (!activeWindow) return null;
-
-    return createPortal(
-        <GtkWindow title="Frames" defaultWidth={600} defaultHeight={400} onClose={onClose}>
-            <GtkHeaderBar>
-                <x.PackEnd>
-                    <GtkLabel label={`${fps.toFixed(2)} fps`} cssClasses={["monospace"]} />
-                </x.PackEnd>
-            </GtkHeaderBar>
-            <GtkDrawingArea ref={drawingRef} onDraw={draw} hexpand vexpand />
-        </GtkWindow>,
-        activeWindow,
-    );
-};
-
-const FramesDemo = () => {
-    const [showWindow, setShowWindow] = useState(false);
+        return () => {
+            if (tickIdRef.current !== null) {
+                area.removeTickCallback(tickIdRef.current);
+                tickIdRef.current = null;
+            }
+            if (fpsIntervalRef.current !== null) {
+                clearInterval(fpsIntervalRef.current);
+                fpsIntervalRef.current = null;
+            }
+        };
+    }, [tickCallback]);
 
     return (
         <>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-                <GtkLabel label="Benchmark/Frames" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-                <GtkLabel
-                    label="This demo is intentionally as simple as possible, to see what framerate the windowing system can deliver on its own. It does nothing but change the drawn color, for every frame."
-                    wrap
-                    halign={Gtk.Align.START}
-                    cssClasses={["dim-label"]}
-                />
-
-                <GtkButton
-                    label={showWindow ? "Close Window" : "Open Frames Window"}
-                    onClicked={() => setShowWindow(!showWindow)}
-                    cssClasses={[showWindow ? "destructive-action" : "suggested-action"]}
-                    halign={Gtk.Align.START}
-                />
-
-                <GtkFrame label="How It Works">
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={8}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    >
-                        <GtkLabel
-                            label="The benchmark interpolates between two random colors over 3 seconds, then picks new colors. The FPS counter in the header bar shows the achieved framerate."
-                            wrap
-                            halign={Gtk.Align.START}
-                        />
-                        <GtkLabel
-                            label="This measures raw rendering performance without any complex scene or layout calculations."
-                            wrap
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                    </GtkBox>
-                </GtkFrame>
+            <x.Slot for="GtkWindow" id="titlebar">
+                <GtkHeaderBar>
+                    <x.PackEnd>
+                        <GtkLabel label={`${fps.toFixed(2)} fps`} />
+                    </x.PackEnd>
+                </GtkHeaderBar>
+            </x.Slot>
+            <GtkBox>
+                <GtkDrawingArea ref={drawingRef} onDraw={draw} hexpand vexpand />
             </GtkBox>
-
-            {showWindow && <FramesWindow onClose={() => setShowWindow(false)} />}
         </>
     );
 };
@@ -152,8 +103,9 @@ const FramesDemo = () => {
 export const framesDemo: Demo = {
     id: "frames",
     title: "Benchmark/Frames",
-    description: "Tests raw rendering performance by drawing color changes every frame",
-    keywords: ["benchmark", "frames", "fps", "performance", "rendering", "GtkDrawingArea"],
+    description:
+        "This demo is intentionally as simple as possible, to see what framerate the windowing system can deliver on its own. It does nothing but change the drawn color, for every frame.",
+    keywords: ["benchmark", "frames", "fps", "performance", "GdkFrameClock"],
     component: FramesDemo,
     sourceCode,
 };

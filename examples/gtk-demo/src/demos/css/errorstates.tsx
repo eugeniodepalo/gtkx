@@ -1,270 +1,162 @@
-import { css, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkCheckButton, GtkEntry, GtkFrame, GtkLabel, GtkSpinButton } from "@gtkx/react";
-import { useState } from "react";
+import { GtkEntry, GtkGrid, GtkLabel, GtkScale, GtkSwitch, x } from "@gtkx/react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
 
-const fieldErrorStyle = css`
- color: @error_color;
- font-size: 0.85em;
-`;
-
-injectGlobal`
-.field-success entry,
-.field-success spinbutton {
- border-color: @success_color;
-}
-
-.error-shake {
- animation: shake 0.3s ease-in-out;
-}
-
-@keyframes shake {
- 0%, 100% { transform: translateX(0); }
- 25% { transform: translateX(-5px); }
- 75% { transform: translateX(5px); }
-}
-`;
-
-interface ValidationState {
-    email: { value: string; error: string | null };
-    password: { value: string; error: string | null };
-    age: { value: number; error: string | null };
-    terms: { checked: boolean; error: string | null };
-}
-
-const validateEmail = (email: string): string | null => {
-    if (!email) return "Email is required";
-    if (!email.includes("@")) return "Email must contain @";
-    if (!email.includes(".")) return "Email must contain a domain";
-    return null;
-};
-
-const validatePassword = (password: string): string | null => {
-    if (!password) return "Password is required";
-    if (password.length < 8) return "Password must be at least 8 characters";
-    if (!/[A-Z]/.test(password)) return "Password must contain an uppercase letter";
-    if (!/[0-9]/.test(password)) return "Password must contain a number";
-    return null;
-};
-
-const validateAge = (age: number): string | null => {
-    if (age < 18) return "You must be at least 18 years old";
-    if (age > 120) return "Please enter a valid age";
-    return null;
-};
-
 const ErrorstatesDemo = () => {
-    const [validation, setValidation] = useState<ValidationState>({
-        email: { value: "", error: null },
-        password: { value: "", error: null },
-        age: { value: 25, error: null },
-        terms: { checked: false, error: null },
-    });
-    const [showErrors, setShowErrors] = useState(false);
+    const [details, setDetails] = useState("");
+    const [moreDetails, setMoreDetails] = useState("");
+    const [level, setLevel] = useState(50);
+    const [modeActive, setModeActive] = useState(false);
+    const [showError, setShowError] = useState(false);
+    const [moreDetailsError, setMoreDetailsError] = useState(false);
 
-    const handleEmailChange = (entry: Gtk.Entry) => {
-        const value = entry.getText();
-        const error = showErrors ? validateEmail(value) : null;
-        setValidation((prev) => ({ ...prev, email: { value, error } }));
-    };
+    const handleDetailsChange = useCallback(
+        (entry: Gtk.Entry) => {
+            const text = entry.getText();
+            setDetails(text);
+            if (text.length > 0 && moreDetails.length === 0) {
+                setMoreDetailsError(true);
+            } else {
+                setMoreDetailsError(false);
+            }
+        },
+        [moreDetails],
+    );
 
-    const handlePasswordChange = (entry: Gtk.Entry) => {
-        const value = entry.getText();
-        const error = showErrors ? validatePassword(value) : null;
-        setValidation((prev) => ({ ...prev, password: { value, error } }));
-    };
+    const handleMoreDetailsChange = useCallback(
+        (entry: Gtk.Entry) => {
+            const text = entry.getText();
+            setMoreDetails(text);
+            if (details.length > 0 && text.length === 0) {
+                setMoreDetailsError(true);
+            } else {
+                setMoreDetailsError(false);
+            }
+        },
+        [details],
+    );
 
-    const handleAgeChange = (spinButton: Gtk.SpinButton) => {
-        const value = spinButton.getValue();
-        const error = showErrors ? validateAge(value) : null;
-        setValidation((prev) => ({ ...prev, age: { value, error } }));
-    };
+    const handleLevelChange = useCallback(
+        (value: number) => {
+            setLevel(value);
+            if (modeActive && value > 50) {
+                setShowError(false);
+            } else if (modeActive && value <= 50) {
+                setModeActive(false);
+            }
+        },
+        [modeActive],
+    );
 
-    const handleTermsChange = (checkButton: Gtk.CheckButton) => {
-        const checked = checkButton.getActive();
-        const error = showErrors && !checked ? "You must accept the terms" : null;
-        setValidation((prev) => ({ ...prev, terms: { checked, error } }));
-    };
-
-    const handleValidate = () => {
-        setShowErrors(true);
-        setValidation((prev) => ({
-            email: { ...prev.email, error: validateEmail(prev.email.value) },
-            password: { ...prev.password, error: validatePassword(prev.password.value) },
-            age: { ...prev.age, error: validateAge(prev.age.value) },
-            terms: { ...prev.terms, error: !prev.terms.checked ? "You must accept the terms" : null },
-        }));
-    };
-
-    const handleReset = () => {
-        setShowErrors(false);
-        setValidation({
-            email: { value: "", error: null },
-            password: { value: "", error: null },
-            age: { value: 25, error: null },
-            terms: { checked: false, error: null },
-        });
-    };
-
-    const hasErrors =
-        validation.email.error || validation.password.error || validation.age.error || validation.terms.error;
-
-    const isValid =
-        showErrors && !hasErrors && validation.email.value && validation.password.value && validation.terms.checked;
+    const handleModeStateSet = useCallback(
+        (_sw: Gtk.Switch, state: boolean) => {
+            if (!state || level > 50) {
+                setShowError(false);
+                setModeActive(state);
+                return false;
+            } else {
+                setShowError(true);
+                return true;
+            }
+        },
+        [level],
+    );
 
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={20}
-            marginStart={20}
-            marginEnd={20}
-            marginTop={20}
-            marginBottom={20}
-        >
-            <GtkLabel label="Error States" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
+            <x.GridChild column={0} row={0}>
+                <GtkLabel
+                    label="_Details"
+                    useUnderline
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.BASELINE}
+                    cssClasses={["dim-label"]}
+                />
+            </x.GridChild>
+            <x.GridChild column={1} row={0} columnSpan={2}>
+                <GtkEntry valign={Gtk.Align.BASELINE} onChanged={handleDetailsChange} />
+            </x.GridChild>
 
-            <GtkLabel
-                label="GTK provides the .error CSS class for indicating validation errors. This demo shows how to implement form validation with visual feedback using GTK's built-in styling."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
+            <x.GridChild column={0} row={1}>
+                <GtkLabel
+                    label="More D_etails"
+                    useUnderline
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.BASELINE}
+                    cssClasses={["dim-label"]}
+                />
+            </x.GridChild>
+            <x.GridChild column={1} row={1} columnSpan={2}>
+                <GtkEntry
+                    valign={Gtk.Align.BASELINE}
+                    cssClasses={moreDetailsError ? ["error"] : []}
+                    tooltipText={moreDetailsError ? "Must have details first" : ""}
+                    onChanged={handleMoreDetailsChange}
+                />
+            </x.GridChild>
 
-            <GtkFrame label="Registration Form">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={16}
-                    marginStart={20}
-                    marginEnd={20}
-                    marginTop={20}
-                    marginBottom={20}
-                >
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkLabel label="Email" halign={Gtk.Align.START} />
-                        <GtkEntry
-                            placeholderText="Enter your email"
-                            cssClasses={
-                                validation.email.error ? ["error"] : validation.email.value && showErrors ? [] : []
-                            }
-                            onChanged={handleEmailChange}
-                        />
-                        {validation.email.error && (
-                            <GtkLabel
-                                label={validation.email.error}
-                                halign={Gtk.Align.START}
-                                cssClasses={[fieldErrorStyle]}
-                            />
-                        )}
-                    </GtkBox>
+            <x.GridChild column={0} row={2}>
+                <GtkLabel
+                    label="_Level"
+                    useUnderline
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.BASELINE}
+                    cssClasses={["dim-label"]}
+                />
+            </x.GridChild>
+            <x.GridChild column={1} row={2} columnSpan={2}>
+                <GtkScale
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    valign={Gtk.Align.BASELINE}
+                    drawValue={false}
+                    value={level}
+                    lower={0}
+                    upper={100}
+                    stepIncrement={1}
+                    pageIncrement={10}
+                    onValueChanged={handleLevelChange}
+                />
+            </x.GridChild>
 
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkLabel label="Password" halign={Gtk.Align.START} />
-                        <GtkEntry
-                            placeholderText="Enter your password"
-                            visibility={false}
-                            cssClasses={validation.password.error ? ["error"] : []}
-                            onChanged={handlePasswordChange}
-                        />
-                        {validation.password.error && (
-                            <GtkLabel
-                                label={validation.password.error}
-                                halign={Gtk.Align.START}
-                                cssClasses={[fieldErrorStyle]}
-                            />
-                        )}
-                    </GtkBox>
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkLabel label="Age" halign={Gtk.Align.START} />
-                        <GtkSpinButton
-                            climbRate={1}
-                            digits={0}
-                            cssClasses={validation.age.error ? ["error"] : []}
-                            onValueChanged={handleAgeChange}
-                            value={validation.age.value}
-                            lower={0}
-                            upper={150}
-                            stepIncrement={1}
-                            pageIncrement={10}
-                        />
-                        {validation.age.error && (
-                            <GtkLabel
-                                label={validation.age.error}
-                                halign={Gtk.Align.START}
-                                cssClasses={[fieldErrorStyle]}
-                            />
-                        )}
-                    </GtkBox>
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkCheckButton
-                            label="I accept the terms and conditions"
-                            cssClasses={validation.terms.error ? ["error"] : []}
-                            onToggled={handleTermsChange}
-                        />
-                        {validation.terms.error && (
-                            <GtkLabel
-                                label={validation.terms.error}
-                                halign={Gtk.Align.START}
-                                cssClasses={[fieldErrorStyle]}
-                            />
-                        )}
-                    </GtkBox>
-
-                    <GtkBox spacing={12} halign={Gtk.Align.END}>
-                        <GtkButton label="Reset" onClicked={handleReset} cssClasses={["flat"]} />
-                        <GtkButton label="Validate" onClicked={handleValidate} cssClasses={["suggested-action"]} />
-                    </GtkBox>
-
-                    {isValid && (
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} halign={Gtk.Align.CENTER}>
-                            <GtkLabel
-                                label="All fields are valid!"
-                                cssClasses={["success"]}
-                                marginStart={16}
-                                marginEnd={16}
-                                marginTop={8}
-                                marginBottom={8}
-                            />
-                        </GtkBox>
-                    )}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Error CSS Classes">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                >
-                    <GtkBox spacing={16}>
-                        <GtkEntry placeholderText="Normal" />
-                        <GtkEntry placeholderText="With .error class" cssClasses={["error"]} />
-                        <GtkEntry placeholderText="With .warning class" cssClasses={["warning"]} />
-                        <GtkEntry placeholderText="With .success class" cssClasses={["success"]} />
-                    </GtkBox>
+            <x.GridChild column={0} row={3}>
+                <GtkLabel
+                    label="_Mode"
+                    useUnderline
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.BASELINE}
+                    cssClasses={["dim-label"]}
+                />
+            </x.GridChild>
+            <x.GridChild column={1} row={3}>
+                <GtkSwitch
+                    halign={Gtk.Align.START}
+                    valign={Gtk.Align.BASELINE}
+                    active={modeActive}
+                    onStateSet={handleModeStateSet}
+                />
+            </x.GridChild>
+            <x.GridChild column={2} row={3}>
+                {showError && (
                     <GtkLabel
-                        label="Apply cssClasses={['error']}, cssClasses={['warning']}, or cssClasses={['success']} to indicate field states."
-                        wrap
-                        cssClasses={["dim-label", "caption"]}
+                        label="Level too low"
                         halign={Gtk.Align.START}
+                        valign={Gtk.Align.BASELINE}
+                        cssClasses={["error"]}
                     />
-                </GtkBox>
-            </GtkFrame>
-        </GtkBox>
+                )}
+            </x.GridChild>
+        </GtkGrid>
     );
 };
 
 export const errorstatesDemo: Demo = {
     id: "errorstates",
     title: "Error States",
-    description: "Form validation with error styling",
-    keywords: ["css", "error", "validation", "form", "warning", "success", "state"],
+    description:
+        "GtkLabel and GtkEntry can indicate errors if you set the .error style class on them. This example shows how this can be used in a dialog for input validation.",
+    keywords: ["css", "error", "validation", "state", "entry", "switch", "scale"],
     component: ErrorstatesDemo,
     sourceCode,
 };

@@ -1,325 +1,82 @@
-import { css, cx, injectGlobal } from "@gtkx/css";
+import { injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkExpander, GtkFrame, GtkLabel, GtkRevealer } from "@gtkx/react";
-import { useState } from "react";
+import { GtkBox, GtkButton, GtkFrame } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-accordion.tsx?raw";
 
 injectGlobal`
- .accordion-panel {
- background-color: @theme_bg_color;
- border-radius: 8px;
- margin: 4px 0;
- transition: background-color 200ms ease, box-shadow 200ms ease;
- }
+.accordion, .accordion * {
+    all: unset;
 
- .accordion-panel:hover {
- background-color: alpha(@accent_bg_color, 0.05);
- }
+    transition-property: color, background-color, border-color, background-image, padding, border-width;
+    transition-duration: 1s;
 
- .accordion-panel-active {
- background-color: alpha(@accent_bg_color, 0.1);
- box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
- }
-
- .accordion-header {
- padding: 12px 16px;
- transition: background-color 150ms ease;
- }
-
- .accordion-header:hover {
- background-color: alpha(@accent_bg_color, 0.05);
- }
-
- .accordion-arrow {
- transition: -gtk-icon-transform 250ms ease-out;
- }
-
- .accordion-arrow-open {
- -gtk-icon-transform: rotate(90deg);
- }
-
- .animated-button {
- transition: all 200ms ease-out;
- padding: 12px 24px;
- border-radius: 8px;
- }
-
- .animated-button:hover {
- background-color: shade(@accent_bg_color, 1.1);
- box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
- }
-
- .animated-button:active {
- background-color: shade(@accent_bg_color, 0.9);
- box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
- }
-
- .smooth-transition {
- transition: all 200ms ease;
- }
-`;
-
-const colorTransitionStyle = css`
- transition: background-color 500ms ease, color 500ms ease;
- padding: 16px 24px;
- border-radius: 8px;
-`;
-
-const colorBlueStyle = css`background-color: #3584e4; color: white;`;
-const colorGreenStyle = css`background-color: #2ec27e; color: white;`;
-const colorOrangeStyle = css`background-color: #ff7800; color: white;`;
-const colorPurpleStyle = css`background-color: #9141ac; color: white;`;
-
-const colorStyles: Record<string, string> = {
-    "color-blue": colorBlueStyle,
-    "color-green": colorGreenStyle,
-    "color-orange": colorOrangeStyle,
-    "color-purple": colorPurpleStyle,
-};
-
-interface AccordionItemProps {
-    title: string;
-    content: string;
-    isOpen: boolean;
-    onToggle: () => void;
+    font-size: 20px;
 }
 
-const AccordionItem = ({ title, content, isOpen, onToggle }: AccordionItemProps) => (
-    <GtkBox
-        cssClasses={["accordion-panel", isOpen ? "accordion-panel-active" : ""]}
-        orientation={Gtk.Orientation.VERTICAL}
-    >
-        <GtkButton cssClasses={["flat", "accordion-header"]} onClicked={onToggle}>
-            <GtkBox spacing={12} hexpand>
-                <GtkLabel
-                    label="▶"
-                    cssClasses={["accordion-arrow", isOpen ? "accordion-arrow-open" : ""]}
-                    widthChars={2}
-                />
-                <GtkLabel label={title} cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
-            </GtkBox>
-        </GtkButton>
-        <GtkRevealer
-            revealChild={isOpen}
-            transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
-            transitionDuration={250}
-        >
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} marginStart={32} marginEnd={16} marginBottom={12}>
-                <GtkLabel label={content} wrap cssClasses={["dim-label"]} halign={Gtk.Align.START} />
-            </GtkBox>
-        </GtkRevealer>
-    </GtkBox>
-);
+.accordion {
+    background: linear-gradient(153deg, #151515, #151515 5px, transparent 5px) 0 0,
+                linear-gradient(333deg, #151515, #151515 5px, transparent 5px) 10px 5px,
+                linear-gradient(153deg, #222, #222 5px, transparent 5px) 0 5px,
+                linear-gradient(333deg, #222, #222 5px, transparent 5px) 10px 10px,
+                linear-gradient(90deg, #1b1b1b, #1b1b1b 10px, transparent 10px),
+                linear-gradient(#1d1d1d, #1d1d1d 25%, #1a1a1a 25%, #1a1a1a 50%, transparent 50%, transparent 75%, #242424 75%, #242424);
+    background-color: #131313;
+    background-size: 20px 20px;
+}
 
-const CssAccordionDemo = () => {
-    const [openPanel, setOpenPanel] = useState<number | null>(0);
-    const [selectedColor, setSelectedColor] = useState("color-blue");
+.accordion button {
+    color: black;
+    background-color: #bbb;
+    border-style: solid;
+    border-width: 2px 0 2px 2px;
+    border-color: #333;
 
-    const accordionItems = [
-        {
-            title: "What are CSS Transitions?",
-            content:
-                "CSS transitions allow you to smoothly animate property changes over time. In GTK, transitions work on properties like background-color, opacity, padding, and box-shadow.",
-        },
-        {
-            title: "How do I use transitions?",
-            content:
-                "Add the 'transition' property to your CSS selector. For example: 'transition: all 300ms ease;' will animate all animatable properties over 300 milliseconds with an ease timing function.",
-        },
-        {
-            title: "What timing functions are available?",
-            content:
-                "GTK CSS supports: ease (default), ease-in, ease-out, ease-in-out, and linear. Each affects how the animation accelerates and decelerates.",
-        },
-        {
-            title: "Can I animate specific properties?",
-            content:
-                "Yes! Instead of 'all', specify the property name: 'transition: background-color 200ms ease, box-shadow 300ms ease-out;' to animate different properties with different timings.",
-        },
-    ];
+    padding: 12px 4px;
+}
 
-    const togglePanel = (index: number) => {
-        setOpenPanel(openPanel === index ? null : index);
-    };
+.accordion button:first-child {
+    border-radius: 5px 0 0 5px;
+}
 
-    const colors = [
-        { id: "color-blue", label: "Blue" },
-        { id: "color-green", label: "Green" },
-        { id: "color-orange", label: "Orange" },
-        { id: "color-purple", label: "Purple" },
-    ];
+.accordion button:last-child {
+    border-radius: 0 5px 5px 0;
+    border-width: 2px;
+}
 
-    return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={24}
-            marginStart={20}
-            marginEnd={20}
-            marginTop={20}
-            marginBottom={20}
-        >
-            <GtkLabel label="CSS Transitions & Animations" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+.accordion button:hover {
+    padding: 12px 48px;
+    background-color: #4870bc;
+}
 
-            <GtkLabel
-                label="GTK CSS supports transitions for smooth property animations. Transitions automatically animate changes between states like :hover, :active, and custom classes."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
+.accordion button *:hover {
+    color: white;
+}
 
-            <GtkFrame label="Animated Accordion">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={4}
-                    marginTop={16}
-                    marginBottom={16}
-                    marginStart={16}
-                    marginEnd={16}
-                >
-                    {accordionItems.map((item, index) => (
-                        <AccordionItem
-                            key={item.title}
-                            title={item.title}
-                            content={item.content}
-                            isOpen={openPanel === index}
-                            onToggle={() => togglePanel(index)}
-                        />
-                    ))}
-                </GtkBox>
-            </GtkFrame>
+.accordion button:hover:active,
+.accordion button:active {
+    background-color: #993401;
+}
+`;
 
-            <GtkFrame label="Color Transitions">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={16}
-                    marginTop={20}
-                    marginBottom={20}
-                    marginStart={20}
-                    marginEnd={20}
-                >
-                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
-                        {colors.map((color) => (
-                            <GtkButton
-                                key={color.id}
-                                label={color.label}
-                                cssClasses={selectedColor === color.id ? ["suggested-action"] : []}
-                                onClicked={() => setSelectedColor(color.id)}
-                            />
-                        ))}
-                    </GtkBox>
-
-                    <GtkBox
-                        cssClasses={cx(colorTransitionStyle, colorStyles[selectedColor])}
-                        halign={Gtk.Align.CENTER}
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={4}
-                    >
-                        <GtkLabel label="Smooth Color Transition" cssClasses={["title-4"]} />
-                        <GtkLabel label="Click a color button above" />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Interactive Button States">
-                <GtkBox
-                    spacing={24}
-                    marginTop={24}
-                    marginBottom={24}
-                    marginStart={24}
-                    marginEnd={24}
-                    halign={Gtk.Align.CENTER}
-                >
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <GtkButton cssClasses={["animated-button", "suggested-action"]} onClicked={() => {}}>
-                            <GtkLabel label="Hover Me" />
-                        </GtkButton>
-                        <GtkLabel
-                            label="Shadow + color"
-                            cssClasses={["dim-label", "caption"]}
-                            halign={Gtk.Align.CENTER}
-                        />
-                    </GtkBox>
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <GtkButton
-                            cssClasses={["smooth-transition", "circular"]}
-                            iconName="starred-symbolic"
-                            onClicked={() => {}}
-                        />
-                        <GtkLabel
-                            label="Smooth hover"
-                            cssClasses={["dim-label", "caption"]}
-                            halign={Gtk.Align.CENTER}
-                        />
-                    </GtkBox>
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <GtkButton cssClasses={["smooth-transition", "pill"]} onClicked={() => {}}>
-                            <GtkLabel label="Pill Button" />
-                        </GtkButton>
-                        <GtkLabel
-                            label="Rounded edges"
-                            cssClasses={["dim-label", "caption"]}
-                            halign={Gtk.Align.CENTER}
-                        />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Native GtkExpander">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={8}
-                    marginTop={16}
-                    marginBottom={16}
-                    marginStart={16}
-                    marginEnd={16}
-                >
-                    <GtkLabel
-                        label="GtkExpander has built-in expand/collapse animation:"
-                        wrap
-                        cssClasses={["dim-label"]}
-                        halign={Gtk.Align.START}
-                    />
-
-                    <GtkExpander label="Click to expand with animation">
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} marginTop={8}>
-                            <GtkLabel label="This content slides in smoothly using GTK's native animation." wrap />
-                            <GtkLabel
-                                label="GtkExpander handles the animation automatically - no CSS needed!"
-                                wrap
-                                cssClasses={["dim-label"]}
-                            />
-                        </GtkBox>
-                    </GtkExpander>
-
-                    <GtkExpander label="Another expandable section">
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} marginTop={8}>
-                            <GtkLabel label="More animated content here." />
-                        </GtkBox>
-                    </GtkExpander>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="Timing Functions" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="ease: slow start and end, fast middle (default). ease-in: slow start. ease-out: slow end. ease-in-out: slow start and end. linear: constant speed throughout."
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-            </GtkBox>
+const CssAccordionDemo = () => (
+    <GtkFrame cssClasses={["accordion"]}>
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+            <GtkButton label="This" />
+            <GtkButton label="Is" />
+            <GtkButton label="A" />
+            <GtkButton label="CSS" />
+            <GtkButton label="Accordion" />
+            <GtkButton label=":-)" />
         </GtkBox>
-    );
-};
+    </GtkFrame>
+);
 
 export const cssAccordionDemo: Demo = {
     id: "css-accordion",
     title: "Theming/CSS Accordion",
-    description: "Smooth animations with CSS transitions",
-    keywords: ["css", "transition", "animation", "accordion", "timing", "ease"],
+    description: "A simple accordion demo written using CSS transitions and multiple backgrounds",
+    keywords: ["css", "transition", "animation", "accordion", "hover"],
     component: CssAccordionDemo,
     sourceCode,
 };

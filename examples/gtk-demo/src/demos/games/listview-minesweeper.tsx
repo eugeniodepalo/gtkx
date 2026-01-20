@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkImage, GtkLabel, x } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { SYSTEM_SOUNDS, useSound } from "../../hooks/index.js";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
 
@@ -77,20 +76,6 @@ const defaultCell: Cell = {
 const ListViewMinesweeperDemo = () => {
     const [board, setBoard] = useState<Cell[]>(createBoard);
     const [gameState, setGameState] = useState<GameState>("playing");
-    const prevGameState = useRef<GameState>("playing");
-
-    const clickSound = useSound(SYSTEM_SOUNDS.click, { volume: 0.5 });
-    const explosionSound = useSound(SYSTEM_SOUNDS.error, { volume: 0.8 });
-    const victorySound = useSound(SYSTEM_SOUNDS.complete, { volume: 0.8 });
-
-    useEffect(() => {
-        if (prevGameState.current === "playing" && gameState === "lost") {
-            explosionSound.play();
-        } else if (prevGameState.current === "playing" && gameState === "won") {
-            victorySound.play();
-        }
-        prevGameState.current = gameState;
-    }, [gameState, explosionSound, victorySound]);
 
     const revealCell = useCallback((index: number, currentBoard: Cell[]): Cell[] => {
         const cell = currentBoard[index];
@@ -108,8 +93,6 @@ const ListViewMinesweeperDemo = () => {
             const cell = board[index];
             if (!cell || cell.isRevealed) return;
 
-            clickSound.play();
-
             const newBoard = revealCell(index, board);
             setBoard(newBoard);
 
@@ -125,7 +108,7 @@ const ListViewMinesweeperDemo = () => {
                 setGameState("won");
             }
         },
-        [board, gameState, revealCell, clickSound],
+        [board, gameState, revealCell],
     );
 
     const resetGame = useCallback(() => {
