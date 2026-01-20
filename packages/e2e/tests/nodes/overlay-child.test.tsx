@@ -98,7 +98,7 @@ describe("render - OverlayChild", () => {
             expect(childCount).toBe(1);
         });
 
-        it("adds multiple overlay children", async () => {
+        it("adds multiple overlay children with separate wrappers", async () => {
             const overlayRef = createRef<Gtk.Overlay>();
 
             await render(
@@ -120,6 +120,56 @@ describe("render - OverlayChild", () => {
                 child = child.getNextSibling();
             }
             expect(childCount).toBe(3);
+        });
+
+        it("adds multiple children in single wrapper", async () => {
+            const overlayRef = createRef<Gtk.Overlay>();
+            const firstRef = createRef<Gtk.Button>();
+            const secondRef = createRef<Gtk.Button>();
+
+            await render(
+                <GtkOverlay ref={overlayRef}>
+                    Main
+                    <x.OverlayChild>
+                        <GtkButton ref={firstRef} label="First Overlay" />
+                        <GtkButton ref={secondRef} label="Second Overlay" />
+                    </x.OverlayChild>
+                </GtkOverlay>,
+            );
+
+            let childCount = 0;
+            let child = overlayRef.current?.getFirstChild();
+            while (child) {
+                childCount++;
+                child = child.getNextSibling();
+            }
+            expect(childCount).toBe(3);
+
+            const firstParent = firstRef.current?.getParent();
+            const secondParent = secondRef.current?.getParent();
+            expect(firstParent && overlayRef.current && isObjectEqual(firstParent, overlayRef.current)).toBe(true);
+            expect(secondParent && overlayRef.current && isObjectEqual(secondParent, overlayRef.current)).toBe(true);
+        });
+
+        it("applies props to all children in wrapper", async () => {
+            const overlayRef = createRef<Gtk.Overlay>();
+            const firstRef = createRef<Gtk.Button>();
+            const secondRef = createRef<Gtk.Button>();
+
+            await render(
+                <GtkOverlay ref={overlayRef}>
+                    Main
+                    <x.OverlayChild measure={true}>
+                        <GtkButton ref={firstRef} label="First" />
+                        <GtkButton ref={secondRef} label="Second" />
+                    </x.OverlayChild>
+                </GtkOverlay>,
+            );
+
+            const firstMeasured = overlayRef.current?.getMeasureOverlay(firstRef.current as Gtk.Widget);
+            const secondMeasured = overlayRef.current?.getMeasureOverlay(secondRef.current as Gtk.Widget);
+            expect(firstMeasured).toBe(true);
+            expect(secondMeasured).toBe(true);
         });
     });
 });

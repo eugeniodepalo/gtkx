@@ -31,11 +31,7 @@ const OverlayDecorativeDemo = () => {
             </GtkScrolledWindow>
             <x.OverlayChild>
                 <GtkPicture paintable={decor1} halign={Gtk.Align.START} valign={Gtk.Align.START} canTarget={false} />
-            </x.OverlayChild>
-            <x.OverlayChild>
                 <GtkPicture paintable={decor2} halign={Gtk.Align.END} valign={Gtk.Align.END} canTarget={false} />
-            </x.OverlayChild>
-            <x.OverlayChild>
                 <GtkScale
                     orientation={Gtk.Orientation.HORIZONTAL}
                     drawValue={false}
