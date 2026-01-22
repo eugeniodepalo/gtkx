@@ -5,23 +5,51 @@
  * Works with CodegenControllerMeta from FFI generation.
  */
 
-import type { CodeBlockWriter, SourceFile, WriterFunction } from "ts-morph";
+import type { SourceFile } from "ts-morph";
 import type { CodegenControllerMeta } from "../../../core/codegen-metadata.js";
 import { toPascalCase } from "../../../core/utils/naming.js";
 import { qualifyType } from "../../../core/utils/type-qualification.js";
 import { type PropInfo, PropsBuilderBase } from "./props-builder-base.js";
 
 export class ControllerPropsBuilder extends PropsBuilderBase {
-    buildBaseControllerPropsType(sourceFile: SourceFile): void {
+    buildBaseControllerPropsType(sourceFile: SourceFile, eventControllerMeta: CodegenControllerMeta): void {
+        const { namespace } = eventControllerMeta;
+        const allProps: PropInfo[] = [];
+
+        for (const prop of eventControllerMeta.properties) {
+            if (!prop.isWritable || !prop.setter) continue;
+            this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
+            const qualifiedType = qualifyType(prop.type, namespace);
+            const typeWithNull = prop.isNullable ? `${qualifiedType} | null` : qualifiedType;
+            allProps.push({
+                name: prop.camelName,
+                type: typeWithNull,
+                optional: true,
+                doc: prop.doc ? this.formatDocDescription(prop.doc, namespace) : undefined,
+            });
+        }
+
+        for (const signal of eventControllerMeta.signals) {
+            this.trackNamespacesFromAnalysis(signal.referencedNamespaces);
+            allProps.push({
+                name: signal.handlerName,
+                type: `${this.buildHandlerType(signal, "EventController", namespace)} | null`,
+                optional: true,
+                doc: signal.doc ? this.formatDocDescription(signal.doc, namespace) : undefined,
+            });
+        }
+
         sourceFile.addTypeAlias({
             name: "EventControllerBaseProps",
             isExported: true,
-            docs: [{ description: "Base props for all event controller elements." }],
-            type: this.buildBasePropsWriter(),
+            docs: [{ description: eventControllerMeta.doc ?? "Base props for all event controller elements." }],
+            type: this.buildObjectTypeWriter(allProps),
         });
     }
 
     buildControllerPropsInterface(sourceFile: SourceFile, controller: CodegenControllerMeta): void {
+        if (controller.className === "EventController") return;
+
         const { namespace, jsxName, className } = controller;
         const allProps: PropInfo[] = [];
 
@@ -51,6 +79,7 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
         this.addSpecialControllerProps(allProps, controller);
 
         const controllerName = toPascalCase(className);
+
         allProps.push({
             name: "ref",
             type: `Ref<${namespace}.${controllerName}>`,
@@ -118,29 +147,8 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
             return "EventControllerBaseProps";
         }
 
-        const abstractControllers = new Set(["Gesture", "GestureSingle"]);
-        if (abstractControllers.has(parentClassName)) {
-            return "EventControllerBaseProps";
-        }
-
         const baseName = toPascalCase(parentClassName);
         const ns = parentNamespace ?? controller.namespace;
-        return `Omit<${ns}${baseName}Props, "ref">`;
-    }
-
-    private buildBasePropsWriter(): WriterFunction {
-        return (writer: CodeBlockWriter) => {
-            writer.write("{");
-            writer.newLine();
-            writer.indent(() => {
-                writer.writeLine("/** Propagation phase for the controller. */");
-                writer.writeLine("propagationPhase?: Gtk.PropagationPhase;");
-                writer.writeLine("/** Propagation limit for the controller. */");
-                writer.writeLine("propagationLimit?: Gtk.PropagationLimit;");
-                writer.writeLine("/** Name for the controller (for debugging). */");
-                writer.writeLine("name?: string | null;");
-            });
-            writer.write("}");
-        };
+        return `${ns}${baseName}Props`;
     }
 }

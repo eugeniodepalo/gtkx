@@ -17,7 +17,9 @@ import {
     NAVIGATION_VIEW_WIDGET_NAMES,
     NOTEBOOK_WIDGET_NAMES,
     SCROLLED_WINDOW_WIDGET_NAMES,
+    SEARCH_BAR_WIDGET_NAMES,
     STACK_WIDGET_NAMES,
+    TOGGLE_GROUP_WIDGET_NAMES,
     WINDOW_WIDGET_NAMES,
 } from "../../../core/config/index.js";
 import type { CodegenProject } from "../../../core/project.js";
@@ -41,6 +43,8 @@ export type JsxWidget = {
     isWindow: boolean;
     isScrolledWindow: boolean;
     isDrawingArea: boolean;
+    isSearchBar: boolean;
+    isToggleGroup: boolean;
     isContainer: boolean;
     isAdjustable: boolean;
     hasBuffer: boolean;
@@ -72,10 +76,9 @@ export class JsxTypesGenerator {
         this.propsBuilder.clearUsedNamespaces();
         this.controllerPropsBuilder.clearUsedNamespaces();
 
-        this.generateWidgetNotifyProps(sourceFile, widgets);
         this.generateBaseWidgetProps(sourceFile, widgets);
         this.generateWidgetPropsInterfaces(sourceFile, widgets);
-        this.generateBaseControllerProps(sourceFile);
+        this.generateBaseControllerProps(sourceFile, controllers);
         this.generateControllerPropsInterfaces(sourceFile, controllers);
         this.addImports(sourceFile, widgets, controllers);
 
@@ -119,6 +122,8 @@ export class JsxTypesGenerator {
             isWindow: WINDOW_WIDGET_NAMES.has(meta.className),
             isScrolledWindow: SCROLLED_WINDOW_WIDGET_NAMES.has(meta.className),
             isDrawingArea: DRAWING_AREA_WIDGET_NAMES.has(meta.className),
+            isSearchBar: SEARCH_BAR_WIDGET_NAMES.has(meta.className),
+            isToggleGroup: TOGGLE_GROUP_WIDGET_NAMES.has(meta.className),
             isContainer: meta.isContainer,
             isAdjustable: meta.isAdjustable,
             hasBuffer: meta.hasBuffer,
@@ -159,21 +164,6 @@ export class JsxTypesGenerator {
         addNamespaceImports(sourceFile, usedNamespaces, { isTypeOnly: true });
     }
 
-    private generateWidgetNotifyProps(sourceFile: SourceFile, widgets: JsxWidget[]): void {
-        const widgetMeta = widgets.find((w) => w.className === "Widget");
-        if (!widgetMeta) return;
-
-        const propNames = [...widgetMeta.meta.propNames].sort();
-        const propsUnion = this.propsBuilder.buildWidgetNotifyPropsType(propNames);
-
-        sourceFile.addTypeAlias({
-            name: "WidgetNotifyProps",
-            type: propsUnion,
-            isExported: true,
-            docs: [{ description: "Property names that can be passed to the onNotify callback for Widget." }],
-        });
-    }
-
     private generateBaseWidgetProps(sourceFile: SourceFile, widgets: JsxWidget[]): void {
         const widgetMeta = widgets.find((w) => w.className === "Widget");
         if (!widgetMeta) return;
@@ -194,20 +184,20 @@ export class JsxTypesGenerator {
             const filteredProperties = widget.meta.properties.filter((p) => !widget.hiddenProps.has(p.camelName));
             const filteredSignals = widget.meta.signals.filter((s) => !widget.hiddenProps.has(s.handlerName));
 
-            const allPropNamesKebab = widget.meta.propNames;
-
             this.propsBuilder.buildWidgetSpecificPropsInterface(
                 sourceFile,
                 widget,
                 filteredProperties,
                 filteredSignals,
-                allPropNamesKebab,
             );
         }
     }
 
-    private generateBaseControllerProps(sourceFile: SourceFile): void {
-        this.controllerPropsBuilder.buildBaseControllerPropsType(sourceFile);
+    private generateBaseControllerProps(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
+        const eventControllerMeta = controllers.find((c) => c.className === "EventController");
+        if (!eventControllerMeta) return;
+
+        this.controllerPropsBuilder.buildBaseControllerPropsType(sourceFile, eventControllerMeta);
     }
 
     private generateControllerPropsInterfaces(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {

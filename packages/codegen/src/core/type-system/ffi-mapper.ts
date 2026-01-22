@@ -193,12 +193,15 @@ export class FfiMapper {
      *
      * Handles special cases like out parameters, callbacks, and
      * ownership transfer.
+     *
+     * @param param - The parameter to map
+     * @param sizeParamOffset - Offset to add to sizeParamIndex for sized arrays (e.g., 1 for instance methods)
      */
-    mapParameter(param: GirParameter): MappedType {
+    mapParameter(param: GirParameter, sizeParamOffset = 0): MappedType {
         const imports: TypeImport[] = [];
 
         if (param.direction === "out" || param.direction === "inout") {
-            const innerType = this.mapType(param.type, false, param.transferOwnership);
+            const innerType = this.mapType(param.type, false, param.transferOwnership, sizeParamOffset);
             imports.push(...innerType.imports);
 
             const isBoxedOrGObjectOrStruct =
@@ -240,7 +243,7 @@ export class FfiMapper {
             };
         }
 
-        const mapped = this.mapType(param.type, false, param.transferOwnership);
+        const mapped = this.mapType(param.type, false, param.transferOwnership, sizeParamOffset);
         const isObjectType = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
         const isTransferFull = param.transferOwnership === "full";
         const isTransferNone = param.transferOwnership === "none" || param.transferOwnership === undefined;

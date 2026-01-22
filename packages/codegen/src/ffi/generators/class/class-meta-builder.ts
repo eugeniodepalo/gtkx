@@ -40,9 +40,11 @@ export class ClassMetaBuilder {
     }
 
     isEventController(): boolean {
-        if (this.cls.abstract) return false;
-        if (this.namespace !== "Gtk") return false;
         if (SKIP_CONTROLLERS.has(this.cls.name)) return false;
+
+        const isBaseEventController = this.cls.qualifiedName === this.eventControllerQualifiedName;
+        if (isBaseEventController) return true;
+
         return this.cls.isSubclassOf(this.eventControllerQualifiedName);
     }
 
@@ -70,6 +72,7 @@ export class ClassMetaBuilder {
             signals,
             constructorParams,
             doc: this.cls.doc,
+            abstract: this.cls.abstract,
         };
     }
 

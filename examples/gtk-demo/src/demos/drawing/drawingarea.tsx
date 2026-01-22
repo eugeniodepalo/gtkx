@@ -180,18 +180,8 @@ const ScribbleArea = () => {
     }, []);
 
     return (
-        <GtkDrawingArea
-            ref={ref}
-            contentWidth={100}
-            contentHeight={100}
-            onDraw={drawScribble}
-            onResize={handleResize}
-        >
-            <GtkGestureDrag
-                onDragBegin={handleDragBegin}
-                onDragUpdate={handleDragUpdate}
-                onDragEnd={handleDragEnd}
-            />
+        <GtkDrawingArea ref={ref} contentWidth={100} contentHeight={100} onDraw={drawScribble} onResize={handleResize}>
+            <GtkGestureDrag onDragBegin={handleDragBegin} onDragUpdate={handleDragUpdate} onDragEnd={handleDragEnd} />
         </GtkDrawingArea>
     );
 };

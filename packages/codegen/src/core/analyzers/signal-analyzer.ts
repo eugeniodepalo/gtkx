@@ -1,5 +1,5 @@
-import type { GirClass, GirRepository, GirSignal } from "@gtkx/gir";
-import { parseQualifiedName } from "@gtkx/gir";
+import type { GirClass, GirRepository, GirSignal, QualifiedName } from "@gtkx/gir";
+import { parseQualifiedName, qualifiedName } from "@gtkx/gir";
 import type { SignalAnalysis, SignalParam } from "../generator-types.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { TypeImport } from "../type-system/ffi-types.js";
@@ -7,6 +7,9 @@ import { collectExternalNamespaces } from "../type-system/ffi-types.js";
 import { collectDirectMembers, collectParentSignalNames } from "../utils/class-traversal.js";
 import { createHandlerName, toCamelCase } from "../utils/naming.js";
 import { qualifyType } from "../utils/type-qualification.js";
+
+const GOBJECT_OBJECT = qualifiedName("GObject", "Object");
+const CLASSES_WITH_NOTIFY: QualifiedName[] = [qualifiedName("Gtk", "Widget"), qualifiedName("Gtk", "EventController")];
 
 /**
  * Analyzes signals for JSX component generation.
@@ -21,6 +24,7 @@ export class SignalAnalyzer {
     /**
      * Analyzes signals for a widget class.
      * Returns only the signals directly defined on this class (not inherited from any parent).
+     * For Gtk.Widget and Gtk.EventController, also includes the notify signal from GObject.Object.
      */
     analyzeWidgetSignals(cls: GirClass): SignalAnalysis[] {
         const { namespace } = parseQualifiedName(cls.qualifiedName);
@@ -34,7 +38,26 @@ export class SignalAnalyzer {
             transformName: toCamelCase,
         });
 
-        return directSignals.map((signal) => this.analyzeSignal(signal, namespace));
+        const signals = directSignals.map((signal) => this.analyzeSignal(signal, namespace));
+
+        if (CLASSES_WITH_NOTIFY.includes(cls.qualifiedName)) {
+            const notifySignal = this.getNotifySignalFromGObject(namespace);
+            if (notifySignal) {
+                signals.push(notifySignal);
+            }
+        }
+
+        return signals;
+    }
+
+    private getNotifySignalFromGObject(namespace: string): SignalAnalysis | null {
+        const gobjectClass = this.repo.resolveClass(GOBJECT_OBJECT);
+        if (!gobjectClass) return null;
+
+        const notifySignal = gobjectClass.signals.find((s) => s.name === "notify");
+        if (!notifySignal) return null;
+
+        return this.analyzeSignal(notifySignal, namespace);
     }
 
     private analyzeSignal(signal: GirSignal, namespace: string): SignalAnalysis {

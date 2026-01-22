@@ -43,9 +43,12 @@ export type CodegenClassMeta = {
 };
 
 /**
- * Controller metadata - extends base with no additional fields.
+ * Controller metadata - extends base with controller-specific fields.
  */
-export type CodegenControllerMeta = CodegenClassMeta;
+export type CodegenControllerMeta = CodegenClassMeta & {
+    /** Whether this is an abstract controller (not instantiable) */
+    readonly abstract: boolean;
+};
 
 /**
  * Widget metadata - extends base with widget-specific capabilities.

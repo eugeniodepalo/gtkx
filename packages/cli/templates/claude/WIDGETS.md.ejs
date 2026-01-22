@@ -520,21 +520,16 @@ Input in list row.
 Segmented button group for mutually exclusive options.
 
 ```tsx
-const [viewMode, setViewMode] = useState("list");
+const [mode, setMode] = useState("list");
 
-<AdwToggleGroup
-    activeName={viewMode}
-    onNotify={(group, prop) => {
-        if (prop === "active-name") {
-            setViewMode(group.getActiveName() ?? "list");
-        }
-    }}
->
+<AdwToggleGroup activeName={mode} onActiveChanged={(_index, name) => setMode(name ?? "list")}>
     <x.Toggle id="list" iconName="view-list-symbolic" tooltip="List view" />
     <x.Toggle id="grid" iconName="view-grid-symbolic" tooltip="Grid view" />
     <x.Toggle id="flow" label="Flow" />
 </AdwToggleGroup>
 ```
+
+**ToggleGroup props:** `activeName`, `active` (index), `onActiveChanged` (callback with index and name)
 
 **Toggle props:** `id` (optional), `label`, `iconName`, `tooltip`, `enabled`
 
@@ -545,16 +540,16 @@ Stack-based navigation with history.
 const [history, setHistory] = useState(["home"]);
 
 <AdwNavigationView history={history} onHistoryChanged={setHistory}>
-    <x.NavigationPage id="home" title="Home">
+    <x.NavigationPage for={AdwNavigationView} id="home" title="Home">
         <GtkButton label="Go to Details" onClicked={() => setHistory([...history, "details"])} />
     </x.NavigationPage>
-    <x.NavigationPage id="details" title="Details" canPop>
+    <x.NavigationPage for={AdwNavigationView} id="details" title="Details" canPop>
         <GtkLabel label="Details content" />
     </x.NavigationPage>
 </AdwNavigationView>
 ```
 
-**NavigationPage props:** `id` (required), `title`, `canPop`. Control navigation via `history` array.
+**NavigationPage props:** `for` (required, parent widget type), `id` (required), `title`, `canPop`. Control navigation via `history` array.
 
 ### AdwNavigationSplitView
 Sidebar/content split layout for master-detail interfaces.
@@ -563,20 +558,20 @@ Sidebar/content split layout for master-detail interfaces.
 const [selected, setSelected] = useState(items[0]);
 
 <AdwNavigationSplitView sidebarWidthFraction={0.33} minSidebarWidth={200} maxSidebarWidth={300}>
-    <x.NavigationPage id="sidebar" title="Sidebar">
+    <x.NavigationPage for={AdwNavigationSplitView} id="sidebar" title="Sidebar">
         <AdwToolbarView>
             <x.ToolbarTop><AdwHeaderBar /></x.ToolbarTop>
-            <GtkListBox cssClasses={["navigation-sidebar"]} onRowSelected={(_, row) => {
-                if (!row) return;
-                const item = items[row.getIndex()];
-                if (item) setSelected(item);
-            }}>
+            <GtkListBox cssClasses={["navigation-sidebar"]} onRowSelected={(row) => {
+                    if (!row) return;
+                    const item = items[row.getIndex()];
+                    if (item) setSelected(item);
+                }}>
                 {items.map((item) => <AdwActionRow key={item.id} title={item.title} />)}
             </GtkListBox>
         </AdwToolbarView>
     </x.NavigationPage>
 
-    <x.NavigationPage id="content" title={selected?.title ?? ""}>
+    <x.NavigationPage for={AdwNavigationSplitView} id="content" title={selected?.title ?? ""}>
         <AdwToolbarView>
             <x.ToolbarTop><AdwHeaderBar /></x.ToolbarTop>
             <GtkLabel label={selected?.title ?? ""} />
@@ -586,7 +581,7 @@ const [selected, setSelected] = useState(items[0]);
 ```
 
 **Props:** `sidebarWidthFraction`, `minSidebarWidth`, `maxSidebarWidth`, `collapsed`, `showContent`.
-**NavigationPage slots:** Use `id="sidebar"` for left pane, `id="content"` for right pane.
+**NavigationPage:** Use `for={AdwNavigationSplitView}` with `id="sidebar"` for left pane, `id="content"` for right pane.
 **Selection:** Use `GtkListBox` with `onRowSelected` (single click) not `onRowActivated` (double click).
 
 ### AdwAlertDialog
@@ -612,12 +607,12 @@ const [showDialog, setShowDialog] = useState(false);
 
 **AlertDialogResponse props:** `id`, `label`, `appearance` (SUGGESTED, DESTRUCTIVE), `enabled`
 
-### AdwColorDialogButton / AdwFontDialogButton
+### GtkColorDialogButton / GtkFontDialogButton
 Color and font picker dialogs.
 
 ```tsx
-<AdwColorDialogButton rgba={color} onRgbaChanged={setColor} title="Select Color" modal withAlpha />
-<AdwFontDialogButton fontDesc={font} onFontDescChanged={setFont} title="Select Font" modal useFont useSize />
+<GtkColorDialogButton rgba={color} onRgbaChanged={setColor} title="Select Color" modal withAlpha />
+<GtkFontDialogButton fontDesc={font} onFontDescChanged={setFont} title="Select Font" modal useFont useSize />
 ```
 
 ### Other Adwaita Widgets
@@ -739,6 +734,41 @@ All widgets support gesture props. Event callbacks receive `Gdk.Event | null` as
 - **Swipe:** `onSwipe(velocityX, velocityY, event)`
 - **Long Press:** `onLongPressPressed`, `onLongPressCancelled`
 - **Zoom:** `onZoomScaleChanged(scale, event)`, `gestureZoomRef`
+
+## Event Controllers (Child Elements)
+
+Event controllers can also be added as child elements to any widget for more control:
+
+```tsx
+<GtkBox focusable>
+    <GtkEventControllerMotion
+        onEnter={(x, y) => console.log("Entered at", x, y)}
+        onMotion={(x, y) => setPosition({ x, y })}
+        onLeave={() => console.log("Left")}
+    />
+    <GtkEventControllerKey
+        onKeyPressed={(keyval, keycode, state) => {
+            console.log("Key pressed:", keyval);
+            return false;
+        }}
+    />
+    <GtkLabel label="Hover or type here" />
+</GtkBox>
+```
+
+**Common controllers:** `GtkEventControllerMotion`, `GtkEventControllerKey`, `GtkEventControllerScroll`, `GtkEventControllerFocus`, `GtkGestureClick`, `GtkGestureDrag`, `GtkGestureLongPress`, `GtkGestureZoom`, `GtkGestureRotate`, `GtkGestureSwipe`, `GtkGestureStylus`
+
+## SearchBar
+
+```tsx
+const [searchActive, setSearchActive] = useState(false);
+
+<GtkSearchBar searchModeEnabled={searchActive} onSearchModeChanged={setSearchActive}>
+    <GtkSearchEntry text={query} onSearchChanged={(entry) => setQuery(entry.getText())} />
+</GtkSearchBar>
+```
+
+The `onSearchModeChanged` callback fires when search mode changes (e.g., user presses Escape).
 
 ## TextView / SourceView
 

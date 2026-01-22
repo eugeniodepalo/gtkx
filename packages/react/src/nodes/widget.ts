@@ -29,7 +29,13 @@ import {
     type ReorderableWidget,
 } from "./internal/predicates.js";
 import { type SignalHandler, signalStore } from "./internal/signal-store.js";
-import { filterProps, matchesAnyClass, propNameToSignalName, resolvePropMeta, resolveSignal } from "./internal/utils.js";
+import {
+    filterProps,
+    matchesAnyClass,
+    propNameToSignalName,
+    resolvePropMeta,
+    resolveSignal,
+} from "./internal/utils.js";
 
 const EXCLUDED_PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
 
@@ -141,6 +147,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         this.updateSizeRequest(oldProps, newProps);
         this.updateGrabFocus(oldProps, newProps);
 
+        const typeName = (this.container.constructor as ContainerClass).glibTypeName;
+        const constructorProps = new Set(CONSTRUCTOR_PROPS[typeName] ?? []);
         const propNames = new Set([
             ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
             ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
@@ -150,6 +158,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
 
         for (const name of propNames) {
+            if (constructorProps.has(name)) continue;
+
             const oldValue = oldProps?.[name];
             const newValue = newProps[name];
 

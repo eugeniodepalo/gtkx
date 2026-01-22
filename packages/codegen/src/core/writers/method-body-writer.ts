@@ -480,12 +480,15 @@ export class MethodBodyWriter {
     /**
      * Builds call arguments as an array of CallArgument objects.
      * Used with CallExpressionBuilder.toWriter() for ts-morph generation.
+     *
+     * @param parameters - The parameters to build arguments for
+     * @param sizeParamOffset - Offset to add to sizeParamIndex for sized arrays (1 for instance methods, 0 for static)
      */
-    buildCallArgumentsArray(parameters: readonly GirParameter[]): CallArgument[] {
+    buildCallArgumentsArray(parameters: readonly GirParameter[], sizeParamOffset = 0): CallArgument[] {
         const filtered = this.filterParameters(parameters);
 
         return filtered.map((param) => {
-            const mapped = this.ffiMapper.mapParameter(param);
+            const mapped = this.ffiMapper.mapParameter(param, sizeParamOffset);
             const jsParamName = this.toJsParamName(param);
             const isOptional = this.ffiMapper.isNullable(param);
             const valueName = this.callExpression.buildValueExpression(jsParamName, mapped, isOptional);
@@ -628,7 +631,8 @@ export class MethodBodyWriter {
                 writer.writeLine("const error = { value: null as unknown };");
             }
 
-            const args = this.buildCallArgumentsArray(options.parameters);
+            const sizeParamOffset = options.self ? 1 : 0;
+            const args = this.buildCallArgumentsArray(options.parameters, sizeParamOffset);
 
             this.writeCallbackWrapperDeclarations(writer, args);
 

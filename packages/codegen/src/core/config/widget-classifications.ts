@@ -6,6 +6,8 @@ export const STACK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Stack", "ViewSt
 export const WINDOW_WIDGET_NAMES: ReadonlySet<string> = new Set(["Window"]);
 export const SCROLLED_WINDOW_WIDGET_NAMES: ReadonlySet<string> = new Set(["ScrolledWindow"]);
 export const DRAWING_AREA_WIDGET_NAMES: ReadonlySet<string> = new Set(["DrawingArea"]);
+export const SEARCH_BAR_WIDGET_NAMES: ReadonlySet<string> = new Set(["SearchBar"]);
+export const TOGGLE_GROUP_WIDGET_NAMES: ReadonlySet<string> = new Set(["ToggleGroup"]);
 
 const AUTOWRAP_WIDGET_NAMES: ReadonlySet<string> = new Set(["ListBox", "FlowBox"]);
 export const NOTEBOOK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Notebook"]);

@@ -31,7 +31,7 @@ import { x, AdwHeaderBar, GtkButton, GtkLabel } from "@gtkx/react";
 
 ### AdwViewStack / AdwViewSwitcher
 
-Tab-like navigation between views:
+Tab-like navigation between views. Use the `page` and `onPageChanged` props for controlled state:
 
 ```tsx
 import { x, AdwViewStack, AdwViewSwitcher, GtkBox } from "@gtkx/react";
@@ -47,15 +47,7 @@ const TabbedView = () => {
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
       <AdwViewSwitcher stack={stackRef.current ?? undefined} />
 
-      <AdwViewStack
-        ref={stackRef}
-        page={currentPage}
-        onNotify={(_, prop) => {
-          if (prop === "visible-child-name" && stackRef.current) {
-            setCurrentPage(stackRef.current.getVisibleChildName() ?? "home");
-          }
-        }}
-      >
+      <AdwViewStack ref={stackRef} page={currentPage} onPageChanged={setCurrentPage}>
         <x.StackPage id="home" title="Home" iconName="go-home-symbolic">
           Home content
         </x.StackPage>
@@ -71,6 +63,8 @@ const TabbedView = () => {
   );
 };
 ```
+
+The `onPageChanged` callback is called whenever the visible page changes, whether from the ViewSwitcher or programmatically.
 
 ### AdwActionRow
 
@@ -317,7 +311,7 @@ const SplitViewExample = () => {
           <GtkScrolledWindow vexpand>
             <GtkListBox
               cssClasses={["navigation-sidebar"]}
-              onRowSelected={(_, row) => {
+              onRowSelected={(row) => {
                 if (!row) return;
                 const item = items[row.getIndex()];
                 if (item) setSelected(item);
@@ -411,7 +405,7 @@ const SettingsPage = () => {
                 <GtkSwitch
                   valign={Gtk.Align.CENTER}
                   active={darkMode}
-                  onStateSet={(_, state) => {
+                  onStateSet={(state) => {
                     setDarkMode(state);
                     return false;
                   }}
@@ -427,7 +421,7 @@ const SettingsPage = () => {
                 <GtkSwitch
                   valign={Gtk.Align.CENTER}
                   active={notifications}
-                  onStateSet={(_, state) => {
+                  onStateSet={(state) => {
                     setNotifications(state);
                     return false;
                   }}

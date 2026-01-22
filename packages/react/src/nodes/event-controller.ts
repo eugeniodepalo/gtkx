@@ -1,77 +1,89 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
-import { CONTROLLER_CLASSES, CONTROLLER_CONSTRUCTOR_PARAMS } from "../generated/internal.js";
-import type { Node } from "../node.js";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { CONTROLLER_CLASSES, CONTROLLER_CONSTRUCTOR_PROPS } from "../generated/internal.js";
+import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import type { Props } from "../types.js";
+import type { Container, Props } from "../types.js";
 import type { Attachable } from "./internal/predicates.js";
 import { type SignalHandler, signalStore } from "./internal/signal-store.js";
 import { propNameToSignalName, resolvePropMeta, resolveSignal } from "./internal/utils.js";
-import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-class EventControllerNode extends VirtualNode<Props> implements Attachable {
+const G_TYPE_INVALID = 0;
+
+class EventControllerNode extends Node<Gtk.EventController, Props> implements Attachable {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
         return type in CONTROLLER_CLASSES;
     }
 
-    protected controller: Gtk.EventController | null = null;
+    public static override createContainer(
+        props: Props,
+        containerClass: typeof Gtk.EventController,
+    ): Gtk.EventController {
+        const typeName = containerClass.glibTypeName;
+
+        if (typeName === "GtkDropTarget") {
+            const actions = (props.actions as number | undefined) ?? 0;
+            return new Gtk.DropTarget(G_TYPE_INVALID, actions);
+        }
+
+        const args = (CONTROLLER_CONSTRUCTOR_PROPS[typeName] ?? []).map((name) => props[name]);
+
+        // biome-ignore lint/suspicious/noExplicitAny: Dynamic constructor invocation
+        return new (containerClass as any)(...args);
+    }
+
+    props: Props;
     protected parentWidget: Gtk.Widget | null = null;
+
+    constructor(typeName: string, props: Props, container: Gtk.EventController, rootContainer?: Container) {
+        super(typeName, props, container, rootContainer);
+        this.props = props;
+    }
 
     public canBeChildOf(parent: Node): boolean {
         return parent instanceof WidgetNode;
     }
 
+    public override appendChild(_child: Node): void {}
+    public override removeChild(_child: Node): void {}
+    public override insertBefore(_child: Node, _before: Node): void {}
+
     public attachTo(parent: Node): void {
         if (parent instanceof WidgetNode) {
-            const widget = parent.container;
-            this.parentWidget = widget;
-            this.controller = this.createController();
-            this.applyProps(null, this.props);
-            widget.addController(this.controller);
+            this.parentWidget = parent.container;
+            parent.container.addController(this.container);
         }
     }
 
     public detachFrom(_parent: Node): void {
-        if (this.parentWidget && this.controller) {
-            this.parentWidget.removeController(this.controller);
+        if (this.parentWidget) {
+            this.parentWidget.removeController(this.container);
         }
-        this.controller = null;
         this.parentWidget = null;
     }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
-        super.updateProps(oldProps, newProps);
+        this.props = newProps;
         this.applyProps(oldProps, newProps);
     }
 
     public override unmount(): void {
-        if (this.parentWidget && this.controller) {
-            this.parentWidget.removeController(this.controller);
+        if (this.parentWidget) {
+            this.parentWidget.removeController(this.container);
         }
-        this.controller = null;
         this.parentWidget = null;
         super.unmount();
     }
 
-    private createController(): Gtk.EventController {
-        const typeName = this.typeName as keyof typeof CONTROLLER_CLASSES;
-        const ControllerClass = CONTROLLER_CLASSES[typeName];
-        const constructorParams = CONTROLLER_CONSTRUCTOR_PARAMS[this.typeName] ?? [];
-        const args = constructorParams.map((param) => this.props[param]);
-
-        // biome-ignore lint/suspicious/noExplicitAny: Dynamic constructor invocation
-        return new (ControllerClass as any)(...args);
-    }
-
     private applyProps(oldProps: Props | null, newProps: Props): void {
-        if (!this.controller) return;
-
+        const constructorProps = new Set(CONTROLLER_CONSTRUCTOR_PROPS[this.typeName] ?? []);
         const propNames = new Set([...Object.keys(oldProps ?? {}), ...Object.keys(newProps ?? {})]);
 
         for (const name of propNames) {
-            if (name === "children" || name === "ref") continue;
+            if (name === "children") continue;
+            if (constructorProps.has(name)) continue;
 
             const oldValue = oldProps?.[name];
             const newValue = newProps[name];
@@ -80,29 +92,29 @@ class EventControllerNode extends VirtualNode<Props> implements Attachable {
 
             const signalName = propNameToSignalName(name);
 
-            if (resolveSignal(this.controller, signalName)) {
+            if (resolveSignal(this.container, signalName)) {
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-                signalStore.set(this, this.controller, signalName, handler);
+                signalStore.set(this, this.container, signalName, handler);
             } else if (newValue !== undefined) {
                 this.setProperty(name, newValue);
             }
         }
-
-        if (newProps.ref !== oldProps?.ref && typeof newProps.ref === "function") {
-            (newProps.ref as (controller: Gtk.EventController) => void)(this.controller);
-        }
     }
 
     private setProperty(name: string, value: unknown): void {
-        if (!this.controller) return;
+        if (name === "types" && this.container instanceof Gtk.DropTarget) {
+            const types = value as number[];
+            this.container.setGtypes(types.length, types);
+            return;
+        }
 
-        const propMeta = resolvePropMeta(this.controller, name);
+        const propMeta = resolvePropMeta(this.container, name);
 
         if (propMeta) {
             const [, setter] = propMeta;
-            const setterFn = (this.controller as unknown as Record<string, (v: unknown) => void>)[setter];
+            const setterFn = (this.container as unknown as Record<string, (v: unknown) => void>)[setter];
             if (typeof setterFn === "function") {
-                setterFn.call(this.controller, value);
+                setterFn.call(this.container, value);
             }
         }
     }

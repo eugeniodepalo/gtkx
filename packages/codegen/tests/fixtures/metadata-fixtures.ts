@@ -71,7 +71,7 @@ export function createWidgetMeta(overrides: Partial<CodegenWidgetMeta> = {}): Co
         parentNamespace: null,
         modulePath: "./gtk/widget.js",
         propNames: ["visible", "sensitive", "can-focus"],
-        signalNames: ["destroy", "show"],
+        signalNames: ["destroy", "show", "notify"],
         properties: [
             createPropertyAnalysis({ name: "visible", camelName: "visible", type: "boolean" }),
             createPropertyAnalysis({ name: "sensitive", camelName: "sensitive", type: "boolean" }),
@@ -80,6 +80,13 @@ export function createWidgetMeta(overrides: Partial<CodegenWidgetMeta> = {}): Co
         signals: [
             createSignalAnalysis({ name: "destroy", camelName: "destroy", handlerName: "onDestroy" }),
             createSignalAnalysis({ name: "show", camelName: "show", handlerName: "onShow" }),
+            createSignalAnalysis({
+                name: "notify",
+                camelName: "notify",
+                handlerName: "onNotify",
+                parameters: [{ name: "pspec", type: "GObject.ParamSpec" }],
+                referencedNamespaces: ["GObject"],
+            }),
         ],
         ...overrides,
     });

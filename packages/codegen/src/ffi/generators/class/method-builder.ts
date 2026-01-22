@@ -224,7 +224,7 @@ export class MethodBuilder {
                         this.methodBody.getFfiTypeWriter().toWriter(selfTypeDescriptor)(writer);
                         writer.writeLine(", value: this.handle },");
 
-                        const asyncArgs = this.methodBody.buildCallArgumentsArray(asyncParams);
+                        const asyncArgs = this.methodBody.buildCallArgumentsArray(asyncParams, 1);
                         this.methodBody.writeArgumentsToWriter(writer, asyncArgs);
 
                         writer.writeLine("{");

@@ -1,5 +1,5 @@
 import { PROPS, SIGNALS } from "../../generated/internal.js";
-import type { Container, ContainerClass, MetadataResolvable, Props } from "../../types.js";
+import type { Container, ContainerClass, Props } from "../../types.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: Required for generic class matching
 type AnyClass = new (...args: any[]) => any;
@@ -46,7 +46,7 @@ export const filterProps = (props: Props, excludeKeys: readonly string[]): Props
 
 type GObjectClass = { glibTypeName?: string };
 
-const walkPrototypeChain = <T>(instance: MetadataResolvable, lookup: (typeName: string) => T | null): T | null => {
+const walkPrototypeChain = <T>(instance: Container, lookup: (typeName: string) => T | null): T | null => {
     // biome-ignore lint/complexity/noBannedTypes: Walking prototype chain requires Function type
     let current: Function | null = instance.constructor;
 
@@ -70,10 +70,10 @@ const walkPrototypeChain = <T>(instance: MetadataResolvable, lookup: (typeName: 
     return null;
 };
 
-export const resolvePropMeta = (instance: MetadataResolvable, key: string): [string | null, string] | null =>
+export const resolvePropMeta = (instance: Container, key: string): [string | null, string] | null =>
     walkPrototypeChain(instance, (typeName) => PROPS[typeName]?.[key] ?? null);
 
-export const resolveSignal = (instance: MetadataResolvable, signalName: string): boolean => {
+export const resolveSignal = (instance: Container, signalName: string): boolean => {
     if (signalName === "notify") return true;
     return walkPrototypeChain(instance, (typeName) => (SIGNALS[typeName]?.has(signalName) ? true : null)) ?? false;
 };

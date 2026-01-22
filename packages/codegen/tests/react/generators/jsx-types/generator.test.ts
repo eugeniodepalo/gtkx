@@ -61,46 +61,6 @@ describe("JsxTypesGenerator", () => {
         });
     });
 
-    describe("WidgetNotifyProps type", () => {
-        it("generates WidgetNotifyProps type alias", () => {
-            const widgetMeta = createWidgetMeta({
-                propNames: ["visible", "can-focus", "sensitive"],
-            });
-            const { project, generator } = createTestSetup([widgetMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const typeAlias = sourceFile?.getTypeAlias("WidgetNotifyProps");
-            expect(typeAlias).toBeDefined();
-        });
-
-        it("includes all widget prop names in union", () => {
-            const widgetMeta = createWidgetMeta({
-                propNames: ["visible", "can-focus", "sensitive"],
-            });
-            const { project, generator } = createTestSetup([widgetMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain('"visible"');
-            expect(code).toContain('"can-focus"');
-            expect(code).toContain('"sensitive"');
-        });
-
-        it("exports WidgetNotifyProps", () => {
-            const { project, generator } = createTestSetup([createWidgetMeta()]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const typeAlias = sourceFile?.getTypeAlias("WidgetNotifyProps");
-            expect(typeAlias?.isExported()).toBe(true);
-        });
-    });
-
     describe("WidgetProps type alias", () => {
         it("generates WidgetProps type alias", () => {
             const { project, generator } = createTestSetup([createWidgetMeta()]);

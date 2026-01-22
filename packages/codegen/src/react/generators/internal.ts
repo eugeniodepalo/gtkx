@@ -242,13 +242,15 @@ export class InternalGenerator {
 
     private generateControllerMetadata(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
         this.generateControllerClasses(sourceFile, controllers);
-        this.generateControllerConstructorParams(sourceFile, controllers);
+        this.generateControllerConstructorProps(sourceFile, controllers);
     }
 
     private generateControllerClasses(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
         const objectProperties: Record<string, WriterFunction> = {};
 
         for (const controller of controllers) {
+            if (controller.abstract) continue;
+
             const identifier = `${controller.namespace}.${controller.className}`;
             objectProperties[controller.jsxName] = (writer) => writer.write(identifier);
         }
@@ -260,7 +262,7 @@ export class InternalGenerator {
         );
     }
 
-    private generateControllerConstructorParams(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
+    private generateControllerConstructorProps(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
         const objectProperties: Record<string, WriterFunction> = {};
 
         for (const controller of controllers) {
@@ -270,9 +272,9 @@ export class InternalGenerator {
         }
 
         sourceFile.addVariableStatement(
-            createConstExport("CONTROLLER_CONSTRUCTOR_PARAMS", writeObjectOrEmpty(objectProperties, Writers), {
+            createConstExport("CONTROLLER_CONSTRUCTOR_PROPS", writeObjectOrEmpty(objectProperties, Writers), {
                 type: "Record<string, string[]>",
-                docs: "Constructor parameters for controllers that require them.",
+                docs: "Constructor props for controllers that require them.",
             }),
         );
     }

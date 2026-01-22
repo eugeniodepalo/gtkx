@@ -15,10 +15,6 @@ import type { JsxWidget } from "./generator.js";
 import { type PropInfo, PropsBuilderBase } from "./props-builder-base.js";
 
 export class WidgetPropsBuilder extends PropsBuilderBase {
-    buildWidgetNotifyPropsType(widgetPropNames: string[]): string {
-        return widgetPropNames.map((n) => `"${n}"`).join(" | ");
-    }
-
     buildWidgetPropsType(
         sourceFile: SourceFile,
         namespace: string,
@@ -78,7 +74,6 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
         widget: JsxWidget,
         properties: readonly PropertyAnalysis[],
         signals: readonly SignalAnalysis[],
-        allPropNamesKebab: readonly string[],
     ): void {
         const { namespace, jsxName, className } = widget;
         const widgetName = toPascalCase(className);
@@ -130,14 +125,6 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
                 optional: true,
             });
         }
-
-        const propsUnion = allPropNamesKebab.length > 0 ? allPropNamesKebab.map((n) => `"${n}"`).join(" | ") : "string";
-        allProps.push({
-            name: "onNotify",
-            type: `((self: ${namespace}.${widgetName}, propName: ${propsUnion}) => void) | null`,
-            optional: true,
-            doc: "Called when any property on this widget changes.\n@param self - The widget that emitted the notification\n@param propName - The name of the property that changed (in kebab-case)",
-        });
 
         allProps.push({
             name: "ref",
@@ -457,12 +444,21 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
         }
 
         if (widget.isStack) {
-            props.push({
-                name: "page",
-                type: "string | null",
-                optional: true,
-                doc: "ID of the visible page in the stack.",
-            });
+            this.usedNamespaces.add(widget.namespace);
+            props.push(
+                {
+                    name: "page",
+                    type: "string | null",
+                    optional: true,
+                    doc: "ID of the visible page in the stack.",
+                },
+                {
+                    name: "onPageChanged",
+                    type: `((page: string | null, self: ${widget.namespace}.${widget.className}) => void) | null`,
+                    optional: true,
+                    doc: "Called when the visible page changes, either programmatically or via a ViewSwitcher/StackSwitcher.",
+                },
+            );
         }
 
         if (widget.isWindow) {
@@ -573,6 +569,24 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
             });
         }
 
+        if (widget.isSearchBar) {
+            props.push({
+                name: "onSearchModeChanged",
+                type: "((searchMode: boolean) => void) | null",
+                optional: true,
+                doc: "Callback when the search mode changes (search bar shown/hidden).",
+            });
+        }
+
+        if (widget.isToggleGroup) {
+            props.push({
+                name: "onActiveChanged",
+                type: "((active: number, activeName: string | null) => void) | null",
+                optional: true,
+                doc: "Callback when the active toggle changes.",
+            });
+        }
+
         return props;
     }
 
@@ -586,7 +600,9 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
         }
 
         const baseName = toPascalCase(parentClassName);
-        const omitList = widget.isAdjustable ? '"onNotify" | "onValueChanged"' : '"onNotify"';
-        return `Omit<${parentNamespace}${baseName}Props, ${omitList}>`;
+        if (widget.isAdjustable) {
+            return `Omit<${parentNamespace}${baseName}Props, "onValueChanged">`;
+        }
+        return `${parentNamespace}${baseName}Props`;
     }
 }

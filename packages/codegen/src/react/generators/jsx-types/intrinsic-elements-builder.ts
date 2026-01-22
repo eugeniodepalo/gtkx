@@ -35,11 +35,13 @@ export class IntrinsicElementsBuilder {
     }
 
     buildControllerExports(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
-        const statements = controllers.map((controller) =>
-            createConstExport(controller.jsxName, `"${controller.jsxName}" as const`, {
-                docs: buildJsDocStructure(controller.doc, controller.namespace),
-            }),
-        );
+        const statements = controllers
+            .filter((c) => c.className !== "EventController" && !c.abstract)
+            .map((controller) =>
+                createConstExport(controller.jsxName, `"${controller.jsxName}" as const`, {
+                    docs: buildJsDocStructure(controller.doc, controller.namespace),
+                }),
+            );
 
         sourceFile.addVariableStatements(statements);
     }
@@ -52,10 +54,12 @@ export class IntrinsicElementsBuilder {
                 type: `${w.jsxName}Props`,
             }));
 
-        const controllerProperties = controllers.map((c) => ({
-            name: c.jsxName,
-            type: `${c.jsxName}Props`,
-        }));
+        const controllerProperties = controllers
+            .filter((c) => c.className !== "EventController" && !c.abstract)
+            .map((c) => ({
+                name: c.jsxName,
+                type: `${c.jsxName}Props`,
+            }));
 
         const intrinsicProperties = [...widgetProperties, ...controllerProperties];
 
