@@ -29,7 +29,13 @@ import {
     type ReorderableWidget,
 } from "./internal/predicates.js";
 import { type SignalHandler, signalStore } from "./internal/signal-store.js";
-import { filterProps, matchesAnyClass, propNameToSignalName, resolvePropMeta, resolveSignal } from "./internal/utils.js";
+import {
+    filterProps,
+    matchesAnyClass,
+    propNameToSignalName,
+    resolvePropMeta,
+    resolveSignal,
+} from "./internal/utils.js";
 
 const EXCLUDED_PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
 

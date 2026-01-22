@@ -457,12 +457,21 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
         }
 
         if (widget.isStack) {
-            props.push({
-                name: "page",
-                type: "string | null",
-                optional: true,
-                doc: "ID of the visible page in the stack.",
-            });
+            this.usedNamespaces.add(widget.namespace);
+            props.push(
+                {
+                    name: "page",
+                    type: "string | null",
+                    optional: true,
+                    doc: "ID of the visible page in the stack.",
+                },
+                {
+                    name: "onPageChanged",
+                    type: `((page: string | null, self: ${widget.namespace}.${widget.className}) => void) | null`,
+                    optional: true,
+                    doc: "Called when the visible page changes, either programmatically or via a ViewSwitcher/StackSwitcher.",
+                },
+            );
         }
 
         if (widget.isWindow) {

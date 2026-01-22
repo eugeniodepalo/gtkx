@@ -366,7 +366,7 @@ const DndDemo = () => {
                 GObject.signalHandlerDisconnect(gesture, handlerId);
             }
         };
-    }, [items, handleRotateEnd]);
+    }, [handleRotateEnd]);
 
     const handleItemColorDrop = useCallback((itemId: string, value: GObject.Value) => {
         const gtype = value.getType();
@@ -447,7 +447,9 @@ const DndDemo = () => {
                     types={[GObject.Type.STRING]}
                     actions={Gdk.DragAction.MOVE}
                     onMotion={() => Gdk.DragAction.MOVE}
-                    onDrop={(value: GObject.Value, dropX: number, dropY: number) => handleCanvasDrop(value, dropX, dropY)}
+                    onDrop={(value: GObject.Value, dropX: number, dropY: number) =>
+                        handleCanvasDrop(value, dropX, dropY)
+                    }
                 />
                 <GtkGestureClick
                     onPressed={(_nPress: number, pressX: number, pressY: number, self: Gtk.GestureClick) => {

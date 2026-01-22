@@ -128,28 +128,37 @@ Create toggle button groups using `AdwToggleGroup` with `x.Toggle` children:
 
 ```tsx
 import { x, AdwToggleGroup } from "@gtkx/react";
-import { useState } from "react";
+
+<AdwToggleGroup activeName="list">
+  <x.Toggle id="list" iconName="view-list-symbolic" tooltip="List View" />
+  <x.Toggle id="grid" iconName="view-grid-symbolic" tooltip="Grid View" />
+  <x.Toggle id="flow" iconName="view-continuous-symbolic" tooltip="Flow View" />
+</AdwToggleGroup>
+```
+
+Use with a ref to read the current selection:
+
+```tsx
+import { x, AdwToggleGroup, GtkButton } from "@gtkx/react";
+import * as Adw from "@gtkx/ffi/adw";
+import { useRef } from "react";
 
 const ViewModeSelector = () => {
-  const [viewMode, setViewMode] = useState("list");
+  const ref = useRef<Adw.ToggleGroup | null>(null);
+
+  const handleAction = () => {
+    const mode = ref.current?.getActiveName();
+    console.log("Current mode:", mode);
+  };
 
   return (
-    <AdwToggleGroup
-      activeName={viewMode}
-      onNotify={(group, prop) => {
-        if (prop === "active-name") {
-          setViewMode(group.getActiveName() ?? "list");
-        }
-      }}
-    >
-      <x.Toggle id="list" iconName="view-list-symbolic" tooltip="List View" />
-      <x.Toggle id="grid" iconName="view-grid-symbolic" tooltip="Grid View" />
-      <x.Toggle
-        id="flow"
-        iconName="view-continuous-symbolic"
-        tooltip="Flow View"
-      />
-    </AdwToggleGroup>
+    <>
+      <AdwToggleGroup ref={ref} activeName="list">
+        <x.Toggle id="list" iconName="view-list-symbolic" />
+        <x.Toggle id="grid" iconName="view-grid-symbolic" />
+      </AdwToggleGroup>
+      <GtkButton label="Confirm" onClicked={handleAction} />
+    </>
   );
 };
 ```
@@ -831,6 +840,90 @@ Use the `disabled` prop to temporarily disable a shortcut without removing it:
 | `onActivate` | () => boolean \| void | Callback when triggered (return false to propagate) |
 | `disabled`   | boolean               | Whether the shortcut is disabled                    |
 
+## Event Controllers
+
+Event controllers are auto-generated from GIR files and can be added as children to any widget. They provide a declarative way to handle input events:
+
+```tsx
+import { GtkBox, GtkLabel, GtkEventControllerMotion, GtkEventControllerKey } from "@gtkx/react";
+import { useState } from "react";
+
+const InteractiveLabel = () => {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [lastKey, setLastKey] = useState<string | null>(null);
+
+  return (
+    <GtkBox focusable>
+      <GtkEventControllerMotion
+        onEnter={(x, y) => console.log("Entered at", x, y)}
+        onMotion={(x, y) => setPosition({ x, y })}
+        onLeave={() => console.log("Left")}
+      />
+      <GtkEventControllerKey
+        onKeyPressed={(keyval, keycode, state) => {
+          setLastKey(String.fromCharCode(keyval));
+          return false;
+        }}
+      />
+      <GtkLabel label={`Position: ${position.x}, ${position.y}`} />
+      {lastKey && <GtkLabel label={`Last key: ${lastKey}`} />}
+    </GtkBox>
+  );
+};
+```
+
+### Common Event Controllers
+
+| Controller                    | Description                             |
+| ----------------------------- | --------------------------------------- |
+| `GtkEventControllerMotion`    | Pointer enter/leave/motion events       |
+| `GtkEventControllerKey`       | Keyboard input events                   |
+| `GtkEventControllerScroll`    | Scroll wheel events                     |
+| `GtkEventControllerFocus`     | Focus enter/leave events                |
+| `GtkGestureClick`             | Click/tap gestures                      |
+| `GtkGestureDrag`              | Drag gestures                           |
+| `GtkGestureLongPress`         | Long press gestures                     |
+| `GtkGestureZoom`              | Pinch zoom gestures                     |
+| `GtkGestureRotate`            | Rotation gestures                       |
+| `GtkGestureSwipe`             | Swipe gestures                          |
+| `GtkGestureStylus`            | Stylus/pen input                        |
+
+## SearchBar
+
+`GtkSearchBar` provides a search interface with controlled search mode state:
+
+```tsx
+import { GtkSearchBar, GtkSearchEntry, GtkBox, GtkToggleButton } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
+
+const SearchExample = () => {
+  const [searchActive, setSearchActive] = useState(false);
+  const [query, setQuery] = useState("");
+
+  return (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+      <GtkToggleButton
+        label="Search"
+        active={searchActive}
+        onToggled={() => setSearchActive(!searchActive)}
+      />
+      <GtkSearchBar
+        searchModeEnabled={searchActive}
+        onSearchModeChanged={setSearchActive}
+      >
+        <GtkSearchEntry
+          text={query}
+          onSearchChanged={(entry) => setQuery(entry.getText())}
+        />
+      </GtkSearchBar>
+    </GtkBox>
+  );
+};
+```
+
+The `onSearchModeChanged` callback is called when the search mode changes, whether from keyboard shortcuts (Escape to close) or programmatically.
+
 ## Alert Dialog Responses
 
 Create alert dialogs with `AdwAlertDialog` and `x.AlertDialogResponse` children:
@@ -884,7 +977,7 @@ const DeleteConfirmation = () => {
 ### Color Dialog Button
 
 ```tsx
-import { AdwColorDialogButton } from "@gtkx/react";
+import { GtkColorDialogButton } from "@gtkx/react";
 import * as Gdk from "@gtkx/ffi/gdk";
 import { useState } from "react";
 
@@ -892,7 +985,7 @@ const ColorPicker = () => {
   const [color, setColor] = useState(new Gdk.RGBA({ red: 1, green: 0, blue: 0, alpha: 1 }));
 
   return (
-    <AdwColorDialogButton
+    <GtkColorDialogButton
       rgba={color}
       onRgbaChanged={setColor}
       title="Select Color"
@@ -906,7 +999,7 @@ const ColorPicker = () => {
 ### Font Dialog Button
 
 ```tsx
-import { AdwFontDialogButton } from "@gtkx/react";
+import { GtkFontDialogButton } from "@gtkx/react";
 import * as Pango from "@gtkx/ffi/pango";
 import { useState } from "react";
 
@@ -914,7 +1007,7 @@ const FontPicker = () => {
   const [font, setFont] = useState(Pango.FontDescription.fromString("Sans 12"));
 
   return (
-    <AdwFontDialogButton
+    <GtkFontDialogButton
       fontDesc={font}
       onFontDescChanged={setFont}
       title="Select Font"

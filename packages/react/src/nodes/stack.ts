@@ -4,16 +4,20 @@ import { STACK_CLASSES } from "../generated/internal.js";
 import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass } from "../types.js";
-import { filterProps, matchesAnyClass } from "./internal/utils.js";
+import { signalStore } from "./internal/signal-store.js";
+import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
-const OWN_PROPS = ["page"] as const;
+const OWN_PROPS = ["page", "onPageChanged"] as const;
+
+type StackWidget = Gtk.Stack | Adw.ViewStack;
 
 type StackProps = {
     page?: string;
+    onPageChanged?: ((page: string | null, self: StackWidget) => void) | null;
 };
 
-class StackNode extends WidgetNode<Gtk.Stack | Adw.ViewStack, StackProps> {
+class StackNode extends WidgetNode<StackWidget, StackProps> {
     public static override priority = 1;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
@@ -25,7 +29,7 @@ class StackNode extends WidgetNode<Gtk.Stack | Adw.ViewStack, StackProps> {
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(_oldProps: StackProps | null, newProps: StackProps): void {
+    protected applyOwnProps(oldProps: StackProps | null, newProps: StackProps): void {
         if (newProps.page && this.container.getVisibleChildName() !== newProps.page) {
             const page = newProps.page;
 
@@ -34,6 +38,18 @@ class StackNode extends WidgetNode<Gtk.Stack | Adw.ViewStack, StackProps> {
                     this.container.setVisibleChildName(page);
                 }
             }, CommitPriority.NORMAL);
+        }
+
+        if (hasChanged(oldProps, newProps, "onPageChanged")) {
+            const { onPageChanged } = newProps;
+
+            if (onPageChanged) {
+                signalStore.set(this, this.container, "notify::visible-child-name", (self: StackWidget) => {
+                    onPageChanged(self.getVisibleChildName(), self);
+                });
+            } else {
+                signalStore.set(this, this.container, "notify::visible-child-name", null);
+            }
         }
     }
 }
