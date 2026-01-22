@@ -1,7 +1,13 @@
-import type * as Adw from "@gtkx/ffi/adw";
+import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { createAnimation, type Transition } from "./animation-factory.js";
-import { type AnimatableProperty, getPropertyAccessor, isAnimatableProperty } from "./property-mapper.js";
+import {
+    type AnimatableProperty,
+    getPropertyAccessor,
+    isAnimatableProperty,
+    isTransformProperty,
+} from "./property-mapper.js";
+import { registerWidget, unregisterWidget } from "./widget-registry.js";
 
 export type AnimatableProperties = Partial<Record<AnimatableProperty, number>>;
 
@@ -10,6 +16,17 @@ type ActiveAnimation = {
     connectionId: number;
 };
 
+const DEFAULT_SPRING: Transition = { type: "spring", stiffness: 100, damping: 10 };
+const DEFAULT_TIMED: Transition = { type: "timed", duration: 250, easing: Adw.Easing.EASE_OUT_CUBIC };
+
+function getDefaultTransition(property: AnimatableProperty): Transition {
+    return isTransformProperty(property) ? DEFAULT_SPRING : DEFAULT_TIMED;
+}
+
+function isEmptyTransition(transition: Transition): boolean {
+    return transition.type === undefined && !("duration" in transition) && !("stiffness" in transition);
+}
+
 export class AnimationController {
     private widget: Gtk.Widget | null = null;
     private activeAnimations = new Map<AnimatableProperty, ActiveAnimation>();
@@ -17,9 +34,17 @@ export class AnimationController {
     private onComplete: (() => void) | null = null;
 
     setWidget(widget: Gtk.Widget | null): void {
-        if (this.widget !== widget) {
+        if (this.widget === widget) return;
+
+        if (this.widget) {
             this.skipAll();
-            this.widget = widget;
+            unregisterWidget(this.widget);
+        }
+
+        this.widget = widget;
+
+        if (widget) {
+            registerWidget(widget);
         }
     }
 
@@ -45,6 +70,7 @@ export class AnimationController {
         this.onComplete = onComplete ?? null;
         this.pendingCompletions.clear();
 
+        const useDefaultTransitions = isEmptyTransition(transition);
         const propertiesToAnimate = new Set([...Object.keys(from), ...Object.keys(to)]);
 
         for (const key of propertiesToAnimate) {
@@ -60,8 +86,10 @@ export class AnimationController {
 
             if (currentValue === targetValue) continue;
 
+            const effectiveTransition = useDefaultTransitions ? getDefaultTransition(key) : transition;
+
             this.pendingCompletions.add(key);
-            this.startPropertyAnimation(key, currentValue, targetValue, transition);
+            this.startPropertyAnimation(key, currentValue, targetValue, effectiveTransition);
         }
 
         if (this.pendingCompletions.size === 0 && this.onComplete) {
@@ -105,16 +133,19 @@ export class AnimationController {
     }
 
     skipAll(): void {
+        this.onComplete = null;
+        this.pendingCompletions.clear();
         for (const { animation } of this.activeAnimations.values()) {
             animation.skip();
         }
         this.activeAnimations.clear();
-        this.pendingCompletions.clear();
-        this.onComplete = null;
     }
 
     dispose(): void {
         this.skipAll();
+        if (this.widget) {
+            unregisterWidget(this.widget);
+        }
         this.widget = null;
     }
 }

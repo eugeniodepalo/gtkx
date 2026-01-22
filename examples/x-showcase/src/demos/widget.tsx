@@ -1,3 +1,4 @@
+import { injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     AdwPreferencesGroup,
@@ -11,6 +12,18 @@ import {
     x,
 } from "@gtkx/react";
 import { useState } from "react";
+
+injectGlobal`
+    levelbar block.filled.danger {
+        background-color: @error_bg_color;
+    }
+    levelbar block.filled.warning {
+        background-color: @warning_bg_color;
+    }
+    levelbar block.filled.success {
+        background-color: @success_bg_color;
+    }
+`;
 
 export const WidgetDemo = () => {
     const [scaleValue, setScaleValue] = useState(50);
@@ -124,9 +137,9 @@ export const WidgetDemo = () => {
                             minValue={0}
                             maxValue={1}
                             offsets={[
-                                { id: "low", value: 0.25 },
-                                { id: "high", value: 0.75 },
-                                { id: "full", value: 1.0 },
+                                { id: "danger", value: 0.25 },
+                                { id: "warning", value: 0.75 },
+                                { id: "success", value: 1.0 },
                             ]}
                         />
 
@@ -145,7 +158,7 @@ export const WidgetDemo = () => {
                         </GtkBox>
 
                         <GtkLabel
-                            label="Colors change at 25% (low), 75% (high), and 100% (full)"
+                            label="Colors change at 25% (danger), 75% (warning), and 100% (success)"
                             cssClasses={["dim-label"]}
                         />
                     </GtkBox>

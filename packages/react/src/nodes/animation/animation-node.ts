@@ -24,6 +24,7 @@ class AnimationNode extends VirtualSingleChildNode<Props> {
 
     private controller = new AnimationController();
     private hasAppliedInitial = false;
+    private hasStartedAnimation = false;
 
     public static override matches(type: string): boolean {
         return type === "Animation";
@@ -66,6 +67,11 @@ class AnimationNode extends VirtualSingleChildNode<Props> {
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
 
+        const animateChanged = !shallowObjectEqual(oldProps?.animate, newProps.animate);
+        if (animateChanged) {
+            this.hasStartedAnimation = false;
+        }
+
         if (this.child) {
             this.controller.setWidget(this.child);
 
@@ -74,8 +80,8 @@ class AnimationNode extends VirtualSingleChildNode<Props> {
                 this.hasAppliedInitial = true;
             }
 
-            const animateChanged = !shallowObjectEqual(oldProps?.animate, newProps.animate);
-            if (animateChanged && newProps.animate) {
+            if (!this.hasStartedAnimation && newProps.animate) {
+                this.hasStartedAnimation = true;
                 this.startAnimation();
             }
         }
@@ -121,7 +127,8 @@ class AnimationNode extends VirtualSingleChildNode<Props> {
             this.hasAppliedInitial = true;
         }
 
-        if (this.props.animate) {
+        if (!this.hasStartedAnimation && this.props.animate) {
+            this.hasStartedAnimation = true;
             this.startAnimation();
         }
     }

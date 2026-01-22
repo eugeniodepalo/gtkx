@@ -25,14 +25,15 @@ The widget will animate from the `initial` state to the `animate` state when it 
 
 The following properties can be animated:
 
-| Property   | Type   | Description                    |
-| ---------- | ------ | ------------------------------ |
-| `opacity`  | number | Transparency (0 to 1)          |
-| `scaleX`   | number | Horizontal scale factor        |
-| `scaleY`   | number | Vertical scale factor          |
-| `translateX` | number | Horizontal translation (pixels) |
-| `translateY` | number | Vertical translation (pixels)  |
-| `rotate`   | number | Rotation angle (degrees)       |
+| Property  | Type   | Description                    |
+| --------- | ------ | ------------------------------ |
+| `opacity` | number | Transparency (0 to 1)          |
+| `x`       | number | Horizontal translation (pixels) |
+| `y`       | number | Vertical translation (pixels)  |
+| `scale`   | number | Uniform scale factor           |
+| `scaleX`  | number | Horizontal scale factor        |
+| `scaleY`  | number | Vertical scale factor          |
+| `rotate`  | number | Rotation angle (degrees)       |
 
 ## Transition Types
 
@@ -67,8 +68,8 @@ Timed animations use a fixed duration with an easing function:
 
 ```tsx
 <x.Animation
-  initial={{ opacity: 0, translateY: -20 }}
-  animate={{ opacity: 1, translateY: 0 }}
+  initial={{ opacity: 0, y: -20 }}
+  animate={{ opacity: 1, y: 0 }}
   transition={{
     type: "timed",
     duration: 300,
@@ -138,8 +139,8 @@ Slide content in from the side:
 
 ```tsx
 <x.Animation
-  initial={{ translateX: -100, opacity: 0 }}
-  animate={{ translateX: 0, opacity: 1 }}
+  initial={{ x: -100, opacity: 0 }}
+  animate={{ x: 0, opacity: 1 }}
   transition={{ type: "timed", duration: 200, easing: "ease-out" }}
 >
   <GtkBox>
@@ -185,8 +186,8 @@ const items = ["First", "Second", "Third"];
   {items.map((item, index) => (
     <x.Animation
       key={item}
-      initial={{ opacity: 0, translateX: -20 }}
-      animate={{ opacity: 1, translateX: 0 }}
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
       transition={{
         type: "timed",
         duration: 200,
@@ -232,10 +233,11 @@ const [isSpinning, setIsSpinning] = useState(false);
 ```typescript
 type AnimatableProperties = {
   opacity?: number;
+  x?: number;
+  y?: number;
+  scale?: number;
   scaleX?: number;
   scaleY?: number;
-  translateX?: number;
-  translateY?: number;
   rotate?: number;
 };
 ```

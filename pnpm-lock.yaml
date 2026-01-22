@@ -145,6 +145,9 @@ importers:
 
   examples/x-showcase:
     dependencies:
+      '@gtkx/css':
+        specifier: workspace:*
+        version: link:../../packages/css
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../../packages/ffi
