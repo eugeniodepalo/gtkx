@@ -20,6 +20,8 @@ const LIFECYCLE_SIGNALS = new Set([
     "bind",
     "unbind",
     "teardown",
+    "load-changed",
+    "notify",
 ]);
 
 type HandlerEntry = { obj: GObject.GObject; handlerId: number };

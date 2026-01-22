@@ -936,8 +936,8 @@ export const x = {
      * @example
      * ```tsx
      * <x.Animation
-     *   initial={{ opacity: 0, marginTop: -20 }}
-     *   animate={{ opacity: 1, marginTop: 0 }}
+     *   initial={{ opacity: 0, y: -20 }}
+     *   animate={{ opacity: 1, y: 0 }}
      *   transition={{ type: "spring", stiffness: 300, damping: 20 }}
      * >
      *   <GtkLabel label="Hello World" />

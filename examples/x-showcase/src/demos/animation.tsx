@@ -23,8 +23,8 @@ const SlideInDemo = () => {
         <GtkBox spacing={12} valign={Gtk.Align.CENTER}>
             <x.Animation
                 key={key}
-                initial={{ opacity: 0, marginStart: -50 }}
-                animate={{ opacity: 1, marginStart: 0 }}
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 400 }}
             >
                 <GtkLabel label="Slide In" cssClasses={["title-2"]} />
@@ -41,8 +41,8 @@ const SpringDemo = () => {
         <GtkBox spacing={12} valign={Gtk.Align.CENTER}>
             <x.Animation
                 key={key}
-                initial={{ opacity: 0, marginTop: -30 }}
-                animate={{ opacity: 1, marginTop: 0 }}
+                initial={{ opacity: 0, y: -30 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 200, damping: 15 }}
             >
                 <GtkLabel label="Spring Animation" cssClasses={["title-2"]} />
@@ -59,11 +59,29 @@ const BouncyDemo = () => {
         <GtkBox spacing={12} valign={Gtk.Align.CENTER}>
             <x.Animation
                 key={key}
-                initial={{ marginTop: -100 }}
-                animate={{ marginTop: 0 }}
+                initial={{ y: -100 }}
+                animate={{ y: 0 }}
                 transition={{ type: "spring", stiffness: 300, damping: 10 }}
             >
                 <GtkLabel label="Bouncy!" cssClasses={["title-1"]} />
+            </x.Animation>
+            <GtkButton label="Replay" onClicked={() => setKey((k) => k + 1)} />
+        </GtkBox>
+    );
+};
+
+const ScaleRotateDemo = () => {
+    const [key, setKey] = useState(0);
+
+    return (
+        <GtkBox spacing={12} valign={Gtk.Align.CENTER}>
+            <x.Animation
+                key={key}
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 12 }}
+            >
+                <GtkLabel label="Pop!" cssClasses={["title-1"]} />
             </x.Animation>
             <GtkButton label="Replay" onClicked={() => setKey((k) => k + 1)} />
         </GtkBox>
@@ -78,8 +96,8 @@ const EasingDemo = () => {
             <GtkBox spacing={12}>
                 <x.Animation
                     key={key}
-                    initial={{ marginStart: 0 }}
-                    animate={{ marginStart: 150 }}
+                    initial={{ x: 0 }}
+                    animate={{ x: 150 }}
                     transition={{ duration: 1000, easing: Adw.Easing.EASE_IN_OUT_CUBIC }}
                 >
                     <GtkLabel label="Ease In Out" />
@@ -88,8 +106,8 @@ const EasingDemo = () => {
             <GtkBox spacing={12}>
                 <x.Animation
                     key={key}
-                    initial={{ marginStart: 0 }}
-                    animate={{ marginStart: 150 }}
+                    initial={{ x: 0 }}
+                    animate={{ x: 150 }}
                     transition={{ duration: 1000, easing: Adw.Easing.EASE_OUT_BOUNCE }}
                 >
                     <GtkLabel label="Ease Out Bounce" />
@@ -98,8 +116,8 @@ const EasingDemo = () => {
             <GtkBox spacing={12}>
                 <x.Animation
                     key={key}
-                    initial={{ marginStart: 0 }}
-                    animate={{ marginStart: 150 }}
+                    initial={{ x: 0 }}
+                    animate={{ x: 150 }}
                     transition={{ duration: 1000, easing: Adw.Easing.EASE_OUT_ELASTIC }}
                 >
                     <GtkLabel label="Ease Out Elastic" />
@@ -156,7 +174,7 @@ export const AnimationDemo = () => {
                 </GtkFrame>
             </AdwPreferencesGroup>
 
-            <AdwPreferencesGroup title="x.Animation - Slide In" description="Combined opacity and margin animation">
+            <AdwPreferencesGroup title="x.Animation - Slide In" description="Combined opacity and x transform">
                 <GtkFrame marginTop={12}>
                     <GtkBox marginTop={24} marginBottom={24} marginStart={24} marginEnd={24} halign={Gtk.Align.CENTER}>
                         <SlideInDemo />
@@ -176,6 +194,17 @@ export const AnimationDemo = () => {
                 <GtkFrame marginTop={12}>
                     <GtkBox marginTop={24} marginBottom={24} marginStart={24} marginEnd={24} halign={Gtk.Align.CENTER}>
                         <BouncyDemo />
+                    </GtkBox>
+                </GtkFrame>
+            </AdwPreferencesGroup>
+
+            <AdwPreferencesGroup
+                title="x.Animation - Scale &amp;amp; Rotate"
+                description="Transform animations with spring"
+            >
+                <GtkFrame marginTop={12}>
+                    <GtkBox marginTop={24} marginBottom={24} marginStart={24} marginEnd={24} halign={Gtk.Align.CENTER}>
+                        <ScaleRotateDemo />
                     </GtkBox>
                 </GtkFrame>
             </AdwPreferencesGroup>

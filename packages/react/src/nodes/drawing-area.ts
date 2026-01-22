@@ -16,6 +16,8 @@ const OWN_PROPS = ["onDraw"] as const;
 class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {
     public static override priority = 1;
 
+    private pendingDrawFunc: DrawFunc | null = null;
+
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return matchesAnyClass([Gtk.DrawingArea], containerOrClass);
     }
@@ -30,9 +32,22 @@ class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {
 
     protected applyOwnProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
         if (hasChanged(oldProps, newProps, "onDraw") && newProps.onDraw) {
-            this.container.setDrawFunc(newProps.onDraw);
-            this.container.queueDraw();
+            if (this.container.getRealized()) {
+                this.container.setDrawFunc(newProps.onDraw);
+            } else {
+                this.pendingDrawFunc = newProps.onDraw;
+                this.signalStore.set(this, this.container, "realize", this.onRealize.bind(this));
+            }
         }
+    }
+
+    private onRealize(): void {
+        if (this.pendingDrawFunc) {
+            const drawFunc = this.pendingDrawFunc;
+            this.pendingDrawFunc = null;
+            queueMicrotask(() => this.container.setDrawFunc(drawFunc));
+        }
+        this.signalStore.set(this, this.container, "realize", null);
     }
 }
 

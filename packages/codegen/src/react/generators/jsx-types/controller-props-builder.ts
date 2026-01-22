@@ -42,7 +42,13 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
         sourceFile.addTypeAlias({
             name: "EventControllerBaseProps",
             isExported: true,
-            docs: [{ description: eventControllerMeta.doc ?? "Base props for all event controller elements." }],
+            docs: [
+                {
+                    description: eventControllerMeta.doc
+                        ? this.formatDocDescription(eventControllerMeta.doc, namespace)
+                        : "Base props for all event controller elements.",
+                },
+            ],
             type: this.buildObjectTypeWriter(allProps),
         });
     }
