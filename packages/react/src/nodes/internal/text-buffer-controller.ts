@@ -5,7 +5,6 @@ import type { TextContentChild, TextContentParent } from "../text-content.js";
 import { TextPaintableNode } from "../text-paintable.js";
 import { TextSegmentNode } from "../text-segment.js";
 import { TextTagNode } from "../text-tag.js";
-import { signalStore } from "./signal-store.js";
 import { hasChanged } from "./utils.js";
 
 type BufferCallbackProps = {
@@ -83,9 +82,14 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         const buffer = this.buffer;
         const { onBufferChanged, onTextInserted, onTextDeleted, onCanUndoChanged, onCanRedoChanged } = callbacks;
 
-        signalStore.set(this.owner, buffer, "changed", onBufferChanged ? () => onBufferChanged(buffer) : null);
+        this.owner.signalStore.set(
+            this.owner,
+            buffer,
+            "changed",
+            onBufferChanged ? () => onBufferChanged(buffer) : null,
+        );
 
-        signalStore.set(
+        this.owner.signalStore.set(
             this.owner,
             buffer,
             "insert-text",
@@ -95,7 +99,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
                 : null,
         );
 
-        signalStore.set(
+        this.owner.signalStore.set(
             this.owner,
             buffer,
             "delete-range",
@@ -104,14 +108,14 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
                 : null,
         );
 
-        signalStore.set(
+        this.owner.signalStore.set(
             this.owner,
             buffer,
             "notify::can-undo",
             onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null,
         );
 
-        signalStore.set(
+        this.owner.signalStore.set(
             this.owner,
             buffer,
             "notify::can-redo",

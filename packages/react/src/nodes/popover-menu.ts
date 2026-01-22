@@ -25,7 +25,7 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | 
         typeName: string,
         props: Props,
         container: Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton,
-        rootContainer?: Container,
+        rootContainer: Container,
     ) {
         super(typeName, props, container, rootContainer);
 
@@ -34,7 +34,7 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | 
         const prefix = application ? "app" : ACTION_PREFIX;
 
         this.container.insertActionGroup(prefix, actionGroup);
-        this.menu = new MenuModel("root", {}, actionGroup, application);
+        this.menu = new MenuModel("root", {}, rootContainer, actionGroup, application);
         this.container.setMenuModel(this.menu.getMenu());
     }
 

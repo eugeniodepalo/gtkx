@@ -3,7 +3,6 @@ import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass, primitiveArrayEqual } from "./internal/utils.js";
 import { NavigationPageNode } from "./navigation-page.js";
 import { SlotNode } from "./slot.js";
@@ -89,13 +88,13 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
                     onHistoryChanged(history);
                 };
 
-                signalStore.set(this, this.container, "popped", handleHistoryChanged);
-                signalStore.set(this, this.container, "pushed", handleHistoryChanged);
-                signalStore.set(this, this.container, "replaced", handleHistoryChanged);
+                this.signalStore.set(this, this.container, "popped", handleHistoryChanged);
+                this.signalStore.set(this, this.container, "pushed", handleHistoryChanged);
+                this.signalStore.set(this, this.container, "replaced", handleHistoryChanged);
             } else {
-                signalStore.set(this, this.container, "popped", null);
-                signalStore.set(this, this.container, "pushed", null);
-                signalStore.set(this, this.container, "replaced", null);
+                this.signalStore.set(this, this.container, "popped", null);
+                this.signalStore.set(this, this.container, "pushed", null);
+                this.signalStore.set(this, this.container, "replaced", null);
             }
         }
     }

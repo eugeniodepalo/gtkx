@@ -18,10 +18,10 @@ class ApplicationNode extends Node<Gtk.Application> {
         return matchesAnyClass([Gtk.Application], containerOrClass);
     }
 
-    constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer?: Container) {
+    constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
-        this.menu = new MenuModel("root", {}, container, application);
+        this.menu = new MenuModel("root", {}, rootContainer, container, application);
     }
 
     public override appendChild(child: Node): void {

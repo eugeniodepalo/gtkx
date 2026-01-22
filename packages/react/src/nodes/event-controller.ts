@@ -4,7 +4,7 @@ import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, Props } from "../types.js";
 import type { Attachable } from "./internal/predicates.js";
-import { type SignalHandler, signalStore } from "./internal/signal-store.js";
+import type { SignalHandler } from "./internal/signal-store.js";
 import { propNameToSignalName, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
@@ -37,7 +37,7 @@ class EventControllerNode extends Node<Gtk.EventController, Props> implements At
     props: Props;
     protected parentWidget: Gtk.Widget | null = null;
 
-    constructor(typeName: string, props: Props, container: Gtk.EventController, rootContainer?: Container) {
+    constructor(typeName: string, props: Props, container: Gtk.EventController, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.props = props;
     }
@@ -96,7 +96,7 @@ class EventControllerNode extends Node<Gtk.EventController, Props> implements At
 
             if (resolveSignal(this.container, signalName)) {
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-                signalStore.set(this, this.container, signalName, handler);
+                this.signalStore.set(this, this.container, signalName, handler);
             } else if (newValue !== undefined) {
                 this.setProperty(name, newValue);
             }
@@ -110,9 +110,10 @@ class EventControllerNode extends Node<Gtk.EventController, Props> implements At
             return;
         }
 
-        const setterName = resolvePropMeta(this.container, name);
+        const propMeta = resolvePropMeta(this.container, name);
 
-        if (setterName) {
+        if (propMeta) {
+            const [, setterName] = propMeta;
             const setterFn = (this.container as unknown as Record<string, (v: unknown) => void>)[setterName];
             if (typeof setterFn === "function") {
                 setterFn.call(this.container, value);

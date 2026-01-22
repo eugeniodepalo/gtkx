@@ -13,7 +13,7 @@ export class VirtualNode<P = Props> extends Node<undefined, P> {
 
     props: P;
 
-    constructor(typeName: string, props: P = {} as P, container: undefined, rootContainer?: Container) {
+    constructor(typeName: string, props: P = {} as P, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.props = props;
     }

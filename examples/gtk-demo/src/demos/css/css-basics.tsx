@@ -16,7 +16,9 @@ const DEFAULT_CSS = `/* You can edit the text in this window to change the
  */
 
 /* Set a very futuristic style by default */
-.demo * {
+.demo scrolledwindow,
+.demo textview,
+.demo text {
   color: green;
   font-family: Monospace;
   border: 1px solid;

@@ -24,7 +24,7 @@ const LIFECYCLE_SIGNALS = new Set([
 
 type HandlerEntry = { obj: GObject.GObject; handlerId: number };
 
-class SignalStore {
+export class SignalStore {
     private ownerHandlers: Map<SignalOwner, Map<string, HandlerEntry>> = new Map();
     private blockDepth = 0;
 
@@ -102,4 +102,13 @@ class SignalStore {
     }
 }
 
-export const signalStore = new SignalStore();
+const signalStores = new WeakMap<object, SignalStore>();
+
+export function getSignalStore(rootContainer: object): SignalStore {
+    let store = signalStores.get(rootContainer);
+    if (!store) {
+        store = new SignalStore();
+        signalStores.set(rootContainer, store);
+    }
+    return store;
+}

@@ -4,7 +4,6 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
@@ -37,8 +36,13 @@ class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialo
         return button;
     }
 
-    constructor(type: string, props: ColorDialogButtonProps, container: Gtk.ColorDialogButton) {
-        super(type, props, container);
+    constructor(
+        type: string,
+        props: ColorDialogButtonProps,
+        container: Gtk.ColorDialogButton,
+        rootContainer: Container,
+    ) {
+        super(type, props, container, rootContainer);
         const dialog = container.getDialog();
         if (!dialog) {
             throw new Error("ColorDialogButton must have a dialog");
@@ -78,7 +82,7 @@ class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialo
 
     private setupNotifyHandler(callback?: (rgba: Gdk.RGBA) => void): void {
         if (this.notifyHandler) {
-            signalStore.set(this, this.container, "notify", undefined);
+            this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;
         }
 
@@ -89,13 +93,13 @@ class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialo
                     callback(rgba);
                 }
             };
-            signalStore.set(this, this.container, "notify", this.notifyHandler);
+            this.signalStore.set(this, this.container, "notify", this.notifyHandler);
         }
     }
 
     public override unmount(): void {
         if (this.notifyHandler) {
-            signalStore.set(this, this.container, "notify", undefined);
+            this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;
         }
         super.unmount();

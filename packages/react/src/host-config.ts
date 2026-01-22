@@ -5,7 +5,7 @@ import type ReactReconciler from "react-reconciler";
 import { createNode } from "./factory.js";
 import type { Node } from "./node.js";
 import { isBufferedType } from "./nodes/internal/predicates.js";
-import { signalStore } from "./nodes/internal/signal-store.js";
+import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { flushAfterCommit } from "./scheduler.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
@@ -108,9 +108,9 @@ export function createHostConfig(): HostConfig {
             parent.appendChild(child);
         },
         finalizeInitialChildren: (instance, _type, props) => {
-            signalStore.blockAll();
+            instance.signalStore.blockAll();
             instance.updateProps(null, props);
-            signalStore.unblockAll();
+            instance.signalStore.unblockAll();
             return true;
         },
         commitUpdate: (instance, _type, oldProps, newProps) => {
@@ -140,13 +140,13 @@ export function createHostConfig(): HostConfig {
             const parent = getOrCreateContainerNode(container);
             parent.insertBefore(child, beforeChild);
         },
-        prepareForCommit: () => {
-            signalStore.blockAll();
+        prepareForCommit: (containerInfo) => {
+            getSignalStore(containerInfo).blockAll();
             return null;
         },
-        resetAfterCommit: () => {
+        resetAfterCommit: (containerInfo) => {
             flushAfterCommit();
-            signalStore.unblockAll();
+            getSignalStore(containerInfo).unblockAll();
         },
         commitTextUpdate: (textInstance, oldText, newText) => {
             if (textInstance.typeName === "TextSegment") {

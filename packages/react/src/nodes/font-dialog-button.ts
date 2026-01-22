@@ -4,7 +4,6 @@ import type * as Pango from "@gtkx/ffi/pango";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
@@ -49,8 +48,8 @@ class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogBu
         return button;
     }
 
-    constructor(type: string, props: FontDialogButtonProps, container: Gtk.FontDialogButton) {
-        super(type, props, container);
+    constructor(type: string, props: FontDialogButtonProps, container: Gtk.FontDialogButton, rootContainer: Container) {
+        super(type, props, container, rootContainer);
         const dialog = container.getDialog();
         if (!dialog) {
             throw new Error("FontDialogButton must have a dialog");
@@ -102,7 +101,7 @@ class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogBu
 
     private setupNotifyHandler(callback?: (fontDesc: Pango.FontDescription) => void): void {
         if (this.notifyHandler) {
-            signalStore.set(this, this.container, "notify", undefined);
+            this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;
         }
 
@@ -115,13 +114,13 @@ class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogBu
                     }
                 }
             };
-            signalStore.set(this, this.container, "notify", this.notifyHandler);
+            this.signalStore.set(this, this.container, "notify", this.notifyHandler);
         }
     }
 
     public override unmount(): void {
         if (this.notifyHandler) {
-            signalStore.set(this, this.container, "notify", undefined);
+            this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;
         }
         super.unmount();

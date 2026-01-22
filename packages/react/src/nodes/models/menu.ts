@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
 import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
-import { signalStore } from "../internal/signal-store.js";
+import type { Container } from "../../types.js";
 import { VirtualNode } from "../virtual.js";
 
 export type MenuType = "root" | "item" | "section" | "submenu";
@@ -25,8 +25,14 @@ export class MenuModel extends VirtualNode<MenuProps> {
     private action: Gio.SimpleAction | null = null;
     private children: MenuModel[] = [];
 
-    constructor(type: MenuType, props: MenuProps, actionMap?: Gio.ActionMap, application?: Gtk.Application) {
-        super("", props, undefined);
+    constructor(
+        type: MenuType,
+        props: MenuProps,
+        rootContainer: Container,
+        actionMap?: Gio.ActionMap,
+        application?: Gtk.Application,
+    ) {
+        super("", props, undefined, rootContainer);
         this.type = type;
         this.actionMap = actionMap ?? null;
         this.actionPrefix = application ? "app" : "menu";
@@ -95,11 +101,11 @@ export class MenuModel extends VirtualNode<MenuProps> {
 
     public createAction(): void {
         if (this.action) {
-            signalStore.set(this, this.action, "activate", null);
+            this.signalStore.set(this, this.action, "activate", null);
         }
 
         this.action = new Gio.SimpleAction(this.getId());
-        signalStore.set(this, this.action, "activate", this.getOnActivate());
+        this.signalStore.set(this, this.action, "activate", this.getOnActivate());
         this.getActionMap().addAction(this.action);
 
         if (this.application && this.props.accels) {
@@ -114,7 +120,7 @@ export class MenuModel extends VirtualNode<MenuProps> {
 
         if (this.action) {
             this.getActionMap().removeAction(this.getId());
-            signalStore.set(this, this.action, "activate", null);
+            this.signalStore.set(this, this.action, "activate", null);
             this.action = null;
         }
     }
@@ -300,7 +306,7 @@ export class MenuModel extends VirtualNode<MenuProps> {
         }
 
         if (oldProps.onActivate !== newProps.onActivate) {
-            signalStore.set(this, this.getAction(), "activate", newProps.onActivate);
+            this.signalStore.set(this, this.getAction(), "activate", newProps.onActivate);
         }
 
         if (oldProps.accels !== newProps.accels) {

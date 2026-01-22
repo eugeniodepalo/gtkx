@@ -4,7 +4,6 @@ import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { DialogNode } from "./dialog.js";
-import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { MenuModel } from "./models/menu.js";
 import { WidgetNode } from "./widget.js";
@@ -35,7 +34,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     public static override createContainer(
         props: Props,
         containerClass: typeof Gtk.Window,
-        rootContainer?: Container,
+        rootContainer: Container | undefined,
     ): Gtk.Window {
         const WindowClass = containerClass as typeof Gtk.Window;
 
@@ -57,11 +56,11 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         return WidgetNode.createContainer(props, containerClass) as Gtk.Window;
     }
 
-    constructor(typeName: string, props: WindowProps, container: Gtk.Window, rootContainer?: Container) {
+    constructor(typeName: string, props: WindowProps, container: Gtk.Window, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
         const actionMap = container instanceof Gtk.ApplicationWindow ? container : undefined;
-        this.menu = new MenuModel("root", {}, actionMap, application);
+        this.menu = new MenuModel("root", {}, rootContainer, actionMap, application);
 
         if (container instanceof Gtk.AboutDialog && props.creditSections) {
             for (const section of props.creditSections) {
@@ -135,7 +134,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
                       return true;
                   }
                 : undefined;
-            signalStore.set(this, this.container, "close-request", wrappedHandler);
+            this.signalStore.set(this, this.container, "close-request", wrappedHandler);
         }
     }
 }

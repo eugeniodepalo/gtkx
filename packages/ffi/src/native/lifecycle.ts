@@ -1,4 +1,12 @@
-import { type NativeHandle, poll as nativePoll, start as nativeStart, stop as nativeStop } from "@gtkx/native";
+import {
+    type Arg,
+    type NativeHandle,
+    call as nativeCall,
+    poll as nativePoll,
+    start as nativeStart,
+    stop as nativeStop,
+    type Type,
+} from "@gtkx/native";
 import { init as initAdwaita } from "../generated/adw/functions.js";
 import type { ApplicationFlags } from "../generated/gio/enums.js";
 import type { Application } from "../generated/gtk/application.js";
@@ -30,6 +38,25 @@ export const getStartError = (): string | null => {
         return "GTK runtime not started. Call start() before making FFI calls.";
     }
     return null;
+};
+
+export const call = (library: string, symbol: string, args: Arg[], returnType: Type): unknown => {
+    const startError = getStartError();
+    if (startError) {
+        throw new Error(`[gtkx] ${startError} (attempted call: ${library}:${symbol})`);
+    }
+
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg?.value === undefined && !arg?.optional) {
+            const err = new Error(`[gtkx] Undefined value in FFI call: ${library}:${symbol} arg[${i}]`);
+            console.error(err.message, { arg, args });
+            console.error(err.stack);
+            throw err;
+        }
+    }
+
+    return nativeCall(library, symbol, args, returnType);
 };
 
 const keepAlive = (): void => {

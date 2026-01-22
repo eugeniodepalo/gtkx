@@ -3,7 +3,6 @@ import { ADJUSTABLE_INTERFACE_METHODS } from "../generated/internal.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import type { AdjustableWidget } from "./internal/predicates.js";
-import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesInterface } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
@@ -82,9 +81,11 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
 
         const { onValueChanged } = props;
         if (onValueChanged) {
-            signalStore.set(this, this.container, "value-changed", (self: T) => onValueChanged(self.getValue(), self));
+            this.signalStore.set(this, this.container, "value-changed", (self: T) =>
+                onValueChanged(self.getValue(), self),
+            );
         } else {
-            signalStore.set(this, this.container, "value-changed", null);
+            this.signalStore.set(this, this.container, "value-changed", null);
         }
     }
 }

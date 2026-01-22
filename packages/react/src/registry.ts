@@ -2,7 +2,7 @@ import type { Node } from "./node.js";
 import type { Container, Props } from "./types.js";
 
 type NodeClass<T = unknown, P = Props> = {
-    new (typeName: string, props: P, container: T, rootContainer?: Container): Node<T, P>;
+    new (typeName: string, props: P, container: T, rootContainer: Container): Node<T, P>;
 } & Omit<typeof Node, "prototype">;
 
 export const NODE_CLASSES: NodeClass[] = [];

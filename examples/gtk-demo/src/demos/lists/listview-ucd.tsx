@@ -216,7 +216,6 @@ const ListViewUcdDemo = () => {
                                 <x.ColumnViewColumn<UnicodeChar>
                                     id="char"
                                     title="Char"
-                                    fixedWidth={60}
                                     renderCell={(item) => (
                                         <GtkLabel
                                             label={item?.char ?? ""}
@@ -289,7 +288,7 @@ const ListViewUcdDemo = () => {
                                 <x.ColumnViewColumn<UnicodeChar>
                                     id="decimal"
                                     title="Decimal"
-                                    fixedWidth={70}
+                                    expand
                                     renderCell={(item) => (
                                         <GtkLabel
                                             label={item ? String(item.codepoint) : ""}

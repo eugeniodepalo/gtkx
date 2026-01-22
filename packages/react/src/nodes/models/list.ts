@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
 import { ListStore } from "../internal/list-store.js";
 import { SelectionModelManager } from "../internal/selection-model.js";
+import type { SignalStore } from "../internal/signal-store.js";
 import { ListItemNode } from "../list-item.js";
 
 export type ListProps = {
@@ -10,14 +11,21 @@ export type ListProps = {
     onSelectionChanged?: (ids: string[]) => void;
 };
 
+type ListModelConfig = {
+    owner: object;
+    signalStore: SignalStore;
+};
+
 export class ListModel {
+    private config: ListModelConfig;
     private store: ListStore;
     private selectionManager: SelectionModelManager;
 
-    constructor(props: ListProps = {}) {
+    constructor(config: ListModelConfig, props: ListProps = {}) {
+        this.config = config;
         this.store = new ListStore();
         this.selectionManager = new SelectionModelManager(
-            { owner: this, ...props },
+            { ...config, ...props },
             this.store.getModel(),
             () => this.getSelection(),
             (ids) => this.resolveSelectionIndices(ids),
@@ -61,7 +69,11 @@ export class ListModel {
     }
 
     public updateProps(oldProps: ListProps | null, newProps: ListProps): void {
-        this.selectionManager.update({ owner: this, ...oldProps }, { owner: this, ...newProps }, this.store.getModel());
+        this.selectionManager.update(
+            oldProps ? { ...this.config, ...oldProps } : null,
+            { ...this.config, ...newProps },
+            this.store.getModel(),
+        );
     }
 
     private getSelection(): string[] {

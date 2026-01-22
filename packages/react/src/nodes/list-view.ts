@@ -30,15 +30,18 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
         typeName: string,
         props: ListViewProps,
         container: Gtk.ListView | Gtk.GridView,
-        rootContainer?: Container,
+        rootContainer: Container,
     ) {
         super(typeName, props, container, rootContainer);
-        this.list = new ListModel({
-            selectionMode: props.selectionMode,
-            selected: props.selected,
-            onSelectionChanged: props.onSelectionChanged,
-        });
-        this.itemRenderer = new ListItemRenderer();
+        this.list = new ListModel(
+            { owner: this, signalStore: this.signalStore },
+            {
+                selectionMode: props.selectionMode,
+                selected: props.selected,
+                onSelectionChanged: props.onSelectionChanged,
+            },
+        );
+        this.itemRenderer = new ListItemRenderer(this.signalStore);
         this.itemRenderer.setStore(this.list.getStore());
         this.list.getStore().setOnItemUpdated((id) => this.itemRenderer.rebindItem(id));
         this.container.setFactory(this.itemRenderer.getFactory());

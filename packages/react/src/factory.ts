@@ -17,8 +17,8 @@ export const resolveContainerClass = (type: string): ContainerClass | null => {
 export const createNode = (
     typeName: string,
     props: Props,
-    existingContainer?: Container,
-    rootContainer?: Container,
+    existingContainer: Container | undefined,
+    rootContainer: Container,
 ): Node => {
     const containerClass = resolveContainerClass(typeName);
 

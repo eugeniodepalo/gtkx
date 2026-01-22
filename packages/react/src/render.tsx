@@ -3,7 +3,7 @@ import type * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
 import { formatBoundaryError, formatRenderError } from "./errors.js";
-import { signalStore } from "./nodes/internal/signal-store.js";
+import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { reconciler } from "./reconciler.js";
 
 /**
@@ -106,22 +106,23 @@ export const setHotReloading = (value: boolean): void => {
  * @see {@link update} for hot-reloading the rendered tree
  */
 export const render = (element: ReactNode, appId: string, flags?: Gio.ApplicationFlags): void => {
-    app = start(appId, flags);
+    const application = start(appId, flags);
+    app = application;
     const instance = reconciler.getInstance();
 
     container = instance.createContainer(
-        app,
+        application,
         1,
         null,
         false,
         null,
         "",
         (error: unknown) => {
-            signalStore.forceUnblockAll();
+            getSignalStore(application).forceUnblockAll();
             throw formatRenderError(error);
         },
         (error: unknown) => {
-            signalStore.forceUnblockAll();
+            getSignalStore(application).forceUnblockAll();
             const formattedError = formatBoundaryError(error);
             console.error(formattedError.toString());
         },
@@ -131,7 +132,7 @@ export const render = (element: ReactNode, appId: string, flags?: Gio.Applicatio
     );
 
     instance.updateContainer(
-        <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
+        <ApplicationContext.Provider value={application}>{element}</ApplicationContext.Provider>,
         container,
         null,
         () => {},

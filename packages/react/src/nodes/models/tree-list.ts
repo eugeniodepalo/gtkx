@@ -2,6 +2,7 @@ import type * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
+import type { Container } from "../../types.js";
 import { SelectionModelManager } from "../internal/selection-model.js";
 import { TreeStore } from "../internal/tree-store.js";
 import { createTreeItemData, TreeListItemNode } from "../tree-list-item.js";
@@ -19,8 +20,8 @@ export class TreeList extends VirtualNode<TreeListProps> {
     private treeListModel: Gtk.TreeListModel;
     private selectionManager: SelectionModelManager;
 
-    constructor(props: TreeListProps = {}) {
-        super("", {}, undefined);
+    constructor(props: TreeListProps = {}, rootContainer: Container) {
+        super("", {}, undefined, rootContainer);
         this.store = new TreeStore();
 
         this.treeListModel = new Gtk.TreeListModel(
@@ -31,7 +32,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         );
 
         this.selectionManager = new SelectionModelManager(
-            { owner: this, ...props },
+            { owner: this, signalStore: this.signalStore, ...props },
             this.treeListModel,
             () => this.getSelection(),
             (ids) => this.resolveSelectionIndices(ids),
@@ -121,7 +122,11 @@ export class TreeList extends VirtualNode<TreeListProps> {
             this.treeListModel.setAutoexpand(newProps.autoexpand ?? false);
         }
 
-        this.selectionManager.update({ owner: this, ...oldProps }, { owner: this, ...newProps }, this.treeListModel);
+        this.selectionManager.update(
+            oldProps ? { owner: this, signalStore: this.signalStore, ...oldProps } : null,
+            { owner: this, signalStore: this.signalStore, ...newProps },
+            this.treeListModel,
+        );
     }
 
     private getSelection(): string[] {

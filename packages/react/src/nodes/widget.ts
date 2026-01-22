@@ -2,6 +2,7 @@ import { getNativeObject, isObjectEqual, type NativeObject } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
 import {
     ObjectClass,
+    ParamSpecString,
     Type,
     TypeInstance,
     typeClassRef,
@@ -28,7 +29,7 @@ import {
     isReorderable,
     type ReorderableWidget,
 } from "./internal/predicates.js";
-import { type SignalHandler, signalStore } from "./internal/signal-store.js";
+import type { SignalHandler } from "./internal/signal-store.js";
 import {
     filterProps,
     matchesAnyClass,
@@ -39,9 +40,10 @@ import {
 
 const EXCLUDED_PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
 
-function findProperty(obj: NativeObject, propertyName: string): GObject.ParamSpec | null {
+function findProperty(obj: NativeObject, key: string): GObject.ParamSpec | null {
     if (!obj.handle) return null;
 
+    const propertyName = key.replace(/([A-Z])/g, "-$1").toLowerCase();
     const typeInstance = getNativeObject(obj.handle, TypeInstance);
     const typeName = typeNameFromInstance(typeInstance);
     const gtype = typeFromName(typeName);
@@ -57,7 +59,11 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         return matchesAnyClass([Gtk.Widget], containerOrClass);
     }
 
-    public static override createContainer(props: Props, containerClass: typeof Gtk.Widget): Container | null {
+    public static override createContainer(
+        props: Props,
+        containerClass: typeof Gtk.Widget,
+        _rootContainer?: Container,
+    ): Container | null {
         const WidgetClass = containerClass;
         const typeName = WidgetClass.glibTypeName;
         const args = (CONSTRUCTOR_PROPS[typeName] ?? []).map((name) => props[name]);
@@ -179,7 +185,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         for (const { name, newValue } of pendingSignals) {
             const signalName = propNameToSignalName(name);
             const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-            signalStore.set(this, this.container, signalName, handler);
+            this.signalStore.set(this, this.container, signalName, handler);
         }
 
         for (const { name, oldValue, newValue } of pendingProperties) {
@@ -216,8 +222,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     private getPropertyDefaultValue(key: string): unknown {
         if (!resolvePropMeta(this.container, key)) return undefined;
 
-        const propName = key.replace(/([A-Z])/g, "-$1").toLowerCase();
-        const pspec = findProperty(this.container, propName);
+        const pspec = findProperty(this.container, key);
         if (!pspec) return undefined;
 
         const value = pspec.getDefaultValue();
@@ -241,14 +246,23 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     private setProperty(key: string, value: unknown): void {
-        const setterName = resolvePropMeta(this.container, key);
-        if (!setterName) return;
+        const propMeta = resolvePropMeta(this.container, key);
+        if (!propMeta) return;
 
+        const [getterName, setterName] = propMeta;
         const setter = this.container[setterName as keyof typeof this.container];
+        if (!setter || typeof setter !== "function") return;
 
-        if (setter && typeof setter === "function") {
-            setter.call(this.container, value);
+        if (getterName && findProperty(this.container, key) instanceof ParamSpecString) {
+            const getter = this.container[getterName as keyof typeof this.container];
+
+            if (getter && typeof getter === "function") {
+                const currentValue = getter.call(this.container);
+                if (currentValue === value) return;
+            }
         }
+
+        setter.call(this.container, value);
     }
 
     private detachChildFromParent(child: WidgetNode): void {

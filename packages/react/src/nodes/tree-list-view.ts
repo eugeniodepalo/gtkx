@@ -30,16 +30,24 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
         return new Gtk.ListView();
     }
 
-    constructor(typeName: string, props: TreeListViewProps, container?: Gtk.ListView, rootContainer?: Container) {
+    constructor(
+        typeName: string,
+        props: TreeListViewProps,
+        container: Gtk.ListView | undefined,
+        rootContainer: Container,
+    ) {
         const listView = container ?? new Gtk.ListView();
         super(typeName, props, listView, rootContainer);
-        this.treeList = new TreeList({
-            autoexpand: props.autoexpand,
-            selectionMode: props.selectionMode,
-            selected: props.selected,
-            onSelectionChanged: props.onSelectionChanged,
-        });
-        this.itemRenderer = new TreeListItemRenderer();
+        this.treeList = new TreeList(
+            {
+                autoexpand: props.autoexpand,
+                selectionMode: props.selectionMode,
+                selected: props.selected,
+                onSelectionChanged: props.onSelectionChanged,
+            },
+            rootContainer,
+        );
+        this.itemRenderer = new TreeListItemRenderer(this.signalStore);
         this.itemRenderer.setStore(this.treeList.getStore());
         this.treeList.getStore().setOnItemUpdated((id) => this.itemRenderer.rebindItem(id));
         this.container.setFactory(this.itemRenderer.getFactory());

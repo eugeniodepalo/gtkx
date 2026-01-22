@@ -2,7 +2,6 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { signalStore } from "./internal/signal-store.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
 import { hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { TextViewNode } from "./text-view.js";
@@ -122,9 +121,9 @@ class SourceViewNode extends TextViewNode {
 
         const { onCursorMoved, onHighlightUpdated } = props;
 
-        signalStore.set(this, buffer, "cursor-moved", onCursorMoved ?? null);
+        this.signalStore.set(this, buffer, "cursor-moved", onCursorMoved ?? null);
 
-        signalStore.set(
+        this.signalStore.set(
             this,
             buffer,
             "highlight-updated",

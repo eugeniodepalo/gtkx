@@ -228,9 +228,7 @@ impl ffi::FfiDecode for RefType {
             };
 
             let actual_ptr = match storage.kind() {
-                FfiStorageKind::PtrStorage(_) => {
-                    unsafe { *(storage.ptr() as *const *mut c_void) }
-                }
+                FfiStorageKind::PtrStorage(_) => unsafe { *(storage.ptr() as *const *mut c_void) },
                 _ => storage.ptr(),
             };
 
@@ -241,7 +239,9 @@ impl ffi::FfiDecode for RefType {
             let ptr_ffi_value = ffi::FfiValue::Ptr(actual_ptr);
             let result = array_type.decode_with_context(&ptr_ffi_value, ffi_args, args)?;
 
-            if matches!(storage.kind(), FfiStorageKind::PtrStorage(_)) && array_type.ownership.is_full() {
+            if matches!(storage.kind(), FfiStorageKind::PtrStorage(_))
+                && array_type.ownership.is_full()
+            {
                 unsafe { glib::ffi::g_free(actual_ptr) };
             }
 

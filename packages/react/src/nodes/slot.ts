@@ -76,12 +76,13 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChil
 
         const parent = this.getParent();
         const parentType = (parent.constructor as ContainerClass).glibTypeName;
-        const setterName = resolvePropMeta(parent, this.getId());
+        const propMeta = resolvePropMeta(parent, this.getId());
 
-        if (!setterName) {
+        if (!propMeta) {
             throw new Error(`Unable to find property for Slot '${this.getId()}' on type '${parentType}'`);
         }
 
+        const [, setterName] = propMeta;
         const setter = parent[setterName as keyof Gtk.Widget];
 
         if (typeof setter !== "function") {

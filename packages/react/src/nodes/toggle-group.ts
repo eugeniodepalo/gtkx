@@ -3,7 +3,6 @@ import type * as GObject from "@gtkx/ffi/gobject";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
@@ -35,7 +34,7 @@ class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProps> {
 
     private setupNotifyHandler(callback?: (active: number, activeName: string | null) => void): void {
         if (this.notifyHandler) {
-            signalStore.set(this, this.container, "notify", undefined);
+            this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;
         }
 
@@ -45,13 +44,13 @@ class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProps> {
                     callback(this.container.getActive(), this.container.getActiveName());
                 }
             };
-            signalStore.set(this, this.container, "notify", this.notifyHandler);
+            this.signalStore.set(this, this.container, "notify", this.notifyHandler);
         }
     }
 
     public override unmount(): void {
         if (this.notifyHandler) {
-            signalStore.set(this, this.container, "notify", undefined);
+            this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;
         }
         super.unmount();

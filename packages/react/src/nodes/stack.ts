@@ -4,7 +4,6 @@ import { STACK_CLASSES } from "../generated/internal.js";
 import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass } from "../types.js";
-import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
@@ -44,11 +43,11 @@ class StackNode extends WidgetNode<StackWidget, StackProps> {
             const { onPageChanged } = newProps;
 
             if (onPageChanged) {
-                signalStore.set(this, this.container, "notify::visible-child-name", (self: StackWidget) => {
+                this.signalStore.set(this, this.container, "notify::visible-child-name", (self: StackWidget) => {
                     onPageChanged(self.getVisibleChildName(), self);
                 });
             } else {
-                signalStore.set(this, this.container, "notify::visible-child-name", null);
+                this.signalStore.set(this, this.container, "notify::visible-child-name", null);
             }
         }
     }

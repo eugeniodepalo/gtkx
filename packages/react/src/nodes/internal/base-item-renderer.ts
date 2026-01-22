@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { createFiberRoot } from "../../fiber-root.js";
 import { reconciler } from "../../reconciler.js";
-import { signalStore } from "./signal-store.js";
+import type { SignalStore } from "./signal-store.js";
 
 export abstract class BaseItemRenderer<TStore = unknown> {
     protected factory: Gtk.SignalListItemFactory;
@@ -12,10 +12,12 @@ export abstract class BaseItemRenderer<TStore = unknown> {
     protected tornDown = new Set<number>();
     protected estimatedItemHeight: number | null = null;
     private store: TStore | null = null;
+    protected signalStore: SignalStore;
 
     protected abstract getStoreTypeName(): string;
 
-    constructor() {
+    constructor(signalStore: SignalStore) {
+        this.signalStore = signalStore;
         this.factory = new Gtk.SignalListItemFactory();
         this.initializeFactory();
     }
@@ -40,7 +42,7 @@ export abstract class BaseItemRenderer<TStore = unknown> {
     }
 
     public dispose(): void {
-        signalStore.clear(this);
+        this.signalStore.clear(this);
         this.fiberRoots.clear();
         this.tornDown.clear();
     }
@@ -72,7 +74,7 @@ export abstract class BaseItemRenderer<TStore = unknown> {
     }
 
     private initializeFactory(): void {
-        signalStore.set(this, this.factory, "setup", (listItem: Gtk.ListItem) => {
+        this.signalStore.set(this, this.factory, "setup", (listItem: Gtk.ListItem) => {
             const ptr = getNativeId(listItem.handle);
             const container = this.onSetup(listItem, ptr);
             const fiberRoot = createFiberRoot(container);
@@ -84,18 +86,18 @@ export abstract class BaseItemRenderer<TStore = unknown> {
             });
         });
 
-        signalStore.set(this, this.factory, "bind", (listItem: Gtk.ListItem) => {
+        this.signalStore.set(this, this.factory, "bind", (listItem: Gtk.ListItem) => {
             const ptr = getNativeId(listItem.handle);
             const fiberRoot = this.fiberRoots.get(ptr);
             if (!fiberRoot) return;
             this.onBind(listItem, ptr, fiberRoot);
         });
 
-        signalStore.set(this, this.factory, "unbind", (listItem: Gtk.ListItem) => {
+        this.signalStore.set(this, this.factory, "unbind", (listItem: Gtk.ListItem) => {
             this.onUnbind(listItem);
         });
 
-        signalStore.set(this, this.factory, "teardown", (listItem: Gtk.ListItem) => {
+        this.signalStore.set(this, this.factory, "teardown", (listItem: Gtk.ListItem) => {
             const ptr = getNativeId(listItem.handle);
             const fiberRoot = this.fiberRoots.get(ptr);
 

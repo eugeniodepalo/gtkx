@@ -2,12 +2,13 @@ import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CommitPriority } from "../../scheduler.js";
 import { DeferredAction } from "./deferred-action.js";
-import { signalStore } from "./signal-store.js";
+import type { SignalStore } from "./signal-store.js";
 
 type SelectionModel = Gtk.NoSelection | Gtk.SingleSelection | Gtk.MultiSelection;
 
 export type SelectionModelConfig = {
     owner: object;
+    signalStore: SignalStore;
     selectionMode?: Gtk.SelectionMode;
     selected?: string[];
     onSelectionChanged?: (ids: string[]) => void;
@@ -15,6 +16,7 @@ export type SelectionModelConfig = {
 
 export class SelectionModelManager {
     private owner: object;
+    private signalStore: SignalStore;
     private selectionModel: SelectionModel;
     private handleSelectionChange: (() => void) | null = null;
     private pendingSelection: string[] | null = null;
@@ -31,6 +33,7 @@ export class SelectionModelManager {
         getItemCount: () => number,
     ) {
         this.owner = config.owner;
+        this.signalStore = config.signalStore;
         this.selectionModel = this.createSelectionModel(config.selectionMode, model);
         this.selectionModel.setModel(model);
         this.getSelection = getSelection;
@@ -51,7 +54,7 @@ export class SelectionModelManager {
         model: Gio.ListModel,
     ): SelectionModel {
         if (oldProps && oldProps.selectionMode !== newProps.selectionMode) {
-            signalStore.set(this.owner, this.selectionModel, "selection-changed", null);
+            this.signalStore.set(this.owner, this.selectionModel, "selection-changed", null);
             this.selectionModel = this.createSelectionModel(newProps.selectionMode, model);
             this.selectionModel.setModel(model);
             this.initSelectionHandler(newProps.onSelectionChanged);
@@ -72,7 +75,7 @@ export class SelectionModelManager {
 
     private initSelectionHandler(onSelectionChanged?: (ids: string[]) => void): void {
         if (!onSelectionChanged) {
-            signalStore.set(this.owner, this.selectionModel, "selection-changed", null);
+            this.signalStore.set(this.owner, this.selectionModel, "selection-changed", null);
             return;
         }
 
@@ -80,7 +83,7 @@ export class SelectionModelManager {
             onSelectionChanged(this.getSelection());
         };
 
-        signalStore.set(this.owner, this.selectionModel, "selection-changed", this.handleSelectionChange);
+        this.signalStore.set(this.owner, this.selectionModel, "selection-changed", this.handleSelectionChange);
     }
 
     private createSelectionModel(mode: Gtk.SelectionMode | undefined, model: Gio.ListModel): SelectionModel {

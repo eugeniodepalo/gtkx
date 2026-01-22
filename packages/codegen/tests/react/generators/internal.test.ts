@@ -260,7 +260,7 @@ describe("InternalGenerator", () => {
 
             const sourceFile = project.getSourceFile("react/internal.ts");
             const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("Record<string, Record<string, string>>");
+            expect(code).toContain("Record<string, Record<string, [string | null, string]>>");
         });
     });
 

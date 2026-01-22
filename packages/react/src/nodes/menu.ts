@@ -22,10 +22,11 @@ export class MenuNode extends MenuModel {
         throw new Error(`Unable to find menu type '${typeName}'`);
     }
 
-    constructor(typeName: string, props: MenuProps, _container: undefined, rootContainer?: Container) {
+    constructor(typeName: string, props: MenuProps, _container: undefined, rootContainer: Container) {
         super(
             MenuNode.getType(typeName),
             props,
+            rootContainer,
             undefined,
             rootContainer instanceof Gtk.Application ? rootContainer : undefined,
         );
