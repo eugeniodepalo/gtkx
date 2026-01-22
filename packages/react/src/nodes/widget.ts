@@ -19,7 +19,6 @@ import {
     attachChild as performAttachment,
     detachChild as performDetachment,
 } from "./internal/child-attachment.js";
-import { EVENT_CONTROLLER_PROPS, EventControllerManager } from "./internal/event-controller-manager.js";
 import {
     type InsertableWidget,
     isAttachable,
@@ -30,7 +29,7 @@ import {
     type ReorderableWidget,
 } from "./internal/predicates.js";
 import { type SignalHandler, signalStore } from "./internal/signal-store.js";
-import { filterProps, matchesAnyClass, resolvePropMeta, resolveSignal } from "./internal/utils.js";
+import { filterProps, matchesAnyClass, propNameToSignalName, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 
 const EXCLUDED_PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
 
@@ -47,8 +46,6 @@ function findProperty(obj: NativeObject, propertyName: string): GObject.ParamSpe
 
 export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Props> extends Node<T, P> {
     public static override priority = 3;
-
-    private eventControllerManager: EventControllerManager | null = null;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return matchesAnyClass([Gtk.Widget], containerOrClass);
@@ -158,12 +155,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
             if (oldValue === newValue) continue;
 
-            if (EVENT_CONTROLLER_PROPS.has(name)) {
-                pendingSignals.push({ name, newValue });
-                continue;
-            }
-
-            const signalName = this.propNameToSignalName(name);
+            const signalName = propNameToSignalName(name);
 
             if (resolveSignal(this.container, signalName)) {
                 pendingSignals.push({ name, newValue });
@@ -178,13 +170,9 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
 
         for (const { name, newValue } of pendingSignals) {
-            if (EVENT_CONTROLLER_PROPS.has(name)) {
-                this.ensureEventControllerManager().updateProp(name, (newValue as SignalHandler) ?? null);
-            } else {
-                const signalName = this.propNameToSignalName(name);
-                const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-                signalStore.set(this, this.container, signalName, handler);
-            }
+            const signalName = propNameToSignalName(name);
+            const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
+            signalStore.set(this, this.container, signalName, handler);
         }
 
         for (const { name, oldValue, newValue } of pendingProperties) {
@@ -200,18 +188,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
             this.setProperty(name, newValue);
         }
-    }
-
-    public override unmount(): void {
-        this.eventControllerManager?.dispose();
-        super.unmount();
-    }
-
-    private ensureEventControllerManager(): EventControllerManager {
-        if (!this.eventControllerManager) {
-            this.eventControllerManager = new EventControllerManager(this, this.container);
-        }
-        return this.eventControllerManager;
     }
 
     private updateSizeRequest(oldProps: P | null, newProps: P): void {
@@ -232,14 +208,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         if (!oldGrabFocus && newGrabFocus) {
             this.container.grabFocus();
         }
-    }
-
-    private propNameToSignalName(name: string): string {
-        return name
-            .slice(2)
-            .replace(/([A-Z])/g, "-$1")
-            .toLowerCase()
-            .replace(/^-/, "");
     }
 
     private getProperty(key: string): unknown {

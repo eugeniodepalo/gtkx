@@ -8,7 +8,7 @@
 import type { GirClass, GirMethod, GirRepository, QualifiedName } from "@gtkx/gir";
 import type { ClassDeclaration, SourceFile } from "ts-morph";
 import { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
-import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -23,12 +23,12 @@ import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { generateConflictingMethodName, normalizeClassName } from "../../../core/utils/naming.js";
 import { type ParentInfo, parseParentReference } from "../../../core/utils/parent-reference.js";
 import type { Writers } from "../../../core/writers/index.js";
+import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
 import { ConstructorBuilder } from "./constructor-builder.js";
 import { MethodBuilder } from "./method-builder.js";
 import { PropertySetterBuilder } from "./property-setter-builder.js";
 import { SignalBuilder } from "./signal-builder.js";
 import { StaticFunctionBuilder } from "./static-function-builder.js";
-import { type WidgetMetaAnalyzers, WidgetMetaBuilder } from "./widget-meta-builder.js";
 
 /**
  * Result of class generation.
@@ -38,6 +38,8 @@ export type ClassGenerationResult = {
     success: boolean;
     /** Widget metadata for codegen (if this is a widget class) */
     widgetMeta?: CodegenWidgetMeta | null;
+    /** Controller metadata for codegen (if this is a controller class) */
+    controllerMeta?: CodegenControllerMeta | null;
 };
 
 /**
@@ -72,7 +74,7 @@ export class ClassGenerator {
     private readonly staticBuilder: StaticFunctionBuilder;
     private readonly signalBuilder: SignalBuilder;
     private readonly propertySetterBuilder: PropertySetterBuilder;
-    private readonly widgetMetaBuilder: WidgetMetaBuilder;
+    private readonly classMetaBuilder: ClassMetaBuilder;
 
     constructor(
         private readonly cls: GirClass,
@@ -90,12 +92,12 @@ export class ClassGenerator {
         this.signalBuilder = new SignalBuilder(cls, ffiMapper, ctx, repository, writers, options);
         this.propertySetterBuilder = new PropertySetterBuilder(cls, ffiMapper, ctx, repository, options);
 
-        const analyzers: WidgetMetaAnalyzers = {
+        const analyzers: ClassMetaAnalyzers = {
             property: new PropertyAnalyzer(repository, ffiMapper),
             signal: new SignalAnalyzer(repository, ffiMapper),
             constructor: new ConstructorAnalyzer(repository),
         };
-        this.widgetMetaBuilder = new WidgetMetaBuilder(cls, repository, options.namespace, analyzers);
+        this.classMetaBuilder = new ClassMetaBuilder(cls, repository, options.namespace, analyzers);
     }
 
     /**
@@ -165,9 +167,10 @@ export class ClassGenerator {
             sourceFile.addStatements(`registerNativeClass(${this.className});`);
         }
 
-        const widgetMeta = this.widgetMetaBuilder.buildCodegenWidgetMeta();
+        const widgetMeta = this.classMetaBuilder.buildCodegenWidgetMeta();
+        const controllerMeta = this.classMetaBuilder.buildCodegenControllerMeta();
 
-        return { success: true, widgetMeta };
+        return { success: true, widgetMeta, controllerMeta };
     }
 
     private addClassDeclaration(

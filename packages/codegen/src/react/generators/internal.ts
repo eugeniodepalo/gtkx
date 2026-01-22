@@ -11,6 +11,8 @@
  */
 
 import { type SourceFile, type WriterFunction, Writers } from "ts-morph";
+
+import type { CodegenControllerMeta } from "../../core/codegen-metadata.js";
 import {
     ADJUSTABLE_INTERFACE_METHODS,
     PACK_INTERFACE_METHODS,
@@ -57,13 +59,15 @@ export class InternalGenerator {
         );
 
         const allWidgets = this.collectAllWidgets();
-        const usedNamespaces = this.collectUsedNamespaces(allWidgets);
+        const allControllers = this.collectAllControllers();
+        const usedNamespaces = this.collectUsedNamespaces(allWidgets, allControllers);
 
         this.addImports(sourceFile, usedNamespaces);
         this.generateClassificationConstants(sourceFile, allWidgets);
         this.generateConstructorProps(sourceFile, allWidgets);
-        this.generatePropsMap(sourceFile, allWidgets);
-        this.generateSignalsMap(sourceFile, allWidgets);
+        this.generatePropsMap(sourceFile, allWidgets, allControllers);
+        this.generateSignalsMap(sourceFile, allWidgets, allControllers);
+        this.generateControllerMetadata(sourceFile, allControllers);
 
         return sourceFile;
     }
@@ -72,13 +76,21 @@ export class InternalGenerator {
         return sortWidgetsByClassName(this.reader.getAllWidgets());
     }
 
-    private collectUsedNamespaces(widgets: WidgetInfo[]): Set<string> {
+    private collectAllControllers(): CodegenControllerMeta[] {
+        return this.project.metadata.getAllControllerMeta().sort((a, b) => a.className.localeCompare(b.className));
+    }
+
+    private collectUsedNamespaces(widgets: WidgetInfo[], controllers: CodegenControllerMeta[]): Set<string> {
         const usedNamespaces = new Set<string>();
 
         for (const widget of widgets) {
             if (widget.classification !== null) {
                 usedNamespaces.add(widget.namespace);
             }
+        }
+
+        for (const controller of controllers) {
+            usedNamespaces.add(controller.namespace);
         }
 
         return usedNamespaces;
@@ -145,8 +157,12 @@ export class InternalGenerator {
         );
     }
 
-    private generatePropsMap(sourceFile: SourceFile, widgets: WidgetInfo[]): void {
-        const widgetProperties: Record<string, WriterFunction> = {};
+    private generatePropsMap(
+        sourceFile: SourceFile,
+        widgets: WidgetInfo[],
+        controllers: CodegenControllerMeta[],
+    ): void {
+        const allProperties: Record<string, WriterFunction> = {};
 
         const allMeta = this.reader.getAllCodegenMeta();
         const metaByJsxName = new Map(allMeta.map((m) => [m.jsxName, m]));
@@ -167,18 +183,41 @@ export class InternalGenerator {
             }
 
             if (Object.keys(propProperties).length > 0) {
-                widgetProperties[widget.jsxName] = Writers.object(propProperties);
+                allProperties[widget.jsxName] = Writers.object(propProperties);
+            }
+        }
+
+        for (const controller of controllers) {
+            if (controller.properties.length === 0) continue;
+
+            const propProperties: Record<string, string> = {};
+
+            for (const prop of controller.properties) {
+                if (!prop.isWritable || !prop.setter) continue;
+
+                const getterName = prop.getter ? toCamelCase(prop.getter) : null;
+                const setterName = toCamelCase(prop.setter);
+
+                propProperties[`"${prop.camelName}"`] = `[${getterName ? `"${getterName}"` : "null"}, "${setterName}"]`;
+            }
+
+            if (Object.keys(propProperties).length > 0) {
+                allProperties[controller.jsxName] = Writers.object(propProperties);
             }
         }
 
         sourceFile.addVariableStatement(
-            createConstExport("PROPS", writeObjectOrEmpty(widgetProperties, Writers), {
+            createConstExport("PROPS", writeObjectOrEmpty(allProperties, Writers), {
                 type: "Record<string, Record<string, [string | null, string]>>",
             }),
         );
     }
 
-    private generateSignalsMap(sourceFile: SourceFile, widgets: WidgetInfo[]): void {
+    private generateSignalsMap(
+        sourceFile: SourceFile,
+        widgets: WidgetInfo[],
+        controllers: CodegenControllerMeta[],
+    ): void {
         const objectProperties: Record<string, WriterFunction> = {};
 
         for (const widget of widgets) {
@@ -187,10 +226,53 @@ export class InternalGenerator {
             objectProperties[widget.jsxName] = writeStringSet(widget.signalNames);
         }
 
+        for (const controller of controllers) {
+            if (controller.signalNames.length === 0) continue;
+
+            objectProperties[controller.jsxName] = writeStringSet([...controller.signalNames]);
+        }
+
         sourceFile.addVariableStatement(
             createConstExport("SIGNALS", writeObjectOrEmpty(objectProperties, Writers), {
                 type: "Record<string, Set<string>>",
-                docs: "Signal names for each widget type, derived from CodegenWidgetMeta.",
+                docs: "Signal names for widgets and controllers, derived from CodegenMeta.",
+            }),
+        );
+    }
+
+    private generateControllerMetadata(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
+        this.generateControllerClasses(sourceFile, controllers);
+        this.generateControllerConstructorParams(sourceFile, controllers);
+    }
+
+    private generateControllerClasses(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
+        const objectProperties: Record<string, WriterFunction> = {};
+
+        for (const controller of controllers) {
+            const identifier = `${controller.namespace}.${controller.className}`;
+            objectProperties[controller.jsxName] = (writer) => writer.write(identifier);
+        }
+
+        sourceFile.addVariableStatement(
+            createConstExport("CONTROLLER_CLASSES", writeObjectOrEmpty(objectProperties, Writers), {
+                docs: "Map from JSX element name to controller class.",
+            }),
+        );
+    }
+
+    private generateControllerConstructorParams(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
+        const objectProperties: Record<string, WriterFunction> = {};
+
+        for (const controller of controllers) {
+            if (controller.constructorParams.length > 0) {
+                objectProperties[controller.jsxName] = writeStringArray([...controller.constructorParams]);
+            }
+        }
+
+        sourceFile.addVariableStatement(
+            createConstExport("CONTROLLER_CONSTRUCTOR_PARAMS", writeObjectOrEmpty(objectProperties, Writers), {
+                type: "Record<string, string[]>",
+                docs: "Constructor parameters for controllers that require them.",
             }),
         );
     }

@@ -13,18 +13,44 @@ import type { WidgetClassificationType } from "./config/index.js";
 import type { PropertyAnalysis, SignalAnalysis } from "./generator-types.js";
 
 /**
- * Codegen-only widget metadata attached to SourceFiles.
+ * Base metadata shared between widgets and controllers.
  *
- * All widget metadata is computed once during FFI generation and passed
- * to React generators via this structure. Nothing is written to output files.
+ * Contains common fields for class identification, inheritance, and prop/signal analysis.
  */
-export type CodegenWidgetMeta = {
-    /** Class name (e.g., "Button") */
+export type CodegenClassMeta = {
+    /** Class name (e.g., "Button", "GestureClick") */
     readonly className: string;
     /** Namespace (e.g., "Gtk") */
     readonly namespace: string;
-    /** Full JSX element name (e.g., "GtkButton") */
+    /** Full JSX element name (e.g., "GtkButton", "GtkGestureClick") */
     readonly jsxName: string;
+    /** Parent class name (e.g., "Window", "GestureSingle") */
+    readonly parentClassName: string | null;
+    /** Parent namespace for cross-namespace inheritance */
+    readonly parentNamespace: string | null;
+    /** All writable property names */
+    readonly propNames: readonly string[];
+    /** All signal names (kebab-case) */
+    readonly signalNames: readonly string[];
+    /** Property analysis results (for JSX types) */
+    readonly properties: readonly PropertyAnalysis[];
+    /** Signal analysis results (for JSX types) */
+    readonly signals: readonly SignalAnalysis[];
+    /** Constructor parameter names (camelCase) */
+    readonly constructorParams: readonly string[];
+    /** Class documentation from GIR */
+    readonly doc: string | undefined;
+};
+
+/**
+ * Controller metadata - extends base with no additional fields.
+ */
+export type CodegenControllerMeta = CodegenClassMeta;
+
+/**
+ * Widget metadata - extends base with widget-specific capabilities.
+ */
+export type CodegenWidgetMeta = CodegenClassMeta & {
     /** Widget can contain children */
     readonly isContainer: boolean;
     /** Widget supports an Adjustment child */
@@ -41,24 +67,8 @@ export type CodegenWidgetMeta = {
     readonly hasFontDialog: boolean;
     /** Named slots for child widgets (kebab-case) */
     readonly slots: readonly string[];
-    /** All writable property names (kebab-case) - for internal.ts PROPS map */
-    readonly propNames: readonly string[];
-    /** All signal names (kebab-case) */
-    readonly signalNames: readonly string[];
-    /** Parent class name if extends another widget (e.g., "Window") */
-    readonly parentClassName: string | null;
-    /** Parent namespace for cross-namespace inheritance (e.g., "Gtk" for Adw.Window extending Gtk.Window) */
-    readonly parentNamespace: string | null;
     /** Module path for imports (e.g., "./gtk/button.js") */
     readonly modulePath: string;
-    /** Property analysis results (for JSX types) - pre-computed from GIR */
-    readonly properties: readonly PropertyAnalysis[];
-    /** Signal analysis results (for JSX types) - pre-computed from GIR */
-    readonly signals: readonly SignalAnalysis[];
-    /** Constructor parameter names (camelCase) - for internal.ts CONSTRUCTOR_PROPS */
-    readonly constructorParams: readonly string[];
-    /** Class documentation from GIR */
-    readonly doc: string | undefined;
     /** Pre-computed widget classification for React */
     readonly classification: WidgetClassificationType | null;
     /** Hidden prop names for this widget (camelCase) */
@@ -73,6 +83,7 @@ export type CodegenWidgetMeta = {
  */
 export class CodegenMetadata {
     private readonly widgetMeta = new Map<SourceFile, CodegenWidgetMeta>();
+    private readonly controllerMeta = new Map<SourceFile, CodegenControllerMeta>();
 
     /**
      * Attaches widget metadata to a SourceFile.
@@ -96,9 +107,31 @@ export class CodegenMetadata {
     }
 
     /**
+     * Attaches controller metadata to a SourceFile.
+     */
+    setControllerMeta(sourceFile: SourceFile, meta: CodegenControllerMeta): void {
+        this.controllerMeta.set(sourceFile, meta);
+    }
+
+    /**
+     * Gets controller metadata for a SourceFile.
+     */
+    getControllerMeta(sourceFile: SourceFile): CodegenControllerMeta | null {
+        return this.controllerMeta.get(sourceFile) ?? null;
+    }
+
+    /**
+     * Gets all controller metadata.
+     */
+    getAllControllerMeta(): CodegenControllerMeta[] {
+        return Array.from(this.controllerMeta.values());
+    }
+
+    /**
      * Clears all metadata.
      */
     clear(): void {
         this.widgetMeta.clear();
+        this.controllerMeta.clear();
     }
 }

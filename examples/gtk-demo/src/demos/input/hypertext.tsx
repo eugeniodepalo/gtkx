@@ -2,7 +2,17 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
-import { GtkImage, GtkLabel, GtkLevelBar, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import {
+    GtkEventControllerKey,
+    GtkEventControllerMotion,
+    GtkGestureClick,
+    GtkImage,
+    GtkLabel,
+    GtkLevelBar,
+    GtkScrolledWindow,
+    GtkTextView,
+    x,
+} from "@gtkx/react";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
@@ -153,11 +163,9 @@ const HypertextDemo = () => {
             trackPlaceholder();
             nodes.push(
                 <x.TextAnchor key="speaker">
-                    <GtkImage
-                        iconName="audio-volume-high-symbolic"
-                        cursor={new Gdk.Cursor("pointer")}
-                        onPressed={() => sayWord("tag")}
-                    />
+                    <GtkImage iconName="audio-volume-high-symbolic" cursor={new Gdk.Cursor("pointer")}>
+                        <GtkGestureClick onPressed={() => sayWord("tag")} />
+                    </GtkImage>
                 </x.TextAnchor>,
             );
 
@@ -214,11 +222,9 @@ const HypertextDemo = () => {
             trackPlaceholder();
             nodes.push(
                 <x.TextAnchor key="speaker">
-                    <GtkImage
-                        iconName="audio-volume-high-symbolic"
-                        cursor={new Gdk.Cursor("pointer")}
-                        onPressed={() => sayWord("hypertext")}
-                    />
+                    <GtkImage iconName="audio-volume-high-symbolic" cursor={new Gdk.Cursor("pointer")}>
+                        <GtkGestureClick onPressed={() => sayWord("hypertext")} />
+                    </GtkImage>
                 </x.TextAnchor>,
             );
 
@@ -330,10 +336,10 @@ const HypertextDemo = () => {
                 editable={false}
                 canFocus
                 focusable
-                onPressed={handleClick}
-                onMotion={handleMotion}
-                onKeyPressed={handleKeyPress}
             >
+                <GtkGestureClick onPressed={handleClick} />
+                <GtkEventControllerMotion onMotion={handleMotion} />
+                <GtkEventControllerKey onKeyPressed={handleKeyPress} />
                 {content}
             </GtkTextView>
         </GtkScrolledWindow>

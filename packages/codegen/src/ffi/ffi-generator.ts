@@ -253,6 +253,9 @@ export class FfiGenerator {
                 if (result.widgetMeta) {
                     this.project.metadata.setWidgetMeta(sourceFile, result.widgetMeta);
                 }
+                if (result.controllerMeta) {
+                    this.project.metadata.setControllerMeta(sourceFile, result.controllerMeta);
+                }
             } else {
                 this.project.getProject().removeSourceFile(sourceFile);
                 this.ffiMapper.registerSkippedClass(cls.name);

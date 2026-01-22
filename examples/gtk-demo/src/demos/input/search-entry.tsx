@@ -45,7 +45,11 @@ const SearchEntryDemo = () => {
                     ref={searchBarRef}
                     searchModeEnabled={searchMode}
                     showCloseButton={false}
-                    onSearchModeChanged={setSearchMode}
+                    onNotify={(self, propName) => {
+                        if (propName === "search-mode-enabled") {
+                            setSearchMode(self.getSearchMode());
+                        }
+                    }}
                 >
                     <GtkSearchEntry
                         halign={Gtk.Align.CENTER}

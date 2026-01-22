@@ -32,6 +32,7 @@ import "./scrolled-window.js";
 import "./search-bar.js";
 import "./shortcut-controller.js";
 import "./shortcut.js";
+import "./event-controller.js";
 import "./simple-list-item.js";
 import "./simple-list-view.js";
 import "./slot.js";

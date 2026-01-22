@@ -9,6 +9,7 @@
 
 import type { SourceFile } from "ts-morph";
 import { ModuleDeclarationKind, StructureKind } from "ts-morph";
+import type { CodegenControllerMeta } from "../../../core/codegen-metadata.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
 import { createConstExport } from "../../../core/utils/structure-helpers.js";
@@ -33,17 +34,30 @@ export class IntrinsicElementsBuilder {
         sourceFile.addVariableStatements(statements);
     }
 
-    /**
-     * Builds the global JSX namespace declaration.
-     * Uses nested statements for single addModule call with complete hierarchy.
-     */
-    buildJsxNamespace(sourceFile: SourceFile, widgets: JsxWidget[]): void {
-        const intrinsicProperties = widgets
+    buildControllerExports(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
+        const statements = controllers.map((controller) =>
+            createConstExport(controller.jsxName, `"${controller.jsxName}" as const`, {
+                docs: buildJsDocStructure(controller.doc, controller.namespace),
+            }),
+        );
+
+        sourceFile.addVariableStatements(statements);
+    }
+
+    buildJsxNamespace(sourceFile: SourceFile, widgets: JsxWidget[], controllers: CodegenControllerMeta[]): void {
+        const widgetProperties = widgets
             .filter((w) => w.className !== "Widget")
             .map((w) => ({
                 name: w.jsxName,
                 type: `${w.jsxName}Props`,
             }));
+
+        const controllerProperties = controllers.map((c) => ({
+            name: c.jsxName,
+            type: `${c.jsxName}Props`,
+        }));
+
+        const intrinsicProperties = [...widgetProperties, ...controllerProperties];
 
         sourceFile.addModule({
             name: "global",

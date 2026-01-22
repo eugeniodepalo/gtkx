@@ -12,7 +12,6 @@ import type { AnimationProps as AnimationNodeProps } from "./nodes/animation/ind
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
-import type { ShortcutControllerProps as ShortcutControllerNodeProps } from "./nodes/shortcut-controller.js";
 import type { TextAnchorProps } from "./nodes/text-anchor.js";
 import type { TextPaintableProps } from "./nodes/text-paintable.js";
 import type { TextTagProps } from "./nodes/text-tag.js";
@@ -21,7 +20,6 @@ export type { AnimatableProperties, SpringTransition, TimedTransition, Transitio
 export type { TextAnchorProps } from "./nodes/text-anchor.js";
 export type { TextPaintableProps } from "./nodes/text-paintable.js";
 export type { TextTagProps } from "./nodes/text-tag.js";
-export type { DragSourceProps, DropTargetProps, EventControllerProps, GestureDragProps } from "./types.js";
 
 export type ScaleMark = {
     value: number;
@@ -327,17 +325,7 @@ type NavigationPageBaseProps = {
     children?: ReactNode;
 };
 
-/**
- * Props for the ShortcutController element in JSX.
- *
- * Extends the base ShortcutControllerProps with support for children.
- *
- * @see {@link x.ShortcutController} for usage examples
- */
-export type ShortcutControllerProps = ShortcutControllerNodeProps & {
-    /** Shortcut children to add to this controller */
-    children?: ReactNode;
-};
+export type { GtkShortcutControllerProps as ShortcutControllerProps } from "./generated/jsx.js";
 
 /**
  * Props for the Shortcut element in JSX.
@@ -916,14 +904,14 @@ export const x = {
      * @example
      * ```tsx
      * <GtkBox>
-     *   <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+     *   <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
      *     <x.Shortcut trigger="<Control>f" onActivate={() => setSearchMode(s => !s)} />
      *     <x.Shortcut trigger="<Control>q" onActivate={quit} />
-     *   </x.ShortcutController>
+     *   </GtkShortcutController>
      * </GtkBox>
      * ```
      */
-    ShortcutController: "ShortcutController" as const,
+    ShortcutController: "GtkShortcutController" as const,
 
     /**
      * A keyboard shortcut definition.
@@ -992,7 +980,6 @@ declare global {
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 TreeListItem: TreeListItemProps<any>;
                 NavigationPage: NavigationPageProps;
-                ShortcutController: ShortcutControllerProps;
                 Shortcut: ShortcutProps;
                 Animation: AnimationNodeProps;
             }

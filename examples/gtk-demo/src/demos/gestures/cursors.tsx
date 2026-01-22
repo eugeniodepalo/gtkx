@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkEventControllerMotion, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./cursors.tsx?raw";
@@ -55,8 +55,8 @@ const CursorBox = ({ cursorName, description, isActive, onHover }: CursorBoxProp
             marginTop={8}
             marginBottom={8}
             cursor={cursor}
-            onEnter={onHover}
         >
+            <GtkEventControllerMotion onEnter={onHover} />
             <GtkLabel
                 label={cursorName}
                 cssClasses={["heading"]}

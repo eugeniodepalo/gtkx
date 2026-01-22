@@ -2,7 +2,13 @@ import { createRef } from "@gtkx/ffi";
 import type { Context } from "@gtkx/ffi/cairo";
 import { Pattern } from "@gtkx/ffi/cairo";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkDrawingArea } from "@gtkx/react";
+import {
+    GtkDrawingArea,
+    GtkGestureLongPress,
+    GtkGestureRotate,
+    GtkGestureSwipe,
+    GtkGestureZoom,
+} from "@gtkx/react";
 import { useCallback, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gestures.tsx?raw";
@@ -114,23 +120,22 @@ const GesturesDemo = () => {
     }, []);
 
     return (
-        <GtkDrawingArea
-            ref={drawingAreaRef}
-            contentWidth={400}
-            contentHeight={400}
-            onDraw={drawFunc}
-            onSwipe={handleSwipe}
-            onLongPressPressed={handleLongPressPressed}
-            onLongPressCancelled={handleLongPressCancelled}
-            onRotateAngleChanged={handleRotateChanged}
-            onZoomScaleChanged={handleZoomChanged}
-            gestureRotateRef={(g) => {
-                rotateRef.current = g;
-            }}
-            gestureZoomRef={(g) => {
-                zoomRef.current = g;
-            }}
-        />
+        <GtkDrawingArea ref={drawingAreaRef} contentWidth={400} contentHeight={400} onDraw={drawFunc}>
+            <GtkGestureSwipe onSwipe={handleSwipe} />
+            <GtkGestureLongPress onPressed={handleLongPressPressed} onCancelled={handleLongPressCancelled} />
+            <GtkGestureRotate
+                ref={(g) => {
+                    rotateRef.current = g;
+                }}
+                onAngleChanged={handleRotateChanged}
+            />
+            <GtkGestureZoom
+                ref={(g) => {
+                    zoomRef.current = g;
+                }}
+                onScaleChanged={handleZoomChanged}
+            />
+        </GtkDrawingArea>
     );
 };
 

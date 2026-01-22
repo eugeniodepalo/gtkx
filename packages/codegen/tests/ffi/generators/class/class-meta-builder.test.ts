@@ -1,9 +1,6 @@
 import type { GirRepository } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
-import {
-    type WidgetMetaAnalyzers,
-    WidgetMetaBuilder,
-} from "../../../../src/ffi/generators/class/widget-meta-builder.js";
+import { type ClassMetaAnalyzers, ClassMetaBuilder } from "../../../../src/ffi/generators/class/class-meta-builder.js";
 import {
     createNormalizedClass,
     createNormalizedMethod,
@@ -14,7 +11,7 @@ import {
 } from "../../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../../fixtures/mock-repository.js";
 
-function createMockAnalyzers(): WidgetMetaAnalyzers {
+function createMockAnalyzers(): ClassMetaAnalyzers {
     return {
         property: {
             analyzeWidgetProperties: () => [],
@@ -25,13 +22,13 @@ function createMockAnalyzers(): WidgetMetaAnalyzers {
         constructor: {
             getConstructorParamNames: () => [],
         },
-    } as WidgetMetaAnalyzers;
+    } as ClassMetaAnalyzers;
 }
 
 function createTestSetup(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
     namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map(),
-    analyzerOverrides: Partial<WidgetMetaAnalyzers> = {},
+    analyzerOverrides: Partial<ClassMetaAnalyzers> = {},
 ) {
     const ns = namespaces.get("Gtk") ?? createNormalizedNamespace({ name: "Gtk" });
     namespaces.set("Gtk", ns);
@@ -54,16 +51,16 @@ function createTestSetup(
     const repo = createMockRepository(namespaces);
     const analyzers = { ...createMockAnalyzers(), ...analyzerOverrides };
 
-    const builder = new WidgetMetaBuilder(cls, repo as unknown as GirRepository, "Gtk", analyzers);
+    const builder = new ClassMetaBuilder(cls, repo as unknown as GirRepository, "Gtk", analyzers);
 
     return { cls, builder, analyzers, repo };
 }
 
-describe("WidgetMetaBuilder", () => {
+describe("ClassMetaBuilder", () => {
     describe("constructor", () => {
         it("creates builder with class and dependencies", () => {
             const { builder } = createTestSetup();
-            expect(builder).toBeInstanceOf(WidgetMetaBuilder);
+            expect(builder).toBeInstanceOf(ClassMetaBuilder);
         });
     });
 
@@ -85,7 +82,7 @@ describe("WidgetMetaBuilder", () => {
             const repo = createMockRepository(namespaces);
             const analyzers = createMockAnalyzers();
 
-            const builder = new WidgetMetaBuilder(cls, repo as unknown as GirRepository, "GObject", analyzers);
+            const builder = new ClassMetaBuilder(cls, repo as unknown as GirRepository, "GObject", analyzers);
 
             expect(builder.isWidget()).toBe(false);
         });
@@ -102,7 +99,7 @@ describe("WidgetMetaBuilder", () => {
             const repo = createMockRepository(new Map());
             const analyzers = createMockAnalyzers();
 
-            const builder = new WidgetMetaBuilder(cls, repo as unknown as GirRepository, "GObject", analyzers);
+            const builder = new ClassMetaBuilder(cls, repo as unknown as GirRepository, "GObject", analyzers);
 
             const result = builder.buildCodegenWidgetMeta();
 
@@ -313,7 +310,7 @@ describe("WidgetMetaBuilder", () => {
             const repo = createMockRepository(namespaces);
             const analyzers = createMockAnalyzers();
 
-            const builder = new WidgetMetaBuilder(widgetClass, repo as unknown as GirRepository, "Gtk", analyzers);
+            const builder = new ClassMetaBuilder(widgetClass, repo as unknown as GirRepository, "Gtk", analyzers);
 
             const result = builder.buildCodegenWidgetMeta();
 

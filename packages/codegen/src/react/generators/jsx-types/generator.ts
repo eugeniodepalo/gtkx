@@ -3,11 +3,12 @@
  *
  * Generates JSX type definitions from:
  * - CodegenWidgetMeta: properties, signals, prop names, isContainer, slots (from FFI generation)
+ * - CodegenControllerMeta: properties, signals for event controllers
  * - Internal constants: list/dropdown/columnview classification
  */
 
 import type { SourceFile } from "ts-morph";
-import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import {
     COLUMN_VIEW_WIDGET_NAMES,
     DRAWING_AREA_WIDGET_NAMES,
@@ -23,6 +24,7 @@ import type { CodegenProject } from "../../../core/project.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
 import { addNamespaceImports } from "../../../core/utils/structure-helpers.js";
 import { type MetadataReader, sortWidgetsByClassName } from "../../metadata-reader.js";
+import { ControllerPropsBuilder } from "./controller-props-builder.js";
 import { IntrinsicElementsBuilder } from "./intrinsic-elements-builder.js";
 import { WidgetPropsBuilder } from "./widget-props-builder.js";
 
@@ -53,6 +55,7 @@ export type JsxWidget = {
 
 export class JsxTypesGenerator {
     private readonly propsBuilder = new WidgetPropsBuilder();
+    private readonly controllerPropsBuilder = new ControllerPropsBuilder();
     private readonly intrinsicBuilder = new IntrinsicElementsBuilder();
 
     constructor(
@@ -65,16 +68,21 @@ export class JsxTypesGenerator {
         const sourceFile = this.project.createReactSourceFile("jsx.ts");
 
         const widgets = this.getWidgets();
+        const controllers = this.getControllers();
         this.propsBuilder.clearUsedNamespaces();
+        this.controllerPropsBuilder.clearUsedNamespaces();
 
         this.generateWidgetNotifyProps(sourceFile, widgets);
         this.generateBaseWidgetProps(sourceFile, widgets);
         this.generateWidgetPropsInterfaces(sourceFile, widgets);
-        this.addImports(sourceFile, widgets);
+        this.generateBaseControllerProps(sourceFile);
+        this.generateControllerPropsInterfaces(sourceFile, controllers);
+        this.addImports(sourceFile, widgets, controllers);
 
         this.intrinsicBuilder.buildWidgetSlotNamesType(sourceFile, widgets);
         this.intrinsicBuilder.buildWidgetExports(sourceFile, widgets);
-        this.intrinsicBuilder.buildJsxNamespace(sourceFile, widgets);
+        this.intrinsicBuilder.buildControllerExports(sourceFile, controllers);
+        this.intrinsicBuilder.buildJsxNamespace(sourceFile, widgets, controllers);
         this.intrinsicBuilder.addModuleExport(sourceFile);
     }
 
@@ -85,6 +93,13 @@ export class JsxTypesGenerator {
         const widgets = filtered.map((meta) => this.toJsxWidget(meta));
 
         return sortWidgetsByClassName(widgets);
+    }
+
+    private getControllers(): CodegenControllerMeta[] {
+        return this.project.metadata
+            .getAllControllerMeta()
+            .filter((m) => this.namespaceNames.includes(m.namespace))
+            .sort((a, b) => a.jsxName.localeCompare(b.jsxName));
     }
 
     private toJsxWidget(meta: CodegenWidgetMeta): JsxWidget {
@@ -117,26 +132,10 @@ export class JsxTypesGenerator {
         };
     }
 
-    private addImports(sourceFile: SourceFile, widgets: JsxWidget[]): void {
+    private addImports(sourceFile: SourceFile, widgets: JsxWidget[], controllers: CodegenControllerMeta[]): void {
         sourceFile.addImportDeclaration({
             moduleSpecifier: "react",
             namedImports: ["ReactNode", "Ref"],
-            isTypeOnly: true,
-        });
-
-        sourceFile.addImportDeclaration({
-            moduleSpecifier: "../types.js",
-            namedImports: [
-                "EventControllerProps",
-                "DragSourceProps",
-                "DropTargetProps",
-                "GestureDragProps",
-                "GestureStylusProps",
-                "GestureRotateProps",
-                "GestureSwipeProps",
-                "GestureLongPressProps",
-                "GestureZoomProps",
-            ],
             isTypeOnly: true,
         });
 
@@ -145,7 +144,15 @@ export class JsxTypesGenerator {
             usedNamespaces.add(widget.namespace);
         }
 
+        for (const controller of controllers) {
+            usedNamespaces.add(controller.namespace);
+        }
+
         for (const ns of this.propsBuilder.getUsedNamespaces()) {
+            usedNamespaces.add(ns);
+        }
+
+        for (const ns of this.controllerPropsBuilder.getUsedNamespaces()) {
             usedNamespaces.add(ns);
         }
 
@@ -196,6 +203,16 @@ export class JsxTypesGenerator {
                 filteredSignals,
                 allPropNamesKebab,
             );
+        }
+    }
+
+    private generateBaseControllerProps(sourceFile: SourceFile): void {
+        this.controllerPropsBuilder.buildBaseControllerPropsType(sourceFile);
+    }
+
+    private generateControllerPropsInterfaces(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
+        for (const controller of controllers) {
+            this.controllerPropsBuilder.buildControllerPropsInterface(sourceFile, controller);
         }
     }
 }

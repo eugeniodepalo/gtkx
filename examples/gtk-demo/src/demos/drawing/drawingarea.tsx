@@ -1,6 +1,6 @@
 import { type Context, LineCap, Operator } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkDrawingArea, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./drawingarea.tsx?raw";
@@ -185,11 +185,14 @@ const ScribbleArea = () => {
             contentWidth={100}
             contentHeight={100}
             onDraw={drawScribble}
-            onGestureDragBegin={handleDragBegin}
-            onGestureDragUpdate={handleDragUpdate}
-            onGestureDragEnd={handleDragEnd}
             onResize={handleResize}
-        />
+        >
+            <GtkGestureDrag
+                onDragBegin={handleDragBegin}
+                onDragUpdate={handleDragUpdate}
+                onDragEnd={handleDragEnd}
+            />
+        </GtkDrawingArea>
     );
 };
 

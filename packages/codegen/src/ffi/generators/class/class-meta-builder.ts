@@ -1,38 +1,76 @@
 /**
- * Widget Meta Builder
+ * Class Meta Builder
  *
- * Builds CodegenWidgetMeta for in-memory metadata during generation.
+ * Builds CodegenWidgetMeta and CodegenControllerMeta for in-memory metadata during generation.
  * This metadata is consumed by React generators - nothing is written to output files.
  */
 
 import type { GirClass, GirRepository, QualifiedName } from "@gtkx/gir";
 import { parseQualifiedName, qualifiedName } from "@gtkx/gir";
 import type { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
-import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import { getClassification, getHiddenPropNames, type WidgetClassificationType } from "../../../core/config/index.js";
 import { normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
 import { isAdjustableMethod, isContainerMethod, isWidgetType } from "../../../core/utils/widget-detection.js";
 
-export type WidgetMetaAnalyzers = {
+export type ClassMetaAnalyzers = {
     readonly property: PropertyAnalyzer;
     readonly signal: SignalAnalyzer;
     readonly constructor: ConstructorAnalyzer;
 };
 
-export class WidgetMetaBuilder {
+const SKIP_CONTROLLERS = new Set<string>();
+
+export class ClassMetaBuilder {
     private readonly widgetQualifiedName: QualifiedName;
+    private readonly eventControllerQualifiedName: QualifiedName;
 
     constructor(
         private readonly cls: GirClass,
         private readonly repository: GirRepository,
         private readonly namespace: string,
-        private readonly analyzers: WidgetMetaAnalyzers,
+        private readonly analyzers: ClassMetaAnalyzers,
     ) {
         this.widgetQualifiedName = qualifiedName("Gtk", "Widget");
+        this.eventControllerQualifiedName = qualifiedName("Gtk", "EventController");
     }
 
     isWidget(): boolean {
         return this.cls.isSubclassOf(this.widgetQualifiedName);
+    }
+
+    isEventController(): boolean {
+        if (this.cls.abstract) return false;
+        if (this.namespace !== "Gtk") return false;
+        if (SKIP_CONTROLLERS.has(this.cls.name)) return false;
+        return this.cls.isSubclassOf(this.eventControllerQualifiedName);
+    }
+
+    buildCodegenControllerMeta(): CodegenControllerMeta | null {
+        if (!this.isEventController()) {
+            return null;
+        }
+
+        const className = normalizeClassName(this.cls.name, this.namespace);
+        const properties = this.analyzers.property.analyzeWidgetProperties(this.cls, new Set());
+        const signals = this.analyzers.signal.analyzeWidgetSignals(this.cls);
+        const propNames = properties.filter((p) => p.isWritable).map((p) => p.camelName);
+        const constructorParams = this.analyzers.constructor.getConstructorParamNames(this.cls);
+        const parentInfo = this.extractParentInfo();
+
+        return {
+            className,
+            namespace: this.namespace,
+            jsxName: `${this.namespace}${className}`,
+            parentClassName: parentInfo?.className ?? null,
+            parentNamespace: parentInfo?.namespace ?? null,
+            propNames,
+            signalNames: signals.map((s) => s.name),
+            properties,
+            signals,
+            constructorParams,
+            doc: this.cls.doc,
+        };
     }
 
     buildCodegenWidgetMeta(): CodegenWidgetMeta | null {

@@ -2,36 +2,37 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Props } from "../types.js";
+import type { Attachable } from "./internal/predicates.js";
 import { hasChanged } from "./internal/utils.js";
 import { ShortcutNode } from "./shortcut.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
 /**
- * Props for the ShortcutController virtual element.
+ * Props for the GtkShortcutController virtual element.
  *
  * Attaches keyboard shortcuts to a widget. Must contain `x.Shortcut` children.
  *
  * @example
  * ```tsx
  * <GtkBox>
- *     <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+ *     <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
  *         <x.Shortcut trigger="<Control>f" onActivate={toggleSearch} />
  *         <x.Shortcut trigger="<Control>q" onActivate={quit} />
- *     </x.ShortcutController>
+ *     </GtkShortcutController>
  * </GtkBox>
  * ```
  */
-export type ShortcutControllerProps = Props & {
+type ShortcutControllerProps = Props & {
     /** The scope for shortcuts (LOCAL, MANAGED, or GLOBAL) */
     scope?: Gtk.ShortcutScope;
 };
 
-class ShortcutControllerNode extends VirtualNode<ShortcutControllerProps> {
-    public static override priority = 1;
+class ShortcutControllerNode extends VirtualNode<ShortcutControllerProps> implements Attachable {
+    public static override priority = 0;
 
     public static override matches(type: string): boolean {
-        return type === "ShortcutController";
+        return type === "GtkShortcutController";
     }
 
     private controller: Gtk.ShortcutController | null = null;

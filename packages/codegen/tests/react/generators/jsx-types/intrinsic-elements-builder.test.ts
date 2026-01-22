@@ -74,7 +74,7 @@ describe("IntrinsicElementsBuilder", () => {
             const { sourceFile, builder } = createTestSetup();
             const widgets = [createJsxWidget()];
 
-            builder.buildJsxNamespace(sourceFile, widgets);
+            builder.buildJsxNamespace(sourceFile, widgets, []);
 
             const code = getGeneratedCode(sourceFile);
             expect(code).toContain("declare global");
@@ -84,7 +84,7 @@ describe("IntrinsicElementsBuilder", () => {
             const { sourceFile, builder } = createTestSetup();
             const widgets = [createJsxWidget()];
 
-            builder.buildJsxNamespace(sourceFile, widgets);
+            builder.buildJsxNamespace(sourceFile, widgets, []);
 
             const code = getGeneratedCode(sourceFile);
             expect(code).toContain("namespace React");
@@ -95,7 +95,7 @@ describe("IntrinsicElementsBuilder", () => {
             const { sourceFile, builder } = createTestSetup();
             const widgets = [createJsxWidget()];
 
-            builder.buildJsxNamespace(sourceFile, widgets);
+            builder.buildJsxNamespace(sourceFile, widgets, []);
 
             const code = getGeneratedCode(sourceFile);
             expect(code).toContain("interface IntrinsicElements");
@@ -105,7 +105,7 @@ describe("IntrinsicElementsBuilder", () => {
             const { sourceFile, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkButton" })];
 
-            builder.buildJsxNamespace(sourceFile, widgets);
+            builder.buildJsxNamespace(sourceFile, widgets, []);
 
             const code = getGeneratedCode(sourceFile);
             expect(code).toContain("GtkButton: GtkButtonProps");
@@ -118,7 +118,7 @@ describe("IntrinsicElementsBuilder", () => {
                 createJsxWidget({ className: "Label", jsxName: "GtkLabel" }),
             ];
 
-            builder.buildJsxNamespace(sourceFile, widgets);
+            builder.buildJsxNamespace(sourceFile, widgets, []);
 
             const code = getGeneratedCode(sourceFile);
             expect(code).toContain("GtkButton: GtkButtonProps");
@@ -144,7 +144,7 @@ describe("IntrinsicElementsBuilder", () => {
                 createJsxWidget({ className: "Button", jsxName: "GtkButton" }),
             ];
 
-            builder.buildJsxNamespace(sourceFile, widgets);
+            builder.buildJsxNamespace(sourceFile, widgets, []);
 
             const code = getGeneratedCode(sourceFile);
             expect(code).not.toContain("GtkWidget: GtkWidgetProps");

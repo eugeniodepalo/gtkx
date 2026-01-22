@@ -1,5 +1,5 @@
 import { PROPS, SIGNALS } from "../../generated/internal.js";
-import type { Container, ContainerClass, Props } from "../../types.js";
+import type { Container, ContainerClass, MetadataResolvable, Props } from "../../types.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: Required for generic class matching
 type AnyClass = new (...args: any[]) => any;
@@ -44,12 +44,14 @@ export const filterProps = (props: Props, excludeKeys: readonly string[]): Props
     return result;
 };
 
-const walkPrototypeChain = <T>(container: Container, lookup: (typeName: string) => T | null): T | null => {
+type GObjectClass = { glibTypeName?: string };
+
+const walkPrototypeChain = <T>(instance: MetadataResolvable, lookup: (typeName: string) => T | null): T | null => {
     // biome-ignore lint/complexity/noBannedTypes: Walking prototype chain requires Function type
-    let current: Function | null = container.constructor;
+    let current: Function | null = instance.constructor;
 
     while (current) {
-        const typeName = (current as ContainerClass).glibTypeName;
+        const typeName = (current as GObjectClass).glibTypeName;
         if (typeName) {
             const result = lookup(typeName);
             if (result !== null) {
@@ -68,11 +70,22 @@ const walkPrototypeChain = <T>(container: Container, lookup: (typeName: string) 
     return null;
 };
 
-export const resolvePropMeta = (container: Container, key: string): [string | null, string] | null =>
-    walkPrototypeChain(container, (typeName) => PROPS[typeName]?.[key] ?? null);
+export const resolvePropMeta = (instance: MetadataResolvable, key: string): [string | null, string] | null =>
+    walkPrototypeChain(instance, (typeName) => PROPS[typeName]?.[key] ?? null);
 
-export const resolveSignal = (container: Container, signalName: string): boolean =>
-    walkPrototypeChain(container, (typeName) => (SIGNALS[typeName]?.has(signalName) ? true : null)) ?? false;
+export const resolveSignal = (instance: MetadataResolvable, signalName: string): boolean => {
+    if (signalName === "notify") return true;
+    return walkPrototypeChain(instance, (typeName) => (SIGNALS[typeName]?.has(signalName) ? true : null)) ?? false;
+};
+
+export const propNameToSignalName = (propName: string): string => {
+    if (!propName.startsWith("on")) return propName;
+    return propName
+        .slice(2)
+        .replace(/([A-Z])/g, "-$1")
+        .toLowerCase()
+        .replace(/^-/, "");
+};
 
 export const hasChanged = <T>(oldProps: T | null, newProps: T, key: keyof T): boolean =>
     !oldProps || oldProps[key] !== newProps[key];

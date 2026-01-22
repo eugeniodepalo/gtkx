@@ -7,59 +7,18 @@
  * Optimized to use ts-morph structures API for batched operations.
  */
 
-import type { CodeBlockWriter, SourceFile, WriterFunction } from "ts-morph";
-import type { PropertyAnalysis, SignalAnalysis, SignalParam } from "../../../core/generator-types.js";
-import { sanitizeDoc } from "../../../core/utils/doc-formatter.js";
+import type { SourceFile } from "ts-morph";
+import type { PropertyAnalysis, SignalAnalysis } from "../../../core/generator-types.js";
 import { toPascalCase } from "../../../core/utils/naming.js";
 import { qualifyType } from "../../../core/utils/type-qualification.js";
 import type { JsxWidget } from "./generator.js";
+import { type PropInfo, PropsBuilderBase } from "./props-builder-base.js";
 
-type PropInfo = {
-    name: string;
-    type: string;
-    optional: boolean;
-    doc?: string;
-};
-
-/**
- * Builds widget props type aliases using pre-computed metadata.
- * Works with JsxWidget.
- */
-export class WidgetPropsBuilder {
-    private usedNamespaces = new Set<string>();
-
-    /**
-     * Gets the set of namespaces used in type references.
-     * Used by JsxTypesGenerator to generate only necessary imports.
-     */
-    getUsedNamespaces(): ReadonlySet<string> {
-        return this.usedNamespaces;
-    }
-
-    /**
-     * Clears the tracked namespaces.
-     * Should be called before processing a new set of widgets.
-     */
-    clearUsedNamespaces(): void {
-        this.usedNamespaces.clear();
-    }
-
-    private trackNamespacesFromAnalysis(referencedNamespaces: readonly string[]): void {
-        for (const ns of referencedNamespaces) {
-            this.usedNamespaces.add(ns);
-        }
-    }
-
-    /**
-     * Builds the WidgetNotifyProps type literal.
-     */
+export class WidgetPropsBuilder extends PropsBuilderBase {
     buildWidgetNotifyPropsType(widgetPropNames: string[]): string {
         return widgetPropNames.map((n) => `"${n}"`).join(" | ");
     }
 
-    /**
-     * Builds the base WidgetProps type alias extending EventControllerProps.
-     */
     buildWidgetPropsType(
         sourceFile: SourceFile,
         namespace: string,
@@ -99,21 +58,21 @@ export class WidgetPropsBuilder {
             doc: "When set to true, the widget will grab focus. Useful for focusing a widget when a condition becomes true.",
         });
 
+        allProps.push({
+            name: "children",
+            type: "ReactNode",
+            optional: true,
+            doc: "Children elements. For container widgets, these are child widgets. For non-container widgets, these are event controller elements.",
+        });
+
         sourceFile.addTypeAlias({
             name: "WidgetProps",
             isExported: true,
             docs: widgetDoc ? [{ description: this.formatDocDescription(widgetDoc, namespace) }] : undefined,
-            type: this.buildIntersectionTypeWriter(
-                "EventControllerProps & DragSourceProps & DropTargetProps & GestureDragProps & GestureStylusProps & GestureRotateProps & GestureSwipeProps & GestureLongPressProps & GestureZoomProps",
-                allProps,
-            ),
+            type: this.buildObjectTypeWriter(allProps),
         });
     }
 
-    /**
-     * Builds a widget-specific props type alias.
-     * Uses ts-morph structures API for batched operations.
-     */
     buildWidgetSpecificPropsInterface(
         sourceFile: SourceFile,
         widget: JsxWidget,
@@ -629,50 +588,5 @@ export class WidgetPropsBuilder {
         const baseName = toPascalCase(parentClassName);
         const omitList = widget.isAdjustable ? '"onNotify" | "onValueChanged"' : '"onNotify"';
         return `Omit<${parentNamespace}${baseName}Props, ${omitList}>`;
-    }
-
-    private buildHandlerType(signal: SignalAnalysis, widgetName: string, namespace: string): string {
-        const selfParam = `self: ${namespace}.${toPascalCase(widgetName)}`;
-        const otherParams = signal.parameters.map((p: SignalParam) => `${p.name}: ${p.type}`).join(", ");
-        const params = otherParams ? `${otherParams}, ${selfParam}` : selfParam;
-        return `(${params}) => ${signal.returnType}`;
-    }
-
-    private formatDocDescription(doc: string, namespace: string): string {
-        return sanitizeDoc(doc, {
-            namespace,
-            escapeXmlTags: true,
-            linkStyle: "prefixed",
-        });
-    }
-
-    private buildIntersectionTypeWriter(parentType: string, props: PropInfo[]): WriterFunction {
-        return (writer: CodeBlockWriter) => {
-            writer.write(`${parentType} & {`);
-            writer.newLine();
-            writer.indent(() => {
-                for (const prop of props) {
-                    if (prop.doc) {
-                        this.writeJsDoc(writer, prop.doc);
-                    }
-                    const questionMark = prop.optional ? "?" : "";
-                    writer.writeLine(`${prop.name}${questionMark}: ${prop.type};`);
-                }
-            });
-            writer.write("}");
-        };
-    }
-
-    private writeJsDoc(writer: CodeBlockWriter, doc: string): void {
-        const lines = doc.split("\n");
-        if (lines.length === 1) {
-            writer.writeLine(`/** ${doc} */`);
-        } else {
-            writer.writeLine("/**");
-            for (const line of lines) {
-                writer.writeLine(` * ${line}`);
-            }
-            writer.writeLine(" */");
-        }
     }
 }
