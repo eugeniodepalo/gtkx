@@ -32,6 +32,10 @@ export function formatRenderError(error: unknown, widgetType?: string): GtkxErro
         return error;
     }
 
+    if (error instanceof Error) {
+        console.error("[formatRenderError] Original error stack:", error.stack);
+    }
+
     const message = error instanceof Error ? error.message : String(error);
     const formattedMessage = widgetType ? `Failed to render ${widgetType}: ${message}` : `Render error: ${message}`;
 

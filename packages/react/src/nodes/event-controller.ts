@@ -78,6 +78,10 @@ class EventControllerNode extends Node<Gtk.EventController, Props> implements At
     }
 
     private applyProps(oldProps: Props | null, newProps: Props): void {
+        if (!this.container) {
+            throw new Error(`EventControllerNode.applyProps: container is undefined for ${this.typeName}`);
+        }
+
         const propNames = new Set([...Object.keys(oldProps ?? {}), ...Object.keys(newProps ?? {})]);
 
         for (const name of propNames) {

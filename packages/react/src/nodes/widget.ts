@@ -144,6 +144,9 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public updateProps(oldProps: P | null, newProps: P): void {
+        if (!this.container) {
+            throw new Error(`WidgetNode.updateProps: container is undefined for ${this.typeName}`);
+        }
         this.updateSizeRequest(oldProps, newProps);
         this.updateGrabFocus(oldProps, newProps);
 
@@ -262,11 +265,11 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         const propMeta = resolvePropMeta(this.container, key);
         if (!propMeta) return;
 
-        const [getterName, setterName] = propMeta;
+        const [getterName, setterName, getterHasParams] = propMeta;
         const setter = this.container[setterName as keyof typeof this.container];
         const getter = getterName ? this.container[getterName as keyof typeof this.container] : undefined;
 
-        if (getter && typeof getter === "function") {
+        if (getter && typeof getter === "function" && !getterHasParams) {
             const currentValue = getter.call(this.container);
 
             if (currentValue === value) {

@@ -178,8 +178,10 @@ export class InternalGenerator {
 
                 const getterName = prop.getter ? toCamelCase(prop.getter) : null;
                 const setterName = toCamelCase(prop.setter);
+                const getterHasParams = prop.getterHasParams ? "true" : "false";
 
-                propProperties[`"${prop.camelName}"`] = `[${getterName ? `"${getterName}"` : "null"}, "${setterName}"]`;
+                propProperties[`"${prop.camelName}"`] =
+                    `[${getterName ? `"${getterName}"` : "null"}, "${setterName}", ${getterHasParams}]`;
             }
 
             if (Object.keys(propProperties).length > 0) {
@@ -197,8 +199,10 @@ export class InternalGenerator {
 
                 const getterName = prop.getter ? toCamelCase(prop.getter) : null;
                 const setterName = toCamelCase(prop.setter);
+                const getterHasParams = prop.getterHasParams ? "true" : "false";
 
-                propProperties[`"${prop.camelName}"`] = `[${getterName ? `"${getterName}"` : "null"}, "${setterName}"]`;
+                propProperties[`"${prop.camelName}"`] =
+                    `[${getterName ? `"${getterName}"` : "null"}, "${setterName}", ${getterHasParams}]`;
             }
 
             if (Object.keys(propProperties).length > 0) {
@@ -208,7 +212,7 @@ export class InternalGenerator {
 
         sourceFile.addVariableStatement(
             createConstExport("PROPS", writeObjectOrEmpty(allProperties, Writers), {
-                type: "Record<string, Record<string, [string | null, string]>>",
+                type: "Record<string, Record<string, [string | null, string, boolean]>>",
             }),
         );
     }
