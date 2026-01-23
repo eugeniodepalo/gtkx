@@ -212,10 +212,10 @@ importers:
     devDependencies:
       '@biomejs/js-api':
         specifier: ^4.0.0
-        version: 4.0.0(@biomejs/wasm-nodejs@2.3.11)
+        version: 4.0.0(@biomejs/wasm-nodejs@2.3.12)
       '@biomejs/wasm-nodejs':
-        specifier: ^2.3.11
-        version: 2.3.11
+        specifier: ^2.3.12
+        version: 2.3.12
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
@@ -1094,8 +1094,8 @@ packages:
       '@biomejs/wasm-web':
         optional: true
 
-  '@biomejs/wasm-nodejs@2.3.11':
-    resolution: {integrity: sha512-xiLHmWPU7qjjNqY4ZRXf5xEtlxAAMK5wYtq2DeTb3cTEVAeln76mpTD6Qwt+S24y4kNajVc+kKlQIaeSkiTOjA==}
+  '@biomejs/wasm-nodejs@2.3.12':
+    resolution: {integrity: sha512-YKCw/fZ4kS5KCmleeuaTv2lXJEn1uaXXWZLZEY48ymY/cnD4Zhl8gbfFuhL6W902/gQ2ocZT7STQIRZ/tjBDuA==}
 
   '@cargo-messages/android-arm-eabi@0.1.81':
     resolution: {integrity: sha512-cpRbgb56e9LmAj96Tixtz9/bTlaJAeplWNNv4obu+eqQyZd3ZjX04TJd9fM1bjHDGVyR9GTVlgBsbQEntIGkwg==}
@@ -7467,11 +7467,11 @@ snapshots:
   '@biomejs/cli-win32-x64@2.3.11':
     optional: true
 
-  '@biomejs/js-api@4.0.0(@biomejs/wasm-nodejs@2.3.11)':
+  '@biomejs/js-api@4.0.0(@biomejs/wasm-nodejs@2.3.12)':
     optionalDependencies:
-      '@biomejs/wasm-nodejs': 2.3.11
+      '@biomejs/wasm-nodejs': 2.3.12
 
-  '@biomejs/wasm-nodejs@2.3.11': {}
+  '@biomejs/wasm-nodejs@2.3.12': {}
 
   '@cargo-messages/android-arm-eabi@0.1.81':
     optional: true
