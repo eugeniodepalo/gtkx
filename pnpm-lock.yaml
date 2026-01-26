@@ -107,9 +107,6 @@ importers:
 
   examples/hello-world:
     dependencies:
-      '@gtkx/css':
-        specifier: workspace:*
-        version: link:../../packages/css
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../../packages/ffi
@@ -126,9 +123,6 @@ importers:
 
   examples/todo:
     dependencies:
-      '@gtkx/css':
-        specifier: workspace:*
-        version: link:../../packages/css
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../../packages/ffi

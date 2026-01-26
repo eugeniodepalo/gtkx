@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -44,7 +45,12 @@ class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
         }
 
         if (oldProps && newProps.animate && !this.arePropsEqual(oldProps.animate, newProps.animate)) {
-            this.animateTo(newProps.animate);
+            const target = newProps.animate;
+            scheduleAfterCommit(() => {
+                if (this.child && !this.isExiting) {
+                    this.animateTo(target);
+                }
+            }, CommitPriority.LOW);
         }
     }
 
@@ -53,7 +59,7 @@ class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
             oldChild.removeCssClass(this.className);
         }
 
-        if (oldChild && this.parent) {
+        if (oldChild && this.parent && this.isWidgetAttachedTo(oldChild, this.parent)) {
             const strategy = getAttachmentStrategy(this.parent);
             if (strategy) {
                 detachChild(oldChild, strategy);
@@ -96,7 +102,11 @@ class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
     }
 
     public override unmount(): void {
-        if (this.props.exit && this.child && !this.isExiting) {
+        if (this.isExiting) {
+            return;
+        }
+
+        if (this.props.exit && this.child) {
             this.isExiting = true;
 
             this.animateTo(this.props.exit, () => {
@@ -112,7 +122,7 @@ class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
     }
 
     private detachChildFromParent(): void {
-        if (this.child && this.parent) {
+        if (this.child && this.parent && this.isChildAttachedToParent()) {
             const strategy = getAttachmentStrategy(this.parent);
             if (strategy) {
                 detachChild(this.child, strategy);
@@ -120,6 +130,16 @@ class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
                 this.parent.remove(this.child);
             }
         }
+    }
+
+    private isChildAttachedToParent(): boolean {
+        return this.isWidgetAttachedTo(this.child, this.parent);
+    }
+
+    private isWidgetAttachedTo(child: Gtk.Widget | null, parent: Gtk.Widget | null): boolean {
+        if (!child || !parent) return false;
+        const childParent = child.getParent();
+        return childParent !== null && isObjectEqual(childParent, parent);
     }
 
     private setupCssProvider(): void {
@@ -255,7 +275,13 @@ class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
     }
 
     private applyValues(values: AnimatableProperties): void {
-        if (!this.provider) return;
+        if (!this.provider) {
+            return;
+        }
+
+        if (this.child && !this.child.getCssClasses()?.includes(this.className)) {
+            this.child.addCssClass(this.className);
+        }
 
         const css = buildCss(this.className, values);
         if (css) {

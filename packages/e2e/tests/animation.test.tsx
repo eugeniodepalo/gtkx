@@ -1,8 +1,8 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkLabel, x } from "@gtkx/react";
-import { render, screen, waitFor } from "@gtkx/testing";
-import { createRef } from "react";
+import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import React, { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 describe("x.Animation", () => {
@@ -229,6 +229,278 @@ describe("x.Animation", () => {
             );
 
             await screen.findByText("Skewed");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+        });
+    });
+
+    describe("repeating animation", () => {
+        it("runs animation with repeat count", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="timed"
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1.2 }}
+                    transition={{ duration: 50, repeat: 2 }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="Repeating" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("Repeating");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+        });
+
+        it("runs animation with alternate", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="timed"
+                    initial={{ translateY: 0 }}
+                    animate={{ translateY: -20 }}
+                    transition={{ duration: 50, repeat: 2, alternate: true }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="Alternating" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("Alternating");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+        });
+    });
+
+    describe("transform animations", () => {
+        it("animates translateX property", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="timed"
+                    initial={{ translateX: 0 }}
+                    animate={{ translateX: 100 }}
+                    transition={{ duration: 100 }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="TranslateX" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("TranslateX");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+        });
+
+        it("animates translateY property", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="timed"
+                    initial={{ translateY: 0 }}
+                    animate={{ translateY: 50 }}
+                    transition={{ duration: 100 }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="TranslateY" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("TranslateY");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+        });
+
+        it("animates scale property", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="timed"
+                    initial={{ scale: 1 }}
+                    animate={{ scale: 1.5 }}
+                    transition={{ duration: 100 }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="Scale" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("Scale");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+        });
+
+        it("animates rotate property", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="timed"
+                    initial={{ rotate: 0 }}
+                    animate={{ rotate: 180 }}
+                    transition={{ duration: 100 }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="Rotate" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("Rotate");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+        });
+    });
+
+    describe("state-driven spring animation", () => {
+        it("animates when state triggers animate prop change", async () => {
+            const onComplete = vi.fn();
+
+            function BounceDemo() {
+                const [trigger, setTrigger] = React.useState(0);
+
+                return (
+                    <GtkBox>
+                        <GtkButton label="Bounce" onClicked={() => setTrigger((t) => t + 1)} />
+                        <x.Animation
+                            mode="spring"
+                            initial={false}
+                            animate={{ translateX: trigger % 2 === 0 ? 0 : 150 }}
+                            transition={{ damping: 1, stiffness: 200, mass: 1 }}
+                            onAnimationComplete={onComplete}
+                        >
+                            <GtkLabel label="Target" />
+                        </x.Animation>
+                    </GtkBox>
+                );
+            }
+
+            await render(<BounceDemo />);
+
+            const button = await screen.findByText("Bounce");
+
+            await userEvent.click(button);
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
+        });
+
+        it("animates spring with low damping for bouncy effect", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="spring"
+                    initial={{ translateX: 0 }}
+                    animate={{ translateX: 100 }}
+                    transition={{ damping: 0.5, stiffness: 100, mass: 1 }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="Bouncy" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("Bouncy");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 3000 });
+        });
+    });
+
+    describe("animation delay", () => {
+        it("delays timed animation start", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="timed"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 50, delay: 50 }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="Delayed" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("Delayed");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+        });
+    });
+
+    describe("easing functions", () => {
+        it("animates with EASE_OUT_BOUNCE easing", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="timed"
+                    initial={{ translateX: 0 }}
+                    animate={{ translateX: 60 }}
+                    transition={{ duration: 100, easing: Adw.Easing.EASE_OUT_BOUNCE }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="Bounce Easing" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("Bounce Easing");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+        });
+
+        it("animates with EASE_OUT_ELASTIC easing", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="timed"
+                    initial={{ translateX: 0 }}
+                    animate={{ translateX: 60 }}
+                    transition={{ duration: 100, easing: Adw.Easing.EASE_OUT_ELASTIC }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="Elastic Easing" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("Elastic Easing");
+
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+        });
+
+        it("animates with LINEAR easing", async () => {
+            const onComplete = vi.fn();
+
+            await render(
+                <x.Animation
+                    mode="timed"
+                    initial={{ translateX: 0 }}
+                    animate={{ translateX: 60 }}
+                    transition={{ duration: 100, easing: Adw.Easing.LINEAR }}
+                    animateOnMount
+                    onAnimationComplete={onComplete}
+                >
+                    <GtkLabel label="Linear Easing" />
+                </x.Animation>,
+            );
+
+            await screen.findByText("Linear Easing");
 
             await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });

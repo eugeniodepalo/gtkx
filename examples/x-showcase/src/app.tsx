@@ -10,6 +10,7 @@ import {
     x,
 } from "@gtkx/react";
 import { useState } from "react";
+import { AnimationDemo } from "./demos/animation.js";
 import { LayoutDemo } from "./demos/layout.js";
 import { ListDemo } from "./demos/list.js";
 import { MenuDemo } from "./demos/menu.js";
@@ -19,6 +20,7 @@ import { WidgetDemo } from "./demos/widget.js";
 
 export const App = () => {
     const [stack, setStack] = useState<Adw.ViewStack | null>(null);
+    const [currentPage, setCurrentPage] = useState<string | null>(null);
 
     return (
         <AdwApplicationWindow title="x.* Showcase" defaultWidth={900} defaultHeight={700} onClose={quit}>
@@ -31,7 +33,7 @@ export const App = () => {
                     </AdwHeaderBar>
                 </x.ToolbarTop>
 
-                <AdwViewStack ref={setStack}>
+                <AdwViewStack ref={setStack} onPageChanged={setCurrentPage}>
                     <x.StackPage id="layout" title="Layout" iconName="view-grid-symbolic">
                         <GtkScrolledWindow hexpand vexpand propagateNaturalHeight>
                             <LayoutDemo />
@@ -65,6 +67,12 @@ export const App = () => {
                     <x.StackPage id="widgets" title="Widgets" iconName="applications-system-symbolic">
                         <GtkScrolledWindow hexpand vexpand propagateNaturalHeight>
                             <WidgetDemo />
+                        </GtkScrolledWindow>
+                    </x.StackPage>
+
+                    <x.StackPage id="animations" title="Animations" iconName="media-playback-start-symbolic">
+                        <GtkScrolledWindow hexpand vexpand propagateNaturalHeight>
+                            {currentPage === "animations" && <AnimationDemo />}
                         </GtkScrolledWindow>
                     </x.StackPage>
                 </AdwViewStack>
