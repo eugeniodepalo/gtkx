@@ -83,13 +83,16 @@ impl From<&FundamentalType> for libffi::Type {
 
 impl ffi::FfiEncode for FundamentalType {
     fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        let ptr = value.object_ptr("Fundamental")?;
+        let mut ptr = value.object_ptr("Fundamental")?;
 
         if self.ownership.is_full() && !ptr.is_null() {
             let (ref_fn, _) = self.lookup_fns()?;
             if let Some(ref_fn) = ref_fn {
-                // SAFETY: ptr is a valid fundamental type pointer and ref_fn is the correct ref function
-                unsafe { ref_fn(ptr) };
+                // SAFETY: ptr is a valid fundamental type pointer and ref_fn is the correct ref function.
+                // For copy-based types (like PangoAttribute), ref_fn returns a NEW pointer to a copy.
+                // For ref-counted types, ref_fn returns the same pointer with incremented ref count.
+                // In both cases, we must use the returned pointer.
+                ptr = unsafe { ref_fn(ptr) };
             }
         }
 

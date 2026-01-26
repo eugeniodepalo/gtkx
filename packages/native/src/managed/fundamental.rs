@@ -41,12 +41,17 @@ impl Fundamental {
             };
         }
 
-        if let Some(do_ref) = ref_fn {
-            unsafe { do_ref(ptr) };
-        }
+        // For copy-based types (like PangoAttribute), ref_fn returns a NEW pointer.
+        // For ref-counted types, ref_fn returns the same pointer with incremented count.
+        // In both cases, we must use the returned pointer.
+        let owned_ptr = if let Some(do_ref) = ref_fn {
+            unsafe { do_ref(ptr) }
+        } else {
+            ptr
+        };
 
         Self {
-            inner: OwnedPtr::from_full(ptr),
+            inner: OwnedPtr::from_full(owned_ptr),
             ref_fn,
             unref_fn,
         }
@@ -74,12 +79,17 @@ impl Clone for Fundamental {
             };
         }
 
-        if let Some(ref_fn) = self.ref_fn {
-            unsafe { ref_fn(self.inner.as_ptr()) };
-        }
+        // For copy-based types (like PangoAttribute), ref_fn returns a NEW pointer.
+        // For ref-counted types, ref_fn returns the same pointer with incremented count.
+        // In both cases, we must use the returned pointer.
+        let cloned_ptr = if let Some(ref_fn) = self.ref_fn {
+            unsafe { ref_fn(self.inner.as_ptr()) }
+        } else {
+            self.inner.as_ptr()
+        };
 
         Self {
-            inner: OwnedPtr::from_full(self.inner.as_ptr()),
+            inner: OwnedPtr::from_full(cloned_ptr),
             ref_fn: self.ref_fn,
             unref_fn: self.unref_fn,
         }
