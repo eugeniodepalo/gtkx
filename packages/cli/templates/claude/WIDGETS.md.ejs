@@ -633,17 +633,22 @@ Wrap widgets in `x.Animation` for declarative animations with spring or timed tr
 
 ```tsx
 <x.Animation
-    initial={{ opacity: 0, scaleX: 0.8 }}
-    animate={{ opacity: 1, scaleX: 1 }}
-    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+    mode="spring"
+    initial={{ opacity: 0, scale: 0.8 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ damping: 0.8, stiffness: 200, mass: 1 }}
+    animateOnMount
     onAnimationComplete={() => console.log("done")}
 >
     <GtkBox>...</GtkBox>
 </x.Animation>
 ```
 
-**Props:** `initial`, `animate`, `transition`, `onAnimationComplete`
-**Transition types:** `{ type: "spring", stiffness, damping }` or `{ type: "timed", duration, easing }`
+**Props:** `mode` (`"spring"` | `"timed"`), `initial`, `animate`, `exit`, `transition`, `animateOnMount`, `onAnimationStart`, `onAnimationComplete`
+
+**Spring transition:** `damping`, `stiffness`, `mass`, `initialVelocity`, `clamp`, `delay`
+
+**Timed transition:** `duration`, `easing` (from `Adw.Easing`), `delay`, `repeat`, `reverse`, `alternate`
 
 ---
 

@@ -717,3 +717,38 @@ const StackNavigation = () => {
     );
 };
 ```
+
+---
+
+## Animated Card with Toggle
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkBox, GtkButton, GtkLabel, x } from "@gtkx/react";
+import { useState } from "react";
+
+const AnimatedCard = () => {
+    const [visible, setVisible] = useState(true);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
+            <GtkButton label={visible ? "Hide Card" : "Show Card"} onClicked={() => setVisible(!visible)} halign={Gtk.Align.START} />
+            {visible && (
+                <x.Animation
+                    mode="spring"
+                    initial={{ opacity: 0, scale: 0.8, translateY: -20 }}
+                    animate={{ opacity: 1, scale: 1, translateY: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, translateY: 20 }}
+                    transition={{ damping: 0.7, stiffness: 200 }}
+                    animateOnMount
+                >
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} cssClasses={["card"]} marginStart={12} marginEnd={12} marginTop={8} marginBottom={8}>
+                        <GtkLabel label="Animated Card" cssClasses={["title-4"]} halign={Gtk.Align.START} />
+                        <GtkLabel label="This card animates in with a spring effect and fades out when dismissed." wrap />
+                    </GtkBox>
+                </x.Animation>
+            )}
+        </GtkBox>
+    );
+};
+```

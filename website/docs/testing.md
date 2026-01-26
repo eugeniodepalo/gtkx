@@ -66,6 +66,43 @@ describe("App", () => {
 });
 ```
 
+## Testing Hooks
+
+Use `renderHook` to test custom React hooks in isolation:
+
+```tsx
+import { cleanup, renderHook } from "@gtkx/testing";
+import { afterEach, describe, expect, it } from "vitest";
+import { useCounter } from "../src/hooks/useCounter.js";
+
+describe("useCounter", () => {
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  it("increments the counter", async () => {
+    const { result, rerender } = await renderHook(() => useCounter(0));
+
+    expect(result.current.count).toBe(0);
+
+    result.current.increment();
+    await rerender();
+
+    expect(result.current.count).toBe(1);
+  });
+
+  it("accepts initial value", async () => {
+    const { result } = await renderHook(() => useCounter(10));
+    expect(result.current.count).toBe(10);
+  });
+});
+```
+
+The `renderHook` function returns:
+
+- `result`: An object with a `current` property containing the hook's return value
+- `rerender`: A function to re-render the hook with optionally new props
+
 ## Querying Widgets
 
 Find widgets using familiar Testing Library patterns:

@@ -67,6 +67,20 @@ Some widgets require children in specific slots:
 </GtkHeaderBar>
 ```
 
+### Animations
+
+```tsx
+<x.Animation
+    mode="spring"
+    initial={{ opacity: 0, scale: 0.8 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ damping: 0.8, stiffness: 200 }}
+    animateOnMount
+>
+    <GtkLabel label="Animated!" />
+</x.Animation>
+```
+
 ## Key Constraints
 
 - GTK is single-threaded: all widget operations on main thread
