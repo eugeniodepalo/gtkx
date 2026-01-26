@@ -244,6 +244,8 @@ export class RecordGenerator {
         glibTypeName: string | undefined,
         glibGetType: string | undefined,
     ): WriterFunction {
+        const ownership = mainConstructor.returnType.transferOwnership === "full" ? "full" : "borrowed";
+
         return (writer) => {
             writer.writeLine("super();");
             writer.write("this.handle = call(");
@@ -262,7 +264,7 @@ export class RecordGenerator {
                 writer.writeLine("],");
                 const getTypeFnPart = glibGetType ? `, getTypeFn: "${glibGetType}"` : "";
                 writer.writeLine(
-                    `{ type: "boxed", ownership: "borrowed", innerType: "${glibTypeName}", library: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
+                    `{ type: "boxed", ownership: "${ownership}", innerType: "${glibTypeName}", library: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
                 );
             });
             writer.writeLine(") as NativeHandle;");
@@ -306,6 +308,7 @@ export class RecordGenerator {
     ): WriterFunction {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
         const innerType = glibTypeName ?? recordName;
+        const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
         return this.methodBody.writeFactoryMethodBody({
             sharedLibrary: this.options.sharedLibrary,
@@ -313,7 +316,7 @@ export class RecordGenerator {
             args,
             returnTypeDescriptor: {
                 type: "boxed",
-                ownership: "borrowed",
+                ownership,
                 innerType,
                 library: this.options.sharedLibrary,
                 ...(glibGetType && { getTypeFn: glibGetType }),

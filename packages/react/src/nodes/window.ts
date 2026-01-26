@@ -110,7 +110,8 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     }
 
     public override unmount(): void {
-        this.container.destroy();
+        this.signalStore.set(this, this.container, "close-request", () => true);
+        this.container.close();
         super.unmount();
     }
 
