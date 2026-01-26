@@ -27,7 +27,9 @@ export class IntrinsicElementsBuilder {
     buildWidgetExports(sourceFile: SourceFile, widgets: JsxWidget[]): void {
         const statements = widgets.map((widget) =>
             createConstExport(widget.jsxName, `"${widget.jsxName}" as const`, {
-                docs: buildJsDocStructure(widget.meta.doc, widget.namespace),
+                docs: buildJsDocStructure(widget.meta.doc, widget.namespace) ?? [
+                    { description: `A ${widget.namespace}.${widget.className} widget element.` },
+                ],
             }),
         );
 
@@ -39,7 +41,9 @@ export class IntrinsicElementsBuilder {
             .filter((c) => c.className !== "EventController" && !c.abstract)
             .map((controller) =>
                 createConstExport(controller.jsxName, `"${controller.jsxName}" as const`, {
-                    docs: buildJsDocStructure(controller.doc, controller.namespace),
+                    docs: buildJsDocStructure(controller.doc, controller.namespace) ?? [
+                        { description: `A ${controller.namespace}.${controller.className} event controller element.` },
+                    ],
                 }),
             );
 

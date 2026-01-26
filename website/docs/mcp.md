@@ -173,26 +173,3 @@ Inspect the current widget tree:
 Create complex interaction sequences:
 
 > "Fill out the login form with test credentials and submit it"
-
-## Architecture
-
-```
-┌─────────────────┐ stdio ┌──────────────┐
-│ AI Assistant │◀──────────────▶│ gtkx-mcp │
-│ (e.g. Claude) │ │ server │
-└─────────────────┘ └──────┬───────┘
- │ Unix socket
- │ $XDG_RUNTIME_DIR/gtkx-mcp.sock
- ▼
- ┌──────────────┐
- │ gtkx dev │
- │ (MCP client)│
- └──────┬───────┘
- │
- ▼
- ┌──────────────┐
- │ GTK4 App │
- └──────────────┘
-```
-
-The MCP server communicates with AI assistants via stdio and with your running app via a Unix socket. This allows the AI to inspect and interact with native GTK widgets in real-time.

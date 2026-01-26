@@ -5,7 +5,13 @@ import { VirtualNode } from "./virtual.js";
 
 const PLACEHOLDER = "\uFFFC";
 
+/**
+ * Props for the TextPaintable virtual element.
+ *
+ * Used to embed inline images or icons within text content in a GtkTextView.
+ */
 export type TextPaintableProps = {
+    /** The paintable (image, icon, etc.) to embed inline with the text */
     paintable: Gdk.Paintable;
 };
 

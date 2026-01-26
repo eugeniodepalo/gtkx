@@ -58,6 +58,9 @@ const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
     }
 };
 
+/**
+ * Options for capturing widget screenshots.
+ */
 export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval">;
 
 /**

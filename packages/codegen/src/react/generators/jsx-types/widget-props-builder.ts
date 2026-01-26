@@ -64,7 +64,13 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
         sourceFile.addTypeAlias({
             name: "WidgetProps",
             isExported: true,
-            docs: widgetDoc ? [{ description: this.formatDocDescription(widgetDoc, namespace) }] : undefined,
+            docs: [
+                {
+                    description: widgetDoc
+                        ? this.formatDocDescription(widgetDoc, namespace)
+                        : "Base props shared by all GTK widget elements.",
+                },
+            ],
             type: this.buildObjectTypeWriter(allProps),
         });
     }

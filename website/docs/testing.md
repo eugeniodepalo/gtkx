@@ -98,126 +98,17 @@ describe("useCounter", () => {
 });
 ```
 
-The `renderHook` function returns:
+See the [renderHook API reference](./api/testing/functions/renderHook.md) for full details.
 
-- `result`: An object with a `current` property containing the hook's return value
-- `rerender`: A function to re-render the hook with optionally new props
+## API Overview
 
-## Querying Widgets
+The testing library provides:
 
-Find widgets using familiar Testing Library patterns:
-
-```tsx
-// By accessible role
-const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-  name: "Submit",
-});
-
-// By text content
-const label = await screen.findByText("Hello World");
-const labelRegex = await screen.findByText(/hello/i);
-
-// By test ID (uses the widget's `name` prop)
-const input = await screen.findByTestId("email-input");
-
-// Multiple elements
-const allButtons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
-```
-
-See `Gtk.AccessibleRole` for all available roles.
-
-## User Interactions
-
-Simulate user actions with `userEvent`:
-
-```tsx
-import { userEvent } from "@gtkx/testing";
-
-// Click a button
-await userEvent.click(button);
-
-// Type text into an input
-await userEvent.type(input, "Hello World");
-
-// Clear an input
-await userEvent.clear(input);
-
-// Toggle a checkbox
-await userEvent.click(checkbox);
-
-// Select a dropdown option
-await userEvent.selectOptions(dropdown, 0);
-```
-
-## Firing Signals on Event Controllers
-
-Use `fireEvent` to emit signals directly on widgets or event controllers. This is useful for testing gesture handlers and other controller-based interactions:
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { Value } from "@gtkx/ffi/gobject";
-import { fireEvent } from "@gtkx/testing";
-
-const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
-
-const gesture = button.observeControllers().getObject(0) as Gtk.GestureDrag;
-await fireEvent(
-  gesture,
-  "drag-begin",
-  Value.newFromDouble(100),
-  Value.newFromDouble(100),
-);
-```
-
-The `fireEvent` function accepts both `Gtk.Widget` and `Gtk.EventController` objects, allowing you to test gesture signals like `drag-begin`, `drag-update`, and `drag-end`.
-
-## Scoped Queries
-
-Use `within` to query within a specific widget subtree:
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { within } from "@gtkx/testing";
-
-const listItem = await screen.findByTestId("todo-1");
-const { findByRole } = within(listItem);
-
-const checkbox = await findByRole(Gtk.AccessibleRole.CHECKBOX);
-const deleteButton = await findByRole(Gtk.AccessibleRole.BUTTON);
-```
-
-## Debugging
-
-Print the widget tree to the console:
-
-```tsx
-await render(<MyComponent />);
-screen.debug();
-```
-
-This outputs an HTML-like representation of the widget hierarchy:
-
-```
-<GtkApplicationWindow role="window">
- <GtkBox role="group">
- <GtkButton data-testid="submit" role="button">
- Submit
- </GtkButton>
- </GtkBox>
-</GtkApplicationWindow>
-```
-
-## Screenshots
-
-Capture screenshots for visual debugging:
-
-```tsx
-// Capture first window
-await screen.screenshot();
-
-// Capture window by title
-await screen.screenshot("Settings");
-```
+- **Query methods** on `screen`: `findByRole`, `findByText`, `findByTestId`, `findByLabelText`, and their `findAll*` variants. See the [screen API reference](./api/testing/variables/screen.md).
+- **User interactions** via `userEvent`: `click`, `type`, `clear`, `selectOptions`, and more. See the [userEvent API reference](./api/testing/variables/userEvent.md).
+- **Signal emission** via `fireEvent` for testing gesture handlers and custom interactions. See the [fireEvent API reference](./api/testing/functions/fireEvent.md).
+- **Scoped queries** via `within` for querying within a widget subtree. See the [within API reference](./api/testing/functions/within.md).
+- **Debugging** via `screen.debug()` and `screen.screenshot()`.
 
 ## Complete Example
 

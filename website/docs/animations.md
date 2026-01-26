@@ -23,21 +23,7 @@ const FadeInButton = () => (
 
 The `initial` prop sets the starting values, `animate` sets the target values, and `animateOnMount` triggers the animation when the component first renders.
 
-## Animatable Properties
-
-The following CSS properties can be animated:
-
-| Property | Description |
-|----------|-------------|
-| `opacity` | 0 (transparent) to 1 (opaque) |
-| `translateX` | Horizontal offset in pixels |
-| `translateY` | Vertical offset in pixels |
-| `scale` | Uniform scale factor (1 = normal) |
-| `scaleX` | Horizontal scale factor |
-| `scaleY` | Vertical scale factor |
-| `rotate` | Rotation in degrees |
-| `skewX` | Horizontal skew in degrees |
-| `skewY` | Vertical skew in degrees |
+You can animate properties like `opacity`, `translateX`, `translateY`, `scale`, `scaleX`, `scaleY`, `rotate`, `skewX`, and `skewY`. See the [AnimatableProperties API reference](./api/react/type-aliases/AnimatableProperties.md) for the full list.
 
 ```tsx
 <x.Animation
@@ -75,16 +61,7 @@ const TimedExample = () => (
 );
 ```
 
-### Timed Transition Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `duration` | Animation length in milliseconds | 300 |
-| `easing` | Easing function from `Adw.Easing` | `EASE_OUT_CUBIC` |
-| `delay` | Delay before starting in milliseconds | 0 |
-| `repeat` | Number of repetitions (0 = none, -1 = infinite) | 0 |
-| `reverse` | Play animation backwards | `false` |
-| `alternate` | Alternate direction on each repeat | `false` |
+See the [TimedTransition API reference](./api/react/type-aliases/TimedTransition.md) for all available options.
 
 ## Spring Animations
 
@@ -110,16 +87,7 @@ const SpringExample = () => (
 );
 ```
 
-### Spring Transition Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `damping` | Controls oscillation decay (1 = critically damped, <1 = bouncy) | 1 |
-| `stiffness` | Spring stiffness affecting speed | 100 |
-| `mass` | Virtual mass affecting momentum | 1 |
-| `initialVelocity` | Starting velocity | 0 |
-| `clamp` | Prevent overshooting the target | `false` |
-| `delay` | Delay before starting in milliseconds | 0 |
+See the [SpringTransition API reference](./api/react/type-aliases/SpringTransition.md) for all available options.
 
 ## Animating on Prop Changes
 
