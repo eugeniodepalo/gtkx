@@ -22,7 +22,7 @@ const LIFECYCLE_SIGNALS = new Set([
     "teardown",
 ]);
 
-type HandlerEntry = { obj: GObject.GObject; handlerId: number };
+type HandlerEntry = { obj: GObject.Object; handlerId: number };
 
 export interface SignalOptions {
     blockable?: boolean;
@@ -51,7 +51,7 @@ export class SignalStore {
         };
     }
 
-    private disconnect(owner: SignalOwner, obj: GObject.GObject, signal: string): void {
+    private disconnect(owner: SignalOwner, obj: GObject.Object, signal: string): void {
         const objectId = getNativeId(obj.handle);
         const key = `${objectId}:${signal}`;
         const ownerMap = this.ownerHandlers.get(owner);
@@ -65,7 +65,7 @@ export class SignalStore {
 
     private connect(
         owner: SignalOwner,
-        obj: GObject.GObject,
+        obj: GObject.Object,
         signal: string,
         handler: SignalHandler,
         blockable: boolean,
@@ -79,7 +79,7 @@ export class SignalStore {
 
     public set(
         owner: SignalOwner,
-        obj: GObject.GObject,
+        obj: GObject.Object,
         signal: string,
         handler?: SignalHandler | null,
         options?: SignalOptions,

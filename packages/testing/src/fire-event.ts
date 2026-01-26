@@ -1,4 +1,4 @@
-import { type GObject, signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
+import { type Object as GObject, signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { tick } from "./timing.js";
 

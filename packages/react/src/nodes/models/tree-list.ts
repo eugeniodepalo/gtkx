@@ -28,7 +28,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
             this.store.getRootModel(),
             false,
             props.autoexpand ?? false,
-            (item: GObject.GObject) => this.createChildModel(item),
+            (item: GObject.Object) => this.createChildModel(item),
         );
 
         this.selectionManager = new SelectionModelManager(
@@ -40,7 +40,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         );
     }
 
-    private createChildModel(item: GObject.GObject): Gio.ListModel | null {
+    private createChildModel(item: GObject.Object): Gio.ListModel | null {
         if (!(item instanceof Gtk.StringObject)) return null;
         const parentId = item.getString();
         return this.store.getChildrenModel(parentId);
