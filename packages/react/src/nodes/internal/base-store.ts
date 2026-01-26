@@ -19,6 +19,10 @@ export abstract class BaseStore<TItem = unknown> {
         }
     }
 
+    public get hasPendingSync(): boolean {
+        return this.syncAction.isPending;
+    }
+
     protected scheduleSync(): void {
         this.syncAction.schedule();
     }

@@ -37,6 +37,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
             () => this.getSelection(),
             (ids) => this.resolveSelectionIndices(ids),
             () => this.treeListModel.getNItems(),
+            () => this.store.hasPendingSync,
         );
     }
 

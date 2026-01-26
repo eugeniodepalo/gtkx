@@ -8,6 +8,10 @@ export class DeferredAction {
         private priority: CommitPriority,
     ) {}
 
+    get isPending(): boolean {
+        return this.scheduled;
+    }
+
     schedule(): void {
         if (this.scheduled) return;
         this.scheduled = true;
