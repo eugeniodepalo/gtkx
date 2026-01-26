@@ -1,6 +1,7 @@
 import { isObjectEqual } from "@gtkx/ffi";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import type { GridChildProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { PositionalChildNode } from "./abstract/positional-child.js";
 import { hasChanged } from "./internal/utils.js";
@@ -12,6 +13,10 @@ class GridChildNode extends PositionalChildNode<Props> {
 
     public static override matches(type: string): boolean {
         return type === "GridChild";
+    }
+
+    public override canBeChildOf(parent: Node): boolean {
+        return parent.container instanceof Gtk.Grid;
     }
 
     protected override attachToParent(parent: Gtk.Widget, child: Gtk.Widget): void {

@@ -1,51 +1,44 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
+import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import { SlotNode } from "./slot.js";
+import type { Container } from "../types.js";
+import { VirtualContainerNode } from "./abstract/virtual-container.js";
+import { matchesInterface } from "./internal/utils.js";
 
-type ToolbarChildNodePosition = "top" | "bottom";
+const TOOLBAR_INTERFACE_METHODS = ["addTopBar", "addBottomBar", "remove"] as const;
 
-class ToolbarChildNode extends SlotNode {
+class ToolbarTopNode extends VirtualContainerNode<Adw.ToolbarView> {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
-        return type === "ToolbarTop" || type === "ToolbarBottom";
+        return type === "ToolbarTop";
     }
 
-    private getToolbar(): Adw.ToolbarView {
-        if (!this.parent) {
-            throw new Error("Expected ToolbarView reference to be set on ToolbarChildNode");
-        }
-
-        return this.parent as Adw.ToolbarView;
+    public override canBeChildOf(parent: Node): boolean {
+        return matchesInterface(TOOLBAR_INTERFACE_METHODS, parent.container as Container);
     }
 
-    private getPosition(): ToolbarChildNodePosition {
-        return this.typeName === "ToolbarTop" ? "top" : "bottom";
-    }
-
-    protected override onChildChange(oldChild: Gtk.Widget | null): void {
-        const toolbar = this.getToolbar();
-
-        if (oldChild) {
-            const parent = oldChild.getParent();
-
-            if (parent && isObjectEqual(parent, toolbar)) {
-                toolbar.remove(oldChild);
-            }
-        }
-
-        if (this.child) {
-            const position = this.getPosition();
-
-            if (position === "top") {
-                toolbar.addTopBar(this.child);
-            } else {
-                toolbar.addBottomBar(this.child);
-            }
-        }
+    protected override attachChild(parent: Adw.ToolbarView, widget: Gtk.Widget): void {
+        parent.addTopBar(widget);
     }
 }
 
-registerNodeClass(ToolbarChildNode);
+class ToolbarBottomNode extends VirtualContainerNode<Adw.ToolbarView> {
+    public static override priority = 1;
+
+    public static override matches(type: string): boolean {
+        return type === "ToolbarBottom";
+    }
+
+    public override canBeChildOf(parent: Node): boolean {
+        return matchesInterface(TOOLBAR_INTERFACE_METHODS, parent.container as Container);
+    }
+
+    protected override attachChild(parent: Adw.ToolbarView, widget: Gtk.Widget): void {
+        parent.addBottomBar(widget);
+    }
+}
+
+registerNodeClass(ToolbarTopNode);
+registerNodeClass(ToolbarBottomNode);

@@ -2,6 +2,7 @@ import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
 import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
+import type { Attachable } from "../internal/predicates.js";
 import { VirtualNode } from "../virtual.js";
 import { WidgetNode } from "../widget.js";
 
@@ -9,7 +10,10 @@ type ChildParentWidget = Gtk.Widget & {
     remove(child: Gtk.Widget): void;
 };
 
-export abstract class VirtualContainerNode<P extends ChildParentWidget = ChildParentWidget> extends VirtualNode {
+export abstract class VirtualContainerNode<P extends ChildParentWidget = ChildParentWidget>
+    extends VirtualNode
+    implements Attachable
+{
     protected parent: P | null = null;
 
     public setParent(newParent: P | null): void {
@@ -24,6 +28,18 @@ export abstract class VirtualContainerNode<P extends ChildParentWidget = ChildPa
     }
 
     protected abstract attachChild(parent: P, widget: Gtk.Widget): void;
+
+    public canBeChildOf(parent: Node): boolean {
+        return parent instanceof WidgetNode;
+    }
+
+    public attachTo(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.setParent(parent.container as P);
+        }
+    }
+
+    public detachFrom(_parent: Node): void {}
 
     public override unmount(): void {
         this.parent = null;
