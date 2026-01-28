@@ -24,6 +24,10 @@ const isToggleable = (widget: Gtk.Widget): boolean => {
     return TOGGLEABLE_ROLES.has(widget.getAccessibleRole());
 };
 
+const isActivatable = (widget: Gtk.Widget): boolean => {
+    return "getActivatable" in widget && typeof widget.getActivatable === "function" && widget.getActivatable();
+};
+
 const click = async (element: Gtk.Widget): Promise<void> => {
     if (isToggleable(element)) {
         const role = element.getAccessibleRole();
@@ -39,6 +43,9 @@ const click = async (element: Gtk.Widget): Promise<void> => {
             toggleButton.setActive(!toggleButton.getActive());
         }
 
+        await tick();
+    } else if (isActivatable(element)) {
+        element.activate();
         await tick();
     } else {
         await fireEvent(element, "clicked");
