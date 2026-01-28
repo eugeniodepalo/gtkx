@@ -56,7 +56,7 @@
         "test": "vitest run"
     },
     "dependencies": {
-        "@clack/prompts": "^0.11.0",
+        "@clack/prompts": "^1.0.0",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/mcp": "workspace:*",
         "@gtkx/react": "workspace:*",
