@@ -10,9 +10,9 @@
 
 <p align="center">
  <a href="https://www.npmjs.com/package/@gtkx/react"><img src="https://img.shields.io/npm/v/@gtkx/react.svg" alt="npm version"></a>
- <a href="https://github.com/eugeniodepalo/gtkx/actions"><img src="https://img.shields.io/github/actions/workflow/status/eugeniodepalo/gtkx/ci.yml" alt="CI"></a>
- <a href="https://github.com/eugeniodepalo/gtkx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue.svg" alt="License"></a>
- <a href="https://github.com/eugeniodepalo/gtkx/discussions"><img src="https://img.shields.io/badge/discussions-GitHub-blue" alt="GitHub Discussions"></a>
+ <a href="https://github.com/gtkx-org/gtkx/actions"><img src="https://img.shields.io/github/actions/workflow/status/eugeniodepalo/gtkx/ci.yml" alt="CI"></a>
+ <a href="https://github.com/gtkx-org/gtkx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue.svg" alt="License"></a>
+ <a href="https://github.com/gtkx-org/gtkx/discussions"><img src="https://img.shields.io/badge/discussions-GitHub-blue" alt="GitHub Discussions"></a>
 </p>
 
 ---
@@ -90,16 +90,16 @@ Explore complete applications in the [`examples/`](./examples) directory:
 
 ## Documentation
 
-Visit [https://eugeniodepalo.github.io/gtkx](https://eugeniodepalo.github.io/gtkx/) for the full documentation.
+Visit [https://gtkx.dev](https://gtkx.dev) for the full documentation.
 
 ## Contributing
 
-Contributions are welcome! Please see the [contributing guidelines](./CONTRIBUTING.md) and check out the [good first issues](https://github.com/eugeniodepalo/gtkx/labels/good%20first%20issue).
+Contributions are welcome! Please see the [contributing guidelines](./CONTRIBUTING.md) and check out the [good first issues](https://github.com/gtkx-org/gtkx/labels/good%20first%20issue).
 
 ## Community
 
-- [GitHub Discussions](https://github.com/eugeniodepalo/gtkx/discussions) — Questions, ideas, and general discussion
-- [Issue Tracker](https://github.com/eugeniodepalo/gtkx/issues) — Bug reports and feature requests
+- [GitHub Discussions](https://github.com/gtkx-org/gtkx/discussions) — Questions, ideas, and general discussion
+- [Issue Tracker](https://github.com/gtkx-org/gtkx/issues) — Bug reports and feature requests
 
 ## License
 

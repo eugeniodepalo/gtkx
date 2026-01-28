@@ -383,8 +383,8 @@ Examples in `examples/` serve as both documentation and integration tests. When 
 
 ## Getting Help
 
-- **Questions:** Open a [GitHub Discussion](https://github.com/eugeniodepalo/gtkx/discussions)
-- **Bugs:** Open a [GitHub Issue](https://github.com/eugeniodepalo/gtkx/issues)
+- **Questions:** Open a [GitHub Discussion](https://github.com/gtkx-org/gtkx/discussions)
+- **Bugs:** Open a [GitHub Issue](https://github.com/gtkx-org/gtkx/issues)
 - **Security:** Report security vulnerabilities privately via GitHub's security advisory feature
 
 ---

@@ -101,7 +101,7 @@ modules:
  path: ../dist/index.node
 ```
 
-For complete Flatpak setup (prerequisites, desktop entry, build commands), see the [Flatpak Documentation](https://docs.flatpak.org/) and the [deploying example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/deploying).
+For complete Flatpak setup (prerequisites, desktop entry, build commands), see the [Flatpak Documentation](https://docs.flatpak.org/) and the [deploying example](https://github.com/gtkx-org/gtkx/tree/main/examples/deploying).
 
 ## Snap Packaging
 
@@ -143,4 +143,4 @@ Ensure `index.node` is in the same directory as the executable.
 
 ## Complete Example
 
-For a fully working example with all configuration files, build scripts, and CI setup, see the [deploying example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/deploying).
+For a fully working example with all configuration files, build scripts, and CI setup, see the [deploying example](https://github.com/gtkx-org/gtkx/tree/main/examples/deploying).

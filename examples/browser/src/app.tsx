@@ -16,7 +16,7 @@ import {
 } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const DEFAULT_URL = "https://eugeniodepalo.github.io/gtkx/";
+const DEFAULT_URL = "https://gtkx.dev";
 
 const urlBarStyle = css`
     min-width: 400px;

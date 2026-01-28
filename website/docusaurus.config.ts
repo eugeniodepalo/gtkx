@@ -7,8 +7,8 @@ const config: Config = {
     tagline: "Build native Linux desktop apps with React and GTK4",
     favicon: "/favicon.svg",
 
-    url: "https://eugeniodepalo.github.io",
-    baseUrl: "/gtkx/",
+    url: "https://gtkx.dev",
+    baseUrl: "/",
 
     organizationName: "eugeniodepalo",
     projectName: "gtkx",
@@ -104,7 +104,7 @@ const config: Config = {
             {
                 docs: {
                     sidebarPath: "./sidebars.ts",
-                    editUrl: "https://github.com/eugeniodepalo/gtkx/tree/main/website/",
+                    editUrl: "https://github.com/gtkx-org/gtkx/tree/main/website/",
                 },
                 blog: false,
                 theme: {
@@ -141,7 +141,7 @@ const config: Config = {
                     label: "API",
                 },
                 {
-                    href: "https://github.com/eugeniodepalo/gtkx",
+                    href: "https://github.com/gtkx-org/gtkx",
                     label: "GitHub",
                     position: "right",
                 },
@@ -189,11 +189,11 @@ const config: Config = {
                     items: [
                         {
                             label: "GitHub",
-                            href: "https://github.com/eugeniodepalo/gtkx",
+                            href: "https://github.com/gtkx-org/gtkx",
                         },
                         {
                             label: "llms.txt",
-                            href: "https://eugeniodepalo.github.io/gtkx/llms.txt",
+                            href: "https://gtkx.devllms.txt",
                         },
                     ],
                 },

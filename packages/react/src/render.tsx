@@ -191,9 +191,9 @@ export const update = (element: ReactNode): Promise<void> => {
  *
  * @see {@link render} for starting the application
  */
-export const quit = () => {
+export const quit = (): void => {
     if (isHotReloading) {
-        return true;
+        return;
     }
 
     reconciler.getInstance().updateContainer(null, container, null, () => {
@@ -201,6 +201,4 @@ export const quit = () => {
             stop();
         }, 0);
     });
-
-    return true;
 };

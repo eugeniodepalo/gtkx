@@ -8,13 +8,13 @@
         "linux",
         "arm64"
     ],
-    "homepage": "https://eugeniodepalo.github.io/gtkx",
+    "homepage": "https://gtkx.dev",
     "bugs": {
-        "url": "https://github.com/eugeniodepalo/gtkx/issues"
+        "url": "https://github.com/gtkx-org/gtkx/issues"
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/eugeniodepalo/gtkx.git",
+        "url": "https://github.com/gtkx-org/gtkx.git",
         "directory": "packages/native-linux-arm64"
     },
     "license": "MPL-2.0",

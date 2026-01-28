@@ -46,5 +46,5 @@ ENV CARGO_INCREMENTAL=0
 ENV CARGO_NET_RETRY=10
 ENV RUSTUP_MAX_RETRIES=10
 
-LABEL org.opencontainers.image.source="https://github.com/eugeniodepalo/gtkx"
+LABEL org.opencontainers.image.source="https://github.com/gtkx-org/gtkx"
 LABEL org.opencontainers.image.description="GTKX CI Base Image with GTK4, Node.js, Rust, and testing dependencies"

@@ -2,7 +2,7 @@
     "name": "gtkx",
     "version": "0.0.0",
     "private": true,
-    "homepage": "https://eugeniodepalo.github.io/gtkx/",
+    "homepage": "https://gtkx.dev",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",

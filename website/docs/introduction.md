@@ -67,4 +67,4 @@ GTKX may not be the best choice if you:
 
 Ready to get started? Head to the [Getting Started](./getting-started.md) guide to create your first GTKX application.
 
-Want to see what's possible? Check out the [gtk-demo example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/gtk-demo) for a comprehensive widget gallery.
+Want to see what's possible? Check out the [gtk-demo example](https://github.com/gtkx-org/gtkx/tree/main/examples/gtk-demo) for a comprehensive widget gallery.
