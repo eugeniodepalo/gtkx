@@ -132,11 +132,11 @@ Scrollable container.
 
 All virtual list widgets use `ListItem` children and a `renderItem` function.
 
-### ListView
+### GtkListView
 High-performance scrollable list with selection.
 
 ```tsx
-<x.ListView<Item>
+<GtkListView
     estimatedItemHeight={48}
     vexpand
     selected={selectedId ? [selectedId] : []}
@@ -145,14 +145,14 @@ High-performance scrollable list with selection.
     renderItem={(item) => <GtkLabel label={item?.name ?? ""} />}
 >
     {items.map(item => <x.ListItem key={item.id} id={item.id} value={item} />)}
-</x.ListView>
+</GtkListView>
 ```
 
-### GridView
+### GtkGridView
 Grid-based virtual scrolling.
 
 ```tsx
-<x.GridView<Item>
+<GtkGridView
     estimatedItemHeight={100}
     minColumns={2}
     maxColumns={4}
@@ -164,7 +164,7 @@ Grid-based virtual scrolling.
     )}
 >
     {items.map(item => <x.ListItem key={item.id} id={item.id} value={item} />)}
-</x.GridView>
+</GtkGridView>
 ```
 
 ### GtkColumnView

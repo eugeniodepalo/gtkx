@@ -1,5 +1,14 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkColumnView, GtkFrame, GtkLabel, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
+import {
+    GtkBox,
+    GtkColumnView,
+    GtkFrame,
+    GtkLabel,
+    GtkListView,
+    GtkScrolledWindow,
+    GtkSearchEntry,
+    x,
+} from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-ucd.tsx?raw";
@@ -158,7 +167,7 @@ const ListViewUcdDemo = () => {
                         widthRequest={200}
                     >
                         <GtkScrolledWindow heightRequest={450} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                            <x.ListView<{ name: string }>
+                            <GtkListView
                                 estimatedItemHeight={40}
                                 showSeparators
                                 onActivate={(position) => {
@@ -182,7 +191,7 @@ const ListViewUcdDemo = () => {
                                 {unicodeBlocks.map((block) => (
                                     <x.ListItem key={block.name} id={block.name} value={{ name: block.name }} />
                                 ))}
-                            </x.ListView>
+                            </GtkListView>
                         </GtkScrolledWindow>
                     </GtkBox>
                 </GtkFrame>

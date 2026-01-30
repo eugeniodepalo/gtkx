@@ -23,7 +23,7 @@ GTKX enables React developers to build Linux desktop applications using familiar
 - [Async Operations](https://gtkx.dev/docs/async-operations): Async event handlers, loading states, file I/O, network requests
 - [Error Handling](https://gtkx.dev/docs/error-handling): Try/catch patterns, error states, toast notifications, form validation
 - [Widgets](https://gtkx.dev/docs/widgets): Declarative widget features — direct props for adjustments/marks/offsets on Scale/Calendar/LevelBar, x.TextTag for rich text, x.TextAnchor for embedded widgets, x.ShortcutController, x.GridChild, x.Toggle, x.AlertDialogResponse, x.Animation (spring/timed animations with opacity, translate, scale, rotate, skew), GtkSearchBar with onSearchModeChanged, AdwToggleGroup with onActiveChanged, GtkStack/AdwViewStack with onPageChanged, GtkTextView/GtkSourceView with granular callbacks (onTextInserted, onTextDeleted, onCanUndoChanged), custom drawing (onDraw), drag-and-drop, GValue factories
-- [Lists](https://gtkx.dev/docs/lists): x.ListView, x.GridView, GtkColumnView, x.TreeListView, GtkDropDown with virtual scrolling
+- [Lists](https://gtkx.dev/docs/lists): GtkListView, GtkGridView, GtkColumnView, x.TreeListView, GtkDropDown with virtual scrolling
 - [Menus](https://gtkx.dev/docs/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu, keyboard shortcuts, GtkPopoverMenu
 - [Slots](https://gtkx.dev/docs/slots): Named child positions for widgets like GtkHeaderBar, GtkPaned, GtkMenuButton
 - [Portals and Dialogs](https://gtkx.dev/docs/portals): createPortal(), AdwDialog, AdwAlertDialog, GtkAboutDialog, FileDialog, ColorDialogButton, FontDialogButton, modal windows

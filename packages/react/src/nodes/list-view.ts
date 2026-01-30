@@ -60,7 +60,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
 
     public override appendChild(child: Node): void {
         if (!(child instanceof ListItemNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'ListView': expected x.ListItem`);
+            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected x.ListItem`);
         }
 
         this.list.appendChild(child);
@@ -68,7 +68,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
 
     public override insertBefore(child: Node, before: Node): void {
         if (!(child instanceof ListItemNode) || !(before instanceof ListItemNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' into 'ListView': expected x.ListItem`);
+            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected x.ListItem`);
         }
 
         this.list.insertBefore(child, before);
@@ -76,7 +76,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
 
     public override removeChild(child: Node): void {
         if (!(child instanceof ListItemNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'ListView': expected x.ListItem`);
+            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected x.ListItem`);
         }
 
         this.list.removeChild(child);

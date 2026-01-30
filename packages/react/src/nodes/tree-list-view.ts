@@ -66,7 +66,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
 
     public override appendChild(child: Node): void {
         if (!(child instanceof TreeListItemNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'TreeListView': expected x.TreeListItem`);
+            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected x.TreeListItem`);
         }
 
         this.treeList.appendChild(child);
@@ -74,7 +74,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
 
     public override insertBefore(child: Node, before: Node): void {
         if (!(child instanceof TreeListItemNode) || !(before instanceof TreeListItemNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' into 'TreeListView': expected x.TreeListItem`);
+            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected x.TreeListItem`);
         }
 
         this.treeList.insertBefore(child, before);
@@ -82,7 +82,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
 
     public override removeChild(child: Node): void {
         if (!(child instanceof TreeListItemNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'TreeListView': expected x.TreeListItem`);
+            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected x.TreeListItem`);
         }
 
         this.treeList.removeChild(child);

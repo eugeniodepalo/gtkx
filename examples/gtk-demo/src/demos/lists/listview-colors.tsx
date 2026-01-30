@@ -4,6 +4,7 @@ import {
     GtkBox,
     GtkButton,
     GtkDropDown,
+    GtkGridView,
     GtkHeaderBar,
     GtkLabel,
     GtkProgressBar,
@@ -418,7 +419,7 @@ const ListViewColorsDemo = () => {
                 </GtkRevealer>
 
                 <GtkScrolledWindow vexpand hexpand>
-                    <x.GridView<ColorItem>
+                    <GtkGridView
                         estimatedItemHeight={displayFactory === "everything" ? 120 : 40}
                         minColumns={displayFactory === "everything" ? 4 : 8}
                         maxColumns={displayFactory === "everything" ? 12 : 24}
@@ -433,7 +434,7 @@ const ListViewColorsDemo = () => {
                         {sortedColors.map((color) => (
                             <x.ListItem key={color.id} id={color.id} value={color} />
                         ))}
-                    </x.GridView>
+                    </GtkGridView>
                 </GtkScrolledWindow>
             </GtkBox>
         </>

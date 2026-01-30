@@ -1,7 +1,7 @@
 import { createRef } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkProgressBar, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkListView, GtkProgressBar, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-words.tsx?raw";
@@ -106,7 +106,7 @@ const ListViewWordsDemo = () => {
             />
 
             <GtkScrolledWindow vexpand hexpand>
-                <x.ListView<string>
+                <GtkListView
                     vexpand
                     hexpand
                     estimatedItemHeight={32}
@@ -123,7 +123,7 @@ const ListViewWordsDemo = () => {
                     {filteredWords.map((word) => (
                         <x.ListItem key={word} id={word} value={word} />
                     ))}
-                </x.ListView>
+                </GtkListView>
             </GtkScrolledWindow>
         </GtkBox>
     );

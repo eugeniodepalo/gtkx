@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
 import "@gtkx/ffi/giounix";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
@@ -57,7 +57,7 @@ const ListViewApplauncherDemo = () => {
 
     return (
         <GtkScrolledWindow vexpand hexpand>
-            <x.ListView<AppItem>
+            <GtkListView
                 estimatedItemHeight={48}
                 onActivate={handleActivate}
                 renderItem={(item) => (
@@ -73,7 +73,7 @@ const ListViewApplauncherDemo = () => {
                 {apps.map((app) => (
                     <x.ListItem key={app.id} id={app.id} value={app} />
                 ))}
-            </x.ListView>
+            </GtkListView>
         </GtkScrolledWindow>
     );
 };

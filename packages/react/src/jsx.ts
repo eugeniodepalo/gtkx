@@ -4,13 +4,8 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
 import type { AnimationProps } from "./animation/types.js";
-import type {
-    GtkGridViewProps as GeneratedGtkGridViewProps,
-    GtkListViewProps as GeneratedGtkListViewProps,
-    WidgetSlotNames,
-} from "./generated/jsx.js";
+import type { GtkListViewProps as GeneratedGtkListViewProps, WidgetSlotNames } from "./generated/jsx.js";
 import "./jsx-augmentation.js";
-import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
 import type { TextAnchorProps } from "./nodes/text-anchor.js";
@@ -82,7 +77,7 @@ export type VirtualSlotProps = {
 };
 
 /**
- * Props for items in a {@link ListView} or {@link GridView}.
+ * Props for items in a GtkListView, GtkGridView, or GtkColumnView.
  *
  * @typeParam T - The type of data associated with this list item
  */
@@ -153,16 +148,6 @@ export type FixedChildProps = VirtualSlotProps & {
     y?: number;
     /** 3D transform to apply to the child (perspective, rotation, etc.) */
     transform?: Gsk.Transform;
-};
-
-/**
- * Props for custom list view rendering.
- *
- * @typeParam T - The type of items in the list
- */
-export type ListViewRenderProps<T = unknown> = {
-    /** Function to render each list item */
-    renderItem: RenderItemFn<T>;
 };
 
 /**
@@ -407,30 +392,6 @@ export type NavigationPageProps =
 export type { WidgetSlotNames };
 
 /**
- * Props for the ListView component.
- *
- * @typeParam T - The type of items in the list
- */
-export type ListViewProps<T = unknown> = Omit<GeneratedGtkListViewProps, "renderItem"> & {
-    /** Function to render each list item */
-    renderItem: (item: T | null) => ReactNode;
-    /** Estimated item height in pixels for proper virtualization before content loads */
-    estimatedItemHeight?: number;
-};
-
-/**
- * Props for the GridView component.
- *
- * @typeParam T - The type of items in the grid
- */
-export type GridViewProps<T = unknown> = Omit<GeneratedGtkGridViewProps, "renderItem"> & {
-    /** Function to render each grid item */
-    renderItem: (item: T | null) => ReactNode;
-    /** Estimated item height in pixels for proper virtualization before content loads */
-    estimatedItemHeight?: number;
-};
-
-/**
  * Props for the TreeListView component.
  *
  * @typeParam T - The type of items in the tree
@@ -558,13 +519,13 @@ export const x = {
     NotebookPageTab: "NotebookPageTab" as const,
 
     /**
-     * Element type for items in a ListView or GridView.
+     * Element type for items in a GtkListView, GtkGridView, or GtkColumnView.
      *
      * @example
      * ```tsx
-     * <x.ListView renderItem={(item) => <GtkLabel label={item.name} />}>
+     * <GtkListView renderItem={(item) => <GtkLabel label={item.name} />}>
      *   <x.ListItem id="1" value={{ name: "Item 1" }} />
-     * </x.ListView>
+     * </GtkListView>
      * ```
      */
     ListItem: "ListItem" as const,
@@ -612,34 +573,6 @@ export const x = {
      */
     ColumnViewColumn<T = unknown>(props: ColumnViewColumnProps<T>): ReactElement {
         return createElement("ColumnViewColumn", props);
-    },
-
-    /**
-     * Virtualized list component with custom item rendering.
-     *
-     * @example
-     * ```tsx
-     * <x.ListView renderItem={(item) => <GtkLabel label={item?.name ?? ""} />}>
-     *   <x.ListItem id="1" value={{ name: "Apple" }} />
-     * </x.ListView>
-     * ```
-     */
-    ListView<T = unknown>(props: ListViewProps<T>): ReactElement {
-        return createElement("GtkListView", props);
-    },
-
-    /**
-     * Virtualized grid component with custom item rendering.
-     *
-     * @example
-     * ```tsx
-     * <x.GridView renderItem={(item) => <GtkImage iconName={item?.icon ?? ""} />}>
-     *   <x.ListItem id="1" value={{ icon: "folder" }} />
-     * </x.GridView>
-     * ```
-     */
-    GridView<T = unknown>(props: GridViewProps<T>): ReactElement {
-        return createElement("GtkGridView", props);
     },
 
     /**

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkImage, GtkLabel, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkGridView, GtkImage, GtkLabel, x } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
@@ -131,7 +131,7 @@ const ListViewMinesweeperDemo = () => {
             </GtkBox>
 
             <GtkBox halign={Gtk.Align.CENTER}>
-                <x.GridView<Cell>
+                <GtkGridView
                     estimatedItemHeight={32}
                     minColumns={GRID_SIZE}
                     maxColumns={GRID_SIZE}
@@ -150,7 +150,7 @@ const ListViewMinesweeperDemo = () => {
                     {board.map((cell) => (
                         <x.ListItem key={cell.id} id={cell.id} value={cell} />
                     ))}
-                </x.GridView>
+                </GtkGridView>
             </GtkBox>
         </GtkBox>
     );

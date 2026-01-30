@@ -6,6 +6,7 @@ import {
     GtkFrame,
     GtkImage,
     GtkLabel,
+    GtkListView,
     GtkMenuButton,
     GtkPopover,
     GtkScrolledWindow,
@@ -498,7 +499,7 @@ const ListViewSelectionsDemo = () => {
                         </GtkBox>
 
                         <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                            <x.ListView<FruitItem>
+                            <GtkListView
                                 estimatedItemHeight={48}
                                 showSeparators
                                 selectionMode={selectionMode}
@@ -516,7 +517,7 @@ const ListViewSelectionsDemo = () => {
                                 {fruits.map((fruit) => (
                                     <x.ListItem key={fruit.id} id={fruit.id} value={fruit} />
                                 ))}
-                            </x.ListView>
+                            </GtkListView>
                         </GtkScrolledWindow>
 
                         {lastActivated && (

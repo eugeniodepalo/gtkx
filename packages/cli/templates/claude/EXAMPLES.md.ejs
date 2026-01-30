@@ -132,7 +132,7 @@ const TodoList = () => {
                 <GtkButton label="Add" onClicked={addTodo} cssClasses={["suggested-action"]} />
             </GtkBox>
             <GtkScrolledWindow vexpand cssClasses={["card"]}>
-                <x.ListView<Todo>
+                <GtkListView
                     renderItem={(todo) => (
                         <GtkBox spacing={8} marginStart={12} marginEnd={12} marginTop={8} marginBottom={8}>
                             <GtkLabel label={todo?.text ?? ""} hexpand halign={Gtk.Align.START} />
@@ -143,7 +143,7 @@ const TodoList = () => {
                     {todos.map((todo) => (
                         <x.ListItem key={todo.id} id={todo.id} value={todo} />
                     ))}
-                </x.ListView>
+                </GtkListView>
             </GtkScrolledWindow>
         </GtkBox>
     );
@@ -179,7 +179,7 @@ const SidebarNav = () => {
         <GtkPaned position={200}>
             <x.Slot for={GtkPaned} id="startChild">
                 <GtkScrolledWindow cssClasses={["sidebar"]}>
-                    <x.ListView<Page>
+                    <GtkListView
                         selected={[currentPage]}
                         selectionMode={Gtk.SelectionMode.SINGLE}
                         onSelectionChanged={(ids) => setCurrentPage(ids[0])}
@@ -190,7 +190,7 @@ const SidebarNav = () => {
                         {pages.map((page) => (
                             <x.ListItem key={page.id} id={page.id} value={page} />
                         ))}
-                    </x.ListView>
+                    </GtkListView>
                 </GtkScrolledWindow>
             </x.Slot>
             <x.Slot for={GtkPaned} id="endChild">
@@ -441,7 +441,7 @@ const AsyncList = () => {
 
     return (
         <GtkScrolledWindow vexpand>
-            <x.ListView<User>
+            <GtkListView
                 renderItem={(user) => (
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} marginStart={12} marginTop={8} marginBottom={8}>
                         <GtkLabel label={user?.name ?? ""} halign={Gtk.Align.START} cssClasses={["heading"]} />
@@ -452,7 +452,7 @@ const AsyncList = () => {
                 {users.map((user) => (
                     <x.ListItem key={user.id} id={user.id} value={user} />
                 ))}
-            </x.ListView>
+            </GtkListView>
         </GtkScrolledWindow>
     );
 };

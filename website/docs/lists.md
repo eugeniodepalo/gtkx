@@ -4,8 +4,8 @@ GTKX provides several list components for different use cases, from simple stati
 
 ## Choosing a List Component
 
-- **`x.ListView`** — Large lists (1000+ items) with virtual scrolling
-- **`x.GridView`** — Photo galleries, icon grids with virtual scrolling
+- **`GtkListView`** — Large lists (1000+ items) with virtual scrolling
+- **`GtkGridView`** — Photo galleries, icon grids with virtual scrolling
 - **`GtkColumnView`** — Data tables with sorting and virtual scrolling
 - **`x.TreeListView`** — Hierarchical data, file trees with virtual scrolling
 - **`GtkDropDown`** — Small selection lists (no virtual scrolling)
@@ -17,7 +17,7 @@ GTKX provides several list components for different use cases, from simple stati
 High-performance virtualized list for large datasets. Only visible items are rendered.
 
 ```tsx
-import { x, GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { x, GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 interface Contact {
@@ -34,7 +34,7 @@ const contacts: Contact[] = [
 
 const ContactList = () => (
   <GtkScrolledWindow vexpand>
-    <x.ListView
+    <GtkListView
       estimatedItemHeight={48}
       renderItem={(contact: Contact | null) => (
         <GtkBox spacing={12}>
@@ -50,7 +50,7 @@ const ContactList = () => (
       {contacts.map((contact) => (
         <x.ListItem key={contact.id} id={contact.id} value={contact} />
       ))}
-    </x.ListView>
+    </GtkListView>
   </GtkScrolledWindow>
 );
 ```
@@ -60,7 +60,7 @@ const ContactList = () => (
 ```tsx
 const [selected, setSelected] = useState<string[]>([]);
 
-<x.ListView
+<GtkListView
   estimatedItemHeight={48}
   selectionMode={Gtk.SelectionMode.MULTIPLE}
   selected={selected}
@@ -70,7 +70,7 @@ const [selected, setSelected] = useState<string[]>([]);
   {items.map((item) => (
     <x.ListItem key={item.id} id={item.id} value={item} />
   ))}
-</x.ListView>;
+</GtkListView>;
 ```
 
 ## GridView
@@ -78,7 +78,7 @@ const [selected, setSelected] = useState<string[]>([]);
 Grid layout with virtual scrolling. Ideal for photo galleries and icon views.
 
 ```tsx
-import { x, GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { x, GtkBox, GtkGridView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { css } from "@gtkx/css";
 
 interface Photo {
@@ -94,7 +94,7 @@ const photoTile = (color: string) => css`
 
 const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
   <GtkScrolledWindow vexpand hexpand>
-    <x.GridView
+    <GtkGridView
       estimatedItemHeight={130}
       minColumns={2}
       maxColumns={6}
@@ -112,7 +112,7 @@ const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
       {photos.map((photo) => (
         <x.ListItem key={photo.id} id={photo.id} value={photo} />
       ))}
-    </x.GridView>
+    </GtkGridView>
   </GtkScrolledWindow>
 );
 ```

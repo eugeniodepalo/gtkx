@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkScrolledWindow, GtkSwitch, x } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow, GtkSwitch, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-settings.tsx?raw";
@@ -232,7 +232,7 @@ const ListViewSettingsDemo = () => {
                     {categories.map((category) => (
                         <GtkFrame key={category} label={category}>
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} marginTop={8} marginBottom={8}>
-                                <x.ListView<SettingItem>
+                                <GtkListView
                                     estimatedItemHeight={60}
                                     showSeparators
                                     renderItem={(item) => (
@@ -281,7 +281,7 @@ const ListViewSettingsDemo = () => {
                                     {getSettingsByCategory(category).map((setting) => (
                                         <x.ListItem key={setting.id} id={setting.id} value={setting} />
                                     ))}
-                                </x.ListView>
+                                </GtkListView>
                             </GtkBox>
                         </GtkFrame>
                     ))}

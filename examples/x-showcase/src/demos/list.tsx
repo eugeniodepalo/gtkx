@@ -5,7 +5,9 @@ import {
     GtkColumnView,
     GtkDropDown,
     GtkFrame,
+    GtkGridView,
     GtkLabel,
+    GtkListView,
     GtkScrolledWindow,
     x,
 } from "@gtkx/react";
@@ -112,10 +114,10 @@ export const ListDemo = () => {
                 </GtkFrame>
             </AdwPreferencesGroup>
 
-            <AdwPreferencesGroup title="x.ListView" description="Virtualized list with custom item rendering">
+            <AdwPreferencesGroup title="GtkListView" description="Virtualized list with custom item rendering">
                 <GtkFrame marginTop={12}>
                     <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <x.ListView<FileItem>
+                        <GtkListView
                             estimatedItemHeight={48}
                             renderItem={(item) => (
                                 <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8}>
@@ -127,15 +129,15 @@ export const ListDemo = () => {
                             {files.map((file) => (
                                 <x.ListItem key={file.name} id={file.name} value={file} />
                             ))}
-                        </x.ListView>
+                        </GtkListView>
                     </GtkScrolledWindow>
                 </GtkFrame>
             </AdwPreferencesGroup>
 
-            <AdwPreferencesGroup title="x.GridView" description="Virtualized grid with custom item rendering">
+            <AdwPreferencesGroup title="GtkGridView" description="Virtualized grid with custom item rendering">
                 <GtkFrame marginTop={12}>
                     <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <x.GridView<FileItem>
+                        <GtkGridView
                             estimatedItemHeight={80}
                             renderItem={(item) => (
                                 <GtkBox
@@ -158,7 +160,7 @@ export const ListDemo = () => {
                             {files.map((file) => (
                                 <x.ListItem key={file.name} id={file.name} value={file} />
                             ))}
-                        </x.GridView>
+                        </GtkGridView>
                     </GtkScrolledWindow>
                 </GtkFrame>
             </AdwPreferencesGroup>

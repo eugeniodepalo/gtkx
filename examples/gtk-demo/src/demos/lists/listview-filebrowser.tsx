@@ -4,6 +4,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
     GtkButton,
+    GtkGridView,
     GtkHeaderBar,
     GtkImage,
     GtkLabel,
@@ -187,7 +188,7 @@ const ListViewFilebrowserDemo = () => {
             </x.Slot>
 
             <GtkScrolledWindow vexpand hexpand>
-                <x.GridView<FileItem>
+                <GtkGridView
                     estimatedItemHeight={viewMode === "grid" ? 80 : 48}
                     maxColumns={15}
                     orientation={viewMode === "grid" ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL}
@@ -197,7 +198,7 @@ const ListViewFilebrowserDemo = () => {
                     {files.map((file) => (
                         <x.ListItem key={file.name} id={file.name} value={file} />
                     ))}
-                </x.GridView>
+                </GtkGridView>
             </GtkScrolledWindow>
         </>
     );

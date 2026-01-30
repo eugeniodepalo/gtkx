@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-weather.tsx?raw";
@@ -69,7 +69,7 @@ const ListViewWeatherDemo = () => {
 
     return (
         <GtkScrolledWindow vexpand hexpand>
-            <x.ListView<WeatherInfo>
+            <GtkListView
                 estimatedItemHeight={80}
                 orientation={Gtk.Orientation.HORIZONTAL}
                 showSeparators
@@ -88,7 +88,7 @@ const ListViewWeatherDemo = () => {
                 {weatherData.map((info) => (
                     <x.ListItem key={info.id} id={info.id} value={info} />
                 ))}
-            </x.ListView>
+            </GtkListView>
         </GtkScrolledWindow>
     );
 };

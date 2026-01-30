@@ -55,7 +55,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
 
         if (!(child instanceof ColumnViewColumnNode)) {
             throw new Error(
-                `Cannot append '${child.typeName}' to 'ColumnView': expected x.ColumnViewColumn or x.ListItem`,
+                `Cannot append '${child.typeName}' to '${this.typeName}': expected x.ColumnViewColumn or x.ListItem`,
             );
         }
 
@@ -79,7 +79,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
 
         if (!(child instanceof ColumnViewColumnNode)) {
             throw new Error(
-                `Cannot insert '${child.typeName}' into 'ColumnView': expected x.ColumnViewColumn or x.ListItem`,
+                `Cannot insert '${child.typeName}' into '${this.typeName}': expected x.ColumnViewColumn or x.ListItem`,
             );
         }
 
@@ -110,7 +110,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
 
         if (!(child instanceof ColumnViewColumnNode)) {
             throw new Error(
-                `Cannot remove '${child.typeName}' from 'ColumnView': expected x.ColumnViewColumn or x.ListItem`,
+                `Cannot remove '${child.typeName}' from '${this.typeName}': expected x.ColumnViewColumn or x.ListItem`,
             );
         }
 
@@ -176,7 +176,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
     private getColumn(columnId: string): Gtk.ColumnViewColumn {
         const column = this.findColumn((col) => (col.getId() === columnId ? col : null));
         if (!column) {
-            throw new Error(`Unable to find column '${columnId}' in ColumnView`);
+            throw new Error(`Unable to find column '${columnId}' in ${this.typeName}`);
         }
         return column;
     }
@@ -185,7 +185,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         const targetId = column.getId();
         const index = this.findColumn((col, i) => (col.getId() === targetId ? i : null));
         if (index === null) {
-            throw new Error(`Unable to find column '${targetId}' in ColumnView`);
+            throw new Error(`Unable to find column '${targetId}' in ${this.typeName}`);
         }
         return index;
     }
