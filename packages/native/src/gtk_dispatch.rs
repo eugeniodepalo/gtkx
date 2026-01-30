@@ -1,13 +1,13 @@
-//! Task dispatch from JavaScript thread to GTK thread.
+//! Task dispatch from JavaScript thread to GLib thread.
 //!
 //! This module provides mechanisms for scheduling Rust closures to execute
-//! on the GTK main thread. GTK requires all widget operations to happen on
-//! its main thread, so this dispatcher bridges the gap from the Neon JS thread.
+//! on the GLib main thread. GLib/GObject-based libraries require all operations
+//! to happen on the main thread, so this dispatcher bridges the gap from the Neon JS thread.
 //!
 //! ## Scheduling Modes
 //!
 //! - [`GtkDispatcher::schedule`]: Queue a task for execution during the next GTK idle cycle.
-//!   Uses `glib::idle_add_once` for integration with GTK's event loop.
+//!   Uses `glib::idle_add_once` for integration with the GLib event loop.
 //! - [`GtkDispatcher::dispatch_pending`]: Manually execute all queued tasks immediately.
 //!   Used during blocking FFI calls to prevent deadlocks.
 //!

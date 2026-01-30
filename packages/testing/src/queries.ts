@@ -1,11 +1,16 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
-import { getConfig } from "./config.js";
-import { buildMultipleFoundError, buildNotFoundError, buildTimeoutError } from "./error-builder.js";
-import { type Container, findAll } from "./traversal.js";
-import type { ByRoleOptions, TextMatch, TextMatchOptions, WaitForOptions } from "./types.js";
-import { getWidgetCheckedState, getWidgetExpandedState, getWidgetTestId, getWidgetText } from "./widget-text.js";
-
-const DEFAULT_INTERVAL = 50;
+import * as Gtk from "@gtkx/ffi/gtk";
+import { buildMultipleFoundError, buildNotFoundError } from "./error-builder.js";
+import { type Container, findAll, traverse } from "./traversal.js";
+import type { ByRoleOptions, TextMatch, TextMatchOptions } from "./types.js";
+import { waitFor } from "./wait-for.js";
+import {
+    getWidgetCheckedState,
+    getWidgetExpandedState,
+    getWidgetPressedState,
+    getWidgetSelectedState,
+    getWidgetTestId,
+    getWidgetText,
+} from "./widget-text.js";
 
 const buildNormalizer = (options?: TextMatchOptions): ((text: string) => string) => {
     if (options?.normalizer) {
@@ -71,34 +76,22 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
         if (checked !== options.checked) return false;
     }
 
+    if (options.pressed !== undefined) {
+        const pressed = getWidgetPressedState(widget);
+        if (pressed !== options.pressed) return false;
+    }
+
     if (options.expanded !== undefined) {
         const expanded = getWidgetExpandedState(widget);
         if (expanded !== options.expanded) return false;
     }
 
+    if (options.selected !== undefined) {
+        const selected = getWidgetSelectedState(widget);
+        if (selected !== options.selected) return false;
+    }
+
     return true;
-};
-
-const waitFor = async <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
-    const config = getConfig();
-    const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
-    const startTime = Date.now();
-    let lastError: Error | null = null;
-
-    while (Date.now() - startTime < timeout) {
-        try {
-            return await callback();
-        } catch (error) {
-            lastError = error as Error;
-            await new Promise((resolve) => setTimeout(resolve, interval));
-        }
-    }
-
-    const timeoutError = buildTimeoutError(timeout, lastError);
-    if (onTimeout) {
-        throw onTimeout(timeoutError);
-    }
-    throw timeoutError;
 };
 
 /**
@@ -144,22 +137,38 @@ export const queryByRole = (
 };
 
 /**
- * Finds all elements matching label text without throwing.
+ * Finds all elements that are labelled by a GtkLabel whose text matches.
+ *
+ * Uses GtkLabel's mnemonic widget association to find form elements
+ * by their label text. Only returns widgets that are properly labelled
+ * via GtkLabel's mnemonic-widget property.
  *
  * @param container - The container to search within
- * @param text - Text to match (string, RegExp, or custom matcher)
+ * @param text - Label text to match (string, RegExp, or custom matcher)
  * @param options - Query options including normalization
- * @returns Array of matching widgets (empty if none found)
+ * @returns Array of labelled widgets (empty if none found)
  */
 export const queryAllByLabelText = (
     container: Container,
     text: TextMatch,
     options?: TextMatchOptions,
 ): Gtk.Widget[] => {
-    return findAll(container, (node) => {
-        const widgetText = getWidgetText(node);
-        return matchText(widgetText, text, node, options);
-    });
+    const results: Gtk.Widget[] = [];
+
+    for (const node of traverse(container)) {
+        if (!(node instanceof Gtk.Label)) continue;
+
+        const labelText = node.getLabel();
+        if (!labelText) continue;
+        if (!matchText(labelText, text, node, options)) continue;
+
+        const target = node.getMnemonicWidget();
+        if (target) {
+            results.push(target);
+        }
+    }
+
+    return results;
 };
 
 /**
@@ -379,20 +388,19 @@ export const findAllByRole = async (
     });
 
 /**
- * Finds a single element by its label or text content.
+ * Finds a single element that is labelled by a GtkLabel whose text matches.
  *
- * Matches button labels, input placeholders, window titles, and other
- * accessible text content.
+ * Waits for the element to appear, throwing if not found within timeout.
+ * Uses GtkLabel's mnemonic widget association to find form elements.
  *
  * @param container - The container to search within
- * @param text - Text to match (string, RegExp, or custom matcher)
+ * @param text - Label text to match (string, RegExp, or custom matcher)
  * @param options - Query options including normalization and timeout
- * @returns Promise resolving to the matching widget
+ * @returns Promise resolving to the labelled widget
  *
  * @example
  * ```tsx
- * const button = await findByLabelText(container, "Click me");
- * const input = await findByLabelText(container, /search/i);
+ * const input = await findByLabelText(container, "Username");
  * ```
  */
 export const findByLabelText = async (

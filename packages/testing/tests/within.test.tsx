@@ -62,16 +62,27 @@ describe("within", () => {
     });
 
     it("provides findByLabelText query", async () => {
-        await render(
+        const entryRef = { current: null as Gtk.Entry | null };
+        const LabelledEntry = () => (
             <GtkFrame name="container">
-                <GtkButton label="Action" />
-            </GtkFrame>,
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel label="Action" mnemonicWidget={entryRef.current} />
+                    <GtkEntry
+                        ref={(el) => {
+                            entryRef.current = el;
+                        }}
+                    />
+                </GtkBox>
+            </GtkFrame>
         );
+
+        const { rerender } = await render(<LabelledEntry />);
+        await rerender(<LabelledEntry />);
 
         const frame = await screen.findByTestId("container");
         const { findByLabelText } = within(frame);
-        const button = await findByLabelText("Action");
-        expect(button).toBeDefined();
+        const entry = await findByLabelText("Action");
+        expect(entry).toBeDefined();
     });
 
     it("provides findByTestId query", async () => {
@@ -120,19 +131,34 @@ describe("within", () => {
     });
 
     it("provides findAllByLabelText query", async () => {
-        await render(
+        const ref1 = { current: null as Gtk.Entry | null };
+        const ref2 = { current: null as Gtk.Entry | null };
+        const LabelledEntries = () => (
             <GtkFrame name="container">
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkButton label="Action" />
-                    <GtkButton label="Action" />
+                    <GtkLabel label="Action" mnemonicWidget={ref1.current} />
+                    <GtkEntry
+                        ref={(el) => {
+                            ref1.current = el;
+                        }}
+                    />
+                    <GtkLabel label="Action" mnemonicWidget={ref2.current} />
+                    <GtkEntry
+                        ref={(el) => {
+                            ref2.current = el;
+                        }}
+                    />
                 </GtkBox>
-            </GtkFrame>,
+            </GtkFrame>
         );
+
+        const { rerender } = await render(<LabelledEntries />);
+        await rerender(<LabelledEntries />);
 
         const frame = await screen.findByTestId("container");
         const { findAllByLabelText } = within(frame);
-        const buttons = await findAllByLabelText("Action");
-        expect(buttons.length).toBe(2);
+        const entries = await findAllByLabelText("Action");
+        expect(entries.length).toBe(2);
     });
 
     it("provides findAllByTestId query", async () => {

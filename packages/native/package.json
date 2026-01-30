@@ -6,7 +6,6 @@
         "gtkx",
         "gtk",
         "gtk4",
-        "react",
         "native",
         "ffi",
         "rust",

@@ -140,18 +140,50 @@ export const getWidgetCheckedState = (widget: Gtk.Widget): boolean | null => {
 };
 
 /**
+ * Gets the pressed state from toggle button widgets.
+ *
+ * @param widget - The widget to get the pressed state from
+ * @returns The pressed state or null if not applicable
+ */
+export const getWidgetPressedState = (widget: Gtk.Widget): boolean | null => {
+    const role = widget.getAccessibleRole();
+
+    if (role === Gtk.AccessibleRole.TOGGLE_BUTTON) {
+        return (widget as Gtk.ToggleButton).getActive();
+    }
+
+    return null;
+};
+
+/**
  * Gets the expanded state from expander widgets.
  *
  * @param widget - The widget to get the expanded state from
  * @returns The expanded state or null if not applicable
  */
 export const getWidgetExpandedState = (widget: Gtk.Widget): boolean | null => {
+    if (widget instanceof Gtk.Expander) {
+        return widget.getExpanded();
+    }
+
+    if (widget instanceof Gtk.TreeExpander) {
+        return widget.getListRow()?.getExpanded() ?? null;
+    }
+
+    return null;
+};
+
+/**
+ * Gets the selected state from selectable widgets.
+ *
+ * @param widget - The widget to get the selected state from
+ * @returns The selected state or null if not applicable
+ */
+export const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
     const role = widget.getAccessibleRole();
 
-    if (role === Gtk.AccessibleRole.BUTTON) {
-        const parent = widget.getParent();
-        if (!parent) return null;
-        return (parent as Gtk.Expander).getExpanded?.() ?? null;
+    if (role === Gtk.AccessibleRole.ROW) {
+        return (widget as Gtk.ListBoxRow).isSelected();
     }
 
     return null;

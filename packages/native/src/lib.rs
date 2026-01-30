@@ -1,14 +1,14 @@
 //! # GTKX Native Module
 //!
-//! Neon-based native module providing FFI bindings between JavaScript and GTK4.
-//! This is the core bridge that enables React components to control native GTK widgets.
+//! Neon-based native module providing FFI bindings between JavaScript and GLib/GObject-based libraries.
+//! This is the core bridge that enables JavaScript to call into any GLib/GObject-based native library.
 //!
 //! ## Exported Functions
 //!
 //! | Function | Purpose |
 //! |----------|---------|
-//! | `start` | Initialize GTK application and spawn GTK thread |
-//! | `stop` | Shutdown GTK application and join thread |
+//! | `start` | Initialize the GLib main loop and spawn its thread |
+//! | `stop` | Shutdown the GLib main loop and join its thread |
 //! | `call` | Execute FFI function call to native library |
 //! | `alloc` | Allocate memory for boxed types |
 //! | `read` | Read field from boxed memory |
@@ -18,14 +18,14 @@
 //!
 //! ## Architecture
 //!
-//! Two-thread model for GTK's single-threaded requirements:
+//! Two-thread model for GLib's single-threaded main loop requirements:
 //!
 //! - **Neon/JS thread**: Handles JavaScript calls, argument conversion, callback dispatch
-//! - **GTK thread**: Runs GTK main loop, executes all widget operations
+//! - **GLib thread**: Runs the GLib main loop, executes all native operations
 //!
 //! Communication flows through:
-//! - `gtk_dispatch`: Schedules tasks from JS thread to GTK thread
-//! - `js_dispatch`: Queues callbacks from GTK thread back to JS
+//! - `gtk_dispatch`: Schedules tasks from JS thread to GLib thread
+//! - `js_dispatch`: Queues callbacks from GLib thread back to JS
 //!
 //! ## Core Types
 //!

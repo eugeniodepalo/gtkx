@@ -5,7 +5,6 @@ import {
     GtkCheckButton,
     GtkEntry,
     GtkExpander,
-    GtkFrame,
     GtkLabel,
     GtkSwitch,
     GtkToggleButton,
@@ -205,31 +204,61 @@ describe("findAllByText", () => {
 });
 
 describe("findByLabelText", () => {
-    it("finds button by label", async () => {
-        const { container } = await render(<GtkButton label="Submit" />);
-        const button = await findByLabelText(container, "Submit");
-        expect(button).toBeDefined();
+    it("finds entry by its label mnemonic widget", async () => {
+        const entryRef = { current: null as Gtk.Entry | null };
+        const EntryWithLabel = () => {
+            const ref = (el: Gtk.Entry | null) => {
+                entryRef.current = el;
+            };
+            return (
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel label="Username" mnemonicWidget={entryRef.current} />
+                    <GtkEntry ref={ref} />
+                </GtkBox>
+            );
+        };
+
+        const { container, rerender } = await render(<EntryWithLabel />);
+        await rerender(<EntryWithLabel />);
+
+        const entry = await findByLabelText(container, "Username");
+        expect(entry).toBeDefined();
+        expect(entry.getAccessibleRole()).toBe(Gtk.AccessibleRole.TEXT_BOX);
     });
 
-    it("finds frame by label", async () => {
-        const { container } = await render(<GtkFrame label="Settings">Content</GtkFrame>);
-
-        const frame = await findByRole(container, Gtk.AccessibleRole.GROUP, { name: "Settings" });
-        expect(frame).toBeDefined();
+    it("returns nothing when no mnemonic association exists", async () => {
+        const { container } = await render(<GtkButton label="Submit" />);
+        const result = await findByLabelText(container, "Submit", { timeout: 100 }).catch(() => null);
+        expect(result).toBeNull();
     });
 });
 
 describe("findAllByLabelText", () => {
-    it("finds all elements with matching label", async () => {
-        const { container } = await render(
+    it("finds all elements labelled by matching GtkLabels", async () => {
+        const ref1 = { current: null as Gtk.Entry | null };
+        const ref2 = { current: null as Gtk.Entry | null };
+        const Form = () => (
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkButton label="Action" />
-                <GtkButton label="Action" />
-            </GtkBox>,
+                <GtkLabel label="Field" mnemonicWidget={ref1.current} />
+                <GtkEntry
+                    ref={(el) => {
+                        ref1.current = el;
+                    }}
+                />
+                <GtkLabel label="Field" mnemonicWidget={ref2.current} />
+                <GtkEntry
+                    ref={(el) => {
+                        ref2.current = el;
+                    }}
+                />
+            </GtkBox>
         );
 
-        const buttons = await findAllByLabelText(container, "Action");
-        expect(buttons.length).toBe(2);
+        const { container, rerender } = await render(<Form />);
+        await rerender(<Form />);
+
+        const entries = await findAllByLabelText(container, "Field");
+        expect(entries.length).toBe(2);
     });
 });
 

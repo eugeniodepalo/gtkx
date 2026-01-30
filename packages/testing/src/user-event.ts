@@ -13,36 +13,9 @@ export type TabOptions = {
     shift?: boolean;
 };
 
-const TOGGLEABLE_ROLES = new Set([
-    Gtk.AccessibleRole.CHECKBOX,
-    Gtk.AccessibleRole.RADIO,
-    Gtk.AccessibleRole.TOGGLE_BUTTON,
-    Gtk.AccessibleRole.SWITCH,
-]);
-
-const isToggleable = (widget: Gtk.Widget): boolean => {
-    return TOGGLEABLE_ROLES.has(widget.getAccessibleRole());
-};
-
 const click = async (element: Gtk.Widget): Promise<void> => {
-    if (isToggleable(element)) {
-        const role = element.getAccessibleRole();
-
-        if (role === Gtk.AccessibleRole.CHECKBOX || role === Gtk.AccessibleRole.RADIO) {
-            const checkButton = element as Gtk.CheckButton;
-            checkButton.setActive(!checkButton.getActive());
-        } else if (role === Gtk.AccessibleRole.SWITCH) {
-            const switchWidget = element as Gtk.Switch;
-            switchWidget.setActive(!switchWidget.getActive());
-        } else {
-            const toggleButton = element as Gtk.ToggleButton;
-            toggleButton.setActive(!toggleButton.getActive());
-        }
-
-        await tick();
-    } else {
-        await fireEvent(element, "clicked");
-    }
+    element.activate();
+    await tick();
 };
 
 const emitClickSequence = async (element: Gtk.Widget, nPress: number): Promise<void> => {
@@ -309,14 +282,36 @@ const parseKeyboardInput = (input: string): Array<{ keyval: number; press: boole
     return actions;
 };
 
+const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
+    [Gdk.KEY_Shift_L]: Gdk.ModifierType.SHIFT_MASK,
+    [Gdk.KEY_Shift_R]: Gdk.ModifierType.SHIFT_MASK,
+    [Gdk.KEY_Control_L]: Gdk.ModifierType.CONTROL_MASK,
+    [Gdk.KEY_Control_R]: Gdk.ModifierType.CONTROL_MASK,
+    [Gdk.KEY_Alt_L]: Gdk.ModifierType.ALT_MASK,
+    [Gdk.KEY_Alt_R]: Gdk.ModifierType.ALT_MASK,
+    [Gdk.KEY_Meta_L]: Gdk.ModifierType.META_MASK,
+    [Gdk.KEY_Meta_R]: Gdk.ModifierType.META_MASK,
+};
+
 let gdkModifierType: number | null = null;
 
 const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
     gdkModifierType ??= typeFromName("GdkModifierType");
     const controller = getOrCreateController(element, Gtk.EventControllerKey);
     const actions = parseKeyboardInput(input);
+    let modifierState = 0;
 
     for (const action of actions) {
+        const mask = MODIFIER_KEYVAL_TO_MASK[action.keyval];
+
+        if (mask) {
+            if (action.press) {
+                modifierState |= mask;
+            } else {
+                modifierState &= ~mask;
+            }
+        }
+
         const signalName = action.press ? "key-pressed" : "key-released";
         const returnValue = action.press ? Value.newFromBoolean(false) : null;
         signalEmitv(
@@ -324,7 +319,7 @@ const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
                 Value.newFromObject(controller),
                 Value.newFromUint(action.keyval),
                 Value.newFromUint(0),
-                Value.newFromFlags(gdkModifierType, 0),
+                Value.newFromFlags(gdkModifierType, modifierState),
             ],
             getSignalId(controller, signalName),
             0,
@@ -398,10 +393,10 @@ const pointer = async (element: Gtk.Widget, input: PointerInput): Promise<void> 
  */
 export const userEvent = {
     /**
-     * Clicks or toggles a widget.
+     * Activates a widget.
      *
-     * For toggleable widgets (checkboxes, switches, toggle buttons),
-     * toggles the active state. For buttons, emits clicked signal.
+     * Uses GTK's native {@link Gtk.Widget.activate} to trigger the widget's
+     * default action — clicking buttons, toggling checkboxes/switches, etc.
      */
     click,
     /**

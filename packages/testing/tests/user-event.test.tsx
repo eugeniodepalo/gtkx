@@ -12,7 +12,7 @@ import {
     x,
 } from "@gtkx/react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, userEvent } from "../src/index.js";
+import { render, screen, userEvent, waitFor } from "../src/index.js";
 import { isEditable } from "../src/widget.js";
 
 describe("userEvent.click", () => {
@@ -23,7 +23,7 @@ describe("userEvent.click", () => {
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
         await userEvent.click(button);
 
-        expect(handleClick).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(handleClick).toHaveBeenCalledTimes(1));
     });
 
     it("toggles checkbox state", async () => {

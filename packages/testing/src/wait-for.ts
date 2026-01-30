@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { getConfig } from "./config.js";
+import { buildTimeoutError } from "./error-builder.js";
 import type { WaitForOptions } from "./types.js";
 
 const DEFAULT_INTERVAL = 50;
@@ -38,7 +39,7 @@ export const waitFor = async <T>(callback: () => T | Promise<T>, options?: WaitF
         }
     }
 
-    const timeoutError = new Error(`Timed out after ${timeout}ms. Last error: ${lastError?.message}`);
+    const timeoutError = buildTimeoutError(timeout, lastError);
     if (onTimeout) {
         throw onTimeout(timeoutError);
     }
