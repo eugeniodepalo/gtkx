@@ -14,6 +14,9 @@ const createWidgetMeta = (overrides: Partial<CodegenWidgetMeta> = {}): CodegenWi
     constructorParams: [],
     properties: [],
     signals: [],
+    slots: [],
+    hiddenPropNames: [],
+    doc: undefined,
     ...overrides,
 });
 

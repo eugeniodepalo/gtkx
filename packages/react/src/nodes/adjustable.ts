@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ADJUSTABLE_INTERFACE_METHODS } from "../generated/internal.js";
+import { ADJUSTABLE_INTERFACE_METHODS } from "../reconciler-metadata.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import type { AdjustableWidget } from "./internal/predicates.js";

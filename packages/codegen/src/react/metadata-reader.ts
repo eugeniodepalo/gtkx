@@ -41,14 +41,12 @@ export type WidgetInfo = Pick<
     | "className"
     | "jsxName"
     | "namespace"
-    | "isContainer"
     | "slots"
     | "propNames"
     | "signalNames"
     | "parentClassName"
     | "modulePath"
     | "constructorParams"
-    | "classification"
     | "hiddenPropNames"
 >;
 

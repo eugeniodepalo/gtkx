@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { PREFIX_SUFFIX_INTERFACE_METHODS } from "../generated/internal.js";
 import type { Node } from "../node.js";
+import { PREFIX_SUFFIX_INTERFACE_METHODS } from "../reconciler-metadata.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container } from "../types.js";
 import { VirtualContainerNode } from "./abstract/virtual-container.js";

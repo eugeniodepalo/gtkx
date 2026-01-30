@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { NOTEBOOK_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
+import { NOTEBOOK_CLASSES } from "../reconciler-metadata.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { matchesAnyClass } from "./internal/utils.js";

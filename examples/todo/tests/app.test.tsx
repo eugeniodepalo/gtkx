@@ -5,6 +5,14 @@ import { App } from "../src/app.js";
 
 const TestApp = () => <App onClose={() => {}} />;
 
+const addTodo = async (input: Gtk.Widget, addButton: Gtk.Widget, text: string) => {
+    await userEvent.type(input, text);
+    await userEvent.click(addButton);
+    await waitFor(() => {
+        expect((input as Gtk.Entry).getText()).toBe("");
+    });
+};
+
 describe("Todo App", () => {
     afterEach(async () => {
         await cleanup();
@@ -15,10 +23,8 @@ describe("Todo App", () => {
             await render(<TestApp />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Buy groceries");
-
             const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
+            await addTodo(input, addButton, "Buy groceries");
 
             const todoText = await screen.findByText("Buy groceries");
             expect(todoText).toBeDefined();
@@ -39,15 +45,10 @@ describe("Todo App", () => {
             await render(<TestApp />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Buy groceries");
-
             const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
+            await addTodo(input, addButton, "Buy groceries");
 
-            await waitFor(() => {
-                const currentText = (input as Gtk.Entry).getText() ?? "";
-                expect(currentText).toBe("");
-            });
+            expect((input as Gtk.Entry).getText()).toBe("");
         });
 
         it("does not add empty todos", async () => {
@@ -63,31 +64,35 @@ describe("Todo App", () => {
             await render(<TestApp />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Test todo");
             const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
+            await addTodo(input, addButton, "Test todo");
 
             const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
             expect((checkbox as Gtk.CheckButton).getActive()).toBe(false);
 
             await userEvent.click(checkbox);
-            expect((checkbox as Gtk.CheckButton).getActive()).toBe(true);
+            await waitFor(() => {
+                expect((checkbox as Gtk.CheckButton).getActive()).toBe(true);
+            });
         });
 
         it("can toggle a completed todo back to active", async () => {
             await render(<TestApp />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Test todo");
             const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
+            await addTodo(input, addButton, "Test todo");
 
             const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
             await userEvent.click(checkbox);
-            expect((checkbox as Gtk.CheckButton).getActive()).toBe(true);
+            await waitFor(() => {
+                expect((checkbox as Gtk.CheckButton).getActive()).toBe(true);
+            });
 
             await userEvent.click(checkbox);
-            expect((checkbox as Gtk.CheckButton).getActive()).toBe(false);
+            await waitFor(() => {
+                expect((checkbox as Gtk.CheckButton).getActive()).toBe(false);
+            });
         });
     });
 
@@ -96,19 +101,11 @@ describe("Todo App", () => {
             await render(<TestApp />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Todo to delete");
             const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
+            await addTodo(input, addButton, "Todo to delete");
 
-            const deleteButtons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
-            const deleteButton = deleteButtons.find(
-                (btn) => (btn as Gtk.Button).getIconName() === "edit-delete-symbolic",
-            );
-            expect(deleteButton).toBeDefined();
-
-            if (deleteButton) {
-                await userEvent.click(deleteButton);
-            }
+            const deleteButton = await screen.findByTestId(/^delete-/);
+            await userEvent.click(deleteButton);
 
             const emptyMessage = await screen.findByText("No tasks yet");
             expect(emptyMessage).toBeDefined();
@@ -122,9 +119,8 @@ describe("Todo App", () => {
             await expect(screen.findByTestId("filter-all", { timeout: 100 })).rejects.toThrow();
 
             const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Test todo");
             const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
+            await addTodo(input, addButton, "Test todo");
 
             const filterAll = await screen.findByTestId("filter-all");
             expect(filterAll).toBeDefined();
@@ -135,11 +131,8 @@ describe("Todo App", () => {
 
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByTestId("add-button");
-
-            await userEvent.type(input, "Active todo");
-            await userEvent.click(addButton);
-            await userEvent.type(input, "Completed todo");
-            await userEvent.click(addButton);
+            await addTodo(input, addButton, "Active todo");
+            await addTodo(input, addButton, "Completed todo");
 
             const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
             await userEvent.click(checkboxes[1] as Gtk.Widget);
@@ -159,11 +152,8 @@ describe("Todo App", () => {
 
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByTestId("add-button");
-
-            await userEvent.type(input, "Active todo");
-            await userEvent.click(addButton);
-            await userEvent.type(input, "Completed todo");
-            await userEvent.click(addButton);
+            await addTodo(input, addButton, "Active todo");
+            await addTodo(input, addButton, "Completed todo");
 
             const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
             await userEvent.click(checkboxes[1] as Gtk.Widget);
@@ -184,9 +174,8 @@ describe("Todo App", () => {
             await render(<TestApp />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            await userEvent.type(input, "Test todo");
             const addButton = await screen.findByTestId("add-button");
-            await userEvent.click(addButton);
+            await addTodo(input, addButton, "Test todo");
 
             await expect(screen.findByTestId("clear-completed", { timeout: 100 })).rejects.toThrow();
 
@@ -202,11 +191,8 @@ describe("Todo App", () => {
 
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByTestId("add-button");
-
-            await userEvent.type(input, "Keep this");
-            await userEvent.click(addButton);
-            await userEvent.type(input, "Delete this");
-            await userEvent.click(addButton);
+            await addTodo(input, addButton, "Keep this");
+            await addTodo(input, addButton, "Delete this");
 
             const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
             await userEvent.click(checkboxes[1] as Gtk.Widget);
@@ -214,10 +200,11 @@ describe("Todo App", () => {
             const clearButton = await screen.findByTestId("clear-completed");
             await userEvent.click(clearButton);
 
-            const activeTodo = await screen.findByText("Keep this");
-            expect(activeTodo).toBeDefined();
-
-            await expect(screen.findByText("Delete this", { timeout: 100 })).rejects.toThrow();
+            await waitFor(async () => {
+                const activeTodo = await screen.findByText("Keep this", { timeout: 100 });
+                expect(activeTodo).toBeDefined();
+                await expect(screen.findByText("Delete this", { timeout: 100 })).rejects.toThrow();
+            });
         });
     });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isContainerMethod, isWidgetType } from "../../../src/core/utils/widget-detection.js";
+import { isWidgetType } from "../../../src/core/utils/widget-detection.js";
 import {
     createButtonClass,
     createNormalizedClass,
@@ -8,83 +8,6 @@ import {
     qualifiedName,
 } from "../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../fixtures/mock-repository.js";
-
-describe("isContainerMethod", () => {
-    it("returns true for append", () => {
-        expect(isContainerMethod("append")).toBe(true);
-    });
-
-    it("returns true for set_child", () => {
-        expect(isContainerMethod("set_child")).toBe(true);
-    });
-
-    it("returns true for insert", () => {
-        expect(isContainerMethod("insert")).toBe(true);
-    });
-
-    it("returns true for insert_child_after", () => {
-        expect(isContainerMethod("insert_child_after")).toBe(true);
-    });
-
-    it("returns true for add_named", () => {
-        expect(isContainerMethod("add_named")).toBe(true);
-    });
-
-    it("returns true for append_page", () => {
-        expect(isContainerMethod("append_page")).toBe(true);
-    });
-
-    it("returns true for add_prefix", () => {
-        expect(isContainerMethod("add_prefix")).toBe(true);
-    });
-
-    it("returns true for add_suffix", () => {
-        expect(isContainerMethod("add_suffix")).toBe(true);
-    });
-
-    it("returns true for pack_start", () => {
-        expect(isContainerMethod("pack_start")).toBe(true);
-    });
-
-    it("returns true for pack_end", () => {
-        expect(isContainerMethod("pack_end")).toBe(true);
-    });
-
-    it("returns true for set_content", () => {
-        expect(isContainerMethod("set_content")).toBe(true);
-    });
-
-    it("returns true for add_overlay", () => {
-        expect(isContainerMethod("add_overlay")).toBe(true);
-    });
-
-    it("returns true for put", () => {
-        expect(isContainerMethod("put")).toBe(true);
-    });
-
-    it("returns true for attach", () => {
-        expect(isContainerMethod("attach")).toBe(true);
-    });
-
-    it("returns true for add_child", () => {
-        expect(isContainerMethod("add_child")).toBe(true);
-    });
-
-    it("returns true for add", () => {
-        expect(isContainerMethod("add")).toBe(true);
-    });
-
-    it("returns true for push", () => {
-        expect(isContainerMethod("push")).toBe(true);
-    });
-
-    it("returns false for non-container methods", () => {
-        expect(isContainerMethod("show")).toBe(false);
-        expect(isContainerMethod("hide")).toBe(false);
-        expect(isContainerMethod("get_child")).toBe(false);
-        expect(isContainerMethod("remove")).toBe(false);
-    });
-});
 
 describe("isWidgetType", () => {
     const widgetQN = qualifiedName("Gtk", "Widget");

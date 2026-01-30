@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { COLUMN_VIEW_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
+import { COLUMN_VIEW_CLASSES } from "../reconciler-metadata.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";

@@ -9,6 +9,7 @@ import type {
     GtkListViewProps as GeneratedGtkListViewProps,
     WidgetSlotNames,
 } from "./generated/jsx.js";
+import "./jsx-augmentation.js";
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";

@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { DROP_DOWN_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
+import { DROP_DOWN_CLASSES } from "../reconciler-metadata.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";

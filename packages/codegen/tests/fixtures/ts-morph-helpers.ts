@@ -134,7 +134,6 @@ export function codeContains(sourceFile: SourceFile, substring: string): boolean
 export type FfiWidgetConfig = {
     namespace: string;
     className: string;
-    isContainer?: boolean;
     slots?: string[];
 };
 
@@ -144,7 +143,6 @@ export function createFfiProjectWithWidgets(widgets: FfiWidgetConfig[]): Project
     for (const widget of widgets) {
         const nsLower = widget.namespace.toLowerCase();
         const fileNameKebab = widget.className.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
-        const isContainer = widget.isContainer ?? false;
         const slots = widget.slots ?? [];
         const slotsStr = slots.length > 0 ? `[${slots.map((s) => `"${s}"`).join(", ")}] as const` : "[] as const";
 
@@ -153,7 +151,6 @@ export function createFfiProjectWithWidgets(widgets: FfiWidgetConfig[]): Project
             `
             export class ${widget.className} {
                 static readonly WIDGET_META = {
-                    isContainer: ${isContainer},
                     slots: ${slotsStr},
                 };
             }

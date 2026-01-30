@@ -9,9 +9,9 @@ import type { GirClass, GirRepository, QualifiedName } from "@gtkx/gir";
 import { parseQualifiedName, qualifiedName } from "@gtkx/gir";
 import type { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
-import { getClassification, getHiddenPropNames, type WidgetClassificationType } from "../../../core/config/index.js";
+import { getHiddenPropNames } from "../../../core/config/index.js";
 import { normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
-import { isAdjustableMethod, isContainerMethod, isWidgetType } from "../../../core/utils/widget-detection.js";
+import { isWidgetType } from "../../../core/utils/widget-detection.js";
 
 export type ClassMetaAnalyzers = {
     readonly property: PropertyAnalyzer;
@@ -94,13 +94,6 @@ export class ClassMetaBuilder {
             className,
             namespace: this.namespace,
             jsxName: `${this.namespace}${className}`,
-            isContainer: this.detectIsContainer(),
-            isAdjustable: this.detectIsAdjustable(),
-            hasBuffer: this.detectHasBuffer(),
-            hasMarks: this.detectHasMarks(className),
-            hasOffsets: this.detectHasOffsets(className),
-            hasColorDialog: this.detectHasColorDialog(className),
-            hasFontDialog: this.detectHasFontDialog(className),
             slots: this.detectSlots(),
             propNames,
             signalNames: signals.map((s) => s.name),
@@ -111,67 +104,8 @@ export class ClassMetaBuilder {
             signals,
             constructorParams,
             doc: this.cls.doc,
-            classification: this.computeClassification(className),
             hiddenPropNames,
         };
-    }
-
-    private computeClassification(className: string): WidgetClassificationType | null {
-        return getClassification(className);
-    }
-
-    private detectIsContainer(): boolean {
-        const allMethods = this.cls.getAllMethods();
-        for (const method of allMethods) {
-            if (isContainerMethod(method.name)) {
-                return true;
-            }
-        }
-
-        const allProperties = this.cls.getAllProperties();
-        for (const prop of allProperties) {
-            if (prop.writable && isWidgetType(prop.type.name, this.repository, this.widgetQualifiedName)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private detectIsAdjustable(): boolean {
-        const allMethods = this.cls.getAllMethods();
-        for (const method of allMethods) {
-            if (isAdjustableMethod(method.name)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private detectHasBuffer(): boolean {
-        const allMethods = this.cls.getAllMethods();
-        for (const method of allMethods) {
-            if (method.name === "set_buffer") {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private detectHasMarks(className: string): boolean {
-        return className === "Scale" || className === "Calendar";
-    }
-
-    private detectHasOffsets(className: string): boolean {
-        return className === "LevelBar";
-    }
-
-    private detectHasColorDialog(className: string): boolean {
-        return className === "ColorDialogButton";
-    }
-
-    private detectHasFontDialog(className: string): boolean {
-        return className === "FontDialogButton";
     }
 
     private detectSlots(): string[] {

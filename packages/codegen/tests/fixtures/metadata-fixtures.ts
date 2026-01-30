@@ -1,5 +1,5 @@
 import type { CodegenWidgetMeta } from "../../src/core/codegen-metadata.js";
-import { getClassification, getHiddenPropNames } from "../../src/core/config/index.js";
+import { getHiddenPropNames } from "../../src/core/config/index.js";
 import type { PropertyAnalysis, SignalAnalysis, SignalParam } from "../../src/core/generator-types.js";
 
 export function createPropertyAnalysis(overrides: Partial<PropertyAnalysis> = {}): PropertyAnalysis {
@@ -43,8 +43,6 @@ export function createCodegenWidgetMeta(overrides: Partial<CodegenWidgetMeta> = 
         className,
         namespace: "Gtk",
         jsxName: "GtkButton",
-        isContainer: true,
-        isAdjustable: false,
         slots: [],
         propNames: ["label", "icon-name"],
         signalNames: ["clicked"],
@@ -55,7 +53,6 @@ export function createCodegenWidgetMeta(overrides: Partial<CodegenWidgetMeta> = 
         signals: [createSignalAnalysis()],
         constructorParams: [],
         doc: undefined,
-        classification: getClassification(className),
         hiddenPropNames: getHiddenPropNames(className),
         ...overrides,
     };
@@ -65,7 +62,6 @@ export function createWidgetMeta(overrides: Partial<CodegenWidgetMeta> = {}): Co
     return createCodegenWidgetMeta({
         className: "Widget",
         jsxName: "GtkWidget",
-        isContainer: false,
         slots: [],
         parentClassName: null,
         parentNamespace: null,
@@ -96,7 +92,6 @@ export function createWindowMeta(overrides: Partial<CodegenWidgetMeta> = {}): Co
     return createCodegenWidgetMeta({
         className: "Window",
         jsxName: "GtkWindow",
-        isContainer: true,
         slots: ["child"],
         parentClassName: "Widget",
         parentNamespace: "Gtk",
@@ -132,7 +127,6 @@ export function createButtonMeta(overrides: Partial<CodegenWidgetMeta> = {}): Co
     return createCodegenWidgetMeta({
         className: "Button",
         jsxName: "GtkButton",
-        isContainer: true,
         slots: ["child"],
         parentClassName: "Widget",
         parentNamespace: "Gtk",
@@ -160,7 +154,6 @@ export function createLabelMeta(overrides: Partial<CodegenWidgetMeta> = {}): Cod
     return createCodegenWidgetMeta({
         className: "Label",
         jsxName: "GtkLabel",
-        isContainer: false,
         slots: [],
         parentClassName: "Widget",
         parentNamespace: "Gtk",
@@ -183,7 +176,6 @@ export function createAdwHeaderBarMeta(overrides: Partial<CodegenWidgetMeta> = {
         className: "HeaderBar",
         namespace: "Adw",
         jsxName: "AdwHeaderBar",
-        isContainer: true,
         slots: ["title-widget"],
         parentClassName: "Widget",
         parentNamespace: "Gtk",

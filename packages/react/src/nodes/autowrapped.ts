@@ -1,7 +1,7 @@
 import { isObjectEqual } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AUTOWRAP_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
+import { AUTOWRAP_CLASSES } from "../reconciler-metadata.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { isRemovable, isSingleChild } from "./internal/predicates.js";

@@ -1,11 +1,12 @@
 /**
  * Props Builder Base
  *
- * Shared utilities for building JSX props type aliases.
+ * Shared utilities for building JSX props interfaces.
  * Extended by WidgetPropsBuilder and ControllerPropsBuilder.
  */
 
-import type { CodeBlockWriter, WriterFunction } from "ts-morph";
+import type { PropertySignatureStructure } from "ts-morph";
+import { StructureKind } from "ts-morph";
 import type { SignalAnalysis, SignalParam } from "../../../core/generator-types.js";
 import { sanitizeDoc } from "../../../core/utils/doc-formatter.js";
 import { toPascalCase } from "../../../core/utils/naming.js";
@@ -49,50 +50,13 @@ export abstract class PropsBuilderBase {
         });
     }
 
-    protected buildIntersectionTypeWriter(parentType: string, props: PropInfo[]): WriterFunction {
-        return (writer: CodeBlockWriter) => {
-            writer.write(`${parentType} & {`);
-            writer.newLine();
-            writer.indent(() => {
-                for (const prop of props) {
-                    if (prop.doc) {
-                        this.writeJsDoc(writer, prop.doc);
-                    }
-                    const questionMark = prop.optional ? "?" : "";
-                    writer.writeLine(`${prop.name}${questionMark}: ${prop.type};`);
-                }
-            });
-            writer.write("}");
-        };
-    }
-
-    protected buildObjectTypeWriter(props: PropInfo[]): WriterFunction {
-        return (writer: CodeBlockWriter) => {
-            writer.write("{");
-            writer.newLine();
-            writer.indent(() => {
-                for (const prop of props) {
-                    if (prop.doc) {
-                        this.writeJsDoc(writer, prop.doc);
-                    }
-                    const questionMark = prop.optional ? "?" : "";
-                    writer.writeLine(`${prop.name}${questionMark}: ${prop.type};`);
-                }
-            });
-            writer.write("}");
-        };
-    }
-
-    protected writeJsDoc(writer: CodeBlockWriter, doc: string): void {
-        const lines = doc.split("\n");
-        if (lines.length === 1) {
-            writer.writeLine(`/** ${doc} */`);
-        } else {
-            writer.writeLine("/**");
-            for (const line of lines) {
-                writer.writeLine(` * ${line}`);
-            }
-            writer.writeLine(" */");
-        }
+    protected buildInterfaceProperties(props: PropInfo[]): PropertySignatureStructure[] {
+        return props.map((prop) => ({
+            kind: StructureKind.PropertySignature as const,
+            name: prop.name,
+            type: prop.type,
+            hasQuestionToken: prop.optional,
+            docs: prop.doc ? [{ description: prop.doc }] : undefined,
+        }));
     }
 }

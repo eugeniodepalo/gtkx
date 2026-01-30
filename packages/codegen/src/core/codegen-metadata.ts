@@ -9,7 +9,6 @@
  */
 
 import type { SourceFile } from "ts-morph";
-import type { WidgetClassificationType } from "./config/index.js";
 import type { PropertyAnalysis, SignalAnalysis } from "./generator-types.js";
 
 /**
@@ -54,26 +53,10 @@ export type CodegenControllerMeta = CodegenClassMeta & {
  * Widget metadata - extends base with widget-specific capabilities.
  */
 export type CodegenWidgetMeta = CodegenClassMeta & {
-    /** Widget can contain children */
-    readonly isContainer: boolean;
-    /** Widget supports an Adjustment child */
-    readonly isAdjustable: boolean;
-    /** Widget has a buffer (TextView, SourceView) */
-    readonly hasBuffer: boolean;
-    /** Widget supports marks (Scale, Calendar) */
-    readonly hasMarks: boolean;
-    /** Widget supports offsets (LevelBar) */
-    readonly hasOffsets: boolean;
-    /** Widget is a ColorDialogButton */
-    readonly hasColorDialog: boolean;
-    /** Widget is a FontDialogButton */
-    readonly hasFontDialog: boolean;
     /** Named slots for child widgets (kebab-case) */
     readonly slots: readonly string[];
     /** Module path for imports (e.g., "./gtk/button.js") */
     readonly modulePath: string;
-    /** Pre-computed widget classification for React */
-    readonly classification: WidgetClassificationType | null;
     /** Hidden prop names for this widget (camelCase) */
     readonly hiddenPropNames: readonly string[];
 };

@@ -1,7 +1,7 @@
 import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { LIST_WIDGET_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
+import { LIST_WIDGET_CLASSES } from "../reconciler-metadata.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { ListItemRenderer, type RenderItemFn } from "./internal/list-item-renderer.js";

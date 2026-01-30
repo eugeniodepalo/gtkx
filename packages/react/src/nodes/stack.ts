@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { STACK_CLASSES } from "../generated/internal.js";
+import { STACK_CLASSES } from "../reconciler-metadata.js";
 import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass } from "../types.js";

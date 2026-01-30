@@ -1,8 +1,8 @@
 /**
  * Controller Props Builder
  *
- * Builds controller props type aliases using pre-computed metadata.
- * Works with CodegenControllerMeta from FFI generation.
+ * Builds controller props interfaces from GIR-derived metadata.
+ * Generates pure GIR translations — no reconciler-specific knowledge.
  */
 
 import type { SourceFile } from "ts-morph";
@@ -12,7 +12,7 @@ import { qualifyType } from "../../../core/utils/type-qualification.js";
 import { type PropInfo, PropsBuilderBase } from "./props-builder-base.js";
 
 export class ControllerPropsBuilder extends PropsBuilderBase {
-    buildBaseControllerPropsType(sourceFile: SourceFile, eventControllerMeta: CodegenControllerMeta): void {
+    buildBaseControllerPropsInterface(sourceFile: SourceFile, eventControllerMeta: CodegenControllerMeta): void {
         const { namespace } = eventControllerMeta;
         const allProps: PropInfo[] = [];
 
@@ -39,7 +39,13 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
             });
         }
 
-        sourceFile.addTypeAlias({
+        allProps.push({
+            name: "children",
+            type: "ReactNode",
+            optional: true,
+        });
+
+        sourceFile.addInterface({
             name: "EventControllerBaseProps",
             isExported: true,
             docs: [
@@ -49,7 +55,7 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
                         : "Base props for all event controller elements.",
                 },
             ],
-            type: this.buildObjectTypeWriter(allProps),
+            properties: this.buildInterfaceProperties(allProps),
         });
     }
 
@@ -82,8 +88,6 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
             });
         }
 
-        this.addSpecialControllerProps(allProps, controller);
-
         const controllerName = toPascalCase(className);
 
         allProps.push({
@@ -94,56 +98,13 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
 
         const parentPropsName = this.getParentPropsName(controller);
 
-        sourceFile.addTypeAlias({
+        sourceFile.addInterface({
             name: `${jsxName}Props`,
             isExported: true,
+            extends: [parentPropsName],
             docs: [{ description: `Props for the {@link ${jsxName}} controller element.` }],
-            type: this.buildIntersectionTypeWriter(parentPropsName, allProps),
+            properties: this.buildInterfaceProperties(allProps),
         });
-    }
-
-    private addSpecialControllerProps(allProps: PropInfo[], controller: CodegenControllerMeta): void {
-        if (controller.className === "DragSource") {
-            this.usedNamespaces.add("Gdk");
-            allProps.push(
-                {
-                    name: "icon",
-                    type: "Gdk.Paintable | null",
-                    optional: true,
-                    doc: "Paintable to use as the drag icon during DND operations.",
-                },
-                {
-                    name: "iconHotX",
-                    type: "number",
-                    optional: true,
-                    doc: "X coordinate of the hotspot relative to the drag icon's top-left corner.",
-                },
-                {
-                    name: "iconHotY",
-                    type: "number",
-                    optional: true,
-                    doc: "Y coordinate of the hotspot relative to the drag icon's top-left corner.",
-                },
-            );
-        }
-
-        if (controller.className === "DropTarget") {
-            allProps.push({
-                name: "types",
-                type: "number[]",
-                optional: true,
-                doc: "Array of GTypes that this drop target accepts. Use typeFromName() to get GType values.",
-            });
-        }
-
-        if (controller.className === "ShortcutController") {
-            allProps.push({
-                name: "children",
-                type: "ReactNode",
-                optional: true,
-                doc: "Shortcut children (x.Shortcut elements).",
-            });
-        }
     }
 
     private getParentPropsName(controller: CodegenControllerMeta): string {

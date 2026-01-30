@@ -327,7 +327,9 @@ describe("widget - signals", () => {
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
             await userEvent.click(button);
 
-            expect(handleClick).toHaveBeenCalledTimes(1);
+            await waitFor(() => {
+                expect(handleClick).toHaveBeenCalledTimes(1);
+            });
         });
 
         it("connects onActivate handler to activate signal", async () => {
@@ -349,7 +351,9 @@ describe("widget - signals", () => {
             const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
             await userEvent.click(switchWidget);
 
-            expect(handleStateSet).toHaveBeenCalledTimes(1);
+            await waitFor(() => {
+                expect(handleStateSet).toHaveBeenCalledTimes(1);
+            });
         });
     });
 
@@ -365,12 +369,16 @@ describe("widget - signals", () => {
 
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
             await userEvent.click(button);
-            expect(handleClick).toHaveBeenCalledTimes(1);
+            await waitFor(() => {
+                expect(handleClick).toHaveBeenCalledTimes(1);
+            });
 
             await rerender(<App hasHandler={false} />);
 
             await userEvent.click(button);
-            expect(handleClick).toHaveBeenCalledTimes(1);
+            await waitFor(() => {
+                expect(handleClick).toHaveBeenCalledTimes(1);
+            });
         });
 
         it("disconnects handler when widget unmounted", async () => {
@@ -384,7 +392,9 @@ describe("widget - signals", () => {
 
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
             await userEvent.click(button);
-            expect(handleClick).toHaveBeenCalledTimes(1);
+            await waitFor(() => {
+                expect(handleClick).toHaveBeenCalledTimes(1);
+            });
 
             await rerender(<App showButton={false} />);
 
@@ -405,14 +415,18 @@ describe("widget - signals", () => {
 
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
             await userEvent.click(button);
-            expect(handler1).toHaveBeenCalledTimes(1);
+            await waitFor(() => {
+                expect(handler1).toHaveBeenCalledTimes(1);
+            });
             expect(handler2).not.toHaveBeenCalled();
 
             await rerender(<App useHandler1={false} />);
 
             await userEvent.click(button);
+            await waitFor(() => {
+                expect(handler2).toHaveBeenCalledTimes(1);
+            });
             expect(handler1).toHaveBeenCalledTimes(1);
-            expect(handler2).toHaveBeenCalledTimes(1);
         });
 
         it("maintains handler when function reference is stable", async () => {
@@ -428,7 +442,9 @@ describe("widget - signals", () => {
 
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
             await userEvent.click(button);
-            expect(handleClick).toHaveBeenCalledTimes(1);
+            await waitFor(() => {
+                expect(handleClick).toHaveBeenCalledTimes(1);
+            });
         });
     });
 
@@ -441,7 +457,9 @@ describe("widget - signals", () => {
             const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
             await userEvent.click(switchWidget);
 
-            expect(handleStateSet).toHaveBeenCalledWith(true, expect.anything());
+            await waitFor(() => {
+                expect(handleStateSet).toHaveBeenCalledWith(true, expect.anything());
+            });
         });
 
         it("receives widget as last argument", async () => {
@@ -453,7 +471,9 @@ describe("widget - signals", () => {
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
             await userEvent.click(button);
 
-            expect(handleClick).toHaveBeenCalledWith(ref.current);
+            await waitFor(() => {
+                expect(handleClick).toHaveBeenCalledWith(ref.current);
+            });
         });
     });
 

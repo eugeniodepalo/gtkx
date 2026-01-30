@@ -5,22 +5,3 @@ export {
     getNativeCallbackName,
     isSupportedCallback,
 } from "./native-callbacks.js";
-export {
-    ADJUSTABLE_INTERFACE_METHODS,
-    COLUMN_VIEW_WIDGET_NAMES,
-    DRAWING_AREA_WIDGET_NAMES,
-    DROP_DOWN_WIDGET_NAMES,
-    getClassification,
-    LIST_WIDGET_NAMES,
-    NAVIGATION_VIEW_WIDGET_NAMES,
-    NOTEBOOK_WIDGET_NAMES,
-    PACK_INTERFACE_METHODS,
-    PREFIX_SUFFIX_INTERFACE_METHODS,
-    SCROLLED_WINDOW_WIDGET_NAMES,
-    SEARCH_BAR_WIDGET_NAMES,
-    STACK_WIDGET_NAMES,
-    TOGGLE_GROUP_WIDGET_NAMES,
-    WIDGET_CLASSIFICATIONS,
-    WINDOW_WIDGET_NAMES,
-    type WidgetClassificationType,
-} from "./widget-classifications.js";

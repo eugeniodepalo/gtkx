@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { POPOVER_MENU_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
+import { POPOVER_MENU_CLASSES } from "../reconciler-metadata.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { matchesAnyClass } from "./internal/utils.js";

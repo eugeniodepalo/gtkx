@@ -2,26 +2,12 @@
  * JSX Types Generator
  *
  * Generates JSX type definitions from:
- * - CodegenWidgetMeta: properties, signals, prop names, isContainer, slots (from FFI generation)
+ * - CodegenWidgetMeta: properties, signals, prop names, slots (from FFI generation)
  * - CodegenControllerMeta: properties, signals for event controllers
- * - Internal constants: list/dropdown/columnview classification
  */
 
 import type { SourceFile } from "ts-morph";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
-import {
-    COLUMN_VIEW_WIDGET_NAMES,
-    DRAWING_AREA_WIDGET_NAMES,
-    DROP_DOWN_WIDGET_NAMES,
-    LIST_WIDGET_NAMES,
-    NAVIGATION_VIEW_WIDGET_NAMES,
-    NOTEBOOK_WIDGET_NAMES,
-    SCROLLED_WINDOW_WIDGET_NAMES,
-    SEARCH_BAR_WIDGET_NAMES,
-    STACK_WIDGET_NAMES,
-    TOGGLE_GROUP_WIDGET_NAMES,
-    WINDOW_WIDGET_NAMES,
-} from "../../../core/config/index.js";
 import type { CodegenProject } from "../../../core/project.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
 import { addNamespaceImports } from "../../../core/utils/structure-helpers.js";
@@ -34,24 +20,6 @@ export type JsxWidget = {
     className: string;
     jsxName: string;
     namespace: string;
-    isListWidget: boolean;
-    isDropDownWidget: boolean;
-    isColumnViewWidget: boolean;
-    isNavigationView: boolean;
-    isStack: boolean;
-    isNotebook: boolean;
-    isWindow: boolean;
-    isScrolledWindow: boolean;
-    isDrawingArea: boolean;
-    isSearchBar: boolean;
-    isToggleGroup: boolean;
-    isContainer: boolean;
-    isAdjustable: boolean;
-    hasBuffer: boolean;
-    hasMarks: boolean;
-    hasOffsets: boolean;
-    hasColorDialog: boolean;
-    hasFontDialog: boolean;
     slots: readonly string[];
     hiddenProps: Set<string>;
     meta: CodegenWidgetMeta;
@@ -113,24 +81,6 @@ export class JsxTypesGenerator {
             className: meta.className,
             jsxName: meta.jsxName,
             namespace: meta.namespace,
-            isListWidget: LIST_WIDGET_NAMES.has(meta.className),
-            isDropDownWidget: DROP_DOWN_WIDGET_NAMES.has(meta.className),
-            isColumnViewWidget: COLUMN_VIEW_WIDGET_NAMES.has(meta.className),
-            isNavigationView: NAVIGATION_VIEW_WIDGET_NAMES.has(meta.className),
-            isStack: STACK_WIDGET_NAMES.has(meta.className),
-            isNotebook: NOTEBOOK_WIDGET_NAMES.has(meta.className),
-            isWindow: WINDOW_WIDGET_NAMES.has(meta.className),
-            isScrolledWindow: SCROLLED_WINDOW_WIDGET_NAMES.has(meta.className),
-            isDrawingArea: DRAWING_AREA_WIDGET_NAMES.has(meta.className),
-            isSearchBar: SEARCH_BAR_WIDGET_NAMES.has(meta.className),
-            isToggleGroup: TOGGLE_GROUP_WIDGET_NAMES.has(meta.className),
-            isContainer: meta.isContainer,
-            isAdjustable: meta.isAdjustable,
-            hasBuffer: meta.hasBuffer,
-            hasMarks: meta.hasMarks,
-            hasOffsets: meta.hasOffsets,
-            hasColorDialog: meta.hasColorDialog,
-            hasFontDialog: meta.hasFontDialog,
             slots: filteredSlots,
             hiddenProps,
             meta,
@@ -168,7 +118,7 @@ export class JsxTypesGenerator {
         const widgetMeta = widgets.find((w) => w.className === "Widget");
         if (!widgetMeta) return;
 
-        this.propsBuilder.buildWidgetPropsType(
+        this.propsBuilder.buildWidgetPropsInterface(
             sourceFile,
             "Gtk",
             widgetMeta.meta.properties,
@@ -197,7 +147,7 @@ export class JsxTypesGenerator {
         const eventControllerMeta = controllers.find((c) => c.className === "EventController");
         if (!eventControllerMeta) return;
 
-        this.controllerPropsBuilder.buildBaseControllerPropsType(sourceFile, eventControllerMeta);
+        this.controllerPropsBuilder.buildBaseControllerPropsInterface(sourceFile, eventControllerMeta);
     }
 
     private generateControllerPropsInterfaces(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {

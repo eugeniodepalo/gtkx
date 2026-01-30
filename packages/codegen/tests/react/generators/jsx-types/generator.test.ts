@@ -61,15 +61,15 @@ describe("JsxTypesGenerator", () => {
         });
     });
 
-    describe("WidgetProps type alias", () => {
-        it("generates WidgetProps type alias", () => {
+    describe("WidgetProps interface", () => {
+        it("generates WidgetProps interface", () => {
             const { project, generator } = createTestSetup([createWidgetMeta()]);
 
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
-            const typeAlias = sourceFile?.getTypeAlias("WidgetProps");
-            expect(typeAlias).toBeDefined();
+            const iface = sourceFile?.getInterface("WidgetProps");
+            expect(iface).toBeDefined();
         });
 
         it("includes properties from Widget metadata", () => {
@@ -116,21 +116,21 @@ describe("JsxTypesGenerator", () => {
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
-            const typeAlias = sourceFile?.getTypeAlias("WidgetProps");
-            expect(typeAlias?.isExported()).toBe(true);
+            const iface = sourceFile?.getInterface("WidgetProps");
+            expect(iface?.isExported()).toBe(true);
         });
     });
 
     describe("widget-specific props interfaces", () => {
-        it("generates props type alias for each widget", () => {
+        it("generates props interface for each widget", () => {
             const buttonMeta = createButtonMeta();
             const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
 
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
-            const typeAlias = sourceFile?.getTypeAlias("GtkButtonProps");
-            expect(typeAlias).toBeDefined();
+            const iface = sourceFile?.getInterface("GtkButtonProps");
+            expect(iface).toBeDefined();
         });
 
         it("includes widget-specific properties", () => {
@@ -193,127 +193,6 @@ describe("JsxTypesGenerator", () => {
         });
     });
 
-    describe("list widgets", () => {
-        it("adds renderItem property for list widgets", () => {
-            const listViewMeta = createCodegenWidgetMeta({
-                className: "ListView",
-                jsxName: "GtkListView",
-            });
-            const { project, generator } = createTestSetup([createWidgetMeta(), listViewMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("renderItem");
-        });
-
-        it("adds selected property for list widgets", () => {
-            const listViewMeta = createCodegenWidgetMeta({
-                className: "ListView",
-                jsxName: "GtkListView",
-            });
-            const { project, generator } = createTestSetup([createWidgetMeta(), listViewMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("selected");
-        });
-
-        it("adds onSelectionChanged for list widgets", () => {
-            const listViewMeta = createCodegenWidgetMeta({
-                className: "ListView",
-                jsxName: "GtkListView",
-            });
-            const { project, generator } = createTestSetup([createWidgetMeta(), listViewMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("onSelectionChanged");
-        });
-    });
-
-    describe("dropdown widgets", () => {
-        it("adds selectedId property for dropdown widgets", () => {
-            const dropDownMeta = createCodegenWidgetMeta({
-                className: "DropDown",
-                jsxName: "GtkDropDown",
-            });
-            const { project, generator } = createTestSetup([createWidgetMeta(), dropDownMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("selectedId");
-        });
-    });
-
-    describe("column view widgets", () => {
-        it("adds sortColumn property for column view widgets", () => {
-            const columnViewMeta = createCodegenWidgetMeta({
-                className: "ColumnView",
-                jsxName: "GtkColumnView",
-            });
-            const { project, generator } = createTestSetup([createWidgetMeta(), columnViewMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("sortColumn");
-        });
-
-        it("adds sortOrder property for column view widgets", () => {
-            const columnViewMeta = createCodegenWidgetMeta({
-                className: "ColumnView",
-                jsxName: "GtkColumnView",
-            });
-            const { project, generator } = createTestSetup([createWidgetMeta(), columnViewMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("sortOrder");
-        });
-
-        it("adds onSortChanged callback for column view widgets", () => {
-            const columnViewMeta = createCodegenWidgetMeta({
-                className: "ColumnView",
-                jsxName: "GtkColumnView",
-            });
-            const { project, generator } = createTestSetup([createWidgetMeta(), columnViewMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("onSortChanged");
-        });
-    });
-
-    describe("container widgets", () => {
-        it("adds children property for container widgets", () => {
-            const boxMeta = createCodegenWidgetMeta({
-                className: "Box",
-                jsxName: "GtkBox",
-                isContainer: true,
-            });
-            const { project, generator } = createTestSetup([createWidgetMeta(), boxMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("children");
-        });
-    });
-
     describe("cross-namespace widgets", () => {
         it("includes cross-namespace widgets when namespace is specified", () => {
             const adwHeaderBarMeta = createCodegenWidgetMeta({
@@ -326,8 +205,8 @@ describe("JsxTypesGenerator", () => {
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
-            const typeAlias = sourceFile?.getTypeAlias("AdwHeaderBarProps");
-            expect(typeAlias).toBeDefined();
+            const iface = sourceFile?.getInterface("AdwHeaderBarProps");
+            expect(iface).toBeDefined();
         });
 
         it("filters out widgets from namespaces not in list", () => {
@@ -341,8 +220,8 @@ describe("JsxTypesGenerator", () => {
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
-            const typeAlias = sourceFile?.getTypeAlias("AdwHeaderBarProps");
-            expect(typeAlias).toBeUndefined();
+            const iface = sourceFile?.getInterface("AdwHeaderBarProps");
+            expect(iface).toBeUndefined();
         });
     });
 
@@ -403,7 +282,6 @@ describe("JsxTypesGenerator", () => {
             const boxMeta = createCodegenWidgetMeta({
                 className: "Box",
                 jsxName: "GtkBox",
-                isContainer: true,
                 slots: ["start", "end"],
             });
             const { project, generator } = createTestSetup([createWidgetMeta(), boxMeta]);

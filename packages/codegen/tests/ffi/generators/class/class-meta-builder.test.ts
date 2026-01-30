@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "../../../../src/ffi/generators/class/class-meta-builder.js";
 import {
     createNormalizedClass,
-    createNormalizedMethod,
     createNormalizedNamespace,
     createNormalizedProperty,
     createNormalizedType,
@@ -146,15 +145,6 @@ describe("ClassMetaBuilder", () => {
             expect(result?.modulePath).toBe("./button.js");
         });
 
-        it("includes isContainer in CodegenWidgetMeta", () => {
-            const { builder } = createTestSetup();
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result).toHaveProperty("isContainer");
-            expect(typeof result?.isContainer).toBe("boolean");
-        });
-
         it("includes slots in CodegenWidgetMeta", () => {
             const { builder } = createTestSetup();
 
@@ -162,38 +152,6 @@ describe("ClassMetaBuilder", () => {
 
             expect(result).toHaveProperty("slots");
             expect(Array.isArray(result?.slots)).toBe(true);
-        });
-
-        it("detects container from append method", () => {
-            const { builder } = createTestSetup({
-                methods: [
-                    createNormalizedMethod({
-                        name: "append",
-                        cIdentifier: "gtk_box_append",
-                        returnType: createNormalizedType({ name: "none" }),
-                    }),
-                ],
-            });
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result?.isContainer).toBe(true);
-        });
-
-        it("detects container from set_child method", () => {
-            const { builder } = createTestSetup({
-                methods: [
-                    createNormalizedMethod({
-                        name: "set_child",
-                        cIdentifier: "gtk_button_set_child",
-                        returnType: createNormalizedType({ name: "none" }),
-                    }),
-                ],
-            });
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result?.isContainer).toBe(true);
         });
     });
 
