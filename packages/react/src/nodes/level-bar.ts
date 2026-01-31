@@ -17,15 +17,11 @@ const OWN_PROPS = ["offsets"] as const;
 export class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
     private appliedOffsetIds = new Set<string>();
 
-    protected override applyUpdate(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
-        super.applyUpdate(
+    public override commitUpdate(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
+        super.commitUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as LevelBarProps) : null,
             filterProps(newProps, OWN_PROPS) as LevelBarProps,
         );
-        this.applyOwnProps(oldProps, newProps);
-    }
-
-    protected applyOwnProps(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
         this.applyOffsets(oldProps, newProps);
     }
 

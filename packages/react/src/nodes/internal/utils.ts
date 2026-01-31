@@ -20,7 +20,6 @@ export const matchesAnyClass = (
     );
 };
 
-
 export const filterProps = (props: Props, excludeKeys: readonly string[]): Props => {
     const result: Props = {};
 

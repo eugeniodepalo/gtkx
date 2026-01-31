@@ -263,6 +263,10 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
         this.contentParent?.onChildTextChanged(child, oldLength, newLength);
     }
 
+    public override canAcceptChild(child: Node): boolean {
+        return this.isTextContentChild(child);
+    }
+
     public override appendChild(child: Node): void {
         if (this.isTextContentChild(child)) {
             super.appendChild(child);

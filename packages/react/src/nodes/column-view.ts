@@ -121,13 +121,13 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> 
         this.columnNodes.delete(child);
     }
 
-    protected override applyUpdate(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
-        super.applyUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+    public override commitUpdate(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
+        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
         this.applyOwnProps(oldProps, newProps);
         this.list.updateProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
+    private applyOwnProps(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
         if (!oldProps || oldProps.onSortChanged !== newProps.onSortChanged) {
             const sorter = this.container.getSorter() as Gtk.ColumnViewSorter | null;
             const onSortChanged = newProps.onSortChanged;

@@ -6,6 +6,10 @@ import { ShortcutNode } from "./shortcut.js";
 export class ShortcutControllerNode extends EventControllerNode<Gtk.ShortcutController> {
     private shortcuts: ShortcutNode[] = [];
 
+    public override canAcceptChild(child: Node): boolean {
+        return child instanceof ShortcutNode;
+    }
+
     public override appendChild(child: Node): void {
         if (!(child instanceof ShortcutNode)) {
             throw new Error(`ShortcutController only accepts Shortcut children, got '${child.typeName}'`);

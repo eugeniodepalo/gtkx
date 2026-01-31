@@ -3,10 +3,12 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { buildCss, interpolate } from "../animation/css-builder.js";
 import type { AnimatableProperties, AnimationProps, SpringTransition, TimedTransition } from "../animation/types.js";
+import type { Node } from "../node.js";
 import type { Container } from "../types.js";
-import { VirtualSingleChildNode } from "./abstract/virtual-single-child.js";
 import { attachChild, detachChild, getAttachmentStrategy } from "./internal/child-attachment.js";
 import { isRemovable } from "./internal/predicates.js";
+import { VirtualNode } from "./virtual.js";
+import { WidgetNode } from "./widget.js";
 
 let animationCounter = 0;
 
@@ -15,7 +17,9 @@ const DEFAULT_SPRING_DAMPING = 1;
 const DEFAULT_SPRING_MASS = 1;
 const DEFAULT_SPRING_STIFFNESS = 100;
 
-export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
+export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, WidgetNode> {
+    private parentWidget: Gtk.Widget | null = null;
+    public childWidget: Gtk.Widget | null = null;
     private className: string;
     private provider: Gtk.CssProvider | null = null;
     private display: Gdk.Display | null = null;
@@ -27,6 +31,51 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
         super(typeName, props, container, rootContainer);
         this.className = `gtkx-anim-${animationCounter++}`;
     }
+
+    public override canAcceptChild(child: Node): boolean {
+        return child instanceof WidgetNode;
+    }
+
+    public override appendChild(child: Node): void {
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected Widget`);
+        }
+
+        const oldChild = this.childWidget;
+        this.childWidget = child.container;
+
+        super.appendChild(child);
+
+        if (this.parentWidget) {
+            this.onChildChange(oldChild);
+        }
+    }
+
+    public override removeChild(child: Node): void {
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected Widget`);
+        }
+
+        const oldChild = this.childWidget;
+        this.childWidget = null;
+
+        super.removeChild(child);
+
+        if (this.parentWidget && oldChild) {
+            this.onChildChange(oldChild);
+        }
+    }
+
+    public override onAddedToParent(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.parentWidget = parent.container;
+            if (this.childWidget) {
+                this.onChildChange(null);
+            }
+        }
+    }
+
+    public override onRemovedFromParent(_parent: Node): void {}
 
     public override commitUpdate(oldProps: AnimationProps | null, newProps: AnimationProps): void {
         super.commitUpdate(oldProps, newProps);
@@ -43,7 +92,29 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
         }
     }
 
-    protected override onChildChange(oldChild: Gtk.Widget | null): void {
+    public override detachDeletedInstance(): void {
+        if (this.isExiting) {
+            return;
+        }
+
+        if (this.props.exit && this.childWidget) {
+            this.isExiting = true;
+
+            this.animateTo(this.props.exit, () => {
+                this.detachChildFromParentWidget();
+                this.cleanup();
+                this.parentWidget = null;
+                super.detachDeletedInstance();
+            });
+        } else {
+            this.detachChildFromParentWidget();
+            this.cleanup();
+            this.parentWidget = null;
+            super.detachDeletedInstance();
+        }
+    }
+
+    private onChildChange(oldChild: Gtk.Widget | null): void {
         if (oldChild && this.provider) {
             oldChild.removeCssClass(this.className);
         }
@@ -83,26 +154,6 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
                     this.animateTo(animate);
                 }
             }
-        }
-    }
-
-    public override detachDeletedInstance(): void {
-        if (this.isExiting) {
-            return;
-        }
-
-        if (this.props.exit && this.childWidget) {
-            this.isExiting = true;
-
-            this.animateTo(this.props.exit, () => {
-                this.detachChildFromParentWidget();
-                this.cleanup();
-                super.detachDeletedInstance();
-            });
-        } else {
-            this.detachChildFromParentWidget();
-            this.cleanup();
-            super.detachDeletedInstance();
         }
     }
 

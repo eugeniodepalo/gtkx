@@ -15,15 +15,15 @@ const OWN_PROPS = ["onDraw"] as const;
 export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {
     private pendingDrawFunc: DrawFunc | null = null;
 
-    protected override applyUpdate(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
-        super.applyUpdate(
+    public override commitUpdate(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
+        super.commitUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as DrawingAreaProps) : null,
             filterProps(newProps, OWN_PROPS) as DrawingAreaProps,
         );
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
+    private applyOwnProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
         if (hasChanged(oldProps, newProps, "onDraw") && newProps.onDraw) {
             if (this.container.getRealized()) {
                 this.container.setDrawFunc(newProps.onDraw);

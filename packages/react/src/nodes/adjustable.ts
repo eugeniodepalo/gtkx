@@ -19,12 +19,12 @@ type AdjustableProps = Props & {
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
     private adjustment: Gtk.Adjustment | null = null;
 
-    protected override applyUpdate(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
-        super.applyUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
-        this.applyOwnProps(oldProps, newProps);
+    public override commitUpdate(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        this.applyAdjustmentProps(oldProps, newProps);
     }
 
-    protected ensureAdjustment(props: AdjustableProps): Gtk.Adjustment {
+    public ensureAdjustment(props: AdjustableProps): Gtk.Adjustment {
         if (!this.adjustment) {
             this.adjustment = new Gtk.Adjustment(
                 props.value ?? 0,
@@ -39,7 +39,7 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
         return this.adjustment;
     }
 
-    protected applyOwnProps(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
+    private applyAdjustmentProps(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
         const adjustment = this.ensureAdjustment(newProps);
 
         if (hasChanged(oldProps, newProps, "onValueChanged")) {

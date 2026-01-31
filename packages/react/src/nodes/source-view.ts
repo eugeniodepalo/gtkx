@@ -22,16 +22,16 @@ type SourceViewProps = Props & {
 };
 
 export class SourceViewNode extends TextViewNode {
-    protected override createBufferController(): TextBufferController<GtkSource.Buffer> {
+    override createBufferController(): TextBufferController<GtkSource.Buffer> {
         return new TextBufferController<GtkSource.Buffer>(this, this.container, () => new GtkSource.Buffer());
     }
 
-    protected override ensureBufferController(): TextBufferController<GtkSource.Buffer> {
+    override ensureBufferController(): TextBufferController<GtkSource.Buffer> {
         return super.ensureBufferController() as TextBufferController<GtkSource.Buffer>;
     }
 
-    protected override applyOwnProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
-        super.applyOwnProps(oldProps, newProps);
+    public override commitUpdate(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
+        super.commitUpdate(oldProps, newProps);
         this.applySourceViewProps(oldProps, newProps);
     }
 

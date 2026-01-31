@@ -27,7 +27,7 @@ export class EventControllerNode<T extends Gtk.EventController = Gtk.EventContro
     }
 
     props: Props;
-    protected parentWidget: Gtk.Widget | null = null;
+    private parentWidget: Gtk.Widget | null = null;
 
     constructor(typeName: string, props: Props, container: T, rootContainer: Container) {
         super(typeName, props, container, rootContainer);

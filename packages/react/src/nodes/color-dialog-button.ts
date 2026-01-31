@@ -43,15 +43,15 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
         this.dialog = dialog;
     }
 
-    protected override applyUpdate(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {
-        super.applyUpdate(
+    public override commitUpdate(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {
+        super.commitUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as ColorDialogButtonProps) : null,
             filterProps(newProps, OWN_PROPS) as ColorDialogButtonProps,
         );
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {
+    private applyOwnProps(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {
         if (hasChanged(oldProps, newProps, "title") && newProps.title !== undefined) {
             this.dialog.setTitle(newProps.title);
         }

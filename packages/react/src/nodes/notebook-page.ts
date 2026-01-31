@@ -4,12 +4,17 @@ import { Node } from "../node.js";
 import { hasChanged } from "./internal/utils.js";
 import { NotebookPageTabNode } from "./notebook-page-tab.js";
 import { SlotNode } from "./slot.js";
+import { WidgetNode } from "./widget.js";
 
 type Props = Partial<NotebookPageProps>;
 
 export class NotebookPageNode extends SlotNode<Props> {
     position: number | null = null;
     private tabNode: NotebookPageTabNode | null = null;
+
+    public override canAcceptChild(child: Node): boolean {
+        return child instanceof WidgetNode || child instanceof NotebookPageTabNode;
+    }
 
     public override setParentWidget(parent: Gtk.Widget | null): void {
         super.setParentWidget(parent);
@@ -66,7 +71,7 @@ export class NotebookPageNode extends SlotNode<Props> {
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: Props | null, newProps: Props): void {
+    private applyOwnProps(oldProps: Props | null, newProps: Props): void {
         if (
             hasChanged(oldProps, newProps, "label") &&
             this.childWidget &&
@@ -130,7 +135,7 @@ export class NotebookPageNode extends SlotNode<Props> {
         notebook.removePage(pageNum);
     }
 
-    protected override onChildChange(oldChild: Gtk.Widget | null): void {
+    public override onChildChange(oldChild: Gtk.Widget | null): void {
         if (oldChild) {
             this.detachPage(oldChild);
         }

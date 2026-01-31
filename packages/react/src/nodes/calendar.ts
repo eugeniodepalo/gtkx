@@ -12,15 +12,11 @@ const OWN_PROPS = ["markedDays"] as const;
 export class CalendarNode extends WidgetNode<Gtk.Calendar> {
     private appliedMarks: number[] = [];
 
-    protected override applyUpdate(oldProps: CalendarProps | null, newProps: CalendarProps): void {
-        super.applyUpdate(
+    public override commitUpdate(oldProps: CalendarProps | null, newProps: CalendarProps): void {
+        super.commitUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as CalendarProps) : null,
             filterProps(newProps, OWN_PROPS) as CalendarProps,
         );
-        this.applyOwnProps(oldProps, newProps);
-    }
-
-    protected applyOwnProps(_oldProps: CalendarProps | null, newProps: CalendarProps): void {
         this.applyMarkedDays(newProps);
     }
 

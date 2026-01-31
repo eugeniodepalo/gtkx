@@ -65,10 +65,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public override appendChild(child: Node): void {
-        if (!this.canAcceptChild(child)) {
-            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}'`);
-        }
-
         super.appendChild(child);
 
         if (child instanceof WidgetNode) {
@@ -85,10 +81,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (!this.canAcceptChild(child)) {
-            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}'`);
-        }
-
         super.insertBefore(child, before);
 
         if (child instanceof WidgetNode && before instanceof WidgetNode) {
@@ -105,64 +97,84 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public override commitUpdate(oldProps: P | null, newProps: P): void {
+        if (!this.container) {
+            throw new Error(`WidgetNode.commitUpdate: container is undefined for ${this.typeName}`);
+        }
+
         this.signalStore.blockAll();
         try {
-            this.applyUpdate(oldProps, newProps);
+            this.updateSizeRequest(oldProps, newProps);
+            this.updateGrabFocus(oldProps, newProps);
+
+            const propNames = new Set([
+                ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
+                ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
+            ]);
+
+            const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
+            const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
+
+            for (const name of propNames) {
+                const oldValue = oldProps?.[name];
+                const newValue = newProps[name];
+
+                if (oldValue === newValue) continue;
+
+                const signalName = propNameToSignalName(name);
+
+                if (resolveSignal(this.container, signalName)) {
+                    pendingSignals.push({ name, newValue });
+                } else if (newValue !== undefined) {
+                    pendingProperties.push({ name, oldValue, newValue });
+                } else if (oldValue !== undefined) {
+                    const defaultValue = this.getPropertyDefaultValue(name);
+                    if (defaultValue !== undefined) {
+                        pendingProperties.push({ name, oldValue, newValue: defaultValue });
+                    }
+                }
+            }
+
+            for (const { name, newValue } of pendingSignals) {
+                const signalName = propNameToSignalName(name);
+                const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
+                this.signalStore.set(this, this.container, signalName, handler);
+            }
+
+            for (const { name, oldValue, newValue } of pendingProperties) {
+                if (name === "text" && oldValue !== undefined && isEditable(this.container)) {
+                    if (oldValue !== this.container.getText()) {
+                        continue;
+                    }
+                }
+
+                this.setProperty(name, newValue);
+            }
         } finally {
             this.signalStore.unblockAll();
         }
     }
 
-    protected applyUpdate(oldProps: P | null, newProps: P): void {
-        if (!this.container) {
-            throw new Error(`WidgetNode.applyUpdate: container is undefined for ${this.typeName}`);
+    public attachChildWidget(child: WidgetNode): void {
+        const strategy = getAttachmentStrategy(this.container);
+        if (!strategy) {
+            throw new Error(
+                `Cannot append '${child.typeName}' to '${this.container.constructor.name}': container does not support children`,
+            );
         }
-        this.updateSizeRequest(oldProps, newProps);
-        this.updateGrabFocus(oldProps, newProps);
-
-        const propNames = new Set([
-            ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
-            ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
-        ]);
-
-        const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
-        const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
-
-        for (const name of propNames) {
-            const oldValue = oldProps?.[name];
-            const newValue = newProps[name];
-
-            if (oldValue === newValue) continue;
-
-            const signalName = propNameToSignalName(name);
-
-            if (resolveSignal(this.container, signalName)) {
-                pendingSignals.push({ name, newValue });
-            } else if (newValue !== undefined) {
-                pendingProperties.push({ name, oldValue, newValue });
-            } else if (oldValue !== undefined) {
-                const defaultValue = this.getPropertyDefaultValue(name);
-                if (defaultValue !== undefined) {
-                    pendingProperties.push({ name, oldValue, newValue: defaultValue });
-                }
-            }
+        if (strategy.type === "appendable" || strategy.type === "addable") {
+            detachChildFromParent(child);
         }
+        performAttachment(child.container, strategy);
+    }
 
-        for (const { name, newValue } of pendingSignals) {
-            const signalName = propNameToSignalName(name);
-            const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-            this.signalStore.set(this, this.container, signalName, handler);
+    public detachChildWidget(child: WidgetNode): void {
+        const strategy = getAttachmentStrategy(this.container);
+        if (!strategy) {
+            throw new Error(
+                `Cannot remove '${child.typeName}' from '${this.container.constructor.name}': container does not support child removal`,
+            );
         }
-
-        for (const { name, oldValue, newValue } of pendingProperties) {
-            if (name === "text" && oldValue !== undefined && isEditable(this.container)) {
-                if (oldValue !== this.container.getText()) {
-                    continue;
-                }
-            }
-
-            this.setProperty(name, newValue);
-        }
+        performDetachment(child.container, strategy);
     }
 
     private updateSizeRequest(oldProps: P | null, newProps: P): void {
@@ -231,36 +243,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         setter.call(this.container, value);
     }
 
-    protected detachChildFromParent(child: WidgetNode): void {
-        const currentParent = child.container.getParent();
-        if (currentParent !== null && isRemovable(currentParent)) {
-            currentParent.remove(child.container);
-        }
-    }
-
-    protected attachChildWidget(child: WidgetNode): void {
-        const strategy = getAttachmentStrategy(this.container);
-        if (!strategy) {
-            throw new Error(
-                `Cannot append '${child.typeName}' to '${this.container.constructor.name}': container does not support children`,
-            );
-        }
-        if (strategy.type === "appendable" || strategy.type === "addable") {
-            this.detachChildFromParent(child);
-        }
-        performAttachment(child.container, strategy);
-    }
-
-    protected detachChildWidget(child: WidgetNode): void {
-        const strategy = getAttachmentStrategy(this.container);
-        if (!strategy) {
-            throw new Error(
-                `Cannot remove '${child.typeName}' from '${this.container.constructor.name}': container does not support child removal`,
-            );
-        }
-        performDetachment(child.container, strategy);
-    }
-
     private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {
         const previousSibling = this.findPreviousSibling(before);
         const currentParent = child.container.getParent();
@@ -269,13 +251,13 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         if (isChildOfThisContainer) {
             container.reorderChildAfter(child.container, previousSibling);
         } else {
-            this.detachChildFromParent(child);
+            detachChildFromParent(child);
             container.insertChildAfter(child.container, previousSibling);
         }
     }
 
     private insertBeforeInsertable(container: InsertableWidget, child: WidgetNode, before: WidgetNode): void {
-        this.detachChildFromParent(child);
+        detachChildFromParent(child);
         const position = this.findInsertPosition(before);
         container.insert(child.container, position);
     }
@@ -306,5 +288,12 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
 
         throw new Error(`Cannot find 'before' child in container`);
+    }
+}
+
+export function detachChildFromParent(child: WidgetNode): void {
+    const currentParent = child.container.getParent();
+    if (currentParent !== null && isRemovable(currentParent)) {
+        currentParent.remove(child.container);
     }
 }

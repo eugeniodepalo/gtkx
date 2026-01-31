@@ -81,12 +81,12 @@ export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListVi
         super.removeChild(child);
     }
 
-    protected override applyUpdate(oldProps: ListViewProps | null, newProps: ListViewProps): void {
-        super.applyUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+    public override commitUpdate(oldProps: ListViewProps | null, newProps: ListViewProps): void {
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: ListViewProps | null, newProps: ListViewProps): void {
+    private applyOwnProps(oldProps: ListViewProps | null, newProps: ListViewProps): void {
         if (hasChanged(oldProps, newProps, "renderItem")) {
             this.itemRenderer.setRenderFn(newProps.renderItem ?? null);
         }

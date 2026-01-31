@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { isRemovable, isSingleChild } from "./internal/predicates.js";
 import { SlotNode } from "./slot.js";
-import { WidgetNode } from "./widget.js";
+import { detachChildFromParent, WidgetNode } from "./widget.js";
 
 type AutowrappingContainer = Gtk.ListBox | Gtk.FlowBox;
 type AutowrappedChild = Gtk.ListBoxRow | Gtk.FlowBoxChild;
@@ -12,9 +12,9 @@ const isAutowrappedChild = (obj: unknown): obj is AutowrappedChild => {
 };
 
 export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
-    protected override attachChildWidget(child: WidgetNode): void {
+    public override attachChildWidget(child: WidgetNode): void {
         if (isAutowrappedChild(child.container)) {
-            this.detachChildFromParent(child);
+            detachChildFromParent(child);
         } else {
             this.removeExistingWrapper(child.container);
         }
@@ -22,7 +22,7 @@ export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         this.container.append(child.container);
     }
 
-    protected override detachChildWidget(child: WidgetNode): void {
+    public override detachChildWidget(child: WidgetNode): void {
         if (!isAutowrappedChild(child.container)) {
             const wrapper = child.container.getParent();
 

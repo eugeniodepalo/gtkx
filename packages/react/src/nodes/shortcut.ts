@@ -48,7 +48,7 @@ export class ShortcutNode extends VirtualNode<ShortcutProps> {
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
+    private applyOwnProps(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
         if (!this.shortcut) return;
 
         if (hasChanged(oldProps, newProps, "trigger") || hasChanged(oldProps, newProps, "disabled")) {

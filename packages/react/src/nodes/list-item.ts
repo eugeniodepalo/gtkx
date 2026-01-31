@@ -20,7 +20,7 @@ export class ListItemNode<
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: P | null, newProps: P): void {
+    private applyOwnProps(oldProps: P | null, newProps: P): void {
         if (!this.store) return;
 
         if (hasChanged(oldProps, newProps, "id") || hasChanged(oldProps, newProps, "value")) {

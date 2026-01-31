@@ -1,17 +1,23 @@
 import { Node } from "../node.js";
-import type { Container, Props } from "../types.js";
+import type { Container } from "../types.js";
 
-export class VirtualNode<P = Props> extends Node<undefined, P> {
+// biome-ignore lint/suspicious/noExplicitAny: Self-referential type bounds require any
+export class VirtualNode<TProps = any, TParent extends Node = any, TChild extends Node = any> extends Node<
+    undefined,
+    TProps,
+    TParent,
+    TChild
+> {
     public static override createContainer() {}
 
-    props: P;
+    props: TProps;
 
-    constructor(typeName: string, props: P = {} as P, container: undefined, rootContainer: Container) {
+    constructor(typeName: string, props: TProps = {} as TProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.props = props;
     }
 
-    public override commitUpdate(_oldProps: P | null, newProps: P): void {
+    public override commitUpdate(_oldProps: TProps | null, newProps: TProps): void {
         this.props = newProps;
     }
 }

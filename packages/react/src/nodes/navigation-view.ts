@@ -58,15 +58,15 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
         throw new Error(`Cannot remove '${child.typeName}' from 'NavigationView': expected x.NavigationPage or Widget`);
     }
 
-    protected override applyUpdate(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
-        super.applyUpdate(
+    public override commitUpdate(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
+        super.commitUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as NavigationViewProps) : null,
             filterProps(newProps, OWN_PROPS) as NavigationViewProps,
         );
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
+    private applyOwnProps(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
         const oldHistory = oldProps?.history;
         const newHistory = newProps.history;
 

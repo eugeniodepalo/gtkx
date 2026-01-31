@@ -36,6 +36,10 @@ export class TreeListItemNode extends VirtualNode<Props> {
         return this.parentItemId;
     }
 
+    public override canAcceptChild(child: Node): boolean {
+        return child instanceof TreeListItemNode;
+    }
+
     public override appendChild(child: Node): void {
         if (!(child instanceof TreeListItemNode)) {
             return;

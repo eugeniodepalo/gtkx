@@ -13,12 +13,12 @@ type StackProps = {
 };
 
 export class StackNode extends WidgetNode<StackWidget, StackProps> {
-    protected override applyUpdate(oldProps: StackProps | null, newProps: StackProps): void {
-        super.applyUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+    public override commitUpdate(oldProps: StackProps | null, newProps: StackProps): void {
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: StackProps | null, newProps: StackProps): void {
+    private applyOwnProps(oldProps: StackProps | null, newProps: StackProps): void {
         if (newProps.page && this.container.getVisibleChildName() !== newProps.page) {
             const page = newProps.page;
             if (this.container.getChildByName(page)) {

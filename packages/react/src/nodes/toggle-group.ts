@@ -14,8 +14,8 @@ const OWN_PROPS = ["onActiveChanged"] as const;
 export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProps> {
     private notifyHandler: SignalHandler | null = null;
 
-    protected override applyUpdate(oldProps: ToggleGroupProps | null, newProps: ToggleGroupProps): void {
-        super.applyUpdate(
+    public override commitUpdate(oldProps: ToggleGroupProps | null, newProps: ToggleGroupProps): void {
+        super.commitUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as ToggleGroupProps) : null,
             filterProps(newProps, OWN_PROPS) as ToggleGroupProps,
         );

@@ -88,7 +88,7 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
         super.removeChild(child);
     }
 
-    protected override applyUpdate(oldProps: TreeListViewProps | null, newProps: TreeListViewProps): void {
+    public override commitUpdate(oldProps: TreeListViewProps | null, newProps: TreeListViewProps): void {
         if (!oldProps || oldProps.renderItem !== newProps.renderItem) {
             this.itemRenderer.setRenderFn(newProps.renderItem ?? null);
         }
@@ -108,6 +108,6 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
             this.container.setModel(currentModel);
         }
 
-        super.applyUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 }

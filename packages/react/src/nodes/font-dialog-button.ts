@@ -50,15 +50,15 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
         this.dialog = dialog;
     }
 
-    protected override applyUpdate(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {
-        super.applyUpdate(
+    public override commitUpdate(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {
+        super.commitUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as FontDialogButtonProps) : null,
             filterProps(newProps, OWN_PROPS) as FontDialogButtonProps,
         );
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {
+    private applyOwnProps(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {
         if (hasChanged(oldProps, newProps, "title") && newProps.title !== undefined) {
             this.dialog.setTitle(newProps.title);
         }

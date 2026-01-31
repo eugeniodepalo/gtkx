@@ -1,15 +1,172 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
-import { VirtualContainerNode } from "./abstract/virtual-container.js";
+import type { Node } from "../node.js";
+import { VirtualNode } from "./virtual.js";
+import { WidgetNode } from "./widget.js";
 
-export class ToolbarTopNode extends VirtualContainerNode<Adw.ToolbarView> {
-    protected override attachChild(parent: Adw.ToolbarView, widget: Gtk.Widget): void {
-        parent.addTopBar(widget);
+export class ToolbarTopNode extends VirtualNode<unknown, WidgetNode<Adw.ToolbarView>, WidgetNode> {
+    private parentWidget: Adw.ToolbarView | null = null;
+
+    public override canAcceptChild(child: Node): boolean {
+        return child instanceof WidgetNode;
+    }
+
+    public override appendChild(child: Node): void {
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected Widget`);
+        }
+
+        super.appendChild(child);
+
+        if (this.parentWidget) {
+            this.parentWidget.addTopBar(child.container);
+        }
+    }
+
+    public override insertBefore(child: Node, before: Node): void {
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected Widget`);
+        }
+
+        super.insertBefore(child, before);
+
+        if (this.parentWidget) {
+            this.parentWidget.addTopBar(child.container);
+        }
+    }
+
+    public override removeChild(child: Node): void {
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected Widget`);
+        }
+
+        if (this.parentWidget) {
+            const currentParent = child.container.getParent();
+            if (currentParent && currentParent === this.parentWidget) {
+                this.parentWidget.remove(child.container);
+            }
+        }
+
+        super.removeChild(child);
+    }
+
+    public override onAddedToParent(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.parentWidget = parent.container as Adw.ToolbarView;
+            for (const child of this.children) {
+                if (child instanceof WidgetNode && this.parentWidget) {
+                    this.parentWidget.addTopBar(child.container);
+                }
+            }
+        }
+    }
+
+    public override onRemovedFromParent(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.detachAllChildren(parent.container as Adw.ToolbarView);
+        }
+        this.parentWidget = null;
+    }
+
+    public override detachDeletedInstance(): void {
+        if (this.parentWidget) {
+            this.detachAllChildren(this.parentWidget);
+        }
+        this.parentWidget = null;
+        super.detachDeletedInstance();
+    }
+
+    private detachAllChildren(parent: Adw.ToolbarView): void {
+        for (const child of this.children) {
+            if (child instanceof WidgetNode) {
+                const currentParent = child.container.getParent();
+                if (currentParent && currentParent === parent) {
+                    parent.remove(child.container);
+                }
+            }
+        }
     }
 }
 
-export class ToolbarBottomNode extends VirtualContainerNode<Adw.ToolbarView> {
-    protected override attachChild(parent: Adw.ToolbarView, widget: Gtk.Widget): void {
-        parent.addBottomBar(widget);
+export class ToolbarBottomNode extends VirtualNode<unknown, WidgetNode<Adw.ToolbarView>, WidgetNode> {
+    private parentWidget: Adw.ToolbarView | null = null;
+
+    public override canAcceptChild(child: Node): boolean {
+        return child instanceof WidgetNode;
+    }
+
+    public override appendChild(child: Node): void {
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected Widget`);
+        }
+
+        super.appendChild(child);
+
+        if (this.parentWidget) {
+            this.parentWidget.addBottomBar(child.container);
+        }
+    }
+
+    public override insertBefore(child: Node, before: Node): void {
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected Widget`);
+        }
+
+        super.insertBefore(child, before);
+
+        if (this.parentWidget) {
+            this.parentWidget.addBottomBar(child.container);
+        }
+    }
+
+    public override removeChild(child: Node): void {
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected Widget`);
+        }
+
+        if (this.parentWidget) {
+            const currentParent = child.container.getParent();
+            if (currentParent && currentParent === this.parentWidget) {
+                this.parentWidget.remove(child.container);
+            }
+        }
+
+        super.removeChild(child);
+    }
+
+    public override onAddedToParent(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.parentWidget = parent.container as Adw.ToolbarView;
+            for (const child of this.children) {
+                if (child instanceof WidgetNode && this.parentWidget) {
+                    this.parentWidget.addBottomBar(child.container);
+                }
+            }
+        }
+    }
+
+    public override onRemovedFromParent(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.detachAllChildren(parent.container as Adw.ToolbarView);
+        }
+        this.parentWidget = null;
+    }
+
+    public override detachDeletedInstance(): void {
+        if (this.parentWidget) {
+            this.detachAllChildren(this.parentWidget);
+        }
+        this.parentWidget = null;
+        super.detachDeletedInstance();
+    }
+
+    private detachAllChildren(parent: Adw.ToolbarView): void {
+        for (const child of this.children) {
+            if (child instanceof WidgetNode) {
+                const currentParent = child.container.getParent();
+                if (currentParent && currentParent === parent) {
+                    parent.remove(child.container);
+                }
+            }
+        }
     }
 }

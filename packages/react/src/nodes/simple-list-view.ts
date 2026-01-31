@@ -27,7 +27,7 @@ export class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, 
         this.container.setModel(this.store.getModel());
     }
 
-    protected override applyUpdate(oldProps: SimpleListViewProps | null, newProps: SimpleListViewProps): void {
+    public override commitUpdate(oldProps: SimpleListViewProps | null, newProps: SimpleListViewProps): void {
         if (!oldProps || oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
             const onSelectionChanged = newProps.onSelectionChanged;
 
@@ -52,7 +52,7 @@ export class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, 
             }
         }
 
-        super.applyUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 
     public override appendChild(child: Node): void {

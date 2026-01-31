@@ -16,8 +16,8 @@ type ScaleProps = Props & {
 export class ScaleNode extends AdjustableNode<Gtk.Scale> {
     private appliedMarks: ScaleMark[] = [];
 
-    protected override applyOwnProps(oldProps: ScaleProps | null, newProps: ScaleProps): void {
-        super.applyOwnProps(oldProps, newProps);
+    public override commitUpdate(oldProps: ScaleProps | null, newProps: ScaleProps): void {
+        super.commitUpdate(oldProps, newProps);
         this.applyMarks(newProps);
     }
 

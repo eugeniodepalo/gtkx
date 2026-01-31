@@ -11,7 +11,7 @@ export class NavigationPageNode extends SlotNode<Props> {
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: Props | null, newProps: Props): void {
+    private applyOwnProps(oldProps: Props | null, newProps: Props): void {
         const child = this.childWidget;
 
         if (!(child instanceof Adw.NavigationPage)) {
@@ -31,7 +31,7 @@ export class NavigationPageNode extends SlotNode<Props> {
         }
     }
 
-    protected override onChildChange(oldChild: Adw.NavigationPage | null): void {
+    public override onChildChange(oldChild: Adw.NavigationPage | null): void {
         const navigationView = this.getParentWidget() as Adw.NavigationView | Adw.NavigationSplitView;
         const title = this.props.title ?? "";
 

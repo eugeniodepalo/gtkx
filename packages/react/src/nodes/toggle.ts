@@ -39,7 +39,7 @@ export class ToggleNode extends VirtualNode<ToggleProps> {
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: ToggleProps | null, newProps: ToggleProps): void {
+    private applyOwnProps(oldProps: ToggleProps | null, newProps: ToggleProps): void {
         if (!this.toggle) return;
 
         if (hasChanged(oldProps, newProps, "id") && newProps.id !== undefined) {

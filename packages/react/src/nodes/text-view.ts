@@ -26,28 +26,24 @@ type TextViewProps = Props & {
 };
 
 export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements TextContentParent {
-    protected bufferController: TextBufferController | null = null;
+    bufferController: TextBufferController | null = null;
 
-    protected ensureBufferController(): TextBufferController {
+    ensureBufferController(): TextBufferController {
         if (!this.bufferController) {
             this.bufferController = this.createBufferController();
         }
         return this.bufferController;
     }
 
-    protected createBufferController(): TextBufferController {
+    createBufferController(): TextBufferController {
         return new TextBufferController(this, this.container, () => new Gtk.TextBuffer());
     }
 
-    protected override applyUpdate(oldProps: TextViewProps | null, newProps: TextViewProps): void {
-        super.applyUpdate(
+    public override commitUpdate(oldProps: TextViewProps | null, newProps: TextViewProps): void {
+        super.commitUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as TextViewProps) : null,
             filterProps(newProps, OWN_PROPS) as TextViewProps,
         );
-        this.applyOwnProps(oldProps, newProps);
-    }
-
-    protected applyOwnProps(oldProps: TextViewProps | null, newProps: TextViewProps): void {
         this.ensureBufferController().applyOwnProps(oldProps, newProps);
     }
 

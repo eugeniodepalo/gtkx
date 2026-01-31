@@ -36,6 +36,10 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
 
     public bufferOffset = 0;
 
+    public override canAcceptChild(child: Node): boolean {
+        return child instanceof WidgetNode;
+    }
+
     public getLength(): number {
         return 1;
     }

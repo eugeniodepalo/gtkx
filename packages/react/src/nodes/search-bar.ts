@@ -14,8 +14,8 @@ const OWN_PROPS = ["onSearchModeChanged"] as const;
 export class SearchBarNode extends WidgetNode<Gtk.SearchBar, SearchBarProps> {
     private notifyHandler: SignalHandler | null = null;
 
-    protected override applyUpdate(oldProps: SearchBarProps | null, newProps: SearchBarProps): void {
-        super.applyUpdate(
+    public override commitUpdate(oldProps: SearchBarProps | null, newProps: SearchBarProps): void {
+        super.commitUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as SearchBarProps) : null,
             filterProps(newProps, OWN_PROPS) as SearchBarProps,
         );

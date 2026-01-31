@@ -122,12 +122,12 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         super.detachDeletedInstance();
     }
 
-    protected override applyUpdate(oldProps: WindowProps | null, newProps: WindowProps): void {
-        super.applyUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+    public override commitUpdate(oldProps: WindowProps | null, newProps: WindowProps): void {
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: WindowProps | null, newProps: WindowProps): void {
+    private applyOwnProps(oldProps: WindowProps | null, newProps: WindowProps): void {
         if (hasChanged(oldProps, newProps, "defaultWidth") || hasChanged(oldProps, newProps, "defaultHeight")) {
             const width = newProps.defaultWidth ?? -1;
             const height = newProps.defaultHeight ?? -1;

@@ -14,7 +14,7 @@ export class StackPageNode extends SlotNode<Props> {
         this.applyOwnProps(oldProps, newProps);
     }
 
-    protected applyOwnProps(oldProps: Props | null, newProps: Props): void {
+    private applyOwnProps(oldProps: Props | null, newProps: Props): void {
         if (!this.page) {
             return;
         }
@@ -44,7 +44,7 @@ export class StackPageNode extends SlotNode<Props> {
         }
     }
 
-    protected override onChildChange(oldChild: Gtk.Widget | null): void {
+    public override onChildChange(oldChild: Gtk.Widget | null): void {
         this.removePage(oldChild);
 
         if (this.childWidget) {
