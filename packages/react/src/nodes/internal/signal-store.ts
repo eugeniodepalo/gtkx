@@ -1,4 +1,3 @@
-import { getNativeId } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 
 type SignalOwner = object;
@@ -24,15 +23,29 @@ const LIFECYCLE_SIGNALS = new Set([
 
 type HandlerEntry = { obj: GObject.Object; handlerId: number };
 
+type SignalKey = `${string}:${string}`;
+
 export interface SignalOptions {
     blockable?: boolean;
 }
 
+const signalKeyCache = new WeakMap<GObject.Object, string>();
+let nextSignalObjId = 0;
+
+function getSignalKey(obj: GObject.Object, signal: string): SignalKey {
+    let objKey = signalKeyCache.get(obj);
+    if (!objKey) {
+        objKey = String(nextSignalObjId++);
+        signalKeyCache.set(obj, objKey);
+    }
+    return `${objKey}:${signal}`;
+}
+
 export class SignalStore {
-    private ownerHandlers: Map<SignalOwner, Map<string, HandlerEntry>> = new Map();
+    private ownerHandlers: Map<SignalOwner, Map<SignalKey, HandlerEntry>> = new Map();
     private blockDepth = 0;
 
-    private getOwnerMap(owner: SignalOwner): Map<string, HandlerEntry> {
+    private getOwnerMap(owner: SignalOwner): Map<SignalKey, HandlerEntry> {
         let map = this.ownerHandlers.get(owner);
         if (!map) {
             map = new Map();
@@ -52,8 +65,7 @@ export class SignalStore {
     }
 
     private disconnect(owner: SignalOwner, obj: GObject.Object, signal: string): void {
-        const objectId = getNativeId(obj.handle);
-        const key = `${objectId}:${signal}`;
+        const key = getSignalKey(obj, signal);
         const ownerMap = this.ownerHandlers.get(owner);
         const existing = ownerMap?.get(key);
 
@@ -70,8 +82,7 @@ export class SignalStore {
         handler: SignalHandler,
         blockable: boolean,
     ): void {
-        const objectId = getNativeId(obj.handle);
-        const key = `${objectId}:${signal}`;
+        const key = getSignalKey(obj, signal);
         const wrappedHandler = this.wrapHandler(handler, signal, blockable);
         const handlerId = obj.connect(signal, wrappedHandler);
         this.getOwnerMap(owner).set(key, { obj, handlerId });

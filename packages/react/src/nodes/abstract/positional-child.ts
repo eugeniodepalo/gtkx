@@ -1,4 +1,3 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../../types.js";
 import { VirtualSingleChildNode } from "./virtual-single-child.js";
@@ -15,7 +14,7 @@ export abstract class PositionalChildNode<P extends Props = Props> extends Virtu
             this.child = null;
 
             const parentOfOld = oldChild.getParent();
-            if (parentOfOld && isObjectEqual(parentOfOld, parent)) {
+            if (parentOfOld && parentOfOld === parent) {
                 this.detachFromParent(parent, oldChild);
             }
         }
@@ -29,7 +28,7 @@ export abstract class PositionalChildNode<P extends Props = Props> extends Virtu
 
         if (oldChild) {
             const parentOfOld = oldChild.getParent();
-            if (parentOfOld && isObjectEqual(parentOfOld, parent)) {
+            if (parentOfOld && parentOfOld === parent) {
                 this.detachFromParent(parent, oldChild);
             }
         }

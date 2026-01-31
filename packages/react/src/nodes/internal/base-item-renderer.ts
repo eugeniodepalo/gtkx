@@ -1,4 +1,3 @@
-import { getNativeId } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
@@ -8,8 +7,8 @@ import type { SignalStore } from "./signal-store.js";
 
 export abstract class BaseItemRenderer<TStore = unknown> {
     protected factory: Gtk.SignalListItemFactory;
-    protected fiberRoots = new Map<number, Reconciler.FiberRoot>();
-    protected tornDown = new Set<number>();
+    protected fiberRoots = new Map<Gtk.ListItem, Reconciler.FiberRoot>();
+    protected tornDown = new Set<Gtk.ListItem>();
     protected estimatedItemHeight: number | null = null;
     private store: TStore | null = null;
     protected signalStore: SignalStore;
@@ -47,14 +46,14 @@ export abstract class BaseItemRenderer<TStore = unknown> {
         this.tornDown.clear();
     }
 
-    protected abstract renderItem(ptr: number): ReactNode;
+    protected abstract renderItem(listItem: Gtk.ListItem): ReactNode;
     protected abstract getItemFromListItem(listItem: Gtk.ListItem): unknown;
-    protected abstract onSetup(listItem: Gtk.ListItem, ptr: number): Gtk.Widget;
-    protected abstract onBind(listItem: Gtk.ListItem, ptr: number, fiberRoot: Reconciler.FiberRoot): void;
+    protected abstract onSetup(listItem: Gtk.ListItem): Gtk.Widget;
+    protected abstract onBind(listItem: Gtk.ListItem, fiberRoot: Reconciler.FiberRoot): void;
     protected abstract onUnbind(listItem: Gtk.ListItem): void;
-    protected abstract onTeardown(listItem: Gtk.ListItem, ptr: number): void;
+    protected abstract onTeardown(listItem: Gtk.ListItem): void;
 
-    protected onSetupComplete(_ptr: number): void {}
+    protected onSetupComplete(_listItem: Gtk.ListItem): void {}
 
     protected createBox(): Gtk.Box {
         const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL);
@@ -75,22 +74,20 @@ export abstract class BaseItemRenderer<TStore = unknown> {
 
     private initializeFactory(): void {
         this.signalStore.set(this, this.factory, "setup", (listItem: Gtk.ListItem) => {
-            const ptr = getNativeId(listItem.handle);
-            const container = this.onSetup(listItem, ptr);
+            const container = this.onSetup(listItem);
             const fiberRoot = createFiberRoot(container);
-            this.fiberRoots.set(ptr, fiberRoot);
-            const element = this.renderItem(ptr);
+            this.fiberRoots.set(listItem, fiberRoot);
+            const element = this.renderItem(listItem);
             reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
-                if (this.tornDown.has(ptr)) return;
-                this.onSetupComplete(ptr);
+                if (this.tornDown.has(listItem)) return;
+                this.onSetupComplete(listItem);
             });
         });
 
         this.signalStore.set(this, this.factory, "bind", (listItem: Gtk.ListItem) => {
-            const ptr = getNativeId(listItem.handle);
-            const fiberRoot = this.fiberRoots.get(ptr);
+            const fiberRoot = this.fiberRoots.get(listItem);
             if (!fiberRoot) return;
-            this.onBind(listItem, ptr, fiberRoot);
+            this.onBind(listItem, fiberRoot);
         });
 
         this.signalStore.set(this, this.factory, "unbind", (listItem: Gtk.ListItem) => {
@@ -98,16 +95,15 @@ export abstract class BaseItemRenderer<TStore = unknown> {
         });
 
         this.signalStore.set(this, this.factory, "teardown", (listItem: Gtk.ListItem) => {
-            const ptr = getNativeId(listItem.handle);
-            const fiberRoot = this.fiberRoots.get(ptr);
+            const fiberRoot = this.fiberRoots.get(listItem);
 
             if (fiberRoot) {
-                this.tornDown.add(ptr);
-                this.onTeardown(listItem, ptr);
+                this.tornDown.add(listItem);
+                this.onTeardown(listItem);
                 reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
                 queueMicrotask(() => {
-                    this.fiberRoots.delete(ptr);
-                    this.tornDown.delete(ptr);
+                    this.fiberRoots.delete(listItem);
+                    this.tornDown.delete(listItem);
                 });
             }
         });

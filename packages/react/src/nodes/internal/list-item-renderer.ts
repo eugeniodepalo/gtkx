@@ -9,17 +9,17 @@ export type RenderItemFn<T> = (item: T | null) => ReactNode;
 
 export class ListItemRenderer extends BaseItemRenderer<ListStore> {
     private renderFn: RenderItemFn<unknown> | null = () => null;
-    private boundItems = new Map<string, number>();
+    private boundItems = new Map<string, Gtk.ListItem>();
 
     public setRenderFn(renderFn: RenderItemFn<unknown> | null): void {
         this.renderFn = renderFn;
     }
 
     public rebindItem(id: string): void {
-        const ptr = this.boundItems.get(id);
-        if (ptr === undefined) return;
+        const listItem = this.boundItems.get(id);
+        if (!listItem) return;
 
-        const fiberRoot = this.fiberRoots.get(ptr);
+        const fiberRoot = this.fiberRoots.get(listItem);
         if (!fiberRoot) return;
 
         const item = this.getStore().getItem(id);
@@ -32,7 +32,7 @@ export class ListItemRenderer extends BaseItemRenderer<ListStore> {
         return "list store";
     }
 
-    protected override renderItem(_ptr: number): ReactNode {
+    protected override renderItem(_listItem: Gtk.ListItem): ReactNode {
         return this.renderFn?.(null);
     }
 
@@ -42,25 +42,25 @@ export class ListItemRenderer extends BaseItemRenderer<ListStore> {
         return stringObject.getString();
     }
 
-    protected override onSetup(listItem: Gtk.ListItem, _ptr: number): Gtk.Widget {
+    protected override onSetup(listItem: Gtk.ListItem): Gtk.Widget {
         const box = this.createBox();
         listItem.setChild(box);
         return box;
     }
 
-    protected override onBind(listItem: Gtk.ListItem, ptr: number, fiberRoot: Reconciler.FiberRoot): void {
+    protected override onBind(listItem: Gtk.ListItem, fiberRoot: Reconciler.FiberRoot): void {
         const id = this.getItemFromListItem(listItem);
         if (id !== null) {
-            this.boundItems.set(id, ptr);
+            this.boundItems.set(id, listItem);
         }
 
         const item = id !== null ? this.getStore().getItem(id) : null;
         const element = this.renderFn?.(item);
 
         reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
-            if (this.tornDown.has(ptr)) return;
+            if (this.tornDown.has(listItem)) return;
             if (this.estimatedItemHeight !== null) return;
-            const currentFiberRoot = this.fiberRoots.get(ptr);
+            const currentFiberRoot = this.fiberRoots.get(listItem);
             if (!currentFiberRoot) return;
             this.clearBoxSizeRequest(currentFiberRoot.containerInfo);
         });
@@ -73,5 +73,5 @@ export class ListItemRenderer extends BaseItemRenderer<ListStore> {
         }
     }
 
-    protected override onTeardown(_listItem: Gtk.ListItem, _ptr: number): void {}
+    protected override onTeardown(_listItem: Gtk.ListItem): void {}
 }

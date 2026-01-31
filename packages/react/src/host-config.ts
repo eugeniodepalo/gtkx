@@ -1,4 +1,3 @@
-import { getNativeId } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
@@ -9,14 +8,14 @@ import { flushAfterCommit } from "./scheduler.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
 declare global {
-    var __GTKX_CONTAINER_NODE_CACHE__: Map<number, Node> | undefined;
+    var __GTKX_CONTAINER_NODE_CACHE__: WeakMap<Container, Node> | undefined;
 }
 
 if (!globalThis.__GTKX_CONTAINER_NODE_CACHE__) {
-    globalThis.__GTKX_CONTAINER_NODE_CACHE__ = new Map<number, Node>();
+    globalThis.__GTKX_CONTAINER_NODE_CACHE__ = new WeakMap<Container, Node>();
 }
 
-const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__ as Map<number, Node>;
+const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__ as WeakMap<Container, Node>;
 
 type TextInstance = Node;
 type SuspenseInstance = never;
@@ -58,13 +57,12 @@ export type ReconcilerInstance = ReactReconciler.Reconciler<
 >;
 
 const getOrCreateContainerNode = (container: Container): Node => {
-    const id = getNativeId(container.handle);
-    let node = containerNodeCache.get(id);
+    let node = containerNodeCache.get(container);
 
     if (!node) {
         const type = (container.constructor as ContainerClass).glibTypeName;
         node = createNode(type, {}, container, container);
-        containerNodeCache.set(id, node);
+        containerNodeCache.set(container, node);
     }
 
     return node;

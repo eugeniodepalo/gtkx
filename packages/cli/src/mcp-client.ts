@@ -1,5 +1,5 @@
 import * as net from "node:net";
-import { getNativeId, getNativeInterface } from "@gtkx/ffi";
+import { getNativeInterface } from "@gtkx/ffi";
 import { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
@@ -16,6 +16,18 @@ import {
     widgetNotFoundError,
 } from "@gtkx/mcp";
 import { getApplication } from "@gtkx/react";
+
+const widgetIdMap = new WeakMap<Gtk.Widget, string>();
+let nextWidgetId = 0;
+
+const getWidgetId = (widget: Gtk.Widget): string => {
+    let id = widgetIdMap.get(widget);
+    if (!id) {
+        id = String(nextWidgetId++);
+        widgetIdMap.set(widget, id);
+    }
+    return id;
+};
 
 type TestingModule = typeof import("@gtkx/testing");
 
@@ -99,7 +111,7 @@ const serializeWidget = (widget: Gtk.Widget): SerializedWidget => {
     const text = getWidgetText(widget);
 
     return {
-        id: String(getNativeId(widget.handle)),
+        id: getWidgetId(widget),
         type: widget.constructor.name,
         role: formatRole(widget.getAccessibleRole()),
         name: widget.getName() || null,
@@ -115,7 +127,7 @@ const serializeWidget = (widget: Gtk.Widget): SerializedWidget => {
 const widgetRegistry = new Map<string, Gtk.Widget>();
 
 const registerWidgets = (widget: Gtk.Widget): void => {
-    const idStr = String(getNativeId(widget.handle));
+    const idStr = getWidgetId(widget);
     widgetRegistry.set(idStr, widget);
     let child = widget.getFirstChild();
     while (child) {
@@ -351,7 +363,7 @@ class McpClient {
                 const windows = Gtk.Window.listToplevels();
                 return {
                     windows: windows.map((w) => ({
-                        id: String(getNativeId(w.handle)),
+                        id: getWidgetId(w),
                         title: (w as Gtk.Window).getTitle?.() ?? null,
                     })),
                 };

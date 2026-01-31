@@ -1,4 +1,4 @@
-import { getNativeObject, isObjectEqual, type NativeObject } from "@gtkx/ffi";
+import { getNativeObject, type NativeObject } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
 import {
     ObjectClass,
@@ -118,7 +118,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {
         const previousSibling = this.findPreviousSibling(before);
         const currentParent = child.container.getParent();
-        const isChildOfThisContainer = currentParent && isObjectEqual(currentParent, container);
+        const isChildOfThisContainer = currentParent && currentParent === container;
 
         if (isChildOfThisContainer) {
             container.reorderChildAfter(child.container, previousSibling);
@@ -286,7 +286,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         let beforeChild = this.container.getFirstChild();
 
         while (beforeChild) {
-            if (isObjectEqual(beforeChild, before.container)) {
+            if (beforeChild === before.container) {
                 return beforeChild.getPrevSibling() ?? undefined;
             }
             beforeChild = beforeChild.getNextSibling();
@@ -300,7 +300,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         let currentChild = this.container.getFirstChild();
 
         while (currentChild) {
-            if (isObjectEqual(currentChild, before.container)) {
+            if (currentChild === before.container) {
                 return position;
             }
             position++;

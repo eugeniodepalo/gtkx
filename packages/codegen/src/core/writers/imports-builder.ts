@@ -101,9 +101,10 @@ export class ImportsBuilder {
             });
         }
 
-        if (this.ctx.usesGetNativeObject) {
+        if (this.ctx.usesGetNativeObject || this.ctx.usesRegisterWrapper) {
             const namedImports: string[] = [];
             if (this.ctx.usesGetNativeObject) namedImports.push("getNativeObject");
+            if (this.ctx.usesRegisterWrapper) namedImports.push("registerWrapper");
             imports.push({
                 moduleSpecifier: FFI_IMPORT_NATIVE_OBJECT,
                 namedImports,

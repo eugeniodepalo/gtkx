@@ -1,4 +1,3 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, GtkLabel, GtkOverlay, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -23,8 +22,8 @@ describe("render - OverlayChild", () => {
 
             const child = overlayRef.current?.getChild();
             const parent = overlayChildRef.current?.getParent();
-            expect(child && mainRef.current && isObjectEqual(child, mainRef.current)).toBe(true);
-            expect(parent && overlayRef.current && isObjectEqual(parent, overlayRef.current)).toBe(true);
+            expect(child && mainRef.current && child === mainRef.current).toBe(true);
+            expect(parent && overlayRef.current && parent === overlayRef.current).toBe(true);
         });
 
         it("sets measure property", async () => {
@@ -147,8 +146,8 @@ describe("render - OverlayChild", () => {
 
             const firstParent = firstRef.current?.getParent();
             const secondParent = secondRef.current?.getParent();
-            expect(firstParent && overlayRef.current && isObjectEqual(firstParent, overlayRef.current)).toBe(true);
-            expect(secondParent && overlayRef.current && isObjectEqual(secondParent, overlayRef.current)).toBe(true);
+            expect(firstParent && overlayRef.current && firstParent === overlayRef.current).toBe(true);
+            expect(secondParent && overlayRef.current && secondParent === overlayRef.current).toBe(true);
         });
 
         it("applies props to all children in wrapper", async () => {

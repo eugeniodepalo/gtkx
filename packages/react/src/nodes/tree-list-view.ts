@@ -1,4 +1,3 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
@@ -97,7 +96,7 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
         );
         const currentModel = this.treeList.getSelectionModel();
 
-        if (!isObjectEqual(previousModel, currentModel)) {
+        if (previousModel !== currentModel) {
             this.container.setModel(currentModel);
         }
 

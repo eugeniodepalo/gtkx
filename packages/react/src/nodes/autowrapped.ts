@@ -1,4 +1,3 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { isRemovable, isSingleChild } from "./internal/predicates.js";
@@ -112,7 +111,7 @@ export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         while (currentChild) {
             const widgetToCompare = beforeIsWrapper ? currentChild : this.unwrapChild(currentChild);
 
-            if (widgetToCompare && isObjectEqual(widgetToCompare, before.container)) {
+            if (widgetToCompare && widgetToCompare === before.container) {
                 return position;
             }
 

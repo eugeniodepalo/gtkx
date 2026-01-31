@@ -87,6 +87,9 @@ export class GenerationContext {
     /** Whether the module uses getNativeObject helper */
     usesGetNativeObject = false;
 
+    /** Whether the module uses registerWrapper for constructor registration */
+    usesRegisterWrapper = false;
+
     /** Whether the module registers a native class */
     usesRegisterNativeClass = false;
 
@@ -151,6 +154,7 @@ export class GenerationContext {
         this.usesNativeObject = false;
         this.usesNativeHandle = false;
         this.usesGetNativeObject = false;
+        this.usesRegisterWrapper = false;
         this.usesRegisterNativeClass = false;
         this.usesGetClassByTypeName = false;
         this.usesGObjectNamespace = false;

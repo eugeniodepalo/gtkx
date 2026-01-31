@@ -1,4 +1,3 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { toCamelCase } from "@gtkx/gir";
 import type { SlotProps } from "../jsx.js";
@@ -12,7 +11,7 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChil
     private cachedSetter: ((child: Gtk.Widget | null) => void) | null = null;
 
     public override setParent(parent: Gtk.Widget | null): void {
-        if (!isObjectEqual(this.parent, parent)) {
+        if (this.parent !== parent) {
             this.cachedSetter = null;
         }
         super.setParent(parent);
@@ -106,7 +105,7 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChil
         let current: Gtk.Widget | null = widget;
 
         while (current) {
-            if (isObjectEqual(current, ancestor)) {
+            if (current === ancestor) {
                 return true;
             }
 

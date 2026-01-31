@@ -1,4 +1,3 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -132,7 +131,7 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
     private isWidgetAttachedTo(child: Gtk.Widget | null, parent: Gtk.Widget | null): boolean {
         if (!child || !parent) return false;
         const childParent = child.getParent();
-        return childParent !== null && isObjectEqual(childParent, parent);
+        return childParent !== null && childParent === parent;
     }
 
     private setupCssProvider(): void {

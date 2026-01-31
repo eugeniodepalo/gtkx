@@ -1,4 +1,3 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
@@ -140,7 +139,7 @@ export class MenuModel extends VirtualNode<MenuProps> {
             } else {
                 const link = parent.getItemLink(i, this.type);
 
-                if (link && isObjectEqual(link, this.menu)) {
+                if (link && link === this.menu) {
                     return i;
                 }
             }

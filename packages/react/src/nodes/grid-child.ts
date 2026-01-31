@@ -1,4 +1,3 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GridChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
@@ -20,7 +19,7 @@ export class GridChildNode extends PositionalChildNode<Props> {
         const rowSpan = this.props.rowSpan ?? 1;
 
         const existingChild = grid.getChildAt(column, row);
-        if (existingChild && !isObjectEqual(existingChild, child)) {
+        if (existingChild && existingChild !== child) {
             grid.remove(existingChild);
         }
 
@@ -62,7 +61,7 @@ export class GridChildNode extends PositionalChildNode<Props> {
         const rowSpan = this.props.rowSpan ?? 1;
 
         const existingChild = grid.getChildAt(column, row);
-        if (existingChild && !isObjectEqual(existingChild, child)) {
+        if (existingChild && existingChild !== child) {
             grid.remove(existingChild);
         }
 

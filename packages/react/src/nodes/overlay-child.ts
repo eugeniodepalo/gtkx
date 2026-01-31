@@ -1,4 +1,3 @@
-import { getNativeId, isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
@@ -11,7 +10,7 @@ type Props = Partial<OverlayChildProps>;
 
 export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
     private parent: Gtk.Overlay | null = null;
-    private children = new Map<number, Gtk.Widget>();
+    private children = new Set<Gtk.Widget>();
 
     public canBeChildOf(parent: Node): boolean {
         return parent instanceof WidgetNode;
@@ -28,12 +27,12 @@ export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
     public override unmount(): void {
         if (this.parent && this.children.size > 0) {
             const parent = this.parent;
-            const children = [...this.children.values()];
+            const children = [...this.children];
             this.children.clear();
 
             for (const child of children) {
                 const currentParent = child.getParent();
-                if (currentParent && isObjectEqual(currentParent, parent)) {
+                if (currentParent && currentParent === parent) {
                     parent.removeOverlay(child);
                 }
             }
@@ -49,7 +48,7 @@ export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
         }
 
         const widget = child.container;
-        this.children.set(getNativeId(widget.handle), widget);
+        this.children.add(widget);
 
         scheduleAfterCommit(() => {
             if (this.parent) {
@@ -64,7 +63,7 @@ export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
         }
 
         const widget = child.container;
-        this.children.set(getNativeId(widget.handle), widget);
+        this.children.add(widget);
 
         scheduleAfterCommit(() => {
             if (this.parent) {
@@ -80,12 +79,12 @@ export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
 
         const widget = child.container;
         const parent = this.parent;
-        this.children.delete(getNativeId(widget.handle));
+        this.children.delete(widget);
 
         scheduleAfterCommit(() => {
             if (parent) {
                 const currentParent = widget.getParent();
-                if (currentParent && isObjectEqual(currentParent, parent)) {
+                if (currentParent && currentParent === parent) {
                     parent.removeOverlay(widget);
                 }
             }
@@ -104,7 +103,7 @@ export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
 
         if (measureChanged || clipOverlayChanged) {
             const parent = this.parent;
-            for (const child of this.children.values()) {
+            for (const child of this.children) {
                 if (measureChanged) {
                     parent.setMeasureOverlay(child, newProps.measure ?? false);
                 }

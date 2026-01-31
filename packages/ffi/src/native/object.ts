@@ -1,8 +1,9 @@
-import { getNativeId, type NativeHandle } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 import { typeCheckInstanceIsA, typeFromName, typeNameFromInstance } from "../generated/gobject/functions.js";
 import { TypeInstance } from "../generated/gobject/type-instance.js";
 import { findNativeClass } from "../registry.js";
 import type { NativeClass, NativeObject } from "./base.js";
+import { lookupWrapper, registerWrapper } from "./registry.js";
 
 type GetNativeObjectResult<
     T extends NativeHandle | null | undefined,
@@ -15,6 +16,9 @@ type GetNativeObjectResult<
  * Resolves the runtime type of the object and creates an instance of the
  * appropriate wrapper class. If a target type is provided, uses that
  * class directly without runtime type resolution.
+ *
+ * Returns an existing wrapper if one already exists for the same native
+ * pointer, ensuring object identity (`===`) works correctly.
  *
  * @typeParam T - The handle type (null, undefined, or NativeHandle)
  * @typeParam TClass - Optional target wrapper class type
@@ -42,9 +46,28 @@ export function getNativeObject<
     }
 
     if (targetType && targetType.objectType !== "interface") {
+        const isIdentityType = targetType.objectType === "gobject" || targetType.objectType === "fundamental";
+
+        if (isIdentityType) {
+            const existing = lookupWrapper(handle);
+            if (existing) {
+                return existing as Result;
+            }
+        }
+
         const instance = Object.create(targetType.prototype) as NativeObject;
         instance.handle = handle;
+
+        if (isIdentityType) {
+            registerWrapper(instance);
+        }
+
         return instance as Result;
+    }
+
+    const existing = lookupWrapper(handle);
+    if (existing) {
+        return existing as Result;
     }
 
     const typeInstance = Object.create(TypeInstance.prototype) as TypeInstance;
@@ -56,10 +79,12 @@ export function getNativeObject<
         if (cls) {
             const instance = Object.create(cls.prototype) as NativeObject;
             instance.handle = handle;
+            registerWrapper(instance);
             return instance as Result;
         }
         const instance = Object.create(targetType.prototype) as NativeObject;
         instance.handle = handle;
+        registerWrapper(instance);
         return instance as Result;
     }
 
@@ -71,21 +96,9 @@ export function getNativeObject<
 
     const instance = Object.create(cls.prototype) as NativeObject;
     instance.handle = handle;
+    registerWrapper(instance);
     return instance as Result;
 }
-
-/**
- * Compares two NativeObject instances for equality based on their underlying handles.
- *
- * @param a - The first NativeObject or null/undefined.
- * @param b - The second NativeObject or null/undefined.
- * @returns True if both are null/undefined, or if both have the same underlying handle.
- */
-export const isObjectEqual = (a: NativeObject | null | undefined, b: NativeObject | null | undefined): boolean => {
-    if (a == null && b == null) return true;
-    if (a == null || b == null) return false;
-    return getNativeId(a.handle) === getNativeId(b.handle);
-};
 
 const gtypeCache = new Map<string, number>();
 
@@ -135,3 +148,4 @@ export function getNativeInterface<T extends NativeObject>(obj: NativeObject, if
 }
 
 export { isInstantiating, type NativeClass, NativeObject, setInstantiating } from "./base.js";
+export { registerWrapper } from "./registry.js";

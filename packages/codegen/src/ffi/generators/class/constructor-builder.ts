@@ -162,6 +162,7 @@ export class ConstructorBuilder {
 
     private addConstructorWithFlag(classDecl: ClassDeclaration, ctor: GirConstructor): void {
         this.ctx.usesInstantiating = true;
+        this.ctx.usesRegisterWrapper = true;
         const params = this.buildConstructorParameters(ctor);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
@@ -201,6 +202,7 @@ export class ConstructorBuilder {
                     writer.writeLine(`{ type: "gobject", ownership: "${ownership}" }`);
                 });
                 writer.writeLine(") as NativeHandle;");
+                writer.writeLine("registerWrapper(this);");
             });
             writer.writeLine("} else {");
             writer.indent(() => {
@@ -213,6 +215,7 @@ export class ConstructorBuilder {
 
     private addGObjectNewConstructor(classDecl: ClassDeclaration, glibGetType: string): void {
         this.ctx.usesInstantiating = true;
+        this.ctx.usesRegisterWrapper = true;
 
         classDecl.addConstructor({
             statements: this.writeGObjectNewConstructorBody(glibGetType),
@@ -254,6 +257,7 @@ export class ConstructorBuilder {
                     writer.writeLine('{ type: "gobject", ownership: "full" }');
                 });
                 writer.writeLine(") as NativeHandle;");
+                writer.writeLine("registerWrapper(this);");
             });
             writer.writeLine("} else {");
             writer.indent(() => {

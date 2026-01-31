@@ -1,4 +1,3 @@
-import { getNativeId } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { formatRole } from "./role-helpers.js";
 import { type Container, isApplication } from "./traversal.js";
@@ -6,6 +5,18 @@ import { getWidgetText } from "./widget-text.js";
 
 const DEFAULT_MAX_LENGTH = 7000;
 const INDENT = "  ";
+
+const debugIdMap = new WeakMap<Gtk.Widget, string>();
+let nextDebugId = 0;
+
+const getWidgetDebugId = (widget: Gtk.Widget): string => {
+    let id = debugIdMap.get(widget);
+    if (!id) {
+        id = String(nextDebugId++);
+        debugIdMap.set(widget, id);
+    }
+    return id;
+};
 
 /**
  * Options for {@link prettyWidget}.
@@ -67,7 +78,7 @@ const formatAttributes = (widget: Gtk.Widget, colors: HighlightColors, includeId
     const attrs: [string, string][] = [];
 
     if (includeIds) {
-        attrs.push(["id", String(getNativeId(widget.handle))]);
+        attrs.push(["id", getWidgetDebugId(widget)]);
     }
 
     const name = widget.getName();

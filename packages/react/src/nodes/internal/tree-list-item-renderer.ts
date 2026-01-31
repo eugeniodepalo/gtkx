@@ -14,11 +14,11 @@ type PendingBind = {
 };
 
 export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
-    private expanders = new Map<number, Gtk.TreeExpander>();
-    private setupComplete = new Set<number>();
-    private pendingBinds = new Map<number, PendingBind>();
+    private expanders = new Map<Gtk.ListItem, Gtk.TreeExpander>();
+    private setupComplete = new Set<Gtk.ListItem>();
+    private pendingBinds = new Map<Gtk.ListItem, PendingBind>();
     private renderFn: TreeRenderItemFn<unknown> | null = () => null;
-    private boundItems = new Map<string, { ptr: number; treeListRow: Gtk.TreeListRow }>();
+    private boundItems = new Map<string, { listItem: Gtk.ListItem; treeListRow: Gtk.TreeListRow }>();
 
     public setRenderFn(renderFn: TreeRenderItemFn<unknown> | null): void {
         this.renderFn = renderFn;
@@ -28,13 +28,13 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
         const binding = this.boundItems.get(id);
         if (!binding) return;
 
-        const fiberRoot = this.fiberRoots.get(binding.ptr);
+        const fiberRoot = this.fiberRoots.get(binding.listItem);
         if (!fiberRoot) return;
 
-        const expander = this.expanders.get(binding.ptr);
+        const expander = this.expanders.get(binding.listItem);
         if (!expander) return;
 
-        this.renderBind(binding.ptr, expander, binding.treeListRow, id, fiberRoot);
+        this.renderBind(binding.listItem, expander, binding.treeListRow, id, fiberRoot);
     }
 
     protected override getStoreTypeName(): string {
@@ -49,7 +49,7 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
         this.boundItems.clear();
     }
 
-    protected override renderItem(_ptr: number): ReactNode {
+    protected override renderItem(_listItem: Gtk.ListItem): ReactNode {
         return this.renderFn?.(null, null);
     }
 
@@ -61,22 +61,22 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
         return this.getStore().getItem(stringObject.getString());
     }
 
-    protected override onSetup(listItem: Gtk.ListItem, ptr: number): Gtk.Widget {
+    protected override onSetup(listItem: Gtk.ListItem): Gtk.Widget {
         const expander = new Gtk.TreeExpander();
         const box = this.createBox();
         expander.setChild(box);
         listItem.setChild(expander);
-        this.expanders.set(ptr, expander);
+        this.expanders.set(listItem, expander);
         return box;
     }
 
-    protected override onSetupComplete(ptr: number): void {
-        this.setupComplete.add(ptr);
-        this.processPendingBind(ptr);
+    protected override onSetupComplete(listItem: Gtk.ListItem): void {
+        this.setupComplete.add(listItem);
+        this.processPendingBind(listItem);
     }
 
-    protected override onBind(listItem: Gtk.ListItem, ptr: number, fiberRoot: Reconciler.FiberRoot): void {
-        const expander = this.expanders.get(ptr);
+    protected override onBind(listItem: Gtk.ListItem, fiberRoot: Reconciler.FiberRoot): void {
+        const expander = this.expanders.get(listItem);
         if (!expander) return;
 
         const treeListRow = listItem.getItem();
@@ -88,14 +88,14 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
         if (!(stringObject instanceof Gtk.StringObject)) return;
 
         const id = stringObject.getString();
-        this.boundItems.set(id, { ptr, treeListRow });
+        this.boundItems.set(id, { listItem, treeListRow });
 
-        if (!this.setupComplete.has(ptr)) {
-            this.pendingBinds.set(ptr, { treeListRow, expander, id });
+        if (!this.setupComplete.has(listItem)) {
+            this.pendingBinds.set(listItem, { treeListRow, expander, id });
             return;
         }
 
-        this.renderBind(ptr, expander, treeListRow, id, fiberRoot);
+        this.renderBind(listItem, expander, treeListRow, id, fiberRoot);
     }
 
     protected override onUnbind(listItem: Gtk.ListItem): void {
@@ -112,25 +112,25 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
         }
     }
 
-    protected override onTeardown(_listItem: Gtk.ListItem, ptr: number): void {
-        this.expanders.delete(ptr);
-        this.setupComplete.delete(ptr);
-        this.pendingBinds.delete(ptr);
+    protected override onTeardown(listItem: Gtk.ListItem): void {
+        this.expanders.delete(listItem);
+        this.setupComplete.delete(listItem);
+        this.pendingBinds.delete(listItem);
     }
 
-    private processPendingBind(ptr: number): void {
-        const pending = this.pendingBinds.get(ptr);
+    private processPendingBind(listItem: Gtk.ListItem): void {
+        const pending = this.pendingBinds.get(listItem);
         if (!pending) return;
 
-        this.pendingBinds.delete(ptr);
-        const fiberRoot = this.fiberRoots.get(ptr);
+        this.pendingBinds.delete(listItem);
+        const fiberRoot = this.fiberRoots.get(listItem);
         if (fiberRoot) {
-            this.renderBind(ptr, pending.expander, pending.treeListRow, pending.id, fiberRoot);
+            this.renderBind(listItem, pending.expander, pending.treeListRow, pending.id, fiberRoot);
         }
     }
 
     private renderBind(
-        ptr: number,
+        listItem: Gtk.ListItem,
         expander: Gtk.TreeExpander,
         treeListRow: Gtk.TreeListRow,
         id: string,
@@ -153,9 +153,9 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
         const element = this.renderFn?.(itemData?.value ?? null, treeListRow);
 
         reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
-            if (this.tornDown.has(ptr)) return;
+            if (this.tornDown.has(listItem)) return;
             if (this.estimatedItemHeight !== null) return;
-            const currentExpander = this.expanders.get(ptr);
+            const currentExpander = this.expanders.get(listItem);
             if (!currentExpander) return;
             const box = currentExpander.getChild();
             if (box) {
