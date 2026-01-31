@@ -25,6 +25,7 @@ import {
     isInsertable,
     isRemovable,
     isReorderable,
+    isSingleChild,
     type ReorderableWidget,
 } from "./internal/predicates.js";
 import type { SignalHandler } from "./internal/signal-store.js";
@@ -68,13 +69,29 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         super.appendChild(child);
 
         if (child instanceof WidgetNode) {
-            this.attachChildWidget(child);
+            this.appendWidgetChild(child);
         }
     }
 
     public override removeChild(child: Node): void {
         if (child instanceof WidgetNode) {
-            this.detachChildWidget(child);
+            if (this.isChildAutowrapped(child)) {
+                const wrapper = child.container.getParent();
+                if (wrapper && isSingleChild(wrapper)) {
+                    wrapper.setChild(null);
+                    if (isRemovable(this.container)) {
+                        this.container.remove(wrapper);
+                    }
+                }
+            } else {
+                const strategy = getAttachmentStrategy(this.container);
+                if (!strategy) {
+                    throw new Error(
+                        `Cannot remove '${child.typeName}' from '${this.container.constructor.name}': container does not support child removal`,
+                    );
+                }
+                performDetachment(child.container, strategy);
+            }
         }
 
         super.removeChild(child);
@@ -83,16 +100,21 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     public override insertBefore(child: Node, before: Node): void {
         super.insertBefore(child, before);
 
-        if (child instanceof WidgetNode && before instanceof WidgetNode) {
-            if (isReorderable(this.container)) {
-                this.insertBeforeReorderable(this.container, child, before);
-            } else if (isInsertable(this.container)) {
-                this.insertBeforeInsertable(this.container, child, before);
-            } else {
-                this.attachChildWidget(child);
-            }
-        } else if (child instanceof WidgetNode) {
-            this.attachChildWidget(child);
+        if (!(child instanceof WidgetNode)) return;
+
+        if (!(before instanceof WidgetNode)) {
+            this.appendWidgetChild(child);
+            return;
+        }
+
+        if (this.container instanceof Gtk.ListBox || this.container instanceof Gtk.FlowBox) {
+            this.insertBeforeAutowrapping(child, before);
+        } else if (isReorderable(this.container)) {
+            this.insertBeforeReorderable(this.container, child, before);
+        } else if (isInsertable(this.container)) {
+            this.insertBeforeInsertable(this.container, child, before);
+        } else {
+            this.reinsertAllChildren();
         }
     }
 
@@ -154,7 +176,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
     }
 
-    private attachChildWidget(child: WidgetNode): void {
+    private appendWidgetChild(child: WidgetNode): void {
         const strategy = getAttachmentStrategy(this.container);
         if (!strategy) {
             throw new Error(
@@ -162,19 +184,104 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             );
         }
         if (strategy.type === "appendable" || strategy.type === "addable") {
-            detachChildFromParent(child);
+            if (this.isChildAutowrapped(child)) {
+                this.detachAutowrappedChild(child);
+            } else {
+                detachChildFromParent(child);
+            }
         }
         performAttachment(child.container, strategy);
     }
 
-    private detachChildWidget(child: WidgetNode): void {
-        const strategy = getAttachmentStrategy(this.container);
-        if (!strategy) {
-            throw new Error(
-                `Cannot remove '${child.typeName}' from '${this.container.constructor.name}': container does not support child removal`,
-            );
+    private isChildAutowrapped(child: WidgetNode): boolean {
+        return (
+            (this.container instanceof Gtk.ListBox || this.container instanceof Gtk.FlowBox) &&
+            !(child.container instanceof Gtk.ListBoxRow || child.container instanceof Gtk.FlowBoxChild)
+        );
+    }
+
+    private detachAutowrappedChild(child: WidgetNode): void {
+        const wrapper = child.container.getParent();
+        if (wrapper && isSingleChild(wrapper)) {
+            wrapper.setChild(null);
+            const wrapperParent = wrapper.getParent();
+            if (wrapperParent && isRemovable(wrapperParent)) {
+                wrapperParent.remove(wrapper);
+            }
         }
-        performDetachment(child.container, strategy);
+    }
+
+    private insertBeforeAutowrapping(child: WidgetNode, before: WidgetNode): void {
+        const currentParent = child.container.getParent();
+
+        if (currentParent !== null) {
+            if (child.container instanceof Gtk.ListBoxRow || child.container instanceof Gtk.FlowBoxChild) {
+                if (isRemovable(currentParent)) {
+                    currentParent.remove(child.container);
+                }
+            } else {
+                this.detachAutowrappedChild(child);
+            }
+        } else if (!(child.container instanceof Gtk.ListBoxRow || child.container instanceof Gtk.FlowBoxChild)) {
+            this.detachAutowrappedChild(child);
+        }
+
+        const container: Gtk.Widget = this.container;
+        if (!(container instanceof Gtk.ListBox) && !(container instanceof Gtk.FlowBox)) return;
+
+        const position = this.findAutowrappedPosition(before);
+
+        if (position !== null) {
+            container.insert(child.container, position);
+        } else {
+            container.append(child.container);
+        }
+    }
+
+    private findAutowrappedPosition(before: WidgetNode): number | null {
+        let position = 0;
+        let currentChild = this.container.getFirstChild();
+        const beforeIsRow = before.container instanceof Gtk.ListBoxRow || before.container instanceof Gtk.FlowBoxChild;
+
+        while (currentChild) {
+            const widgetToCompare = beforeIsRow ? currentChild : this.unwrapGtkChild(currentChild);
+
+            if (widgetToCompare && widgetToCompare === before.container) {
+                return position;
+            }
+
+            position++;
+            currentChild = currentChild.getNextSibling();
+        }
+
+        return null;
+    }
+
+    private unwrapGtkChild(child: Gtk.Widget): Gtk.Widget | null {
+        if ("getChild" in child && typeof child.getChild === "function") {
+            return child.getChild() as Gtk.Widget | null;
+        }
+        return child;
+    }
+
+    private reinsertAllChildren(): void {
+        const widgetChildren: WidgetNode[] = [];
+        for (const child of this.children) {
+            if (child instanceof WidgetNode) {
+                widgetChildren.push(child);
+            }
+        }
+
+        const strategy = getAttachmentStrategy(this.container);
+        if (!strategy) return;
+
+        for (const child of widgetChildren) {
+            performDetachment(child.container, strategy);
+        }
+
+        for (const child of widgetChildren) {
+            performAttachment(child.container, strategy);
+        }
     }
 
     private updateSizeRequest(oldProps: P | null, newProps: P): void {

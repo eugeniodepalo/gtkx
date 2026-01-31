@@ -106,7 +106,7 @@ export class SelectionModelManager {
 
         if (this.selectionModel instanceof Gtk.SingleSelection) {
             const position = selected.getSize() > 0 ? selected.getNth(0) : Gtk.INVALID_LIST_POSITION;
-            (this.selectionModel as Gtk.SingleSelection).setSelected(position);
+            this.selectionModel.setSelected(position);
         } else {
             this.selectionModel.setSelection(selected, mask);
         }

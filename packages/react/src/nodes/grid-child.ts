@@ -78,7 +78,7 @@ export class GridChildNode extends VirtualNode<Props, WidgetNode<Gtk.Grid>, Widg
 
     private detachWidgetIfAttached(parent: Gtk.Grid, child: Gtk.Widget): void {
         const childParent = child.getParent();
-        if (childParent && childParent === (parent as Gtk.Widget)) {
+        if (childParent && childParent === parent) {
             parent.remove(child);
         }
     }

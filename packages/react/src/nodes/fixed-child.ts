@@ -74,7 +74,7 @@ export class FixedChildNode extends VirtualNode<Props, WidgetNode<Gtk.Fixed>, Wi
 
     private detachWidgetIfAttached(parent: Gtk.Fixed, child: Gtk.Widget): void {
         const childParent = child.getParent();
-        if (childParent && childParent === (parent as Gtk.Widget)) {
+        if (childParent && childParent === parent) {
             parent.remove(child);
         }
     }

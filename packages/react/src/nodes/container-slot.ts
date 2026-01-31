@@ -59,7 +59,7 @@ export class ContainerSlotNode extends VirtualNode<ContainerSlotProps, WidgetNod
     }
 
     private attach(parent: Gtk.Widget, child: Gtk.Widget): void {
-        const methodName = (this.props as ContainerSlotProps).id;
+        const methodName = this.props.id;
         const method = parent[methodName as keyof Gtk.Widget];
 
         if (typeof method !== "function") {

@@ -8,7 +8,6 @@ import { AdjustableNode } from "./nodes/adjustable.js";
 import { AlertDialogResponseNode } from "./nodes/alert-dialog-response.js";
 import { AnimationNode } from "./nodes/animation.js";
 import { ApplicationNode } from "./nodes/application.js";
-import { AutowrappedNode } from "./nodes/autowrapped.js";
 import { CalendarNode } from "./nodes/calendar.js";
 import { ColorDialogButtonNode } from "./nodes/color-dialog-button.js";
 import { ColumnViewNode } from "./nodes/column-view.js";
@@ -115,7 +114,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     [Gtk.ColumnView, ColumnViewNode],
     [[Gtk.ListView, Gtk.GridView], ListViewNode],
     [[Gtk.DropDown, Adw.ComboRow], SimpleListViewNode],
-    [[Gtk.ListBox, Gtk.FlowBox], AutowrappedNode],
     [[Gtk.PopoverMenu, Gtk.PopoverMenuBar, Gtk.MenuButton], PopoverMenuNode],
     [[Gtk.Scrollbar, Gtk.SpinButton, Vte.Terminal], AdjustableNode],
     [Gtk.Widget, WidgetNode],

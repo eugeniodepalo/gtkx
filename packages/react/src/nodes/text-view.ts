@@ -47,7 +47,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
     public override appendChild(child: Node): void {
         const controller = this.ensureBufferController();
         if (controller.isTextContentChild(child)) {
-            controller.appendChild(child as TextContentChild);
+            controller.appendChild(child);
             return;
         }
         super.appendChild(child);
@@ -56,7 +56,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
     public override insertBefore(child: Node, before: Node): void {
         const controller = this.ensureBufferController();
         if (controller.isTextContentChild(child)) {
-            controller.insertBefore(child as TextContentChild, before as TextContentChild);
+            controller.insertBefore(child, before as TextContentChild);
             return;
         }
         super.insertBefore(child, before);
@@ -65,7 +65,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
     public override removeChild(child: Node): void {
         const controller = this.ensureBufferController();
         if (controller.isTextContentChild(child)) {
-            controller.removeChild(child as TextContentChild);
+            controller.removeChild(child);
             return;
         }
         super.removeChild(child);

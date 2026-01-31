@@ -7,7 +7,6 @@ const socketPath = `/tmp/.X11-unix/X${display}`;
 
 const xvfb = spawn("Xvfb", [`:${display}`, "-screen", "0", "1024x768x24"], {
     stdio: "ignore",
-    detached: true,
 });
 
 const xvfbPid = xvfb.pid;

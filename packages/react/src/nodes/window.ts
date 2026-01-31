@@ -36,7 +36,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         containerClass: typeof Gtk.Window,
         rootContainer: Container | undefined,
     ): Gtk.Window {
-        const WindowClass = containerClass as typeof Gtk.Window;
+        const WindowClass = containerClass;
 
         if (
             matchesAnyClass([Gtk.ApplicationWindow], WindowClass) ||
