@@ -1,10 +1,7 @@
-import { hasChanged } from "./internal/utils.js";
+import type { TextSegmentProps } from "../jsx.js";
+import { hasChanged } from "./internal/props.js";
 import type { TextContentParent } from "./text-content.js";
 import { VirtualNode } from "./virtual.js";
-
-export type TextSegmentProps = {
-    text: string;
-};
 
 export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
     private contentParent: TextContentParent | null = null;

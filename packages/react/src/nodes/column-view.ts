@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkColumnViewProps } from "../jsx.js";
 import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
-import { filterProps } from "./internal/utils.js";
+import { filterProps } from "./internal/props.js";
 import { ListItemNode } from "./list-item.js";
 import { ListModel, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
@@ -10,7 +10,6 @@ import { WidgetNode } from "./widget.js";
 const PROP_NAMES = ["sortColumn", "sortOrder", "onSortChanged", "estimatedRowHeight"] as const;
 
 type ColumnViewProps = Pick<GtkColumnViewProps, (typeof PROP_NAMES)[number]> & ListProps;
-
 type ColumnViewChild = ListItemNode | ColumnViewColumnNode;
 
 export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, ColumnViewChild> {

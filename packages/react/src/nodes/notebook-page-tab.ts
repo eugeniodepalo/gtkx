@@ -2,9 +2,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { SlotProps } from "../jsx.js";
 import { SlotNode } from "./slot.js";
 
-type Props = SlotProps;
-
-export class NotebookPageTabNode extends SlotNode<Props> {
+export class NotebookPageTabNode extends SlotNode<SlotProps> {
     private notebook: Gtk.Notebook | null = null;
     private page: Gtk.Widget | null = null;
 

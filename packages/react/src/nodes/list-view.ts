@@ -2,7 +2,7 @@ import type { GtkListViewProps } from "../jsx.js";
 import type { ListViewWidget } from "../registry.js";
 import type { Container } from "../types.js";
 import { ListItemRenderer } from "./internal/list-item-renderer.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/props.js";
 import type { ListItemNode } from "./list-item.js";
 import { ListModel, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";

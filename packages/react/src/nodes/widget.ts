@@ -12,6 +12,7 @@ import {
 } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
+import { resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import {
@@ -25,21 +26,13 @@ import {
     isSingleChild,
     type ReorderableWidget,
 } from "./internal/predicates.js";
+import { filterProps } from "./internal/props.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import {
-    attachChild,
-    detachChild,
-    filterProps,
-    propNameToSignalName,
-    resolvePropMeta,
-    resolveSignal,
-} from "./internal/utils.js";
+import { attachChild, detachChild } from "./internal/widget.js";
 
 const EXCLUDED_PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
 
 function findProperty(obj: NativeObject, key: string): GObject.ParamSpec | null {
-    if (!obj.handle) return null;
-
     const propertyName = key.replace(/([A-Z])/g, "-$1").toLowerCase();
     const typeInstance = getNativeObject(obj.handle, TypeInstance);
     const typeName = typeNameFromInstance(typeInstance);
@@ -147,9 +140,9 @@ export class WidgetNode<
 
                 if (oldValue === newValue) continue;
 
-                const signalName = propNameToSignalName(name);
+                const signalName = resolveSignal(this.container, name);
 
-                if (resolveSignal(this.container, signalName)) {
+                if (signalName) {
                     pendingSignals.push({ name, newValue });
                 } else if (newValue !== undefined) {
                     pendingProperties.push({ name, oldValue, newValue });
@@ -162,7 +155,8 @@ export class WidgetNode<
             }
 
             for (const { name, newValue } of pendingSignals) {
-                const signalName = propNameToSignalName(name);
+                const signalName = resolveSignal(this.container, name);
+                if (!signalName) continue;
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
                 this.signalStore.set(this, this.container, signalName, handler);
             }

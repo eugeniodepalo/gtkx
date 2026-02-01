@@ -6,7 +6,7 @@ import type { TextContentChild, TextContentParent } from "../text-content.js";
 import { TextPaintableNode } from "../text-paintable.js";
 import { TextSegmentNode } from "../text-segment.js";
 import { TextTagNode } from "../text-tag.js";
-import { hasChanged } from "./utils.js";
+import { hasChanged } from "./props.js";
 
 type BufferCallbackProps = Pick<
     GtkTextViewProps,

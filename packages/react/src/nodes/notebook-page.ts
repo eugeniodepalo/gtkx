@@ -1,16 +1,14 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { NotebookPageProps } from "../jsx.js";
 import { Node } from "../node.js";
-import { hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/props.js";
 import { NotebookPageTabNode } from "./notebook-page-tab.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-type Props = NotebookPageProps;
-
 type NotebookPageChild = WidgetNode | NotebookPageTabNode;
 
-export class NotebookPageNode extends SlotNode<Props, NotebookPageChild> {
+export class NotebookPageNode extends SlotNode<NotebookPageProps, NotebookPageChild> {
     position: number | null = null;
     private tabNode: NotebookPageTabNode | null = null;
     private contentChild: WidgetNode | null = null;
@@ -104,7 +102,7 @@ export class NotebookPageNode extends SlotNode<Props, NotebookPageChild> {
         this.tabNode = null;
     }
 
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+    public override commitUpdate(oldProps: NotebookPageProps | null, newProps: NotebookPageProps): void {
         super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
@@ -117,7 +115,7 @@ export class NotebookPageNode extends SlotNode<Props, NotebookPageChild> {
         return this.contentChild.container;
     }
 
-    private applyOwnProps(oldProps: Props | null, newProps: Props): void {
+    private applyOwnProps(oldProps: NotebookPageProps | null, newProps: NotebookPageProps): void {
         const childWidget = this.contentChild?.container ?? null;
 
         if (hasChanged(oldProps, newProps, "label") && childWidget && this.parent && !this.tabNode?.children[0]) {

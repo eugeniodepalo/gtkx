@@ -1,6 +1,6 @@
 import type { AdwViewStackProps, GtkStackProps } from "../jsx.js";
 import type { StackWidget } from "../registry.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["page", "onPageChanged"] as const;

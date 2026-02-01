@@ -1,13 +1,11 @@
 import type { ListItemProps } from "../jsx.js";
 import type { ListStore } from "./internal/list-store.js";
-import { hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
-
-type Props = ListItemProps;
 
 export class ListItemNode<
     T extends { updateItem(id: string, value: unknown): void } = ListStore,
-    P extends Props = Props,
+    P extends ListItemProps = ListItemProps,
 > extends VirtualNode<P> {
     private store: T | null = null;
 

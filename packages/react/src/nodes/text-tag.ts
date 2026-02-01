@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { TextTagProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/props.js";
 import { TextAnchorNode } from "./text-anchor.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
 import { TextSegmentNode } from "./text-segment.js";

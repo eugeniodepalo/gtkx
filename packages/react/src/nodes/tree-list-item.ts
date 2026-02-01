@@ -3,16 +3,14 @@ import type { Node } from "../node.js";
 import type { TreeItemData, TreeStore } from "./internal/tree-store.js";
 import { VirtualNode } from "./virtual.js";
 
-type Props = TreeListItemProps;
-
-export const createTreeItemData = (props: Props): TreeItemData => ({
+export const createTreeItemData = (props: TreeListItemProps): TreeItemData => ({
     value: props.value,
     indentForDepth: props.indentForDepth,
     indentForIcon: props.indentForIcon,
     hideExpander: props.hideExpander,
 });
 
-export class TreeListItemNode extends VirtualNode<Props, Node, TreeListItemNode> {
+export class TreeListItemNode extends VirtualNode<TreeListItemProps, Node, TreeListItemNode> {
     private store: TreeStore | null = null;
     private parentItemId: string | null = null;
     private childNodes: TreeListItemNode[] = [];
@@ -88,7 +86,7 @@ export class TreeListItemNode extends VirtualNode<Props, Node, TreeListItemNode>
         super.removeChild(child);
     }
 
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+    public override commitUpdate(oldProps: TreeListItemProps | null, newProps: TreeListItemProps): void {
         super.commitUpdate(oldProps, newProps);
 
         if (!this.store) {

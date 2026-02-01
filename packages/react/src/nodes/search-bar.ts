@@ -1,8 +1,8 @@
 import type * as GObject from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkSearchBarProps } from "../jsx.js";
+import { filterProps, hasChanged } from "./internal/props.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["onSearchModeChanged"] as const;

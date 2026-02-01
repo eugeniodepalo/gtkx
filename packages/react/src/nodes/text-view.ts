@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkTextViewProps } from "../jsx.js";
+import { filterProps } from "./internal/props.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
-import { filterProps } from "./internal/utils.js";
 import type { SlotNode } from "./slot.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
 import type { TextSegmentNode } from "./text-segment.js";
@@ -17,7 +17,6 @@ const OWN_PROPS = [
 ] as const;
 
 type TextViewProps = Pick<GtkTextViewProps, (typeof OWN_PROPS)[number]>;
-
 type TextViewChild = TextContentChild | SlotNode | WidgetNode;
 
 export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextViewChild> implements TextContentParent {

@@ -1,13 +1,12 @@
 import type * as cairo from "@gtkx/ffi/cairo";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkDrawingAreaProps } from "../jsx.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
-
-type DrawFunc = (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
 
 const OWN_PROPS = ["onDraw"] as const;
 
+type DrawFunc = (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
 type DrawingAreaProps = Pick<GtkDrawingAreaProps, (typeof OWN_PROPS)[number]>;
 
 export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {

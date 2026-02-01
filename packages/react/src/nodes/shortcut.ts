@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ShortcutProps } from "../jsx.js";
-import { hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 
 export class ShortcutNode extends VirtualNode<ShortcutProps> {

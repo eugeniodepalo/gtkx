@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkRangeProps, GtkScaleButtonProps, GtkSpinButtonProps } from "../jsx.js";
 import type { AdjustableWidget } from "../registry.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["value", "lower", "upper", "stepIncrement", "pageIncrement", "pageSize", "onValueChanged"] as const;

@@ -1,13 +1,11 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GridChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-type Props = GridChildProps;
-
-export class GridChildNode extends VirtualNode<Props, WidgetNode<Gtk.Grid>, WidgetNode> {
+export class GridChildNode extends VirtualNode<GridChildProps, WidgetNode<Gtk.Grid>, WidgetNode> {
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
     }
@@ -48,7 +46,7 @@ export class GridChildNode extends VirtualNode<Props, WidgetNode<Gtk.Grid>, Widg
         super.detachDeletedInstance();
     }
 
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+    public override commitUpdate(oldProps: GridChildProps | null, newProps: GridChildProps): void {
         super.commitUpdate(oldProps, newProps);
 
         const positionChanged =

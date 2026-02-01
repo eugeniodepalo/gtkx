@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkCalendarProps } from "../jsx.js";
-import { filterProps, primitiveArrayEqual } from "./internal/utils.js";
+import { filterProps, primitiveArrayEqual } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["markedDays"] as const;

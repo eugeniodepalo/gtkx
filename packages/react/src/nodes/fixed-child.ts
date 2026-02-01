@@ -1,13 +1,11 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { FixedChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-type Props = FixedChildProps;
-
-export class FixedChildNode extends VirtualNode<Props, WidgetNode<Gtk.Fixed>, WidgetNode> {
+export class FixedChildNode extends VirtualNode<FixedChildProps, WidgetNode<Gtk.Fixed>, WidgetNode> {
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
     }
@@ -50,7 +48,7 @@ export class FixedChildNode extends VirtualNode<Props, WidgetNode<Gtk.Fixed>, Wi
         super.detachDeletedInstance();
     }
 
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+    public override commitUpdate(oldProps: FixedChildProps | null, newProps: FixedChildProps): void {
         super.commitUpdate(oldProps, newProps);
 
         if (!this.parent || !this.children[0]) {

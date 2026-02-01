@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkLevelBarProps } from "../jsx.js";
-import { filterProps, shallowArrayEqual } from "./internal/utils.js";
+import { filterProps, shallowArrayEqual } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["offsets"] as const;

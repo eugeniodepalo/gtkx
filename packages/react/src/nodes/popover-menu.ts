@@ -7,8 +7,6 @@ import { MenuModel } from "./models/menu.js";
 import type { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-const ACTION_PREFIX = "menu";
-
 type PopoverMenuChild = MenuNode | SlotNode | WidgetNode;
 
 export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, PopoverMenuChild> {
@@ -19,7 +17,7 @@ export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, Popove
 
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
         const actionGroup = new Gio.SimpleActionGroup();
-        const prefix = application ? "app" : ACTION_PREFIX;
+        const prefix = application ? "app" : "menu";
 
         this.container.insertActionGroup(prefix, actionGroup);
         this.menu = new MenuModel("root", {}, rootContainer, actionGroup, application);

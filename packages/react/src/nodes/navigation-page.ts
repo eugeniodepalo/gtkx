@@ -1,12 +1,10 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { NavigationPageProps } from "../jsx.js";
-import { hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/props.js";
 import { SlotNode } from "./slot.js";
 import type { WidgetNode } from "./widget.js";
 
-type Props = NavigationPageProps;
-
-export class NavigationPageNode extends SlotNode<Props> {
+export class NavigationPageNode extends SlotNode<NavigationPageProps> {
     private wrappedPage: Adw.NavigationPage | null = null;
 
     public override setParent(parent: WidgetNode | null): void {
@@ -31,12 +29,12 @@ export class NavigationPageNode extends SlotNode<Props> {
         this.wrappedPage = null;
     }
 
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+    public override commitUpdate(oldProps: NavigationPageProps | null, newProps: NavigationPageProps): void {
         super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 
-    private applyOwnProps(oldProps: Props | null, newProps: Props): void {
+    private applyOwnProps(oldProps: NavigationPageProps | null, newProps: NavigationPageProps): void {
         if (!this.wrappedPage) {
             return;
         }

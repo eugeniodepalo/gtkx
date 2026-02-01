@@ -1,13 +1,11 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { StackPageProps } from "../jsx.js";
-import { hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/props.js";
 import { SlotNode } from "./slot.js";
 import type { WidgetNode } from "./widget.js";
 
-type Props = StackPageProps;
-
-export class StackPageNode extends SlotNode<Props> {
+export class StackPageNode extends SlotNode<StackPageProps> {
     private page: Gtk.StackPage | Adw.ViewStackPage | null = null;
 
     public override setParent(parent: WidgetNode | null): void {
@@ -32,12 +30,12 @@ export class StackPageNode extends SlotNode<Props> {
         this.page = null;
     }
 
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+    public override commitUpdate(oldProps: StackPageProps | null, newProps: StackPageProps): void {
         super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 
-    private applyOwnProps(oldProps: Props | null, newProps: Props): void {
+    private applyOwnProps(oldProps: StackPageProps | null, newProps: StackPageProps): void {
         if (!this.page) {
             return;
         }

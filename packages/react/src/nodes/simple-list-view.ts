@@ -1,8 +1,8 @@
 import type { GtkDropDownProps } from "../jsx.js";
 import type { SimpleListViewWidget } from "../registry.js";
 import type { Container } from "../types.js";
+import { filterProps } from "./internal/props.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";
-import { filterProps } from "./internal/utils.js";
 import type { SimpleListItemNode } from "./simple-list-item.js";
 import { WidgetNode } from "./widget.js";
 

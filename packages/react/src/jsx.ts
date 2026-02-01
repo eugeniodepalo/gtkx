@@ -299,6 +299,15 @@ export type TextTagProps = {
     children?: ReactNode;
 };
 
+/** Props for the TextSegment virtual element.
+ *
+ * Represents a segment of text within a TextBuffer.
+ */
+export type TextSegmentProps = {
+    /** The text content of this segment */
+    text: string;
+};
+
 /**
  * Configuration for a mark on a GtkScale widget.
  *
@@ -1239,7 +1248,8 @@ declare module "./generated/jsx.js" {
 
     interface GtkListViewProps {
         /** Function to render each list item */
-        renderItem: (item: unknown) => ReactNode;
+        // biome-ignore lint/suspicious/noExplicitAny: contravariant parameter requires any for typed callbacks
+        renderItem: (item: any) => ReactNode;
         /** Estimated item height in pixels for virtualization */
         estimatedItemHeight?: number;
         /** Array of selected item IDs */
@@ -1252,7 +1262,8 @@ declare module "./generated/jsx.js" {
 
     interface GtkGridViewProps {
         /** Function to render each grid item */
-        renderItem: (item: unknown) => ReactNode;
+        // biome-ignore lint/suspicious/noExplicitAny: contravariant parameter requires any for typed callbacks
+        renderItem: (item: any) => ReactNode;
         /** Estimated item height in pixels for virtualization */
         estimatedItemHeight?: number;
         /** Array of selected item IDs */

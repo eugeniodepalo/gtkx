@@ -4,9 +4,7 @@ import type { Node } from "../node.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-type Props = OverlayChildProps;
-
-export class OverlayChildNode extends VirtualNode<Props, WidgetNode<Gtk.Overlay>, WidgetNode> {
+export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<Gtk.Overlay>, WidgetNode> {
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
     }
@@ -59,7 +57,7 @@ export class OverlayChildNode extends VirtualNode<Props, WidgetNode<Gtk.Overlay>
         super.detachDeletedInstance();
     }
 
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+    public override commitUpdate(oldProps: OverlayChildProps | null, newProps: OverlayChildProps): void {
         super.commitUpdate(oldProps, newProps);
 
         if (!this.parent) {

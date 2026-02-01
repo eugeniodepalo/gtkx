@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkScrolledWindowProps } from "../jsx.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
 const PROPS = ["hscrollbarPolicy", "vscrollbarPolicy"] as const;

@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { AnimatableProperties, AnimationProps, SpringTransition, TimedTransition } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
-import { attachChild, detachChild } from "./internal/utils.js";
+import { attachChild, detachChild, isAttachedTo } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -108,7 +108,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
             oldChild.removeCssClass(this.className);
         }
 
-        if (oldChild && parentWidget && this.isWidgetAttachedTo(oldChild, parentWidget)) {
+        if (oldChild && parentWidget && isAttachedTo(oldChild, parentWidget)) {
             detachChild(oldChild, parentWidget);
         }
 
@@ -142,15 +142,9 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         const parentWidget = this.parent?.container ?? this.detachedParentWidget;
         const childWidget = this.children[0]?.container ?? null;
 
-        if (childWidget && parentWidget && this.isWidgetAttachedTo(childWidget, parentWidget)) {
+        if (childWidget && parentWidget && isAttachedTo(childWidget, parentWidget)) {
             detachChild(childWidget, parentWidget);
         }
-    }
-
-    private isWidgetAttachedTo(child: Gtk.Widget | null, parent: Gtk.Widget | null): boolean {
-        if (!child || !parent) return false;
-        const childParent = child.getParent();
-        return childParent !== null && childParent === parent;
     }
 
     private setupCssProvider(): void {

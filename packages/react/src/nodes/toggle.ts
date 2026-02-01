@@ -1,6 +1,6 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { ToggleProps } from "../jsx.js";
-import { hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 import type { WidgetNode } from "./widget.js";
 

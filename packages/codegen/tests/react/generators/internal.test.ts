@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { CodegenProject } from "../../../src/core/project.js";
 import { InternalGenerator } from "../../../src/react/generators/internal.js";
 import { MetadataReader } from "../../../src/react/metadata-reader.js";
-import { createButtonMeta, createCodegenWidgetMeta, createWidgetMeta } from "../../fixtures/metadata-fixtures.js";
+import {
+    createButtonMeta,
+    createCodegenWidgetMeta,
+    createSignalAnalysis,
+    createWidgetMeta,
+} from "../../fixtures/metadata-fixtures.js";
 
 function createTestSetup(metas = [createWidgetMeta(), createButtonMeta()]) {
     const reader = new MetadataReader(metas);
@@ -155,8 +160,9 @@ describe("InternalGenerator", () => {
                 className: "Label",
                 jsxName: "GtkLabel",
                 signalNames: [],
+                signals: [],
             });
-            const widgetMeta = createWidgetMeta({ signalNames: ["destroy"] });
+            const widgetMeta = createWidgetMeta();
             const { project, generator } = createTestSetup([widgetMeta, labelMeta]);
 
             generator.generate();
@@ -169,14 +175,14 @@ describe("InternalGenerator", () => {
             expect(signalsSection).not.toContain("GtkLabel");
         });
 
-        it("has Record<string, Set<string>> type annotation", () => {
+        it("has Record<string, Record<string, string>> type annotation", () => {
             const { project, generator } = createTestSetup();
 
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/internal.ts");
             const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("Record<string, Set<string>>");
+            expect(code).toContain("Record<string, Record<string, string>>");
         });
     });
 
@@ -204,13 +210,10 @@ describe("InternalGenerator", () => {
                 className: "Label",
                 jsxName: "GtkLabel",
                 signalNames: ["activate"],
+                signals: [createSignalAnalysis({ name: "activate", camelName: "activate", handlerName: "onActivate" })],
             });
-            const buttonMeta = createButtonMeta({
-                signalNames: ["clicked"],
-            });
-            const widgetMeta = createWidgetMeta({
-                signalNames: ["destroy"],
-            });
+            const buttonMeta = createButtonMeta();
+            const widgetMeta = createWidgetMeta();
             const { project, generator } = createTestSetup([labelMeta, buttonMeta, widgetMeta]);
 
             generator.generate();

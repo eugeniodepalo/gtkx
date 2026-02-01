@@ -1,9 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
+import { resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
 import type { Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { propNameToSignalName, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const G_TYPE_INVALID = 0;
@@ -58,10 +58,6 @@ export class EventControllerNode<
     }
 
     private applyProps(oldProps: Props | null, newProps: Props): void {
-        if (!this.container) {
-            throw new Error(`EventControllerNode.applyProps: container is undefined for ${this.typeName}`);
-        }
-
         const propNames = new Set([...Object.keys(oldProps ?? {}), ...Object.keys(newProps ?? {})]);
 
         for (const name of propNames) {
@@ -72,9 +68,9 @@ export class EventControllerNode<
 
             if (oldValue === newValue) continue;
 
-            const signalName = propNameToSignalName(name);
+            const signalName = resolveSignal(this.container, name);
 
-            if (resolveSignal(this.container, signalName)) {
+            if (signalName) {
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
                 this.signalStore.set(this, this.container, signalName, handler, { blockable: false });
             } else if (newValue !== undefined) {

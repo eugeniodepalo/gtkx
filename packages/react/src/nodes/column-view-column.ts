@@ -5,13 +5,11 @@ import { ListItemRenderer } from "./internal/list-item-renderer.js";
 import type { ListStore } from "./internal/list-store.js";
 import { VirtualNode } from "./virtual.js";
 
-type Props = ColumnViewColumnProps;
-
-export class ColumnViewColumnNode extends VirtualNode<Props> {
+export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps> {
     column: Gtk.ColumnViewColumn;
     private itemRenderer: ListItemRenderer;
 
-    constructor(typeName: string, props: Props, container: undefined, rootContainer: Container) {
+    constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.itemRenderer = new ListItemRenderer(this.signalStore);
         this.column = new Gtk.ColumnViewColumn();
@@ -31,7 +29,7 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
         this.itemRenderer.setEstimatedItemHeight(height);
     }
 
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+    public override commitUpdate(oldProps: ColumnViewColumnProps | null, newProps: ColumnViewColumnProps): void {
         if (!oldProps || oldProps.renderCell !== newProps.renderCell) {
             this.itemRenderer.setRenderFn(newProps.renderCell);
         }

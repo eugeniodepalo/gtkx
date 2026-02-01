@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkScaleProps, ScaleMark } from "../jsx.js";
 import type { AdjustableProps } from "./adjustable.js";
 import { AdjustableNode } from "./adjustable.js";
-import { shallowArrayEqual } from "./internal/utils.js";
+import { shallowArrayEqual } from "./internal/props.js";
 
 type ScaleProps = AdjustableProps & Pick<GtkScaleProps, "marks">;
 

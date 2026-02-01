@@ -1,9 +1,9 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { toCamelCase } from "@gtkx/gir";
 import type { SlotProps } from "../jsx.js";
+import { resolvePropMeta } from "../metadata.js";
 import type { Node } from "../node.js";
 import type { ContainerClass, Props } from "../types.js";
-import { resolvePropMeta } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 

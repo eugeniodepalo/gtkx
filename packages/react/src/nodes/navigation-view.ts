@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type { AdwNavigationViewProps } from "../jsx.js";
-import { filterProps, hasChanged, primitiveArrayEqual } from "./internal/utils.js";
+import { filterProps, hasChanged, primitiveArrayEqual } from "./internal/props.js";
 import type { NavigationPageNode } from "./navigation-page.js";
 import type { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
@@ -8,7 +8,6 @@ import { WidgetNode } from "./widget.js";
 const OWN_PROPS = ["history", "onHistoryChanged"] as const;
 
 type NavigationViewProps = Pick<AdwNavigationViewProps, (typeof OWN_PROPS)[number]>;
-
 type NavigationViewChild = NavigationPageNode | SlotNode | WidgetNode;
 
 export class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps, NavigationViewChild> {
