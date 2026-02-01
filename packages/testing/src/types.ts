@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, ReactNode, Ref } from "react";
+import type { Container } from "./traversal.js";
 
 /**
  * Custom function for matching text content.
@@ -77,6 +78,15 @@ export type WaitForOptions = {
 };
 
 /**
+ * A wrapper component that exposes its root GTK widget via `ref`.
+ * Accept `ref` as a prop and pass it through to the root intrinsic element.
+ */
+export type WrapperComponent = ComponentType<{
+    children: ReactNode;
+    ref?: Ref<Gtk.Widget>;
+}>;
+
+/**
  * Options for {@link render}.
  */
 export type RenderOptions = {
@@ -84,9 +94,15 @@ export type RenderOptions = {
      * Wrapper component or boolean.
      * - `true` (default): Wrap in GtkApplicationWindow
      * - `false`: No wrapper
-     * - Component: Custom wrapper component
+     * - Component: Custom wrapper that passes `ref` to its root element
      */
-    wrapper?: boolean | ComponentType<{ children: ReactNode }>;
+    wrapper?: boolean | WrapperComponent;
+    /**
+     * The element queries are bound to.
+     * Defaults to the GTK Application (searches all toplevel windows).
+     * Provide a specific widget or application to scope queries.
+     */
+    baseElement?: Container;
 };
 
 /**
@@ -136,8 +152,10 @@ export type BoundQueries = {
  * Provides query methods and utilities for testing rendered components.
  */
 export type RenderResult = BoundQueries & {
-    /** The GTK Application container */
-    container: Gtk.Application;
+    /** The direct container widget wrapping the rendered content */
+    container: Gtk.Widget;
+    /** The element queries are bound to (defaults to the GTK Application) */
+    baseElement: Container;
     /** Unmount the rendered component */
     unmount: () => Promise<void>;
     /** Re-render with a new element */
@@ -170,11 +188,11 @@ export type RenderHookOptions<Props> = {
     initialProps?: Props;
     /**
      * Wrapper component or boolean.
-     * - `false` (default): No wrapper
-     * - `true`: Wrap in GtkApplicationWindow
-     * - Component: Custom wrapper component
+     * - `true` (default): Wrap in GtkApplicationWindow
+     * - `false`: No wrapper
+     * - Component: Custom wrapper that passes `ref` to its root element
      */
-    wrapper?: boolean | ComponentType<{ children: ReactNode }>;
+    wrapper?: boolean | WrapperComponent;
 };
 
 /**

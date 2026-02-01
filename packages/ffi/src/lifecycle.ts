@@ -6,7 +6,7 @@ import type { Application } from "./generated/gtk/application.js";
 import { finalize as finalizeGtkSource, init as initGtkSource } from "./generated/gtksource/functions.js";
 import { getNativeObject } from "./registry.js";
 
-let application: Application | null = null;
+let applicationHandle: NativeHandle | null = null;
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 
 /**
@@ -61,7 +61,7 @@ export const setInstantiating = (value: boolean): void => {
  * `true` if {@link start} has been called and {@link stop} has not.
  */
 export const isStarted = (): boolean => {
-    return Boolean(application);
+    return Boolean(applicationHandle);
 };
 
 const keepAlive = (): void => {
@@ -88,12 +88,13 @@ const keepAlive = (): void => {
  * @see {@link stop} for shutting down the application
  */
 export const start = (appId: string, flags?: ApplicationFlags): Application => {
-    if (application) {
-        return application;
+    if (applicationHandle) {
+        return getNativeObject(applicationHandle) as Application;
     }
 
     const handle = nativeStart(appId, flags);
-    application = getNativeObject(handle as NativeHandle) as Application;
+    applicationHandle = handle as NativeHandle;
+    const application = getNativeObject(handle as NativeHandle) as Application;
 
     try {
         initAdwaita();
@@ -115,7 +116,7 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
  * @see {@link events} for lifecycle event handling
  */
 export const stop = (): void => {
-    if (!application) {
+    if (!applicationHandle) {
         return;
     }
 
@@ -129,6 +130,6 @@ export const stop = (): void => {
     } catch {}
 
     events.emit("stop");
-    application = null;
+    applicationHandle = null;
     nativeStop();
 };

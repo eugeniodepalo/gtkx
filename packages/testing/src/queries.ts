@@ -60,7 +60,9 @@ const matchText = (
 
     const normalizedExpected = normalizeText(expected, options);
     const exact = options?.exact ?? true;
-    return exact ? normalizedActual === normalizedExpected : normalizedActual.includes(normalizedExpected);
+    return exact
+        ? normalizedActual === normalizedExpected
+        : normalizedActual.toLowerCase().includes(normalizedExpected.toLowerCase());
 };
 
 const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {

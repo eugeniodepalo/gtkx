@@ -15,8 +15,6 @@ import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import {
-    attachChild,
-    detachChild,
     type InsertableWidget,
     isAddable,
     isAppendable,
@@ -28,7 +26,14 @@ import {
     type ReorderableWidget,
 } from "./internal/predicates.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { filterProps, propNameToSignalName, resolvePropMeta, resolveSignal } from "./internal/utils.js";
+import {
+    attachChild,
+    detachChild,
+    filterProps,
+    propNameToSignalName,
+    resolvePropMeta,
+    resolveSignal,
+} from "./internal/utils.js";
 
 const EXCLUDED_PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
 

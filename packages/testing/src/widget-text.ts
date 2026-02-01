@@ -6,9 +6,11 @@ const ROLES_WITH_INTERNAL_LABELS = new Set([
     Gtk.AccessibleRole.TOGGLE_BUTTON,
     Gtk.AccessibleRole.CHECKBOX,
     Gtk.AccessibleRole.RADIO,
+    Gtk.AccessibleRole.LIST_ITEM,
     Gtk.AccessibleRole.MENU_ITEM,
     Gtk.AccessibleRole.MENU_ITEM_CHECKBOX,
     Gtk.AccessibleRole.MENU_ITEM_RADIO,
+    Gtk.AccessibleRole.ROW,
     Gtk.AccessibleRole.TAB,
     Gtk.AccessibleRole.LINK,
 ]);
@@ -23,13 +25,44 @@ const isInternalLabel = (widget: Gtk.Widget): boolean => {
     const parentRole = parent.getAccessibleRole();
     if (!parentRole) return false;
 
-    return ROLES_WITH_INTERNAL_LABELS.has(parentRole);
+    if (ROLES_WITH_INTERNAL_LABELS.has(parentRole)) return true;
+
+    const labelText = getLabelText(widget);
+    if (!labelText) return false;
+
+    let ancestor: Gtk.Widget | null = parent;
+    while (ancestor) {
+        if (ancestor.getAccessibleRole === undefined) return false;
+        const role = ancestor.getAccessibleRole();
+        if (role && ROLES_WITH_INTERNAL_LABELS.has(role)) {
+            return getDefaultText(ancestor) === labelText;
+        }
+        ancestor = ancestor.getParent();
+    }
+
+    return false;
 };
 
 const getLabelText = (widget: Gtk.Widget): string | null => {
     const asLabel = widget as Gtk.Label;
     const asInscription = widget as Gtk.Inscription;
     return asLabel.getLabel?.() ?? asInscription.getText?.() ?? null;
+};
+
+const getDefaultText = (widget: Gtk.Widget): string | null => {
+    if ("getLabel" in widget && typeof widget.getLabel === "function") {
+        return (widget.getLabel() as string) ?? null;
+    }
+
+    if ("getText" in widget && typeof widget.getText === "function") {
+        return (widget.getText() as string) ?? null;
+    }
+
+    if ("getTitle" in widget && typeof widget.getTitle === "function") {
+        return (widget.getTitle() as string) ?? null;
+    }
+
+    return getNativeInterface(widget, Gtk.Editable)?.getText() ?? null;
 };
 
 const collectChildLabels = (widget: Gtk.Widget): string[] => {
@@ -64,33 +97,16 @@ export const getWidgetText = (widget: Gtk.Widget): string | null => {
     switch (role) {
         case Gtk.AccessibleRole.BUTTON:
         case Gtk.AccessibleRole.LINK:
-        case Gtk.AccessibleRole.TAB: {
-            const directLabel =
-                (widget as Gtk.Button).getLabel?.() ??
-                (widget as Gtk.MenuButton).getLabel?.() ??
-                (widget as Gtk.Expander).getLabel?.();
+        case Gtk.AccessibleRole.TAB:
+        case Gtk.AccessibleRole.MENU_ITEM:
+        case Gtk.AccessibleRole.MENU_ITEM_CHECKBOX:
+        case Gtk.AccessibleRole.MENU_ITEM_RADIO: {
+            const directLabel = getDefaultText(widget);
             if (directLabel) return directLabel;
 
             const childLabels = collectChildLabels(widget);
             return childLabels.length > 0 ? childLabels.join(" ") : null;
         }
-        case Gtk.AccessibleRole.TOGGLE_BUTTON:
-            return (widget as Gtk.ToggleButton).getLabel?.() ?? null;
-        case Gtk.AccessibleRole.CHECKBOX:
-        case Gtk.AccessibleRole.RADIO:
-            return (widget as Gtk.CheckButton).getLabel?.() ?? null;
-        case Gtk.AccessibleRole.LABEL:
-            return getLabelText(widget);
-        case Gtk.AccessibleRole.TEXT_BOX:
-        case Gtk.AccessibleRole.SEARCH_BOX:
-        case Gtk.AccessibleRole.SPIN_BUTTON:
-            return getNativeInterface(widget, Gtk.Editable)?.getText() ?? null;
-        case Gtk.AccessibleRole.GROUP:
-            return (widget as Gtk.Frame).getLabel?.() ?? null;
-        case Gtk.AccessibleRole.WINDOW:
-        case Gtk.AccessibleRole.DIALOG:
-        case Gtk.AccessibleRole.ALERT_DIALOG:
-            return (widget as Gtk.Window).getTitle() ?? null;
         case Gtk.AccessibleRole.TAB_PANEL: {
             const parent = widget.getParent();
             if (parent) {
@@ -103,7 +119,7 @@ export const getWidgetText = (widget: Gtk.Widget): string | null => {
             return null;
         }
         default:
-            return null;
+            return getDefaultText(widget);
     }
 };
 

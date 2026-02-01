@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ListStore } from "../internal/list-store.js";
-import { SelectionModelManager } from "../internal/selection-model.js";
+import { SelectionModelController } from "../internal/selection-model-controller.js";
 import type { SignalStore } from "../internal/signal-store.js";
 import type { ListItemNode } from "../list-item.js";
 
@@ -18,12 +18,12 @@ type ListModelConfig = {
 export class ListModel {
     private config: ListModelConfig;
     private store: ListStore;
-    private selectionManager: SelectionModelManager;
+    private selectionManager: SelectionModelController;
 
     constructor(config: ListModelConfig, props: ListProps = {}) {
         this.config = config;
         this.store = new ListStore();
-        this.selectionManager = new SelectionModelManager(
+        this.selectionManager = new SelectionModelController(
             { ...config, ...props },
             this.store.getModel(),
             () => this.getSelection(),

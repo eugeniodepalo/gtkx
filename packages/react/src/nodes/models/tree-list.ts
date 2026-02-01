@@ -1,7 +1,7 @@
 import type * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { SelectionModelManager } from "../internal/selection-model.js";
+import { SelectionModelController } from "../internal/selection-model-controller.js";
 import type { SignalStore } from "../internal/signal-store.js";
 import { TreeStore } from "../internal/tree-store.js";
 import { createTreeItemData, type TreeListItemNode } from "../tree-list-item.js";
@@ -22,7 +22,7 @@ export class TreeListModel {
     private config: TreeListModelConfig;
     private store: TreeStore;
     private treeListModel: Gtk.TreeListModel;
-    private selectionManager: SelectionModelManager;
+    private selectionManager: SelectionModelController;
 
     constructor(config: TreeListModelConfig, props: TreeListModelProps = {}) {
         this.config = config;
@@ -35,7 +35,7 @@ export class TreeListModel {
             (item: GObject.Object) => this.createChildModel(item),
         );
 
-        this.selectionManager = new SelectionModelManager(
+        this.selectionManager = new SelectionModelController(
             { ...config, ...props },
             this.treeListModel,
             () => this.getSelection(),

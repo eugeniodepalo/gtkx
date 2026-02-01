@@ -1,9 +1,9 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
-import { createNode } from "./factory.js";
+import { createNode, resolveContainerClass } from "./factory.js";
 import type { Node } from "./node.js";
-import { isBufferedType } from "./nodes/internal/predicates.js";
+import { isBuffered } from "./nodes/internal/predicates.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
 declare global {
@@ -76,7 +76,8 @@ export function createHostConfig(): HostConfig {
         noTimeout: -1,
         getRootHostContext: () => ({}),
         getChildHostContext: (parentHostContext, type) => {
-            if (isBufferedType(type) || type === "TextTag") {
+            const containerClass = resolveContainerClass(type);
+            if ((containerClass && isBuffered(containerClass.prototype)) || type === "TextTag") {
                 return { insideTextBuffer: true };
             }
             if (parentHostContext.insideTextBuffer) {

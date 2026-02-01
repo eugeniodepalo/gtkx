@@ -102,12 +102,12 @@ describe("render - Window", () => {
                 return show ? <GtkApplicationWindow ref={ref} title="Destroy" /> : null;
             }
 
-            await render(<App show={true} />);
+            const { rerender } = await render(<App show={true} />);
 
             const windowId = ref.current?.handle;
             expect(windowId).toBeDefined();
 
-            await render(<App show={false} />);
+            await rerender(<App show={false} />);
         });
     });
 

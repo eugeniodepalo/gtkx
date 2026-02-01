@@ -29,6 +29,7 @@ export { screen } from "./screen.js";
 export type { ScreenshotOptions } from "./screenshot.js";
 export { screenshot } from "./screenshot.js";
 export { tick } from "./timing.js";
+export type { Container } from "./traversal.js";
 export type {
     BoundQueries,
     ByRoleOptions,
@@ -42,6 +43,7 @@ export type {
     TextMatchFunction,
     TextMatchOptions,
     WaitForOptions,
+    WrapperComponent,
 } from "./types.js";
 export type { PointerInput, TabOptions } from "./user-event.js";
 export { userEvent } from "./user-event.js";

@@ -12,7 +12,7 @@ export type SelectionModelConfig = {
     onSelectionChanged?: (ids: string[]) => void;
 };
 
-export class SelectionModelManager {
+export class SelectionModelController {
     private owner: object;
     private signalStore: SignalStore;
     private selectionModel: SelectionModel;

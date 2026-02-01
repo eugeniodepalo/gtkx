@@ -8,7 +8,7 @@ import type * as Pango from "@gtkx/ffi/pango";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
 import type { GtkListViewProps as GeneratedGtkListViewProps, WidgetSlotNames } from "./generated/jsx.js";
-import type { AnimationProps } from "./nodes/internal/animation/types.js";
+import type { AnimationProps } from "./nodes/animation.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
 import type { TextAnchorProps } from "./nodes/text-anchor.js";
@@ -21,7 +21,7 @@ export type {
     AnimationTransition,
     SpringTransition,
     TimedTransition,
-} from "./nodes/internal/animation/types.js";
+} from "./nodes/animation.js";
 export type { TextAnchorProps } from "./nodes/text-anchor.js";
 export type { TextPaintableProps } from "./nodes/text-paintable.js";
 export type { TextTagProps } from "./nodes/text-tag.js";

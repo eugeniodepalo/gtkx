@@ -319,7 +319,13 @@ const RepeatingDemo = () => (
                     <x.Animation
                         initial={{ scale: 0.8, opacity: 0.5 }}
                         animate={{ scale: 1.2, opacity: 1 }}
-                        transition={{ mode: "timed", duration: 800, repeat: -1, alternate: true, easing: Adw.Easing.EASE_IN_OUT }}
+                        transition={{
+                            mode: "timed",
+                            duration: 800,
+                            repeat: -1,
+                            alternate: true,
+                            easing: Adw.Easing.EASE_IN_OUT,
+                        }}
                         animateOnMount
                     >
                         <GtkFrame widthRequest={60} heightRequest={60} cssClasses={["card"]}>
@@ -350,7 +356,13 @@ const RepeatingDemo = () => (
                     <x.Animation
                         initial={{ translateY: 0 }}
                         animate={{ translateY: -20 }}
-                        transition={{ mode: "timed", duration: 600, repeat: -1, alternate: true, easing: Adw.Easing.EASE_IN_OUT_QUAD }}
+                        transition={{
+                            mode: "timed",
+                            duration: 600,
+                            repeat: -1,
+                            alternate: true,
+                            easing: Adw.Easing.EASE_IN_OUT_QUAD,
+                        }}
                         animateOnMount
                     >
                         <GtkFrame widthRequest={60} heightRequest={60} cssClasses={["card"]}>

@@ -7,7 +7,7 @@
 
 import type { ImportDeclarationStructure, SourceFile } from "ts-morph";
 import { StructureKind } from "ts-morph";
-import { FFI_IMPORT_LIFECYCLE, FFI_IMPORT_NATIVE, FFI_IMPORT_REGISTRY } from "../constants/index.js";
+import { FFI_IMPORT_LIFECYCLE, FFI_IMPORT_NATIVE, FFI_IMPORT_OBJECT, FFI_IMPORT_REGISTRY } from "../constants/index.js";
 import type { GenerationContext } from "../generation-context.js";
 import { normalizeClassName, toKebabCase } from "../utils/naming.js";
 
@@ -85,6 +85,14 @@ export class ImportsBuilder {
             imports.push({
                 moduleSpecifier: FFI_IMPORT_LIFECYCLE,
                 namedImports: lifecycleImports,
+            });
+        }
+
+        const objectImports = this.collectObjectModuleImports();
+        if (objectImports.length > 0) {
+            imports.push({
+                moduleSpecifier: FFI_IMPORT_OBJECT,
+                namedImports: objectImports,
             });
         }
 
@@ -204,11 +212,8 @@ export class ImportsBuilder {
         return imports;
     }
 
-    private collectNativeModuleImports(): string[] {
+    private collectObjectModuleImports(): string[] {
         const imports: string[] = [];
-        if (this.ctx.usesAlloc) imports.push("alloc");
-        if (this.ctx.usesCall) imports.push("call");
-        if (this.ctx.usesNativeError) imports.push("NativeError");
         if (
             this.ctx.usesInstantiating ||
             this.ctx.usesNativeObject ||
@@ -220,6 +225,14 @@ export class ImportsBuilder {
         if (this.ctx.usesNativeObject) {
             imports.push("NativeObject");
         }
+        return imports;
+    }
+
+    private collectNativeModuleImports(): string[] {
+        const imports: string[] = [];
+        if (this.ctx.usesAlloc) imports.push("alloc");
+        if (this.ctx.usesCall) imports.push("call");
+        if (this.ctx.usesNativeError) imports.push("NativeError");
         if (this.ctx.usesRead) imports.push("read");
         if (this.ctx.usesReadPointer) imports.push("readPointer");
         if (this.ctx.usesWrite) imports.push("write");

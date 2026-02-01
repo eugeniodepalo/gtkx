@@ -2,13 +2,14 @@ import { start, stop } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
-import type { ReactNode } from "react";
+import { createRef, type ReactNode, type Ref } from "react";
 import type Reconciler from "react-reconciler";
 import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { setScreenRoot } from "./screen.js";
 import { tick } from "./timing.js";
-import type { RenderOptions, RenderResult } from "./types.js";
+import { type Container, isApplication, traverse } from "./traversal.js";
+import type { RenderOptions, RenderResult, WrapperComponent } from "./types.js";
 
 let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
@@ -58,17 +59,43 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
     return { app: application, container };
 };
 
-const DefaultWrapper = ({ children }: { children: ReactNode }): ReactNode => (
-    <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>
+const DefaultWrapper: WrapperComponent = ({ children, ref }) => (
+    <GtkApplicationWindow ref={ref as Ref<Gtk.ApplicationWindow>} defaultWidth={800} defaultHeight={600}>
         {children}
     </GtkApplicationWindow>
 );
 
-const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"] = true): ReactNode => {
-    if (wrapper === false) return element;
-    if (wrapper === true) return <DefaultWrapper>{element}</DefaultWrapper>;
-    const Wrapper = wrapper;
-    return <Wrapper>{element}</Wrapper>;
+const findFirstWidget = (root: Container): Gtk.Widget | null => {
+    for (const widget of traverse(root)) {
+        if (isApplication(root)) return widget;
+        return root;
+    }
+    return null;
+};
+
+const wrapElement = (
+    element: ReactNode,
+    wrapperRef: React.RefObject<Gtk.Widget | null>,
+    wrapper: RenderOptions["wrapper"],
+): ReactNode => {
+    if (wrapper === false || wrapper === undefined) return element;
+    const Wrapper = wrapper === true ? DefaultWrapper : wrapper;
+    return <Wrapper ref={wrapperRef}>{element}</Wrapper>;
+};
+
+const resolveContainer = (
+    wrapper: RenderOptions["wrapper"],
+    wrapperRef: React.RefObject<Gtk.Widget | null>,
+    baseElement: Container,
+): Gtk.Widget => {
+    if (wrapper !== false && wrapper !== undefined && wrapperRef.current) {
+        return wrapperRef.current;
+    }
+    const firstWidget = findFirstWidget(baseElement);
+    if (!firstWidget) {
+        throw new Error("render() produced no widgets. Ensure the element renders visible content.");
+    }
+    return firstWidget;
 };
 
 /**
@@ -98,21 +125,26 @@ const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"] = tru
 export const render = async (element: ReactNode, options?: RenderOptions): Promise<RenderResult> => {
     const { app: application, container: fiberRoot } = ensureInitialized();
     const instance = reconciler.getInstance();
+    const baseElement: Container = options?.baseElement ?? application;
+    const wrapper = options?.wrapper ?? true;
 
-    const wrappedElement = wrapElement(element, options?.wrapper);
+    const wrapperRef = createRef<Gtk.Widget>();
+    const wrappedElement = wrapElement(element, wrapperRef, wrapper);
     const withContext = <ApplicationContext.Provider value={application}>{wrappedElement}</ApplicationContext.Provider>;
     await update(instance, withContext, fiberRoot);
 
     setScreenRoot(application);
 
     return {
-        container: application,
-        ...bindQueries(application),
+        container: resolveContainer(wrapper, wrapperRef, baseElement),
+        baseElement,
+        ...bindQueries(baseElement),
         unmount: () => update(instance, null, fiberRoot),
-        rerender: (newElement: ReactNode) => {
-            const wrapped = wrapElement(newElement, options?.wrapper);
+        rerender: async (newElement: ReactNode) => {
+            const newWrapperRef = createRef<Gtk.Widget>();
+            const wrapped = wrapElement(newElement, newWrapperRef, wrapper);
             const withCtx = <ApplicationContext.Provider value={application}>{wrapped}</ApplicationContext.Provider>;
-            return update(instance, withCtx, fiberRoot);
+            await update(instance, withCtx, fiberRoot);
         },
         debug: () => {
             console.log(prettyWidget(application));

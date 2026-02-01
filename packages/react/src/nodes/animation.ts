@@ -1,23 +1,11 @@
+import type { Easing } from "@gtkx/ffi/adw";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { ReactNode } from "react";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
-import { buildCss, interpolate } from "./internal/animation/css-builder.js";
-import type {
-    AnimatableProperties,
-    AnimationProps,
-    SpringTransition,
-    TimedTransition,
-} from "./internal/animation/types.js";
-import {
-    attachChild,
-    isAddable,
-    isAppendable,
-    isContentWidget,
-    isRemovable,
-    isSingleChild,
-} from "./internal/predicates.js";
+import { attachChild, detachChild } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -27,6 +15,131 @@ const DEFAULT_TIMED_DURATION = 300;
 const DEFAULT_SPRING_DAMPING = 1;
 const DEFAULT_SPRING_MASS = 1;
 const DEFAULT_SPRING_STIFFNESS = 100;
+
+/**
+ * A numeric value that can be animated.
+ */
+type AnimatableValue = number;
+
+/**
+ * CSS properties that can be animated on a widget.
+ *
+ * All transforms are applied via GTK CSS and rendered through the widget's style context.
+ */
+export type AnimatableProperties = {
+    /** Opacity from 0 (fully transparent) to 1 (fully opaque) */
+    opacity?: AnimatableValue;
+    /** Horizontal translation in pixels (positive moves right) */
+    translateX?: AnimatableValue;
+    /** Vertical translation in pixels (positive moves down) */
+    translateY?: AnimatableValue;
+    /** Uniform scale factor (1 = original size, 2 = double size) */
+    scale?: AnimatableValue;
+    /** Horizontal scale factor */
+    scaleX?: AnimatableValue;
+    /** Vertical scale factor */
+    scaleY?: AnimatableValue;
+    /** Rotation angle in degrees (positive rotates clockwise) */
+    rotate?: AnimatableValue;
+    /** Horizontal skew angle in degrees */
+    skewX?: AnimatableValue;
+    /** Vertical skew angle in degrees */
+    skewY?: AnimatableValue;
+};
+
+/**
+ * Transition configuration for timed (duration-based) animations.
+ *
+ * @see {@link https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.TimedAnimation.html Adw.TimedAnimation}
+ */
+export type TimedTransition = {
+    /** Discriminant: duration-based animation with easing curves */
+    mode: "timed";
+    /** Animation duration in milliseconds (default: 300) */
+    duration?: number;
+    /** Easing function for the animation curve (default: EASE_OUT_CUBIC) */
+    easing?: Easing;
+    /** Delay before starting the animation in milliseconds */
+    delay?: number;
+    /** Number of times to repeat the animation (0 = no repeat, -1 = infinite) */
+    repeat?: number;
+    /** Whether to play the animation in reverse */
+    reverse?: boolean;
+    /** Whether to alternate direction on each repeat */
+    alternate?: boolean;
+};
+
+/**
+ * Transition configuration for spring (physics-based) animations.
+ *
+ * Spring animations simulate a mass attached to a spring, providing natural-feeling motion.
+ * The animation settles when the spring reaches equilibrium.
+ *
+ * @see {@link https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.SpringAnimation.html Adw.SpringAnimation}
+ */
+export type SpringTransition = {
+    /** Discriminant: physics-based spring animation */
+    mode: "spring";
+    /** Damping ratio controlling oscillation decay (default: 1, critically damped) */
+    damping?: number;
+    /** Spring stiffness in N/m affecting animation speed (default: 100) */
+    stiffness?: number;
+    /** Virtual mass in kg affecting momentum (default: 1) */
+    mass?: number;
+    /** Initial velocity to apply at animation start */
+    initialVelocity?: number;
+    /** Whether to clamp the animation value to prevent overshooting */
+    clamp?: boolean;
+    /** Delay before starting the animation in milliseconds */
+    delay?: number;
+};
+
+/**
+ * Discriminated union of all transition configurations.
+ *
+ * The `mode` field determines the animation type:
+ * - `"timed"`: Duration-based animation with easing curves (uses {@link Adw.TimedAnimation})
+ * - `"spring"`: Physics-based spring animation (uses {@link Adw.SpringAnimation})
+ */
+export type AnimationTransition = TimedTransition | SpringTransition;
+
+/**
+ * Props for the Animation component.
+ *
+ * Provides a declarative API for animating widget properties using either
+ * timed (duration-based) or spring (physics-based) animations.
+ *
+ * @example
+ * ```tsx
+ * <x.Animation
+ *   initial={{ opacity: 0, translateY: -20 }}
+ *   animate={{ opacity: 1, translateY: 0 }}
+ *   exit={{ opacity: 0, translateY: 20 }}
+ *   transition={{ mode: "spring", damping: 0.8, stiffness: 200 }}
+ *   animateOnMount
+ * >
+ *   <GtkLabel label="Animated content" />
+ * </x.Animation>
+ * ```
+ */
+export type AnimationProps = {
+    /** Initial property values before animation starts, or `false` to skip initial state */
+    initial?: AnimatableProperties | false;
+    /** Target property values to animate towards */
+    animate?: AnimatableProperties;
+    /** Property values to animate to when the component unmounts */
+    exit?: AnimatableProperties;
+    /** Transition configuration including animation mode and parameters */
+    transition?: AnimationTransition;
+    /** Whether to animate from `initial` to `animate` when first mounted (default: false) */
+    animateOnMount?: boolean;
+    /** Callback fired when an animation begins */
+    onAnimationStart?: () => void;
+    /** Callback fired when an animation completes */
+    onAnimationComplete?: () => void;
+    /** The child widget to animate (must be a single GTK widget) */
+    children?: ReactNode;
+};
 
 export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, WidgetNode> {
     private className: string;
@@ -85,7 +198,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
             return;
         }
 
-        if (oldProps && newProps.animate && !this.arePropsEqual(oldProps.animate, newProps.animate)) {
+        if (oldProps && newProps.animate && !this.areAnimatedPropsEqual(oldProps.animate, newProps.animate)) {
             const target = newProps.animate;
             if (this.children[0] && !this.isExiting) {
                 this.animateTo(target);
@@ -122,7 +235,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         }
 
         if (oldChild && parentWidget && this.isWidgetAttachedTo(oldChild, parentWidget)) {
-            detachFromParentWidget(oldChild, parentWidget);
+            detachChild(oldChild, parentWidget);
         }
 
         if (childWidget && parentWidget) {
@@ -156,7 +269,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         const childWidget = this.children[0]?.container ?? null;
 
         if (childWidget && parentWidget && this.isWidgetAttachedTo(childWidget, parentWidget)) {
-            detachFromParentWidget(childWidget, parentWidget);
+            detachChild(childWidget, parentWidget);
         }
     }
 
@@ -217,7 +330,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         this.props.onAnimationStart?.();
 
         const callback = new Adw.CallbackAnimationTarget((progress: number) => {
-            const interpolated = interpolate(from, to, progress);
+            const interpolated = this.interpolate(from, to, progress);
             this.currentValues = interpolated;
             this.applyValues(interpolated);
         });
@@ -318,19 +431,85 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
             childWidget.addCssClass(this.className);
         }
 
-        const css = buildCss(this.className, values);
+        const css = this.buildCss(this.className, values);
         if (css) {
             this.provider.loadFromString(css);
         }
     }
 
-    private arePropsEqual(a: AnimatableProperties | undefined, b: AnimatableProperties | undefined): boolean {
+    private getDefaultValue(property: keyof AnimatableProperties): number {
+        switch (property) {
+            case "opacity":
+            case "scale":
+            case "scaleX":
+            case "scaleY":
+                return 1;
+            default:
+                return 0;
+        }
+    }
+
+    private interpolate(from: AnimatableProperties, to: AnimatableProperties, progress: number): AnimatableProperties {
+        const result: AnimatableProperties = {};
+
+        const allKeys = new Set([...Object.keys(from), ...Object.keys(to)]) as Set<keyof AnimatableProperties>;
+
+        for (const key of allKeys) {
+            const fromVal = from[key] ?? this.getDefaultValue(key);
+            const toVal = to[key] ?? this.getDefaultValue(key);
+            result[key] = fromVal + (toVal - fromVal) * progress;
+        }
+
+        return result;
+    }
+
+    private buildCss(className: string, props: AnimatableProperties): string {
+        const parts: string[] = [];
+        const transforms: string[] = [];
+
+        if (props.opacity !== undefined) {
+            parts.push(`opacity: ${props.opacity}`);
+        }
+
+        if (props.translateX !== undefined || props.translateY !== undefined) {
+            transforms.push(`translate(${props.translateX ?? 0}px, ${props.translateY ?? 0}px)`);
+        }
+
+        if (props.scale !== undefined) {
+            transforms.push(`scale(${props.scale})`);
+        } else if (props.scaleX !== undefined || props.scaleY !== undefined) {
+            transforms.push(`scale(${props.scaleX ?? 1}, ${props.scaleY ?? 1})`);
+        }
+
+        if (props.rotate !== undefined) {
+            transforms.push(`rotate(${props.rotate}deg)`);
+        }
+
+        if (props.skewX !== undefined) {
+            transforms.push(`skewX(${props.skewX}deg)`);
+        }
+
+        if (props.skewY !== undefined) {
+            transforms.push(`skewY(${props.skewY}deg)`);
+        }
+
+        if (transforms.length > 0) {
+            parts.push(`transform: ${transforms.join(" ")}`);
+        }
+
+        if (parts.length === 0) {
+            return "";
+        }
+
+        return `.${className} { ${parts.join("; ")}; }`;
+    }
+
+    private areAnimatedPropsEqual<T extends Record<string, unknown>>(a?: T, b?: T): boolean {
         if (a === b) return true;
         if (!a || !b) return false;
 
-        const keysA = Object.keys(a) as (keyof AnimatableProperties)[];
-        const keysB = Object.keys(b) as (keyof AnimatableProperties)[];
-
+        const keysA = Object.keys(a);
+        const keysB = Object.keys(b);
         if (keysA.length !== keysB.length) return false;
 
         for (const key of keysA) {
@@ -338,19 +517,5 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         }
 
         return true;
-    }
-}
-
-function detachFromParentWidget(child: Gtk.Widget, parent: Gtk.Widget): void {
-    if (isAppendable(parent) || isAddable(parent)) {
-        if (isRemovable(parent)) {
-            parent.remove(child);
-        }
-    } else if (isContentWidget(parent)) {
-        parent.setContent(null);
-    } else if (isSingleChild(parent)) {
-        parent.setChild(null);
-    } else if (isRemovable(parent)) {
-        parent.remove(child);
     }
 }

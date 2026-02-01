@@ -3,11 +3,15 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { DialogNode } from "./dialog.js";
-import { hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { hasChanged } from "./internal/utils.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import type { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
+
+// biome-ignore lint/suspicious/noExplicitAny: Required for matching GTK class constructors with varying signatures
+const isOrExtends = (target: object, cls: abstract new (...args: any[]) => any): boolean =>
+    target === cls || Object.prototype.isPrototypeOf.call(cls, target);
 
 const OWN_PROPS = ["defaultWidth", "defaultHeight", "onClose"] as const;
 
@@ -43,15 +47,12 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
     ): Gtk.Window {
         const WindowClass = containerClass;
 
-        if (
-            matchesAnyClass([Gtk.ApplicationWindow], WindowClass) ||
-            matchesAnyClass([Adw.ApplicationWindow], WindowClass)
-        ) {
+        if (isOrExtends(WindowClass, Gtk.ApplicationWindow) || isOrExtends(WindowClass, Adw.ApplicationWindow)) {
             if (!(rootContainer instanceof Gtk.Application)) {
                 throw new Error("Expected ApplicationWindow to be created within Application");
             }
 
-            if (matchesAnyClass([Adw.ApplicationWindow], WindowClass)) {
+            if (isOrExtends(WindowClass, Adw.ApplicationWindow)) {
                 return new Adw.ApplicationWindow(rootContainer);
             }
 

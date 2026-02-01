@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, GtkBox, GtkButton } from "@gtkx/react";
+import type { Ref } from "react";
 import { describe, expect, it } from "vitest";
-import { cleanup, render } from "../src/index.js";
+import { cleanup, render, type WrapperComponent } from "../src/index.js";
 
 describe("render", () => {
     it("renders a simple element", async () => {
@@ -25,10 +26,16 @@ describe("render", () => {
         expect(label).toBeDefined();
     });
 
-    it("returns container as the GTK Application", async () => {
-        const { container } = await render("Test");
+    it("returns container as the wrapper widget", async () => {
+        const { container } = await render(<GtkButton label="Test" />);
         expect(container).toBeDefined();
-        expect(container.getApplicationId()).toMatch(/org\.gtkx\.testing/);
+        expect(container).toBeInstanceOf(Gtk.ApplicationWindow);
+    });
+
+    it("returns baseElement as the GTK Application by default", async () => {
+        const { baseElement } = await render("Test");
+        expect(baseElement).toBeDefined();
+        expect((baseElement as Gtk.Application).getApplicationId()).toMatch(/org\.gtkx\.testing/);
     });
 
     it("wraps element in ApplicationWindow by default", async () => {
@@ -50,13 +57,16 @@ describe("render", () => {
     });
 
     it("uses custom wrapper component", async () => {
-        const CustomWrapper = ({ children }: { children: React.ReactNode }) => (
-            <GtkApplicationWindow title="Custom Title">{children}</GtkApplicationWindow>
+        const CustomWrapper: WrapperComponent = ({ children, ref }) => (
+            <GtkApplicationWindow ref={ref as Ref<Gtk.ApplicationWindow>} title="Custom Title">
+                {children}
+            </GtkApplicationWindow>
         );
 
-        const { findByRole } = await render(<GtkButton label="Test" />, { wrapper: CustomWrapper });
+        const { findByRole, container } = await render(<GtkButton label="Test" />, { wrapper: CustomWrapper });
         const window = await findByRole(Gtk.AccessibleRole.WINDOW, { name: "Custom Title" });
         expect(window).toBeDefined();
+        expect(container).toBeInstanceOf(Gtk.ApplicationWindow);
     });
 
     it("provides rerender function to update content", async () => {
@@ -70,12 +80,12 @@ describe("render", () => {
     });
 
     it("provides unmount function to remove content", async () => {
-        const { container, findByRole, unmount } = await render(<GtkButton label="Test" />);
+        const { baseElement, findByRole, unmount } = await render(<GtkButton label="Test" />);
 
         await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
         await unmount();
 
-        const activeWindow = container.getActiveWindow();
+        const activeWindow = (baseElement as Gtk.Application).getActiveWindow();
         expect(activeWindow).toBeNull();
     });
 
@@ -87,10 +97,10 @@ describe("render", () => {
 
 describe("cleanup", () => {
     it("removes rendered content", async () => {
-        const { container } = await render(<GtkButton label="Test" />);
+        const { baseElement } = await render(<GtkButton label="Test" />);
         await cleanup();
 
-        const windows = container.getWindows();
+        const windows = (baseElement as Gtk.Application).getWindows();
         expect(windows.length).toBe(0);
     });
 

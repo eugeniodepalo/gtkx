@@ -1,7 +1,7 @@
 import { getNativeId, type NativeHandle } from "@gtkx/native";
 import { typeFromName, typeName, typeNameFromInstance, typeParent } from "./generated/gobject/functions.js";
 import { TypeInstance } from "./generated/gobject/type-instance.js";
-import type { NativeClass, NativeObject } from "./native.js";
+import type { NativeClass, NativeObject } from "./object.js";
 
 const classRegistry = new Map<string, NativeClass>();
 

@@ -8,6 +8,9 @@
 /** Path to lifecycle module. */
 export const FFI_IMPORT_LIFECYCLE = "../../lifecycle.js";
 
+/** Path to object module (NativeObject base class). */
+export const FFI_IMPORT_OBJECT = "../../object.js";
+
 /** Path to native module. */
 export const FFI_IMPORT_NATIVE = "../../native.js";
 

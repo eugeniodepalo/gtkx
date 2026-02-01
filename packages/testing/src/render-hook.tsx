@@ -55,7 +55,7 @@ export const renderHook = async <Result, Props>(
     };
 
     const renderResult = await render(<TestComponent props={currentProps} />, {
-        wrapper: options?.wrapper ?? false,
+        wrapper: options?.wrapper ?? true,
     });
 
     return {

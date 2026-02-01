@@ -1,4 +1,3 @@
-import type { NativeHandle } from "@gtkx/native";
 import {
     type Arg,
     alloc as nativeAlloc,
@@ -13,40 +12,10 @@ import type { GError } from "./generated/glib/error.js";
 import { typeCheckInstanceIsA, typeFromName } from "./generated/gobject/functions.js";
 import { TypeInstance } from "./generated/gobject/type-instance.js";
 import { isStarted } from "./lifecycle.js";
+import type { NativeClass, NativeObject } from "./object.js";
 
-/**
- * Base class for all GTK/GLib object wrappers.
- *
- * Provides common functionality for native object representation including
- * type metadata and equality comparison.
- *
- * @see {@link getNativeObject} for creating wrapper instances
- */
-export abstract class NativeObject {
-    /** The GLib type name (e.g., "GtkButton", "AdwHeaderBar") */
-    static readonly glibTypeName: string;
-
-    /** The type category: gobject, interface, boxed, struct, or fundamental */
-    static readonly objectType: "gobject" | "interface" | "boxed" | "struct" | "fundamental";
-
-    /** The underlying native handle */
-    handle: NativeHandle;
-
-    // biome-ignore lint/suspicious/noExplicitAny: Required for NativeClass type compatibility
-    constructor(..._args: any[]) {
-        this.handle = undefined as unknown as NativeHandle;
-    }
-}
-
-/**
- * Constructor type for native object wrapper classes.
- *
- * @typeParam T - The wrapped object type
- */
-// biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
-export type NativeClass<T extends NativeObject = NativeObject> = typeof NativeObject & (new (...args: any[]) => T);
-
-export type { NativeHandle };
+export type { NativeHandle } from "./object.js";
+export { type NativeClass, NativeObject } from "./object.js";
 
 /**
  * Error class wrapping GLib GError structures.
@@ -180,7 +149,7 @@ export const alloc = (size: number, typeName?: string, library?: string): unknow
  * @throws If runtime not started
  */
 export const read = (handle: unknown, type: Type, offset: number): unknown => {
-    ensureIsStarted(`attempted read: ${handle} at offset ${offset}`);
+    ensureIsStarted("attempted read");
     return nativeRead(handle, type, offset);
 };
 
@@ -194,7 +163,7 @@ export const read = (handle: unknown, type: Type, offset: number): unknown => {
  * @throws If runtime not started
  */
 export const readPointer = (handle: unknown, ptrOffset: number, elementOffset: number): unknown => {
-    ensureIsStarted(`attempted readPointer: ${handle} at offset ${ptrOffset}+${elementOffset}`);
+    ensureIsStarted("attempted readPointer");
     return nativeReadPointer(handle, ptrOffset, elementOffset);
 };
 
@@ -208,7 +177,7 @@ export const readPointer = (handle: unknown, ptrOffset: number, elementOffset: n
  * @throws If runtime not started
  */
 export const write = (handle: unknown, type: Type, offset: number, value: unknown): void => {
-    ensureIsStarted(`attempted write: ${handle} at offset ${offset}`);
+    ensureIsStarted("attempted write");
     nativeWrite(handle, type, offset, value);
 };
 
@@ -229,6 +198,6 @@ export const writePointer = (
     sourceHandle: unknown,
     size: number,
 ): void => {
-    ensureIsStarted(`attempted writePointer: ${destHandle} at offset ${ptrOffset}+${elementOffset}`);
+    ensureIsStarted("attempted writePointer");
     nativeWritePointer(destHandle, ptrOffset, elementOffset, sourceHandle, size);
 };

@@ -1,24 +1,8 @@
+import type { NativeClass } from "@gtkx/ffi";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { PROPS, SIGNALS } from "../../generated/internal.js";
-import type { Container, ContainerClass, Props } from "../../types.js";
-
-// biome-ignore lint/suspicious/noExplicitAny: Required for generic class matching
-type AnyClass = new (...args: any[]) => any;
-
-export const matchesAnyClass = (
-    classes: readonly AnyClass[],
-    containerOrClass?: Container | ContainerClass | null,
-): boolean => {
-    if (!containerOrClass) {
-        return false;
-    }
-
-    return classes.some(
-        (cls) =>
-            containerOrClass instanceof cls ||
-            containerOrClass === cls ||
-            Object.prototype.isPrototypeOf.call(cls, containerOrClass),
-    );
-};
+import type { Container, Props } from "../../types.js";
+import { isAddable, isAppendable, isContentWidget, isRemovable, isSingleChild } from "./predicates.js";
 
 export const filterProps = <T extends Props>(props: T, excludeKeys: readonly string[]): T => {
     const result: Props = {};
@@ -32,14 +16,13 @@ export const filterProps = <T extends Props>(props: T, excludeKeys: readonly str
     return result as T;
 };
 
-type GObjectClass = { glibTypeName?: string };
-
 const walkPrototypeChain = <T>(instance: Container, lookup: (typeName: string) => T | null): T | null => {
     // biome-ignore lint/complexity/noBannedTypes: Walking prototype chain requires Function type
     let current: Function | null = instance.constructor;
 
     while (current) {
-        const typeName = (current as GObjectClass).glibTypeName;
+        const typeName = (current as NativeClass).glibTypeName;
+
         if (typeName) {
             const result = lookup(typeName);
             if (result !== null) {
@@ -68,6 +51,7 @@ export const resolveSignal = (instance: Container, signalName: string): boolean 
 
 export const propNameToSignalName = (propName: string): string => {
     if (!propName.startsWith("on")) return propName;
+
     return propName
         .slice(2)
         .replace(/([A-Z])/g, "-$1")
@@ -112,3 +96,31 @@ export const primitiveArrayEqual = <T extends string | number | boolean>(
 
     return true;
 };
+
+export function detachChild(child: Gtk.Widget, container: Gtk.Widget): void {
+    if (isAppendable(container) || isAddable(container)) {
+        if (isRemovable(container)) {
+            container.remove(child);
+        }
+    } else if (isContentWidget(container)) {
+        container.setContent(null);
+    } else if (isSingleChild(container)) {
+        container.setChild(null);
+    } else if (isRemovable(container)) {
+        container.remove(child);
+    }
+}
+
+export function attachChild(child: Gtk.Widget, container: Gtk.Widget): void {
+    if (isAppendable(container)) {
+        container.append(child);
+    } else if (isAddable(container)) {
+        container.add(child);
+    } else if (isContentWidget(container)) {
+        container.setContent(child);
+    } else if (isSingleChild(container)) {
+        container.setChild(child);
+    } else {
+        throw new Error(`Cannot attach child to '${container.constructor.name}': container does not support children`);
+    }
+}
