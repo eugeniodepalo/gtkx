@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 
 export class SimpleListStore {
     private ids: string[] = [];
-    private model: Gtk.StringList = new Gtk.StringList();
+    private model = new Gtk.StringList();
 
     public addItem(id: string, label: string): void {
         this.ids.push(id);

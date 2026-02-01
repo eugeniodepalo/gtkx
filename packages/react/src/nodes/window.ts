@@ -23,13 +23,6 @@ type WindowChild = WindowNode | DialogNode | MenuNode | SlotNode | WidgetNode;
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild> {
     private menu: MenuModel;
 
-    public override isValidChild(child: Node): boolean {
-        if (child.container instanceof Gtk.Window) {
-            return true;
-        }
-        return super.isValidChild(child);
-    }
-
     public static override createContainer(
         props: Props,
         containerClass: typeof Gtk.Window,
@@ -68,6 +61,13 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         }
     }
 
+    public override isValidChild(child: Node): boolean {
+        if (child.container instanceof Gtk.Window) {
+            return true;
+        }
+        return super.isValidChild(child);
+    }
+
     public override appendChild(child: WindowChild): void {
         if (child instanceof WindowNode) {
             child.container.setTransientFor(this.container);
@@ -76,7 +76,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         }
 
         if (child instanceof DialogNode) {
-            child.parentWindow = this.container;
+            child.setParentWindow(this.container);
             super.appendChild(child);
             return;
         }
@@ -97,7 +97,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         }
 
         if (child instanceof DialogNode) {
-            child.parentWindow = null;
+            child.setParentWindow(null);
             super.removeChild(child);
             return;
         }
@@ -123,7 +123,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         if (child instanceof WindowNode) {
             child.container.setTransientFor(this.container);
         } else if (child instanceof DialogNode) {
-            child.parentWindow = this.container;
+            child.setParentWindow(this.container);
         }
 
         super.insertBefore(child, before);
@@ -134,6 +134,11 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         return true;
     }
 
+    public override commitUpdate(oldProps: WindowProps | null, newProps: WindowProps): void {
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        this.applyOwnProps(oldProps, newProps);
+    }
+
     public override commitMount(): void {
         this.container.present();
     }
@@ -141,11 +146,6 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
     public override detachDeletedInstance(): void {
         this.container.destroy();
         super.detachDeletedInstance();
-    }
-
-    public override commitUpdate(oldProps: WindowProps | null, newProps: WindowProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
-        this.applyOwnProps(oldProps, newProps);
     }
 
     private applyOwnProps(oldProps: WindowProps | null, newProps: WindowProps): void {

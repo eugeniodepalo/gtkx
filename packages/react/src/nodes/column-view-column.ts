@@ -2,11 +2,12 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { ColumnViewColumnProps } from "../jsx.js";
 import type { Container } from "../types.js";
 import { ListItemRenderer } from "./internal/list-item-renderer.js";
+import { hasChanged } from "./internal/props.js";
 import type { TreeStore } from "./internal/tree-store.js";
 import { VirtualNode } from "./virtual.js";
 
 export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps> {
-    column: Gtk.ColumnViewColumn;
+    private column: Gtk.ColumnViewColumn;
     private itemRenderer: ListItemRenderer;
 
     constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
@@ -16,9 +17,18 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps> {
         this.column.setFactory(this.itemRenderer.getFactory());
     }
 
+    public override commitUpdate(oldProps: ColumnViewColumnProps | null, newProps: ColumnViewColumnProps): void {
+        super.commitUpdate(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
+    }
+
     public override detachDeletedInstance(): void {
         this.itemRenderer.dispose();
         super.detachDeletedInstance();
+    }
+
+    public getColumn(): Gtk.ColumnViewColumn {
+        return this.column;
     }
 
     public setStore(model: TreeStore | null): void {
@@ -29,39 +39,37 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps> {
         this.itemRenderer.setEstimatedItemHeight(height);
     }
 
-    public override commitUpdate(oldProps: ColumnViewColumnProps | null, newProps: ColumnViewColumnProps): void {
-        if (!oldProps || oldProps.renderCell !== newProps.renderCell) {
+    private applyOwnProps(oldProps: ColumnViewColumnProps | null, newProps: ColumnViewColumnProps): void {
+        if (hasChanged(oldProps, newProps, "renderCell")) {
             this.itemRenderer.setRenderFn(newProps.renderCell);
         }
 
-        if (!oldProps || oldProps.title !== newProps.title) {
+        if (hasChanged(oldProps, newProps, "title")) {
             this.column.setTitle(newProps.title);
         }
 
-        if (!oldProps || oldProps.expand !== newProps.expand) {
+        if (hasChanged(oldProps, newProps, "expand")) {
             this.column.setExpand(newProps.expand ?? false);
         }
 
-        if (!oldProps || oldProps.resizable !== newProps.resizable) {
+        if (hasChanged(oldProps, newProps, "resizable")) {
             this.column.setResizable(newProps.resizable ?? false);
         }
 
-        if (!oldProps || oldProps.fixedWidth !== newProps.fixedWidth) {
+        if (hasChanged(oldProps, newProps, "fixedWidth")) {
             this.column.setFixedWidth(newProps.fixedWidth ?? -1);
         }
 
-        if (!oldProps || oldProps.id !== newProps.id) {
+        if (hasChanged(oldProps, newProps, "id")) {
             this.column.setId(newProps.id);
         }
 
-        if (!oldProps || oldProps.sortable !== newProps.sortable) {
+        if (hasChanged(oldProps, newProps, "sortable")) {
             if (newProps.sortable) {
                 this.column.setSorter(new Gtk.StringSorter());
             } else {
                 this.column.setSorter(null);
             }
         }
-
-        super.commitUpdate(oldProps, newProps);
     }
 }

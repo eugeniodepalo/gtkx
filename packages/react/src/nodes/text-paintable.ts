@@ -1,19 +1,26 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { TextPaintableProps } from "../jsx.js";
+import { TEXT_OBJECT_REPLACEMENT } from "./text-content.js";
 import { VirtualNode } from "./virtual.js";
-
-const PLACEHOLDER = "\uFFFC";
 
 export class TextPaintableNode extends VirtualNode<TextPaintableProps> {
     private buffer: Gtk.TextBuffer | null = null;
-    public bufferOffset = 0;
+    private bufferOffset = 0;
+
+    public getBufferOffset(): number {
+        return this.bufferOffset;
+    }
+
+    public setBufferOffset(offset: number): void {
+        this.bufferOffset = offset;
+    }
 
     public getLength(): number {
         return 1;
     }
 
     public getText(): string {
-        return PLACEHOLDER;
+        return TEXT_OBJECT_REPLACEMENT;
     }
 
     public setTextViewAndBuffer(_textView: Gtk.TextView, buffer: Gtk.TextBuffer): void {

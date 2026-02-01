@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 export type ItemUpdatedCallback = (id: string) => void;
 
 export class ListStore {
-    private model: Gtk.StringList = new Gtk.StringList();
+    private model = new Gtk.StringList();
     private ids: string[] = [];
     private items: Map<string, unknown> = new Map();
     private onItemUpdated: ItemUpdatedCallback | null = null;

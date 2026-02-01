@@ -14,6 +14,7 @@ import {
     GtkMenuButton,
     GtkNotebook,
     GtkScrolledWindow,
+    GtkShortcutController,
     GtkToggleButton,
     GtkWindow,
     quit,
@@ -182,7 +183,7 @@ const AppContent = () => {
             </x.Slot>
 
             <GtkBox vexpand hexpand>
-                <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                     <x.Shortcut trigger="<Control>f" onActivate={() => setSearchMode((prev) => !prev)} />
                     <x.Shortcut
                         trigger="<Control><Shift>i"
@@ -197,7 +198,7 @@ const AppContent = () => {
                         trigger="<Control>Page_Up"
                         onActivate={() => setNotebookPage((prev) => Math.max(prev - 1, 0))}
                     />
-                </x.ShortcutController>
+                </GtkShortcutController>
 
                 <Sidebar searchMode={searchMode} onSearchChanged={setSearchQuery} />
 

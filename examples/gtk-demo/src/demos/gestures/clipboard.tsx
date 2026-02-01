@@ -308,7 +308,6 @@ const ClipboardDemo = () => {
                     </x.StackPage>
                     <x.StackPage id="Color">
                         <GtkColorDialogButton
-                            dialog={new Gtk.ColorDialog()}
                             rgba={pastedContent.color ?? new Gdk.RGBA({ red: 1, green: 1, blue: 1, alpha: 1 })}
                             halign={Gtk.Align.END}
                             valign={Gtk.Align.CENTER}

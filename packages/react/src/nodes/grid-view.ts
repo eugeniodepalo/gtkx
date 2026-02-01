@@ -40,21 +40,6 @@ export class GridViewNode extends WidgetNode<Gtk.GridView, GridViewProps, ListIt
         return true;
     }
 
-    public override finalizeInitialChildren(props: GridViewProps): boolean {
-        super.finalizeInitialChildren(props);
-        return true;
-    }
-
-    public override commitMount(): void {
-        super.commitMount();
-        this.container.setModel(this.grid.getSelectionModel());
-    }
-
-    public override detachDeletedInstance(): void {
-        this.itemRenderer.dispose();
-        super.detachDeletedInstance();
-    }
-
     public override appendChild(child: ListItemNode): void {
         super.appendChild(child);
         this.grid.appendChild(child);
@@ -70,9 +55,24 @@ export class GridViewNode extends WidgetNode<Gtk.GridView, GridViewProps, ListIt
         super.removeChild(child);
     }
 
+    public override finalizeInitialChildren(props: GridViewProps): boolean {
+        super.finalizeInitialChildren(props);
+        return true;
+    }
+
     public override commitUpdate(oldProps: GridViewProps | null, newProps: GridViewProps): void {
         super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
+    }
+
+    public override commitMount(): void {
+        super.commitMount();
+        this.container.setModel(this.grid.getSelectionModel());
+    }
+
+    public override detachDeletedInstance(): void {
+        this.itemRenderer.dispose();
+        super.detachDeletedInstance();
     }
 
     private applyOwnProps(oldProps: GridViewProps | null, newProps: GridViewProps): void {
@@ -85,7 +85,7 @@ export class GridViewNode extends WidgetNode<Gtk.GridView, GridViewProps, ListIt
         }
 
         const previousModel = this.grid.getSelectionModel();
-        this.grid.updateProps(oldProps, newProps);
+        this.grid.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         const currentModel = this.grid.getSelectionModel();
 
         if (previousModel !== currentModel) {

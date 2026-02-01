@@ -1,10 +1,7 @@
-import type * as Gdk from "@gtkx/ffi/gdk";
-import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkColorDialogButtonProps } from "../jsx.js";
 import type { Container } from "../types.js";
 import { filterProps, hasChanged } from "./internal/props.js";
-import type { SignalHandler } from "./internal/signal-store.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["rgba", "onRgbaChanged", "title", "modal", "withAlpha"] as const;
@@ -13,7 +10,6 @@ type ColorDialogButtonProps = Pick<GtkColorDialogButtonProps, (typeof OWN_PROPS)
 
 export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialogButtonProps> {
     private dialog: Gtk.ColorDialog;
-    private notifyHandler: SignalHandler | null = null;
 
     public static override createContainer(
         _props: ColorDialogButtonProps,
@@ -25,12 +21,12 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
     }
 
     constructor(
-        type: string,
+        typeName: string,
         props: ColorDialogButtonProps,
         container: Gtk.ColorDialogButton,
         rootContainer: Container,
     ) {
-        super(type, props, container, rootContainer);
+        super(typeName, props, container, rootContainer);
         const dialog = container.getDialog();
         if (!dialog) {
             throw new Error("ColorDialogButton must have a dialog");
@@ -44,8 +40,8 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
     }
 
     private applyOwnProps(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {
-        if (hasChanged(oldProps, newProps, "title") && newProps.title !== undefined) {
-            this.dialog.setTitle(newProps.title);
+        if (hasChanged(oldProps, newProps, "title")) {
+            this.dialog.setTitle(newProps.title ?? "");
         }
 
         if (hasChanged(oldProps, newProps, "modal")) {
@@ -61,32 +57,13 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
         }
 
         if (hasChanged(oldProps, newProps, "onRgbaChanged")) {
-            this.setRgbaChanged(newProps.onRgbaChanged);
+            const callback = newProps.onRgbaChanged;
+            this.signalStore.set(
+                this,
+                this.container,
+                "notify::rgba",
+                callback ? () => callback(this.container.getRgba()) : undefined,
+            );
         }
-    }
-
-    private setRgbaChanged(callback?: ((rgba: Gdk.RGBA) => void) | null): void {
-        if (this.notifyHandler) {
-            this.signalStore.set(this, this.container, "notify", undefined);
-            this.notifyHandler = null;
-        }
-
-        if (callback) {
-            this.notifyHandler = (_button: Gtk.ColorDialogButton, pspec: GObject.ParamSpec) => {
-                if (pspec.getName() === "rgba") {
-                    const rgba = this.container.getRgba();
-                    callback(rgba);
-                }
-            };
-            this.signalStore.set(this, this.container, "notify", this.notifyHandler);
-        }
-    }
-
-    public override detachDeletedInstance(): void {
-        if (this.notifyHandler) {
-            this.signalStore.set(this, this.container, "notify", undefined);
-            this.notifyHandler = null;
-        }
-        super.detachDeletedInstance();
     }
 }

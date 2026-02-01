@@ -15,10 +15,10 @@ import { ColumnViewColumnNode } from "./nodes/column-view-column.js";
 import { ContainerSlotNode } from "./nodes/container-slot.js";
 import { DialogNode } from "./nodes/dialog.js";
 import { DrawingAreaNode } from "./nodes/drawing-area.js";
+import { DropDownNode } from "./nodes/drop-down.js";
 import { EventControllerNode } from "./nodes/event-controller.js";
 import { FixedChildNode } from "./nodes/fixed-child.js";
 import { FontDialogButtonNode } from "./nodes/font-dialog-button.js";
-import { GridNode } from "./nodes/grid.js";
 import { GridChildNode } from "./nodes/grid-child.js";
 import { GridViewNode } from "./nodes/grid-view.js";
 import { LevelBarNode } from "./nodes/level-bar.js";
@@ -37,7 +37,6 @@ import { ScrolledWindowNode } from "./nodes/scrolled-window.js";
 import { SearchBarNode } from "./nodes/search-bar.js";
 import { ShortcutNode } from "./nodes/shortcut.js";
 import { ShortcutControllerNode } from "./nodes/shortcut-controller.js";
-import { SimpleListViewNode } from "./nodes/simple-list-view.js";
 import { SlotNode } from "./nodes/slot.js";
 import { SourceViewNode } from "./nodes/source-view.js";
 import { StackNode } from "./nodes/stack.js";
@@ -59,8 +58,8 @@ export type AdjustableWidget = InstanceType<(typeof AdjustableWidgets)[number]>;
 export const StackWidgets = [Gtk.Stack, Adw.ViewStack] as const;
 export type StackWidget = InstanceType<(typeof StackWidgets)[number]>;
 
-export const SimpleListViewWidgets = [Gtk.DropDown, Adw.ComboRow] as const;
-export type SimpleListViewWidget = InstanceType<(typeof SimpleListViewWidgets)[number]>;
+export const DropDownWidgets = [Gtk.DropDown, Adw.ComboRow] as const;
+export type DropDownWidget = InstanceType<(typeof DropDownWidgets)[number]>;
 
 export const PopoverMenuWidgets = [Gtk.PopoverMenu, Gtk.PopoverMenuBar, Gtk.MenuButton] as const;
 export type PopoverMenuWidget = InstanceType<(typeof PopoverMenuWidgets)[number]>;
@@ -87,7 +86,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["NotebookPageTab", NotebookPageTabNode],
     ["OverlayChild", OverlayChildNode],
     ["Shortcut", ShortcutNode],
-
     ["Slot", SlotNode],
     ["StackPage", StackPageNode],
     ["TextAnchor", TextAnchorNode],
@@ -111,7 +109,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     [Gtk.FontDialogButton, FontDialogButtonNode],
     [Gtk.DrawingArea, DrawingAreaNode],
     [Gtk.SearchBar, SearchBarNode],
-    [Gtk.Grid, GridNode],
     [Adw.NavigationView, NavigationViewNode],
     [Adw.ToggleGroup, ToggleGroupNode],
     [Gtk.Notebook, NotebookNode],
@@ -119,7 +116,7 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     [Gtk.ColumnView, ColumnViewNode],
     [Gtk.ListView, ListViewNode],
     [Gtk.GridView, GridViewNode],
-    [SimpleListViewWidgets, SimpleListViewNode],
+    [DropDownWidgets, DropDownNode],
     [PopoverMenuWidgets, PopoverMenuNode],
     [AdjustableWidgets, AdjustableNode],
     [Gtk.Widget, WidgetNode],

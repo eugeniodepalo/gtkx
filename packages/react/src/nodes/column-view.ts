@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkColumnViewProps } from "../jsx.js";
 import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
-import { filterProps } from "./internal/props.js";
+import { filterProps, hasChanged } from "./internal/props.js";
 import { ListItemNode } from "./list-item.js";
 import { ListModel, type ListModelProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
@@ -30,23 +30,15 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
         );
     }
 
-    public override finalizeInitialChildren(props: ColumnViewProps): boolean {
-        super.finalizeInitialChildren(props);
-        return true;
-    }
-
-    public override commitMount(): void {
-        super.commitMount();
-        this.container.setModel(this.list.getSelectionModel());
-    }
-
     public override appendChild(child: ColumnViewChild): void {
+        super.appendChild(child);
+
         if (child instanceof ListItemNode) {
             this.list.appendChild(child);
             return;
         }
 
-        const existingColumn = this.findColumnInView(child.column);
+        const existingColumn = this.findColumnInView(child.getColumn());
 
         if (existingColumn) {
             this.container.removeColumn(existingColumn);
@@ -54,11 +46,13 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
 
         child.setStore(this.list.getStore());
         child.setEstimatedRowHeight(this.estimatedRowHeight);
-        this.container.appendColumn(child.column);
+        this.container.appendColumn(child.getColumn());
         this.columnNodes.add(child);
     }
 
     public override insertBefore(child: ColumnViewChild, before: ColumnViewChild): void {
+        super.insertBefore(child, before);
+
         if (child instanceof ListItemNode) {
             if (before instanceof ListItemNode) {
                 this.list.insertBefore(child, before);
@@ -66,7 +60,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             return;
         }
 
-        const existingColumn = this.findColumnInView(child.column);
+        const existingColumn = this.findColumnInView(child.getColumn());
 
         if (existingColumn) {
             this.container.removeColumn(existingColumn);
@@ -76,10 +70,10 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
         child.setEstimatedRowHeight(this.estimatedRowHeight);
 
         if (before instanceof ColumnViewColumnNode) {
-            const beforeIndex = this.getColumnIndex(before.column);
-            this.container.insertColumn(beforeIndex, child.column);
+            const beforeIndex = this.getColumnIndex(before.getColumn());
+            this.container.insertColumn(beforeIndex, child.getColumn());
         } else {
-            this.container.appendColumn(child.column);
+            this.container.appendColumn(child.getColumn());
         }
 
         this.columnNodes.add(child);
@@ -88,10 +82,11 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
     public override removeChild(child: ColumnViewChild): void {
         if (child instanceof ListItemNode) {
             this.list.removeChild(child);
+            super.removeChild(child);
             return;
         }
 
-        const existingColumn = this.findColumnInView(child.column);
+        const existingColumn = this.findColumnInView(child.getColumn());
 
         if (existingColumn) {
             this.container.removeColumn(existingColumn);
@@ -99,20 +94,36 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
 
         child.setStore(null);
         this.columnNodes.delete(child);
+        super.removeChild(child);
+    }
+
+    public override finalizeInitialChildren(props: ColumnViewProps): boolean {
+        super.finalizeInitialChildren(props);
+        return true;
     }
 
     public override commitUpdate(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
         super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
-        this.list.updateProps(oldProps, newProps);
+        this.list.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+    }
+
+    public override commitMount(): void {
+        super.commitMount();
+        this.container.setModel(this.list.getSelectionModel());
+    }
+
+    public override detachDeletedInstance(): void {
+        this.columnNodes.clear();
+        super.detachDeletedInstance();
     }
 
     private applyOwnProps(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
-        if (!oldProps || oldProps.onSortChanged !== newProps.onSortChanged) {
-            const sorter = this.container.getSorter() as Gtk.ColumnViewSorter | null;
+        if (hasChanged(oldProps, newProps, "onSortChanged")) {
+            const sorter = this.container.getSorter();
             const onSortChanged = newProps.onSortChanged;
 
-            if (sorter) {
+            if (sorter instanceof Gtk.ColumnViewSorter) {
                 this.handleSortChange = () => {
                     onSortChanged?.(sorter.getPrimarySortColumn()?.getId() ?? null, sorter.getPrimarySortOrder());
                 };
@@ -121,7 +132,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             }
         }
 
-        if (!oldProps || oldProps.sortColumn !== newProps.sortColumn || oldProps.sortOrder !== newProps.sortOrder) {
+        if (hasChanged(oldProps, newProps, "sortColumn") || hasChanged(oldProps, newProps, "sortOrder")) {
             const sortColumn = newProps.sortColumn;
             const sortOrder = newProps.sortOrder ?? Gtk.SortType.ASCENDING;
 
@@ -132,7 +143,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             }
         }
 
-        if (!oldProps || oldProps.estimatedRowHeight !== newProps.estimatedRowHeight) {
+        if (hasChanged(oldProps, newProps, "estimatedRowHeight")) {
             this.estimatedRowHeight = newProps.estimatedRowHeight ?? null;
             for (const column of this.columnNodes) {
                 column.setEstimatedRowHeight(this.estimatedRowHeight);
@@ -143,7 +154,8 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
     private findColumn<T>(predicate: (column: Gtk.ColumnViewColumn, index: number) => T | null): T | null {
         const columns = this.container.getColumns();
         for (let i = 0; i < columns.getNItems(); i++) {
-            const column = columns.getObject(i) as Gtk.ColumnViewColumn;
+            const column = columns.getObject(i);
+            if (!(column instanceof Gtk.ColumnViewColumn)) continue;
             const result = predicate(column, i);
             if (result !== null) return result;
         }
@@ -170,10 +182,5 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
     private findColumnInView(column: Gtk.ColumnViewColumn): Gtk.ColumnViewColumn | null {
         const targetId = column.getId();
         return this.findColumn((col) => (col.getId() === targetId ? col : null));
-    }
-
-    public override detachDeletedInstance(): void {
-        this.columnNodes.clear();
-        super.detachDeletedInstance();
     }
 }

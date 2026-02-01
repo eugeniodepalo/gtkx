@@ -1,25 +1,39 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { ToggleProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
-import type { WidgetNode } from "./widget.js";
+import { WidgetNode } from "./widget.js";
 
 export class ToggleNode extends VirtualNode<ToggleProps, WidgetNode<Adw.ToggleGroup>> {
     private toggle: Adw.Toggle | null = null;
 
-    public override setParent(parent: WidgetNode<Adw.ToggleGroup> | null): void {
-        if (parent !== null) {
-            super.setParent(parent);
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof WidgetNode && parent.container instanceof Adw.ToggleGroup;
+    }
 
-            if (!this.toggle) {
-                this.toggle = new Adw.Toggle();
-                this.applyOwnProps(null, this.props);
-                parent.container.add(this.toggle);
-            }
-        } else {
+    public override setParent(parent: WidgetNode<Adw.ToggleGroup> | null): void {
+        if (!parent && this.parent) {
             this.removeFromGroup();
-            super.setParent(parent);
         }
+
+        super.setParent(parent);
+
+        if (parent && !this.toggle) {
+            this.toggle = new Adw.Toggle();
+            this.applyOwnProps(null, this.props);
+            parent.container.add(this.toggle);
+        }
+    }
+
+    public override commitUpdate(oldProps: ToggleProps | null, newProps: ToggleProps): void {
+        super.commitUpdate(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
+    }
+
+    public override detachDeletedInstance(): void {
+        this.removeFromGroup();
+        super.detachDeletedInstance();
     }
 
     private removeFromGroup(): void {
@@ -29,36 +43,26 @@ export class ToggleNode extends VirtualNode<ToggleProps, WidgetNode<Adw.ToggleGr
         this.toggle = null;
     }
 
-    public override commitUpdate(oldProps: ToggleProps | null, newProps: ToggleProps): void {
-        super.commitUpdate(oldProps, newProps);
-        this.applyOwnProps(oldProps, newProps);
-    }
-
     private applyOwnProps(oldProps: ToggleProps | null, newProps: ToggleProps): void {
         if (!this.toggle) return;
 
-        if (hasChanged(oldProps, newProps, "id") && newProps.id !== undefined) {
-            this.toggle.setName(newProps.id);
+        if (hasChanged(oldProps, newProps, "id")) {
+            this.toggle.setName(newProps.id ?? "");
         }
-        if (hasChanged(oldProps, newProps, "label") && newProps.label !== undefined) {
-            this.toggle.setLabel(newProps.label);
+        if (hasChanged(oldProps, newProps, "label")) {
+            this.toggle.setLabel(newProps.label ?? "");
         }
-        if (hasChanged(oldProps, newProps, "iconName") && newProps.iconName !== undefined) {
-            this.toggle.setIconName(newProps.iconName);
+        if (hasChanged(oldProps, newProps, "iconName")) {
+            this.toggle.setIconName(newProps.iconName ?? "");
         }
-        if (hasChanged(oldProps, newProps, "tooltip") && newProps.tooltip !== undefined) {
-            this.toggle.setTooltip(newProps.tooltip);
+        if (hasChanged(oldProps, newProps, "tooltip")) {
+            this.toggle.setTooltip(newProps.tooltip ?? "");
         }
-        if (hasChanged(oldProps, newProps, "enabled") && newProps.enabled !== undefined) {
-            this.toggle.setEnabled(newProps.enabled);
+        if (hasChanged(oldProps, newProps, "enabled")) {
+            this.toggle.setEnabled(newProps.enabled ?? true);
         }
-        if (hasChanged(oldProps, newProps, "useUnderline") && newProps.useUnderline !== undefined) {
-            this.toggle.setUseUnderline(newProps.useUnderline);
+        if (hasChanged(oldProps, newProps, "useUnderline")) {
+            this.toggle.setUseUnderline(newProps.useUnderline ?? false);
         }
-    }
-
-    public override detachDeletedInstance(): void {
-        this.removeFromGroup();
-        super.detachDeletedInstance();
     }
 }

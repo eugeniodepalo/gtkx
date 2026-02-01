@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkLabel, GtkListBox, x } from "@gtkx/react";
+import { GtkLabel, GtkListBox, GtkShortcutController, x } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shortcut-triggers.tsx?raw";
 
@@ -7,14 +7,14 @@ const ShortcutTriggersDemo = () => {
     return (
         <GtkListBox marginTop={6} marginBottom={6} marginStart={6} marginEnd={6}>
             <GtkLabel label="Press Ctrl-G">
-                <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                     <x.Shortcut trigger="<Control>g" onActivate={() => console.log("activated Press Ctrl-G")} />
-                </x.ShortcutController>
+                </GtkShortcutController>
             </GtkLabel>
             <GtkLabel label="Press X">
-                <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                     <x.Shortcut trigger="x" onActivate={() => console.log("activated Press X")} />
-                </x.ShortcutController>
+                </GtkShortcutController>
             </GtkLabel>
         </GtkListBox>
     );

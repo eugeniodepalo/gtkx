@@ -1,6 +1,7 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -9,16 +10,21 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
         return child instanceof WidgetNode;
     }
 
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof WidgetNode && parent.container instanceof Gtk.Overlay;
+    }
+
     public override setParent(parent: WidgetNode<Gtk.Overlay> | null): void {
-        const previousParent = this.parent;
+        if (!parent && this.parent) {
+            this.detachAllChildren(this.parent.container);
+        }
+
         super.setParent(parent);
 
         if (parent) {
             for (const child of this.children) {
-                this.attachOverlayChild(parent.container, child.container);
+                this.attachToParent(parent.container, child.container);
             }
-        } else if (previousParent) {
-            this.detachAllOverlayChildren(previousParent.container);
         }
     }
 
@@ -26,7 +32,7 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
         super.appendChild(child);
 
         if (this.parent) {
-            this.attachOverlayChild(this.parent.container, child.container);
+            this.attachToParent(this.parent.container, child.container);
         }
     }
 
@@ -34,7 +40,7 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
         super.insertBefore(child, before);
 
         if (this.parent) {
-            this.attachOverlayChild(this.parent.container, child.container);
+            this.attachToParent(this.parent.container, child.container);
         }
     }
 
@@ -50,13 +56,6 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
         super.removeChild(child);
     }
 
-    public override detachDeletedInstance(): void {
-        if (this.parent) {
-            this.detachAllOverlayChildren(this.parent.container);
-        }
-        super.detachDeletedInstance();
-    }
-
     public override commitUpdate(oldProps: OverlayChildProps | null, newProps: OverlayChildProps): void {
         super.commitUpdate(oldProps, newProps);
 
@@ -64,8 +63,8 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
             return;
         }
 
-        const measureChanged = oldProps?.measure !== newProps.measure;
-        const clipOverlayChanged = oldProps?.clipOverlay !== newProps.clipOverlay;
+        const measureChanged = hasChanged(oldProps, newProps, "measure");
+        const clipOverlayChanged = hasChanged(oldProps, newProps, "clipOverlay");
 
         if (measureChanged || clipOverlayChanged) {
             const parent = this.parent.container;
@@ -80,23 +79,30 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
         }
     }
 
-    private attachOverlayChild(overlay: Gtk.Overlay, widget: Gtk.Widget): void {
-        overlay.addOverlay(widget);
+    public override detachDeletedInstance(): void {
+        if (this.parent) {
+            this.detachAllChildren(this.parent.container);
+        }
+        super.detachDeletedInstance();
+    }
+
+    private attachToParent(parent: Gtk.Overlay, child: Gtk.Widget): void {
+        parent.addOverlay(child);
 
         if (this.props.measure !== undefined) {
-            overlay.setMeasureOverlay(widget, this.props.measure);
+            parent.setMeasureOverlay(child, this.props.measure);
         }
 
         if (this.props.clipOverlay !== undefined) {
-            overlay.setClipOverlay(widget, this.props.clipOverlay);
+            parent.setClipOverlay(child, this.props.clipOverlay);
         }
     }
 
-    private detachAllOverlayChildren(overlay: Gtk.Overlay): void {
+    private detachAllChildren(parent: Gtk.Overlay): void {
         for (const child of this.children) {
             const currentParent = child.container.getParent();
-            if (currentParent && currentParent === overlay) {
-                overlay.removeOverlay(child.container);
+            if (currentParent && currentParent === parent) {
+                parent.removeOverlay(child.container);
             }
         }
     }

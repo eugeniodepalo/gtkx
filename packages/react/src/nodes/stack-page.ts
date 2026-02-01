@@ -1,19 +1,27 @@
 import * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import type { StackPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import type { StackWidget } from "../registry.js";
 import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode, WidgetNode> {
+export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode<StackWidget>, WidgetNode> {
     private page: Gtk.StackPage | Adw.ViewStackPage | null = null;
 
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
     }
 
-    public override setParent(parent: WidgetNode | null): void {
+    public override isValidParent(parent: Node): boolean {
+        return (
+            parent instanceof WidgetNode &&
+            (parent.container instanceof Gtk.Stack || parent.container instanceof Adw.ViewStack)
+        );
+    }
+
+    public override setParent(parent: WidgetNode<StackWidget> | null): void {
         const previousParent = this.parent;
 
         if (previousParent && !parent) {
@@ -49,6 +57,11 @@ export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode, Widge
         }
     }
 
+    public override commitUpdate(oldProps: StackPageProps | null, newProps: StackPageProps): void {
+        super.commitUpdate(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
+    }
+
     public override detachDeletedInstance(): void {
         const childWidget = this.children[0]?.container ?? null;
         if (childWidget && this.parent) {
@@ -56,11 +69,6 @@ export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode, Widge
         }
         this.page = null;
         super.detachDeletedInstance();
-    }
-
-    public override commitUpdate(oldProps: StackPageProps | null, newProps: StackPageProps): void {
-        super.commitUpdate(oldProps, newProps);
-        this.applyOwnProps(oldProps, newProps);
     }
 
     private getChildWidget(): Gtk.Widget {
@@ -71,11 +79,11 @@ export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode, Widge
         return child.container;
     }
 
-    private getParentWidget(): Gtk.Stack | Adw.ViewStack {
+    private getParentWidget(): StackWidget {
         if (!this.parent) {
             throw new Error("Expected parent widget to be set on StackPageNode");
         }
-        return this.parent.container as Gtk.Stack | Adw.ViewStack;
+        return this.parent.container;
     }
 
     private applyOwnProps(oldProps: StackPageProps | null, newProps: StackPageProps): void {
@@ -83,12 +91,12 @@ export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode, Widge
             return;
         }
 
-        if (hasChanged(oldProps, newProps, "title") && newProps.title !== undefined) {
-            this.page.setTitle(newProps.title);
+        if (hasChanged(oldProps, newProps, "title")) {
+            this.page.setTitle(newProps.title ?? "");
         }
 
-        if (hasChanged(oldProps, newProps, "iconName") && newProps.iconName !== undefined) {
-            this.page.setIconName(newProps.iconName);
+        if (hasChanged(oldProps, newProps, "iconName")) {
+            this.page.setIconName(newProps.iconName ?? "");
         }
 
         if (hasChanged(oldProps, newProps, "needsAttention")) {

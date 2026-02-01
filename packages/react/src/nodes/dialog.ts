@@ -4,7 +4,11 @@ import type { Props } from "../types.js";
 import { WidgetNode } from "./widget.js";
 
 export class DialogNode extends WidgetNode<Adw.Dialog> {
-    public parentWindow: Gtk.Window | null = null;
+    private parentWindow: Gtk.Window | null = null;
+
+    public setParentWindow(window: Gtk.Window | null): void {
+        this.parentWindow = window;
+    }
 
     public override finalizeInitialChildren(props: Props): boolean {
         this.commitUpdate(null, props);

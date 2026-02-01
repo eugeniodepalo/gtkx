@@ -12,7 +12,7 @@ export type TreeItemData<T = unknown> = {
 export class TreeStore {
     private rootIds: string[] = [];
     private children: Map<string, string[]> = new Map();
-    private rootModel: Gtk.StringList = new Gtk.StringList();
+    private rootModel = new Gtk.StringList();
     private childModels: Map<string, Gtk.StringList> = new Map();
     private items: Map<string, TreeItemData> = new Map();
     private onItemUpdated: TreeItemUpdatedCallback | null = null;

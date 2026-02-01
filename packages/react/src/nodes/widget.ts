@@ -60,10 +60,7 @@ export class WidgetNode<
         return new WidgetClass(...(args as ConstructorParameters<typeof Gtk.Widget>));
     }
 
-    public override isValidChild(child: Node): boolean {
-        if (child instanceof WidgetNode) {
-            return !(child.container instanceof Gtk.Window);
-        }
+    public override isValidChild(_child: Node): boolean {
         return true;
     }
 

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow, GtkSwitch, x } from "@gtkx/react";
+import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow, GtkSwitch, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-settings2.tsx?raw";
@@ -281,9 +281,10 @@ const ListViewSettings2Demo = () => {
             </GtkBox>
 
             <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                <x.TreeListView<TreeItem>
+                <GtkListView
                     estimatedItemHeight={48}
-                    renderItem={(item, _row) => {
+                    autoexpand
+                    renderItem={(item: TreeItem | null) => {
                         if (!item) {
                             return <GtkLabel label="Loading..." />;
                         }
@@ -346,24 +347,19 @@ const ListViewSettings2Demo = () => {
                     }}
                 >
                     {categoriesData.map((category) => (
-                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                        <x.ListItem key={category.id} id={category.id} value={category as TreeItem}>
                             {category.children.map((setting) => (
-                                <x.TreeListItem
-                                    key={setting.id}
-                                    id={setting.id}
-                                    value={setting as TreeItem}
-                                    hideExpander
-                                />
+                                <x.ListItem key={setting.id} id={setting.id} value={setting as TreeItem} hideExpander />
                             ))}
-                        </x.TreeListItem>
+                        </x.ListItem>
                     ))}
-                </x.TreeListView>
+                </GtkListView>
             </GtkScrolledWindow>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Implementation Notes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="This demo uses TreeListView with TreeListModel for native hierarchical data support. Categories are expandable rows that contain nested settings. The tree structure is defined declaratively by nesting TreeListItem components. GtkTreeExpander handles the expand/collapse UI and indentation automatically."
+                    label="This demo uses GtkListView with TreeListModel for native hierarchical data support. Categories are expandable rows that contain nested settings. The tree structure is defined declaratively by nesting ListItem components. GtkTreeExpander handles the expand/collapse UI and indentation automatically."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}

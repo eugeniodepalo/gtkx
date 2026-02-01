@@ -6,7 +6,15 @@ import { VirtualNode } from "./virtual.js";
 export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
     private contentParent: TextContentParent | null = null;
 
-    public bufferOffset = 0;
+    private bufferOffset = 0;
+
+    public getBufferOffset(): number {
+        return this.bufferOffset;
+    }
+
+    public setBufferOffset(offset: number): void {
+        this.bufferOffset = offset;
+    }
 
     public setContentParent(parent: TextContentParent): void {
         this.contentParent = parent;

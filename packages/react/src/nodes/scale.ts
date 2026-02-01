@@ -8,12 +8,9 @@ type ScaleProps = AdjustableProps & Pick<GtkScaleProps, "marks">;
 export class ScaleNode extends AdjustableNode<Gtk.Scale> {
     private appliedMarks: ScaleMark[] = [];
 
-    public override commitUpdate(oldProps: ScaleProps | null, newProps: ScaleProps): void {
-        super.commitUpdate(oldProps, newProps);
-        this.applyMarkProps(newProps);
-    }
+    protected override applyOwnProps(oldProps: ScaleProps | null, newProps: ScaleProps): void {
+        super.applyOwnProps(oldProps, newProps);
 
-    private applyMarkProps(newProps: ScaleProps): void {
         const newMarks = newProps.marks ?? [];
 
         if (shallowArrayEqual(this.appliedMarks, newMarks)) {

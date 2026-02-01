@@ -202,7 +202,7 @@ describe("render - ListView (tree)", () => {
 
         it("receives TreeListRow in renderItem", async () => {
             const ref = createRef<Gtk.ListView>();
-            const renderItem = vi.fn((item: { name: string } | null, row: Gtk.TreeListRow | null) => (
+            const renderItem = vi.fn((item: { name: string } | null, row?: Gtk.TreeListRow | null) => (
                 <GtkLabel label={`${item?.name ?? ""} - depth: ${row?.getDepth() ?? 0}`} />
             ));
 

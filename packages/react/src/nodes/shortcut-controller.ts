@@ -4,34 +4,24 @@ import { EventControllerNode } from "./event-controller.js";
 import { ShortcutNode } from "./shortcut.js";
 
 export class ShortcutControllerNode extends EventControllerNode<Gtk.ShortcutController, ShortcutNode> {
-    private shortcuts: ShortcutNode[] = [];
-
     public override isValidChild(child: Node): boolean {
         return child instanceof ShortcutNode;
     }
 
     public override appendChild(child: ShortcutNode): void {
         super.appendChild(child);
-        this.shortcuts.push(child);
-        this.addShortcutToController(child);
+        child.createShortcut();
+        const shortcut = child.getShortcut();
+        if (shortcut) {
+            this.container.addShortcut(shortcut);
+        }
     }
 
     public override removeChild(child: ShortcutNode): void {
-        const index = this.shortcuts.indexOf(child);
-        if (index !== -1) {
-            this.shortcuts.splice(index, 1);
-            if (child.shortcut) {
-                this.container.removeShortcut(child.shortcut);
-            }
+        const shortcut = child.getShortcut();
+        if (shortcut) {
+            this.container.removeShortcut(shortcut);
         }
-
         super.removeChild(child);
-    }
-
-    private addShortcutToController(node: ShortcutNode): void {
-        node.createShortcut();
-        if (node.shortcut) {
-            this.container.addShortcut(node.shortcut);
-        }
     }
 }

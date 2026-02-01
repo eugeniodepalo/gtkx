@@ -18,9 +18,9 @@ export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetN
 
     public override setParent(parent: WidgetNode | null): void {
         if (!parent && this.parent && this.wrappedPage) {
-            const navigationView = this.parent.container;
-            if (navigationView instanceof Adw.NavigationView) {
-                navigationView.remove(this.wrappedPage);
+            const parentWidget = this.getParentWidget();
+            if (parentWidget instanceof Adw.NavigationView) {
+                parentWidget.remove(this.wrappedPage);
             }
             this.wrappedPage = null;
         }
@@ -50,20 +50,20 @@ export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetN
         }
     }
 
+    public override commitUpdate(oldProps: NavigationPageProps | null, newProps: NavigationPageProps): void {
+        super.commitUpdate(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
+    }
+
     public override detachDeletedInstance(): void {
         if (this.parent && this.wrappedPage) {
-            const navigationView = this.parent.container;
-            if (navigationView instanceof Adw.NavigationView) {
-                navigationView.remove(this.wrappedPage);
+            const parentWidget = this.getParentWidget();
+            if (parentWidget instanceof Adw.NavigationView) {
+                parentWidget.remove(this.wrappedPage);
             }
         }
         this.wrappedPage = null;
         super.detachDeletedInstance();
-    }
-
-    public override commitUpdate(oldProps: NavigationPageProps | null, newProps: NavigationPageProps): void {
-        super.commitUpdate(oldProps, newProps);
-        this.applyOwnProps(oldProps, newProps);
     }
 
     private applyOwnProps(oldProps: NavigationPageProps | null, newProps: NavigationPageProps): void {
@@ -75,12 +75,12 @@ export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetN
             this.wrappedPage.setTag(newProps.id);
         }
 
-        if (hasChanged(oldProps, newProps, "title") && newProps.title !== undefined) {
-            this.wrappedPage.setTitle(newProps.title);
+        if (hasChanged(oldProps, newProps, "title")) {
+            this.wrappedPage.setTitle(newProps.title ?? "");
         }
 
-        if (hasChanged(oldProps, newProps, "canPop") && newProps.canPop !== undefined) {
-            this.wrappedPage.setCanPop(newProps.canPop);
+        if (hasChanged(oldProps, newProps, "canPop")) {
+            this.wrappedPage.setCanPop(newProps.canPop ?? true);
         }
     }
 

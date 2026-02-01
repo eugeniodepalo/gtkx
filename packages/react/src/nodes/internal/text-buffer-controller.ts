@@ -133,7 +133,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         const wasMoved = this.textChildren.indexOf(child) !== -1;
         if (wasMoved) {
             const existingIndex = this.textChildren.indexOf(child);
-            const oldOffset = child.bufferOffset;
+            const oldOffset = child.getBufferOffset();
             const oldLength = child.getLength();
 
             this.textChildren.splice(existingIndex, 1);
@@ -148,7 +148,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         const offset = this.getTotalLength();
 
         this.textChildren.push(child);
-        child.bufferOffset = offset;
+        child.setBufferOffset(offset);
         this.setChildParent(child);
 
         if (child instanceof TextSegmentNode) {
@@ -176,7 +176,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
         const existingIndex = this.textChildren.indexOf(child);
         if (existingIndex !== -1) {
-            const oldOffset = child.bufferOffset;
+            const oldOffset = child.getBufferOffset();
             const oldLength = child.getLength();
 
             this.textChildren.splice(existingIndex, 1);
@@ -198,7 +198,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         }
 
         this.textChildren.splice(insertIndex, 0, child);
-        child.bufferOffset = offset;
+        child.setBufferOffset(offset);
         this.setChildParent(child);
 
         if (child instanceof TextSegmentNode) {
@@ -223,7 +223,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         const index = this.textChildren.indexOf(child);
         if (index === -1) return;
 
-        const offset = child.bufferOffset;
+        const offset = child.getBufferOffset();
         const length = child.getLength();
 
         this.textChildren.splice(index, 1);
@@ -282,7 +282,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         for (let i = startIndex; i < this.textChildren.length; i++) {
             const child = this.textChildren[i];
             if (child) {
-                child.bufferOffset = offset;
+                child.setBufferOffset(offset);
                 offset += child.getLength();
             }
         }
@@ -300,10 +300,10 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
     private reapplyTagsFromOffset(fromOffset: number): void {
         for (const child of this.textChildren) {
             if (child instanceof TextTagNode) {
-                if (child.bufferOffset >= fromOffset) {
+                if (child.getBufferOffset() >= fromOffset) {
                     child.reapplyTag();
                     this.reapplyAllTagsRecursive(child.getChildren());
-                } else if (child.bufferOffset + child.getLength() > fromOffset) {
+                } else if (child.getBufferOffset() + child.getLength() > fromOffset) {
                     child.reapplyTag();
                     this.reapplyAllTagsRecursive(child.getChildren());
                 }
@@ -315,7 +315,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         for (let i = 0; i < this.textChildren.length; i++) {
             const child = this.textChildren[i];
             if (child) {
-                const start = child.bufferOffset;
+                const start = child.getBufferOffset();
                 const end = start + child.getLength();
                 if (offset >= start && offset <= end) {
                     return i;
@@ -330,21 +330,21 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
         const text = child.getText();
         if (text.length > 0) {
-            this.insertTextAtOffset(text, child.bufferOffset);
+            this.insertTextAtOffset(text, child.getBufferOffset());
         }
 
-        const containingIndex = this.findDirectChildContaining(child.bufferOffset);
+        const containingIndex = this.findDirectChildContaining(child.getBufferOffset());
         if (containingIndex !== -1) {
             this.updateChildOffsets(containingIndex + 1);
         }
 
-        this.reapplyTagsFromOffset(child.bufferOffset);
+        this.reapplyTagsFromOffset(child.getBufferOffset());
     }
 
     onChildRemoved(child: TextContentChild): void {
         if (!this.buffer) return;
 
-        const offset = child.bufferOffset;
+        const offset = child.getBufferOffset();
         const length = child.getLength();
 
         if (length > 0) {
@@ -364,7 +364,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
         this.owner.signalStore.blockAll();
         try {
-            const offset = child.bufferOffset;
+            const offset = child.getBufferOffset();
 
             this.deleteTextAtRange(offset, offset + oldLength);
             this.insertTextAtOffset(child.getText(), offset);

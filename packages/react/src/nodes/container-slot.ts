@@ -10,16 +10,21 @@ export class ContainerSlotNode extends VirtualNode<ContainerSlotProps, WidgetNod
         return child instanceof WidgetNode;
     }
 
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof WidgetNode;
+    }
+
     public override setParent(parent: WidgetNode | null): void {
-        const previousParent = this.parent;
+        if (!parent && this.parent) {
+            this.detachAllChildren(this.parent.container);
+        }
+
         super.setParent(parent);
 
         if (parent) {
             for (const child of this.children) {
-                this.attach(parent.container, child.container);
+                this.attachToParent(parent.container, child.container);
             }
-        } else if (previousParent) {
-            this.detachAllChildren(previousParent.container);
         }
     }
 
@@ -27,7 +32,7 @@ export class ContainerSlotNode extends VirtualNode<ContainerSlotProps, WidgetNod
         super.appendChild(child);
 
         if (this.parent) {
-            this.attach(this.parent.container, child.container);
+            this.attachToParent(this.parent.container, child.container);
         }
     }
 
@@ -35,7 +40,7 @@ export class ContainerSlotNode extends VirtualNode<ContainerSlotProps, WidgetNod
         super.insertBefore(child, before);
 
         if (this.parent) {
-            this.attach(this.parent.container, child.container);
+            this.attachToParent(this.parent.container, child.container);
         }
     }
 
@@ -58,7 +63,7 @@ export class ContainerSlotNode extends VirtualNode<ContainerSlotProps, WidgetNod
         super.detachDeletedInstance();
     }
 
-    private attach(parent: Gtk.Widget, child: Gtk.Widget): void {
+    private attachToParent(parent: Gtk.Widget, child: Gtk.Widget): void {
         const methodName = this.props.id;
         const method = parent[methodName as keyof Gtk.Widget];
 

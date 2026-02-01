@@ -1,10 +1,7 @@
-import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type * as Pango from "@gtkx/ffi/pango";
 import type { GtkFontDialogButtonProps } from "../jsx.js";
 import type { Container } from "../types.js";
 import { filterProps, hasChanged } from "./internal/props.js";
-import type { SignalHandler } from "./internal/signal-store.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = [
@@ -22,7 +19,6 @@ type FontDialogButtonProps = Pick<GtkFontDialogButtonProps, (typeof OWN_PROPS)[n
 
 export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogButtonProps> {
     private dialog: Gtk.FontDialog;
-    private notifyHandler: SignalHandler | null = null;
 
     public static override createContainer(
         _props: FontDialogButtonProps,
@@ -33,8 +29,13 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
         return button;
     }
 
-    constructor(type: string, props: FontDialogButtonProps, container: Gtk.FontDialogButton, rootContainer: Container) {
-        super(type, props, container, rootContainer);
+    constructor(
+        typeName: string,
+        props: FontDialogButtonProps,
+        container: Gtk.FontDialogButton,
+        rootContainer: Container,
+    ) {
+        super(typeName, props, container, rootContainer);
         const dialog = container.getDialog();
         if (!dialog) {
             throw new Error("FontDialogButton must have a dialog");
@@ -48,8 +49,8 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
     }
 
     private applyOwnProps(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {
-        if (hasChanged(oldProps, newProps, "title") && newProps.title !== undefined) {
-            this.dialog.setTitle(newProps.title);
+        if (hasChanged(oldProps, newProps, "title")) {
+            this.dialog.setTitle(newProps.title ?? "");
         }
 
         if (hasChanged(oldProps, newProps, "modal")) {
@@ -77,34 +78,20 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
         }
 
         if (hasChanged(oldProps, newProps, "onFontDescChanged")) {
-            this.setFontDescChanged(newProps.onFontDescChanged);
+            const callback = newProps.onFontDescChanged;
+            this.signalStore.set(
+                this,
+                this.container,
+                "notify::font-desc",
+                callback
+                    ? () => {
+                          const fontDesc = this.container.getFontDesc();
+                          if (fontDesc) {
+                              callback(fontDesc);
+                          }
+                      }
+                    : undefined,
+            );
         }
-    }
-
-    private setFontDescChanged(callback?: ((fontDesc: Pango.FontDescription) => void) | null): void {
-        if (this.notifyHandler) {
-            this.signalStore.set(this, this.container, "notify", undefined);
-            this.notifyHandler = null;
-        }
-
-        if (callback) {
-            this.notifyHandler = (_button: Gtk.FontDialogButton, pspec: GObject.ParamSpec) => {
-                if (pspec.getName() === "font-desc") {
-                    const fontDesc = this.container.getFontDesc();
-                    if (fontDesc) {
-                        callback(fontDesc);
-                    }
-                }
-            };
-            this.signalStore.set(this, this.container, "notify", this.notifyHandler);
-        }
-    }
-
-    public override detachDeletedInstance(): void {
-        if (this.notifyHandler) {
-            this.signalStore.set(this, this.container, "notify", undefined);
-            this.notifyHandler = null;
-        }
-        super.detachDeletedInstance();
     }
 }

@@ -1,35 +1,31 @@
-import type * as Adw from "@gtkx/ffi/adw";
+import * as Adw from "@gtkx/ffi/adw";
 import type { AlertDialogResponseProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
-import type { WidgetNode } from "./widget.js";
+import { WidgetNode } from "./widget.js";
 
 export class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProps, WidgetNode<Adw.AlertDialog>> {
     private dialog: Adw.AlertDialog | null = null;
     private responseId: string | null = null;
 
-    public override setParent(parent: WidgetNode<Adw.AlertDialog> | null): void {
-        if (parent !== null) {
-            super.setParent(parent);
-
-            if (!this.dialog) {
-                this.dialog = parent.container;
-                this.responseId = this.props.id;
-                this.dialog.addResponse(this.responseId, this.props.label);
-                this.applyOptionalProps(null, this.props);
-            }
-        } else {
-            this.removeFromDialog();
-            super.setParent(parent);
-        }
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof WidgetNode && parent.container instanceof Adw.AlertDialog;
     }
 
-    private removeFromDialog(): void {
-        if (!this.dialog || !this.responseId) return;
+    public override setParent(parent: WidgetNode<Adw.AlertDialog> | null): void {
+        if (!parent && this.parent) {
+            this.removeFromDialog();
+        }
 
-        this.dialog.removeResponse(this.responseId);
-        this.dialog = null;
-        this.responseId = null;
+        super.setParent(parent);
+
+        if (parent && !this.dialog) {
+            this.dialog = parent.container;
+            this.responseId = this.props.id;
+            this.dialog.addResponse(this.responseId, this.props.label);
+            this.applyOwnProps(null, this.props);
+        }
     }
 
     public override commitUpdate(oldProps: AlertDialogResponseProps | null, newProps: AlertDialogResponseProps): void {
@@ -45,7 +41,7 @@ export class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProp
             this.dialog.removeResponse(oldId);
             this.responseId = newId;
             this.dialog.addResponse(newId, label);
-            this.applyOptionalProps(null, newProps);
+            this.applyOwnProps(null, newProps);
             return;
         }
 
@@ -53,22 +49,30 @@ export class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProp
             this.dialog.setResponseLabel(this.responseId, newProps.label);
         }
 
-        this.applyOptionalProps(oldProps, newProps);
-    }
-
-    private applyOptionalProps(oldProps: AlertDialogResponseProps | null, newProps: AlertDialogResponseProps): void {
-        if (!this.dialog || !this.responseId) return;
-
-        if (hasChanged(oldProps, newProps, "appearance") && newProps.appearance !== undefined) {
-            this.dialog.setResponseAppearance(this.responseId, newProps.appearance);
-        }
-        if (hasChanged(oldProps, newProps, "enabled") && newProps.enabled !== undefined) {
-            this.dialog.setResponseEnabled(this.responseId, newProps.enabled);
-        }
+        this.applyOwnProps(oldProps, newProps);
     }
 
     public override detachDeletedInstance(): void {
         this.removeFromDialog();
         super.detachDeletedInstance();
+    }
+
+    private removeFromDialog(): void {
+        if (!this.dialog || !this.responseId) return;
+
+        this.dialog.removeResponse(this.responseId);
+        this.dialog = null;
+        this.responseId = null;
+    }
+
+    private applyOwnProps(oldProps: AlertDialogResponseProps | null, newProps: AlertDialogResponseProps): void {
+        if (!this.dialog || !this.responseId) return;
+
+        if (hasChanged(oldProps, newProps, "appearance")) {
+            this.dialog.setResponseAppearance(this.responseId, newProps.appearance ?? Adw.ResponseAppearance.DEFAULT);
+        }
+        if (hasChanged(oldProps, newProps, "enabled")) {
+            this.dialog.setResponseEnabled(this.responseId, newProps.enabled ?? true);
+        }
     }
 }

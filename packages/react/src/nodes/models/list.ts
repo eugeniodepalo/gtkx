@@ -5,7 +5,7 @@ import type { GtkListViewProps } from "../../jsx.js";
 import { SelectionModelController } from "../internal/selection-model-controller.js";
 import type { SignalStore } from "../internal/signal-store.js";
 import { TreeStore } from "../internal/tree-store.js";
-import { createItemData, type ListItemNode } from "../list-item.js";
+import { ListItemNode } from "../list-item.js";
 
 export type ListModelProps = Pick<GtkListViewProps, "autoexpand" | "selectionMode" | "selected" | "onSelectionChanged">;
 
@@ -66,12 +66,12 @@ export class ListModel {
             this.addItemWithChildren(child, id);
         }
 
-        this.store.addItem(id, createItemData(node.props), parentId);
+        this.store.addItem(id, ListItemNode.createItemData(node.props), parentId);
     }
 
     public insertBefore(child: ListItemNode, before: ListItemNode): void {
         child.setStore(this.store);
-        this.store.insertItemBefore(child.props.id, before.props.id, createItemData(child.props));
+        this.store.insertItemBefore(child.props.id, before.props.id, ListItemNode.createItemData(child.props));
     }
 
     public removeChild(child: ListItemNode): void {

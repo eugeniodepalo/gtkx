@@ -20,16 +20,16 @@ type TextViewProps = Pick<GtkTextViewProps, (typeof OWN_PROPS)[number]>;
 type TextViewChild = TextContentChild | SlotNode | WidgetNode;
 
 export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextViewChild> implements TextContentParent {
-    bufferController: TextBufferController | null = null;
+    protected bufferController: TextBufferController | null = null;
 
-    ensureBufferController(): TextBufferController {
+    protected ensureBufferController(): TextBufferController {
         if (!this.bufferController) {
             this.bufferController = this.createBufferController();
         }
         return this.bufferController;
     }
 
-    createBufferController(): TextBufferController {
+    protected createBufferController(): TextBufferController {
         return new TextBufferController(this, this.container, () => new Gtk.TextBuffer());
     }
 

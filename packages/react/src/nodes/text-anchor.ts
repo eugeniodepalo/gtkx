@@ -1,10 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { TextAnchorProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { TEXT_OBJECT_REPLACEMENT } from "./text-content.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
-
-const PLACEHOLDER = "\uFFFC";
 
 export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node, WidgetNode> {
     private textView: Gtk.TextView | null = null;
@@ -12,7 +11,15 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node, WidgetNod
     private anchor: Gtk.TextChildAnchor | null = null;
     private widgetChild: WidgetNode | null = null;
 
-    public bufferOffset = 0;
+    private bufferOffset = 0;
+
+    public getBufferOffset(): number {
+        return this.bufferOffset;
+    }
+
+    public setBufferOffset(offset: number): void {
+        this.bufferOffset = offset;
+    }
 
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
@@ -23,7 +30,7 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node, WidgetNod
     }
 
     public getText(): string {
-        return PLACEHOLDER;
+        return TEXT_OBJECT_REPLACEMENT;
     }
 
     public setTextViewAndBuffer(textView: Gtk.TextView, buffer: Gtk.TextBuffer): void {

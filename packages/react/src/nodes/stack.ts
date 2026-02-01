@@ -17,22 +17,19 @@ export class StackNode extends WidgetNode<StackWidget, StackProps> {
 
     private applyOwnProps(oldProps: StackProps | null, newProps: StackProps): void {
         if (newProps.page && this.container.getVisibleChildName() !== newProps.page) {
-            const page = newProps.page;
-            if (this.container.getChildByName(page)) {
-                this.container.setVisibleChildName(page);
+            if (this.container.getChildByName(newProps.page)) {
+                this.container.setVisibleChildName(newProps.page);
             }
         }
 
         if (hasChanged(oldProps, newProps, "onPageChanged")) {
             const { onPageChanged } = newProps;
-
-            if (onPageChanged) {
-                this.signalStore.set(this, this.container, "notify::visible-child-name", (self: StackWidget) => {
-                    onPageChanged(self.getVisibleChildName(), self);
-                });
-            } else {
-                this.signalStore.set(this, this.container, "notify::visible-child-name", undefined);
-            }
+            this.signalStore.set(
+                this,
+                this.container,
+                "notify::visible-child-name",
+                onPageChanged ? (self: StackWidget) => onPageChanged(self.getVisibleChildName(), self) : undefined,
+            );
         }
     }
 }

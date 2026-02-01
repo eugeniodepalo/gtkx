@@ -163,13 +163,14 @@ export const ListDemo = () => {
             </AdwPreferencesGroup>
 
             <AdwPreferencesGroup
-                title="x.TreeListView / x.TreeListItem"
-                description="Hierarchical tree with expand/collapse"
+                title="GtkListView (Tree)"
+                description="Hierarchical tree with expand/collapse using nested ListItems"
             >
                 <GtkFrame marginTop={12}>
                     <GtkScrolledWindow heightRequest={320} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <x.TreeListView<{ name: string }>
+                        <GtkListView
                             estimatedItemHeight={32}
+                            autoexpand
                             renderItem={(item) => (
                                 <GtkLabel
                                     label={item?.name ?? ""}
@@ -179,26 +180,26 @@ export const ListDemo = () => {
                                 />
                             )}
                         >
-                            <x.TreeListItem id="src" value={{ name: "src" }}>
-                                <x.TreeListItem id="components" value={{ name: "components" }}>
-                                    <x.TreeListItem id="button" value={{ name: "Button.tsx" }} />
-                                    <x.TreeListItem id="input" value={{ name: "Input.tsx" }} />
-                                    <x.TreeListItem id="modal" value={{ name: "Modal.tsx" }} />
-                                </x.TreeListItem>
-                                <x.TreeListItem id="utils" value={{ name: "utils" }}>
-                                    <x.TreeListItem id="helpers" value={{ name: "helpers.ts" }} />
-                                    <x.TreeListItem id="constants" value={{ name: "constants.ts" }} />
-                                </x.TreeListItem>
-                                <x.TreeListItem id="app" value={{ name: "App.tsx" }} />
-                                <x.TreeListItem id="index" value={{ name: "index.tsx" }} />
-                            </x.TreeListItem>
-                            <x.TreeListItem id="public" value={{ name: "public" }}>
-                                <x.TreeListItem id="favicon" value={{ name: "favicon.ico" }} />
-                                <x.TreeListItem id="index-html" value={{ name: "index.html" }} />
-                            </x.TreeListItem>
-                            <x.TreeListItem id="package" value={{ name: "package.json" }} />
-                            <x.TreeListItem id="readme" value={{ name: "README.md" }} />
-                        </x.TreeListView>
+                            <x.ListItem id="src" value={{ name: "src" }}>
+                                <x.ListItem id="components" value={{ name: "components" }}>
+                                    <x.ListItem id="button" value={{ name: "Button.tsx" }} />
+                                    <x.ListItem id="input" value={{ name: "Input.tsx" }} />
+                                    <x.ListItem id="modal" value={{ name: "Modal.tsx" }} />
+                                </x.ListItem>
+                                <x.ListItem id="utils" value={{ name: "utils" }}>
+                                    <x.ListItem id="helpers" value={{ name: "helpers.ts" }} />
+                                    <x.ListItem id="constants" value={{ name: "constants.ts" }} />
+                                </x.ListItem>
+                                <x.ListItem id="app" value={{ name: "App.tsx" }} />
+                                <x.ListItem id="index" value={{ name: "index.tsx" }} />
+                            </x.ListItem>
+                            <x.ListItem id="public" value={{ name: "public" }}>
+                                <x.ListItem id="favicon" value={{ name: "favicon.ico" }} />
+                                <x.ListItem id="index-html" value={{ name: "index.html" }} />
+                            </x.ListItem>
+                            <x.ListItem id="package" value={{ name: "package.json" }} />
+                            <x.ListItem id="readme" value={{ name: "README.md" }} />
+                        </GtkListView>
                     </GtkScrolledWindow>
                 </GtkFrame>
             </AdwPreferencesGroup>

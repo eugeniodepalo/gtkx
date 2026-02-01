@@ -7,9 +7,7 @@ import { getFocusWidget, isDescendantOf, resolvePropertySetter } from "./interna
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-type SlotNodeProps = Omit<SlotProps, "children">;
-
-export class SlotNode<P extends Props = SlotNodeProps, TChild extends Node = WidgetNode> extends VirtualNode<
+export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetNode> extends VirtualNode<
     P,
     WidgetNode,
     TChild
@@ -81,16 +79,7 @@ export class SlotNode<P extends Props = SlotNodeProps, TChild extends Node = Wid
         super.detachDeletedInstance();
     }
 
-    public getChildWidget(): Gtk.Widget {
-        const child = this.children[0];
-        if (!child) {
-            throw new Error(`Expected child widget to be set on '${this.getId()}' SlotNode`);
-        }
-
-        return child.container;
-    }
-
-    public getId(): string {
+    private getId(): string {
         const id = (this.props as SlotProps).id;
 
         if (!id) {
@@ -100,7 +89,7 @@ export class SlotNode<P extends Props = SlotNodeProps, TChild extends Node = Wid
         return toCamelCase(id);
     }
 
-    public getParentWidget(): Gtk.Widget {
+    private getParentWidget(): Gtk.Widget {
         if (!this.parent) {
             throw new Error(`Expected parent widget to be set on '${this.getId()}' SlotNode`);
         }
@@ -108,7 +97,7 @@ export class SlotNode<P extends Props = SlotNodeProps, TChild extends Node = Wid
         return this.parent.container;
     }
 
-    public ensureChildSetter(): (child: Gtk.Widget | null) => void {
+    private ensureChildSetter(): (child: Gtk.Widget | null) => void {
         if (this.cachedSetter) return this.cachedSetter;
 
         const parent = this.getParentWidget();
@@ -123,7 +112,7 @@ export class SlotNode<P extends Props = SlotNodeProps, TChild extends Node = Wid
         return this.cachedSetter;
     }
 
-    public onChildChange(oldChild: Gtk.Widget | null): void {
+    private onChildChange(oldChild: Gtk.Widget | null): void {
         const setter = this.ensureChildSetter();
         const childWidget = this.children[0]?.container ?? null;
 

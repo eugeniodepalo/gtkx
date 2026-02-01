@@ -4,8 +4,23 @@ import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 
 export class ShortcutNode extends VirtualNode<ShortcutProps> {
-    public shortcut: Gtk.Shortcut | null = null;
+    private shortcut: Gtk.Shortcut | null = null;
     private action: Gtk.CallbackAction | null = null;
+
+    public override commitUpdate(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
+        super.commitUpdate(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
+    }
+
+    public override detachDeletedInstance(): void {
+        this.shortcut = null;
+        this.action = null;
+        super.detachDeletedInstance();
+    }
+
+    public getShortcut(): Gtk.Shortcut | null {
+        return this.shortcut;
+    }
 
     public createShortcut(): void {
         const trigger = this.createTrigger();
@@ -16,23 +31,12 @@ export class ShortcutNode extends VirtualNode<ShortcutProps> {
         this.shortcut = new Gtk.Shortcut(trigger, this.action);
     }
 
-    public override commitUpdate(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
-        super.commitUpdate(oldProps, newProps);
-        this.applyOwnProps(oldProps, newProps);
-    }
-
     private applyOwnProps(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
         if (!this.shortcut) return;
 
         if (hasChanged(oldProps, newProps, "trigger") || hasChanged(oldProps, newProps, "disabled")) {
             this.shortcut.setTrigger(this.createTrigger());
         }
-    }
-
-    public override detachDeletedInstance(): void {
-        this.shortcut = null;
-        this.action = null;
-        super.detachDeletedInstance();
     }
 
     private createTrigger(): Gtk.ShortcutTrigger {

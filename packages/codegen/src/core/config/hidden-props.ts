@@ -21,7 +21,7 @@ const HIDDEN_PROPS: Readonly<Record<string, readonly string[]>> = {
     FontDialogButton: ["dialog"],
     PopoverMenu: ["menuModel"],
     PopoverMenuBar: ["menuModel"],
-    MenuButton: ["menuModel", "popover"]
+    MenuButton: ["menuModel"],
 };
 
 export const getHiddenPropNames = (widgetName: string): readonly string[] => {

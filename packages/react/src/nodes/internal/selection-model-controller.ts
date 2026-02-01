@@ -14,7 +14,6 @@ export class SelectionModelController {
     private owner: object;
     private signalStore: SignalStore;
     private selectionModel: SelectionModel;
-    private handleSelectionChange: (() => void) | null = null;
     private getSelection: () => string[];
     private resolveSelectionIndices: (ids: string[]) => Gtk.Bitset;
     private getItemCount: () => number;
@@ -72,11 +71,11 @@ export class SelectionModelController {
             return;
         }
 
-        this.handleSelectionChange = () => {
+        const handler = () => {
             onSelectionChanged(this.getSelection());
         };
 
-        this.signalStore.set(this.owner, this.selectionModel, "selection-changed", this.handleSelectionChange);
+        this.signalStore.set(this.owner, this.selectionModel, "selection-changed", handler);
     }
 
     private createSelectionModel(mode: Gtk.SelectionMode | null | undefined, model: Gio.ListModel): SelectionModel {

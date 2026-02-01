@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkInscription, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry, x } from "@gtkx/react";
+import { GtkBox, GtkInscription, GtkListView, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry, x } from "@gtkx/react";
 import { useDemo } from "../context/demo-context.js";
 import type { TreeItem } from "../demos/types.js";
 
@@ -11,18 +11,18 @@ interface SidebarProps {
 const TreeItemNode = ({ item }: { item: TreeItem }) => {
     if (item.type === "demo") {
         return (
-            <x.TreeListItem key={item.demo.id} id={`demo-${item.demo.id}`} value={item} hideExpander>
+            <x.ListItem key={item.demo.id} id={`demo-${item.demo.id}`} value={item} hideExpander>
                 {null}
-            </x.TreeListItem>
+            </x.ListItem>
         );
     }
 
     return (
-        <x.TreeListItem key={`category-${item.title}`} id={`category-${item.title}`} value={item}>
+        <x.ListItem key={`category-${item.title}`} id={`category-${item.title}`} value={item}>
             {item.children.map((child) => (
                 <TreeItemNode key={child.type === "demo" ? child.demo.id : child.title} item={child} />
             ))}
-        </x.TreeListItem>
+        </x.ListItem>
     );
 };
 
@@ -43,12 +43,12 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
                 propagateNaturalWidth
                 cssClasses={["sidebar"]}
             >
-                <x.TreeListView<TreeItem>
+                <GtkListView
                     cssClasses={["navigation-sidebar"]}
                     autoexpand
                     selectionMode={Gtk.SelectionMode.SINGLE}
                     selected={currentDemo ? [`demo-${currentDemo.id}`] : []}
-                    onSelectionChanged={(ids) => {
+                    onSelectionChanged={(ids: string[]) => {
                         const selectedId = ids[0];
                         if (!selectedId?.startsWith("demo-")) return;
                         const demoId = selectedId.slice(5);
@@ -57,7 +57,7 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
                             setCurrentDemo(demo);
                         }
                     }}
-                    renderItem={(item) => {
+                    renderItem={(item: TreeItem | null) => {
                         if (!item) return null;
 
                         if (item.type === "category") {
@@ -82,7 +82,7 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
                     {filteredTreeItems.map((item) => (
                         <TreeItemNode key={item.type === "demo" ? item.demo.id : item.title} item={item} />
                     ))}
-                </x.TreeListView>
+                </GtkListView>
             </GtkScrolledWindow>
         </GtkBox>
     );

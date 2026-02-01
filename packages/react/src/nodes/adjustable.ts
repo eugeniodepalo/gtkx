@@ -11,10 +11,10 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
 
     public override commitUpdate(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
         super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
-        this.applyAdjustmentProps(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
     }
 
-    public ensureAdjustment(props: AdjustableProps): Gtk.Adjustment {
+    protected ensureAdjustment(props: AdjustableProps): Gtk.Adjustment {
         if (!this.adjustment) {
             this.adjustment = new Gtk.Adjustment(
                 props.value ?? 0,
@@ -31,11 +31,17 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
         return this.adjustment;
     }
 
-    private applyAdjustmentProps(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
+    protected applyOwnProps(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
         const adjustment = this.ensureAdjustment(newProps);
 
         if (hasChanged(oldProps, newProps, "onValueChanged")) {
-            this.setValueChanged(newProps);
+            const { onValueChanged } = newProps;
+            this.signalStore.set(
+                this,
+                this.container,
+                "value-changed",
+                onValueChanged ? (self: T) => onValueChanged(self.getValue(), self) : undefined,
+            );
         }
 
         if (!oldProps) return;
@@ -57,20 +63,6 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
         }
         if (hasChanged(oldProps, newProps, "value") && newProps.value !== undefined) {
             adjustment.setValue(newProps.value);
-        }
-    }
-
-    private setValueChanged(props: AdjustableProps): void {
-        if (!this.adjustment) return;
-
-        const { onValueChanged } = props;
-
-        if (onValueChanged) {
-            this.signalStore.set(this, this.container, "value-changed", (self: T) =>
-                onValueChanged(self.getValue(), self),
-            );
-        } else {
-            this.signalStore.set(this, this.container, "value-changed", undefined);
         }
     }
 }

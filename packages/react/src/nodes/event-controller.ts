@@ -35,19 +35,20 @@ export class EventControllerNode<
     }
 
     public override setParent(parent: WidgetNode | null): void {
-        const previousParent = this.parent;
+        if (!parent && this.parent) {
+            this.parent.container.removeController(this.container);
+        }
+
         super.setParent(parent);
 
         if (parent) {
             parent.container.addController(this.container);
-        } else if (previousParent) {
-            previousParent.container.removeController(this.container);
         }
     }
 
     public override commitUpdate(oldProps: Props | null, newProps: Props): void {
         super.commitUpdate(oldProps, newProps);
-        this.applyProps(oldProps, newProps);
+        this.applyOwnProps(oldProps, newProps);
     }
 
     public override detachDeletedInstance(): void {
@@ -57,7 +58,7 @@ export class EventControllerNode<
         super.detachDeletedInstance();
     }
 
-    private applyProps(oldProps: Props | null, newProps: Props): void {
+    private applyOwnProps(oldProps: Props | null, newProps: Props): void {
         const propNames = new Set([...Object.keys(oldProps ?? {}), ...Object.keys(newProps ?? {})]);
 
         for (const name of propNames) {

@@ -72,14 +72,14 @@ const PickersDemo = () => {
                 <GtkLabel label="_Color:" useUnderline halign={Gtk.Align.START} hexpand />
             </x.GridChild>
             <x.GridChild column={1} row={0}>
-                <GtkColorDialogButton dialog={new Gtk.ColorDialog()} />
+                <GtkColorDialogButton />
             </x.GridChild>
 
             <x.GridChild column={0} row={1}>
                 <GtkLabel label="_Font:" useUnderline halign={Gtk.Align.START} hexpand />
             </x.GridChild>
             <x.GridChild column={1} row={1}>
-                <GtkFontDialogButton dialog={new Gtk.FontDialog()} />
+                <GtkFontDialogButton />
             </x.GridChild>
 
             <x.GridChild column={0} row={2}>

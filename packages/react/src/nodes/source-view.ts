@@ -1,9 +1,19 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import type { GtkSourceViewProps } from "../jsx.js";
-import { hasChanged } from "./internal/props.js";
+import { filterProps, hasChanged } from "./internal/props.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
 import { TextViewNode } from "./text-view.js";
+
+const OWN_PROPS = [
+    "language",
+    "styleScheme",
+    "highlightSyntax",
+    "highlightMatchingBrackets",
+    "implicitTrailingNewline",
+    "onCursorMoved",
+    "onHighlightUpdated",
+] as const;
 
 type SourceViewProps = Pick<
     GtkSourceViewProps,
@@ -13,27 +23,21 @@ type SourceViewProps = Pick<
     | "onTextDeleted"
     | "onCanUndoChanged"
     | "onCanRedoChanged"
-    | "language"
-    | "styleScheme"
-    | "highlightSyntax"
-    | "highlightMatchingBrackets"
-    | "implicitTrailingNewline"
-    | "onCursorMoved"
-    | "onHighlightUpdated"
+    | (typeof OWN_PROPS)[number]
 >;
 
 export class SourceViewNode extends TextViewNode {
-    override createBufferController(): TextBufferController<GtkSource.Buffer> {
+    protected override createBufferController(): TextBufferController<GtkSource.Buffer> {
         return new TextBufferController<GtkSource.Buffer>(this, this.container, () => new GtkSource.Buffer());
     }
 
-    override ensureBufferController(): TextBufferController<GtkSource.Buffer> {
+    protected override ensureBufferController(): TextBufferController<GtkSource.Buffer> {
         return super.ensureBufferController() as TextBufferController<GtkSource.Buffer>;
     }
 
     public override commitUpdate(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
-        super.commitUpdate(oldProps, newProps);
-        this.applySourceViewProps(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        this.applyOwnProps(oldProps, newProps);
     }
 
     private resolveLanguage(language: string | GtkSource.Language): GtkSource.Language | null {
@@ -52,64 +56,63 @@ export class SourceViewNode extends TextViewNode {
         return scheme;
     }
 
-    private applySourceViewProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
-        const hasSourceViewProps =
-            newProps.language !== undefined ||
-            newProps.styleScheme !== undefined ||
-            newProps.highlightSyntax !== undefined ||
-            newProps.highlightMatchingBrackets !== undefined ||
-            newProps.implicitTrailingNewline !== undefined ||
-            newProps.onCursorMoved !== undefined ||
-            newProps.onHighlightUpdated !== undefined ||
-            oldProps?.language !== undefined ||
-            oldProps?.styleScheme !== undefined;
+    private applyOwnProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
+        if (hasChanged(oldProps, newProps, "onCursorMoved") || hasChanged(oldProps, newProps, "onHighlightUpdated")) {
+            this.applySignalProps(newProps);
+        }
 
-        if (!hasSourceViewProps) {
+        this.applyBufferProps(oldProps, newProps);
+    }
+
+    private applyBufferProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
+        const languageChanged = hasChanged(oldProps, newProps, "language");
+        const styleSchemeChanged = hasChanged(oldProps, newProps, "styleScheme");
+        const highlightSyntaxChanged = hasChanged(oldProps, newProps, "highlightSyntax");
+        const highlightBracketsChanged = hasChanged(oldProps, newProps, "highlightMatchingBrackets");
+        const trailingNewlineChanged = hasChanged(oldProps, newProps, "implicitTrailingNewline");
+
+        if (
+            !languageChanged &&
+            !styleSchemeChanged &&
+            !highlightSyntaxChanged &&
+            !highlightBracketsChanged &&
+            !trailingNewlineChanged
+        ) {
             return;
         }
 
         const buffer = this.ensureBufferController().ensureBuffer();
 
-        if (hasChanged(oldProps, newProps, "language")) {
+        if (languageChanged) {
             if (newProps.language !== undefined) {
-                const language = this.resolveLanguage(newProps.language);
-                buffer.setLanguage(language);
+                buffer.setLanguage(this.resolveLanguage(newProps.language));
             } else if (oldProps?.language !== undefined) {
                 buffer.setLanguage(null);
             }
         }
 
-        if (hasChanged(oldProps, newProps, "styleScheme")) {
+        if (styleSchemeChanged) {
             if (newProps.styleScheme !== undefined) {
-                const scheme = this.resolveStyleScheme(newProps.styleScheme);
-                buffer.setStyleScheme(scheme);
+                buffer.setStyleScheme(this.resolveStyleScheme(newProps.styleScheme));
             } else if (oldProps?.styleScheme !== undefined) {
                 buffer.setStyleScheme(null);
             }
         }
 
-        if (hasChanged(oldProps, newProps, "highlightSyntax") || hasChanged(oldProps, newProps, "language")) {
-            const highlightSyntax = newProps.highlightSyntax ?? newProps.language !== undefined;
-            buffer.setHighlightSyntax(highlightSyntax);
+        if (highlightSyntaxChanged || languageChanged) {
+            buffer.setHighlightSyntax(newProps.highlightSyntax ?? newProps.language !== undefined);
         }
 
-        if (hasChanged(oldProps, newProps, "highlightMatchingBrackets")) {
-            const highlightMatchingBrackets = newProps.highlightMatchingBrackets ?? true;
-            buffer.setHighlightMatchingBrackets(highlightMatchingBrackets);
+        if (highlightBracketsChanged) {
+            buffer.setHighlightMatchingBrackets(newProps.highlightMatchingBrackets ?? true);
         }
 
-        if (hasChanged(oldProps, newProps, "implicitTrailingNewline")) {
-            if (newProps.implicitTrailingNewline !== undefined) {
-                buffer.setImplicitTrailingNewline(newProps.implicitTrailingNewline);
-            }
-        }
-
-        if (hasChanged(oldProps, newProps, "onCursorMoved") || hasChanged(oldProps, newProps, "onHighlightUpdated")) {
-            this.setSourceViewSignalsChanged(newProps);
+        if (trailingNewlineChanged && newProps.implicitTrailingNewline !== undefined) {
+            buffer.setImplicitTrailingNewline(newProps.implicitTrailingNewline);
         }
     }
 
-    private setSourceViewSignalsChanged(props: SourceViewProps): void {
+    private applySignalProps(props: SourceViewProps): void {
         const buffer = this.ensureBufferController().getBuffer();
         if (!buffer) return;
 

@@ -4,12 +4,16 @@ import type { Node } from "../node.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-export class NotebookPageTabNode extends VirtualNode<SlotProps, WidgetNode, WidgetNode> {
+export class NotebookPageTabNode extends VirtualNode<SlotProps, Node, WidgetNode> {
     private notebook: Gtk.Notebook | null = null;
     private page: Gtk.Widget | null = null;
 
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
+    }
+
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof VirtualNode && parent.typeName === "NotebookPage";
     }
 
     public setPage(notebook: Gtk.Notebook | null, page: Gtk.Widget | null): void {
@@ -18,49 +22,36 @@ export class NotebookPageTabNode extends VirtualNode<SlotProps, WidgetNode, Widg
     }
 
     public override appendChild(child: WidgetNode): void {
-        const oldChildWidget = this.children[0]?.container ?? null;
         super.appendChild(child);
 
         if (this.parent) {
-            this.onChildChange(oldChildWidget);
+            this.onChildChange();
         }
     }
 
     public override removeChild(child: WidgetNode): void {
-        const oldChildWidget = child.container;
         super.removeChild(child);
 
-        if (this.parent && oldChildWidget) {
-            this.onChildChange(oldChildWidget);
+        if (this.parent) {
+            this.onChildChange();
         }
     }
 
-    private getNotebook(): Gtk.Notebook {
-        if (!this.notebook) {
-            throw new Error("Expected Notebook reference to be set on NotebookPageTabNode");
-        }
-        return this.notebook;
+    public override detachDeletedInstance(): void {
+        this.notebook = null;
+        this.page = null;
+        super.detachDeletedInstance();
     }
 
-    private getPage(): Gtk.Widget {
-        if (!this.page) {
-            throw new Error("Expected page reference to be set on NotebookPageTabNode");
-        }
-        return this.page;
-    }
-
-    private onChildChange(_oldChild: Gtk.Widget | null): void {
+    private onChildChange(): void {
         if (!this.notebook || !this.page) {
             return;
         }
 
-        const notebook = this.getNotebook();
-        const page = this.getPage();
-
-        if (notebook.pageNum(page) === -1) {
+        if (this.notebook.pageNum(this.page) === -1) {
             return;
         }
 
-        notebook.setTabLabel(page, this.children[0]?.container ?? null);
+        this.notebook.setTabLabel(this.page, this.children[0]?.container ?? null);
     }
 }

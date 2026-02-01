@@ -3,6 +3,8 @@ import type { TextPaintableNode } from "./text-paintable.js";
 import type { TextSegmentNode } from "./text-segment.js";
 import type { TextTagNode } from "./text-tag.js";
 
+export const TEXT_OBJECT_REPLACEMENT = "\uFFFC";
+
 export type TextContentChild = TextSegmentNode | TextTagNode | TextAnchorNode | TextPaintableNode;
 
 export type TextContentParent = {

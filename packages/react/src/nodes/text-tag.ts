@@ -54,152 +54,14 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
     private contentChildren: TextContentChild[] = [];
     private contentParent: TextContentParent | null = null;
 
-    public bufferOffset = 0;
+    private bufferOffset = 0;
 
-    public setContentParent(parent: TextContentParent): void {
-        this.contentParent = parent;
+    public getBufferOffset(): number {
+        return this.bufferOffset;
     }
 
-    public setBuffer(buffer: Gtk.TextBuffer): void {
-        this.buffer = buffer;
-        this.updateChildOffsets(0);
-        this.setupTag();
-
-        for (const child of this.contentChildren) {
-            if (child instanceof TextTagNode) {
-                child.setBuffer(buffer);
-            }
-        }
-    }
-
-    public hasBuffer(): boolean {
-        return this.buffer !== null;
-    }
-
-    private setupTag(): void {
-        if (!this.buffer) return;
-
-        const tagTable = this.buffer.getTagTable();
-        this.tag = new Gtk.TextTag(this.props.id);
-
-        this.applyStyleProps(null, this.props);
-        tagTable.add(this.tag);
-
-        if (this.props.priority !== undefined) {
-            this.tag.setPriority(this.props.priority);
-        }
-
-        this.applyTagToRange();
-    }
-
-    private applyStyleProps(oldProps: TextTagProps | null, newProps: TextTagProps): void {
-        if (!this.tag) return;
-        for (const prop of Object.keys(STYLE_PROPS) as (keyof TextTagProps)[]) {
-            if (hasChanged(oldProps, newProps, prop)) {
-                const value = newProps[prop];
-                const method = STYLE_PROPS[prop];
-                if (value !== undefined && method) {
-                    const setter = this.tag[method] as (value: unknown) => void;
-                    setter.call(this.tag, value);
-                }
-            }
-        }
-    }
-
-    public getText(): string {
-        let text = "";
-        for (const child of this.contentChildren) {
-            text += child.getText();
-        }
-        return text;
-    }
-
-    public getLength(): number {
-        let length = 0;
-        for (const child of this.contentChildren) {
-            length += child.getLength();
-        }
-        return length;
-    }
-
-    public getChildren(): TextContentChild[] {
-        return this.contentChildren;
-    }
-
-    private applyTagToRange(): void {
-        const buffer = this.buffer;
-        const tag = this.tag;
-        if (!buffer || !tag) return;
-
-        const length = this.getLength();
-        if (length === 0) return;
-
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-
-        buffer.getIterAtOffset(startIter, this.bufferOffset);
-        buffer.getIterAtOffset(endIter, this.bufferOffset + length);
-
-        buffer.applyTag(tag, startIter, endIter);
-    }
-
-    private removeTagFromBuffer(): void {
-        const buffer = this.buffer;
-        const tag = this.tag;
-        if (!buffer || !tag) return;
-
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-
-        buffer.getStartIter(startIter);
-        buffer.getEndIter(endIter);
-
-        buffer.removeTag(tag, startIter, endIter);
-    }
-
-    public reapplyTag(): void {
-        if (!this.buffer || !this.tag) return;
-        this.removeTagFromBuffer();
-        this.applyTagToRange();
-    }
-
-    private updateChildOffsets(startIndex: number): void {
-        let offset = this.bufferOffset;
-
-        for (let i = 0; i < startIndex; i++) {
-            const child = this.contentChildren[i];
-            if (child) offset += child.getLength();
-        }
-
-        for (let i = startIndex; i < this.contentChildren.length; i++) {
-            const child = this.contentChildren[i];
-            if (child) {
-                child.bufferOffset = offset;
-                offset += child.getLength();
-            }
-        }
-    }
-
-    public onChildInserted(child: TextContentChild): void {
-        const index = this.contentChildren.indexOf(child);
-        if (index !== -1) {
-            this.updateChildOffsets(index);
-        }
-
-        this.contentParent?.onChildInserted(child);
-    }
-
-    public onChildRemoved(child: TextContentChild): void {
-        this.contentParent?.onChildRemoved(child);
-    }
-
-    public onChildTextChanged(child: TextSegmentNode, oldLength: number, newLength: number): void {
-        const index = this.contentChildren.indexOf(child);
-        if (index !== -1) {
-            this.updateChildOffsets(index + 1);
-        }
-
-        this.contentParent?.onChildTextChanged(child, oldLength, newLength);
+    public setBufferOffset(offset: number): void {
+        this.bufferOffset = offset;
     }
 
     public override isValidChild(child: Node): boolean {
@@ -246,30 +108,9 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
         this.contentParent?.onChildInserted(child);
     }
 
-    private isTextContentChild(child: Node): child is TextContentChild {
-        return child instanceof TextSegmentNode || child instanceof TextTagNode || child instanceof TextAnchorNode;
-    }
-
-    private setChildContentParent(child: TextContentChild): void {
-        if (child instanceof TextSegmentNode || child instanceof TextTagNode) {
-            child.setContentParent(this);
-        }
-    }
-
     public override commitUpdate(oldProps: TextTagProps | null, newProps: TextTagProps): void {
         super.commitUpdate(oldProps, newProps);
-
-        if (oldProps && oldProps.id !== newProps.id) {
-            throw new Error("TextTag id cannot be changed after creation");
-        }
-
-        if (this.tag) {
-            this.applyStyleProps(oldProps, newProps);
-
-            if (hasChanged(oldProps, newProps, "priority") && newProps.priority !== undefined) {
-                this.tag.setPriority(newProps.priority);
-            }
-        }
+        this.applyOwnProps(oldProps, newProps);
     }
 
     public override detachDeletedInstance(): void {
@@ -282,5 +123,175 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
         this.buffer = null;
         this.contentChildren = [];
         super.detachDeletedInstance();
+    }
+
+    public setContentParent(parent: TextContentParent): void {
+        this.contentParent = parent;
+    }
+
+    public setBuffer(buffer: Gtk.TextBuffer): void {
+        this.buffer = buffer;
+        this.updateChildOffsets(0);
+        this.setupTag();
+
+        for (const child of this.contentChildren) {
+            if (child instanceof TextTagNode) {
+                child.setBuffer(buffer);
+            }
+        }
+    }
+
+    public hasBuffer(): boolean {
+        return this.buffer !== null;
+    }
+
+    public getText(): string {
+        let text = "";
+        for (const child of this.contentChildren) {
+            text += child.getText();
+        }
+        return text;
+    }
+
+    public getLength(): number {
+        let length = 0;
+        for (const child of this.contentChildren) {
+            length += child.getLength();
+        }
+        return length;
+    }
+
+    public getChildren(): TextContentChild[] {
+        return this.contentChildren;
+    }
+
+    public reapplyTag(): void {
+        if (!this.buffer || !this.tag) return;
+        this.removeTagFromBuffer();
+        this.applyTagToRange();
+    }
+
+    public onChildInserted(child: TextContentChild): void {
+        const index = this.contentChildren.indexOf(child);
+        if (index !== -1) {
+            this.updateChildOffsets(index);
+        }
+
+        this.contentParent?.onChildInserted(child);
+    }
+
+    public onChildRemoved(child: TextContentChild): void {
+        this.contentParent?.onChildRemoved(child);
+    }
+
+    public onChildTextChanged(child: TextSegmentNode, oldLength: number, newLength: number): void {
+        const index = this.contentChildren.indexOf(child);
+        if (index !== -1) {
+            this.updateChildOffsets(index + 1);
+        }
+
+        this.contentParent?.onChildTextChanged(child, oldLength, newLength);
+    }
+
+    private setupTag(): void {
+        if (!this.buffer) return;
+
+        const tagTable = this.buffer.getTagTable();
+        this.tag = new Gtk.TextTag(this.props.id);
+
+        this.applyStyleProps(null, this.props);
+        tagTable.add(this.tag);
+
+        if (this.props.priority !== undefined) {
+            this.tag.setPriority(this.props.priority);
+        }
+
+        this.applyTagToRange();
+    }
+
+    private applyOwnProps(oldProps: TextTagProps | null, newProps: TextTagProps): void {
+        if (oldProps && oldProps.id !== newProps.id) {
+            throw new Error("TextTag id cannot be changed after creation");
+        }
+
+        if (!this.tag) return;
+
+        this.applyStyleProps(oldProps, newProps);
+
+        if (hasChanged(oldProps, newProps, "priority") && newProps.priority !== undefined) {
+            this.tag.setPriority(newProps.priority);
+        }
+    }
+
+    private applyStyleProps(oldProps: TextTagProps | null, newProps: TextTagProps): void {
+        if (!this.tag) return;
+        for (const prop of Object.keys(STYLE_PROPS) as (keyof TextTagProps)[]) {
+            if (hasChanged(oldProps, newProps, prop)) {
+                const value = newProps[prop];
+                const method = STYLE_PROPS[prop];
+                if (value !== undefined && method) {
+                    const setter = this.tag[method] as (value: unknown) => void;
+                    setter.call(this.tag, value);
+                }
+            }
+        }
+    }
+
+    private applyTagToRange(): void {
+        const buffer = this.buffer;
+        const tag = this.tag;
+        if (!buffer || !tag) return;
+
+        const length = this.getLength();
+        if (length === 0) return;
+
+        const startIter = new Gtk.TextIter();
+        const endIter = new Gtk.TextIter();
+
+        buffer.getIterAtOffset(startIter, this.bufferOffset);
+        buffer.getIterAtOffset(endIter, this.bufferOffset + length);
+
+        buffer.applyTag(tag, startIter, endIter);
+    }
+
+    private removeTagFromBuffer(): void {
+        const buffer = this.buffer;
+        const tag = this.tag;
+        if (!buffer || !tag) return;
+
+        const startIter = new Gtk.TextIter();
+        const endIter = new Gtk.TextIter();
+
+        buffer.getStartIter(startIter);
+        buffer.getEndIter(endIter);
+
+        buffer.removeTag(tag, startIter, endIter);
+    }
+
+    private updateChildOffsets(startIndex: number): void {
+        let offset = this.bufferOffset;
+
+        for (let i = 0; i < startIndex; i++) {
+            const child = this.contentChildren[i];
+            if (child) offset += child.getLength();
+        }
+
+        for (let i = startIndex; i < this.contentChildren.length; i++) {
+            const child = this.contentChildren[i];
+            if (child) {
+                child.setBufferOffset(offset);
+                offset += child.getLength();
+            }
+        }
+    }
+
+    private isTextContentChild(child: Node): child is TextContentChild {
+        return child instanceof TextSegmentNode || child instanceof TextTagNode || child instanceof TextAnchorNode;
+    }
+
+    private setChildContentParent(child: TextContentChild): void {
+        if (child instanceof TextSegmentNode || child instanceof TextTagNode) {
+            child.setContentParent(this);
+        }
     }
 }
