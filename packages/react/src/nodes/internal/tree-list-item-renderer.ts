@@ -1,11 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
+import type { TreeRenderItemFn } from "../../jsx.js";
 import { reconciler } from "../../reconciler.js";
 import { BaseItemRenderer } from "./base-item-renderer.js";
 import type { TreeStore } from "./tree-store.js";
-
-export type TreeRenderItemFn<T> = (item: T | null, row: Gtk.TreeListRow | null) => ReactNode;
 
 type PendingBind = {
     treeListRow: Gtk.TreeListRow;

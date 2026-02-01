@@ -16,8 +16,7 @@ const isOrExtends = (target: object, cls: abstract new (...args: any[]) => any):
 
 const OWN_PROPS = ["onClose"] as const;
 
-export type WindowProps = Pick<GtkWindowProps, "onClose"> &
-    Pick<GtkAboutDialogProps, "creditSections">;
+export type WindowProps = Pick<GtkWindowProps, "onClose"> & Pick<GtkAboutDialogProps, "creditSections">;
 
 type WindowChild = WindowNode | DialogNode | MenuNode | SlotNode | WidgetNode;
 

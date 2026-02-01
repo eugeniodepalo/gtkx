@@ -1,32 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { ReactNode } from "react";
+import type { TextAnchorProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
 const PLACEHOLDER = "\uFFFC";
-
-/**
- * Props for the TextAnchor virtual element.
- *
- * Used to declaratively embed widgets within text content in a TextBuffer.
- * The anchor is placed at the current position in the text flow.
- *
- * @example
- * ```tsx
- * <GtkTextView>
- *     <x.TextBuffer>
- *         Click here: <x.TextAnchor>
- *             <GtkButton label="Click me" />
- *         </x.TextAnchor> to continue.
- *     </x.TextBuffer>
- * </GtkTextView>
- * ```
- */
-export type TextAnchorProps = {
-    /** The widget to embed at this anchor position */
-    children?: ReactNode;
-};
 
 export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node, WidgetNode> {
     private textView: Gtk.TextView | null = null;

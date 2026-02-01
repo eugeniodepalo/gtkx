@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkShortcutController, x } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -25,9 +25,9 @@ describe("render - ShortcutController", () => {
 
             await render(
                 <GtkBox ref={boxRef}>
-                    <x.ShortcutController>
+                    <GtkShortcutController>
                         <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                     <GtkButton label="Test" />
                 </GtkBox>,
             );
@@ -43,9 +43,9 @@ describe("render - ShortcutController", () => {
 
             await render(
                 <GtkBox ref={boxRef}>
-                    <x.ShortcutController>
+                    <GtkShortcutController>
                         <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                 </GtkBox>,
             );
 
@@ -58,9 +58,9 @@ describe("render - ShortcutController", () => {
 
             await render(
                 <GtkBox ref={boxRef}>
-                    <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+                    <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                         <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                 </GtkBox>,
             );
 
@@ -73,9 +73,9 @@ describe("render - ShortcutController", () => {
 
             await render(
                 <GtkBox ref={boxRef}>
-                    <x.ShortcutController scope={Gtk.ShortcutScope.MANAGED}>
+                    <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
                         <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                 </GtkBox>,
             );
 
@@ -89,9 +89,9 @@ describe("render - ShortcutController", () => {
             function App({ scope }: { scope: Gtk.ShortcutScope }) {
                 return (
                     <GtkBox ref={boxRef}>
-                        <x.ShortcutController scope={scope}>
+                        <GtkShortcutController scope={scope}>
                             <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                        </x.ShortcutController>
+                        </GtkShortcutController>
                     </GtkBox>
                 );
             }
@@ -112,9 +112,9 @@ describe("render - ShortcutController", () => {
                 return (
                     <GtkBox ref={boxRef}>
                         {showController && (
-                            <x.ShortcutController>
+                            <GtkShortcutController>
                                 <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                            </x.ShortcutController>
+                            </GtkShortcutController>
                         )}
                         <GtkButton label="Test" />
                     </GtkBox>
@@ -131,9 +131,9 @@ describe("render - ShortcutController", () => {
         it("works alongside widget children", async () => {
             await render(
                 <GtkBox>
-                    <x.ShortcutController>
+                    <GtkShortcutController>
                         <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                     <GtkButton label="First" />
                     <GtkButton label="Second" />
                 </GtkBox>,
@@ -153,9 +153,9 @@ describe("render - ShortcutController", () => {
 
             await render(
                 <GtkBox ref={boxRef}>
-                    <x.ShortcutController>
+                    <GtkShortcutController>
                         <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                 </GtkBox>,
             );
 
@@ -168,9 +168,9 @@ describe("render - ShortcutController", () => {
 
             await render(
                 <GtkBox ref={boxRef}>
-                    <x.ShortcutController>
+                    <GtkShortcutController>
                         <x.Shortcut trigger={["F5", "<Control>r"]} onActivate={() => {}} />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                 </GtkBox>,
             );
 
@@ -183,11 +183,11 @@ describe("render - ShortcutController", () => {
 
             await render(
                 <GtkBox ref={boxRef}>
-                    <x.ShortcutController>
+                    <GtkShortcutController>
                         <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
                         <x.Shortcut trigger="<Control>o" onActivate={() => {}} />
                         <x.Shortcut trigger="<Control>n" onActivate={() => {}} />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                 </GtkBox>,
             );
 
@@ -201,9 +201,9 @@ describe("render - ShortcutController", () => {
             function App({ trigger }: { trigger: string }) {
                 return (
                     <GtkBox ref={boxRef}>
-                        <x.ShortcutController>
+                        <GtkShortcutController>
                             <x.Shortcut trigger={trigger} onActivate={() => {}} />
-                        </x.ShortcutController>
+                        </GtkShortcutController>
                     </GtkBox>
                 );
             }
@@ -221,10 +221,10 @@ describe("render - ShortcutController", () => {
             function App({ showSecond }: { showSecond: boolean }) {
                 return (
                     <GtkBox ref={boxRef}>
-                        <x.ShortcutController>
+                        <GtkShortcutController>
                             <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
                             {showSecond && <x.Shortcut trigger="<Control>o" onActivate={() => {}} />}
-                        </x.ShortcutController>
+                        </GtkShortcutController>
                     </GtkBox>
                 );
             }
@@ -242,10 +242,10 @@ describe("render - ShortcutController", () => {
             function App({ showSecond }: { showSecond: boolean }) {
                 return (
                     <GtkBox ref={boxRef}>
-                        <x.ShortcutController>
+                        <GtkShortcutController>
                             <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
                             {showSecond && <x.Shortcut trigger="<Control>o" onActivate={() => {}} />}
-                        </x.ShortcutController>
+                        </GtkShortcutController>
                     </GtkBox>
                 );
             }
@@ -264,9 +264,9 @@ describe("render - ShortcutController", () => {
 
             await render(
                 <GtkBox ref={boxRef}>
-                    <x.ShortcutController>
+                    <GtkShortcutController>
                         <x.Shortcut trigger="<Control>s" onActivate={() => {}} disabled />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                 </GtkBox>,
             );
 
@@ -280,9 +280,9 @@ describe("render - ShortcutController", () => {
             function App({ disabled }: { disabled: boolean }) {
                 return (
                     <GtkBox ref={boxRef}>
-                        <x.ShortcutController>
+                        <GtkShortcutController>
                             <x.Shortcut trigger="<Control>s" onActivate={() => {}} disabled={disabled} />
-                        </x.ShortcutController>
+                        </GtkShortcutController>
                     </GtkBox>
                 );
             }

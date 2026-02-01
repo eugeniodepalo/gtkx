@@ -7,24 +7,297 @@ import type * as GtkSource from "@gtkx/ffi/gtksource";
 import type * as Pango from "@gtkx/ffi/pango";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
-import type { GtkListViewProps as GeneratedGtkListViewProps, WidgetSlotNames } from "./generated/jsx.js";
-import type { AnimationProps } from "./nodes/animation.js";
-import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
-import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
-import type { TextAnchorProps } from "./nodes/text-anchor.js";
-import type { TextPaintableProps } from "./nodes/text-paintable.js";
-import type { TextTagProps } from "./nodes/text-tag.js";
+import type { GtkListViewProps, WidgetSlotNames } from "./generated/jsx.js";
 
-export type {
-    AnimatableProperties,
-    AnimationProps,
-    AnimationTransition,
-    SpringTransition,
-    TimedTransition,
-} from "./nodes/animation.js";
-export type { TextAnchorProps } from "./nodes/text-anchor.js";
-export type { TextPaintableProps } from "./nodes/text-paintable.js";
-export type { TextTagProps } from "./nodes/text-tag.js";
+export type TreeRenderItemFn<T> = (item: T | null, row: Gtk.TreeListRow | null) => ReactNode;
+
+/**
+ * CSS properties that can be animated on a widget.
+ *
+ * All transforms are applied via GTK CSS and rendered through the widget's style context.
+ */
+export type AnimatableProperties = {
+    /** Opacity from 0 (fully transparent) to 1 (fully opaque) */
+    opacity?: number;
+    /** Horizontal translation in pixels (positive moves right) */
+    translateX?: number;
+    /** Vertical translation in pixels (positive moves down) */
+    translateY?: number;
+    /** Uniform scale factor (1 = original size, 2 = double size) */
+    scale?: number;
+    /** Horizontal scale factor */
+    scaleX?: number;
+    /** Vertical scale factor */
+    scaleY?: number;
+    /** Rotation angle in degrees (positive rotates clockwise) */
+    rotate?: number;
+    /** Horizontal skew angle in degrees */
+    skewX?: number;
+    /** Vertical skew angle in degrees */
+    skewY?: number;
+};
+
+/**
+ * Transition configuration for timed (duration-based) animations.
+ *
+ * @see {@link https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.TimedAnimation.html Adw.TimedAnimation}
+ */
+export type TimedTransition = {
+    /** Discriminant: duration-based animation with easing curves */
+    mode: "timed";
+    /** Animation duration in milliseconds (default: 300) */
+    duration?: number;
+    /** Easing function for the animation curve (default: EASE_OUT_CUBIC) */
+    easing?: Adw.Easing;
+    /** Delay before starting the animation in milliseconds */
+    delay?: number;
+    /** Number of times to repeat the animation (0 = no repeat, -1 = infinite) */
+    repeat?: number;
+    /** Whether to play the animation in reverse */
+    reverse?: boolean;
+    /** Whether to alternate direction on each repeat */
+    alternate?: boolean;
+};
+
+/**
+ * Transition configuration for spring (physics-based) animations.
+ *
+ * Spring animations simulate a mass attached to a spring, providing natural-feeling motion.
+ * The animation settles when the spring reaches equilibrium.
+ *
+ * @see {@link https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.SpringAnimation.html Adw.SpringAnimation}
+ */
+export type SpringTransition = {
+    /** Discriminant: physics-based spring animation */
+    mode: "spring";
+    /** Damping ratio controlling oscillation decay (default: 1, critically damped) */
+    damping?: number;
+    /** Spring stiffness in N/m affecting animation speed (default: 100) */
+    stiffness?: number;
+    /** Virtual mass in kg affecting momentum (default: 1) */
+    mass?: number;
+    /** Initial velocity to apply at animation start */
+    initialVelocity?: number;
+    /** Whether to clamp the animation value to prevent overshooting */
+    clamp?: boolean;
+    /** Delay before starting the animation in milliseconds */
+    delay?: number;
+};
+
+/**
+ * Discriminated union of all transition configurations.
+ *
+ * The `mode` field determines the animation type:
+ * - `"timed"`: Duration-based animation with easing curves (uses {@link Adw.TimedAnimation})
+ * - `"spring"`: Physics-based spring animation (uses {@link Adw.SpringAnimation})
+ */
+export type AnimationTransition = TimedTransition | SpringTransition;
+
+/**
+ * Props for the Animation component.
+ *
+ * Provides a declarative API for animating widget properties using either
+ * timed (duration-based) or spring (physics-based) animations.
+ *
+ * @example
+ * ```tsx
+ * <x.Animation
+ *   initial={{ opacity: 0, translateY: -20 }}
+ *   animate={{ opacity: 1, translateY: 0 }}
+ *   exit={{ opacity: 0, translateY: 20 }}
+ *   transition={{ mode: "spring", damping: 0.8, stiffness: 200 }}
+ *   animateOnMount
+ * >
+ *   <GtkLabel label="Animated content" />
+ * </x.Animation>
+ * ```
+ */
+export type AnimationProps = {
+    /** Initial property values before animation starts, or `false` to skip initial state */
+    initial?: AnimatableProperties | false;
+    /** Target property values to animate towards */
+    animate?: AnimatableProperties;
+    /** Property values to animate to when the component unmounts */
+    exit?: AnimatableProperties;
+    /** Transition configuration including animation mode and parameters */
+    transition?: AnimationTransition;
+    /** Whether to animate from `initial` to `animate` when first mounted (default: false) */
+    animateOnMount?: boolean;
+    /** Callback fired when an animation begins */
+    onAnimationStart?: () => void;
+    /** Callback fired when an animation completes */
+    onAnimationComplete?: () => void;
+    /** The child widget to animate (must be a single GTK widget) */
+    children?: ReactNode;
+};
+
+/**
+ * Props for the Shortcut virtual element.
+ *
+ * Defines a keyboard shortcut. Must be a child of `x.ShortcutController`.
+ *
+ * @example
+ * ```tsx
+ * <x.ShortcutController>
+ *     <x.Shortcut trigger="<Control>s" onActivate={save} />
+ *     <x.Shortcut trigger={["F5", "<Control>r"]} onActivate={refresh} />
+ *     <x.Shortcut trigger="Escape" onActivate={cancel} disabled={!canCancel} />
+ * </x.ShortcutController>
+ * ```
+ */
+export type ShortcutProps = {
+    /** The trigger string(s) using GTK accelerator format (e.g., "\<Control\>s", "F1") */
+    trigger: string | string[];
+    /**
+     * Called when the shortcut is activated.
+     * Return false to indicate the shortcut was not handled; otherwise it is considered handled.
+     */
+    // biome-ignore lint/suspicious/noConfusingVoidType: void is intentional to allow callbacks that don't return a value
+    onActivate: () => boolean | void;
+    /** Whether the shortcut is disabled */
+    disabled?: boolean;
+};
+
+/**
+ * Props for the TextAnchor virtual element.
+ *
+ * Used to declaratively embed widgets within text content in a TextBuffer.
+ * The anchor is placed at the current position in the text flow.
+ *
+ * @example
+ * ```tsx
+ * <GtkTextView>
+ *     <x.TextBuffer>
+ *         Click here: <x.TextAnchor>
+ *             <GtkButton label="Click me" />
+ *         </x.TextAnchor> to continue.
+ *     </x.TextBuffer>
+ * </GtkTextView>
+ * ```
+ */
+export type TextAnchorProps = {
+    /** The widget to embed at this anchor position */
+    children?: ReactNode;
+};
+
+/**
+ * Props for the TextPaintable virtual element.
+ *
+ * Used to embed inline images or icons within text content in a GtkTextView.
+ */
+export type TextPaintableProps = {
+    /** The paintable (image, icon, etc.) to embed inline with the text */
+    paintable: Gdk.Paintable;
+};
+
+/**
+ * Props for the TextTag virtual element.
+ *
+ * Used to declaratively define and apply text formatting to content within a TextBuffer.
+ *
+ * @example
+ * ```tsx
+ * <GtkTextView>
+ *     <x.TextBuffer>
+ *         Hello <x.TextTag id="bold" weight={Pango.Weight.BOLD}>bold</x.TextTag> world
+ *     </x.TextBuffer>
+ * </GtkTextView>
+ * ```
+ */
+export type TextTagProps = {
+    /** Unique identifier for this tag in the tag table */
+    id: string;
+    /** Priority of this tag (higher wins when multiple tags affect same property) */
+    priority?: number;
+
+    /** Background color as a string (e.g., "red", "#ff0000") */
+    background?: string;
+    /** Whether the background fills the entire line height */
+    backgroundFullHeight?: boolean;
+    /** Foreground (text) color as a string */
+    foreground?: string;
+
+    /** Font family name (e.g., "Sans", "Monospace") */
+    family?: string;
+    /** Font description string (e.g., "Sans Italic 12") */
+    font?: string;
+    /** Font size in points */
+    sizePoints?: number;
+    /** Font size in Pango units */
+    size?: number;
+    /** Font size scale factor relative to default */
+    scale?: number;
+    /** Font weight (use Pango.Weight constants) */
+    weight?: Pango.Weight | number;
+    /** Font style (use Pango.Style constants) */
+    style?: Pango.Style;
+    /** Font stretch (use Pango.Stretch constants) */
+    stretch?: Pango.Stretch;
+    /** Font variant (use Pango.Variant constants) */
+    variant?: Pango.Variant;
+
+    /** Whether to strike through the text */
+    strikethrough?: boolean;
+    /** Underline style (use Pango.Underline constants) */
+    underline?: Pango.Underline;
+    /** Overline style (use Pango.Overline constants) */
+    overline?: Pango.Overline;
+
+    /** Offset of text above baseline in Pango units (negative = below) */
+    rise?: number;
+    /** Extra spacing between characters in Pango units */
+    letterSpacing?: number;
+    /** Factor to scale line height by */
+    lineHeight?: number;
+
+    /** Left margin in pixels */
+    leftMargin?: number;
+    /** Right margin in pixels */
+    rightMargin?: number;
+    /** Paragraph indent in pixels (negative = hanging) */
+    indent?: number;
+    /** Pixels of blank space above paragraphs */
+    pixelsAboveLines?: number;
+    /** Pixels of blank space below paragraphs */
+    pixelsBelowLines?: number;
+    /** Pixels of blank space between wrapped lines */
+    pixelsInsideWrap?: number;
+
+    /** Text justification */
+    justification?: Gtk.Justification;
+    /** Text direction */
+    direction?: Gtk.TextDirection;
+    /** Wrap mode for line breaks */
+    wrapMode?: Gtk.WrapMode;
+
+    /** Whether the text can be modified */
+    editable?: boolean;
+    /** Whether the text is invisible/hidden */
+    invisible?: boolean;
+    /** Whether breaks are allowed */
+    allowBreaks?: boolean;
+    /** Whether to insert hyphens at breaks */
+    insertHyphens?: boolean;
+    /** Whether font fallback is enabled */
+    fallback?: boolean;
+    /** Whether margins accumulate */
+    accumulativeMargin?: boolean;
+
+    /** Paragraph background color as a string */
+    paragraphBackground?: string;
+    /** How to render invisible characters */
+    showSpaces?: Pango.ShowFlags;
+    /** How to transform text for display */
+    textTransform?: Pango.TextTransform;
+
+    /** OpenType font features as a string */
+    fontFeatures?: string;
+    /** Language code (e.g., "en-US") */
+    language?: string;
+
+    /** Text content and nested TextTag children */
+    children?: ReactNode;
+};
 
 /**
  * Configuration for a mark on a GtkScale widget.
@@ -364,19 +637,13 @@ export type AlertDialogResponseProps = {
 };
 
 type NavigationPageBaseProps = {
+    /** Display title for the navigation page */
     title?: string;
+    /** Whether the page can be popped from the navigation stack */
     canPop?: boolean;
+    /** Page content */
     children?: ReactNode;
 };
-
-export type { GtkShortcutControllerProps as ShortcutControllerProps } from "./generated/jsx.js";
-
-/**
- * Props for the Shortcut element in JSX.
- *
- * @see {@link x.Shortcut} for usage examples
- */
-export type ShortcutProps = ShortcutNodeProps;
 
 /**
  * Props for the NavigationPage virtual element with type-safe targeting.
@@ -412,27 +679,38 @@ export type NavigationPageProps =
           id: WidgetSlotNames["AdwNavigationSplitView"];
       });
 
-export type { WidgetSlotNames };
-
 /**
  * Props for the TreeListView component.
  *
  * @typeParam T - The type of items in the tree
  */
-export type TreeListViewProps<T = unknown> = Omit<GeneratedGtkListViewProps, "renderItem"> & {
+export type TreeListViewProps<T = unknown> = Omit<GtkListViewProps, "renderItem"> & {
     /** Function to render each tree item */
     renderItem: TreeRenderItemFn<T>;
-    /** Estimated item height in pixels for proper virtualization before content loads */
-    estimatedItemHeight?: number;
     /** Whether to automatically expand new rows (default: false) */
     autoexpand?: boolean;
-    /** Selection mode for the tree */
-    selectionMode?: Gtk.SelectionMode;
-    /** Currently selected item IDs */
-    selected?: string[];
-    /** Callback when selection changes */
-    onSelectionChanged?: (ids: string[]) => void;
 };
+
+/**
+ * Props for widgets backed by a GtkAdjustment.
+ *
+ * Used by GtkRange, GtkScaleButton, GtkSpinButton, and AdwSpinRow
+ * to configure the adjustment bounds and increments.
+ */
+export interface AdjustableProps {
+    /** The current value of the adjustable */
+    value?: number;
+    /** The minimum allowed value */
+    lower?: number;
+    /** The maximum allowed value */
+    upper?: number;
+    /** The step increment for small adjustments */
+    stepIncrement?: number;
+    /** The page increment for larger adjustments */
+    pageIncrement?: number;
+    /** The size of the visible portion (for scrollbars) */
+    pageSize?: number;
+}
 
 /**
  * GTKX-specific intrinsic elements and components.
@@ -815,23 +1093,6 @@ export const x = {
     NavigationPage: "NavigationPage" as const,
 
     /**
-     * Declarative keyboard shortcut controller.
-     *
-     * Attach keyboard shortcuts to a widget. Must contain `x.Shortcut` children.
-     *
-     * @example
-     * ```tsx
-     * <GtkBox>
-     *   <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-     *     <x.Shortcut trigger="<Control>f" onActivate={() => setSearchMode(s => !s)} />
-     *     <x.Shortcut trigger="<Control>q" onActivate={quit} />
-     *   </GtkShortcutController>
-     * </GtkBox>
-     * ```
-     */
-    ShortcutController: "GtkShortcutController" as const,
-
-    /**
      * A keyboard shortcut definition.
      *
      * Must be a child of `x.ShortcutController`.
@@ -872,8 +1133,7 @@ declare global {
                 AlertDialogResponse: AlertDialogResponseProps;
                 Animation: AnimationProps;
                 ContainerSlot: ContainerSlotProps;
-                // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
-                ColumnViewColumn: ColumnViewColumnProps<any>;
+                ColumnViewColumn: ColumnViewColumnProps;
                 FixedChild: FixedChildProps;
                 GridChild: GridChildProps;
                 ListItem: ListItemProps;
@@ -889,8 +1149,7 @@ declare global {
                 SimpleListItem: StringListItemProps;
                 StackPage: StackPageProps;
                 Toggle: ToggleProps;
-                // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
-                TreeListItem: TreeListItemProps<any>;
+                TreeListItem: TreeListItemProps;
                 NavigationPage: NavigationPageProps;
                 Shortcut: ShortcutProps;
             }
@@ -899,180 +1158,219 @@ declare global {
 }
 
 declare module "./generated/jsx.js" {
-    interface GtkRangeProps {
-        value?: number;
-        lower?: number;
-        upper?: number;
-        stepIncrement?: number;
-        pageIncrement?: number;
-        pageSize?: number;
+    interface GtkRangeProps extends AdjustableProps {
+        /** Callback fired when the range value changes */
         onValueChanged?: ((value: number, self: Gtk.Range) => void) | null;
     }
 
     interface GtkScaleProps {
+        /** Visual marks placed along the scale at specific values */
         marks?: Array<{ value: number; position?: Gtk.PositionType; label?: string | null }> | null;
     }
 
-    interface GtkScaleButtonProps {
-        value?: number;
-        lower?: number;
-        upper?: number;
-        stepIncrement?: number;
-        pageIncrement?: number;
-        pageSize?: number;
+    interface GtkScaleButtonProps extends AdjustableProps {
+        /** Callback fired when the scale button value changes */
         onValueChanged?: ((value: number, self: Gtk.ScaleButton) => void) | null;
     }
 
-    interface GtkSpinButtonProps {
-        value?: number;
-        lower?: number;
-        upper?: number;
-        stepIncrement?: number;
-        pageIncrement?: number;
-        pageSize?: number;
+    interface GtkSpinButtonProps extends AdjustableProps {
+        /** Callback fired when the spin button value changes */
         onValueChanged?: ((value: number, self: Gtk.SpinButton) => void) | null;
     }
 
-    interface AdwSpinRowProps {
-        value?: number;
-        lower?: number;
-        upper?: number;
-        stepIncrement?: number;
-        pageIncrement?: number;
-        pageSize?: number;
+    interface AdwSpinRowProps extends AdjustableProps {
+        /** Callback fired when the spin row value changes */
         onValueChanged?: ((value: number, self: Adw.SpinRow) => void) | null;
     }
 
     interface GtkCalendarProps {
+        /** Array of day numbers (1-31) to display as marked */
         markedDays?: number[] | null;
     }
 
     interface GtkLevelBarProps {
+        /** Named offset thresholds that change the bar's appearance */
         offsets?: Array<{ id: string; value: number }> | null;
     }
 
     interface GtkTextViewProps {
+        /** Whether undo/redo is enabled on the text buffer */
         enableUndo?: boolean;
+        /** Callback fired when the buffer content changes */
         onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
+        /** Callback fired when text is inserted into the buffer */
         onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
+        /** Callback fired when text is deleted from the buffer */
         onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
+        /** Callback fired when the undo availability changes */
         onCanUndoChanged?: ((canUndo: boolean) => void) | null;
+        /** Callback fired when the redo availability changes */
         onCanRedoChanged?: ((canRedo: boolean) => void) | null;
     }
 
     interface GtkSourceViewProps {
+        /** Whether undo/redo is enabled on the text buffer */
         enableUndo?: boolean;
+        /** Callback fired when the buffer content changes */
         onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
+        /** Callback fired when text is inserted into the buffer */
         onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
+        /** Callback fired when text is deleted from the buffer */
         onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
+        /** Callback fired when the undo availability changes */
         onCanUndoChanged?: ((canUndo: boolean) => void) | null;
+        /** Callback fired when the redo availability changes */
         onCanRedoChanged?: ((canRedo: boolean) => void) | null;
+        /** Language for syntax highlighting (ID string or Language object) */
         language?: string | GtkSource.Language;
+        /** Color scheme for syntax highlighting (ID string or StyleScheme object) */
         styleScheme?: string | GtkSource.StyleScheme;
+        /** Whether syntax highlighting is enabled */
         highlightSyntax?: boolean;
+        /** Whether matching brackets are highlighted */
         highlightMatchingBrackets?: boolean;
+        /** Whether the buffer has an implicit trailing newline */
         implicitTrailingNewline?: boolean;
+        /** Callback fired when the cursor position changes */
         onCursorMoved?: (() => void) | null;
+        /** Callback fired when the highlighted region is updated */
         onHighlightUpdated?: ((start: Gtk.TextIter, end: Gtk.TextIter) => void) | null;
     }
 
     interface GtkListViewProps {
-        // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant item type
-        renderItem: (item: any) => ReactNode;
+        /** Function to render each list item */
+        renderItem: (item: unknown) => ReactNode;
+        /** Estimated item height in pixels for virtualization */
         estimatedItemHeight?: number;
+        /** Array of selected item IDs */
         selected?: string[] | null;
+        /** Callback fired when the selection changes */
         onSelectionChanged?: ((ids: string[]) => void) | null;
+        /** Selection behavior (single, multiple, none, etc.) */
         selectionMode?: Gtk.SelectionMode | null;
     }
 
     interface GtkGridViewProps {
-        // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant item type
-        renderItem: (item: any) => ReactNode;
+        /** Function to render each grid item */
+        renderItem: (item: unknown) => ReactNode;
+        /** Estimated item height in pixels for virtualization */
         estimatedItemHeight?: number;
+        /** Array of selected item IDs */
         selected?: string[] | null;
+        /** Callback fired when the selection changes */
         onSelectionChanged?: ((ids: string[]) => void) | null;
+        /** Selection behavior (single, multiple, none, etc.) */
         selectionMode?: Gtk.SelectionMode | null;
     }
 
     interface GtkColumnViewProps {
+        /** Array of selected row IDs */
         selected?: string[] | null;
+        /** Callback fired when the selection changes */
         onSelectionChanged?: ((ids: string[]) => void) | null;
+        /** Selection behavior (single, multiple, none, etc.) */
         selectionMode?: Gtk.SelectionMode | null;
+        /** ID of the currently sorted column, or null for no sorting */
         sortColumn?: string | null;
+        /** Sort direction (ascending or descending) */
         sortOrder?: Gtk.SortType | null;
+        /** Callback fired when the sort column or order changes */
         onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null;
+        /** Estimated row height in pixels for virtualization */
         estimatedRowHeight?: number | null;
     }
 
     interface GtkDropDownProps {
+        /** ID of the currently selected item */
         selectedId?: string | null;
+        /** Callback fired when the selected item changes */
         onSelectionChanged?: ((id: string) => void) | null;
     }
 
     interface AdwComboRowProps {
+        /** ID of the currently selected item */
         selectedId?: string | null;
+        /** Callback fired when the selected item changes */
         onSelectionChanged?: ((id: string) => void) | null;
     }
 
     interface GtkStackProps {
+        /** ID of the currently visible page */
         page?: string | null;
+        /** Callback fired when the visible page changes */
         onPageChanged?: ((page: string | null, self: Gtk.Stack) => void) | null;
     }
 
     interface AdwViewStackProps {
+        /** ID of the currently visible page */
         page?: string | null;
+        /** Callback fired when the visible page changes */
         onPageChanged?: ((page: string | null, self: Adw.ViewStack) => void) | null;
     }
 
     interface AdwNavigationViewProps {
+        /** Ordered list of page tags representing the navigation stack */
         history?: string[] | null;
+        /** Callback fired when the navigation history changes */
         onHistoryChanged?: ((history: string[]) => void) | null;
     }
 
     interface GtkWindowProps {
+        /** Callback fired when the window close button is clicked */
         onClose?: (() => void) | null;
     }
 
     interface GtkDrawingAreaProps {
+        /** Callback fired when the drawing area needs to be redrawn */
         onDraw?: ((self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void) | null;
     }
 
     interface GtkColorDialogButtonProps {
+        /** Callback fired when the selected color changes */
         onRgbaChanged?: ((rgba: Gdk.RGBA) => void) | null;
+        /** Title for the color chooser dialog */
         title?: string;
+        /** Whether the dialog is modal */
         modal?: boolean;
+        /** Whether to show an alpha (opacity) channel */
         withAlpha?: boolean;
     }
 
     interface GtkFontDialogButtonProps {
+        /** Callback fired when the selected font changes */
         onFontDescChanged?: ((fontDesc: Pango.FontDescription) => void) | null;
+        /** Title for the font chooser dialog */
         title?: string;
+        /** Whether the dialog is modal */
         modal?: boolean;
-        language?: Pango.Language | null;
-        useFont?: boolean;
-        useSize?: boolean;
-        level?: Gtk.FontLevel;
     }
 
     interface GtkAboutDialogProps {
+        /** Additional credit sections with names and lists of people */
         creditSections?: Array<{ name: string; people: string[] }>;
     }
 
     interface GtkSearchBarProps {
+        /** Callback fired when search mode is toggled */
         onSearchModeChanged?: ((searchMode: boolean) => void) | null;
     }
 
     interface AdwToggleGroupProps {
+        /** Callback fired when the active toggle changes */
         onActiveChanged?: ((active: number, activeName: string | null) => void) | null;
     }
 
     interface GtkDragSourceProps {
+        /** Paintable to use as the drag icon */
         icon?: Gdk.Paintable | null;
+        /** X offset of the hotspot within the drag icon */
         iconHotX?: number;
+        /** Y offset of the hotspot within the drag icon */
         iconHotY?: number;
     }
 
     interface GtkDropTargetProps {
+        /** GType values for accepted drop content types */
         types?: number[];
     }
 }

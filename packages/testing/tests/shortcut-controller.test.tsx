@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkShortcutController, x } from "@gtkx/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "../src/index.js";
@@ -18,15 +18,15 @@ const getShortcutController = (widget: Gtk.Widget): Gtk.ShortcutController | nul
     return null;
 };
 
-describe("x.ShortcutController", () => {
+describe("GtkShortcutController", () => {
     it("renders without errors", async () => {
         const handleActivate = vi.fn();
 
         await render(
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger="<Control>s" onActivate={handleActivate} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>,
         );
@@ -38,9 +38,9 @@ describe("x.ShortcutController", () => {
     it("attaches ShortcutController to parent widget", async () => {
         await render(
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>,
         );
@@ -56,11 +56,11 @@ describe("x.ShortcutController", () => {
     it("registers multiple shortcuts", async () => {
         await render(
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
                     <x.Shortcut trigger="<Control>o" onActivate={() => {}} />
                     <x.Shortcut trigger="<Control>n" onActivate={() => {}} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>,
         );
@@ -75,9 +75,9 @@ describe("x.ShortcutController", () => {
     it("sets scope to LOCAL by default", async () => {
         await render(
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>,
         );
@@ -92,9 +92,9 @@ describe("x.ShortcutController", () => {
     it("sets scope to GLOBAL when specified", async () => {
         await render(
             <GtkBox>
-                <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>,
         );
@@ -109,9 +109,9 @@ describe("x.ShortcutController", () => {
     it("sets scope to MANAGED when specified", async () => {
         await render(
             <GtkBox>
-                <x.ShortcutController scope={Gtk.ShortcutScope.MANAGED}>
+                <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>,
         );
@@ -127,9 +127,9 @@ describe("x.ShortcutController", () => {
         const TestComponent = ({ showController }: { showController: boolean }) => (
             <GtkBox>
                 {showController && (
-                    <x.ShortcutController>
+                    <GtkShortcutController>
                         <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                 )}
                 <GtkButton label="Test" />
             </GtkBox>
@@ -149,9 +149,9 @@ describe("x.ShortcutController", () => {
     it("updates scope on prop change", async () => {
         const TestComponent = ({ scope }: { scope: Gtk.ShortcutScope }) => (
             <GtkBox>
-                <x.ShortcutController scope={scope}>
+                <GtkShortcutController scope={scope}>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>
         );
@@ -172,9 +172,9 @@ describe("x.ShortcutController", () => {
     it("works alongside regular widget children", async () => {
         await render(
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
             </GtkBox>,
@@ -192,9 +192,9 @@ describe("x.Shortcut", () => {
     it("accepts single trigger string", async () => {
         await render(
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>,
         );
@@ -209,9 +209,9 @@ describe("x.Shortcut", () => {
     it("accepts array of triggers", async () => {
         await render(
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger={["F5", "<Control>r"]} onActivate={() => {}} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>,
         );
@@ -226,9 +226,9 @@ describe("x.Shortcut", () => {
     it("updates when trigger prop changes", async () => {
         const TestComponent = ({ trigger }: { trigger: string }) => (
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger={trigger} onActivate={() => {}} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>
         );
@@ -247,10 +247,10 @@ describe("x.Shortcut", () => {
     it("can be dynamically added", async () => {
         const TestComponent = ({ showSecond }: { showSecond: boolean }) => (
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
                     {showSecond && <x.Shortcut trigger="<Control>o" onActivate={() => {}} />}
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>
         );
@@ -269,10 +269,10 @@ describe("x.Shortcut", () => {
     it("can be dynamically removed", async () => {
         const TestComponent = ({ showSecond }: { showSecond: boolean }) => (
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} />
                     {showSecond && <x.Shortcut trigger="<Control>o" onActivate={() => {}} />}
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>
         );
@@ -293,9 +293,9 @@ describe("x.Shortcut disabled prop", () => {
     it("accepts disabled prop", async () => {
         await render(
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} disabled />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>,
         );
@@ -308,9 +308,9 @@ describe("x.Shortcut disabled prop", () => {
     it("updates when disabled prop changes", async () => {
         const TestComponent = ({ disabled }: { disabled: boolean }) => (
             <GtkBox>
-                <x.ShortcutController>
+                <GtkShortcutController>
                     <x.Shortcut trigger="<Control>s" onActivate={() => {}} disabled={disabled} />
-                </x.ShortcutController>
+                </GtkShortcutController>
                 <GtkButton label="Test" />
             </GtkBox>
         );
@@ -331,16 +331,16 @@ describe("x.Shortcut disabled prop", () => {
     });
 });
 
-describe("x.ShortcutController with state updates", () => {
+describe("GtkShortcutController with state updates", () => {
     it("updates callback when onActivate changes", async () => {
         const TestComponent = () => {
             const [count, setCount] = useState(0);
 
             return (
                 <GtkBox>
-                    <x.ShortcutController>
+                    <GtkShortcutController>
                         <x.Shortcut trigger="<Control>s" onActivate={() => setCount((c) => c + 1)} />
-                    </x.ShortcutController>
+                    </GtkShortcutController>
                     <GtkButton label={`Count: ${count}`} />
                 </GtkBox>
             );

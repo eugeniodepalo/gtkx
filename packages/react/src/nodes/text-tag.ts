@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type * as Pango from "@gtkx/ffi/pango";
-import type { ReactNode } from "react";
+import type { TextTagProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { hasChanged } from "./internal/utils.js";
 import { TextAnchorNode } from "./text-anchor.js";
@@ -47,115 +46,6 @@ const STYLE_PROPS: Partial<Record<keyof TextTagProps, keyof Gtk.TextTag>> = {
     textTransform: "setTextTransform",
     fontFeatures: "setFontFeatures",
     language: "setLanguage",
-};
-
-/**
- * Props for the TextTag virtual element.
- *
- * Used to declaratively define and apply text formatting to content within a TextBuffer.
- *
- * @example
- * ```tsx
- * <GtkTextView>
- *     <x.TextBuffer>
- *         Hello <x.TextTag id="bold" weight={Pango.Weight.BOLD}>bold</x.TextTag> world
- *     </x.TextBuffer>
- * </GtkTextView>
- * ```
- */
-export type TextTagProps = {
-    /** Unique identifier for this tag in the tag table */
-    id: string;
-    /** Priority of this tag (higher wins when multiple tags affect same property) */
-    priority?: number;
-
-    /** Background color as a string (e.g., "red", "#ff0000") */
-    background?: string;
-    /** Whether the background fills the entire line height */
-    backgroundFullHeight?: boolean;
-    /** Foreground (text) color as a string */
-    foreground?: string;
-
-    /** Font family name (e.g., "Sans", "Monospace") */
-    family?: string;
-    /** Font description string (e.g., "Sans Italic 12") */
-    font?: string;
-    /** Font size in points */
-    sizePoints?: number;
-    /** Font size in Pango units */
-    size?: number;
-    /** Font size scale factor relative to default */
-    scale?: number;
-    /** Font weight (use Pango.Weight constants) */
-    weight?: Pango.Weight | number;
-    /** Font style (use Pango.Style constants) */
-    style?: Pango.Style;
-    /** Font stretch (use Pango.Stretch constants) */
-    stretch?: Pango.Stretch;
-    /** Font variant (use Pango.Variant constants) */
-    variant?: Pango.Variant;
-
-    /** Whether to strike through the text */
-    strikethrough?: boolean;
-    /** Underline style (use Pango.Underline constants) */
-    underline?: Pango.Underline;
-    /** Overline style (use Pango.Overline constants) */
-    overline?: Pango.Overline;
-
-    /** Offset of text above baseline in Pango units (negative = below) */
-    rise?: number;
-    /** Extra spacing between characters in Pango units */
-    letterSpacing?: number;
-    /** Factor to scale line height by */
-    lineHeight?: number;
-
-    /** Left margin in pixels */
-    leftMargin?: number;
-    /** Right margin in pixels */
-    rightMargin?: number;
-    /** Paragraph indent in pixels (negative = hanging) */
-    indent?: number;
-    /** Pixels of blank space above paragraphs */
-    pixelsAboveLines?: number;
-    /** Pixels of blank space below paragraphs */
-    pixelsBelowLines?: number;
-    /** Pixels of blank space between wrapped lines */
-    pixelsInsideWrap?: number;
-
-    /** Text justification */
-    justification?: Gtk.Justification;
-    /** Text direction */
-    direction?: Gtk.TextDirection;
-    /** Wrap mode for line breaks */
-    wrapMode?: Gtk.WrapMode;
-
-    /** Whether the text can be modified */
-    editable?: boolean;
-    /** Whether the text is invisible/hidden */
-    invisible?: boolean;
-    /** Whether breaks are allowed */
-    allowBreaks?: boolean;
-    /** Whether to insert hyphens at breaks */
-    insertHyphens?: boolean;
-    /** Whether font fallback is enabled */
-    fallback?: boolean;
-    /** Whether margins accumulate */
-    accumulativeMargin?: boolean;
-
-    /** Paragraph background color as a string */
-    paragraphBackground?: string;
-    /** How to render invisible characters */
-    showSpaces?: Pango.ShowFlags;
-    /** How to transform text for display */
-    textTransform?: Pango.TextTransform;
-
-    /** OpenType font features as a string */
-    fontFeatures?: string;
-    /** Language code (e.g., "en-US") */
-    language?: string;
-
-    /** Text content and nested TextTag children */
-    children?: ReactNode;
 };
 
 export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChild> implements TextContentParent {
