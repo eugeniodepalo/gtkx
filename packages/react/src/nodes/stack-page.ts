@@ -1,13 +1,17 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { StackPageProps } from "../jsx.js";
-import { Node } from "../node.js";
+import type { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";
-import { SlotNode } from "./slot.js";
-import type { WidgetNode } from "./widget.js";
+import { VirtualNode } from "./virtual.js";
+import { WidgetNode } from "./widget.js";
 
-export class StackPageNode extends SlotNode<StackPageProps> {
+export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode, WidgetNode> {
     private page: Gtk.StackPage | Adw.ViewStackPage | null = null;
+
+    public override isValidChild(child: Node): boolean {
+        return child instanceof WidgetNode;
+    }
 
     public override setParent(parent: WidgetNode | null): void {
         const previousParent = this.parent;
@@ -21,6 +25,28 @@ export class StackPageNode extends SlotNode<StackPageProps> {
         }
 
         super.setParent(parent);
+
+        if (parent && this.children[0]) {
+            this.onChildChange(null);
+        }
+    }
+
+    public override appendChild(child: WidgetNode): void {
+        const oldChildWidget = this.children[0]?.container ?? null;
+        super.appendChild(child);
+
+        if (this.parent) {
+            this.onChildChange(oldChildWidget);
+        }
+    }
+
+    public override removeChild(child: WidgetNode): void {
+        const oldChildWidget = child.container;
+        super.removeChild(child);
+
+        if (this.parent && oldChildWidget) {
+            this.onChildChange(oldChildWidget);
+        }
     }
 
     public override detachDeletedInstance(): void {
@@ -29,12 +55,27 @@ export class StackPageNode extends SlotNode<StackPageProps> {
             this.removePage(childWidget);
         }
         this.page = null;
-        Node.prototype.detachDeletedInstance.call(this);
+        super.detachDeletedInstance();
     }
 
     public override commitUpdate(oldProps: StackPageProps | null, newProps: StackPageProps): void {
         super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
+    }
+
+    private getChildWidget(): Gtk.Widget {
+        const child = this.children[0];
+        if (!child) {
+            throw new Error("Expected child widget to be set on StackPageNode");
+        }
+        return child.container;
+    }
+
+    private getParentWidget(): Gtk.Stack | Adw.ViewStack {
+        if (!this.parent) {
+            throw new Error("Expected parent widget to be set on StackPageNode");
+        }
+        return this.parent.container as Gtk.Stack | Adw.ViewStack;
     }
 
     private applyOwnProps(oldProps: StackPageProps | null, newProps: StackPageProps): void {
@@ -67,7 +108,7 @@ export class StackPageNode extends SlotNode<StackPageProps> {
         }
     }
 
-    public override onChildChange(oldChild: Gtk.Widget | null): void {
+    private onChildChange(oldChild: Gtk.Widget | null): void {
         this.removePage(oldChild);
 
         if (this.children[0]) {
@@ -77,7 +118,7 @@ export class StackPageNode extends SlotNode<StackPageProps> {
 
     private addPage(): void {
         const child = this.getChildWidget();
-        const parent = this.getParentWidget() as Gtk.Stack | Adw.ViewStack;
+        const parent = this.getParentWidget();
 
         let page: Gtk.StackPage | Adw.ViewStackPage;
 
@@ -106,7 +147,7 @@ export class StackPageNode extends SlotNode<StackPageProps> {
     }
 
     private removePage(oldChild: Gtk.Widget | null): void {
-        const parent = this.getParentWidget() as Gtk.Stack | Adw.ViewStack;
+        const parent = this.getParentWidget();
 
         if (!oldChild) {
             return;

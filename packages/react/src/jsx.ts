@@ -685,6 +685,65 @@ export type TreeListViewProps<T = unknown> = Omit<GtkListViewProps, "renderItem"
 };
 
 /**
+ * Props shared by text buffer hosts (GtkTextView, GtkSourceView).
+ *
+ * Provides undo control and buffer mutation callbacks.
+ */
+export type TextBufferProps = {
+    /** Whether undo/redo is enabled on the text buffer */
+    enableUndo?: boolean;
+    /** Callback fired when the buffer content changes */
+    onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
+    /** Callback fired when text is inserted into the buffer */
+    onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
+    /** Callback fired when text is deleted from the buffer */
+    onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
+    /** Callback fired when the undo availability changes */
+    onCanUndoChanged?: ((canUndo: boolean) => void) | null;
+    /** Callback fired when the redo availability changes */
+    onCanRedoChanged?: ((canRedo: boolean) => void) | null;
+};
+
+/**
+ * Props shared by list-style renderers (GtkListView, GtkGridView).
+ *
+ * Provides item rendering, virtualization hints, and selection behavior.
+ */
+export type ListViewProps = {
+    /** Function to render each list item */
+    // biome-ignore lint/suspicious/noExplicitAny: contravariant parameter requires any for typed callbacks
+    renderItem: (item: any) => ReactNode;
+    /** Estimated item height in pixels for virtualization */
+    estimatedItemHeight?: number;
+    /** Array of selected item IDs */
+    selected?: string[] | null;
+    /** Callback fired when the selection changes */
+    onSelectionChanged?: ((ids: string[]) => void) | null;
+    /** Selection behavior (single, multiple, none, etc.) */
+    selectionMode?: Gtk.SelectionMode | null;
+};
+
+/**
+ * Props shared by single-selection dropdown widgets (GtkDropDown, AdwComboRow).
+ */
+export type DropDownProps = {
+    /** ID of the currently selected item */
+    selectedId?: string | null;
+    /** Callback fired when the selected item changes */
+    onSelectionChanged?: ((id: string) => void) | null;
+};
+
+/**
+ * Props shared by dialog button widgets (GtkColorDialogButton, GtkFontDialogButton).
+ */
+export type DialogButtonProps = {
+    /** Title for the chooser dialog */
+    title?: string;
+    /** Whether the dialog is modal */
+    modal?: boolean;
+};
+
+/**
  * Props for widgets backed by a GtkAdjustment.
  *
  * Used by GtkRange, GtkScaleButton, GtkSpinButton, and AdwSpinRow
@@ -705,33 +764,6 @@ export type AdjustableProps = {
     pageSize?: number;
     /** Callback fired when the adjustable value changes */
     onValueChanged?: ((value: number, self: Gtk.Range | Gtk.ScaleButton | Gtk.SpinButton | Adw.SpinRow) => void) | null;
-};
-
-/**
- * Props for list selection behavior.
- *
- * Shared across GtkListView, GtkGridView, GtkColumnView, and related list widgets.
- */
-export type ListModelProps = Pick<GtkListViewProps, "selectionMode" | "selected" | "onSelectionChanged">;
-
-/**
- * Props for tree list model configuration.
- *
- * Used by TreeListView to control auto-expansion and selection.
- */
-export type TreeListModelProps = Pick<
-    TreeListViewProps,
-    "autoexpand" | "selectionMode" | "selected" | "onSelectionChanged"
->;
-
-/**
- * Props for menu model nodes (items, sections, submenus).
- */
-export type MenuModelProps = {
-    id?: string;
-    label?: string;
-    accels?: string | string[];
-    onActivate?: () => void;
 };
 
 /**
@@ -1215,34 +1247,9 @@ declare module "./generated/jsx.js" {
         offsets?: Array<{ id: string; value: number }> | null;
     }
 
-    interface GtkTextViewProps {
-        /** Whether undo/redo is enabled on the text buffer */
-        enableUndo?: boolean;
-        /** Callback fired when the buffer content changes */
-        onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
-        /** Callback fired when text is inserted into the buffer */
-        onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
-        /** Callback fired when text is deleted from the buffer */
-        onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
-        /** Callback fired when the undo availability changes */
-        onCanUndoChanged?: ((canUndo: boolean) => void) | null;
-        /** Callback fired when the redo availability changes */
-        onCanRedoChanged?: ((canRedo: boolean) => void) | null;
-    }
+    interface GtkTextViewProps extends TextBufferProps {}
 
-    interface GtkSourceViewProps {
-        /** Whether undo/redo is enabled on the text buffer */
-        enableUndo?: boolean;
-        /** Callback fired when the buffer content changes */
-        onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
-        /** Callback fired when text is inserted into the buffer */
-        onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
-        /** Callback fired when text is deleted from the buffer */
-        onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
-        /** Callback fired when the undo availability changes */
-        onCanUndoChanged?: ((canUndo: boolean) => void) | null;
-        /** Callback fired when the redo availability changes */
-        onCanRedoChanged?: ((canRedo: boolean) => void) | null;
+    interface GtkSourceViewProps extends TextBufferProps {
         /** Language for syntax highlighting (ID string or Language object) */
         language?: string | GtkSource.Language;
         /** Color scheme for syntax highlighting (ID string or StyleScheme object) */
@@ -1259,33 +1266,9 @@ declare module "./generated/jsx.js" {
         onHighlightUpdated?: ((start: Gtk.TextIter, end: Gtk.TextIter) => void) | null;
     }
 
-    interface GtkListViewProps {
-        /** Function to render each list item */
-        // biome-ignore lint/suspicious/noExplicitAny: contravariant parameter requires any for typed callbacks
-        renderItem: (item: any) => ReactNode;
-        /** Estimated item height in pixels for virtualization */
-        estimatedItemHeight?: number;
-        /** Array of selected item IDs */
-        selected?: string[] | null;
-        /** Callback fired when the selection changes */
-        onSelectionChanged?: ((ids: string[]) => void) | null;
-        /** Selection behavior (single, multiple, none, etc.) */
-        selectionMode?: Gtk.SelectionMode | null;
-    }
+    interface GtkListViewProps extends ListViewProps {}
 
-    interface GtkGridViewProps {
-        /** Function to render each grid item */
-        // biome-ignore lint/suspicious/noExplicitAny: contravariant parameter requires any for typed callbacks
-        renderItem: (item: any) => ReactNode;
-        /** Estimated item height in pixels for virtualization */
-        estimatedItemHeight?: number;
-        /** Array of selected item IDs */
-        selected?: string[] | null;
-        /** Callback fired when the selection changes */
-        onSelectionChanged?: ((ids: string[]) => void) | null;
-        /** Selection behavior (single, multiple, none, etc.) */
-        selectionMode?: Gtk.SelectionMode | null;
-    }
+    interface GtkGridViewProps extends ListViewProps {}
 
     interface GtkColumnViewProps {
         /** Array of selected row IDs */
@@ -1304,19 +1287,9 @@ declare module "./generated/jsx.js" {
         estimatedRowHeight?: number | null;
     }
 
-    interface GtkDropDownProps {
-        /** ID of the currently selected item */
-        selectedId?: string | null;
-        /** Callback fired when the selected item changes */
-        onSelectionChanged?: ((id: string) => void) | null;
-    }
+    interface GtkDropDownProps extends DropDownProps {}
 
-    interface AdwComboRowProps {
-        /** ID of the currently selected item */
-        selectedId?: string | null;
-        /** Callback fired when the selected item changes */
-        onSelectionChanged?: ((id: string) => void) | null;
-    }
+    interface AdwComboRowProps extends DropDownProps {}
 
     interface GtkStackProps {
         /** ID of the currently visible page */
@@ -1349,24 +1322,16 @@ declare module "./generated/jsx.js" {
         onDraw?: ((self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void) | null;
     }
 
-    interface GtkColorDialogButtonProps {
+    interface GtkColorDialogButtonProps extends DialogButtonProps {
         /** Callback fired when the selected color changes */
         onRgbaChanged?: ((rgba: Gdk.RGBA) => void) | null;
-        /** Title for the color chooser dialog */
-        title?: string;
-        /** Whether the dialog is modal */
-        modal?: boolean;
         /** Whether to show an alpha (opacity) channel */
         withAlpha?: boolean;
     }
 
-    interface GtkFontDialogButtonProps {
+    interface GtkFontDialogButtonProps extends DialogButtonProps {
         /** Callback fired when the selected font changes */
         onFontDescChanged?: ((fontDesc: Pango.FontDescription) => void) | null;
-        /** Title for the font chooser dialog */
-        title?: string;
-        /** Whether the dialog is modal */
-        modal?: boolean;
     }
 
     interface GtkAboutDialogProps {

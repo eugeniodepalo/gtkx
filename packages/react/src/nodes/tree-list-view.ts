@@ -1,10 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { GtkListViewProps, TreeListModelProps } from "../jsx.js";
+import type { GtkListViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { TreeListItemRenderer } from "./internal/tree-list-item-renderer.js";
-import { TreeListModel } from "./models/tree-list.js";
+import { TreeListModel, type TreeListModelProps } from "./models/tree-list.js";
 import { TreeListItemNode } from "./tree-list-item.js";
 import { WidgetNode } from "./widget.js";
 

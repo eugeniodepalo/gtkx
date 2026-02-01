@@ -1,12 +1,20 @@
 import * as Adw from "@gtkx/ffi/adw";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { toCamelCase } from "@gtkx/gir";
 import type { NavigationPageProps } from "../jsx.js";
-import { Node } from "../node.js";
+import type { Node } from "../node.js";
+import type { ContainerClass } from "../types.js";
 import { hasChanged } from "./internal/props.js";
-import { SlotNode } from "./slot.js";
-import type { WidgetNode } from "./widget.js";
+import { getFocusWidget, isDescendantOf, resolvePropertySetter } from "./internal/widget.js";
+import { VirtualNode } from "./virtual.js";
+import { WidgetNode } from "./widget.js";
 
-export class NavigationPageNode extends SlotNode<NavigationPageProps> {
+export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetNode, WidgetNode> {
     private wrappedPage: Adw.NavigationPage | null = null;
+
+    public override isValidChild(child: Node): boolean {
+        return child instanceof WidgetNode;
+    }
 
     public override setParent(parent: WidgetNode | null): void {
         if (!parent && this.parent && this.wrappedPage) {
@@ -18,6 +26,28 @@ export class NavigationPageNode extends SlotNode<NavigationPageProps> {
         }
 
         super.setParent(parent);
+
+        if (parent && this.children[0]) {
+            this.onChildChange(null);
+        }
+    }
+
+    public override appendChild(child: WidgetNode): void {
+        const oldChildWidget = this.children[0]?.container ?? null;
+        super.appendChild(child);
+
+        if (this.parent) {
+            this.onChildChange(oldChildWidget);
+        }
+    }
+
+    public override removeChild(child: WidgetNode): void {
+        const oldChildWidget = child.container;
+        super.removeChild(child);
+
+        if (this.parent && oldChildWidget) {
+            this.onChildChange(oldChildWidget);
+        }
     }
 
     public override detachDeletedInstance(): void {
@@ -28,7 +58,7 @@ export class NavigationPageNode extends SlotNode<NavigationPageProps> {
             }
         }
         this.wrappedPage = null;
-        Node.prototype.detachDeletedInstance.call(this);
+        super.detachDeletedInstance();
     }
 
     public override commitUpdate(oldProps: NavigationPageProps | null, newProps: NavigationPageProps): void {
@@ -54,8 +84,8 @@ export class NavigationPageNode extends SlotNode<NavigationPageProps> {
         }
     }
 
-    public override onChildChange(oldChild: Adw.NavigationPage | null): void {
-        const navigationView = this.getParentWidget() as Adw.NavigationView | Adw.NavigationSplitView;
+    private onChildChange(oldChild: Gtk.Widget | null): void {
+        const parentWidget = this.getParentWidget();
         const title = this.props.title ?? "";
         const childWidget = this.children[0]?.container ?? null;
 
@@ -67,23 +97,52 @@ export class NavigationPageNode extends SlotNode<NavigationPageProps> {
             this.wrappedPage = wrappedChild;
             this.applyOwnProps(null, this.props);
 
-            if (navigationView instanceof Adw.NavigationView) {
+            if (parentWidget instanceof Adw.NavigationView) {
                 if (oldChild instanceof Adw.NavigationPage) {
-                    navigationView.remove(oldChild);
+                    parentWidget.remove(oldChild);
                 }
 
-                navigationView.add(wrappedChild);
+                parentWidget.add(wrappedChild);
             } else {
-                super.onChildChange(oldChild);
+                this.applySlotChild(parentWidget, oldChild);
             }
-        } else if (navigationView instanceof Adw.NavigationView) {
+        } else if (parentWidget instanceof Adw.NavigationView) {
             if (oldChild instanceof Adw.NavigationPage) {
-                navigationView.remove(oldChild);
+                parentWidget.remove(oldChild);
             }
             this.wrappedPage = null;
         } else {
             this.wrappedPage = null;
-            super.onChildChange(oldChild);
+            this.applySlotChild(parentWidget, oldChild);
         }
+    }
+
+    private applySlotChild(parentWidget: Gtk.Widget, oldChild: Gtk.Widget | null): void {
+        const propId = toCamelCase(this.props.id ?? "");
+        const setter = resolvePropertySetter(parentWidget, propId);
+
+        if (!setter) {
+            const parentType = (parentWidget.constructor as ContainerClass).glibTypeName;
+            throw new Error(`Unable to find property for slot '${propId}' on type '${parentType}'`);
+        }
+
+        const childWidget = this.children[0]?.container ?? null;
+
+        if (oldChild && !childWidget) {
+            const focus = getFocusWidget(oldChild);
+
+            if (focus && isDescendantOf(focus, oldChild)) {
+                parentWidget.grabFocus();
+            }
+        }
+
+        setter(childWidget);
+    }
+
+    private getParentWidget(): Gtk.Widget {
+        if (!this.parent) {
+            throw new Error("Expected parent widget to be set on NavigationPageNode");
+        }
+        return this.parent.container;
     }
 }

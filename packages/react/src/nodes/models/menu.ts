@@ -1,9 +1,15 @@
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { MenuModelProps } from "../../jsx.js";
 import type { Node } from "../../node.js";
 import type { Container } from "../../types.js";
 import { VirtualNode } from "../virtual.js";
+
+export type MenuModelProps = {
+    id?: string;
+    label?: string;
+    accels?: string | string[];
+    onActivate?: () => boolean | undefined;
+};
 
 export type MenuType = "root" | "item" | "section" | "submenu";
 

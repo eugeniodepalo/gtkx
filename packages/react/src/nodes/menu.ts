@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { MenuModelProps } from "../jsx.js";
 import type { Container } from "../types.js";
-import { MenuModel, type MenuType } from "./models/menu.js";
+import { MenuModel, type MenuModelProps, type MenuType } from "./models/menu.js";
 
 export class MenuNode extends MenuModel {
     private static getType(typeName: string): MenuType {

@@ -1,9 +1,9 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { toCamelCase } from "@gtkx/gir";
 import type { SlotProps } from "../jsx.js";
-import { resolvePropMeta } from "../metadata.js";
 import type { Node } from "../node.js";
 import type { ContainerClass, Props } from "../types.js";
+import { getFocusWidget, isDescendantOf, resolvePropertySetter } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -68,8 +68,8 @@ export class SlotNode<P extends Props = SlotNodeProps, TChild extends Node = Wid
                 const setter = this.resolveChildSetter(parentWidget);
                 if (setter) {
                     const oldChild = this.children[0].container;
-                    const focusWidget = this.getFocusWidget(oldChild);
-                    if (focusWidget && this.isDescendantOf(focusWidget, oldChild)) {
+                    const focus = getFocusWidget(oldChild);
+                    if (focus && isDescendantOf(focus, oldChild)) {
                         parentWidget.grabFocus();
                     }
                     setter(null);
@@ -129,9 +129,9 @@ export class SlotNode<P extends Props = SlotNodeProps, TChild extends Node = Wid
 
         if (oldChild && !childWidget) {
             const parent = this.getParentWidget();
-            const focusWidget = this.getFocusWidget(oldChild);
+            const focus = getFocusWidget(oldChild);
 
-            if (focusWidget && this.isDescendantOf(focusWidget, oldChild)) {
+            if (focus && isDescendantOf(focus, oldChild)) {
                 parent.grabFocus();
             }
         }
@@ -140,39 +140,6 @@ export class SlotNode<P extends Props = SlotNodeProps, TChild extends Node = Wid
     }
 
     private resolveChildSetter(parent: Gtk.Widget): ((child: Gtk.Widget | null) => void) | null {
-        const parentType = (parent.constructor as ContainerClass).glibTypeName;
-        const propMeta = resolvePropMeta(parent, this.getId());
-
-        if (!propMeta) {
-            return null;
-        }
-
-        const [, setterName] = propMeta;
-        const setter = parent[setterName as keyof Gtk.Widget];
-
-        if (typeof setter !== "function") {
-            throw new Error(`Expected setter function for Slot '${this.getId()}' on type '${parentType}'`);
-        }
-
-        return setter.bind(parent) as (child: Gtk.Widget | null) => void;
-    }
-
-    private getFocusWidget(widget: Gtk.Widget): Gtk.Widget | null {
-        const root = widget.getRoot();
-        return root?.getFocus?.() ?? null;
-    }
-
-    private isDescendantOf(widget: Gtk.Widget, ancestor: Gtk.Widget): boolean {
-        let current: Gtk.Widget | null = widget;
-
-        while (current) {
-            if (current === ancestor) {
-                return true;
-            }
-
-            current = current.getParent();
-        }
-
-        return false;
+        return resolvePropertySetter(parent, this.getId());
     }
 }

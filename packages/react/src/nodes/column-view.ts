@@ -1,10 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { GtkColumnViewProps, ListModelProps } from "../jsx.js";
+import type { GtkColumnViewProps } from "../jsx.js";
 import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
 import { filterProps } from "./internal/props.js";
 import { ListItemNode } from "./list-item.js";
-import { ListModel } from "./models/list.js";
+import { ListModel, type ListModelProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["sortColumn", "sortOrder", "onSortChanged", "estimatedRowHeight"] as const;

@@ -1,4 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { resolvePropMeta } from "../../metadata.js";
+import type { ContainerClass } from "../../types.js";
 import { isAddable, isAppendable, isContentWidget, isRemovable, isSingleChild } from "./predicates.js";
 
 export function detachChild(child: Gtk.Widget, container: Gtk.Widget): void {
@@ -33,4 +35,44 @@ export function isAttachedTo(child: Gtk.Widget | null, parent: Gtk.Widget | null
     if (!child || !parent) return false;
     const childParent = child.getParent();
     return childParent !== null && childParent === parent;
+}
+
+export function getFocusWidget(widget: Gtk.Widget): Gtk.Widget | null {
+    const root = widget.getRoot();
+    return root?.getFocus?.() ?? null;
+}
+
+export function isDescendantOf(widget: Gtk.Widget, ancestor: Gtk.Widget): boolean {
+    let current: Gtk.Widget | null = widget;
+
+    while (current) {
+        if (current === ancestor) {
+            return true;
+        }
+
+        current = current.getParent();
+    }
+
+    return false;
+}
+
+export function resolvePropertySetter(
+    parentWidget: Gtk.Widget,
+    propId: string,
+): ((child: Gtk.Widget | null) => void) | null {
+    const propMeta = resolvePropMeta(parentWidget, propId);
+
+    if (!propMeta) {
+        return null;
+    }
+
+    const [, setterName] = propMeta;
+    const setter = parentWidget[setterName as keyof Gtk.Widget];
+
+    if (typeof setter !== "function") {
+        const parentType = (parentWidget.constructor as ContainerClass).glibTypeName;
+        throw new Error(`Expected setter function for property '${propId}' on type '${parentType}'`);
+    }
+
+    return setter.bind(parentWidget) as (child: Gtk.Widget | null) => void;
 }
