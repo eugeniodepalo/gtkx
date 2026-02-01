@@ -29,13 +29,19 @@ export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, Popove
     public override appendChild(child: PopoverMenuChild): void {
         if (child instanceof MenuNode) {
             this.menu.appendChild(child);
+            return;
         }
         super.appendChild(child);
     }
 
     public override insertBefore(child: PopoverMenuChild, before: PopoverMenuChild): void {
-        if (child instanceof MenuNode && before instanceof MenuNode) {
-            this.menu.insertBefore(child, before);
+        if (child instanceof MenuNode) {
+            if (before instanceof MenuNode) {
+                this.menu.insertBefore(child, before);
+            } else {
+                this.menu.appendChild(child);
+            }
+            return;
         }
         super.insertBefore(child, before);
     }
@@ -43,6 +49,7 @@ export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, Popove
     public override removeChild(child: PopoverMenuChild): void {
         if (child instanceof MenuNode) {
             this.menu.removeChild(child);
+            return;
         }
         super.removeChild(child);
     }

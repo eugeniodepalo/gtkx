@@ -13,7 +13,7 @@ export type MenuProps = {
     onActivate?: () => void;
 };
 
-export class MenuModel extends VirtualNode<MenuProps, Node, MenuModel> {
+export class MenuModel extends VirtualNode<MenuProps, MenuModel, MenuModel> {
     private actionMap: Gio.ActionMap | null = null;
     private actionPrefix: string;
     private parentMenu: Gio.Menu | null = null;

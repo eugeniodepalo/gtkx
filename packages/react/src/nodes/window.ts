@@ -14,13 +14,10 @@ import { WidgetNode } from "./widget.js";
 const isOrExtends = (target: object, cls: abstract new (...args: any[]) => any): boolean =>
     target === cls || Object.prototype.isPrototypeOf.call(cls, target);
 
-const OWN_PROPS = ["defaultWidth", "defaultHeight", "onClose"] as const;
+const OWN_PROPS = ["onClose"] as const;
 
 export type WindowProps = Pick<GtkWindowProps, "onClose"> &
-    Pick<GtkAboutDialogProps, "creditSections"> & {
-        defaultWidth?: number;
-        defaultHeight?: number;
-    };
+    Pick<GtkAboutDialogProps, "creditSections">;
 
 type WindowChild = WindowNode | DialogNode | MenuNode | SlotNode | WidgetNode;
 
@@ -84,7 +81,9 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
 
         if (child instanceof MenuNode) {
             this.menu.appendChild(child);
+            return;
         }
+
         super.appendChild(child);
     }
 
@@ -103,15 +102,29 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
 
         if (child instanceof MenuNode) {
             this.menu.removeChild(child);
+            return;
         }
+
         super.removeChild(child);
     }
 
     public override insertBefore(child: WindowChild, before: WindowChild): void {
-        if (child instanceof MenuNode && before instanceof MenuNode) {
-            this.menu.insertBefore(child, before);
+        if (child instanceof MenuNode) {
+            if (before instanceof MenuNode) {
+                this.menu.insertBefore(child, before);
+            } else {
+                this.menu.appendChild(child);
+            }
+            return;
         }
-        this.appendChild(child);
+
+        if (child instanceof WindowNode) {
+            child.container.setTransientFor(this.container);
+        } else if (child instanceof DialogNode) {
+            child.parentWindow = this.container;
+        }
+
+        super.insertBefore(child, before);
     }
 
     public override finalizeInitialChildren(props: WindowProps): boolean {
@@ -134,12 +147,6 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
     }
 
     private applyOwnProps(oldProps: WindowProps | null, newProps: WindowProps): void {
-        if (hasChanged(oldProps, newProps, "defaultWidth") || hasChanged(oldProps, newProps, "defaultHeight")) {
-            const width = newProps.defaultWidth ?? -1;
-            const height = newProps.defaultHeight ?? -1;
-            this.container.setDefaultSize(width, height);
-        }
-
         if (hasChanged(oldProps, newProps, "onClose")) {
             const userHandler = newProps.onClose;
             const wrappedHandler = userHandler

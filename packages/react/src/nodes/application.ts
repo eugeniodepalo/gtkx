@@ -21,14 +21,21 @@ export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
         if (child instanceof MenuNode) {
             this.menu.appendChild(child);
             this.container.setMenubar(this.menu.getMenu());
+            return;
         }
 
         super.appendChild(child);
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof MenuNode && before instanceof MenuNode) {
-            this.menu.insertBefore(child, before);
+        if (child instanceof MenuNode) {
+            if (before instanceof MenuNode) {
+                this.menu.insertBefore(child, before);
+            } else {
+                this.menu.appendChild(child);
+            }
+            this.container.setMenubar(this.menu.getMenu());
+            return;
         }
 
         super.insertBefore(child, before);
@@ -41,6 +48,7 @@ export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
             if (this.menu.getMenu().getNItems() === 0) {
                 this.container.setMenubar(null);
             }
+            return;
         }
 
         super.removeChild(child);
