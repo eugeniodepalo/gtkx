@@ -1,16 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { useApplication } from "@gtkx/react";
 import { useCallback, useEffect, useRef } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pagesetup.tsx?raw";
 
-const PageSetupDemo = () => {
-    const app = useApplication();
+const PageSetupDemo = ({ window }: DemoProps) => {
     const dialogRef = useRef<Gtk.PageSetupUnixDialog | null>(null);
 
     const showDialog = useCallback(() => {
-        const activeWindow = app.getActiveWindow();
-
         if (dialogRef.current) {
             if (dialogRef.current.getVisible()) {
                 dialogRef.current.destroy();
@@ -21,7 +17,7 @@ const PageSetupDemo = () => {
             return;
         }
 
-        const dialog = new Gtk.PageSetupUnixDialog("Page Setup", activeWindow ?? undefined);
+        const dialog = new Gtk.PageSetupUnixDialog("Page Setup", window.current ?? undefined);
         dialogRef.current = dialog;
 
         dialog.connect("response", () => {
@@ -30,7 +26,7 @@ const PageSetupDemo = () => {
         });
 
         dialog.setVisible(true);
-    }, [app]);
+    }, [window]);
 
     useEffect(() => {
         showDialog();

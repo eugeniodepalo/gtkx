@@ -11,10 +11,12 @@ export type TreeItemData<T = unknown> = {
 
 export class TreeStore {
     private rootIds: string[] = [];
-    private children: Map<string, string[]> = new Map();
+    private rootIdToIndex = new Map<string, number>();
+    private children = new Map<string, string[]>();
+    private childIdToIndex = new Map<string, Map<string, number>>();
     private rootModel = new Gtk.StringList();
-    private childModels: Map<string, Gtk.StringList> = new Map();
-    private items: Map<string, TreeItemData> = new Map();
+    private childModels = new Map<string, Gtk.StringList>();
+    private items = new Map<string, TreeItemData>();
     private onItemUpdated: TreeItemUpdatedCallback | null = null;
 
     public setOnItemUpdated(callback: TreeItemUpdatedCallback | null): void {
@@ -34,30 +36,39 @@ export class TreeStore {
         this.items.set(id, data);
 
         if (parentId === undefined) {
-            const existingIndex = this.rootIds.indexOf(id);
-            if (existingIndex >= 0) {
+            const existingIndex = this.rootIdToIndex.get(id);
+            if (existingIndex !== undefined) {
                 this.rootModel.remove(existingIndex);
                 this.rootIds.splice(existingIndex, 1);
+                this.rebuildRootIndices(existingIndex);
             }
 
+            this.rootIdToIndex.set(id, this.rootIds.length);
             this.rootIds.push(id);
             this.rootModel.append(id);
         } else {
             let siblings = this.children.get(parentId);
+            let indexMap = this.childIdToIndex.get(parentId);
             if (!siblings) {
                 siblings = [];
                 this.children.set(parentId, siblings);
             }
+            if (!indexMap) {
+                indexMap = new Map();
+                this.childIdToIndex.set(parentId, indexMap);
+            }
 
-            const existingIndex = siblings.indexOf(id);
-            if (existingIndex >= 0) {
+            const existingIndex = indexMap.get(id);
+            if (existingIndex !== undefined) {
                 const model = this.childModels.get(parentId);
                 if (model) {
                     model.remove(existingIndex);
                 }
                 siblings.splice(existingIndex, 1);
+                this.rebuildChildIndices(siblings, indexMap, existingIndex);
             }
 
+            indexMap.set(id, siblings.length);
             siblings.push(id);
 
             let model = this.childModels.get(parentId);
@@ -72,20 +83,26 @@ export class TreeStore {
     public removeItem(id: string, parentId?: string): void {
         this.items.delete(id);
         this.children.delete(id);
+        this.childIdToIndex.delete(id);
         this.childModels.delete(id);
 
         if (parentId === undefined) {
-            const index = this.rootIds.indexOf(id);
-            if (index >= 0) {
+            const index = this.rootIdToIndex.get(id);
+            if (index !== undefined) {
                 this.rootIds.splice(index, 1);
+                this.rootIdToIndex.delete(id);
+                this.rebuildRootIndices(index);
                 this.rootModel.remove(index);
             }
         } else {
             const siblings = this.children.get(parentId);
-            if (siblings) {
-                const index = siblings.indexOf(id);
-                if (index >= 0) {
+            const indexMap = this.childIdToIndex.get(parentId);
+            if (siblings && indexMap) {
+                const index = indexMap.get(id);
+                if (index !== undefined) {
                     siblings.splice(index, 1);
+                    indexMap.delete(id);
+                    this.rebuildChildIndices(siblings, indexMap, index);
                     const model = this.childModels.get(parentId);
                     if (model) {
                         model.remove(index);
@@ -93,6 +110,7 @@ export class TreeStore {
                 }
                 if (siblings.length === 0) {
                     this.children.delete(parentId);
+                    this.childIdToIndex.delete(parentId);
                 }
             }
         }
@@ -102,25 +120,34 @@ export class TreeStore {
         this.items.set(id, data);
 
         if (parentId === undefined) {
-            const existingIndex = this.rootIds.indexOf(id);
-            if (existingIndex >= 0) {
+            const existingIndex = this.rootIdToIndex.get(id);
+            if (existingIndex !== undefined) {
                 this.rootModel.remove(existingIndex);
                 this.rootIds.splice(existingIndex, 1);
+                this.rootIdToIndex.delete(id);
+                this.rebuildRootIndices(existingIndex);
             }
 
-            const beforeIndex = this.rootIds.indexOf(beforeId);
-            if (beforeIndex < 0) {
+            const beforeIndex = this.rootIdToIndex.get(beforeId);
+            if (beforeIndex === undefined) {
+                this.rootIdToIndex.set(id, this.rootIds.length);
                 this.rootIds.push(id);
                 this.rootModel.append(id);
             } else {
                 this.rootIds.splice(beforeIndex, 0, id);
+                this.rebuildRootIndices(beforeIndex);
                 this.rootModel.splice(beforeIndex, 0, [id]);
             }
         } else {
             let siblings = this.children.get(parentId);
+            let indexMap = this.childIdToIndex.get(parentId);
             if (!siblings) {
                 siblings = [];
                 this.children.set(parentId, siblings);
+            }
+            if (!indexMap) {
+                indexMap = new Map();
+                this.childIdToIndex.set(parentId, indexMap);
             }
 
             let model = this.childModels.get(parentId);
@@ -129,18 +156,22 @@ export class TreeStore {
                 this.childModels.set(parentId, model);
             }
 
-            const existingIndex = siblings.indexOf(id);
-            if (existingIndex >= 0) {
+            const existingIndex = indexMap.get(id);
+            if (existingIndex !== undefined) {
                 model.remove(existingIndex);
                 siblings.splice(existingIndex, 1);
+                indexMap.delete(id);
+                this.rebuildChildIndices(siblings, indexMap, existingIndex);
             }
 
-            const beforeIndex = siblings.indexOf(beforeId);
-            if (beforeIndex < 0) {
+            const beforeIndex = indexMap.get(beforeId);
+            if (beforeIndex === undefined) {
+                indexMap.set(id, siblings.length);
                 siblings.push(id);
                 model.append(id);
             } else {
                 siblings.splice(beforeIndex, 0, id);
+                this.rebuildChildIndices(siblings, indexMap, beforeIndex);
                 model.splice(beforeIndex, 0, [id]);
             }
         }
@@ -172,5 +203,17 @@ export class TreeStore {
     public hasChildren(parentId: string): boolean {
         const childIds = this.children.get(parentId);
         return childIds !== undefined && childIds.length > 0;
+    }
+
+    private rebuildRootIndices(fromIndex: number): void {
+        for (let i = fromIndex; i < this.rootIds.length; i++) {
+            this.rootIdToIndex.set(this.rootIds[i] as string, i);
+        }
+    }
+
+    private rebuildChildIndices(siblings: string[], indexMap: Map<string, number>, fromIndex: number): void {
+        for (let i = fromIndex; i < siblings.length; i++) {
+            indexMap.set(siblings[i] as string, i);
+        }
     }
 }

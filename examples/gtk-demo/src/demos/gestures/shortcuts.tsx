@@ -1,8 +1,8 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkMenuButton, useApplication, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkMenuButton, x } from "@gtkx/react";
 import { useCallback, useState } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./shortcuts.tsx?raw";
 
 interface ShortcutDef {
@@ -75,8 +75,7 @@ const shortcutSections: ShortcutSectionDef[] = [
     },
 ];
 
-const ShortcutsDemo = () => {
-    const app = useApplication();
+const ShortcutsDemo = ({ window }: DemoProps) => {
     const [menuActionTriggered, setMenuActionTriggered] = useState<string | null>(null);
 
     const handleMenuAction = (action: string) => {
@@ -103,9 +102,8 @@ const ShortcutsDemo = () => {
 
     const handleOpenShortcuts = useCallback(() => {
         const dialog = createShortcutsDialog();
-        const parent = app.getActiveWindow();
-        dialog.present(parent ?? undefined);
-    }, [app, createShortcutsDialog]);
+        dialog.present(window.current ?? undefined);
+    }, [window, createShortcutsDialog]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>

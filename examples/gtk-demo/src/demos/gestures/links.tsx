@@ -1,11 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkLabel, useApplication } from "@gtkx/react";
-import type { Demo } from "../types.js";
+import { GtkLabel } from "@gtkx/react";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./links.tsx?raw";
 
-const LinksDemo = () => {
-    const app = useApplication();
-
+const LinksDemo = ({ window }: DemoProps) => {
     const handleActivateLink = (uri: string) => {
         if (uri === "keynav") {
             const dialog = new Gtk.AlertDialog();
@@ -13,7 +11,7 @@ const LinksDemo = () => {
             dialog.setDetail(
                 "The term 'keynav' is a shorthand for keyboard navigation and refers to the process of using a program (exclusively) via keyboard input.",
             );
-            dialog.show(app.getActiveWindow());
+            dialog.show(window.current ?? undefined);
             return true;
         }
         return false;

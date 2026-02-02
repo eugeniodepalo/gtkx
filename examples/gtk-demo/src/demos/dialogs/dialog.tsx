@@ -9,17 +9,13 @@ import {
     GtkGrid,
     GtkLabel,
     GtkSeparator,
-    useApplication,
     x,
 } from "@gtkx/react";
 import { useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./dialog.tsx?raw";
 
-const DialogDemo = () => {
-    const app = useApplication();
-    const activeWindow = app.getActiveWindow();
-
+const DialogDemo = ({ window }: DemoProps) => {
     const [clickCount, setClickCount] = useState(0);
     const [entry1, setEntry1] = useState("");
     const [entry2, setEntry2] = useState("");
@@ -77,7 +73,7 @@ const DialogDemo = () => {
             </GtkBox>
 
             {showMessageDialog &&
-                activeWindow &&
+                window.current &&
                 createPortal(
                     <AdwAlertDialog
                         heading="Information"
@@ -88,11 +84,11 @@ const DialogDemo = () => {
                     >
                         <x.AlertDialogResponse id="ok" label="_OK" />
                     </AdwAlertDialog>,
-                    activeWindow,
+                    window.current,
                 )}
 
             {showInteractiveDialog &&
-                activeWindow &&
+                window.current &&
                 createPortal(
                     <AdwAlertDialog
                         heading="Interactive Dialog"
@@ -126,7 +122,7 @@ const DialogDemo = () => {
                         <x.AlertDialogResponse id="cancel" label="_Cancel" />
                         <x.AlertDialogResponse id="ok" label="_OK" appearance={Adw.ResponseAppearance.SUGGESTED} />
                     </AdwAlertDialog>,
-                    activeWindow,
+                    window.current,
                 )}
         </GtkBox>
     );

@@ -21,7 +21,7 @@ import {
     useApplication,
     x,
 } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
@@ -68,6 +68,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const { currentDemo } = useDemo();
     const app = useApplication();
     const activeWindow = app.getActiveWindow();
+    const windowRef = useRef<Gtk.Window>(null);
 
     if (!currentDemo?.component || !activeWindow) return null;
 
@@ -75,8 +76,8 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const { displayTitle } = parseTitle(currentDemo.title);
 
     return createPortal(
-        <GtkWindow title={displayTitle} defaultWidth={800} defaultHeight={600} onClose={onClose}>
-            <DemoComponent onClose={onClose} />
+        <GtkWindow ref={windowRef} title={displayTitle} defaultWidth={800} defaultHeight={600} onClose={onClose}>
+            <DemoComponent onClose={onClose} window={windowRef} />
         </GtkWindow>,
         activeWindow,
     );

@@ -62,7 +62,7 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
     }
 
     public override detachDeletedInstance(): void {
-        const parentWidget = this.parent?.container ?? this.detachedParentWidget;
+        const parentWidget = this.detachedParentWidget;
 
         if (parentWidget && this.children[0]) {
             if (parentWidget.getRoot() !== null) {

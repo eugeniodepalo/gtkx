@@ -91,12 +91,12 @@ export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode<StackW
             return;
         }
 
-        if (hasChanged(oldProps, newProps, "title")) {
-            this.page.setTitle(newProps.title ?? "");
+        if (hasChanged(oldProps, newProps, "title") && newProps.title !== undefined) {
+            this.page.setTitle(newProps.title);
         }
 
-        if (hasChanged(oldProps, newProps, "iconName")) {
-            this.page.setIconName(newProps.iconName ?? "");
+        if (hasChanged(oldProps, newProps, "iconName") && newProps.iconName !== undefined) {
+            this.page.setIconName(newProps.iconName);
         }
 
         if (hasChanged(oldProps, newProps, "needsAttention")) {

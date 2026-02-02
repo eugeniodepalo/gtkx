@@ -1,7 +1,9 @@
-import type { ComponentType } from "react";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import type { ComponentType, RefObject } from "react";
 
 export type DemoProps = {
     onClose?: () => void;
+    window: RefObject<Gtk.Window | null>;
 };
 
 export type Demo = {

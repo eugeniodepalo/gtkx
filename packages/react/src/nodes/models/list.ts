@@ -113,13 +113,14 @@ export class ListModel {
     private resolveSelectionIndices(ids: string[]): Gtk.Bitset {
         const nItems = this.treeListModel.getNItems();
         const selected = new Gtk.Bitset();
+        const idSet = new Set(ids);
 
         for (let i = 0; i < nItems; i++) {
             const row = this.treeListModel.getRow(i);
             if (!row) continue;
 
             const item = row.getItem();
-            if (item instanceof Gtk.StringObject && ids.includes(item.getString())) {
+            if (item instanceof Gtk.StringObject && idSet.has(item.getString())) {
                 selected.add(i);
             }
         }

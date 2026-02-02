@@ -1,21 +1,11 @@
 import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkColorDialogButton,
-    GtkFontDialogButton,
-    GtkGrid,
-    GtkLabel,
-    useApplication,
-    x,
-} from "@gtkx/react";
+import { GtkBox, GtkButton, GtkColorDialogButton, GtkFontDialogButton, GtkGrid, GtkLabel, x } from "@gtkx/react";
 import { useCallback, useState } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pickers.tsx?raw";
 
-const PickersDemo = () => {
-    const app = useApplication();
+const PickersDemo = ({ window }: DemoProps) => {
     const [selectedFile, setSelectedFile] = useState<Gio.File | null>(null);
     const [fileName, setFileName] = useState("None");
     const [isPdf, setIsPdf] = useState(false);
@@ -23,7 +13,7 @@ const PickersDemo = () => {
     const handleOpenFile = async () => {
         try {
             const fileDialog = new Gtk.FileDialog();
-            const file = await fileDialog.openAsync(app.getActiveWindow() ?? undefined);
+            const file = await fileDialog.openAsync(window.current ?? undefined);
             setSelectedFile(file);
             setFileName(file.getBasename() ?? file.getUri());
             const info = file.queryInfo("standard::content-type", 0, null);
@@ -39,32 +29,32 @@ const PickersDemo = () => {
         if (!selectedFile) return;
         try {
             const launcher = new Gtk.FileLauncher(selectedFile);
-            await launcher.launchAsync(app.getActiveWindow() ?? undefined);
+            await launcher.launchAsync(window.current ?? undefined);
         } catch {}
-    }, [app, selectedFile]);
+    }, [window, selectedFile]);
 
     const handleOpenFolder = useCallback(async () => {
         if (!selectedFile) return;
         try {
             const launcher = new Gtk.FileLauncher(selectedFile);
-            await launcher.openContainingFolderAsync(app.getActiveWindow() ?? undefined);
+            await launcher.openContainingFolderAsync(window.current ?? undefined);
         } catch {}
-    }, [app, selectedFile]);
+    }, [window, selectedFile]);
 
     const handlePrintFile = useCallback(async () => {
         if (!selectedFile || !isPdf) return;
         try {
             const printDialog = new Gtk.PrintDialog();
-            await printDialog.printFileAsync(selectedFile, app.getActiveWindow());
+            await printDialog.printFileAsync(selectedFile, window.current ?? undefined);
         } catch {}
-    }, [app, selectedFile, isPdf]);
+    }, [window, selectedFile, isPdf]);
 
     const handleLaunchUri = useCallback(async () => {
         try {
             const launcher = new Gtk.UriLauncher("http://www.gtk.org");
-            await launcher.launchAsync(app.getActiveWindow() ?? undefined);
+            await launcher.launchAsync(window.current ?? undefined);
         } catch {}
-    }, [app]);
+    }, [window]);
 
     return (
         <GtkGrid rowSpacing={6} columnSpacing={6} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>

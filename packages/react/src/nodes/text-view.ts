@@ -9,6 +9,7 @@ import type { TextContentChild, TextContentParent } from "./text-content.js";
 import { TextPaintableNode } from "./text-paintable.js";
 import { TextSegmentNode } from "./text-segment.js";
 import { TextTagNode } from "./text-tag.js";
+import { EventControllerNode } from "./event-controller.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = [
@@ -21,7 +22,7 @@ const OWN_PROPS = [
 ] as const;
 
 type TextViewProps = Pick<GtkTextViewProps, (typeof OWN_PROPS)[number]>;
-type TextViewChild = TextContentChild | SlotNode | WidgetNode;
+type TextViewChild = TextContentChild | SlotNode | EventControllerNode | WidgetNode;
 
 export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextViewChild> implements TextContentParent {
     protected bufferController: TextBufferController | null = null;
@@ -33,6 +34,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
             child instanceof TextAnchorNode ||
             child instanceof TextPaintableNode ||
             child instanceof SlotNode ||
+            child instanceof EventControllerNode ||
             child instanceof WidgetNode
         );
     }

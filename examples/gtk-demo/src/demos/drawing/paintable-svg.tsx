@@ -2,13 +2,12 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkButton, GtkHeaderBar, GtkImage, GtkPicture, useApplication, x } from "@gtkx/react";
+import { GtkButton, GtkHeaderBar, GtkImage, GtkPicture, x } from "@gtkx/react";
 import { useState } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./paintable-svg.tsx?raw";
 
-const PaintableSvgDemo = () => {
-    const app = useApplication();
+const PaintableSvgDemo = ({ window }: DemoProps) => {
     const [texture, setTexture] = useState<Gdk.Texture | null>(null);
     const [isSymbolic, setIsSymbolic] = useState(false);
 
@@ -24,7 +23,7 @@ const PaintableSvgDemo = () => {
         dialog.setFilters(filters);
 
         try {
-            const file = await dialog.openAsync(app.getActiveWindow() ?? undefined);
+            const file = await dialog.openAsync(window.current ?? undefined);
             const path = file.getPath();
             if (path) {
                 const symbolic = path.includes("symbolic");

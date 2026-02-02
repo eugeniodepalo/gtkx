@@ -1,13 +1,12 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkButton, GtkHeaderBar, GtkVideo, useApplication, x } from "@gtkx/react";
+import { GtkButton, GtkHeaderBar, GtkVideo, x } from "@gtkx/react";
 import { useState } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./video-player.tsx?raw";
 
-const VideoPlayerDemo = () => {
-    const app = useApplication();
+const VideoPlayerDemo = ({ window }: DemoProps) => {
     const [videoFile, setVideoFile] = useState<Gio.File | null>(null);
 
     const handleOpen = async () => {
@@ -35,7 +34,7 @@ const VideoPlayerDemo = () => {
         dialog.setDefaultFilter(videoFilter);
 
         try {
-            const file = await dialog.openAsync(app.getActiveWindow() ?? undefined);
+            const file = await dialog.openAsync(window.current ?? undefined);
             setVideoFile(file);
         } catch {
             /* User cancelled */
@@ -53,10 +52,7 @@ const VideoPlayerDemo = () => {
     };
 
     const handleFullscreen = () => {
-        const window = app.getActiveWindow();
-        if (window) {
-            window.fullscreen();
-        }
+        window.current?.fullscreen();
     };
 
     return (

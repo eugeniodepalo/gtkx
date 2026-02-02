@@ -13,11 +13,10 @@ import {
     GtkSeparator,
     GtkStack,
     GtkToggleButton,
-    useApplication,
     x,
 } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 
 type SourceType = "Text" | "Color" | "Image" | "File";
@@ -48,8 +47,7 @@ const getGFileType = () => {
 
 const SOURCE_TYPES: SourceType[] = ["Text", "Color", "Image", "File"];
 
-const ClipboardDemo = () => {
-    const app = useApplication();
+const ClipboardDemo = ({ window }: DemoProps) => {
     const [sourceType, setSourceType] = useState<SourceType>("Text");
     const [sourceText, setSourceText] = useState("Copy this!");
     const [sourceColor, setSourceColor] = useState<Gdk.RGBA>(
@@ -181,10 +179,10 @@ const ClipboardDemo = () => {
     const handleFileSelect = useCallback(async () => {
         const dialog = new Gtk.FileDialog();
         try {
-            const file = await dialog.openAsync(app.getActiveWindow() ?? undefined);
+            const file = await dialog.openAsync(window.current ?? undefined);
             setSourceFile(file);
         } catch {}
-    }, [app]);
+    }, [window]);
 
     return (
         <GtkBox

@@ -4,6 +4,10 @@ import { WidgetNode } from "./widget.js";
 import { WindowNode } from "./window.js";
 
 export class DialogNode extends WidgetNode<Adw.Dialog> {
+    protected override shouldAttachToParent(): boolean {
+        return false;
+    }
+
     public override finalizeInitialChildren(props: Props): boolean {
         this.commitUpdate(null, props);
         return true;

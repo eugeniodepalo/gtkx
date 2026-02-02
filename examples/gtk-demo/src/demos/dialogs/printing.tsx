@@ -1,18 +1,15 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
-import { useApplication } from "@gtkx/react";
 import { useEffect } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./printing.tsx?raw";
 
 const HEADER_HEIGHT = (10 * 72) / 25.4;
 const HEADER_GAP = (3 * 72) / 25.4;
 const FONT_SIZE = 12.0;
 
-const PrintingDemo = () => {
-    const app = useApplication();
-
+const PrintingDemo = ({ window }: DemoProps) => {
     useEffect(() => {
         const lines = sourceCode.split("\n");
         const numLines = lines.length;
@@ -77,13 +74,13 @@ const PrintingDemo = () => {
         });
 
         try {
-            printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, app.getActiveWindow() ?? undefined);
+            printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, window.current ?? undefined);
         } catch (error) {
             const dialog = new Gtk.AlertDialog();
             dialog.setMessage(`${error}`);
-            dialog.show(app.getActiveWindow() ?? undefined);
+            dialog.show(window.current ?? undefined);
         }
-    }, [app]);
+    }, [window]);
 
     return null;
 };
