@@ -100,6 +100,64 @@ describe("useCounter", () => {
 
 See the [renderHook API reference](./api/testing/functions/renderHook.md) for full details.
 
+## Querying by Widget State
+
+Role queries can filter by widget state like `pressed`, `expanded`, and `selected`:
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { cleanup, render, screen } from "@gtkx/testing";
+import { afterEach, describe, expect, it } from "vitest";
+
+describe("role state queries", () => {
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  it("finds pressed toggle buttons", async () => {
+    await render(<GtkToggleButton label="Bold" active />, { wrapper: false });
+
+    const pressed = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
+      pressed: true,
+    });
+    expect(pressed).toBeDefined();
+  });
+
+  it("finds expanded expanders", async () => {
+    await render(<GtkExpander label="Details" expanded />, { wrapper: false });
+
+    const expanded = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+      expanded: true,
+    });
+    expect(expanded).toBeDefined();
+  });
+});
+```
+
+## Waiting for Async Conditions
+
+Use `waitFor` to poll until an assertion passes, useful for testing async data loading or delayed UI updates:
+
+```tsx
+import { cleanup, render, screen, waitFor } from "@gtkx/testing";
+import { afterEach, describe, expect, it } from "vitest";
+
+describe("async", () => {
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  it("waits for data to load", async () => {
+    await render(<AsyncComponent />, { wrapper: false });
+
+    await waitFor(async () => {
+      const label = await screen.findByText("Loaded");
+      expect(label).toBeDefined();
+    });
+  });
+});
+```
+
 ## Complete Example
 
 ```tsx

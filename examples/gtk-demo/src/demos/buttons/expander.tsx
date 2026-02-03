@@ -1,10 +1,10 @@
-import path from "node:path";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useCallback, useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
+import gtkLogoCursorPath from "./gtk_logo_cursor.png";
 
 const DETAILS_TEXT = `Finally, the full story with all details. And all the inside information, including error codes, etc etc. Pages of information, you might have to scroll down to read it all, or even resize the window - it works !
 A second paragraph will contain even more innuendo, just to make you scroll down or resize the window.
@@ -30,8 +30,7 @@ const ExpanderDemo = () => {
 
         buffer.setText(DETAILS_TEXT, -1);
 
-        const logoPath = path.resolve(import.meta.dirname, "gtk_logo_cursor.png");
-        const texture = Gdk.Texture.newFromFilename(logoPath);
+        const texture = Gdk.Texture.newFromFilename(gtkLogoCursorPath);
 
         const endIter = new Gtk.TextIter();
         buffer.getEndIter(endIter);

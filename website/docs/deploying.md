@@ -2,7 +2,7 @@
 
 GTKX apps are Node.js applications with native GTK4 bindings. Distribution requires:
 
-1. **Bundle** the JavaScript code with esbuild
+1. **Bundle** the JavaScript code with `gtkx build`
 2. **Create a SEA** (Single Executable Application) using Node.js
 3. **Package** with Flatpak or Snap
 
@@ -10,24 +10,15 @@ GTKX apps are Node.js applications with native GTK4 bindings. Distribution requi
 
 The native module (`@gtkx/native`) cannot be bundled into JavaScript and must be distributed alongside the executable.
 
-### Bundle with esbuild
+### Bundle with `gtkx build`
 
-Mark the native module as external:
+Run the production bundler to create a single minified ESM bundle:
 
-```typescript
-// scripts/bundle.ts
-import * as esbuild from "esbuild";
-
-await esbuild.build({
-  entryPoints: ["dist/index.js"],
-  bundle: true,
-  platform: "node",
-  target: "node22",
-  outfile: "dist/bundle.js",
-  format: "cjs",
-  external: ["./index.node"], // Keep native module external
-});
+```bash
+npx gtkx build
 ```
+
+This produces `dist/bundle.js` with all dependencies inlined except the native module, which is automatically kept external.
 
 ### SEA Configuration
 

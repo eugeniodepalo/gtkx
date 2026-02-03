@@ -29,7 +29,7 @@ export type CreateOptions = {
 
 const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
 
-const DEV_DEPENDENCIES = ["@gtkx/cli", "@types/react", "typescript"];
+const DEV_DEPENDENCIES = ["@gtkx/cli", "@types/react", "typescript", "vite"];
 
 const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "@gtkx/vitest", "vitest"];
 
@@ -196,6 +196,7 @@ const scaffoldProject = (projectPath: string, resolved: ResolvedOptions): void =
     writeFileSync(join(projectPath, "src", "app.tsx"), renderFile("src/app.tsx.ejs", context));
     writeFileSync(join(projectPath, "src", "dev.tsx"), renderFile("src/dev.tsx.ejs", context));
     writeFileSync(join(projectPath, "src", "index.tsx"), renderFile("src/index.tsx.ejs", context));
+    writeFileSync(join(projectPath, "src", "vite-env.d.ts"), renderFile("src/vite-env.d.ts.ejs", context));
     writeFileSync(join(projectPath, ".gitignore"), renderFile("gitignore.ejs", context));
 
     if (claudeSkills) {

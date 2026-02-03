@@ -10,14 +10,14 @@ GTKX enables React developers to build Linux desktop applications using familiar
 - `@gtkx/ffi`: TypeScript FFI bindings, GTK/GLib/Adwaita type definitions and enums
 - `@gtkx/css`: CSS-in-JS styling (Emotion-based, adapted for GTK CSS syntax)
 - `@gtkx/testing`: Component testing utilities (Testing Library-style API for GTK)
-- `@gtkx/cli`: Project scaffolding (gtkx create) and dev server with hot module replacement
+- `@gtkx/cli`: Project scaffolding (gtkx create), dev server with hot module replacement, and production bundling (gtkx build)
 - `@gtkx/mcp`: MCP server for AI-powered app interaction, widget tree inspection, automated testing
 
 ## Documentation
 
 - [Introduction](https://gtkx.dev/docs/introduction): What GTKX is, how it works, architecture overview, and target audience
 - [Getting Started](https://gtkx.dev/docs/getting-started): Create first app, project structure, basic component patterns
-- [CLI Reference](https://gtkx.dev/docs/cli): gtkx create, gtkx dev commands, npm scripts, programmatic API
+- [CLI Reference](https://gtkx.dev/docs/cli): gtkx create, gtkx dev, gtkx build commands, npm scripts, programmatic API
 - [Styling](https://gtkx.dev/docs/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
 - [Event Controllers](https://gtkx.dev/docs/event-controllers): Event controllers as JSX children (GtkEventControllerMotion, GtkEventControllerKey, GtkEventControllerFocus, GtkGestureClick, GtkGestureDrag, GtkDragSource, GtkDropTarget, etc.)
 - [Async Operations](https://gtkx.dev/docs/async-operations): Async event handlers, loading states, file I/O, network requests
@@ -29,7 +29,7 @@ GTKX enables React developers to build Linux desktop applications using familiar
 - [Portals and Dialogs](https://gtkx.dev/docs/portals): createPortal(), AdwDialog, AdwAlertDialog, GtkAboutDialog, FileDialog, ColorDialogButton, FontDialogButton, modal windows
 - [Adwaita](https://gtkx.dev/docs/adwaita): Libadwaita components — AdwToolbarView, AdwHeaderBar, AdwActionRow, AdwNavigationView, AdwAlertDialog with x.AlertDialogResponse, AdwToggleGroup with x.Toggle
 - [Animations](https://gtkx.dev/docs/animations): x.Animation component, spring and timed animations via transition discriminated union, animatable properties (opacity, translate, scale, rotate, skew), exit animations, callbacks
-- [Testing](https://gtkx.dev/docs/testing): render(), renderHook(), screen queries, userEvent, fireEvent, waitFor, Xvfb setup for CI
+- [Testing](https://gtkx.dev/docs/testing): render(), renderHook(), screen queries (role state filters: pressed/expanded/selected), userEvent, fireEvent, waitFor, queryByLabelText (mnemonic-widget lookup), Xvfb setup for CI
 - [MCP Integration](https://gtkx.dev/docs/mcp): AI assistant integration via Model Context Protocol, widget tree inspection, automated UI interaction
 - [Deploying](https://gtkx.dev/docs/deploying): Node.js Single Executable Application (SEA), Flatpak packaging
 

@@ -1,4 +1,3 @@
-import path from "node:path";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GdkPixbuf from "@gtkx/ffi/gdkpixbuf";
@@ -26,6 +25,7 @@ import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
+import logoPath from "./logo.svg";
 
 const InfoTab = () => {
     const { currentDemo } = useDemo();
@@ -94,7 +94,6 @@ const AppContent = () => {
     const activeWindow = app.getActiveWindow();
 
     const gtkxLogo = useMemo(() => {
-        const logoPath = path.resolve(import.meta.dirname, "../../..", "logo.svg");
         const pixbuf = GdkPixbuf.Pixbuf.newFromFileAtScale(logoPath, 64, 64, true);
         return new Gdk.Texture(pixbuf);
     }, []);

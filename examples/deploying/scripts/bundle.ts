@@ -1,7 +1,10 @@
+import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import * as esbuild from "esbuild";
 
 const projectRoot = resolve(import.meta.dirname, "..");
+const require2 = createRequire(join(projectRoot, "package.json"));
+const nativeEntryPath = require2.resolve("@gtkx/native");
 
 const nativeShim = `
 const { createRequire } = require("node:module");
@@ -13,27 +16,34 @@ module.exports = require2("./index.node");
 `;
 
 async function bundle() {
-    console.log("Bundling application...");
+    console.log("Bundling for SEA...");
 
     await esbuild.build({
-        entryPoints: [join(projectRoot, "src/index.tsx")],
+        entryPoints: [join(projectRoot, "dist/bundle.js")],
         bundle: true,
         platform: "node",
         target: "node22",
         format: "cjs",
         outfile: join(projectRoot, "dist/bundle.cjs"),
-        jsx: "automatic",
         minify: true,
-        sourcemap: false,
+        banner: {
+            js: 'var __import_meta_url = require("url").pathToFileURL(__filename).href;',
+        },
         define: {
-            "process.env.NODE_ENV": '"production"',
+            "import.meta.url": "__import_meta_url",
         },
         plugins: [
             {
                 name: "native-shim",
                 setup(build) {
-                    build.onResolve({ filter: /^@gtkx\/native(-linux-(x64|arm64))?$/ }, (args) => {
-                        return { path: args.path, namespace: "native-shim" };
+                    build.onResolve({ filter: /@gtkx\/native/ }, (args) => ({
+                        path: args.path,
+                        namespace: "native-shim",
+                    }));
+                    build.onResolve({ filter: /.*/ }, (args) => {
+                        if (args.path === nativeEntryPath) {
+                            return { path: args.path, namespace: "native-shim" };
+                        }
                     });
                     build.onLoad({ filter: /.*/, namespace: "native-shim" }, () => {
                         return { contents: nativeShim, loader: "js" };
@@ -43,7 +53,7 @@ async function bundle() {
         ],
     });
 
-    console.log("Bundle created: dist/bundle.cjs");
+    console.log("SEA bundle created: dist/bundle.cjs");
 }
 
 bundle().catch((err) => {

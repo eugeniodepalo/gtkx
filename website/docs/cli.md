@@ -62,6 +62,7 @@ Core:
 Dev:
 
 - `@gtkx/cli` — CLI and dev server
+- `vite` — Build tooling (required for `gtkx build` and `gtkx dev`)
 - `typescript` — TypeScript compiler
 - `@types/react` — React type definitions
 
@@ -97,6 +98,24 @@ The dev server watches for file changes and:
 1. If the change is in a React component boundary → Fast Refresh (state preserved)
 2. Otherwise → Full module reload
 
+### `gtkx build`
+
+Produces a single minified ESM bundle via Vite SSR mode.
+
+```bash
+npx gtkx build [entry]
+```
+
+The entry file defaults to `src/index.tsx`. Output is written to `dist/bundle.js` with all dependencies bundled except the native module.
+
+**Features:**
+
+- **Single-file output** — All dependencies inlined into one minified ESM bundle
+- **Vite-powered** — Uses Vite SSR mode for Node.js-targeted bundling
+- **Native module excluded** — `@gtkx/native` is kept external automatically
+
+Static assets (images, SVGs, etc.) should be handled via Vite imports rather than `path.resolve` / `import.meta.dirname`.
+
 ### Generated npm Scripts
 
 After `gtkx create`, your `package.json` includes:
@@ -105,19 +124,19 @@ After `gtkx create`, your `package.json` includes:
 {
   "scripts": {
     "dev": "gtkx dev src/dev.tsx",
-    "build": "tsc -b",
-    "start": "node dist/index.js",
+    "build": "gtkx build",
+    "start": "node dist/bundle.js",
     "test": "vitest"
   }
 }
 ```
 
-| Script          | Description               |
-| --------------- | ------------------------- |
-| `npm run dev`   | Start development server  |
-| `npm run build` | Compile TypeScript        |
-| `npm start`     | Run production build      |
-| `npm test`      | Run tests (if configured) |
+| Script          | Description                           |
+| --------------- | ------------------------------------- |
+| `npm run dev`   | Start development server              |
+| `npm run build` | Bundle for production via `gtkx build`|
+| `npm start`     | Run production bundle                 |
+| `npm test`      | Run tests (if configured)             |
 
 ## Programmatic API
 
@@ -125,6 +144,7 @@ You can also use the CLI functions programmatically:
 
 ```typescript
 import { createApp, createDevServer } from "@gtkx/cli";
+import { build } from "@gtkx/cli/builder";
 
 // Create a new project
 await createApp({
@@ -138,4 +158,7 @@ await createApp({
 const server = await createDevServer({
   entry: "src/dev.tsx",
 });
+
+// Production build
+await build({ entry: "./src/index.tsx", vite: { root: process.cwd() } });
 ```

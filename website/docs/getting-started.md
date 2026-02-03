@@ -115,12 +115,14 @@ This starts your application with Hot Module Replacement (HMR). When you edit yo
 
 ## Build for Production
 
-Compile your TypeScript and prepare for distribution:
+Bundle your application into a single minified file:
 
 ```bash
 npm run build
 npm start
 ```
+
+This runs `gtkx build` to produce `dist/bundle.js` via Vite SSR mode, then `node dist/bundle.js` to run it.
 
 ## Run Tests
 

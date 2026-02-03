@@ -17,14 +17,15 @@
         },
         "examples/deploying": {
             "project": ["src/**/*", "scripts/**/*"],
-            "ignoreDependencies": ["postject"],
-            "ignore": ["vendor/**"],
+            "ignoreDependencies": ["postject", "vite"],
+            "ignore": ["vendor/**", "src/vite-env.d.ts"],
             "entry": ["src/app.tsx", "src/index.tsx", "src/dev.tsx"]
         },
         "examples/gtk-demo": {
             "project": ["src/**/*"],
             "entry": ["src/app.tsx", "src/index.tsx", "src/dev.tsx"],
-            "ignore": ["src/vite-env.d.ts"]
+            "ignore": ["src/vite-env.d.ts"],
+            "ignoreDependencies": ["vite"]
         },
         "website": {
             "docusaurus": true,
@@ -37,7 +38,9 @@
         },
         "examples/*": {
             "project": ["src/**/*"],
-            "entry": ["src/app.tsx", "src/dev.tsx", "src/index.tsx"]
+            "entry": ["src/app.tsx", "src/dev.tsx", "src/index.tsx"],
+            "ignore": ["src/vite-env.d.ts"],
+            "ignoreDependencies": ["vite"]
         },
         "packages/cli": {
             "entry": ["src/cli.tsx", "src/index.ts"],

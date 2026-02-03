@@ -4,6 +4,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, GtkHeaderBar, GtkVideo, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
+import gtkLogoPath from "./gtk-logo.webm";
 import sourceCode from "./video-player.tsx?raw";
 
 const VideoPlayerDemo = ({ window }: DemoProps) => {
@@ -42,7 +43,7 @@ const VideoPlayerDemo = ({ window }: DemoProps) => {
     };
 
     const handleLogo = () => {
-        const file = Gio.fileNewForPath(`${import.meta.dirname}/gtk-logo.webm`);
+        const file = Gio.fileNewForPath(gtkLogoPath);
         setVideoFile(file);
     };
 

@@ -8,9 +8,9 @@
         "appId": "com.gtkx.x-showcase"
     },
     "scripts": {
-        "build": "tsc -b",
+        "build": "gtkx build",
         "dev": "gtkx dev src/dev.tsx",
-        "start": "NODE_ENV=production node dist/index.js"
+        "start": "node dist/bundle.js"
     },
     "dependencies": {
         "@gtkx/css": "workspace:*",
@@ -19,6 +19,7 @@
         "react": "^19.2.4"
     },
     "devDependencies": {
-        "@gtkx/cli": "workspace:*"
+        "@gtkx/cli": "workspace:*",
+        "vite": "^7.3.1"
     }
 }

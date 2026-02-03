@@ -5,8 +5,8 @@
     "type": "module",
     "scripts": {
         "dev": "gtkx dev src/dev.tsx",
-        "build": "tsc -b",
-        "start": "node dist/index.js"<% if (testing === 'vitest') { %>,
+        "build": "gtkx build",
+        "start": "node dist/bundle.js"<% if (testing === 'vitest') { %>,
         "test": "vitest"<% } %>
     },
     "gtkx": {

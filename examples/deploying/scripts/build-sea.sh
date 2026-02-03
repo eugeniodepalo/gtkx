@@ -11,6 +11,12 @@ if [ ! -f dist/bundle.cjs ]; then
     exit 1
 fi
 
+# Ensure postject vendor bundle exists
+if [ ! -f vendor/postject.cjs ]; then
+    echo "Error: vendor/postject.cjs not found. Run 'pnpm bundle:postject' first."
+    exit 1
+fi
+
 # Generate SEA blob
 echo "Generating SEA blob..."
 node --experimental-sea-config sea-config.json

@@ -5,6 +5,7 @@ import { GtkAspectFrame, GtkBox, GtkLabel, GtkPicture, GtkScale } from "@gtkx/re
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./aspect-frame.tsx?raw";
+import duckyPath from "./ducky.png";
 
 injectGlobal`
 .aspect-frame-demo aspectframe {
@@ -24,7 +25,7 @@ const AspectFrameDemo = () => {
     const [ratio, setRatio] = useState(1.5);
 
     const texture = useMemo(() => {
-        return Gdk.Texture.newFromFilename(new URL("./ducky.png", import.meta.url).pathname);
+        return Gdk.Texture.newFromFilename(duckyPath);
     }, []);
 
     return (

@@ -54,6 +54,9 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.2.0)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   examples/deploying:
     dependencies:
@@ -85,6 +88,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.2.0)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   examples/gtk-demo:
     dependencies:
@@ -104,6 +110,9 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.2.0)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   examples/hello-world:
     dependencies:
@@ -120,6 +129,9 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.2.0)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   examples/todo:
     dependencies:
@@ -142,6 +154,9 @@ importers:
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../../packages/vitest
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.2.0)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   examples/x-showcase:
     dependencies:
@@ -161,6 +176,9 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.2.0)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/cli:
     dependencies:

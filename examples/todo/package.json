@@ -8,9 +8,9 @@
         "appId": "com.gtkx.todo"
     },
     "scripts": {
-        "build": "tsc -b",
+        "build": "gtkx build",
         "dev": "gtkx dev src/dev.tsx",
-        "start": "NODE_ENV=production node dist/index.js",
+        "start": "node dist/bundle.js",
         "test": "vitest run"
     },
     "dependencies": {
@@ -21,6 +21,7 @@
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
         "@gtkx/testing": "workspace:*",
-        "@gtkx/vitest": "workspace:*"
+        "@gtkx/vitest": "workspace:*",
+        "vite": "^7.3.1"
     }
 }

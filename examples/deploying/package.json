@@ -8,10 +8,10 @@
         "appId": "org.gtkx.example"
     },
     "scripts": {
-        "build": "tsc -b",
+        "build": "gtkx build",
         "dev": "gtkx dev src/dev.tsx",
-        "start": "NODE_ENV=production node dist/index.js",
-        "bundle": "tsx scripts/bundle.ts",
+        "start": "node dist/bundle.js",
+        "bundle": "gtkx build && tsx scripts/bundle.ts",
         "bundle:postject": "tsx scripts/bundle-postject.ts",
         "build:sea": "bash scripts/build-sea.sh",
         "build:flatpak": "pnpm bundle:postject && bash flatpak/build.sh",
@@ -28,6 +28,7 @@
         "esbuild": "^0.27.2",
         "postject": "1.0.0-alpha.6",
         "tsx": "^4.21.0",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "vite": "^7.3.1"
     }
 }

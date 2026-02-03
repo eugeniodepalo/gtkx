@@ -3,6 +3,8 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkOverlay, GtkPicture, GtkScale, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
+import decor1Path from "./decor1.png";
+import decor2Path from "./decor2.png";
 import sourceCode from "./overlay-decorative.tsx?raw";
 
 const DIARY_TEXT = " diary...";
@@ -10,8 +12,8 @@ const DIARY_TEXT = " diary...";
 const OverlayDecorativeDemo = () => {
     const [margin, setMargin] = useState(100);
 
-    const decor1 = useMemo(() => Gdk.Texture.newFromFilename(new URL("./decor1.png", import.meta.url).pathname), []);
-    const decor2 = useMemo(() => Gdk.Texture.newFromFilename(new URL("./decor2.png", import.meta.url).pathname), []);
+    const decor1 = useMemo(() => Gdk.Texture.newFromFilename(decor1Path), []);
+    const decor2 = useMemo(() => Gdk.Texture.newFromFilename(decor2Path), []);
 
     return (
         <GtkOverlay>
