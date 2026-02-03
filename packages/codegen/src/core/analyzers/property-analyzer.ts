@@ -51,7 +51,7 @@ export class PropertyAnalyzer {
             setter = createSetterName(toCamelCase(prop.name));
         }
 
-        const isNullable = prop.type.nullable || this.inferNullabilityFromGetter(prop.getter, cls);
+        const isNullable = prop.type.nullable || this.inferNullabilityFromSetter(prop.setter, cls);
 
         return {
             name: prop.name,
@@ -68,13 +68,13 @@ export class PropertyAnalyzer {
         };
     }
 
-    private inferNullabilityFromGetter(getterName: string | undefined, cls: GirClass): boolean {
-        if (!getterName) return false;
+    private inferNullabilityFromSetter(setterCId: string | undefined, cls: GirClass): boolean {
+        if (!setterCId) return false;
 
-        const method = cls.findMethod(getterName);
-        if (!method) return false;
+        const method = cls.findMethod(setterCId) ?? cls.getMethodByCIdentifier(setterCId);
+        if (!method || method.parameters.length === 0) return false;
 
-        return method.returnType.nullable;
+        return method.parameters[0]?.nullable ?? false;
     }
 
     private canGenerateSyntheticSetter(prop: GirProperty): boolean {

@@ -673,7 +673,7 @@ describe("PropertyAnalyzer - Extended Coverage", () => {
     });
 
     describe("nullability inference", () => {
-        it("infers nullability from getter return type", () => {
+        it("infers nullability from setter parameter", () => {
             const cls = createNormalizedClass({
                 name: "Image",
                 parent: null,
@@ -681,14 +681,15 @@ describe("PropertyAnalyzer - Extended Coverage", () => {
                     createNormalizedProperty({
                         name: "file",
                         type: createNormalizedType({ name: "utf8", nullable: false }),
+                        setter: "gtk_image_set_file",
                         getter: "get_file",
                     }),
                 ],
                 methods: [
                     createNormalizedMethod({
-                        name: "get_file",
-                        cIdentifier: "gtk_image_get_file",
-                        returnType: createNormalizedType({ name: "utf8", nullable: true }),
+                        name: "set_file",
+                        cIdentifier: "gtk_image_set_file",
+                        parameters: [createNormalizedParameter({ name: "file", nullable: true })],
                     }),
                 ],
             });
@@ -703,7 +704,43 @@ describe("PropertyAnalyzer - Extended Coverage", () => {
             expect(result[0]?.isNullable).toBe(true);
         });
 
-        it("uses property type nullability when getter not present", () => {
+        it("does not infer nullability from getter return type", () => {
+            const cls = createNormalizedClass({
+                name: "Image",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({
+                        name: "file",
+                        type: createNormalizedType({ name: "utf8", nullable: false }),
+                        setter: "gtk_image_set_file",
+                        getter: "get_file",
+                    }),
+                ],
+                methods: [
+                    createNormalizedMethod({
+                        name: "get_file",
+                        cIdentifier: "gtk_image_get_file",
+                        returnType: createNormalizedType({ name: "utf8", nullable: true }),
+                    }),
+                    createNormalizedMethod({
+                        name: "set_file",
+                        cIdentifier: "gtk_image_set_file",
+                        parameters: [createNormalizedParameter({ name: "file", nullable: false })],
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Image", cls]]),
+            });
+            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = analyzer.analyzeWidgetProperties(cls);
+
+            expect(result[0]?.isNullable).toBe(false);
+        });
+
+        it("uses property type nullability when setter not present", () => {
             const cls = createNormalizedClass({
                 name: "Button",
                 parent: null,
@@ -725,7 +762,7 @@ describe("PropertyAnalyzer - Extended Coverage", () => {
             expect(result[0]?.isNullable).toBe(true);
         });
 
-        it("marks property as non-nullable when both type and getter are non-nullable", () => {
+        it("marks property as non-nullable when both type and setter are non-nullable", () => {
             const cls = createNormalizedClass({
                 name: "Button",
                 parent: null,
@@ -733,13 +770,15 @@ describe("PropertyAnalyzer - Extended Coverage", () => {
                     createNormalizedProperty({
                         name: "label",
                         type: createNormalizedType({ name: "utf8", nullable: false }),
+                        setter: "gtk_button_set_label",
                         getter: "get_label",
                     }),
                 ],
                 methods: [
                     createNormalizedMethod({
-                        name: "get_label",
-                        returnType: createNormalizedType({ name: "utf8", nullable: false }),
+                        name: "set_label",
+                        cIdentifier: "gtk_button_set_label",
+                        parameters: [createNormalizedParameter({ name: "label", nullable: false })],
                     }),
                 ],
             });

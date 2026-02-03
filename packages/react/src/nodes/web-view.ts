@@ -16,13 +16,7 @@ export class WebViewNode extends WidgetNode<WebKit.WebView, WebViewProps> {
     private applyOwnProps(oldProps: WebViewProps | null, newProps: WebViewProps): void {
         if (hasChanged(oldProps, newProps, "onLoadChanged")) {
             const callback = newProps.onLoadChanged;
-            this.signalStore.set(
-                this,
-                this.container,
-                "load-changed",
-                callback ? (self: WebKit.WebView, loadEvent: WebKit.LoadEvent) => callback(loadEvent, self) : undefined,
-                { blockable: false },
-            );
+            this.signalStore.set(this, this.container, "load-changed", callback ?? undefined, { blockable: false });
         }
     }
 }

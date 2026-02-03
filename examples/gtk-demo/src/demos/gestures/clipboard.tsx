@@ -1,3 +1,4 @@
+import { getNativeInterface } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import type * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
@@ -10,6 +11,7 @@ import {
     GtkEntry,
     GtkImage,
     GtkLabel,
+    GtkPicture,
     GtkSeparator,
     GtkStack,
     GtkToggleButton,
@@ -20,12 +22,13 @@ import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 
 type SourceType = "Text" | "Color" | "Image" | "File";
-type PastedContentType = "" | "Text" | "Color" | "File";
+type PastedContentType = "" | "Text" | "Color" | "Image" | "File";
 
 interface PastedContent {
     type: PastedContentType;
     text?: string;
     color?: Gdk.RGBA;
+    paintable?: Gdk.Paintable;
     filePath?: string;
 }
 
@@ -35,6 +38,14 @@ const getGdkRgbaType = () => {
         gdkRgbaTypeCache = GObject.typeFromName("GdkRGBA");
     }
     return gdkRgbaTypeCache;
+};
+
+let gdkPaintableTypeCache: number | null = null;
+const getGdkPaintableType = () => {
+    if (gdkPaintableTypeCache === null) {
+        gdkPaintableTypeCache = GObject.typeFromName("GdkPaintable");
+    }
+    return gdkPaintableTypeCache;
 };
 
 let gFileTypeCache: number | null = null;
@@ -75,7 +86,9 @@ const ClipboardDemo = ({ window }: DemoProps) => {
         const canPasteContent =
             formats.containGtype(GObject.Type.STRING) ||
             formats.containGtype(getGdkRgbaType()) ||
-            formats.containGtype(getGFileType());
+            formats.containGtype(getGdkPaintableType()) ||
+            formats.containGtype(getGFileType()) ||
+            formats.containMimeType("image/png");
         setCanPaste(canPasteContent);
     }, [getClipboard]);
 
@@ -122,7 +135,9 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                     0,
                 );
                 if (paintable) {
-                    const value = GObject.Value.newFromObject(paintable);
+                    const value = new GObject.Value();
+                    value.init(GObject.typeFromName("GdkPaintable"));
+                    value.setObject(paintable);
                     clipboard.setValue(value);
                 }
             }
@@ -152,6 +167,29 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                             alpha: rgba.getAlpha(),
                         }),
                     });
+                    return;
+                }
+            }
+
+            if (formats.containGtype(getGdkPaintableType())) {
+                const value = await clipboard.readValueAsync(getGdkPaintableType(), 0);
+                const obj = value.getObject();
+                if (obj) {
+                    const paintable = getNativeInterface(obj, Gdk.Paintable);
+                    if (paintable) {
+                        setPastedContent({ type: "Image", paintable });
+                    }
+                    return;
+                }
+            }
+
+            if (formats.containMimeType("image/png")) {
+                const texture = await clipboard.readTextureAsync();
+                if (texture) {
+                    const paintable = getNativeInterface(texture, Gdk.Paintable);
+                    if (paintable) {
+                        setPastedContent({ type: "Image", paintable });
+                    }
                     return;
                 }
             }
@@ -302,6 +340,16 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                             valign={Gtk.Align.CENTER}
                             xalign={0}
                             ellipsize={2}
+                        />
+                    </x.StackPage>
+                    <x.StackPage id="Image">
+                        <GtkPicture
+                            paintable={pastedContent.paintable}
+                            halign={Gtk.Align.END}
+                            valign={Gtk.Align.CENTER}
+                            canShrink
+                            widthRequest={64}
+                            heightRequest={64}
                         />
                     </x.StackPage>
                     <x.StackPage id="Color">
