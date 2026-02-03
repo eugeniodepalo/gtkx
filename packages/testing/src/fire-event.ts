@@ -37,7 +37,7 @@ export const fireEvent = async (
 
     const instanceValue = Value.newFromObject(element as GObject);
 
-    signalEmitv([instanceValue, ...args], signalId, 0, null);
+    signalEmitv([instanceValue, ...args], signalId, 0);
 
     await tick();
 };

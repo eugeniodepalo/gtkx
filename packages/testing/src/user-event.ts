@@ -28,8 +28,8 @@ const emitClickSequence = async (element: Gtk.Widget, nPress: number): Promise<v
             Value.newFromDouble(0),
             Value.newFromDouble(0),
         ];
-        signalEmitv(args, getSignalId(controller, "pressed"), 0, null);
-        signalEmitv(args, getSignalId(controller, "released"), 0, null);
+        signalEmitv(args, getSignalId(controller, "pressed"), 0);
+        signalEmitv(args, getSignalId(controller, "released"), 0);
     }
 
     await tick();
@@ -210,14 +210,13 @@ const hover = async (element: Gtk.Widget): Promise<void> => {
         [Value.newFromObject(controller), Value.newFromDouble(0), Value.newFromDouble(0)],
         getSignalId(controller, "enter"),
         0,
-        null,
     );
     await tick();
 };
 
 const unhover = async (element: Gtk.Widget): Promise<void> => {
     const controller = getOrCreateController(element, Gtk.EventControllerMotion);
-    signalEmitv([Value.newFromObject(controller)], getSignalId(controller, "leave"), 0, null);
+    signalEmitv([Value.newFromObject(controller)], getSignalId(controller, "leave"), 0);
     await tick();
 };
 
@@ -313,7 +312,7 @@ const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
         }
 
         const signalName = action.press ? "key-pressed" : "key-released";
-        const returnValue = action.press ? Value.newFromBoolean(false) : null;
+        const returnValue = action.press ? Value.newFromBoolean(false) : undefined;
         signalEmitv(
             [
                 Value.newFromObject(controller),
@@ -359,12 +358,12 @@ const pointer = async (element: Gtk.Widget, input: PointerInput): Promise<void> 
     ];
 
     if (input === "[MouseLeft]" || input === "click") {
-        signalEmitv(pressedArgs, getSignalId(controller, "pressed"), 0, null);
-        signalEmitv(releasedArgs, getSignalId(controller, "released"), 0, null);
+        signalEmitv(pressedArgs, getSignalId(controller, "pressed"), 0);
+        signalEmitv(releasedArgs, getSignalId(controller, "released"), 0);
     } else if (input === "[MouseLeft>]" || input === "down") {
-        signalEmitv(pressedArgs, getSignalId(controller, "pressed"), 0, null);
+        signalEmitv(pressedArgs, getSignalId(controller, "pressed"), 0);
     } else if (input === "[/MouseLeft]" || input === "up") {
-        signalEmitv(releasedArgs, getSignalId(controller, "released"), 0, null);
+        signalEmitv(releasedArgs, getSignalId(controller, "released"), 0);
     }
 
     await tick();

@@ -34,6 +34,10 @@
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         },
+        "./builder": {
+            "types": "./dist/builder.d.ts",
+            "default": "./dist/builder.js"
+        },
         "./dev-server": {
             "types": "./dist/dev-server.d.ts",
             "default": "./dist/dev-server.js"

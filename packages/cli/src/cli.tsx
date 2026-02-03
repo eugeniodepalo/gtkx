@@ -8,6 +8,7 @@ import { events } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/ffi/gio";
 import { render } from "@gtkx/react";
 import { defineCommand, runMain } from "citty";
+import { build } from "./builder.js";
 import { createApp } from "./create.js";
 import { createDevServer } from "./dev-server.js";
 import { startMcpClient, stopMcpClient } from "./mcp-client.js";
@@ -66,6 +67,33 @@ const dev = defineCommand({
     },
 });
 
+const buildCmd = defineCommand({
+    meta: {
+        name: "build",
+        description: "Build application for production",
+    },
+    args: {
+        entry: {
+            type: "positional",
+            description: "Entry file (default: src/index.tsx)",
+            required: false,
+        },
+    },
+    async run({ args }) {
+        const entry = resolve(process.cwd(), args.entry ?? "src/index.tsx");
+        console.log(`[gtkx] Building ${entry}`);
+
+        await build({
+            entry,
+            vite: {
+                root: process.cwd(),
+            },
+        });
+
+        console.log("[gtkx] Build complete: dist/bundle.js");
+    },
+});
+
 const create = defineCommand({
     meta: {
         name: "create",
@@ -113,6 +141,7 @@ const main = defineCommand({
     },
     subCommands: {
         dev,
+        build: buildCmd,
         create,
     },
 });
