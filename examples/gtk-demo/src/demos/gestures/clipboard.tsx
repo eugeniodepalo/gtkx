@@ -179,7 +179,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const handleFileSelect = useCallback(async () => {
         const dialog = new Gtk.FileDialog();
         try {
-            const file = await dialog.openAsync(window.current ?? undefined);
+            const file = await dialog.openAsync(window.current);
             setSourceFile(file);
         } catch {}
     }, [window]);

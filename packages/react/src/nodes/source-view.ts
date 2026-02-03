@@ -118,7 +118,7 @@ export class SourceViewNode extends TextViewNode {
 
         const { onCursorMoved, onHighlightUpdated } = props;
 
-        this.signalStore.set(this, buffer, "cursor-moved", onCursorMoved ?? undefined);
+        this.signalStore.set(this, buffer, "cursor-moved", onCursorMoved);
 
         this.signalStore.set(
             this,

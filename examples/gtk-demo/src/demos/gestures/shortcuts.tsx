@@ -102,7 +102,7 @@ const ShortcutsDemo = ({ window }: DemoProps) => {
 
     const handleOpenShortcuts = useCallback(() => {
         const dialog = createShortcutsDialog();
-        dialog.present(window.current ?? undefined);
+        dialog.present(window.current);
     }, [window, createShortcutsDialog]);
 
     return (

@@ -385,6 +385,23 @@ describe("MethodBodyWriter", () => {
             expect(result[0].type).toBe("string | null");
         });
 
+        it("marks optional-only parameters without null type", () => {
+            const ns = createNormalizedNamespace({ name: "Gtk" });
+            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
+            const params = [
+                createNormalizedParameter({
+                    name: "label",
+                    type: createNormalizedType({ name: "utf8" }),
+                    optional: true,
+                }),
+            ];
+
+            const result = writer.buildParameterList(params);
+
+            expect(result[0].hasQuestionToken).toBe(true);
+            expect(result[0].type).toBe("string");
+        });
+
         it("reorders optional parameters to the end", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));

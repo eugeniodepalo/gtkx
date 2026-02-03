@@ -74,11 +74,11 @@ const PrintingDemo = ({ window }: DemoProps) => {
         });
 
         try {
-            printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, window.current ?? undefined);
+            printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, window.current);
         } catch (error) {
             const dialog = new Gtk.AlertDialog();
             dialog.setMessage(`${error}`);
-            dialog.show(window.current ?? undefined);
+            dialog.show(window.current);
         }
     }, [window]);
 

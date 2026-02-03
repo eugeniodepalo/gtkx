@@ -34,7 +34,7 @@ const VideoPlayerDemo = ({ window }: DemoProps) => {
         dialog.setDefaultFilter(videoFilter);
 
         try {
-            const file = await dialog.openAsync(window.current ?? undefined);
+            const file = await dialog.openAsync(window.current);
             setVideoFile(file);
         } catch {
             /* User cancelled */
@@ -69,7 +69,7 @@ const VideoPlayerDemo = ({ window }: DemoProps) => {
                     </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
-            <GtkVideo file={videoFile ?? undefined} autoplay />
+            <GtkVideo file={videoFile} autoplay />
         </>
     );
 };

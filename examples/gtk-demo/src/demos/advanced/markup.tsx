@@ -48,7 +48,7 @@ const MarkupDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-            <GtkStackSwitcher stack={stack ?? undefined} halign={Gtk.Align.CENTER} marginTop={12} marginBottom={12} />
+            <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} marginTop={12} marginBottom={12} />
             <GtkStack ref={setStack} vexpand hexpand transitionType={Gtk.StackTransitionType.CROSSFADE}>
                 <x.StackPage id="formatted" title="Formatted">
                     <GtkScrolledWindow vexpand hexpand>

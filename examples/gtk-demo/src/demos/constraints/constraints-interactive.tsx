@@ -170,7 +170,7 @@ const ConstraintsInteractiveDemo = () => {
             if (!layoutRef.current || !guideRef.current) return;
 
             const startXRef = createRef(0);
-            const success = drag.getStartPoint(startXRef, null);
+            const success = drag.getStartPoint(startXRef);
             if (!success) return;
 
             const startX = startXRef.value;

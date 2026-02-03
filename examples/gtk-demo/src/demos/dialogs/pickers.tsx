@@ -13,7 +13,7 @@ const PickersDemo = ({ window }: DemoProps) => {
     const handleOpenFile = async () => {
         try {
             const fileDialog = new Gtk.FileDialog();
-            const file = await fileDialog.openAsync(window.current ?? undefined);
+            const file = await fileDialog.openAsync(window.current);
             setSelectedFile(file);
             setFileName(file.getBasename() ?? file.getUri());
             const info = file.queryInfo("standard::content-type", 0, null);
@@ -29,7 +29,7 @@ const PickersDemo = ({ window }: DemoProps) => {
         if (!selectedFile) return;
         try {
             const launcher = new Gtk.FileLauncher(selectedFile);
-            await launcher.launchAsync(window.current ?? undefined);
+            await launcher.launchAsync(window.current);
         } catch {}
     }, [window, selectedFile]);
 
@@ -37,7 +37,7 @@ const PickersDemo = ({ window }: DemoProps) => {
         if (!selectedFile) return;
         try {
             const launcher = new Gtk.FileLauncher(selectedFile);
-            await launcher.openContainingFolderAsync(window.current ?? undefined);
+            await launcher.openContainingFolderAsync(window.current);
         } catch {}
     }, [window, selectedFile]);
 
@@ -45,14 +45,14 @@ const PickersDemo = ({ window }: DemoProps) => {
         if (!selectedFile || !isPdf) return;
         try {
             const printDialog = new Gtk.PrintDialog();
-            await printDialog.printFileAsync(selectedFile, window.current ?? undefined);
+            await printDialog.printFileAsync(selectedFile, window.current);
         } catch {}
     }, [window, selectedFile, isPdf]);
 
     const handleLaunchUri = useCallback(async () => {
         try {
             const launcher = new Gtk.UriLauncher("http://www.gtk.org");
-            await launcher.launchAsync(window.current ?? undefined);
+            await launcher.launchAsync(window.current);
         } catch {}
     }, [window]);
 

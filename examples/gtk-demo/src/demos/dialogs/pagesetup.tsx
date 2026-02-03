@@ -17,7 +17,7 @@ const PageSetupDemo = ({ window }: DemoProps) => {
             return;
         }
 
-        const dialog = new Gtk.PageSetupUnixDialog("Page Setup", window.current ?? undefined);
+        const dialog = new Gtk.PageSetupUnixDialog("Page Setup", window.current);
         dialogRef.current = dialog;
 
         dialog.connect("response", () => {

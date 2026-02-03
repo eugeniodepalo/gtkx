@@ -143,7 +143,7 @@ const CssBlendmodesDemo = () => {
             </x.GridChild>
 
             <x.GridChild column={1} row={0}>
-                <GtkStackSwitcher stack={stack ?? undefined} halign={Gtk.Align.CENTER} hexpand />
+                <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} hexpand />
             </x.GridChild>
 
             <x.GridChild column={1} row={1}>

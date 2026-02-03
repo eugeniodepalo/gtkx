@@ -28,7 +28,7 @@ export const App = () => {
                 <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                     <AdwHeaderBar>
                         <x.Slot for={AdwHeaderBar} id="titleWidget">
-                            <AdwViewSwitcher stack={stack ?? undefined} policy={Adw.ViewSwitcherPolicy.WIDE} />
+                            <AdwViewSwitcher stack={stack} policy={Adw.ViewSwitcherPolicy.WIDE} />
                         </x.Slot>
                     </AdwHeaderBar>
                 </x.ContainerSlot>

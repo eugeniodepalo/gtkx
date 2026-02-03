@@ -9,7 +9,8 @@
     },
     "scripts": {
         "build": "tsc -b",
-        "dev": "gtkx dev src/dev.tsx"
+        "dev": "gtkx dev src/dev.tsx",
+        "start": "NODE_ENV=production node dist/index.js"
     },
     "dependencies": {
         "@gtkx/css": "workspace:*",

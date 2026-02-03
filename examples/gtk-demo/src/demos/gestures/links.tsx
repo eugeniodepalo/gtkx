@@ -11,7 +11,7 @@ const LinksDemo = ({ window }: DemoProps) => {
             dialog.setDetail(
                 "The term 'keynav' is a shorthand for keyboard navigation and refers to the process of using a program (exclusively) via keyboard input.",
             );
-            dialog.show(window.current ?? undefined);
+            dialog.show(window.current);
             return true;
         }
         return false;

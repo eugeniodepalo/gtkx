@@ -38,12 +38,12 @@ const splitViewItems: SplitViewItem[] = [
 
 export const NavigationDemo = () => {
     const [stackPage, setStackPage] = useState("page1");
-    const [stack, setStack] = useState<Gtk.Stack>();
+    const [stack, setStack] = useState<Gtk.Stack | null>(null);
     const [history, setHistory] = useState(["home"]);
     const [selectedItem, setSelectedItem] = useState(defaultSplitViewItem);
 
     const handleStackRef = useCallback((instance: Gtk.Stack | null) => {
-        setStack(instance ?? undefined);
+        setStack(instance);
     }, []);
 
     const handleHistoryChanged = useCallback((newHistory: string[]) => {

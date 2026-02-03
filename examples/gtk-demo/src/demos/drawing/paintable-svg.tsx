@@ -23,7 +23,7 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
         dialog.setFilters(filters);
 
         try {
-            const file = await dialog.openAsync(window.current ?? undefined);
+            const file = await dialog.openAsync(window.current);
             const path = file.getPath();
             if (path) {
                 const symbolic = path.includes("symbolic");

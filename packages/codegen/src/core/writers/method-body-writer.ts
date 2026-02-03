@@ -353,9 +353,9 @@ export class MethodBodyWriter {
     ): Array<{ name: string; type: string; hasQuestionToken?: boolean; isRestParameter?: boolean }> {
         const filteredParams = this.filterParameters(parameters);
 
-        const required = filteredParams.filter((p) => !this.ffiMapper.isNullable(p));
-        const optional = filteredParams.filter((p) => this.ffiMapper.isNullable(p));
-        const reordered = [...required, ...optional];
+        const required = filteredParams.filter((p) => !p.optional && !p.nullable);
+        const omittable = filteredParams.filter((p) => p.optional || p.nullable);
+        const reordered = [...required, ...omittable];
 
         const result: Array<{ name: string; type: string; hasQuestionToken?: boolean; isRestParameter?: boolean }> =
             reordered.map((param) => {
@@ -366,12 +366,15 @@ export class MethodBodyWriter {
                 }
 
                 const paramName = this.toJsParamName(param);
-                const isOptional = this.ffiMapper.isNullable(param);
+                const isOmittable = param.optional || param.nullable;
+
+                const isCallback = mapped.ffi.type === "callback";
+                const nullableType = isCallback ? `(${mapped.ts}) | null` : `${mapped.ts} | null`;
 
                 return {
                     name: paramName,
-                    type: isOptional ? `${mapped.ts} | null` : mapped.ts,
-                    hasQuestionToken: isOptional,
+                    type: param.nullable ? nullableType : mapped.ts,
+                    hasQuestionToken: isOmittable,
                 };
             });
 
