@@ -290,7 +290,8 @@ impl ffi::FfiDecode for HashTableType {
             }
         }
 
-        if self.ownership.is_full() {
+        let storage_owns_table = matches!(ffi_value, ffi::FfiValue::Storage(_));
+        if self.ownership.is_full() && !storage_owns_table {
             unsafe { glib::ffi::g_hash_table_unref(hash_ptr as *mut glib::ffi::GHashTable) };
         }
 

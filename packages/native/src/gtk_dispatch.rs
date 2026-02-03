@@ -31,13 +31,13 @@ use std::sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},
     mpsc,
 };
-use std::time::Duration;
 
 use gtk4::glib::{self, gobject_ffi};
 use neon::prelude::*;
 
 use crate::js_dispatch;
 use crate::state::GtkThreadState;
+use crate::wait_signal::WaitSignal;
 
 type Task = Box<dyn FnOnce() + Send + 'static>;
 
@@ -48,6 +48,7 @@ pub struct GtkDispatcher {
     stopped: AtomicBool,
     js_wait_depth: AtomicUsize,
     callback_depth: AtomicUsize,
+    pub wake: WaitSignal,
 }
 
 static DISPATCHER: OnceLock<GtkDispatcher> = OnceLock::new();
@@ -65,11 +66,13 @@ impl GtkDispatcher {
             stopped: AtomicBool::new(false),
             js_wait_depth: AtomicUsize::new(0),
             callback_depth: AtomicUsize::new(0),
+            wake: WaitSignal::new(),
         }
     }
 
     fn push_task(&self, task: Task) {
         self.queue.lock().unwrap().push_back(task);
+        js_dispatch::JsDispatcher::global().wake.notify();
     }
 
     fn pop_task(&self) -> Option<Task> {
@@ -214,6 +217,7 @@ impl GtkDispatcher {
 
         if dispatched {
             self.dispatch_scheduled.store(false, Ordering::Release);
+            self.wake.notify();
             if !self.is_queue_empty()
                 && self
                     .dispatch_scheduled
@@ -234,6 +238,8 @@ impl GtkDispatcher {
             task();
         }
 
+        self.wake.notify();
+
         if !self.is_queue_empty()
             && self
                 .dispatch_scheduled
@@ -253,18 +259,16 @@ impl GtkDispatcher {
         cx: &mut C,
         rx: &mpsc::Receiver<R>,
     ) -> Result<R, GtkDisconnectedError> {
-        const POLL_INTERVAL: Duration = Duration::from_micros(100);
-
         let result = loop {
             js_dispatch::JsDispatcher::global().process_pending(cx);
 
-            match rx.recv_timeout(POLL_INTERVAL) {
+            match rx.try_recv() {
                 Ok(result) => break result,
-                Err(mpsc::RecvTimeoutError::Timeout) => continue,
-                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                Err(mpsc::TryRecvError::Disconnected) => {
                     self.exit_js_wait();
                     return Err(GtkDisconnectedError);
                 }
+                Err(mpsc::TryRecvError::Empty) => self.wake.wait(),
             }
         };
 

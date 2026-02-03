@@ -1,8 +1,9 @@
-import { css } from "@gtkx/css";
+import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
     GtkButton,
+    GtkDrawingArea,
     GtkDropDown,
     GtkGridView,
     GtkHeaderBar,
@@ -144,15 +145,19 @@ function calculateAverageColor(colors: ColorItem[]): { r: number; g: number; b: 
     return { r, g, b, hex: rgbToHex(r, g, b) };
 }
 
-const colorSwatchStyle = (color: string, size: number) => css`
-    background-color: ${color};
-    min-width: ${size}px;
-    min-height: ${size}px;
-`;
-
-const gridItemStyle = css`
-    padding: 2px;
-`;
+function drawColorSwatch(
+    _self: Gtk.DrawingArea,
+    cr: Context,
+    width: number,
+    height: number,
+    r: number,
+    g: number,
+    b: number,
+): void {
+    cr.setSourceRgb(r / 255, g / 255, b / 255)
+        .rectangle(0, 0, width, height)
+        .fill();
+}
 
 const ColorGridItem = ({ item, showDetails }: { item: ColorItem | null; showDetails: boolean }) => {
     if (!item) return null;
@@ -162,10 +167,17 @@ const ColorGridItem = ({ item, showDetails }: { item: ColorItem | null; showDeta
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={4}
-                cssClasses={[gridItemStyle]}
+                marginStart={2}
+                marginEnd={2}
+                marginTop={2}
+                marginBottom={2}
                 halign={Gtk.Align.CENTER}
             >
-                <GtkBox cssClasses={[colorSwatchStyle(item.hex, 48)]} />
+                <GtkDrawingArea
+                    contentWidth={48}
+                    contentHeight={48}
+                    onDraw={(_self, cr, w, h) => drawColorSwatch(_self, cr, w, h, item.r, item.g, item.b)}
+                />
                 <GtkLabel label={item.name} cssClasses={["caption"]} ellipsize={3} maxWidthChars={10} />
                 <GtkLabel
                     label={`${item.r}, ${item.g}, ${item.b}`}
@@ -179,7 +191,13 @@ const ColorGridItem = ({ item, showDetails }: { item: ColorItem | null; showDeta
         );
     }
 
-    return <GtkBox cssClasses={[colorSwatchStyle(item.hex, 32)]} />;
+    return (
+        <GtkDrawingArea
+            contentWidth={32}
+            contentHeight={32}
+            onDraw={(_self, cr, w, h) => drawColorSwatch(_self, cr, w, h, item.r, item.g, item.b)}
+        />
+    );
 };
 
 const SelectionInfoPanel = ({
@@ -189,24 +207,16 @@ const SelectionInfoPanel = ({
     selectedColors: ColorItem[];
     averageColor: { r: number; g: number; b: number; hex: string };
 }) => {
-    const miniSwatchStyle = (color: string) => css`
-        background-color: ${color};
-        min-width: 8px;
-        min-height: 8px;
-    `;
-
-    const averageSwatchStyle = css`
-        background-color: ${averageColor.hex};
-        min-width: 32px;
-        min-height: 32px;
-        border-radius: 4px;
-    `;
-
     return (
         <GtkBox spacing={12} marginStart={12} marginEnd={12} marginTop={8} marginBottom={8} valign={Gtk.Align.CENTER}>
             <GtkBox spacing={2} cssClasses={["card"]} marginStart={4} marginEnd={4} marginTop={4} marginBottom={4}>
                 {selectedColors.slice(0, 64).map((c) => (
-                    <GtkBox key={c.id} cssClasses={[miniSwatchStyle(c.hex)]} />
+                    <GtkDrawingArea
+                        key={c.id}
+                        contentWidth={8}
+                        contentHeight={8}
+                        onDraw={(_self, cr, w, h) => drawColorSwatch(_self, cr, w, h, c.r, c.g, c.b)}
+                    />
                 ))}
                 {selectedColors.length > 64 && (
                     <GtkLabel label={`+${selectedColors.length - 64}`} cssClasses={["dim-label", "caption"]} />
@@ -218,7 +228,13 @@ const SelectionInfoPanel = ({
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2} valign={Gtk.Align.CENTER}>
-                <GtkBox cssClasses={[averageSwatchStyle]} />
+                <GtkDrawingArea
+                    contentWidth={32}
+                    contentHeight={32}
+                    onDraw={(_self, cr, w, h) =>
+                        drawColorSwatch(_self, cr, w, h, averageColor.r, averageColor.g, averageColor.b)
+                    }
+                />
                 <GtkLabel label="Average" cssClasses={["dim-label", "caption"]} />
             </GtkBox>
         </GtkBox>

@@ -18,11 +18,10 @@
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
-use std::time::Duration;
 
 use neon::prelude::*;
 
-use crate::{gtk_dispatch, value::Value};
+use crate::{gtk_dispatch, value::Value, wait_signal::WaitSignal};
 
 struct PendingCallback {
     callback: Arc<Root<JsFunction>>,
@@ -33,6 +32,7 @@ struct PendingCallback {
 
 pub struct JsDispatcher {
     queue: Mutex<VecDeque<PendingCallback>>,
+    pub wake: WaitSignal,
 }
 
 static DISPATCHER: OnceLock<JsDispatcher> = OnceLock::new();
@@ -45,11 +45,13 @@ impl JsDispatcher {
     fn new() -> Self {
         Self {
             queue: Mutex::new(VecDeque::new()),
+            wake: WaitSignal::new(),
         }
     }
 
     fn push_callback(&self, callback: PendingCallback) {
         self.queue.lock().unwrap().push_back(callback);
+        gtk_dispatch::GtkDispatcher::global().wake.notify();
     }
 
     fn pop_callback(&self) -> Option<PendingCallback> {
@@ -89,6 +91,7 @@ impl JsDispatcher {
                 pending.capture_result,
             );
             let _ = pending.result_tx.send(result);
+            self.wake.notify();
         }
     }
 
@@ -114,15 +117,13 @@ impl JsDispatcher {
     where
         F: FnOnce(Result<Value, ()>) -> T,
     {
-        const POLL_INTERVAL: Duration = Duration::from_micros(100);
-
         loop {
             gtk_dispatch::GtkDispatcher::global().dispatch_pending();
 
-            match rx.recv_timeout(POLL_INTERVAL) {
+            match rx.try_recv() {
                 Ok(result) => return on_result(result),
-                Err(mpsc::RecvTimeoutError::Timeout) => continue,
-                Err(mpsc::RecvTimeoutError::Disconnected) => return on_result(Err(())),
+                Err(mpsc::TryRecvError::Disconnected) => return on_result(Err(())),
+                Err(mpsc::TryRecvError::Empty) => self.wake.wait(),
             }
         }
     }

@@ -1,4 +1,3 @@
-import type * as cairo from "@gtkx/ffi/cairo";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkDrawingAreaProps } from "../jsx.js";
 import type { Node } from "../node.js";
@@ -8,14 +7,34 @@ import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["onDraw"] as const;
 
-type DrawFunc = (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
+type DrawFunc = (self: Gtk.DrawingArea, cr: import("@gtkx/ffi/cairo").Context, width: number, height: number) => void;
 type DrawingAreaProps = Pick<GtkDrawingAreaProps, (typeof OWN_PROPS)[number]>;
+
+type PendingDrawFunc = { container: Gtk.DrawingArea; fn: DrawFunc };
+
+let pendingDrawFuncs: PendingDrawFunc[] | null = null;
+
+function ensurePendingBatch(): PendingDrawFunc[] {
+    if (pendingDrawFuncs === null) {
+        pendingDrawFuncs = [];
+        queueMicrotask(flushPendingDrawFuncs);
+    }
+    return pendingDrawFuncs;
+}
+
+function flushPendingDrawFuncs(): void {
+    const batch = pendingDrawFuncs;
+    pendingDrawFuncs = null;
+    if (!batch) return;
+    for (const { container, fn } of batch) {
+        container.setDrawFunc(fn);
+    }
+}
 
 export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps, EventControllerNode> {
     public override isValidChild(child: Node): boolean {
         return child instanceof EventControllerNode;
     }
-    private pendingDrawFunc: DrawFunc | null = null;
 
     public override commitUpdate(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
         super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
@@ -24,20 +43,11 @@ export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProp
 
     private applyOwnProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
         if (hasChanged(oldProps, newProps, "onDraw") && newProps.onDraw) {
-            if (this.container.getRealized()) {
+            if (this.container.getAllocatedWidth() > 0) {
                 this.container.setDrawFunc(newProps.onDraw);
             } else {
-                this.pendingDrawFunc = newProps.onDraw;
-                this.signalStore.set(this, this.container, "realize", this.onRealize.bind(this));
+                ensurePendingBatch().push({ container: this.container, fn: newProps.onDraw });
             }
         }
-    }
-
-    private onRealize(): void {
-        if (this.pendingDrawFunc) {
-            this.container.setDrawFunc(this.pendingDrawFunc);
-            this.pendingDrawFunc = null;
-        }
-        this.signalStore.set(this, this.container, "realize", undefined);
     }
 }
