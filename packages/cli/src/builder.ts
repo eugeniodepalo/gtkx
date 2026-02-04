@@ -1,5 +1,6 @@
 import { type InlineConfig, build as viteBuild } from "vite";
 import { gtkxAssets } from "./vite-plugin-gtkx-assets.js";
+import { gtkxBuiltUrl } from "./vite-plugin-gtkx-built-url.js";
 import { gtkxNative } from "./vite-plugin-gtkx-native.js";
 
 /**
@@ -8,6 +9,28 @@ import { gtkxNative } from "./vite-plugin-gtkx-native.js";
 export type BuildOptions = {
     /** Path to the entry file (e.g., "src/index.tsx") */
     entry: string;
+    /**
+     * Base path for resolving asset imports at runtime, relative to the
+     * executable directory.
+     *
+     * When set, asset imports resolve to
+     * `path.join(path.dirname(process.execPath), assetBase, filename)`.
+     * This is useful for FHS-compliant packaging where assets live under
+     * a `share/` directory rather than next to the binary.
+     *
+     * When omitted, assets resolve relative to the bundle via
+     * `import.meta.url`, which works when assets are co-located with
+     * the executable (e.g., in `bin/assets/`).
+     *
+     * @example
+     * ```ts
+     * await build({
+     *     entry: "./src/index.tsx",
+     *     assetBase: "../share/my-app",
+     * });
+     * ```
+     */
+    assetBase?: string;
     /** Additional Vite configuration */
     vite?: InlineConfig;
 };
@@ -35,12 +58,12 @@ export type BuildOptions = {
  * @see {@link BuildOptions} for configuration options
  */
 export const build = async (options: BuildOptions): Promise<void> => {
-    const { entry, vite: viteConfig } = options;
+    const { entry, assetBase, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
 
     await viteBuild({
         ...viteConfig,
-        plugins: [...(viteConfig?.plugins ?? []), gtkxAssets(), gtkxNative(root)],
+        plugins: [...(viteConfig?.plugins ?? []), gtkxAssets(), gtkxBuiltUrl(assetBase), gtkxNative(root)],
         build: {
             ...viteConfig?.build,
             ssr: entry,
@@ -66,13 +89,6 @@ export const build = async (options: BuildOptions): Promise<void> => {
         },
         experimental: {
             ...viteConfig?.experimental,
-            renderBuiltUrl(filename, { type }) {
-                if (type === "asset") {
-                    return {
-                        runtime: `new URL(${JSON.stringify(`./${filename}`)}, import.meta.url).pathname`,
-                    };
-                }
-            },
         },
     });
 };

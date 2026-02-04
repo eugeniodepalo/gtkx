@@ -27,16 +27,14 @@ parts:
       mkdir -p $CRAFT_PART_INSTALL/share/gtkx-example
       cp app $CRAFT_PART_INSTALL/bin/gtkx-example
       cp dist/gtkx.node $CRAFT_PART_INSTALL/bin/
-      if [ -d dist/assets ]; then cp -r dist/assets $CRAFT_PART_INSTALL/bin/assets; fi
+      if [ -d dist/assets ]; then cp -r dist/assets/* $CRAFT_PART_INSTALL/share/gtkx-example/; fi
       cp assets/icon.png $CRAFT_PART_INSTALL/meta/gui/
-      cp assets/icon.png $CRAFT_PART_INSTALL/share/gtkx-example/
-      cp assets/logo.svg $CRAFT_PART_INSTALL/share/gtkx-example/
       cp snap/gtkx-example.desktop $CRAFT_PART_INSTALL/meta/gui/
     prime:
       - bin/gtkx-example
       - bin/gtkx.node
-      - meta/gui/
       - share/gtkx-example/
+      - meta/gui/
 
 apps:
   gtkx-example:

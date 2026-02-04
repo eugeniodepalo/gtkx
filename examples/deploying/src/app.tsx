@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, GtkBox, GtkImage, GtkLabel, quit } from "@gtkx/react";
-import { getAssetPath } from "./assets.js";
+import logo from "../assets/logo.svg";
 
 export const App = () => {
     return (
@@ -15,7 +15,7 @@ export const App = () => {
                 valign={Gtk.Align.CENTER}
                 halign={Gtk.Align.CENTER}
             >
-                <GtkImage file={getAssetPath("logo.svg")} pixelSize={64} />
+                <GtkImage file={logo} pixelSize={64} />
                 <GtkLabel label="GTKX Example App" cssClasses={["title-1"]} />
                 <GtkLabel
                     label="This app demonstrates GTKX packaging for Linux distribution."

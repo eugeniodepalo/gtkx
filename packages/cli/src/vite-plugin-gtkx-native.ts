@@ -58,10 +58,7 @@ export function gtkxNative(root: string): Plugin {
 
             return code
                 .replace(NODE_OS_IMPORT_RE, "")
-                .replace(
-                    LOAD_NATIVE_BINDING_RE,
-                    'function loadNativeBinding() { return require("./gtkx.node"); }',
-                );
+                .replace(LOAD_NATIVE_BINDING_RE, 'function loadNativeBinding() { return require("./gtkx.node"); }');
         },
     };
 }

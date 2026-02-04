@@ -78,6 +78,10 @@ const buildCmd = defineCommand({
             description: "Entry file (default: src/index.tsx)",
             required: false,
         },
+        "asset-base": {
+            type: "string",
+            description: "Asset base path relative to executable directory (e.g., ../share/my-app)",
+        },
     },
     async run({ args }) {
         const entry = resolve(process.cwd(), args.entry ?? "src/index.tsx");
@@ -85,6 +89,7 @@ const buildCmd = defineCommand({
 
         await build({
             entry,
+            assetBase: args["asset-base"],
             vite: {
                 root: process.cwd(),
             },
