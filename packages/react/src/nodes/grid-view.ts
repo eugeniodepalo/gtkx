@@ -2,6 +2,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkGridViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
+import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import { GridItemRenderer } from "./internal/grid-item-renderer.js";
 import { filterProps, hasChanged } from "./internal/props.js";
@@ -14,7 +15,7 @@ const OWN_PROPS = ["renderItem", "estimatedItemHeight"] as const;
 
 type GridViewProps = Pick<GtkGridViewProps, (typeof OWN_PROPS)[number]> & GridModelProps;
 
-type GridViewChild = ListItemNode | EventControllerNode | SlotNode;
+type GridViewChild = ListItemNode | EventControllerNode | SlotNode | ContainerSlotNode;
 
 export class GridViewNode extends WidgetNode<Gtk.GridView, GridViewProps, GridViewChild> {
     private itemRenderer: GridItemRenderer;
@@ -37,7 +38,8 @@ export class GridViewNode extends WidgetNode<Gtk.GridView, GridViewProps, GridVi
     }
 
     public override isValidChild(child: Node): boolean {
-        if (child instanceof EventControllerNode || child instanceof SlotNode) return true;
+        if (child instanceof EventControllerNode || child instanceof SlotNode || child instanceof ContainerSlotNode)
+            return true;
         if (!(child instanceof ListItemNode)) return false;
         if (child.getChildNodes().length > 0) {
             throw new Error("GtkGridView does not support nested ListItems. Use GtkListView for tree lists.");

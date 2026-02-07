@@ -1,6 +1,7 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { AdwNavigationViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import { filterProps, hasChanged, primitiveArrayEqual } from "./internal/props.js";
 import { NavigationPageNode } from "./navigation-page.js";
@@ -10,7 +11,7 @@ import { WidgetNode } from "./widget.js";
 const OWN_PROPS = ["history", "onHistoryChanged"] as const;
 
 type NavigationViewProps = Pick<AdwNavigationViewProps, (typeof OWN_PROPS)[number]>;
-type NavigationViewChild = NavigationPageNode | SlotNode | EventControllerNode | WidgetNode;
+type NavigationViewChild = NavigationPageNode | SlotNode | ContainerSlotNode | EventControllerNode | WidgetNode;
 
 export class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps, NavigationViewChild> {
     public override isValidChild(child: Node): boolean {
@@ -18,6 +19,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
             child instanceof NavigationPageNode ||
             child instanceof SlotNode ||
             child instanceof EventControllerNode ||
+            child instanceof ContainerSlotNode ||
             child instanceof WidgetNode
         );
     }

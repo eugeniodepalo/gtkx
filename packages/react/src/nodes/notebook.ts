@@ -1,16 +1,22 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
+import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import { NotebookPageNode } from "./notebook-page.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-type NotebookChild = NotebookPageNode | EventControllerNode | SlotNode;
+type NotebookChild = NotebookPageNode | EventControllerNode | SlotNode | ContainerSlotNode;
 
 export class NotebookNode extends WidgetNode<Gtk.Notebook, Props, NotebookChild> {
     public override isValidChild(child: Node): boolean {
-        return child instanceof NotebookPageNode || child instanceof EventControllerNode || child instanceof SlotNode;
+        return (
+            child instanceof NotebookPageNode ||
+            child instanceof EventControllerNode ||
+            child instanceof SlotNode ||
+            child instanceof ContainerSlotNode
+        );
     }
 
     public override insertBefore(child: NotebookChild, before: NotebookChild): void {

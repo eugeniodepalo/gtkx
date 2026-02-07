@@ -2,6 +2,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkListViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
+import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import { ListItemRenderer } from "./internal/list-item-renderer.js";
 import { filterProps, hasChanged } from "./internal/props.js";
@@ -15,14 +16,19 @@ const OWN_PROPS = [...RENDERER_PROPS, "autoexpand", "selectionMode", "selected",
 
 type ListViewProps = Pick<GtkListViewProps, (typeof RENDERER_PROPS)[number]> & ListModelProps;
 
-type ListViewChild = ListItemNode | EventControllerNode | SlotNode;
+type ListViewChild = ListItemNode | EventControllerNode | SlotNode | ContainerSlotNode;
 
 export class ListViewNode extends WidgetNode<Gtk.ListView, ListViewProps, ListViewChild> {
     private itemRenderer: ListItemRenderer;
     private list: ListModel;
 
     public override isValidChild(child: Node): boolean {
-        return child instanceof ListItemNode || child instanceof EventControllerNode || child instanceof SlotNode;
+        return (
+            child instanceof ListItemNode ||
+            child instanceof EventControllerNode ||
+            child instanceof SlotNode ||
+            child instanceof ContainerSlotNode
+        );
     }
 
     constructor(typeName: string, props: ListViewProps, container: Gtk.ListView, rootContainer: Container) {

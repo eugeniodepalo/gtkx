@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkTextViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import { filterProps } from "./internal/props.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
@@ -22,7 +23,7 @@ const OWN_PROPS = [
 ] as const;
 
 type TextViewProps = Pick<GtkTextViewProps, (typeof OWN_PROPS)[number]>;
-type TextViewChild = TextContentChild | SlotNode | EventControllerNode | WidgetNode;
+type TextViewChild = TextContentChild | SlotNode | ContainerSlotNode | EventControllerNode | WidgetNode;
 
 export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextViewChild> implements TextContentParent {
     protected bufferController: TextBufferController | null = null;
@@ -34,6 +35,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
             child instanceof TextAnchorNode ||
             child instanceof TextPaintableNode ||
             child instanceof SlotNode ||
+            child instanceof ContainerSlotNode ||
             child instanceof EventControllerNode ||
             child instanceof WidgetNode
         );

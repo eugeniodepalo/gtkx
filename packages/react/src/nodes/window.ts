@@ -4,6 +4,7 @@ import type { GtkAboutDialogProps, GtkWindowProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { AnimationNode } from "./animation.js";
+import { ContainerSlotNode } from "./container-slot.js";
 import type { DialogNode } from "./dialog.js";
 import { EventControllerNode } from "./event-controller.js";
 import { filterProps, hasChanged } from "./internal/props.js";
@@ -26,6 +27,7 @@ type WindowChild =
     | DialogNode
     | MenuNode
     | SlotNode
+    | ContainerSlotNode
     | AnimationNode
     | NavigationPageNode
     | EventControllerNode
@@ -83,7 +85,8 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
             child instanceof SlotNode ||
             child instanceof AnimationNode ||
             child instanceof NavigationPageNode ||
-            child instanceof EventControllerNode
+            child instanceof EventControllerNode ||
+            child instanceof ContainerSlotNode
         );
     }
 

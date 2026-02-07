@@ -3,13 +3,14 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import type { PopoverMenuWidget } from "../registry.js";
 import type { Container, Props } from "../types.js";
+import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-type PopoverMenuChild = MenuNode | SlotNode | EventControllerNode | WidgetNode;
+type PopoverMenuChild = MenuNode | SlotNode | ContainerSlotNode | EventControllerNode | WidgetNode;
 
 export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, PopoverMenuChild> {
     private menu: MenuModel;
@@ -19,6 +20,7 @@ export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, Popove
             child instanceof MenuNode ||
             child instanceof SlotNode ||
             child instanceof EventControllerNode ||
+            child instanceof ContainerSlotNode ||
             child instanceof WidgetNode
         );
     }
