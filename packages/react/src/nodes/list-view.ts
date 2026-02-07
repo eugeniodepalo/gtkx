@@ -2,10 +2,12 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkListViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
+import { EventControllerNode } from "./event-controller.js";
 import { ListItemRenderer } from "./internal/list-item-renderer.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { ListItemNode } from "./list-item.js";
 import { ListModel, type ListModelProps } from "./models/list.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 const RENDERER_PROPS = ["renderItem", "estimatedItemHeight"] as const;
@@ -13,12 +15,14 @@ const OWN_PROPS = [...RENDERER_PROPS, "autoexpand", "selectionMode", "selected",
 
 type ListViewProps = Pick<GtkListViewProps, (typeof RENDERER_PROPS)[number]> & ListModelProps;
 
-export class ListViewNode extends WidgetNode<Gtk.ListView, ListViewProps, ListItemNode> {
+type ListViewChild = ListItemNode | EventControllerNode | SlotNode;
+
+export class ListViewNode extends WidgetNode<Gtk.ListView, ListViewProps, ListViewChild> {
     private itemRenderer: ListItemRenderer;
     private list: ListModel;
 
     public override isValidChild(child: Node): boolean {
-        return child instanceof ListItemNode;
+        return child instanceof ListItemNode || child instanceof EventControllerNode || child instanceof SlotNode;
     }
 
     constructor(typeName: string, props: ListViewProps, container: Gtk.ListView, rootContainer: Container) {
@@ -38,18 +42,24 @@ export class ListViewNode extends WidgetNode<Gtk.ListView, ListViewProps, ListIt
         this.container.setFactory(this.itemRenderer.getFactory());
     }
 
-    public override appendChild(child: ListItemNode): void {
+    public override appendChild(child: ListViewChild): void {
         super.appendChild(child);
-        this.list.appendChild(child);
+        if (child instanceof ListItemNode) {
+            this.list.appendChild(child);
+        }
     }
 
-    public override insertBefore(child: ListItemNode, before: ListItemNode): void {
+    public override insertBefore(child: ListViewChild, before: ListViewChild): void {
         super.insertBefore(child, before);
-        this.list.insertBefore(child, before);
+        if (child instanceof ListItemNode && before instanceof ListItemNode) {
+            this.list.insertBefore(child, before);
+        }
     }
 
-    public override removeChild(child: ListItemNode): void {
-        this.list.removeChild(child);
+    public override removeChild(child: ListViewChild): void {
+        if (child instanceof ListItemNode) {
+            this.list.removeChild(child);
+        }
         super.removeChild(child);
     }
 

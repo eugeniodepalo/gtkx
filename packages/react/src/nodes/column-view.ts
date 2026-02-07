@@ -3,22 +3,29 @@ import type { GtkColumnViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
+import { EventControllerNode } from "./event-controller.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { ListItemNode } from "./list-item.js";
 import { ListModel, type ListModelProps } from "./models/list.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["sortColumn", "sortOrder", "onSortChanged", "estimatedRowHeight"] as const;
 
 type ColumnViewProps = Pick<GtkColumnViewProps, (typeof OWN_PROPS)[number]> & ListModelProps;
-type ColumnViewChild = ListItemNode | ColumnViewColumnNode;
+type ColumnViewChild = ListItemNode | ColumnViewColumnNode | EventControllerNode | SlotNode;
 
 export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, ColumnViewChild> {
     private handleSortChange: (() => void) | null = null;
     private list: ListModel;
 
     public override isValidChild(child: Node): boolean {
-        return child instanceof ListItemNode || child instanceof ColumnViewColumnNode;
+        return (
+            child instanceof ListItemNode ||
+            child instanceof ColumnViewColumnNode ||
+            child instanceof EventControllerNode ||
+            child instanceof SlotNode
+        );
     }
     private columnNodes = new Set<ColumnViewColumnNode>();
     private estimatedRowHeight: number | null = null;
@@ -43,6 +50,8 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             return;
         }
 
+        if (!(child instanceof ColumnViewColumnNode)) return;
+
         const existingColumn = this.findColumnInView(child.getColumn());
 
         if (existingColumn) {
@@ -64,6 +73,8 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             }
             return;
         }
+
+        if (!(child instanceof ColumnViewColumnNode)) return;
 
         const existingColumn = this.findColumnInView(child.getColumn());
 
@@ -91,14 +102,17 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             return;
         }
 
-        const existingColumn = this.findColumnInView(child.getColumn());
+        if (child instanceof ColumnViewColumnNode) {
+            const existingColumn = this.findColumnInView(child.getColumn());
 
-        if (existingColumn) {
-            this.container.removeColumn(existingColumn);
+            if (existingColumn) {
+                this.container.removeColumn(existingColumn);
+            }
+
+            child.setStore(null);
+            this.columnNodes.delete(child);
         }
 
-        child.setStore(null);
-        this.columnNodes.delete(child);
         super.removeChild(child);
     }
 

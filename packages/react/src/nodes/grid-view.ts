@@ -2,17 +2,21 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkGridViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
+import { EventControllerNode } from "./event-controller.js";
 import { GridItemRenderer } from "./internal/grid-item-renderer.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { ListItemNode } from "./list-item.js";
 import { GridModel, type GridModelProps } from "./models/grid.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["renderItem", "estimatedItemHeight"] as const;
 
 type GridViewProps = Pick<GtkGridViewProps, (typeof OWN_PROPS)[number]> & GridModelProps;
 
-export class GridViewNode extends WidgetNode<Gtk.GridView, GridViewProps, ListItemNode> {
+type GridViewChild = ListItemNode | EventControllerNode | SlotNode;
+
+export class GridViewNode extends WidgetNode<Gtk.GridView, GridViewProps, GridViewChild> {
     private itemRenderer: GridItemRenderer;
     private grid: GridModel;
 
@@ -33,6 +37,7 @@ export class GridViewNode extends WidgetNode<Gtk.GridView, GridViewProps, ListIt
     }
 
     public override isValidChild(child: Node): boolean {
+        if (child instanceof EventControllerNode || child instanceof SlotNode) return true;
         if (!(child instanceof ListItemNode)) return false;
         if (child.getChildNodes().length > 0) {
             throw new Error("GtkGridView does not support nested ListItems. Use GtkListView for tree lists.");
@@ -40,18 +45,24 @@ export class GridViewNode extends WidgetNode<Gtk.GridView, GridViewProps, ListIt
         return true;
     }
 
-    public override appendChild(child: ListItemNode): void {
+    public override appendChild(child: GridViewChild): void {
         super.appendChild(child);
-        this.grid.appendChild(child);
+        if (child instanceof ListItemNode) {
+            this.grid.appendChild(child);
+        }
     }
 
-    public override insertBefore(child: ListItemNode, before: ListItemNode): void {
+    public override insertBefore(child: GridViewChild, before: GridViewChild): void {
         super.insertBefore(child, before);
-        this.grid.insertBefore(child, before);
+        if (child instanceof ListItemNode && before instanceof ListItemNode) {
+            this.grid.insertBefore(child, before);
+        }
     }
 
-    public override removeChild(child: ListItemNode): void {
-        this.grid.removeChild(child);
+    public override removeChild(child: GridViewChild): void {
+        if (child instanceof ListItemNode) {
+            this.grid.removeChild(child);
+        }
         super.removeChild(child);
     }
 

@@ -2,21 +2,25 @@ import type { AdwComboRowProps, GtkDropDownProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { DropDownWidget } from "../registry.js";
 import type { Container } from "../types.js";
+import { EventControllerNode } from "./event-controller.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";
 import { ListItemNode } from "./list-item.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["selectedId", "onSelectionChanged"] as const;
 
 type DropDownProps = Pick<GtkDropDownProps | AdwComboRowProps, (typeof OWN_PROPS)[number]>;
 
-export class DropDownNode extends WidgetNode<DropDownWidget, DropDownProps, ListItemNode> {
+type DropDownChild = ListItemNode | EventControllerNode | SlotNode;
+
+export class DropDownNode extends WidgetNode<DropDownWidget, DropDownProps, DropDownChild> {
     private store = new SimpleListStore();
     private initialSelectedId: string | null | undefined;
 
     public override isValidChild(child: Node): boolean {
-        return child instanceof ListItemNode;
+        return child instanceof ListItemNode || child instanceof EventControllerNode || child instanceof SlotNode;
     }
 
     constructor(typeName: string, props: DropDownProps, container: DropDownWidget, rootContainer: Container) {
@@ -42,20 +46,26 @@ export class DropDownNode extends WidgetNode<DropDownWidget, DropDownProps, List
         }
     }
 
-    public override appendChild(child: ListItemNode): void {
+    public override appendChild(child: DropDownChild): void {
         super.appendChild(child);
-        child.setStore(this.store);
-        this.store.addItem(child.props.id, child.props.value as string);
+        if (child instanceof ListItemNode) {
+            child.setStore(this.store);
+            this.store.addItem(child.props.id, child.props.value as string);
+        }
     }
 
-    public override insertBefore(child: ListItemNode, before: ListItemNode): void {
+    public override insertBefore(child: DropDownChild, before: DropDownChild): void {
         super.insertBefore(child, before);
-        child.setStore(this.store);
-        this.store.insertItemBefore(child.props.id, before.props.id, child.props.value as string);
+        if (child instanceof ListItemNode && before instanceof ListItemNode) {
+            child.setStore(this.store);
+            this.store.insertItemBefore(child.props.id, before.props.id, child.props.value as string);
+        }
     }
 
-    public override removeChild(child: ListItemNode): void {
-        this.store.removeItem(child.props.id);
+    public override removeChild(child: DropDownChild): void {
+        if (child instanceof ListItemNode) {
+            this.store.removeItem(child.props.id);
+        }
         super.removeChild(child);
     }
 

@@ -5,6 +5,7 @@ import type { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { AnimationNode } from "./animation.js";
 import type { DialogNode } from "./dialog.js";
+import { EventControllerNode } from "./event-controller.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
@@ -20,7 +21,15 @@ const OWN_PROPS = ["onClose"] as const;
 
 type WindowProps = Pick<GtkWindowProps, "onClose"> & Pick<GtkAboutDialogProps, "creditSections">;
 
-type WindowChild = WindowNode | DialogNode | MenuNode | SlotNode | AnimationNode | NavigationPageNode | WidgetNode;
+type WindowChild =
+    | WindowNode
+    | DialogNode
+    | MenuNode
+    | SlotNode
+    | AnimationNode
+    | NavigationPageNode
+    | EventControllerNode
+    | WidgetNode;
 
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild> {
     private menu: MenuModel;
@@ -73,7 +82,8 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
             child instanceof MenuNode ||
             child instanceof SlotNode ||
             child instanceof AnimationNode ||
-            child instanceof NavigationPageNode
+            child instanceof NavigationPageNode ||
+            child instanceof EventControllerNode
         );
     }
 

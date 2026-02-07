@@ -3,6 +3,7 @@ import type { GtkDrawingAreaProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { EventControllerNode } from "./event-controller.js";
 import { filterProps, hasChanged } from "./internal/props.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["onDraw"] as const;
@@ -29,9 +30,11 @@ function flushPendingDrawFuncs(): void {
     }
 }
 
-export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps, EventControllerNode> {
+type DrawingAreaChild = EventControllerNode | SlotNode;
+
+export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps, DrawingAreaChild> {
     public override isValidChild(child: Node): boolean {
-        return child instanceof EventControllerNode;
+        return child instanceof EventControllerNode || child instanceof SlotNode;
     }
 
     public override commitUpdate(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {

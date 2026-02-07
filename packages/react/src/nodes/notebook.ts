@@ -1,28 +1,36 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
+import { EventControllerNode } from "./event-controller.js";
 import { NotebookPageNode } from "./notebook-page.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-export class NotebookNode extends WidgetNode<Gtk.Notebook, Props, NotebookPageNode> {
+type NotebookChild = NotebookPageNode | EventControllerNode | SlotNode;
+
+export class NotebookNode extends WidgetNode<Gtk.Notebook, Props, NotebookChild> {
     public override isValidChild(child: Node): boolean {
-        return child instanceof NotebookPageNode;
+        return child instanceof NotebookPageNode || child instanceof EventControllerNode || child instanceof SlotNode;
     }
 
-    public override insertBefore(child: NotebookPageNode, before: NotebookPageNode): void {
-        const isMove = this.children.includes(child);
-        const beforePosition = this.container.pageNum(before.getChildWidget());
-        child.setPosition(beforePosition);
+    public override insertBefore(child: NotebookChild, before: NotebookChild): void {
+        if (child instanceof NotebookPageNode && before instanceof NotebookPageNode) {
+            const isMove = this.children.includes(child);
+            const beforePosition = this.container.pageNum(before.getChildWidget());
+            child.setPosition(beforePosition);
 
-        if (isMove) {
-            this.container.reorderChild(child.getChildWidget(), beforePosition);
+            if (isMove) {
+                this.container.reorderChild(child.getChildWidget(), beforePosition);
+            }
         }
 
         super.insertBefore(child, before);
     }
 
-    public override removeChild(child: NotebookPageNode): void {
-        child.setPosition(null);
+    public override removeChild(child: NotebookChild): void {
+        if (child instanceof NotebookPageNode) {
+            child.setPosition(null);
+        }
         super.removeChild(child);
     }
 }
