@@ -1,5 +1,4 @@
 import { type Context, Pattern } from "@gtkx/ffi/cairo";
-import type * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkDrawingArea } from "@gtkx/react";
@@ -8,7 +7,7 @@ import type { Demo } from "../types.js";
 import sourceCode from "./textmask.tsx?raw";
 
 const TextmaskDemo = () => {
-    const drawFunc = useCallback((_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+    const drawFunc = useCallback((cr: Context, width: number, height: number) => {
         cr.save();
 
         const layout = PangoCairo.createLayout(cr);

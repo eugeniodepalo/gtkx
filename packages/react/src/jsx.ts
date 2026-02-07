@@ -1246,7 +1246,7 @@ declare module "./generated/jsx.js" {
 
     interface GtkDrawingAreaProps {
         /** Callback fired when the drawing area needs to be redrawn */
-        onDraw?: ((self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void) | null;
+        onDraw?: ((cr: cairo.Context, width: number, height: number, self: Gtk.DrawingArea) => void) | null;
     }
 
     interface GtkColorDialogButtonProps extends DialogButtonProps {

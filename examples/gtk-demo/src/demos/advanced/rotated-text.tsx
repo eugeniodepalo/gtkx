@@ -85,7 +85,7 @@ const RotatedTextDemo = () => {
     }, []);
 
     const drawFunc = useCallback(
-        (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+        (cr: Context, width: number, height: number) => {
             const deviceRadius = Math.min(width, height) / 2;
 
             cr.translate(deviceRadius + (width - 2 * deviceRadius) / 2, deviceRadius + (height - 2 * deviceRadius) / 2);

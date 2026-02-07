@@ -64,7 +64,7 @@ const draw3Circles = (cr: Context, xc: number, yc: number, radius: number, alpha
     cr.fill();
 };
 
-const drawKnockoutGroups = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
     const radius = 0.5 * Math.min(width, height) - 10;
     const xc = width / 2;
     const yc = height / 2;
@@ -113,7 +113,7 @@ const ScribbleArea = () => {
     const startPointRef = useRef<Point | null>(null);
 
     const drawScribble = useCallback(
-        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+        (cr: Context, width: number, height: number) => {
             cr.setSourceRgb(1, 1, 1).rectangle(0, 0, width, height).fill();
 
             cr.setSourceRgb(0, 0, 0).setLineWidth(6).setLineCap(LineCap.ROUND);

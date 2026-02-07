@@ -102,7 +102,7 @@ const FontRenderingDemo = () => {
     }, [overlays.showPixels, overlays.showOutlines, outlineAlpha, pixelAlpha]);
 
     const drawTextMode = useCallback(
-        (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+        (cr: Context, width: number, height: number) => {
             cr.setSourceRgb(1, 1, 1).paint();
 
             const fontOptions = FontOptions.create();
@@ -213,7 +213,7 @@ const FontRenderingDemo = () => {
     );
 
     const drawGlyphsMode = useCallback(
-        (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+        (cr: Context, width: number, height: number) => {
             cr.setSourceRgb(1, 1, 1).paint();
 
             const fontOptions = FontOptions.create();

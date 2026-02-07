@@ -146,7 +146,6 @@ function calculateAverageColor(colors: ColorItem[]): { r: number; g: number; b: 
 }
 
 function drawColorSwatch(
-    _self: Gtk.DrawingArea,
     cr: Context,
     width: number,
     height: number,
@@ -176,7 +175,7 @@ const ColorGridItem = ({ item, showDetails }: { item: ColorItem | null; showDeta
                 <GtkDrawingArea
                     contentWidth={48}
                     contentHeight={48}
-                    onDraw={(_self, cr, w, h) => drawColorSwatch(_self, cr, w, h, item.r, item.g, item.b)}
+                    onDraw={(cr, w, h) => drawColorSwatch(cr, w, h, item.r, item.g, item.b)}
                 />
                 <GtkLabel label={item.name} cssClasses={["caption"]} ellipsize={3} maxWidthChars={10} />
                 <GtkLabel
@@ -195,7 +194,7 @@ const ColorGridItem = ({ item, showDetails }: { item: ColorItem | null; showDeta
         <GtkDrawingArea
             contentWidth={32}
             contentHeight={32}
-            onDraw={(_self, cr, w, h) => drawColorSwatch(_self, cr, w, h, item.r, item.g, item.b)}
+            onDraw={(cr, w, h) => drawColorSwatch(cr, w, h, item.r, item.g, item.b)}
         />
     );
 };
@@ -215,7 +214,7 @@ const SelectionInfoPanel = ({
                         key={c.id}
                         contentWidth={8}
                         contentHeight={8}
-                        onDraw={(_self, cr, w, h) => drawColorSwatch(_self, cr, w, h, c.r, c.g, c.b)}
+                        onDraw={(cr, w, h) => drawColorSwatch(cr, w, h, c.r, c.g, c.b)}
                     />
                 ))}
                 {selectedColors.length > 64 && (
@@ -231,8 +230,8 @@ const SelectionInfoPanel = ({
                 <GtkDrawingArea
                     contentWidth={32}
                     contentHeight={32}
-                    onDraw={(_self, cr, w, h) =>
-                        drawColorSwatch(_self, cr, w, h, averageColor.r, averageColor.g, averageColor.b)
+                    onDraw={(cr, w, h) =>
+                        drawColorSwatch(cr, w, h, averageColor.r, averageColor.g, averageColor.b)
                     }
                 />
                 <GtkLabel label="Average" cssClasses={["dim-label", "caption"]} />

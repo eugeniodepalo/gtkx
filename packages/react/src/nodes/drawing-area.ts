@@ -9,13 +9,18 @@ import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["onDraw"] as const;
 
-type DrawFunc = (self: Gtk.DrawingArea, cr: import("@gtkx/ffi/cairo").Context, width: number, height: number) => void;
+type DrawFunc = (cr: import("@gtkx/ffi/cairo").Context, width: number, height: number, self: Gtk.DrawingArea) => void;
 type DrawingAreaProps = Pick<GtkDrawingAreaProps, (typeof OWN_PROPS)[number]>;
-type PendingDrawFunc = { container: Gtk.DrawingArea; fn: DrawFunc };
 
-const pendingDrawFuncs: PendingDrawFunc[] = [];
+type PendingDrawFuncEntry = { container: Gtk.DrawingArea; fn: DrawFunc };
 
-function ensurePendingBatch(): PendingDrawFunc[] {
+const pendingDrawFuncs: PendingDrawFuncEntry[] = [];
+
+function wrapDrawFunc(fn: DrawFunc): (self: Gtk.DrawingArea, cr: import("@gtkx/ffi/cairo").Context, width: number, height: number) => void {
+    return (self, cr, width, height) => fn(cr, width, height, self);
+}
+
+function ensurePendingBatch(): PendingDrawFuncEntry[] {
     if (pendingDrawFuncs.length === 0) {
         queueMicrotask(flushPendingDrawFuncs);
     }
@@ -27,7 +32,7 @@ function flushPendingDrawFuncs(): void {
     const batch = pendingDrawFuncs.splice(0);
 
     for (const { container, fn } of batch) {
-        container.setDrawFunc(fn);
+        container.setDrawFunc(wrapDrawFunc(fn));
     }
 }
 
@@ -46,7 +51,7 @@ export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProp
     private applyOwnProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
         if (hasChanged(oldProps, newProps, "onDraw")) {
             if (this.container.getAllocatedWidth() > 0) {
-                this.container.setDrawFunc(newProps.onDraw);
+                this.container.setDrawFunc(newProps.onDraw ? wrapDrawFunc(newProps.onDraw) : null);
             } else if (newProps.onDraw) {
                 ensurePendingBatch().push({ container: this.container, fn: newProps.onDraw });
             }

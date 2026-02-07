@@ -54,7 +54,7 @@ const GesturesDemo = () => {
         queueDraw();
     }, [queueDraw]);
 
-    const drawFunc = useCallback((_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+    const drawFunc = useCallback((cr: Context, width: number, height: number) => {
         const { swipeX, swipeY, longPressed } = gestureStateRef.current;
 
         if (swipeX !== 0 || swipeY !== 0) {

@@ -36,7 +36,7 @@ const FramesDemo = () => {
     const color2Ref = useRef<Color>(randomColor());
     const time2Ref = useRef<number>(0);
 
-    const draw = useCallback((_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+    const draw = useCallback((cr: Context, width: number, height: number) => {
         const t = 1 - time2Ref.current / TIME_SPAN_US;
         const color = lerpColor(color1Ref.current, color2Ref.current, Math.max(0, Math.min(1, t)));
         cr.setSourceRgb(color.r, color.g, color.b).rectangle(0, 0, width, height).fill();

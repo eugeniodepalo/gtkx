@@ -5,7 +5,7 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-type DrawFunc = (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
+type DrawFunc = (cr: cairo.Context, width: number, height: number, self: Gtk.DrawingArea) => void;
 
 const noopDraw: DrawFunc = () => {};
 
