@@ -21,6 +21,7 @@ import {
     type FfiTypeDescriptor,
     fundamentalSelfType,
     SELF_TYPE_GOBJECT,
+    type SelfTypeDescriptor,
 } from "../../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
@@ -434,16 +435,11 @@ export class RecordGenerator {
     ): MethodDeclarationStructure {
         const methodName = toCamelCase(method.name);
         const instanceOwnership = method.instanceParameter?.transferOwnership === "full" ? "full" : "borrowed";
-        let selfTypeDescriptor;
+        let selfTypeDescriptor: SelfTypeDescriptor;
         if (className) {
             selfTypeDescriptor =
                 copyFunction && freeFunction
-                    ? fundamentalSelfType(
-                          this.options.sharedLibrary,
-                          copyFunction,
-                          freeFunction,
-                          instanceOwnership,
-                      )
+                    ? fundamentalSelfType(this.options.sharedLibrary, copyFunction, freeFunction, instanceOwnership)
                     : boxedSelfType(className, this.options.sharedLibrary, glibGetType, instanceOwnership);
         } else {
             selfTypeDescriptor = SELF_TYPE_GOBJECT;
