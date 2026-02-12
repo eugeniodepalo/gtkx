@@ -67,7 +67,7 @@
         "@gtkx/mcp": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@swc/core": "^1.15.11",
-        "citty": "^0.2.0",
+        "citty": "^0.2.1",
         "ejs": "^4.0.1",
         "react-refresh": "^0.18.0",
         "vite": "^7.3.1"
