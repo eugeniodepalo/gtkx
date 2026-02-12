@@ -39,7 +39,7 @@
         "@clack/prompts": "^1.0.0",
         "@gtkx/gir": "workspace:*",
         "@gtkx/native": "workspace:*",
-        "citty": "^0.2.0",
+        "citty": "^0.2.1",
         "ts-morph": "^27.0.2"
     }
 }

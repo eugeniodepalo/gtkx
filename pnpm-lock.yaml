@@ -198,8 +198,8 @@ importers:
         specifier: ^1.15.11
         version: 1.15.11
       citty:
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       ejs:
         specifier: ^4.0.1
         version: 4.0.1
@@ -244,8 +244,8 @@ importers:
         specifier: workspace:*
         version: link:../native
       citty:
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       ts-morph:
         specifier: ^27.0.2
         version: 27.0.2
@@ -3190,8 +3190,8 @@ packages:
     resolution: {integrity: sha512-NIxF55hv4nSqQswkAeiOi1r83xy8JldOFDTWiug55KBu9Jnblncd2U6ViHmYgHf01TPZS77NJBhBMKdWj9HQMQ==}
     engines: {node: '>=8'}
 
-  citty@0.2.0:
-    resolution: {integrity: sha512-8csy5IBFI2ex2hTVpaHN2j+LNE199AgiI7y4dMintrr8i0lQiFn+0AWMZrWdHKIgMOer65f8IThysYhoReqjWA==}
+  citty@0.2.1:
+    resolution: {integrity: sha512-kEV95lFBhQgtogAPlQfJJ0WGVSokvLr/UEoFPiKKOXF7pl98HfUVUD0ejsuTCld/9xH9vogSywZ5KqHzXrZpqg==}
 
   clean-css@5.3.3:
     resolution: {integrity: sha512-D5J+kHaVb/wKSFcyyV75uCn8fiY4sV38XJoe4CUyGQ+mOU/fMVYUdH1hJC+CJQ5uY3EnW27SbJYS4X8BiLrAFg==}
@@ -10253,7 +10253,7 @@ snapshots:
 
   ci-info@3.9.0: {}
 
-  citty@0.2.0: {}
+  citty@0.2.1: {}
 
   clean-css@5.3.3:
     dependencies:
