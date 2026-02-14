@@ -23,7 +23,7 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
         const allProps: PropInfo[] = [];
 
         for (const prop of properties) {
-            if (!prop.isWritable || !prop.setter) continue;
+            if (!prop.isWritable || (!prop.setter && !prop.isConstructOnly)) continue;
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
             const qualifiedType = qualifyType(prop.type, namespace);
             const typeWithNull = prop.isNullable ? `${qualifiedType} | null` : qualifiedType;
@@ -44,13 +44,6 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
                 doc: signal.doc ? this.formatDocDescription(signal.doc, namespace) : undefined,
             });
         }
-
-        allProps.push({
-            name: "grabFocus",
-            type: "boolean",
-            optional: true,
-            doc: "When set to true, the widget will grab focus. Useful for focusing a widget when a condition becomes true.",
-        });
 
         allProps.push({
             name: "children",
@@ -86,7 +79,7 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
         const allProps: PropInfo[] = [];
 
         for (const prop of properties) {
-            if (!prop.isWritable || !prop.setter) continue;
+            if (!prop.isWritable || (!prop.setter && !prop.isConstructOnly)) continue;
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
             const qualifiedType = qualifyType(prop.type, namespace);
             const isOptional = !prop.isRequired;
