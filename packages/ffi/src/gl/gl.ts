@@ -224,6 +224,18 @@ export function attachShader(program: number, shader: number): void {
     );
 }
 
+export function detachShader(program: number, shader: number): void {
+    call(
+        LIB,
+        "glDetachShader",
+        [
+            { type: { type: "int", size: 32, unsigned: true }, value: program },
+            { type: { type: "int", size: 32, unsigned: true }, value: shader },
+        ],
+        { type: "undefined" },
+    );
+}
+
 /**
  * Links a program object.
  * @param program - The program object ID to link
@@ -757,4 +769,8 @@ export function bindAttribLocation(program: number, index: number, name: string)
  */
 export function getError(): number {
     return call(LIB, "glGetError", [], { type: "int", size: 32, unsigned: true }) as number;
+}
+
+export function flush(): void {
+    call(LIB, "glFlush", [], { type: "undefined" });
 }

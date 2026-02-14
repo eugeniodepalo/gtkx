@@ -282,9 +282,35 @@ ValueWithStatics.newFromObject = (value: GObject | null): Value => {
 
 ValueWithStatics.newFromBoxed = (value: NativeObject): Value => {
     const v = new Value();
-    const gtype = typeFromName((value.constructor as typeof NativeObject).glibTypeName);
+    const ctor = value.constructor as typeof NativeObject;
+    const gtype = typeFromName(ctor.glibTypeName);
     v.init(gtype);
-    v.setBoxed(value.handle as unknown as number);
+    call(
+        "libgobject-2.0.so.0",
+        "g_value_set_boxed",
+        [
+            {
+                type: {
+                    type: "boxed",
+                    ownership: "borrowed",
+                    innerType: "GValue",
+                    library: "libgobject-2.0.so.0",
+                    getTypeFn: "g_value_get_type",
+                },
+                value: v.handle,
+            },
+            {
+                type: {
+                    type: "boxed",
+                    ownership: "borrowed",
+                    innerType: ctor.glibTypeName,
+                    library: "libgobject-2.0.so.0",
+                },
+                value: value.handle,
+            },
+        ],
+        { type: "undefined" },
+    );
     return v;
 };
 
