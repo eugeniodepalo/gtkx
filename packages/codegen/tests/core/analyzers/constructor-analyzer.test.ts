@@ -40,7 +40,7 @@ describe("ConstructorAnalyzer", () => {
         });
 
         it("returns empty array for class without constructors", () => {
-            const cls = createNormalizedClass({ constructors: [] });
+            const cls = createNormalizedClass({ constructors: [], parent: null });
             const ns = createNormalizedNamespace({
                 name: "Gtk",
                 classes: new Map([["Widget", cls]]),

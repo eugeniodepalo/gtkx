@@ -17,7 +17,7 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
         const allProps: PropInfo[] = [];
 
         for (const prop of eventControllerMeta.properties) {
-            if (!prop.isWritable || !prop.setter) continue;
+            if (!prop.isWritable || (!prop.setter && !prop.isConstructOnly)) continue;
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
             const qualifiedType = qualifyType(prop.type, namespace);
             const typeWithNull = prop.isNullable ? `${qualifiedType} | null` : qualifiedType;
@@ -66,7 +66,7 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
         const allProps: PropInfo[] = [];
 
         for (const prop of controller.properties) {
-            if (!prop.isWritable || !prop.setter) continue;
+            if (!prop.isWritable || (!prop.setter && !prop.isConstructOnly)) continue;
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
             const qualifiedType = qualifyType(prop.type, namespace);
             const typeWithNull = prop.isNullable ? `${qualifiedType} | null` : qualifiedType;

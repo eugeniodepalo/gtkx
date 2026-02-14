@@ -1,8 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
-import { resolvePropMeta, resolveSignal } from "../metadata.js";
+import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
 import type { Props } from "../types.js";
+import { createContainerWithConstructOnly } from "./internal/construct.js";
 import type { SignalHandler } from "./internal/signal-store.js";
 import { WidgetNode } from "./widget.js";
 
@@ -26,8 +27,10 @@ export class EventControllerNode<
 
         const args = (CONSTRUCTOR_PROPS[typeName] ?? []).map((name) => props[name]);
 
-        // biome-ignore lint/suspicious/noExplicitAny: Dynamic constructor invocation
-        return new (containerClass as any)(...args);
+        return createContainerWithConstructOnly(containerClass, props, () => {
+            // biome-ignore lint/suspicious/noExplicitAny: Dynamic constructor invocation
+            return new (containerClass as any)(...args);
+        }) as Gtk.EventController;
     }
 
     public override isValidChild(child: Node): boolean {
@@ -67,6 +70,7 @@ export class EventControllerNode<
 
         for (const name of propNames) {
             if (name === "children") continue;
+            if (isConstructOnlyProp(this.container, name)) continue;
 
             const oldValue = oldProps?.[name];
             const newValue = newProps[name];

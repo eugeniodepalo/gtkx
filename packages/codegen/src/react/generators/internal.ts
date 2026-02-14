@@ -30,6 +30,8 @@ export class InternalGenerator {
         const allControllers = this.collectAllControllers();
 
         this.generateConstructorProps(sourceFile, allWidgets, allControllers);
+        this.addConstructOnlyImports(sourceFile);
+        this.generateConstructOnlyPropsMap(sourceFile, allWidgets, allControllers);
         this.generatePropsMap(sourceFile, allWidgets, allControllers);
         this.generateSignalsMap(sourceFile, allWidgets, allControllers);
 
@@ -67,6 +69,63 @@ export class InternalGenerator {
             createConstExport("CONSTRUCTOR_PROPS", writeObjectOrEmpty(objectProperties, Writers), {
                 type: "Record<string, string[]>",
                 docs: "Constructor parameters for each widget and controller type, derived from GIR analysis.",
+            }),
+        );
+    }
+
+    private addConstructOnlyImports(sourceFile: SourceFile): void {
+        sourceFile.addImportDeclaration({
+            moduleSpecifier: "@gtkx/ffi",
+            namedImports: ["Type"],
+            isTypeOnly: true,
+        });
+    }
+
+    private generateConstructOnlyPropsMap(
+        sourceFile: SourceFile,
+        widgets: WidgetInfo[],
+        controllers: CodegenControllerMeta[],
+    ): void {
+        const allProperties: Record<string, WriterFunction> = {};
+
+        const allMeta = this.reader.getAllCodegenMeta();
+        const metaByJsxName = new Map(allMeta.map((m) => [m.jsxName, m]));
+
+        for (const widget of widgets) {
+            const meta = metaByJsxName.get(widget.jsxName);
+            if (!meta) continue;
+
+            const propEntries: Record<string, string> = {};
+
+            for (const prop of meta.properties) {
+                if (!prop.isConstructOnly || !prop.ffiType) continue;
+                propEntries[`"${prop.camelName}"`] =
+                    `{ girName: "${prop.name}", ffiType: ${JSON.stringify(prop.ffiType)} }`;
+            }
+
+            if (Object.keys(propEntries).length > 0) {
+                allProperties[widget.jsxName] = Writers.object(propEntries);
+            }
+        }
+
+        for (const controller of controllers) {
+            const propEntries: Record<string, string> = {};
+
+            for (const prop of controller.properties) {
+                if (!prop.isConstructOnly || !prop.ffiType) continue;
+                propEntries[`"${prop.camelName}"`] =
+                    `{ girName: "${prop.name}", ffiType: ${JSON.stringify(prop.ffiType)} }`;
+            }
+
+            if (Object.keys(propEntries).length > 0) {
+                allProperties[controller.jsxName] = Writers.object(propEntries);
+            }
+        }
+
+        sourceFile.addVariableStatement(
+            createConstExport("CONSTRUCT_ONLY_PROPS", writeObjectOrEmpty(allProperties, Writers), {
+                type: "Record<string, Record<string, { girName: string; ffiType: Type }>>",
+                docs: "Construct-only properties that can only be set during object construction via g_object_new.",
             }),
         );
     }

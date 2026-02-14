@@ -30,7 +30,13 @@ export class ConstructorAnalyzer {
      */
     private getConstructorParams(cls: GirClass): Array<{ name: string; camelName: string; optional: boolean }> {
         const mainCtor = cls.getConstructor("new");
-        if (!mainCtor) return [];
+
+        if (!mainCtor) {
+            return cls
+                .getAllProperties()
+                .filter((p) => p.constructOnly)
+                .map((p) => ({ name: p.name, camelName: toCamelCase(p.name), optional: true }));
+        }
 
         const params: Array<{ name: string; camelName: string; optional: boolean }> = [];
 
@@ -63,7 +69,14 @@ export class ConstructorAnalyzer {
 
         const required = params.filter((p) => !p.optional);
         const optional = params.filter((p) => p.optional);
-        return [...required, ...optional];
+
+        const coveredNames = new Set(params.map((p) => p.name));
+        const uncoveredConstructOnly = cls
+            .getAllProperties()
+            .filter((p) => p.constructOnly && !coveredNames.has(p.name))
+            .map((p) => ({ name: p.name, camelName: toCamelCase(p.name), optional: true }));
+
+        return [...required, ...optional, ...uncoveredConstructOnly];
     }
 
     /**

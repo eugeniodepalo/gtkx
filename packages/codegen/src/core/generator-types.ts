@@ -5,6 +5,8 @@
  * These types define the contracts between different parts of the code generation system.
  */
 
+import type { FfiTypeDescriptor } from "./type-system/ffi-types.js";
+
 /**
  * Base options for FFI generators and builders.
  * Contains the common namespace and sharedLibrary fields.
@@ -37,6 +39,10 @@ export type PropertyAnalysis = {
     referencedNamespaces: string[];
     /** Whether this property uses a synthetic setter (generated via g_object_set_property) */
     hasSyntheticSetter?: boolean;
+    /** Whether this is a construct-only property (can only be set during object construction) */
+    isConstructOnly?: boolean;
+    /** FFI type descriptor for construct-only props, used for g_object_new marshaling */
+    ffiType?: FfiTypeDescriptor;
 };
 
 /**

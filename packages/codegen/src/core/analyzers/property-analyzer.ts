@@ -65,6 +65,8 @@ export class PropertyAnalyzer {
             doc: prop.doc,
             referencedNamespaces: collectExternalNamespaces(typeMapping.imports),
             hasSyntheticSetter: needsSyntheticSetter && this.canGenerateSyntheticSetter(prop),
+            isConstructOnly: prop.constructOnly || undefined,
+            ffiType: prop.constructOnly ? typeMapping.ffi : undefined,
         };
     }
 
