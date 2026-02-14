@@ -60,6 +60,19 @@ jobs:
           cache-cargo: "true"
           cache-pnpm: "true"
 
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Typecheck
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm install --frozen-lockfile && pnpm typecheck
+          cache-cargo: "true"
+          cache-pnpm: "true"
+
   docs:
     runs-on: ubuntu-latest
     steps:

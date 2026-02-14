@@ -1,6 +1,6 @@
 import type { Plugin } from "vite";
 
-const ASSET_RE = /\.(png|jpe?g|gif|svg|webp|webm|mp4|ogg|mp3|wav|flac|aac|woff2?|eot|ttf|otf|ico|avif)$/i;
+const ASSET_RE = /\.(png|jpe?g|gif|svg|webp|webm|mp4|ogg|mp3|wav|flac|aac|woff2?|eot|ttf|otf|ico|avif|data)$/i;
 
 /**
  * Vite plugin that resolves static asset imports to filesystem paths.
@@ -16,6 +16,12 @@ export function gtkxAssets(): Plugin {
     return {
         name: "gtkx:assets",
         enforce: "pre",
+
+        config() {
+            return {
+                assetsInclude: [ASSET_RE],
+            };
+        },
 
         configResolved(config) {
             isBuild = config.command === "build";

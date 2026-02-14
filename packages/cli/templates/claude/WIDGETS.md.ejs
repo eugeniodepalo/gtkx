@@ -172,19 +172,19 @@ Table with sortable columns.
 
 ```tsx
 <GtkColumnView estimatedRowHeight={48} sortColumn="name" sortOrder={Gtk.SortType.ASCENDING} onSortChanged={handleSort}>
-    <x.ColumnViewColumn<Item>
+    <x.ColumnViewColumn
         title="Name"
         id="name"
         expand
         resizable
         sortable
-        renderCell={(item) => <GtkLabel label={item?.name ?? ""} />}
+        renderCell={(item: Item | null) => <GtkLabel label={item?.name ?? ""} />}
     />
-    <x.ColumnViewColumn<Item>
+    <x.ColumnViewColumn
         title="Size"
         id="size"
         fixedWidth={100}
-        renderCell={(item) => <GtkLabel label={`${item?.size ?? 0} KB`} />}
+        renderCell={(item: Item | null) => <GtkLabel label={`${item?.size ?? 0} KB`} />}
     />
     {items.map(item => <x.ListItem key={item.id} id={item.id} value={item} />)}
 </GtkColumnView>

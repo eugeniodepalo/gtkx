@@ -29,6 +29,17 @@
             }
         }
     },
+    "overrides": [
+        {
+            "includes": ["examples/gtk-demo/src/demos/css/*.css"],
+            "linter": {
+                "enabled": false
+            },
+            "formatter": {
+                "enabled": false
+            }
+        }
+    ],
     "vcs": {
         "enabled": true,
         "clientKind": "git",

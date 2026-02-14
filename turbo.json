@@ -85,6 +85,12 @@
             "persistent": true,
             "cache": false
         },
+        "typecheck": {
+            "dependsOn": ["^build"],
+            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
+            "outputs": [],
+            "outputLogs": "new-only"
+        },
         "test": {
             "dependsOn": ["^build", "native-test"],
             "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],

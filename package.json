@@ -16,16 +16,17 @@
         "knip:all": "knip --no-gitignore --no-config-hints",
         "lint": "turbo lint:all && turbo lint --filter=!website --filter=!gtkx",
         "lint:all": "biome check .",
-        "test": "turbo test --filter=!website --filter=!gtkx --concurrency=1"
+        "test": "turbo test --filter=!website --filter=!gtkx --concurrency=1",
+        "typecheck": "turbo typecheck --filter=!website --filter=!gtkx"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.3.15",
+        "@biomejs/biome": "^2.3.14",
         "@gtkx/codegen": "workspace:*",
         "@types/node": "^25.2.3",
         "@types/react": "^19.2.14",
         "knip": "^5.83.1",
         "react": "^19.2.4",
-        "turbo": "^2.8.7",
+        "turbo": "^2.8.6",
         "typescript": "^5.9.3",
         "vitest": "^4.0.18"
     },
