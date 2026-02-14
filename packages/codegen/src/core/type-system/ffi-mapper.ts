@@ -226,6 +226,7 @@ export class FfiMapper {
                 ffi: refType(innerType.ffi),
                 imports,
                 kind: innerType.kind,
+                itemKind: innerType.itemKind,
                 innerTsType: innerType.ts,
             };
         }

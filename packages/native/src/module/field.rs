@@ -12,6 +12,7 @@
 //! - `String` (as pointer to C string)
 //! - `GObject` (as pointer to object)
 //! - `Boxed` (as pointer to boxed value)
+//! - `Fundamental` (as pointer to fundamental value)
 //!
 //! ## Write Types
 //!
@@ -28,7 +29,7 @@ use neon::prelude::*;
 
 use crate::{
     gtk_dispatch,
-    managed::{Boxed, NativeHandle, NativeValue},
+    managed::{Boxed, Fundamental, NativeHandle, NativeValue},
     types::Type,
     value::Value,
 };
@@ -129,6 +130,17 @@ impl ReadRequest {
                 let gtype = boxed_type.gtype();
                 let boxed = Boxed::from_glib_none(gtype, boxed_ptr)?;
                 Ok(Value::Object(NativeValue::Boxed(boxed).into()))
+            }
+            Type::Fundamental(ref fundamental_type) => {
+                let ptr = unsafe { field_ptr.cast::<*mut c_void>().read_unaligned() };
+
+                if ptr.is_null() {
+                    return Ok(Value::Null);
+                }
+
+                let (ref_fn, unref_fn) = fundamental_type.lookup_fns()?;
+                let fundamental = Fundamental::from_glib_none(ptr, ref_fn, unref_fn);
+                Ok(Value::Object(NativeValue::Fundamental(fundamental).into()))
             }
             _ => bail!("Unsupported field type for read: {:?}", self.field_type),
         }

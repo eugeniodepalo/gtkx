@@ -461,7 +461,33 @@ impl Value {
                 };
                 Ok(Value::Object(NativeValue::Fundamental(fundamental).into()))
             }
-            Type::Array(_) | Type::HashTable(_) | Type::Ref(_) | Type::Callback(_) => {
+            Type::Ref(ref_type) => {
+                let ptr = unsafe {
+                    glib::gobject_ffi::g_value_get_pointer(gvalue.to_glib_none().0 as *const _)
+                };
+                if ptr.is_null() {
+                    return Ok(Value::Null);
+                }
+                match &*ref_type.inner_type {
+                    Type::Float(float_kind) => {
+                        let val = float_kind.read_ptr(ptr as *const u8);
+                        Ok(Value::Number(val))
+                    }
+                    Type::Integer(int_type) => {
+                        let val = int_type.kind.read_ptr(ptr as *const u8);
+                        Ok(Value::Number(val))
+                    }
+                    Type::Boolean => {
+                        let val = unsafe { *(ptr as *const i32) };
+                        Ok(Value::Boolean(val != 0))
+                    }
+                    _ => bail!(
+                        "Unsupported Ref inner type for GValue conversion: {:?}",
+                        ref_type.inner_type
+                    ),
+                }
+            }
+            Type::Array(_) | Type::HashTable(_) | Type::Callback(_) => {
                 bail!(
                     "Type {:?} should not appear in glib value conversion - this indicates a bug in the type mapping",
                     ty

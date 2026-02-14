@@ -29,6 +29,10 @@ type GtkAllocatedRef = {
     isBoxed: boolean;
     isInterface: boolean;
     boxedTypeName: string | undefined;
+    isArray: boolean;
+    arrayItemType: string | undefined;
+    arrayItemIsBoxed: boolean;
+    arrayItemIsInterface: boolean;
 };
 
 /**
@@ -227,20 +231,23 @@ export class MethodBodyWriter {
         const filtered = this.filterParameters(parameters);
 
         return filtered
-            .map((param) => {
+            .map((param): GtkAllocatedRef | null => {
                 const mapped = this.ffiMapper.mapParameter(param);
+                if (mapped.ffi.type !== "ref" || typeof mapped.ffi.innerType !== "object" || !mapped.innerTsType) {
+                    return null;
+                }
+
+                const innerFfi = mapped.ffi.innerType;
+
                 if (
-                    mapped.ffi.type === "ref" &&
-                    typeof mapped.ffi.innerType === "object" &&
-                    (mapped.ffi.innerType.type === "boxed" ||
-                        mapped.ffi.innerType.type === "gobject" ||
-                        mapped.ffi.innerType.type === "fundamental") &&
-                    mapped.innerTsType
+                    innerFfi.type === "boxed" ||
+                    innerFfi.type === "gobject" ||
+                    innerFfi.type === "fundamental"
                 ) {
-                    const isBoxed = mapped.ffi.innerType.type === "boxed";
+                    const isBoxed = innerFfi.type === "boxed";
                     const isInterface = mapped.kind === "interface";
                     const boxedTypeName = isBoxed
-                        ? (mapped.ffi.innerType as { innerType?: string }).innerType
+                        ? (innerFfi as { innerType?: string }).innerType
                         : undefined;
                     return {
                         paramName: this.toJsParamName(param),
@@ -249,8 +256,37 @@ export class MethodBodyWriter {
                         isBoxed,
                         isInterface,
                         boxedTypeName,
+                        isArray: false,
+                        arrayItemType: undefined,
+                        arrayItemIsBoxed: false,
+                        arrayItemIsInterface: false,
                     };
                 }
+
+                if (
+                    innerFfi.type === "array" &&
+                    innerFfi.itemType &&
+                    (innerFfi.itemType.type === "gobject" ||
+                        innerFfi.itemType.type === "boxed" ||
+                        innerFfi.itemType.type === "fundamental")
+                ) {
+                    const arrayItemType = mapped.innerTsType.replace(/\[\]$/, "");
+                    const arrayItemIsBoxed = innerFfi.itemType.type === "boxed";
+                    const arrayItemIsInterface = mapped.itemKind === "interface";
+                    return {
+                        paramName: this.toJsParamName(param),
+                        innerType: mapped.innerTsType,
+                        nullable: this.ffiMapper.isNullable(param),
+                        isBoxed: false,
+                        isInterface: false,
+                        boxedTypeName: undefined,
+                        isArray: true,
+                        arrayItemType,
+                        arrayItemIsBoxed,
+                        arrayItemIsInterface,
+                    };
+                }
+
                 return null;
             })
             .filter((x): x is GtkAllocatedRef => x !== null);
@@ -821,7 +857,17 @@ export class MethodBodyWriter {
     private writeRefRewrap(writer: Parameters<WriterFunction>[0], refs: GtkAllocatedRef[]): void {
         for (const ref of refs) {
             this.ctx.usesGetNativeObject = true;
-            if (ref.isBoxed || ref.isInterface) {
+            if (ref.isArray && ref.arrayItemType) {
+                if (ref.arrayItemIsBoxed || ref.arrayItemIsInterface) {
+                    writer.writeLine(
+                        `if (${ref.paramName}) ${ref.paramName}.value = (${ref.paramName}.value as unknown as NativeHandle[]).map((item) => getNativeObject(item, ${ref.arrayItemType}));`,
+                    );
+                } else {
+                    writer.writeLine(
+                        `if (${ref.paramName}) ${ref.paramName}.value = (${ref.paramName}.value as unknown as NativeHandle[]).map((item) => getNativeObject(item) as ${ref.arrayItemType});`,
+                    );
+                }
+            } else if (ref.isBoxed || ref.isInterface) {
                 writer.writeLine(
                     `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as NativeHandle, ${ref.innerType});`,
                 );

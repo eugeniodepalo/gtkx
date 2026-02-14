@@ -496,16 +496,37 @@ export class RecordGenerator {
                 const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
                 this.ctx.addTypeImports(typeMapping.imports);
 
+                const needsObjectWrap =
+                    typeMapping.ffi.type === "boxed" ||
+                    typeMapping.ffi.type === "gobject" ||
+                    typeMapping.ffi.type === "fundamental";
+
+                if (needsObjectWrap) {
+                    this.ctx.usesGetNativeObject = true;
+                    this.ctx.usesNativeHandle = true;
+                }
+
                 if (isReadable) {
                     this.ctx.usesRead = true;
+
                     classDecl.addMethod({
                         name: getterName,
-                        returnType: typeMapping.ts,
+                        returnType: needsObjectWrap ? `${typeMapping.ts} | null` : typeMapping.ts,
                         docs: buildJsDocStructure(field.doc, this.options.namespace),
                         statements: (writer) => {
-                            writer.write("return read(this.handle, ");
-                            this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
-                            writer.writeLine(`, ${offset}) as ${typeMapping.ts};`);
+                            if (needsObjectWrap) {
+                                writer.write("const ptr = read(this.handle, ");
+                                this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
+                                writer.writeLine(`, ${offset});`);
+                                writer.writeLine("if (ptr === null) return null;");
+                                writer.writeLine(
+                                    `return getNativeObject(ptr as NativeHandle, ${typeMapping.ts});`,
+                                );
+                            } else {
+                                writer.write("return read(this.handle, ");
+                                this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
+                                writer.writeLine(`, ${offset}) as ${typeMapping.ts};`);
+                            }
                         },
                     });
                 }
@@ -518,7 +539,8 @@ export class RecordGenerator {
                         statements: (writer) => {
                             writer.write("write(this.handle, ");
                             this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
-                            writer.writeLine(`, ${offset}, value);`);
+                            const writeValue = needsObjectWrap ? "value.handle" : "value";
+                            writer.writeLine(`, ${offset}, ${writeValue});`);
                         },
                     });
                 }

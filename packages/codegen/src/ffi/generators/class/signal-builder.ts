@@ -240,29 +240,68 @@ export class SignalBuilder {
         paramData: SignalParamData[],
         needsReturnUnwrap: boolean,
     ): void {
+        const hasRefParams = paramData.some((p) => p.mapped.ffi.type === "ref");
+
         writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
         writer.indent(() => {
-            if (needsReturnUnwrap) {
-                writer.write("const _result = handler(");
-            } else {
-                writer.write("return handler(");
-            }
-            writer.newLine();
-            writer.indent(() => {
-                writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
-                paramData.forEach((p, index) => {
-                    const argAccess = `args[${index + 1}]`;
-                    const expression = this.paramWrapWriter.writeWrapExpression(argAccess, p.wrapInfo);
-                    writer.write(expression);
-                    if (index < paramData.length - 1) {
-                        writer.write(",");
+            if (hasRefParams) {
+                for (const [i, p] of paramData.entries()) {
+                    if (p.mapped.ffi.type === "ref") {
+                        const innerType = p.mapped.innerTsType ?? "unknown";
+                        writer.writeLine(`const _ref${i} = { value: args[${i + 1}] as ${innerType} };`);
                     }
-                    writer.newLine();
+                }
+
+                writer.write("const _result = handler(");
+                writer.newLine();
+                writer.indent(() => {
+                    writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
+                    paramData.forEach((p, index) => {
+                        if (p.mapped.ffi.type === "ref") {
+                            writer.write(`_ref${index}`);
+                        } else {
+                            const argAccess = `args[${index + 1}]`;
+                            writer.write(this.paramWrapWriter.writeWrapExpression(argAccess, p.wrapInfo));
+                        }
+                        if (index < paramData.length - 1) {
+                            writer.write(",");
+                        }
+                        writer.newLine();
+                    });
                 });
-            });
-            writer.writeLine(");");
-            if (needsReturnUnwrap) {
-                writer.writeLine("return _result?.handle;");
+                writer.writeLine(");");
+
+                const returnExpr = needsReturnUnwrap ? "_result?.handle" : "_result";
+                writer.write(`return [${returnExpr}`);
+                for (const [i, p] of paramData.entries()) {
+                    if (p.mapped.ffi.type === "ref") {
+                        writer.write(`, _ref${i}.value`);
+                    }
+                }
+                writer.writeLine("];");
+            } else {
+                if (needsReturnUnwrap) {
+                    writer.write("const _result = handler(");
+                } else {
+                    writer.write("return handler(");
+                }
+                writer.newLine();
+                writer.indent(() => {
+                    writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
+                    paramData.forEach((p, index) => {
+                        const argAccess = `args[${index + 1}]`;
+                        const expression = this.paramWrapWriter.writeWrapExpression(argAccess, p.wrapInfo);
+                        writer.write(expression);
+                        if (index < paramData.length - 1) {
+                            writer.write(",");
+                        }
+                        writer.newLine();
+                    });
+                });
+                writer.writeLine(");");
+                if (needsReturnUnwrap) {
+                    writer.writeLine("return _result?.handle;");
+                }
             }
         });
         writer.writeLine("};");

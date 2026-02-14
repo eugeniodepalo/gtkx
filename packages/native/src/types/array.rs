@@ -324,14 +324,20 @@ impl ffi::FfiDecode for ArrayType {
                         return Ok(value::Value::Array(vec![]));
                     }
 
-                    if let Type::Integer(int_type) = &*self.item_type {
-                        return Self::decode_sized_byte_array(*ptr, length, &int_type.kind);
-                    }
-
-                    bail!(
-                        "Sized arrays are only supported for integer types, got: {:?}",
-                        self.item_type
-                    );
+                    return match &*self.item_type {
+                        Type::Integer(int_type) => {
+                            Self::decode_sized_byte_array(*ptr, length, &int_type.kind)
+                        }
+                        Type::GObject(_)
+                        | Type::Boxed(_)
+                        | Type::Struct(_)
+                        | Type::String(_)
+                        | Type::Fundamental(_) => self.decode_sized_ptr_array(*ptr, length),
+                        _ => bail!(
+                            "Unsupported item type for sized array: {:?}",
+                            self.item_type
+                        ),
+                    };
                 }
             }
             ArrayKind::Fixed { size } => {
@@ -340,14 +346,20 @@ impl ffi::FfiDecode for ArrayType {
                         return Ok(value::Value::Array(vec![]));
                     }
 
-                    if let Type::Integer(int_type) = &*self.item_type {
-                        return Self::decode_sized_byte_array(*ptr, *size, &int_type.kind);
-                    }
-
-                    bail!(
-                        "Fixed-size arrays are only supported for integer types, got: {:?}",
-                        self.item_type
-                    );
+                    return match &*self.item_type {
+                        Type::Integer(int_type) => {
+                            Self::decode_sized_byte_array(*ptr, *size, &int_type.kind)
+                        }
+                        Type::GObject(_)
+                        | Type::Boxed(_)
+                        | Type::Struct(_)
+                        | Type::String(_)
+                        | Type::Fundamental(_) => self.decode_sized_ptr_array(*ptr, *size),
+                        _ => bail!(
+                            "Unsupported item type for fixed-size array: {:?}",
+                            self.item_type
+                        ),
+                    };
                 }
             }
             _ => {}
@@ -449,6 +461,20 @@ impl ArrayType {
             ),
         };
 
+        Ok(value::Value::Array(values))
+    }
+
+    fn decode_sized_ptr_array(
+        &self,
+        ptr: *mut c_void,
+        length: usize,
+    ) -> anyhow::Result<value::Value> {
+        let ptr_array = ptr as *const *mut c_void;
+        let mut values = Vec::with_capacity(length);
+        for i in 0..length {
+            let item_ptr = unsafe { *ptr_array.add(i) };
+            values.push(self.item_type.ptr_to_value(item_ptr, "sized array item")?);
+        }
         Ok(value::Value::Array(values))
     }
 

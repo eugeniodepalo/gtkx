@@ -111,6 +111,7 @@ impl ClosureContext {
     }
 
     fn build_closure_with_guard(self, return_type: Box<Type>) -> glib::Closure {
+        let has_ref_params = self.arg_types.iter().any(|t| matches!(t, Type::Ref(_)));
         let closure_holder: Arc<AtomicPtr<gobject_ffi::GClosure>> =
             Arc::new(AtomicPtr::new(std::ptr::null_mut()));
         let closure_holder_for_callback = closure_holder.clone();
@@ -124,21 +125,73 @@ impl ClosureContext {
             let args_values = value::Value::from_glib_values(args, &self.arg_types)
                 .expect("Failed to convert GLib callback arguments");
 
-            js_dispatch::JsDispatcher::global().invoke_and_wait(
-                &self.channel,
-                &self.js_func,
-                args_values,
-                true,
-                |result| match result {
-                    Ok(value) => {
-                        value::Value::into_glib_value_with_default(value, Some(&return_type_inner))
-                    }
-                    Err(_) => value::Value::into_glib_value_with_default(
-                        value::Value::Undefined,
-                        Some(&return_type_inner),
-                    ),
-                },
-            )
+            if has_ref_params {
+                let ref_pointers: Vec<(*mut c_void, Type)> = args
+                    .iter()
+                    .zip(self.arg_types.iter())
+                    .filter_map(|(gval, ty)| {
+                        if let Type::Ref(ref_type) = ty {
+                            let ptr = unsafe {
+                                glib::gobject_ffi::g_value_get_pointer(
+                                    gval.to_glib_none().0 as *const _,
+                                )
+                            };
+                            Some((ptr as *mut c_void, *ref_type.inner_type.clone()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                js_dispatch::JsDispatcher::global().invoke_and_wait(
+                    &self.channel,
+                    &self.js_func,
+                    args_values,
+                    true,
+                    |result| match result {
+                        Ok(value::Value::Array(arr)) => {
+                            for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
+                                if let Some(val) = arr.get(i + 1) {
+                                    if !ptr.is_null() {
+                                        write_ref_value_to_ptr(*ptr, val, inner_type);
+                                    }
+                                }
+                            }
+                            let return_val =
+                                arr.into_iter().next().unwrap_or(value::Value::Undefined);
+                            value::Value::into_glib_value_with_default(
+                                return_val,
+                                Some(&return_type_inner),
+                            )
+                        }
+                        Ok(value) => value::Value::into_glib_value_with_default(
+                            value,
+                            Some(&return_type_inner),
+                        ),
+                        Err(_) => value::Value::into_glib_value_with_default(
+                            value::Value::Undefined,
+                            Some(&return_type_inner),
+                        ),
+                    },
+                )
+            } else {
+                js_dispatch::JsDispatcher::global().invoke_and_wait(
+                    &self.channel,
+                    &self.js_func,
+                    args_values,
+                    true,
+                    |result| match result {
+                        Ok(value) => value::Value::into_glib_value_with_default(
+                            value,
+                            Some(&return_type_inner),
+                        ),
+                        Err(_) => value::Value::into_glib_value_with_default(
+                            value::Value::Undefined,
+                            Some(&return_type_inner),
+                        ),
+                    },
+                )
+            }
         });
 
         let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
@@ -146,6 +199,27 @@ impl ClosureContext {
         unsafe { GtkDispatcher::install_closure_invalidate_notifier(closure_ptr) };
 
         unsafe { glib::Closure::from_glib_full(closure_ptr) }
+    }
+}
+
+fn write_ref_value_to_ptr(ptr: *mut c_void, val: &value::Value, inner_type: &Type) {
+    match (val, inner_type) {
+        (value::Value::Number(n), Type::Float(float_kind)) => {
+            float_kind.write_ptr(ptr as *mut u8, *n);
+        }
+        (value::Value::Number(n), Type::Integer(int_type)) => {
+            int_type.kind.write_ptr(ptr as *mut u8, *n);
+        }
+        (value::Value::Boolean(b), Type::Boolean) => unsafe {
+            *(ptr as *mut i32) = if *b { 1 } else { 0 };
+        },
+        (value::Value::Null | value::Value::Undefined, _) => {}
+        _ => {
+            eprintln!(
+                "write_ref_value_to_ptr: unexpected value/type pair: {:?} / {:?}",
+                val, inner_type
+            );
+        }
     }
 }
 
