@@ -84,10 +84,15 @@ export const toKebabCase = (str: string): string =>
 
 export const toConstantCase = (str: string): string => str.replace(/-/g, "_").toUpperCase();
 
-export const toValidIdentifier = (str: string): string => {
+export const toValidMemberName = (str: string): string => {
     let result = str.replace(/[^a-zA-Z0-9_$]/g, "_");
-    if (RESERVED_WORDS.has(result)) result = `${result}_`;
     if (/^\d/.test(result)) result = `_${result}`;
+    return result;
+};
+
+export const toValidIdentifier = (str: string): string => {
+    const result = toValidMemberName(str);
+    if (RESERVED_WORDS.has(result)) return `${result}_`;
     return result;
 };
 

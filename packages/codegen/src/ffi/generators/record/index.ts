@@ -25,7 +25,7 @@ import {
 } from "../../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
-import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
+import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
 import { FieldBuilder } from "./field-builder.js";
 
@@ -117,7 +117,7 @@ export class RecordGenerator {
         if (initFields.length === 0) return;
 
         const properties = initFields.map((field) => {
-            let fieldName = toValidIdentifier(toCamelCase(field.name));
+            let fieldName = toValidMemberName(toCamelCase(field.name));
             if (fieldName === "id") fieldName = "id_";
             const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
             this.ctx.addTypeImports(typeMapping.imports);
@@ -468,7 +468,7 @@ export class RecordGenerator {
             if (!layoutItem) continue;
             const { field, offset } = layoutItem;
 
-            let fieldName = toValidIdentifier(toCamelCase(field.name));
+            let fieldName = toValidMemberName(toCamelCase(field.name));
             if (fieldName === "id") fieldName = "id_";
 
             const capitalizedFieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
@@ -652,7 +652,7 @@ export class RecordGenerator {
                         for (const nestedItem of writableFields) {
                             const nestedField = nestedItem.field;
                             const nestedOffset = baseOffset + nestedItem.offset;
-                            const nestedFieldName = toValidIdentifier(toCamelCase(nestedField.name));
+                            const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
                             const nestedTypeMapping = this.ffiMapper.mapType(
                                 nestedField.type,
                                 false,
@@ -678,7 +678,7 @@ export class RecordGenerator {
                     for (const nestedItem of writableFields) {
                         const nestedField = nestedItem.field;
                         const nestedOffset = baseOffset + nestedItem.offset;
-                        const nestedFieldName = toValidIdentifier(toCamelCase(nestedField.name));
+                        const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
                         const capitalizedNestedFieldName =
                             nestedFieldName.charAt(0).toUpperCase() + nestedFieldName.slice(1);
                         const nestedTypeMapping = this.ffiMapper.mapType(
@@ -714,7 +714,7 @@ export class RecordGenerator {
             for (const item of layout) {
                 const field = item.field;
                 const offset = baseOffset + item.offset;
-                let fieldName = toValidIdentifier(toCamelCase(field.name));
+                let fieldName = toValidMemberName(toCamelCase(field.name));
                 if (fieldName === "id") fieldName = "id_";
                 const fieldTypeName = String(field.type.name);
 
@@ -759,7 +759,7 @@ export class RecordGenerator {
             for (const nestedItem of nestedLayout) {
                 const nestedField = nestedItem.field;
                 const nestedOffset = baseOffset + nestedItem.offset;
-                let nestedFieldName = toValidIdentifier(toCamelCase(nestedField.name));
+                let nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
                 if (nestedFieldName === "id") nestedFieldName = "id_";
                 const nestedFieldTypeName = String(nestedField.type.name);
 

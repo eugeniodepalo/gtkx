@@ -10,7 +10,7 @@ import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { filterSupportedFunctions } from "../../../core/utils/filtering.js";
-import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
+import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
 
 function collectParentStaticFunctionNames(cls: GirClass): Set<string> {
@@ -18,7 +18,7 @@ function collectParentStaticFunctionNames(cls: GirClass): Set<string> {
     let current = cls.getParent();
     while (current) {
         for (const func of current.staticFunctions) {
-            names.add(toValidIdentifier(toCamelCase(func.name)));
+            names.add(toValidMemberName(toCamelCase(func.name)));
         }
         current = current.getParent();
     }
@@ -51,7 +51,7 @@ export class StaticFunctionBuilder {
         );
 
         return supportedFunctions
-            .filter((func) => !this.parentStaticFunctionNames.has(toValidIdentifier(toCamelCase(func.name))))
+            .filter((func) => !this.parentStaticFunctionNames.has(toValidMemberName(toCamelCase(func.name))))
             .map((func) => this.buildStaticFunctionStructure(func));
     }
 

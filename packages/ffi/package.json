@@ -42,10 +42,6 @@
             "types": "./dist/gobject/index.d.ts",
             "default": "./dist/gobject/index.js"
         },
-        "./pango": {
-            "types": "./dist/pango/index.d.ts",
-            "default": "./dist/pango/index.js"
-        },
         "./*": {
             "types": "./dist/generated/*/index.d.ts",
             "default": "./dist/generated/*/index.js"

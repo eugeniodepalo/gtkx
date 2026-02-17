@@ -13,7 +13,7 @@ import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType, SelfTypeDescriptor } from "../type-system/ffi-types.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { hasVarargs, isVararg } from "../utils/filtering.js";
-import { createWrappedName, toCamelCase, toValidIdentifier } from "../utils/naming.js";
+import { createWrappedName, toCamelCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
 import { formatNullableReturn } from "../utils/type-qualification.js";
 import { type CallArgument, type CallbackWrapperInfo, CallExpressionBuilder } from "./call-expression-builder.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
@@ -471,7 +471,7 @@ export class MethodBodyWriter {
         func: GirFunction,
         options: StaticFunctionStructureOptions,
     ): MethodDeclarationStructure {
-        const funcName = toValidIdentifier(toCamelCase(func.name));
+        const funcName = toValidMemberName(toCamelCase(func.name));
         const params = this.buildParameterList(func.parameters);
         const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true, func.returnType.transferOwnership);
         this.ctx.addTypeImports(returnTypeMapping.imports);

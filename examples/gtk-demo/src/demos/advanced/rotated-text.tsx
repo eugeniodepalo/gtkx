@@ -55,7 +55,7 @@ const createFancyAttrListForLayout = (layout: Pango.Layout): Pango.AttrList => {
         const codepoint = TEXT.codePointAt(i);
 
         if (codepoint === HEART_CODEPOINT) {
-            const attr = Pango.attrShapeNewWithData(inkRect, logicalRect, codepoint);
+            const attr = Pango.AttrShape.new(inkRect, logicalRect);
             attr.setStartIndex(byteIndex);
             attr.setEndIndex(byteIndex + 3);
             attrs.insert(attr);
@@ -84,10 +84,7 @@ const RotatedTextDemo = () => {
         }
 
         cr.scale(attr.getInkRect().getWidth() / Pango.SCALE, attr.getInkRect().getHeight() / Pango.SCALE);
-
-        if (attr.getData() === HEART_CODEPOINT) {
-            drawHeart(cr, doPath);
-        }
+        drawHeart(cr, doPath);
     }, []);
 
     const drawFunc = useCallback(

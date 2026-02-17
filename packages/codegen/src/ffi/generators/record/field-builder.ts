@@ -14,7 +14,7 @@ import {
     isMemoryWritableType,
     isPrimitiveFieldType,
 } from "../../../core/type-system/ffi-types.js";
-import { toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
+import { toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import type { Writers } from "../../../core/writers/index.js";
 
 /**
@@ -102,7 +102,7 @@ export class FieldBuilder {
 
         return (writer) => {
             for (const { field, offset } of initializableFields) {
-                let fieldName = toValidIdentifier(toCamelCase(field.name));
+                let fieldName = toValidMemberName(toCamelCase(field.name));
                 if (fieldName === "id") fieldName = "id_";
 
                 if (this.isInlineNestedStruct(field)) {
@@ -117,7 +117,7 @@ export class FieldBuilder {
                     writer.indent(() => {
                         for (const nestedItem of nestedLayout) {
                             if (!this.isWritableType(nestedItem.field.type)) continue;
-                            const nestedFieldName = toValidIdentifier(toCamelCase(nestedItem.field.name));
+                            const nestedFieldName = toValidMemberName(toCamelCase(nestedItem.field.name));
                             const capitalizedNestedFieldName =
                                 nestedFieldName.charAt(0).toUpperCase() + nestedFieldName.slice(1);
                             const nestedOffset = offset + nestedItem.offset;
