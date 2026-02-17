@@ -53,6 +53,7 @@ import { WidgetNode } from "./nodes/widget.js";
 import { WindowNode } from "./nodes/window.js";
 
 export const AdjustableWidgets = [Gtk.SpinButton, Gtk.ScaleButton, Gtk.Range] as const;
+
 export type AdjustableWidget = InstanceType<(typeof AdjustableWidgets)[number]>;
 
 export const StackWidgets = [Gtk.Stack, Adw.ViewStack] as const;
@@ -62,10 +63,16 @@ export const DropDownWidgets = [Gtk.DropDown, Adw.ComboRow] as const;
 export type DropDownWidget = InstanceType<(typeof DropDownWidgets)[number]>;
 
 export const PopoverMenuWidgets = [Gtk.PopoverMenu, Gtk.PopoverMenuBar, Gtk.MenuButton] as const;
+
 export type PopoverMenuWidget = InstanceType<(typeof PopoverMenuWidgets)[number]>;
 
-// biome-ignore lint/suspicious/noExplicitAny: Registry entries require flexible typing for varied node constructors
-export type NodeClass = (new (...args: any[]) => Node) & { createContainer(...args: any[]): unknown };
+export type NodeClass = (new (
+    // biome-ignore lint/suspicious/noExplicitAny: Registry entries require flexible typing for varied node constructors
+    ...args: any[]
+) => Node) & {
+    // biome-ignore lint/suspicious/noExplicitAny: Registry entries require flexible typing for varied node constructors
+    createContainer(...args: any[]): unknown;
+};
 
 // biome-ignore lint/suspicious/noExplicitAny: Class keys require flexible typing for GTK class hierarchy matching
 type ClassKey = new (...args: any[]) => any;
@@ -86,7 +93,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["NotebookPage", NotebookPageNode],
     ["NotebookPageTab", NotebookPageTabNode],
     ["OverlayChild", OverlayChildNode],
-
     ["Shortcut", ShortcutNode],
     ["Slot", SlotNode],
     ["StackPage", StackPageNode],
@@ -96,7 +102,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["TextTag", TextTagNode],
     ["Toggle", ToggleNode],
     [Gtk.Application, ApplicationNode],
-
     [Gtk.EventController, EventControllerNode],
     [GtkSource.View, SourceViewNode],
     [Gtk.TextView, TextViewNode],

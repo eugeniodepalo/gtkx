@@ -35,8 +35,6 @@ export type CodegenClassMeta = {
     readonly properties: readonly PropertyAnalysis[];
     /** Signal analysis results (for JSX types) */
     readonly signals: readonly SignalAnalysis[];
-    /** Constructor parameter names (camelCase) */
-    readonly constructorParams: readonly string[];
     /** Class documentation from GIR */
     readonly doc: string | undefined;
 };

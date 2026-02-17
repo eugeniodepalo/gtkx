@@ -51,7 +51,6 @@ export function createCodegenWidgetMeta(overrides: Partial<CodegenWidgetMeta> = 
         modulePath: "./gtk/button.js",
         properties: [createPropertyAnalysis()],
         signals: [createSignalAnalysis()],
-        constructorParams: [],
         doc: undefined,
         hiddenPropNames: getHiddenPropNames(className),
         ...overrides,
@@ -145,7 +144,6 @@ export function createButtonMeta(overrides: Partial<CodegenWidgetMeta> = {}): Co
             createSignalAnalysis({ name: "clicked", camelName: "clicked", handlerName: "onClicked" }),
             createSignalAnalysis({ name: "activate", camelName: "activate", handlerName: "onActivate" }),
         ],
-        constructorParams: ["label"],
         ...overrides,
     });
 }
@@ -166,7 +164,6 @@ export function createLabelMeta(overrides: Partial<CodegenWidgetMeta> = {}): Cod
             createPropertyAnalysis({ name: "wrap", camelName: "wrap", type: "boolean" }),
         ],
         signals: [],
-        constructorParams: ["label"],
         ...overrides,
     });
 }

@@ -7,7 +7,7 @@
 
 import type { GirClass, GirRepository, QualifiedName } from "@gtkx/gir";
 import { parseQualifiedName, qualifiedName } from "@gtkx/gir";
-import type { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
+import type { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import { getHiddenPropNames } from "../../../core/config/index.js";
 import { normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
@@ -16,7 +16,6 @@ import { isWidgetType } from "../../../core/utils/widget-detection.js";
 export type ClassMetaAnalyzers = {
     readonly property: PropertyAnalyzer;
     readonly signal: SignalAnalyzer;
-    readonly constructor: ConstructorAnalyzer;
 };
 
 const SKIP_CONTROLLERS = new Set<string>();
@@ -57,7 +56,6 @@ export class ClassMetaBuilder {
         const properties = this.analyzers.property.analyzeWidgetProperties(this.cls, new Set());
         const signals = this.analyzers.signal.analyzeWidgetSignals(this.cls);
         const propNames = properties.filter((p) => p.isWritable).map((p) => p.camelName);
-        const constructorParams = this.analyzers.constructor.getConstructorParamNames(this.cls);
         const parentInfo = this.extractParentInfo();
 
         return {
@@ -70,7 +68,6 @@ export class ClassMetaBuilder {
             signalNames: signals.map((s) => s.name),
             properties,
             signals,
-            constructorParams,
             doc: this.cls.doc,
             abstract: this.cls.abstract,
         };
@@ -87,7 +84,6 @@ export class ClassMetaBuilder {
         const properties = this.analyzers.property.analyzeWidgetProperties(this.cls, hiddenPropsSet);
         const signals = this.analyzers.signal.analyzeWidgetSignals(this.cls);
         const propNames = properties.filter((p) => p.isWritable).map((p) => p.name);
-        const constructorParams = this.analyzers.constructor.getConstructorParamNames(this.cls);
         const parentInfo = this.extractParentInfo();
 
         return {
@@ -102,7 +98,6 @@ export class ClassMetaBuilder {
             modulePath: `./${toKebabCase(this.cls.name)}.js`,
             properties,
             signals,
-            constructorParams,
             doc: this.cls.doc,
             hiddenPropNames,
         };

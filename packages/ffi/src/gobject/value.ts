@@ -1,11 +1,21 @@
-import type { NativeHandle } from "@gtkx/native";
-import { typeFromName, typeName } from "../generated/gobject/functions.js";
+import type { Type as FfiType, NativeHandle } from "@gtkx/native";
+import { typeFromName, typeFundamental, typeName } from "../generated/gobject/functions.js";
 import type { Object as GObject } from "../generated/gobject/object.js";
 import { Value } from "../generated/gobject/value.js";
 import type { NativeClass, NativeObject } from "../native.js";
 import { call, read } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import { Type } from "./types.js";
+
+let cachedStrvGType: number | undefined;
+function getStrvGType(): number {
+    cachedStrvGType ??= call("libgobject-2.0.so.0", "g_strv_get_type", [], {
+        type: "int",
+        size: 64,
+        unsigned: true,
+    }) as number;
+    return cachedStrvGType;
+}
 
 declare module "../generated/gobject/value.js" {
     interface Value {
@@ -112,6 +122,16 @@ declare module "../generated/gobject/value.js" {
          */
         function newFromBoxed(value: NativeObject): Value;
         /**
+         * Creates a GValue initialized with a null-terminated string array (GStrv).
+         * @param value - The string array
+         */
+        function newFromStrv(value: string[]): Value;
+        /**
+         * Creates a GValue initialized with a GVariant.
+         * @param value - The GVariant instance
+         */
+        function newFromVariant(value: NativeObject): Value;
+        /**
          * Creates a GValue initialized with an enum value.
          * @param gtype - The GType of the enum
          * @param value - The enum value
@@ -192,6 +212,8 @@ type ValueStatic = {
     newFromString(value: string | null): Value;
     newFromObject(value: GObject | null): Value;
     newFromBoxed(value: NativeObject): Value;
+    newFromStrv(value: string[]): Value;
+    newFromVariant(value: NativeObject): Value;
     newFromEnum(gtype: number, value: number): Value;
     newFromFlags(gtype: number, value: number): Value;
 };
@@ -314,6 +336,71 @@ ValueWithStatics.newFromBoxed = (value: NativeObject): Value => {
     return v;
 };
 
+ValueWithStatics.newFromStrv = (value: string[]): Value => {
+    const v = new Value();
+    v.init(getStrvGType());
+    call(
+        "libgobject-2.0.so.0",
+        "g_value_set_boxed",
+        [
+            {
+                type: {
+                    type: "boxed",
+                    ownership: "borrowed",
+                    innerType: "GValue",
+                    library: "libgobject-2.0.so.0",
+                    getTypeFn: "g_value_get_type",
+                },
+                value: v.handle,
+            },
+            {
+                type: {
+                    type: "array",
+                    itemType: { type: "string", ownership: "borrowed" },
+                    kind: "array" as const,
+                    ownership: "borrowed" as const,
+                },
+                value,
+            },
+        ],
+        { type: "undefined" },
+    );
+    return v;
+};
+
+ValueWithStatics.newFromVariant = (value: NativeObject): Value => {
+    const v = new Value();
+    v.init(Type.VARIANT);
+    call(
+        "libgobject-2.0.so.0",
+        "g_value_set_variant",
+        [
+            {
+                type: {
+                    type: "boxed",
+                    ownership: "borrowed",
+                    innerType: "GValue",
+                    library: "libgobject-2.0.so.0",
+                    getTypeFn: "g_value_get_type",
+                },
+                value: v.handle,
+            },
+            {
+                type: {
+                    type: "fundamental",
+                    ownership: "borrowed",
+                    library: "libgobject-2.0.so.0",
+                    refFn: "g_variant_ref_sink",
+                    unrefFn: "g_variant_unref",
+                },
+                value: value.handle,
+            },
+        ],
+        { type: "undefined" },
+    );
+    return v;
+};
+
 ValueWithStatics.newFromEnum = (gtype: number, value: number): Value => {
     const v = new Value();
     v.init(gtype);
@@ -327,3 +414,60 @@ ValueWithStatics.newFromFlags = (gtype: number, value: number): Value => {
     v.setFlags(value);
     return v;
 };
+
+export function toGValue(ffiType: FfiType, value: unknown): Value {
+    switch (ffiType.type) {
+        case "boolean":
+            return Value.newFromBoolean(value as boolean);
+
+        case "string":
+            return Value.newFromString(value as string | null);
+
+        case "int": {
+            if (ffiType.getTypeFn && ffiType.library) {
+                const gtype = call(ffiType.library, ffiType.getTypeFn, [], {
+                    type: "int",
+                    size: 64,
+                    unsigned: true,
+                }) as number;
+                const fundamental = typeFundamental(gtype);
+                if (fundamental === Type.FLAGS) {
+                    return Value.newFromFlags(gtype, value as number);
+                }
+                return Value.newFromEnum(gtype, value as number);
+            }
+
+            if (ffiType.size === 64) {
+                return ffiType.unsigned ? Value.newFromUint64(value as number) : Value.newFromInt64(value as number);
+            }
+            return ffiType.unsigned ? Value.newFromUint(value as number) : Value.newFromInt(value as number);
+        }
+
+        case "float":
+            return ffiType.size === 64 ? Value.newFromDouble(value as number) : Value.newFromFloat(value as number);
+
+        case "gobject":
+            return Value.newFromObject(value as GObject | null);
+
+        case "boxed":
+            return Value.newFromBoxed(value as NativeObject);
+
+        case "array": {
+            if (ffiType.itemType.type === "string" && ffiType.kind === "array") {
+                return Value.newFromStrv(value as string[]);
+            }
+            throw new Error(
+                `Unsupported array type for GValue conversion: ${ffiType.kind} of ${ffiType.itemType.type}`,
+            );
+        }
+
+        case "fundamental":
+            if (ffiType.refFn === "g_variant_ref_sink") {
+                return Value.newFromVariant(value as NativeObject);
+            }
+            return Value.newFromBoxed(value as NativeObject);
+
+        default:
+            throw new Error(`Unsupported FFI type for GValue conversion: ${(ffiType as { type: string }).type}`);
+    }
+}

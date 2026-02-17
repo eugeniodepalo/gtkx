@@ -1,9 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
 import type { Props } from "../types.js";
-import { createContainerWithConstructOnly } from "./internal/construct.js";
+import { createContainerWithProperties } from "./internal/construct.js";
 import type { SignalHandler } from "./internal/signal-store.js";
 import { WidgetNode } from "./widget.js";
 
@@ -18,19 +17,12 @@ export class EventControllerNode<
         props: Props,
         containerClass: typeof Gtk.EventController,
     ): Gtk.EventController {
-        const typeName = containerClass.glibTypeName;
-
-        if (typeName === "GtkDropTarget") {
+        if (containerClass.glibTypeName === "GtkDropTarget") {
             const actions = (props.actions as number | undefined) ?? 0;
             return new Gtk.DropTarget(G_TYPE_INVALID, actions);
         }
 
-        const args = (CONSTRUCTOR_PROPS[typeName] ?? []).map((name) => props[name]);
-
-        return createContainerWithConstructOnly(containerClass, props, () => {
-            // biome-ignore lint/suspicious/noExplicitAny: Dynamic constructor invocation
-            return new (containerClass as any)(...args);
-        }) as Gtk.EventController;
+        return createContainerWithProperties(containerClass, props) as Gtk.EventController;
     }
 
     public override isValidChild(child: Node): boolean {

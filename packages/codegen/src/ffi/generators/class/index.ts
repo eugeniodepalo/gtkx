@@ -6,8 +6,9 @@
  */
 
 import type { GirClass, GirMethod, GirRepository, QualifiedName } from "@gtkx/gir";
-import type { ClassDeclaration, SourceFile } from "ts-morph";
-import { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
+import type { ClassDeclaration, MethodDeclarationStructure, SourceFile } from "ts-morph";
+import { StructureKind } from "ts-morph";
+import { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
@@ -98,7 +99,6 @@ export class ClassGenerator {
         const analyzers: ClassMetaAnalyzers = {
             property: new PropertyAnalyzer(repository, ffiMapper),
             signal: new SignalAnalyzer(repository, ffiMapper),
-            constructor: new ConstructorAnalyzer(repository),
         };
         this.classMetaBuilder = new ClassMetaBuilder(cls, repository, options.namespace, analyzers);
     }
@@ -150,7 +150,7 @@ export class ClassGenerator {
         const parentFactoryMethodNames = collectParentFactoryMethodNames(this.cls);
         this.constructorBuilder.setParentFactoryMethodNames(parentFactoryMethodNames);
 
-        const allMethodStructures = [
+        const allMethodStructures: MethodDeclarationStructure[] = [
             ...this.constructorBuilder.addConstructorAndBuildFactoryStructures(classDecl, parentInfo.hasParent),
             ...this.staticBuilder.buildStructures(),
             ...this.methodBuilder.buildStructures(filteredClassMethods, selfTypeDescriptor, asyncAnalysis),
@@ -161,6 +161,11 @@ export class ClassGenerator {
             ...this.propertyGetterBuilder.buildStructures(),
             ...this.propertySetterBuilder.buildStructures(),
         ];
+
+        if (this.cls.glibGetType) {
+            this.ctx.usesCall = true;
+            allMethodStructures.push(this.buildGetGTypeMethod());
+        }
 
         if (allMethodStructures.length > 0) {
             classDecl.addMethods(allMethodStructures);
@@ -356,6 +361,16 @@ export class ClassGenerator {
             return fundamentalSelfType(fundamentalInfo.lib, fundamentalInfo.refFn, fundamentalInfo.unrefFn);
         }
         return SELF_TYPE_GOBJECT;
+    }
+
+    private buildGetGTypeMethod(): MethodDeclarationStructure {
+        return {
+            kind: StructureKind.Method,
+            name: "getGType",
+            isStatic: true,
+            returnType: "number",
+            statements: `return call("${this.options.sharedLibrary}", "${this.cls.glibGetType}", [], { type: "int", size: 64, unsigned: true }) as number;`,
+        };
     }
 
     private getFundamentalTypeInfo(): { lib: string; refFn: string; unrefFn: string } | null {

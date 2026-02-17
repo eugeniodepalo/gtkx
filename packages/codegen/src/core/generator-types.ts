@@ -41,7 +41,7 @@ export type PropertyAnalysis = {
     hasSyntheticSetter?: boolean;
     /** Whether this is a construct-only property (can only be set during object construction) */
     isConstructOnly?: boolean;
-    /** FFI type descriptor for construct-only props, used for g_object_new marshaling */
+    /** FFI type descriptor for writable props, used for construction and property marshaling */
     ffiType?: FfiTypeDescriptor;
 };
 

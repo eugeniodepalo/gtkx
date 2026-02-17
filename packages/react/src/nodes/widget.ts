@@ -11,12 +11,11 @@ import {
     typeNameFromInstance,
 } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { applyAccessibleProps, isAccessibleProp } from "./internal/accessible.js";
-import { createContainerWithConstructOnly } from "./internal/construct.js";
+import { createContainerWithProperties } from "./internal/construct.js";
 import {
     type InsertableWidget,
     isAddable,
@@ -56,15 +55,7 @@ export class WidgetNode<
         containerClass: typeof Gtk.Widget,
         _rootContainer?: Container,
     ): Container | null {
-        const WidgetClass = containerClass;
-        const typeName = WidgetClass.glibTypeName;
-        const args = (CONSTRUCTOR_PROPS[typeName] ?? []).map((name) => props[name]);
-
-        return createContainerWithConstructOnly(
-            WidgetClass,
-            props,
-            () => new WidgetClass(...(args as ConstructorParameters<typeof Gtk.Widget>)),
-        );
+        return createContainerWithProperties(containerClass, props);
     }
 
     public override isValidChild(_child: Node): boolean {

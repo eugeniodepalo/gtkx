@@ -13,13 +13,7 @@ import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType } from "../../../core/type-system/ffi-types.js";
 import { collectPropertiesWithDefaults, convertDefaultValue } from "../../../core/utils/default-value.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import {
-    normalizeClassName,
-    snakeToKebab,
-    toCamelCase,
-    toKebabCase,
-    toValidIdentifier,
-} from "../../../core/utils/naming.js";
+import { normalizeClassName, toCamelCase, toKebabCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
 
 type ConstructOnlyPropParam = {
@@ -123,13 +117,6 @@ export class ConstructorBuilder {
      * @param classDecl - The ts-morph ClassDeclaration to add constructor to
      * @param hasParent - Whether the class has a parent class
      * @returns Array of method declaration structures for factory methods
-     *
-     * @example
-     * ```typescript
-     * const builder = new ConstructorBuilder(cls, ffiMapper, ctx, builders, options);
-     * const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, true);
-     * classDecl.addMethods([...factoryMethods, ...otherMethods]);
-     * ```
      */
     addConstructorAndBuildFactoryStructures(
         classDecl: ClassDeclaration,
@@ -182,78 +169,15 @@ export class ConstructorBuilder {
         const params = this.buildConstructorParameters(ctor);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
-        const allConstructOnlyProps = this.collectConstructOnlyProps();
-        const coveredNames = new Set(ctor.parameters.map((p) => snakeToKebab(p.name)));
-        const uncoveredProps = allConstructOnlyProps.filter((p) => !coveredNames.has(p.girName));
-
-        if (uncoveredProps.length > 0 && this.cls.glibGetType) {
-            const extraParams = uncoveredProps.map((prop) => ({
-                name: prop.paramName,
-                type: prop.tsType,
-                hasQuestionToken: true,
-            }));
-
-            classDecl.addConstructor({
-                parameters: [...params, ...extraParams],
-                docs: buildJsDocStructure(ctor.doc, this.options.namespace),
-                statements: this.writeConstructorWithFlagBody(ctor, ownership, uncoveredProps),
-            });
-        } else {
-            classDecl.addConstructor({
-                parameters: params,
-                docs: buildJsDocStructure(ctor.doc, this.options.namespace),
-                statements: this.writeConstructorWithFlagBody(ctor, ownership),
-            });
-        }
+        classDecl.addConstructor({
+            parameters: params,
+            docs: buildJsDocStructure(ctor.doc, this.options.namespace),
+            statements: this.writeConstructorWithFlagBody(ctor, ownership),
+        });
     }
 
-    private writeConstructorWithFlagBody(
-        ctor: GirConstructor,
-        ownership: string,
-        uncoveredConstructOnlyProps?: ConstructOnlyPropParam[],
-    ): WriterFunction {
+    private writeConstructorWithFlagBody(ctor: GirConstructor, ownership: string): WriterFunction {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
-        const hasUncovered = uncoveredConstructOnlyProps && uncoveredConstructOnlyProps.length > 0;
-
-        const propertyNames = new Set(this.cls.getAllProperties().map((p) => p.name));
-        for (const ifaceQName of this.cls.getAllImplementedInterfaces()) {
-            const iface = this.repository.resolveInterface(ifaceQName);
-            if (iface) {
-                for (const prop of iface.properties) {
-                    propertyNames.add(prop.name);
-                }
-            }
-        }
-
-        const ctorParamProperties: Array<{ girName: string; ffiType: FfiTypeDescriptor; valueExpr: string }> = [];
-        const nonPropertyNonOptionalValues: string[] = [];
-
-        for (let i = 0; i < ctor.parameters.length; i++) {
-            const param = ctor.parameters[i];
-            const arg = args[i];
-            if (!param || !arg) continue;
-            const propName = snakeToKebab(param.name);
-            if (propertyNames.has(propName)) {
-                ctorParamProperties.push({
-                    girName: propName,
-                    ffiType: arg.type,
-                    valueExpr: arg.value,
-                });
-            } else if (!arg.optional) {
-                nonPropertyNonOptionalValues.push(arg.value);
-            }
-        }
-
-        if (hasUncovered) {
-            this.ctx.usesArg = true;
-        }
-
-        const glibGetType = this.cls.glibGetType;
-        const needsFallback = nonPropertyNonOptionalValues.length > 0 && glibGetType !== undefined;
-
-        if (needsFallback && ctorParamProperties.length > 0) {
-            this.ctx.usesArg = true;
-        }
 
         return (writer) => {
             this.methodBody.writeCallbackWrapperDeclarations(writer, args);
@@ -264,43 +188,7 @@ export class ConstructorBuilder {
                 writer.writeLine("// @ts-ignore");
                 writer.writeLine("super();");
                 writer.writeLine("setInstantiating(false);");
-
-                if (hasUncovered && uncoveredConstructOnlyProps) {
-                    const condition = uncoveredConstructOnlyProps
-                        .map((p) => `${p.paramName} !== undefined`)
-                        .join(" || ");
-                    const resolvedUncovered = uncoveredConstructOnlyProps;
-                    writer.writeLine(`if (${condition}) {`);
-                    writer.indent(() => {
-                        this.writeGObjectNewBranchCall(writer, ctorParamProperties, resolvedUncovered);
-                    });
-                    writer.writeLine("} else {");
-                    writer.indent(() => {
-                        this.writeCConstructorCallWithFallback(
-                            writer,
-                            ctor.cIdentifier,
-                            args,
-                            ownership,
-                            needsFallback,
-                            glibGetType,
-                            nonPropertyNonOptionalValues,
-                            ctorParamProperties,
-                        );
-                    });
-                    writer.writeLine("}");
-                } else {
-                    this.writeCConstructorCallWithFallback(
-                        writer,
-                        ctor.cIdentifier,
-                        args,
-                        ownership,
-                        needsFallback,
-                        glibGetType,
-                        nonPropertyNonOptionalValues,
-                        ctorParamProperties,
-                    );
-                }
-
+                this.writeCConstructorCall(writer, ctor.cIdentifier, args, ownership);
                 writer.writeLine("registerNativeObject(this);");
             });
             writer.writeLine("} else {");
@@ -310,42 +198,6 @@ export class ConstructorBuilder {
             });
             writer.writeLine("}");
         };
-    }
-
-    private writeCConstructorCallWithFallback(
-        writer: CodeBlockWriter,
-        cIdentifier: string,
-        args: Array<{ type: FfiTypeDescriptor; value: string; optional?: boolean }>,
-        ownership: string,
-        needsFallback: boolean,
-        glibGetType: string | undefined,
-        nonPropertyNonOptionalValues: string[],
-        ctorParamProperties: Array<{ girName: string; ffiType: FfiTypeDescriptor; valueExpr: string }>,
-    ): void {
-        if (!needsFallback || !glibGetType) {
-            this.writeCConstructorCall(writer, cIdentifier, args, ownership);
-            return;
-        }
-
-        const condition = nonPropertyNonOptionalValues.map((v) => `${v} !== undefined`).join(" && ");
-        writer.writeLine(`if (${condition}) {`);
-        writer.indent(() => {
-            this.writeCConstructorCall(writer, cIdentifier, args, ownership);
-        });
-        writer.writeLine("} else {");
-        writer.indent(() => {
-            this.writeGObjectNewCall(
-                writer,
-                glibGetType,
-                ctorParamProperties.map((p) => ({
-                    girName: p.girName,
-                    ffiType: p.ffiType,
-                    valueExpr: p.valueExpr,
-                    guardExpr: p.valueExpr,
-                })),
-            );
-        });
-        writer.writeLine("}");
     }
 
     private writeCConstructorCall(
@@ -371,28 +223,6 @@ export class ConstructorBuilder {
             writer.writeLine(`{ type: "gobject", ownership: "${ownership}" }`);
         });
         writer.writeLine(") as NativeHandle;");
-    }
-
-    private writeGObjectNewBranchCall(
-        writer: CodeBlockWriter,
-        ctorParamProperties: Array<{ girName: string; ffiType: FfiTypeDescriptor; valueExpr: string }>,
-        uncoveredProps: ConstructOnlyPropParam[],
-    ): void {
-        const allProps = [
-            ...ctorParamProperties.map((p) => ({
-                girName: p.girName,
-                ffiType: p.ffiType,
-                valueExpr: p.valueExpr,
-                guardExpr: p.valueExpr,
-            })),
-            ...uncoveredProps.map((p) => ({
-                girName: p.girName,
-                ffiType: p.ffiType,
-                valueExpr: p.valueExpr,
-                guardExpr: p.paramName,
-            })),
-        ];
-        this.writeGObjectNewCall(writer, this.cls.glibGetType as string, allProps);
     }
 
     private writeGObjectNewCall(

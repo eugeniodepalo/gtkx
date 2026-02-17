@@ -11,7 +11,6 @@ const createWidgetMeta = (overrides: Partial<CodegenWidgetMeta> = {}): CodegenWi
     parentClassName: "Widget",
     parentNamespace: "Gtk",
     modulePath: "./gtk/button.js",
-    constructorParams: [],
     properties: [],
     signals: [],
     slots: [],

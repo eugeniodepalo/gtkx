@@ -29,7 +29,6 @@ const fromString: CreateValue = (val) => Value.newFromString(val as string);
 const fromBoolean: CreateValue = (val) => Value.newFromBoolean(val as boolean);
 const fromInt: CreateValue = (val) => Value.newFromInt(val as number);
 const fromDouble: CreateValue = (val) => Value.newFromDouble(val as number);
-
 const fromObject: CreateValue = (val) => Value.newFromObject((val as GObject.Object) ?? null);
 
 const fromRefList: CreateValue = (val) => {

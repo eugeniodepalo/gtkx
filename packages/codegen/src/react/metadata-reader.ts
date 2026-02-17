@@ -46,7 +46,6 @@ export type WidgetInfo = Pick<
     | "signalNames"
     | "parentClassName"
     | "modulePath"
-    | "constructorParams"
     | "hiddenPropNames"
 >;
 

@@ -207,22 +207,6 @@ describe("CodegenMetadata", () => {
             expect(result?.parentNamespace).toBe("Gtk");
         });
 
-        it("stores constructor params", () => {
-            const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "box.ts");
-
-            const boxMeta = createCodegenWidgetMeta({
-                className: "Box",
-                constructorParams: ["orientation", "spacing"],
-            });
-
-            metadata.setWidgetMeta(sourceFile, boxMeta);
-            const result = metadata.getWidgetMeta(sourceFile);
-
-            expect(result?.constructorParams).toEqual(["orientation", "spacing"]);
-        });
-
         it("stores property analysis results", () => {
             const metadata = new CodegenMetadata();
             const project = createTestProject();

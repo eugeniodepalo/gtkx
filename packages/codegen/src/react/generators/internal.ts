@@ -2,16 +2,22 @@
  * Internal Generator
  *
  * Generates internal.ts for the reconciler.
- * Contains runtime prop/signal resolution and constructor parameters.
+ * Contains runtime prop/signal resolution and construction metadata.
  */
 
 import { type SourceFile, type WriterFunction, Writers } from "ts-morph";
 
-import type { CodegenControllerMeta } from "../../core/codegen-metadata.js";
+import type { PropertyAnalysis, SignalAnalysis } from "../../core/generator-types.js";
 import type { CodegenProject } from "../../core/project.js";
 import { toCamelCase } from "../../core/utils/naming.js";
-import { createConstExport, writeObjectOrEmpty, writeStringArray } from "../../core/utils/structure-helpers.js";
-import { type MetadataReader, sortWidgetsByClassName, type WidgetInfo } from "../metadata-reader.js";
+import { createConstExport, writeObjectOrEmpty } from "../../core/utils/structure-helpers.js";
+import { type MetadataReader, sortWidgetsByClassName } from "../metadata-reader.js";
+
+type ClassItem = {
+    readonly jsxName: string;
+    readonly properties: readonly PropertyAnalysis[];
+    readonly signals: readonly SignalAnalysis[];
+};
 
 export class InternalGenerator {
     constructor(
@@ -23,57 +29,42 @@ export class InternalGenerator {
         const sourceFile = this.project.createReactSourceFile("internal.ts");
 
         sourceFile.addStatements(
-            "/**\n * Internal metadata for the reconciler.\n * Runtime prop/signal resolution and constructor parameters.\n * Not part of the public API.\n */\n",
+            "/**\n * Internal metadata for the reconciler.\n * Runtime prop/signal resolution and construction metadata.\n * Not part of the public API.\n */\n",
         );
 
-        const allWidgets = this.collectAllWidgets();
-        const allControllers = this.collectAllControllers();
+        const items = this.collectClassItems();
 
-        this.generateConstructorProps(sourceFile, allWidgets, allControllers);
-        this.addConstructOnlyImports(sourceFile);
-        this.generateConstructOnlyPropsMap(sourceFile, allWidgets, allControllers);
-        this.generatePropsMap(sourceFile, allWidgets, allControllers);
-        this.generateSignalsMap(sourceFile, allWidgets, allControllers);
+        this.addTypeImports(sourceFile);
+        this.generateConstructionMeta(sourceFile, items);
+        this.generatePropsMap(sourceFile, items);
+        this.generateSignalsMap(sourceFile, items);
 
         return sourceFile;
     }
 
-    private collectAllWidgets(): WidgetInfo[] {
-        return sortWidgetsByClassName(this.reader.getAllWidgets());
-    }
+    private collectClassItems(): ClassItem[] {
+        const widgets = sortWidgetsByClassName(this.reader.getAllWidgets());
+        const controllers = this.project.metadata
+            .getAllControllerMeta()
+            .sort((a, b) => a.className.localeCompare(b.className));
 
-    private collectAllControllers(): CodegenControllerMeta[] {
-        return this.project.metadata.getAllControllerMeta().sort((a, b) => a.className.localeCompare(b.className));
-    }
+        const metaByJsxName = new Map(this.reader.getAllCodegenMeta().map((m) => [m.jsxName, m]));
 
-    private generateConstructorProps(
-        sourceFile: SourceFile,
-        widgets: WidgetInfo[],
-        controllers: CodegenControllerMeta[],
-    ): void {
-        const objectProperties: Record<string, WriterFunction> = {};
+        const items: ClassItem[] = [];
 
         for (const widget of widgets) {
-            if (widget.constructorParams.length > 0) {
-                objectProperties[widget.jsxName] = writeStringArray(widget.constructorParams);
-            }
+            const meta = metaByJsxName.get(widget.jsxName);
+            if (meta) items.push(meta);
         }
 
         for (const controller of controllers) {
-            if (controller.constructorParams.length > 0) {
-                objectProperties[controller.jsxName] = writeStringArray([...controller.constructorParams]);
-            }
+            items.push(controller);
         }
 
-        sourceFile.addVariableStatement(
-            createConstExport("CONSTRUCTOR_PROPS", writeObjectOrEmpty(objectProperties, Writers), {
-                type: "Record<string, string[]>",
-                docs: "Constructor parameters for each widget and controller type, derived from GIR analysis.",
-            }),
-        );
+        return items;
     }
 
-    private addConstructOnlyImports(sourceFile: SourceFile): void {
+    private addTypeImports(sourceFile: SourceFile): void {
         sourceFile.addImportDeclaration({
             moduleSpecifier: "@gtkx/ffi",
             namedImports: ["Type"],
@@ -81,150 +72,80 @@ export class InternalGenerator {
         });
     }
 
-    private generateConstructOnlyPropsMap(
-        sourceFile: SourceFile,
-        widgets: WidgetInfo[],
-        controllers: CodegenControllerMeta[],
-    ): void {
-        const allProperties: Record<string, WriterFunction> = {};
+    private generateConstructionMeta(sourceFile: SourceFile, items: readonly ClassItem[]): void {
+        const allEntries: Record<string, WriterFunction> = {};
 
-        const allMeta = this.reader.getAllCodegenMeta();
-        const metaByJsxName = new Map(allMeta.map((m) => [m.jsxName, m]));
-
-        for (const widget of widgets) {
-            const meta = metaByJsxName.get(widget.jsxName);
-            if (!meta) continue;
-
+        for (const item of items) {
             const propEntries: Record<string, string> = {};
 
-            for (const prop of meta.properties) {
-                if (!prop.isConstructOnly || !prop.ffiType) continue;
-                propEntries[`"${prop.camelName}"`] =
-                    `{ girName: "${prop.name}", ffiType: ${JSON.stringify(prop.ffiType)} }`;
+            for (const prop of item.properties) {
+                if (!prop.isWritable || !prop.ffiType) continue;
+                const base = `{ girName: "${prop.name}", ffiType: ${JSON.stringify(prop.ffiType)}`;
+                propEntries[`"${prop.camelName}"`] = prop.isConstructOnly
+                    ? `${base}, constructOnly: true as const }`
+                    : `${base} }`;
             }
 
             if (Object.keys(propEntries).length > 0) {
-                allProperties[widget.jsxName] = Writers.object(propEntries);
-            }
-        }
-
-        for (const controller of controllers) {
-            const propEntries: Record<string, string> = {};
-
-            for (const prop of controller.properties) {
-                if (!prop.isConstructOnly || !prop.ffiType) continue;
-                propEntries[`"${prop.camelName}"`] =
-                    `{ girName: "${prop.name}", ffiType: ${JSON.stringify(prop.ffiType)} }`;
-            }
-
-            if (Object.keys(propEntries).length > 0) {
-                allProperties[controller.jsxName] = Writers.object(propEntries);
+                allEntries[item.jsxName] = Writers.object(propEntries);
             }
         }
 
         sourceFile.addVariableStatement(
-            createConstExport("CONSTRUCT_ONLY_PROPS", writeObjectOrEmpty(allProperties, Writers), {
-                type: "Record<string, Record<string, { girName: string; ffiType: Type }>>",
-                docs: "Construct-only properties that can only be set during object construction via g_object_new.",
+            createConstExport("CONSTRUCTION_META", writeObjectOrEmpty(allEntries, Writers), {
+                type: "Record<string, Record<string, { girName: string; ffiType: Type; constructOnly?: true }>>",
+                docs: "Construction metadata for all writable properties. Used by the reconciler to create widgets via g_object_new_with_properties.",
             }),
         );
     }
 
-    private generatePropsMap(
-        sourceFile: SourceFile,
-        widgets: WidgetInfo[],
-        controllers: CodegenControllerMeta[],
-    ): void {
-        const allProperties: Record<string, WriterFunction> = {};
+    private generatePropsMap(sourceFile: SourceFile, items: readonly ClassItem[]): void {
+        const allEntries: Record<string, WriterFunction> = {};
 
-        const allMeta = this.reader.getAllCodegenMeta();
-        const metaByJsxName = new Map(allMeta.map((m) => [m.jsxName, m]));
+        for (const item of items) {
+            if (item.properties.length === 0) continue;
 
-        for (const widget of widgets) {
-            const meta = metaByJsxName.get(widget.jsxName);
-            if (!meta || meta.properties.length === 0) continue;
+            const propEntries: Record<string, string> = {};
 
-            const propProperties: Record<string, string> = {};
-
-            for (const prop of meta.properties) {
+            for (const prop of item.properties) {
                 if (!prop.isWritable || !prop.setter) continue;
 
                 const getterName = prop.getter ? toCamelCase(prop.getter) : null;
                 const setterName = toCamelCase(prop.setter);
-                propProperties[`"${prop.camelName}"`] = `[${getterName ? `"${getterName}"` : "null"}, "${setterName}"]`;
+                propEntries[`"${prop.camelName}"`] = `[${getterName ? `"${getterName}"` : "null"}, "${setterName}"]`;
             }
 
-            if (Object.keys(propProperties).length > 0) {
-                allProperties[widget.jsxName] = Writers.object(propProperties);
-            }
-        }
-
-        for (const controller of controllers) {
-            if (controller.properties.length === 0) continue;
-
-            const propProperties: Record<string, string> = {};
-
-            for (const prop of controller.properties) {
-                if (!prop.isWritable || !prop.setter) continue;
-
-                const getterName = prop.getter ? toCamelCase(prop.getter) : null;
-                const setterName = toCamelCase(prop.setter);
-                propProperties[`"${prop.camelName}"`] = `[${getterName ? `"${getterName}"` : "null"}, "${setterName}"]`;
-            }
-
-            if (Object.keys(propProperties).length > 0) {
-                allProperties[controller.jsxName] = Writers.object(propProperties);
+            if (Object.keys(propEntries).length > 0) {
+                allEntries[item.jsxName] = Writers.object(propEntries);
             }
         }
 
         sourceFile.addVariableStatement(
-            createConstExport("PROPS", writeObjectOrEmpty(allProperties, Writers), {
+            createConstExport("PROPS", writeObjectOrEmpty(allEntries, Writers), {
                 type: "Record<string, Record<string, [string | null, string]>>",
             }),
         );
     }
 
-    private generateSignalsMap(
-        sourceFile: SourceFile,
-        widgets: WidgetInfo[],
-        controllers: CodegenControllerMeta[],
-    ): void {
-        const objectProperties: Record<string, WriterFunction> = {};
+    private generateSignalsMap(sourceFile: SourceFile, items: readonly ClassItem[]): void {
+        const allEntries: Record<string, WriterFunction> = {};
 
-        const allMeta = this.reader.getAllCodegenMeta();
-        const metaByJsxName = new Map(allMeta.map((m) => [m.jsxName, m]));
+        for (const item of items) {
+            if (item.signals.length === 0) continue;
 
-        for (const widget of widgets) {
-            const meta = metaByJsxName.get(widget.jsxName);
-            if (!meta || meta.signals.length === 0) continue;
+            const signalEntries: Record<string, string> = {};
 
-            const signalProperties: Record<string, string> = {};
-
-            for (const signal of meta.signals) {
-                signalProperties[`"${signal.handlerName}"`] = `"${signal.name}"`;
+            for (const signal of item.signals) {
+                signalEntries[`"${signal.handlerName}"`] = `"${signal.name}"`;
             }
 
-            if (Object.keys(signalProperties).length > 0) {
-                objectProperties[widget.jsxName] = Writers.object(signalProperties);
-            }
-        }
-
-        for (const controller of controllers) {
-            if (controller.signals.length === 0) continue;
-
-            const signalProperties: Record<string, string> = {};
-
-            for (const signal of controller.signals) {
-                signalProperties[`"${signal.handlerName}"`] = `"${signal.name}"`;
-            }
-
-            if (Object.keys(signalProperties).length > 0) {
-                objectProperties[controller.jsxName] = Writers.object(signalProperties);
+            if (Object.keys(signalEntries).length > 0) {
+                allEntries[item.jsxName] = Writers.object(signalEntries);
             }
         }
 
         sourceFile.addVariableStatement(
-            createConstExport("SIGNALS", writeObjectOrEmpty(objectProperties, Writers), {
+            createConstExport("SIGNALS", writeObjectOrEmpty(allEntries, Writers), {
                 type: "Record<string, Record<string, string>>",
                 docs: "Signal handler prop name to GTK signal name mapping for widgets and controllers.",
             }),

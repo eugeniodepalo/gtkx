@@ -40,7 +40,6 @@ describe("CodegenProject", () => {
                 parentClassName: null,
                 parentNamespace: null,
                 modulePath: "./gtk/button.js",
-                constructorParams: [],
                 properties: [],
                 signals: [],
             };
@@ -464,7 +463,6 @@ describe("CodegenProject", () => {
                 parentClassName: "Widget",
                 parentNamespace: "Gtk",
                 modulePath: "./gtk/button.js",
-                constructorParams: [],
                 properties: [],
                 signals: [],
             });
@@ -478,7 +476,6 @@ describe("CodegenProject", () => {
                 parentClassName: null,
                 parentNamespace: null,
                 modulePath: "./gtk/widget.js",
-                constructorParams: [],
                 properties: [],
                 signals: [],
             });

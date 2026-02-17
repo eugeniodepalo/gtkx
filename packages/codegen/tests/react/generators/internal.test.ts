@@ -5,6 +5,7 @@ import { MetadataReader } from "../../../src/react/metadata-reader.js";
 import {
     createButtonMeta,
     createCodegenWidgetMeta,
+    createPropertyAnalysis,
     createSignalAnalysis,
     createWidgetMeta,
 } from "../../fixtures/metadata-fixtures.js";
@@ -54,20 +55,37 @@ describe("InternalGenerator", () => {
         });
     });
 
-    describe("CONSTRUCTOR_PROPS", () => {
-        it("generates CONSTRUCTOR_PROPS constant", () => {
-            const { project, generator } = createTestSetup();
+    describe("CONSTRUCTION_META", () => {
+        it("generates CONSTRUCTION_META constant", () => {
+            const buttonMeta = createButtonMeta({
+                properties: [
+                    createPropertyAnalysis({
+                        name: "label",
+                        camelName: "label",
+                        isWritable: true,
+                        ffiType: { type: "string", ownership: "borrowed" },
+                    }),
+                ],
+            });
+            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
 
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/internal.ts");
             const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("CONSTRUCTOR_PROPS");
+            expect(code).toContain("CONSTRUCTION_META");
         });
 
-        it("includes constructor params for widgets with params", () => {
+        it("includes writable props with ffiType", () => {
             const buttonMeta = createButtonMeta({
-                constructorParams: ["label", "iconName"],
+                properties: [
+                    createPropertyAnalysis({
+                        name: "label",
+                        camelName: "label",
+                        isWritable: true,
+                        ffiType: { type: "string", ownership: "borrowed" },
+                    }),
+                ],
             });
             const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
 
@@ -76,13 +94,22 @@ describe("InternalGenerator", () => {
             const sourceFile = project.getSourceFile("react/internal.ts");
             const code = sourceFile?.getFullText() ?? "";
             expect(code).toContain("GtkButton");
-            expect(code).toContain("label");
-            expect(code).toContain("iconName");
+            expect(code).toContain('"label"');
+            expect(code).toContain("girName");
+            expect(code).toContain("ffiType");
         });
 
-        it("excludes widgets without constructor params from CONSTRUCTOR_PROPS", () => {
+        it("marks construct-only props with constructOnly flag", () => {
             const buttonMeta = createButtonMeta({
-                constructorParams: [],
+                properties: [
+                    createPropertyAnalysis({
+                        name: "orientation",
+                        camelName: "orientation",
+                        isWritable: true,
+                        isConstructOnly: true,
+                        ffiType: { type: "int", size: 32, unsigned: false },
+                    }),
+                ],
             });
             const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
 
@@ -90,21 +117,64 @@ describe("InternalGenerator", () => {
 
             const sourceFile = project.getSourceFile("react/internal.ts");
             const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("CONSTRUCTOR_PROPS");
-            const constructorPropsStart = code.indexOf("CONSTRUCTOR_PROPS");
-            const nextExport = code.indexOf("export const", constructorPropsStart + 1);
-            const constructorPropsSection = code.slice(constructorPropsStart, nextExport);
-            expect(constructorPropsSection).not.toContain("GtkButton");
+            expect(code).toContain("constructOnly: true");
         });
 
-        it("has Record<string, string[]> type annotation", () => {
+        it("excludes non-writable props", () => {
+            const buttonMeta = createButtonMeta({
+                properties: [
+                    createPropertyAnalysis({
+                        name: "label",
+                        camelName: "label",
+                        isWritable: false,
+                        ffiType: { type: "string", ownership: "borrowed" },
+                    }),
+                ],
+            });
+            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
+
+            generator.generate();
+
+            const sourceFile = project.getSourceFile("react/internal.ts");
+            const code = sourceFile?.getFullText() ?? "";
+            const metaStart = code.indexOf("CONSTRUCTION_META");
+            const nextExport = code.indexOf("export const", metaStart + 1);
+            const metaSection = code.slice(metaStart, nextExport);
+            expect(metaSection).not.toContain("GtkButton");
+        });
+
+        it("excludes props without ffiType", () => {
+            const buttonMeta = createButtonMeta({
+                properties: [
+                    createPropertyAnalysis({
+                        name: "label",
+                        camelName: "label",
+                        isWritable: true,
+                    }),
+                ],
+            });
+            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
+
+            generator.generate();
+
+            const sourceFile = project.getSourceFile("react/internal.ts");
+            const code = sourceFile?.getFullText() ?? "";
+            const metaStart = code.indexOf("CONSTRUCTION_META");
+            const nextExport = code.indexOf("export const", metaStart + 1);
+            const metaSection = code.slice(metaStart, nextExport);
+            expect(metaSection).not.toContain("GtkButton");
+        });
+
+        it("has correct type annotation", () => {
             const { project, generator } = createTestSetup();
 
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/internal.ts");
             const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("Record<string, string[]>");
+            expect(code).toContain(
+                "Record<string, Record<string, { girName: string; ffiType: Type; constructOnly?: true }>>",
+            );
         });
     });
 
@@ -236,14 +306,14 @@ describe("InternalGenerator", () => {
     });
 
     describe("export statements", () => {
-        it("exports CONSTRUCTOR_PROPS", () => {
+        it("exports CONSTRUCTION_META", () => {
             const { project, generator } = createTestSetup();
 
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/internal.ts");
             const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("export const CONSTRUCTOR_PROPS");
+            expect(code).toContain("export const CONSTRUCTION_META");
         });
 
         it("exports PROPS", () => {
