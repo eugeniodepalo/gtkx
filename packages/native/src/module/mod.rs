@@ -3,17 +3,17 @@
 //! This module contains all the functions exported to JavaScript via Neon.
 
 mod alloc;
-mod freeze;
 mod call;
 mod field;
+mod freeze;
 mod object;
 mod start;
 mod stop;
 
 pub use alloc::alloc;
-pub use freeze::{freeze, unfreeze};
 pub use call::call;
 pub use field::{read, read_pointer, write, write_pointer};
+pub use freeze::{freeze, unfreeze};
 pub use object::get_native_id;
 pub use start::start;
 pub use stop::stop;
