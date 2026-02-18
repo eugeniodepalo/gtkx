@@ -1,9 +1,13 @@
 import type { NativeClass, Type } from "@gtkx/ffi";
-import { Object as GObject, toGValue, type Value } from "@gtkx/ffi/gobject";
+import { Object as GObject, toValue, type Value } from "@gtkx/ffi/gobject";
 import { CONSTRUCTION_META } from "../../generated/internal.js";
 import type { Container, ContainerClass, Props } from "../../types.js";
 
-type ConstructionPropMeta = { girName: string; ffiType: Type; constructOnly?: true };
+type ConstructionPropMeta = {
+    girName: string;
+    ffiType: Type;
+    constructOnly?: true;
+};
 
 function collectConstructionProps(
     containerClass: ContainerClass,
@@ -24,7 +28,11 @@ function collectConstructionProps(
                 if (seen.has(camelName)) continue;
                 seen.add(camelName);
                 if (props[camelName] !== undefined) {
-                    result.push({ girName: propMeta.girName, ffiType: propMeta.ffiType, value: props[camelName] });
+                    result.push({
+                        girName: propMeta.girName,
+                        ffiType: propMeta.ffiType,
+                        value: props[camelName],
+                    });
                 }
             }
         }
@@ -45,7 +53,7 @@ export function createContainerWithProperties(containerClass: ContainerClass, pr
 
     for (const { girName, ffiType, value } of constructionProps) {
         names.push(girName);
-        values.push(toGValue(ffiType, value));
+        values.push(toValue(ffiType, value));
     }
 
     return GObject.newWithProperties(gtype, names, values) as unknown as Container;

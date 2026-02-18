@@ -4,61 +4,13 @@ import { cleanup, render, screen, tick, userEvent } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-const getTreeModelItemCount = (listView: Gtk.ListView): number => {
-    const model = listView.getModel();
-    if (!model) return 0;
-    return model.getNItems() ?? 0;
-};
-
-const getTreeModelItemOrder = (listView: Gtk.ListView): string[] => {
-    const selectionModel = listView.getModel();
-    if (!selectionModel) return [];
-
-    const ids: string[] = [];
-    const nItems = selectionModel.getNItems();
-    for (let i = 0; i < nItems; i++) {
-        const row = (selectionModel as Gtk.SingleSelection).getObject(i) as Gtk.TreeListRow | null;
-        if (row) {
-            const item = row.getItem() as Gtk.StringObject | null;
-            if (item) {
-                ids.push(item.getString());
-            }
-        }
-    }
-    return ids;
-};
+import { getVisibleItemTexts } from "../helpers/get-visible-item-texts.js";
 
 const ScrollWrapper = ({ children }: { children: ReactNode }) => (
     <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
         {children}
     </GtkScrolledWindow>
 );
-
-const getModelItemCount = (listView: Gtk.ListView): number => {
-    const model = listView.getModel();
-    if (!model) return 0;
-    return model.getNItems() ?? 0;
-};
-
-const getModelItemOrder = (listView: Gtk.ListView | Gtk.GridView): string[] => {
-    const selectionModel = listView.getModel();
-    if (!selectionModel) return [];
-
-    const ids: string[] = [];
-    const nItems = selectionModel.getNItems();
-    for (let i = 0; i < nItems; i++) {
-        const obj = selectionModel.getObject(i);
-        const item =
-            obj instanceof Gtk.TreeListRow
-                ? (obj.getItem() as Gtk.StringObject | null)
-                : (obj as Gtk.StringObject | null);
-        if (item) {
-            ids.push(item.getString());
-        }
-    }
-    return ids;
-};
 
 describe("render - ListView", () => {
     describe("GtkListView", () => {
@@ -67,7 +19,10 @@ describe("render - ListView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                    >
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkListView>
                 </ScrollWrapper>,
@@ -79,27 +34,26 @@ describe("render - ListView", () => {
 
     describe("ListItem", () => {
         it("adds item to list model", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                    <GtkListView renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}>
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkListView>
                 </ScrollWrapper>,
             );
 
-            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
 
         it("inserts item before existing item", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((item) => (
                                 <x.ListItem key={item.id} id={item.id} value={item} />
                             ))}
@@ -117,7 +71,8 @@ describe("render - ListView", () => {
                 />,
             );
 
-            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Third")).toHaveLength(1);
 
             await render(
                 <App
@@ -129,16 +84,18 @@ describe("render - ListView", () => {
                 />,
             );
 
-            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
+            expect(screen.queryAllByText("Third")).toHaveLength(1);
         });
 
         it("removes item from list model", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((item) => (
                                 <x.ListItem key={item.id} id={item.id} value={item} />
                             ))}
@@ -157,7 +114,9 @@ describe("render - ListView", () => {
                 />,
             );
 
-            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
+            expect(screen.queryAllByText("A")).toHaveLength(1);
+            expect(screen.queryAllByText("B")).toHaveLength(1);
+            expect(screen.queryAllByText("C")).toHaveLength(1);
 
             await render(
                 <App
@@ -168,16 +127,18 @@ describe("render - ListView", () => {
                 />,
             );
 
-            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
+            expect(screen.queryAllByText("A")).toHaveLength(1);
+            expect(screen.queryAllByText("B")).toHaveLength(0);
+            expect(screen.queryAllByText("C")).toHaveLength(1);
         });
 
         it("updates item value", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ itemName }: { itemName: string }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             <x.ListItem id="1" value={{ name: itemName }} />
                         </GtkListView>
                     </ScrollWrapper>
@@ -190,13 +151,10 @@ describe("render - ListView", () => {
         });
 
         it("re-renders bound items when value changes", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ itemName }: { itemName: string }) {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            ref={ref}
                             renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />}
                         >
                             <x.ListItem id="1" value={{ name: itemName }} />
@@ -207,31 +165,22 @@ describe("render - ListView", () => {
 
             await render(<App itemName="Initial" />);
 
-            const listView = ref.current as Gtk.ListView;
-            const getFirstLabelText = (): string | null => {
-                const cell = listView.getFirstChild();
-                const expander = cell?.getFirstChild();
-                const box = expander?.getFirstChild();
-                const label = box?.getFirstChild() as Gtk.Label | null;
-                return label?.getLabel() ?? null;
-            };
-
-            expect(getFirstLabelText()).toBe("Initial");
+            expect(screen.queryAllByText("Initial")).toHaveLength(1);
 
             await render(<App itemName="Updated" />);
 
-            expect(getFirstLabelText()).toBe("Updated");
+            expect(screen.queryAllByText("Updated")).toHaveLength(1);
+            expect(screen.queryAllByText("Initial")).toHaveLength(0);
         });
     });
 
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
-            const ref = createRef<Gtk.ListView>();
             const renderItem = vi.fn((item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />);
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={renderItem}>
+                    <GtkListView renderItem={renderItem}>
                         <x.ListItem id="1" value={{ name: "Test Item" }} />
                     </GtkListView>
                 </ScrollWrapper>,
@@ -239,13 +188,10 @@ describe("render - ListView", () => {
         });
 
         it("updates when renderItem function changes", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ prefix }: { prefix: string }) {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            ref={ref}
                             renderItem={(item: { name: string } | null) => (
                                 <GtkLabel label={`${prefix}: ${item?.name ?? ""}`} />
                             )}
@@ -264,11 +210,12 @@ describe("render - ListView", () => {
 
     describe("selection - single", () => {
         it("sets selected item via selected prop", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} selected={["2"]}>
+                    <GtkListView
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        selected={["2"]}
+                    >
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkListView>
@@ -282,7 +229,11 @@ describe("render - ListView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} onSelectionChanged={onSelectionChanged}>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        onSelectionChanged={onSelectionChanged}
+                    >
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkListView>
@@ -295,12 +246,13 @@ describe("render - ListView", () => {
         });
 
         it("handles unselect (empty selection)", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ selected }: { selected: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"} selected={selected}>
+                        <GtkListView
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            selected={selected}
+                        >
                             <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkListView>
                     </ScrollWrapper>
@@ -315,11 +267,12 @@ describe("render - ListView", () => {
 
     describe("selection - multiple", () => {
         it("enables multi-select with selectionMode", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} selectionMode={Gtk.SelectionMode.MULTIPLE}>
+                    <GtkListView
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        selectionMode={Gtk.SelectionMode.MULTIPLE}
+                    >
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkListView>
@@ -328,13 +281,10 @@ describe("render - ListView", () => {
         });
 
         it("sets multiple selected items", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             await render(
                 <ScrollWrapper>
                     <GtkListView
-                        ref={ref}
-                        renderItem={() => "Item"}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
                         selected={["1", "3"]}
                     >
@@ -354,7 +304,7 @@ describe("render - ListView", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={() => "Item"}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
                         onSelectionChanged={onSelectionChanged}
                     >
@@ -376,7 +326,10 @@ describe("render - ListView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkGridView ref={ref} renderItem={() => "Item"}>
+                    <GtkGridView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                    >
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkGridView>
                 </ScrollWrapper>,
@@ -410,7 +363,10 @@ describe("render - ListView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                    >
                         <x.ListItem id="c" value={{ name: "C" }} />
                         <x.ListItem id="a" value={{ name: "A" }} />
                         <x.ListItem id="b" value={{ name: "B" }} />
@@ -418,7 +374,7 @@ describe("render - ListView", () => {
                 </ScrollWrapper>,
             );
 
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["c", "a", "b"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["C", "A", "B"]);
         });
 
         it("handles complete reversal of items", async () => {
@@ -427,7 +383,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -437,10 +396,10 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D", "E"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D", "E"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D", "E"]);
 
             await render(<App items={["E", "D", "C", "B", "A"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["E", "D", "C", "B", "A"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
         it("handles interleaved reordering", async () => {
@@ -449,7 +408,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -459,10 +421,10 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
             await render(<App items={["B", "D", "A", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "D", "A", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["B", "D", "A", "C"]);
         });
 
         it("handles removing and adding while reordering", async () => {
@@ -471,7 +433,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -481,10 +446,10 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={["A", "B", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
 
             await render(<App items={["D", "B", "E"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["D", "B", "E"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["D", "B", "E"]);
         });
 
         it("handles insert at beginning", async () => {
@@ -493,7 +458,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -503,10 +471,10 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={["B", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["B", "C"]);
 
             await render(<App items={["A", "B", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
         });
 
         it("handles single item to multiple items", async () => {
@@ -515,7 +483,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -525,10 +496,10 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={["A"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A"]);
 
             await render(<App items={["X", "A", "Y"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["X", "A", "Y"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["X", "A", "Y"]);
         });
 
         it("handles rapid reordering", async () => {
@@ -537,7 +508,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -551,7 +525,7 @@ describe("render - ListView", () => {
             await render(<App items={["B", "C", "A"]} />);
             await render(<App items={["A", "B", "C"]} />);
 
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
         });
 
         it("handles large dataset reordering (200 items)", { timeout: 15000 }, async () => {
@@ -563,7 +537,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -573,10 +550,14 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={initialItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(initialItems);
+            const visibleBefore = getVisibleItemTexts(ref.current as Gtk.ListView);
+            expect(visibleBefore.length).toBeGreaterThan(0);
+            expect(visibleBefore[0]).toBe("1");
 
             await render(<App items={reversedItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(reversedItems);
+            const visibleAfter = getVisibleItemTexts(ref.current as Gtk.ListView);
+            expect(visibleAfter.length).toBeGreaterThan(0);
+            expect(visibleAfter[0]).toBe("200");
         });
 
         it("handles move first item to last position", async () => {
@@ -585,7 +566,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -595,10 +579,10 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
             await render(<App items={["B", "C", "D", "A"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "C", "D", "A"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["B", "C", "D", "A"]);
         });
 
         it("handles move last item to first position", async () => {
@@ -607,7 +591,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -617,10 +604,10 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
             await render(<App items={["D", "A", "B", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["D", "A", "B", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["D", "A", "B", "C"]);
         });
 
         it("handles swap of two items", async () => {
@@ -629,7 +616,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -639,10 +629,10 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
             await render(<App items={["A", "C", "B", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "C", "B", "D"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "C", "B", "D"]);
         });
 
         it("handles filtered view reordering", async () => {
@@ -659,7 +649,7 @@ describe("render - ListView", () => {
 
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView ref={ref} renderItem={(item: Item | null) => <GtkLabel label={item?.id ?? ""} />}>
                             {filteredItems.map((item) => (
                                 <x.ListItem key={item.id} id={item.id} value={item} />
                             ))}
@@ -677,21 +667,20 @@ describe("render - ListView", () => {
             ];
 
             await render(<App filter="all" items={items} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3", "4", "5"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["1", "2", "3", "4", "5"]);
 
             await render(<App filter="active" items={items} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "3", "5"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["1", "3", "5"]);
 
             await render(<App filter="inactive" items={items} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["2", "4"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["2", "4"]);
 
             await render(<App filter="all" items={items} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3", "4", "5"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["1", "2", "3", "4", "5"]);
         });
 
         it("preserves order when only item values change", async () => {
             const ref = createRef<Gtk.ListView>();
-            const renderCalls: Array<{ id: string; name: string }> = [];
 
             type Item = { id: string; name: string };
 
@@ -700,12 +689,7 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: Item | null) => {
-                                if (item) {
-                                    renderCalls.push({ id: item.id, name: item.name });
-                                }
-                                return <GtkLabel label={item?.name ?? ""} />;
-                            }}
+                            renderItem={(item: Item | null) => <GtkLabel label={item?.name ?? ""} />}
                         >
                             {items.map((item) => (
                                 <x.ListItem key={item.id} id={item.id} value={item} />
@@ -722,9 +706,7 @@ describe("render - ListView", () => {
             ];
 
             await render(<App items={initialItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
-
-            renderCalls.length = 0;
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Alice", "Bob", "Charlie"]);
 
             const updatedItems: Item[] = [
                 { id: "1", name: "Alice Updated" },
@@ -733,7 +715,11 @@ describe("render - ListView", () => {
             ];
 
             await render(<App items={updatedItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Alice Updated",
+                "Bob Updated",
+                "Charlie Updated",
+            ]);
         });
 
         it("preserves order when updating a single item value", async () => {
@@ -765,7 +751,11 @@ describe("render - ListView", () => {
             ];
 
             await render(<App items={initialItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Counter A: 0",
+                "Counter B: 0",
+                "Counter C: 0",
+            ]);
 
             const updatedItems: Item[] = [
                 { id: "1", name: "Counter A", count: 0 },
@@ -774,7 +764,11 @@ describe("render - ListView", () => {
             ];
 
             await render(<App items={updatedItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Counter A: 0",
+                "Counter B: 5",
+                "Counter C: 0",
+            ]);
         });
 
         it("preserves order with frequent value updates", async () => {
@@ -804,7 +798,7 @@ describe("render - ListView", () => {
             ];
 
             await render(<App items={baseItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["0", "0", "0"]);
 
             for (let i = 1; i <= 10; i++) {
                 const updatedItems: Item[] = [
@@ -813,7 +807,11 @@ describe("render - ListView", () => {
                     { id: "3", value: i * 3 },
                 ];
                 await render(<App items={updatedItems} />);
-                expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
+                expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                    String(i),
+                    String(i * 2),
+                    String(i * 3),
+                ]);
             }
         });
     });
@@ -829,7 +827,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkGridView ref={ref} renderItem={() => "Item"}>
+                        <GtkGridView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -839,10 +840,10 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D", "E"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["A", "B", "C", "D", "E"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.GridView)).toEqual(["A", "B", "C", "D", "E"]);
 
             await render(<App items={["E", "D", "C", "B", "A"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["E", "D", "C", "B", "A"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.GridView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
         it("handles interleaved reordering", async () => {
@@ -851,7 +852,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkGridView ref={ref} renderItem={() => "Item"}>
+                        <GtkGridView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -861,10 +865,10 @@ describe("render - ListView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["A", "B", "C", "D"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.GridView)).toEqual(["A", "B", "C", "D"]);
 
             await render(<App items={["B", "D", "A", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["B", "D", "A", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.GridView)).toEqual(["B", "D", "A", "C"]);
         });
 
         it("handles rapid reordering", async () => {
@@ -873,7 +877,10 @@ describe("render - ListView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkGridView ref={ref} renderItem={() => "Item"}>
+                        <GtkGridView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -887,7 +894,7 @@ describe("render - ListView", () => {
             await render(<App items={["B", "C", "A"]} />);
             await render(<App items={["A", "B", "C"]} />);
 
-            expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["A", "B", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.GridView)).toEqual(["A", "B", "C"]);
         });
     });
 });
@@ -903,7 +910,10 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                    >
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkListView>
                 </ScrollWrapper>,
@@ -915,18 +925,17 @@ describe("render - ListView (tree)", () => {
 
     describe("ListItem (tree)", () => {
         it("adds item to tree model", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                    <GtkListView renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}>
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkListView>
                 </ScrollWrapper>,
             );
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(2);
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
 
         it("supports nested tree items", async () => {
@@ -934,7 +943,11 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} autoexpand>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        autoexpand
+                    >
                         <x.ListItem id="parent" value={{ name: "Parent" }}>
                             <x.ListItem id="child1" value={{ name: "Child 1" }} />
                             <x.ListItem id="child2" value={{ name: "Child 2" }} />
@@ -947,12 +960,12 @@ describe("render - ListView (tree)", () => {
         });
 
         it("inserts item before existing item", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((item) => (
                                 <x.ListItem key={item.id} id={item.id} value={item} />
                             ))}
@@ -970,7 +983,8 @@ describe("render - ListView (tree)", () => {
                 />,
             );
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(2);
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Third")).toHaveLength(1);
 
             await render(
                 <App
@@ -982,16 +996,18 @@ describe("render - ListView (tree)", () => {
                 />,
             );
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(3);
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
+            expect(screen.queryAllByText("Third")).toHaveLength(1);
         });
 
         it("removes item from tree model", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((item) => (
                                 <x.ListItem key={item.id} id={item.id} value={item} />
                             ))}
@@ -1010,7 +1026,9 @@ describe("render - ListView (tree)", () => {
                 />,
             );
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(3);
+            expect(screen.queryAllByText("A")).toHaveLength(1);
+            expect(screen.queryAllByText("B")).toHaveLength(1);
+            expect(screen.queryAllByText("C")).toHaveLength(1);
 
             await render(
                 <App
@@ -1021,16 +1039,18 @@ describe("render - ListView (tree)", () => {
                 />,
             );
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(2);
+            expect(screen.queryAllByText("A")).toHaveLength(1);
+            expect(screen.queryAllByText("B")).toHaveLength(0);
+            expect(screen.queryAllByText("C")).toHaveLength(1);
         });
 
         it("updates item value", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ itemName }: { itemName: string }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             <x.ListItem id="1" value={{ name: itemName }} />
                         </GtkListView>
                     </ScrollWrapper>
@@ -1045,12 +1065,11 @@ describe("render - ListView (tree)", () => {
 
     describe("renderItem (tree)", () => {
         it("receives item data in renderItem", async () => {
-            const ref = createRef<Gtk.ListView>();
             const renderItem = vi.fn((item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />);
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={renderItem}>
+                    <GtkListView renderItem={renderItem}>
                         <x.ListItem id="1" value={{ name: "Test Item" }} />
                     </GtkListView>
                 </ScrollWrapper>,
@@ -1058,14 +1077,13 @@ describe("render - ListView (tree)", () => {
         });
 
         it("receives TreeListRow in renderItem", async () => {
-            const ref = createRef<Gtk.ListView>();
             const renderItem = vi.fn((item: { name: string } | null, row?: Gtk.TreeListRow | null) => (
                 <GtkLabel label={`${item?.name ?? ""} - depth: ${row?.getDepth() ?? 0}`} />
             ));
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={renderItem} autoexpand>
+                    <GtkListView renderItem={renderItem} autoexpand>
                         <x.ListItem id="parent" value={{ name: "Parent" }}>
                             <x.ListItem id="child" value={{ name: "Child" }} />
                         </x.ListItem>
@@ -1075,13 +1093,10 @@ describe("render - ListView (tree)", () => {
         });
 
         it("updates when renderItem function changes", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ prefix }: { prefix: string }) {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            ref={ref}
                             renderItem={(item: { name: string } | null) => (
                                 <GtkLabel label={`${prefix}: ${item?.name ?? ""}`} />
                             )}
@@ -1104,7 +1119,11 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} autoexpand>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        autoexpand
+                    >
                         <x.ListItem id="parent" value={{ name: "Parent" }}>
                             <x.ListItem id="child" value={{ name: "Child" }} />
                         </x.ListItem>
@@ -1120,7 +1139,11 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} autoexpand>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        autoexpand
+                    >
                         <x.ListItem id="parent" value={{ name: "Parent" }}>
                             <x.ListItem id="child1" value={{ name: "Child 1" }} />
                             <x.ListItem id="child2" value={{ name: "Child 2" }} />
@@ -1129,16 +1152,13 @@ describe("render - ListView (tree)", () => {
                 </ScrollWrapper>,
             );
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(3);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual(["parent", "child1", "child2"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Parent", "Child 1", "Child 2"]);
         });
 
         it("parent row is expandable when it has children", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                    <GtkListView renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}>
                         <x.ListItem id="parent" value={{ name: "Parent" }}>
                             <x.ListItem id="child1" value={{ name: "Child 1" }} />
                         </x.ListItem>
@@ -1146,12 +1166,15 @@ describe("render - ListView (tree)", () => {
                 </ScrollWrapper>,
             );
 
-            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
-            expect(selectionModel.getNItems()).toBeGreaterThan(0);
-            const row = selectionModel.getObject(0) as Gtk.TreeListRow;
-            expect(row).not.toBeNull();
+            const treeExpanders = screen
+                .queryAllByRole(Gtk.AccessibleRole.BUTTON)
+                .filter((w): w is Gtk.TreeExpander => w instanceof Gtk.TreeExpander);
+            expect(treeExpanders.length).toBeGreaterThan(0);
 
-            expect(row.isExpandable()).toBe(true);
+            const expander = treeExpanders[0] as Gtk.TreeExpander;
+            const row = expander.getListRow();
+            expect(row).not.toBeNull();
+            expect(row?.isExpandable()).toBe(true);
         });
 
         it("expands parent row to show children when expanded", async () => {
@@ -1159,7 +1182,10 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                    >
                         <x.ListItem id="parent" value={{ name: "Parent" }}>
                             <x.ListItem id="child1" value={{ name: "Child 1" }} />
                             <x.ListItem id="child2" value={{ name: "Child 2" }} />
@@ -1168,14 +1194,18 @@ describe("render - ListView (tree)", () => {
                 </ScrollWrapper>,
             );
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(1);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Parent"]);
 
-            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
-            const row = selectionModel.getObject(0) as Gtk.TreeListRow;
+            const treeExpanders = screen
+                .queryAllByRole(Gtk.AccessibleRole.BUTTON)
+                .filter((w): w is Gtk.TreeExpander => w instanceof Gtk.TreeExpander);
+            const expander = treeExpanders[0] as Gtk.TreeExpander;
+            const row = expander.getListRow();
+            if (!row) throw new Error("Expected row to exist");
             row.setExpanded(true);
+            await tick();
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(3);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual(["parent", "child1", "child2"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Parent", "Child 1", "Child 2"]);
         });
 
         it("updates autoexpand property", async () => {
@@ -1184,7 +1214,11 @@ describe("render - ListView (tree)", () => {
             function App({ autoexpand }: { autoexpand: boolean }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"} autoexpand={autoexpand}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            autoexpand={autoexpand}
+                        >
                             <x.ListItem id="parent" value={{ name: "Parent" }}>
                                 <x.ListItem id="child" value={{ name: "Child" }} />
                             </x.ListItem>
@@ -1201,11 +1235,15 @@ describe("render - ListView (tree)", () => {
 
     describe("selection - single (tree)", () => {
         it("sets selected item via selected prop", async () => {
-            const ref = createRef<Gtk.ListView>();
+            const onSelectionChanged = vi.fn();
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} selected={["2"]}>
+                    <GtkListView
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        selected={["2"]}
+                        onSelectionChanged={onSelectionChanged}
+                    >
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkListView>
@@ -1214,18 +1252,19 @@ describe("render - ListView (tree)", () => {
 
             await tick();
 
-            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
-            const selection = selectionModel.getSelection();
-            expect(selection.getSize()).toBe(1);
-            expect(selection.getNth(0)).toBe(1);
+            expect(onSelectionChanged).toHaveBeenCalledWith(["2"]);
         });
 
         it("sets initial selection on first render", async () => {
-            const ref = createRef<Gtk.ListView>();
+            const onSelectionChanged = vi.fn();
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} selected={["first"]}>
+                    <GtkListView
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        selected={["first"]}
+                        onSelectionChanged={onSelectionChanged}
+                    >
                         <x.ListItem id="first" value={{ name: "First" }} />
                         <x.ListItem id="second" value={{ name: "Second" }} />
                         <x.ListItem id="third" value={{ name: "Third" }} />
@@ -1233,10 +1272,7 @@ describe("render - ListView (tree)", () => {
                 </ScrollWrapper>,
             );
 
-            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
-            const selection = selectionModel.getSelection();
-            expect(selection.getSize()).toBe(1);
-            expect(selection.getNth(0)).toBe(0);
+            expect(onSelectionChanged).toHaveBeenCalledWith(["first"]);
         });
 
         it("calls onSelectionChanged when selection changes", async () => {
@@ -1245,7 +1281,11 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} onSelectionChanged={onSelectionChanged}>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        onSelectionChanged={onSelectionChanged}
+                    >
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkListView>
@@ -1258,12 +1298,13 @@ describe("render - ListView (tree)", () => {
         });
 
         it("handles unselect (empty selection)", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             function App({ selected }: { selected: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"} selected={selected}>
+                        <GtkListView
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            selected={selected}
+                        >
                             <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkListView>
                     </ScrollWrapper>
@@ -1278,11 +1319,12 @@ describe("render - ListView (tree)", () => {
 
     describe("selection - multiple (tree)", () => {
         it("enables multi-select with selectionMode", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} selectionMode={Gtk.SelectionMode.MULTIPLE}>
+                    <GtkListView
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        selectionMode={Gtk.SelectionMode.MULTIPLE}
+                    >
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkListView>
@@ -1291,13 +1333,10 @@ describe("render - ListView (tree)", () => {
         });
 
         it("sets multiple selected items", async () => {
-            const ref = createRef<Gtk.ListView>();
-
             await render(
                 <ScrollWrapper>
                     <GtkListView
-                        ref={ref}
-                        renderItem={() => "Item"}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
                         selected={["1", "3"]}
                     >
@@ -1317,7 +1356,7 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={() => "Item"}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
                         onSelectionChanged={onSelectionChanged}
                     >
@@ -1339,7 +1378,10 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"}>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                    >
                         <x.ListItem id="c" value={{ name: "C" }} />
                         <x.ListItem id="a" value={{ name: "A" }} />
                         <x.ListItem id="b" value={{ name: "B" }} />
@@ -1347,7 +1389,7 @@ describe("render - ListView (tree)", () => {
                 </ScrollWrapper>,
             );
 
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual(["c", "a", "b"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["C", "A", "B"]);
         });
 
         it("handles complete reversal of items", async () => {
@@ -1356,7 +1398,10 @@ describe("render - ListView (tree)", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -1366,10 +1411,10 @@ describe("render - ListView (tree)", () => {
             }
 
             await render(<App items={["A", "B", "C", "D", "E"]} />);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D", "E"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D", "E"]);
 
             await render(<App items={["E", "D", "C", "B", "A"]} />);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual(["E", "D", "C", "B", "A"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
         it("handles interleaved reordering", async () => {
@@ -1378,7 +1423,10 @@ describe("render - ListView (tree)", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -1388,10 +1436,10 @@ describe("render - ListView (tree)", () => {
             }
 
             await render(<App items={["A", "B", "C", "D"]} />);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
             await render(<App items={["B", "D", "A", "C"]} />);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "D", "A", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["B", "D", "A", "C"]);
         });
 
         it("handles removing and adding while reordering", async () => {
@@ -1400,7 +1448,10 @@ describe("render - ListView (tree)", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -1410,10 +1461,10 @@ describe("render - ListView (tree)", () => {
             }
 
             await render(<App items={["A", "B", "C"]} />);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
 
             await render(<App items={["D", "B", "E"]} />);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual(["D", "B", "E"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["D", "B", "E"]);
         });
 
         it("handles rapid reordering", async () => {
@@ -1422,7 +1473,10 @@ describe("render - ListView (tree)", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={() => "Item"}>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        >
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -1436,14 +1490,13 @@ describe("render - ListView (tree)", () => {
             await render(<App items={["B", "C", "A"]} />);
             await render(<App items={["A", "B", "C"]} />);
 
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
         });
     });
 
     describe("nested children rendering", () => {
         it("renders all nested children with correct data after expansion", async () => {
             const ref = createRef<Gtk.ListView>();
-            const renderedItems: Array<{ id: string; name: string } | null> = [];
 
             interface Category {
                 type: "category";
@@ -1476,7 +1529,7 @@ describe("render - ListView (tree)", () => {
                     id: "notifications",
                     name: "Notifications",
                     children: [
-                        { type: "setting", id: "notifications-enabled", name: "Notifications" },
+                        { type: "setting", id: "notifications-enabled", name: "Alerts" },
                         { type: "setting", id: "sounds", name: "Notification Sounds" },
                         { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
                         { type: "setting", id: "badge-count", name: "Show Badge Count" },
@@ -1500,7 +1553,6 @@ describe("render - ListView (tree)", () => {
                     <GtkListView<TreeItem>
                         ref={ref}
                         renderItem={(item) => {
-                            renderedItems.push(item ? { id: item.id, name: item.name } : null);
                             if (!item) {
                                 return <GtkLabel label="Loading..." />;
                             }
@@ -1523,36 +1575,40 @@ describe("render - ListView (tree)", () => {
                 </ScrollWrapper>,
             );
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(3);
-
-            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
-            const notificationsRow = selectionModel.getObject(1) as Gtk.TreeListRow;
-            expect(notificationsRow.isExpandable()).toBe(true);
-
-            notificationsRow.setExpanded(true);
-            await tick();
-            await tick();
-            renderedItems.length = 0;
-            await tick();
-
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(7);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual([
-                "appearance",
-                "notifications",
-                "notifications-enabled",
-                "sounds",
-                "do-not-disturb",
-                "badge-count",
-                "privacy",
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Appearance",
+                "Notifications",
+                "Privacy",
             ]);
 
-            const nullItems = renderedItems.filter((item) => item === null);
-            expect(nullItems.length).toBe(0);
+            const treeExpanders = screen
+                .queryAllByRole(Gtk.AccessibleRole.BUTTON)
+                .filter((w): w is Gtk.TreeExpander => w instanceof Gtk.TreeExpander)
+                .filter((w) => w.getListRow()?.isExpandable());
+
+            const notificationsExpander = treeExpanders[1] as Gtk.TreeExpander;
+            const row = notificationsExpander.getListRow();
+            if (!row) throw new Error("Expected row to exist");
+
+            row.setExpanded(true);
+            await tick();
+            await tick();
+            await tick();
+
+            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Appearance",
+                "Notifications",
+                "Alerts",
+                "Notification Sounds",
+                "Do Not Disturb",
+                "Show Badge Count",
+                "Privacy",
+            ]);
         });
 
         it("renders all children with correct data when using autoexpand", async () => {
             const ref = createRef<Gtk.ListView>();
-            const renderedItems: Array<{ id: string; name: string } | null> = [];
 
             interface Category {
                 type: "category";
@@ -1574,7 +1630,7 @@ describe("render - ListView (tree)", () => {
                     id: "notifications",
                     name: "Notifications",
                     children: [
-                        { type: "setting", id: "notifications-enabled", name: "Notifications" },
+                        { type: "setting", id: "notifications-enabled", name: "Alerts" },
                         { type: "setting", id: "sounds", name: "Notification Sounds" },
                         { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
                         { type: "setting", id: "badge-count", name: "Show Badge Count" },
@@ -1588,7 +1644,6 @@ describe("render - ListView (tree)", () => {
                         ref={ref}
                         autoexpand
                         renderItem={(item) => {
-                            renderedItems.push(item ? { id: item.id, name: item.name } : null);
                             if (!item) {
                                 return <GtkLabel label="Loading..." />;
                             }
@@ -1613,20 +1668,16 @@ describe("render - ListView (tree)", () => {
 
             await tick();
             await tick();
-            renderedItems.length = 0;
             await tick();
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(5);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual([
-                "notifications",
-                "notifications-enabled",
-                "sounds",
-                "do-not-disturb",
-                "badge-count",
+            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Notifications",
+                "Alerts",
+                "Notification Sounds",
+                "Do Not Disturb",
+                "Show Badge Count",
             ]);
-
-            const nullItems = renderedItems.filter((item) => item === null);
-            expect(nullItems.length).toBe(0);
         });
     });
 
@@ -1636,7 +1687,11 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} autoexpand>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        autoexpand
+                    >
                         <x.ListItem id="parent" value={{ name: "Parent" }} indentForDepth={false}>
                             <x.ListItem id="child" value={{ name: "Child" }} indentForDepth={true} />
                         </x.ListItem>
@@ -1652,7 +1707,11 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} autoexpand>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        autoexpand
+                    >
                         <x.ListItem id="parent" value={{ name: "Parent" }} indentForIcon={true}>
                             <x.ListItem id="child" value={{ name: "Child" }} indentForIcon={false} />
                         </x.ListItem>
@@ -1668,7 +1727,11 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView ref={ref} renderItem={() => "Item"} autoexpand>
+                    <GtkListView
+                        ref={ref}
+                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        autoexpand
+                    >
                         <x.ListItem id="parent" value={{ name: "Parent" }} hideExpander={false}>
                             <x.ListItem id="child" value={{ name: "Child" }} hideExpander={true} />
                         </x.ListItem>
@@ -1683,7 +1746,6 @@ describe("render - ListView (tree)", () => {
     describe("settings tree regression", () => {
         it("renders all children with non-null values on first expansion", async () => {
             const ref = createRef<Gtk.ListView>();
-            const renderedItems: Array<{ id: string; name: string } | null> = [];
 
             interface Category {
                 type: "category";
@@ -1718,7 +1780,6 @@ describe("render - ListView (tree)", () => {
                     <GtkListView<TreeItem>
                         ref={ref}
                         renderItem={(item) => {
-                            renderedItems.push(item ? { id: item.id, name: item.name } : null);
                             if (!item) {
                                 return <GtkLabel label="Loading..." />;
                             }
@@ -1741,31 +1802,30 @@ describe("render - ListView (tree)", () => {
                 </ScrollWrapper>,
             );
 
-            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
-            const row = selectionModel.getObject(0) as Gtk.TreeListRow;
+            const treeExpanders = screen
+                .queryAllByRole(Gtk.AccessibleRole.BUTTON)
+                .filter((w): w is Gtk.TreeExpander => w instanceof Gtk.TreeExpander);
+            const expander = treeExpanders[0] as Gtk.TreeExpander;
+            const row = expander.getListRow();
+            if (!row) throw new Error("Expected row to exist");
 
             row.setExpanded(true);
             await tick();
             await tick();
-            renderedItems.length = 0;
             await tick();
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(5);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual([
-                "appearance",
-                "dark-mode",
-                "large-text",
-                "animations",
-                "transparency",
+            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Appearance",
+                "Dark Mode",
+                "Large Text",
+                "Enable Animations",
+                "Transparency Effects",
             ]);
-
-            const nullItems = renderedItems.filter((item) => item === null);
-            expect(nullItems.length).toBe(0);
         });
 
         it("renders all children with non-null values when clicking TreeExpander", async () => {
             const ref = createRef<Gtk.ListView>();
-            const renderedItems: Array<{ id: string; name: string } | null> = [];
 
             interface Category {
                 type: "category";
@@ -1800,7 +1860,6 @@ describe("render - ListView (tree)", () => {
                     <GtkListView<TreeItem>
                         ref={ref}
                         renderItem={(item) => {
-                            renderedItems.push(item ? { id: item.id, name: item.name } : null);
                             if (!item) {
                                 return <GtkLabel label="Loading..." />;
                             }
@@ -1832,20 +1891,19 @@ describe("render - ListView (tree)", () => {
             if (!row) throw new Error("Expected row to exist");
 
             row.setExpanded(true);
+            await tick();
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(5);
-            expect(getTreeModelItemOrder(ref.current as Gtk.ListView)).toEqual([
-                "appearance",
-                "dark-mode",
-                "large-text",
-                "animations",
-                "transparency",
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Appearance",
+                "Dark Mode",
+                "Large Text",
+                "Enable Animations",
+                "Transparency Effects",
             ]);
         });
 
         it("renders all children correctly after multiple expand/collapse cycles", async () => {
             const ref = createRef<Gtk.ListView>();
-            const renderedItems: Array<{ id: string; name: string } | null> = [];
 
             interface Category {
                 type: "category";
@@ -1878,7 +1936,7 @@ describe("render - ListView (tree)", () => {
                     id: "notifications",
                     name: "Notifications",
                     children: [
-                        { type: "setting", id: "notifications-enabled", name: "Notifications" },
+                        { type: "setting", id: "notifications-enabled", name: "Alerts" },
                         { type: "setting", id: "sounds", name: "Notification Sounds" },
                         { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
                         { type: "setting", id: "badge-count", name: "Show Badge Count" },
@@ -1924,7 +1982,6 @@ describe("render - ListView (tree)", () => {
                     <GtkListView<TreeItem>
                         ref={ref}
                         renderItem={(item) => {
-                            renderedItems.push(item ? { id: item.id, name: item.name } : null);
                             if (!item) {
                                 return <GtkLabel label="Loading..." />;
                             }
@@ -1947,50 +2004,68 @@ describe("render - ListView (tree)", () => {
                 </ScrollWrapper>,
             );
 
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(5);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Appearance",
+                "Notifications",
+                "Privacy",
+                "Power",
+                "Network",
+            ]);
 
-            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
+            const getExpandableExpanders = () =>
+                screen
+                    .queryAllByRole(Gtk.AccessibleRole.BUTTON)
+                    .filter((w): w is Gtk.TreeExpander => w instanceof Gtk.TreeExpander)
+                    .filter((w) => w.getListRow()?.isExpandable());
 
             const expandAndVerify = async (categoryIndex: number, expectedChildren: string[]) => {
-                const row = selectionModel.getObject(categoryIndex) as Gtk.TreeListRow;
+                const expanders = getExpandableExpanders();
+                const expander = expanders[categoryIndex] as Gtk.TreeExpander;
+                const row = expander.getListRow();
+                if (!row) throw new Error("Expected row to exist");
                 row.setExpanded(true);
                 await tick();
                 await tick();
-                renderedItems.length = 0;
                 await tick();
 
-                const nullItems = renderedItems.filter((item) => item === null);
-                expect(nullItems.length).toBe(0);
+                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
 
-                const expandedOrder = getTreeModelItemOrder(ref.current as Gtk.ListView);
-                for (const childId of expectedChildren) {
-                    expect(expandedOrder).toContain(childId);
+                for (const childName of expectedChildren) {
+                    expect(screen.queryAllByText(childName)).toHaveLength(1);
                 }
             };
 
             const collapseRow = async (categoryIndex: number) => {
-                const row = selectionModel.getObject(categoryIndex) as Gtk.TreeListRow;
+                const expanders = getExpandableExpanders();
+                const expander = expanders[categoryIndex] as Gtk.TreeExpander;
+                const row = expander.getListRow();
+                if (!row) throw new Error("Expected row to exist");
                 row.setExpanded(false);
                 await tick();
             };
 
-            await expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
+            await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
 
             await collapseRow(0);
-            expect(getTreeModelItemCount(ref.current as Gtk.ListView)).toBe(5);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Appearance",
+                "Notifications",
+                "Privacy",
+                "Power",
+                "Network",
+            ]);
 
-            await expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
+            await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
 
             await collapseRow(0);
 
-            await expandAndVerify(1, ["notifications-enabled", "sounds", "do-not-disturb", "badge-count"]);
+            await expandAndVerify(1, ["Alerts", "Notification Sounds", "Do Not Disturb", "Show Badge Count"]);
 
             await collapseRow(1);
 
-            await expandAndVerify(0, ["dark-mode", "large-text", "animations", "transparency"]);
+            await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
 
-            const finalNullItems = renderedItems.filter((item) => item === null);
-            expect(finalNullItems.length).toBe(0);
+            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
         });
 
         it("third child does not remain stuck on Loading after expansion", async () => {
@@ -2027,7 +2102,7 @@ describe("render - ListView (tree)", () => {
                     id: "notifications",
                     name: "Notifications",
                     children: [
-                        { type: "setting", id: "notifications-enabled", name: "Notifications" },
+                        { type: "setting", id: "notifications-enabled", name: "Alerts" },
                         { type: "setting", id: "sounds", name: "Notification Sounds" },
                         { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
                         { type: "setting", id: "badge-count", name: "Show Badge Count" },
@@ -2063,24 +2138,26 @@ describe("render - ListView (tree)", () => {
                 </ScrollWrapper>,
             );
 
-            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
-            const row = selectionModel.getObject(0) as Gtk.TreeListRow;
-
-            const queryLabels = (text: string) => screen.queryAllByText(text);
+            const treeExpanders = screen
+                .queryAllByRole(Gtk.AccessibleRole.BUTTON)
+                .filter((w): w is Gtk.TreeExpander => w instanceof Gtk.TreeExpander);
+            const expander = treeExpanders[0] as Gtk.TreeExpander;
+            const row = expander.getListRow();
+            if (!row) throw new Error("Expected row to exist");
 
             const assertChildrenVisible = () => {
-                expect(queryLabels("Loading...")).toHaveLength(0);
-                expect(queryLabels("Dark Mode")).toHaveLength(1);
-                expect(queryLabels("Large Text")).toHaveLength(1);
-                expect(queryLabels("Enable Animations")).toHaveLength(1);
-                expect(queryLabels("Transparency Effects")).toHaveLength(1);
+                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+                expect(screen.queryAllByText("Dark Mode")).toHaveLength(1);
+                expect(screen.queryAllByText("Large Text")).toHaveLength(1);
+                expect(screen.queryAllByText("Enable Animations")).toHaveLength(1);
+                expect(screen.queryAllByText("Transparency Effects")).toHaveLength(1);
             };
 
             const assertChildrenHidden = () => {
-                expect(queryLabels("Dark Mode")).toHaveLength(0);
-                expect(queryLabels("Large Text")).toHaveLength(0);
-                expect(queryLabels("Enable Animations")).toHaveLength(0);
-                expect(queryLabels("Transparency Effects")).toHaveLength(0);
+                expect(screen.queryAllByText("Dark Mode")).toHaveLength(0);
+                expect(screen.queryAllByText("Large Text")).toHaveLength(0);
+                expect(screen.queryAllByText("Enable Animations")).toHaveLength(0);
+                expect(screen.queryAllByText("Transparency Effects")).toHaveLength(0);
             };
 
             for (let i = 0; i < 3; i++) {

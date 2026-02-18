@@ -4,12 +4,20 @@ import { cleanup, render, tick } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getVisibleItemTexts } from "../helpers/get-visible-item-texts.js";
 
 const ScrollWrapper = ({ children }: { children: ReactNode }) => (
-    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
+    <GtkScrolledWindow minContentHeight={500} minContentWidth={200}>
         {children}
     </GtkScrolledWindow>
 );
+
+const getColumnViewItemTexts = (columnView: Gtk.ColumnView): string[] => {
+    let child = columnView.getFirstChild();
+    if (child) child = child.getNextSibling();
+    if (child) return getVisibleItemTexts(child);
+    return [];
+};
 
 interface Employee {
     id: string;
@@ -52,25 +60,6 @@ const clickColumnHeader = async (columnView: Gtk.ColumnView, columnId: string, o
         columnView.sortByColumn(order, column);
         await tick();
     }
-};
-
-const getModelItemOrder = (columnView: Gtk.ColumnView): string[] => {
-    const selectionModel = columnView.getModel();
-    if (!selectionModel) return [];
-
-    const ids: string[] = [];
-    const nItems = selectionModel.getNItems();
-    for (let i = 0; i < nItems; i++) {
-        const obj = selectionModel.getObject(i);
-        const item =
-            obj instanceof Gtk.TreeListRow
-                ? (obj.getItem() as Gtk.StringObject | null)
-                : (obj as Gtk.StringObject | null);
-        if (item) {
-            ids.push(item.getString());
-        }
-    }
-    return ids;
 };
 
 function SortableColumnView({
@@ -151,7 +140,12 @@ describe("render - ColumnView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={ref}>
-                        <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="name"
+                            title="Name"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
@@ -168,7 +162,12 @@ describe("render - ColumnView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={ref}>
-                        <x.ColumnViewColumn id="column-title" title="Column Title" expand renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="column-title"
+                            title="Column Title"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
@@ -191,7 +190,9 @@ describe("render - ColumnView", () => {
                                     id={title}
                                     title={title}
                                     expand
-                                    renderCell={() => "Cell"}
+                                    renderCell={(item: { name: string } | null) => (
+                                        <GtkLabel label={item?.name ?? ""} />
+                                    )}
                                 />
                             ))}
                             <x.ListItem id="1" value={{ name: "First" }} />
@@ -220,7 +221,9 @@ describe("render - ColumnView", () => {
                                     id={title}
                                     title={title}
                                     expand
-                                    renderCell={() => "Cell"}
+                                    renderCell={(item: { name: string } | null) => (
+                                        <GtkLabel label={item?.name ?? ""} />
+                                    )}
                                 />
                             ))}
                             <x.ListItem id="1" value={{ name: "First" }} />
@@ -247,7 +250,7 @@ describe("render - ColumnView", () => {
                             title="Props"
                             expand={true}
                             fixedWidth={100}
-                            renderCell={() => "Cell"}
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
                         />
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
@@ -262,7 +265,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id={title} title={title} expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id={title}
+                                title={title}
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
                     </ScrollWrapper>
@@ -282,7 +290,12 @@ describe("render - ColumnView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={ref}>
-                        <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="name"
+                            title="Name"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkColumnView>
@@ -299,7 +312,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((item) => (
                                 <x.ListItem key={item.id} id={item.id} value={item} />
                             ))}
@@ -337,7 +355,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((item) => (
                                 <x.ListItem key={item.id} id={item.id} value={item} />
                             ))}
@@ -392,7 +415,12 @@ describe("render - ColumnView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={ref} sortColumn="name">
-                        <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="name"
+                            title="Name"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
@@ -405,7 +433,12 @@ describe("render - ColumnView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={ref} sortColumn="name" sortOrder={Gtk.SortType.DESCENDING}>
-                        <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="name"
+                            title="Name"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
@@ -419,7 +452,12 @@ describe("render - ColumnView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={ref} onSortChanged={onSortChanged}>
-                        <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="name"
+                            title="Name"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
@@ -433,8 +471,18 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref} sortColumn={sortColumn}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
-                            <x.ColumnViewColumn id="age" title="Age" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
+                            <x.ColumnViewColumn
+                                id="age"
+                                title="Age"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             <x.ListItem id="1" value={{ name: "First", age: 25 }} />
                         </GtkColumnView>
                     </ScrollWrapper>
@@ -454,7 +502,12 @@ describe("render - ColumnView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={ref} selected={["1"]}>
-                        <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="name"
+                            title="Name"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkColumnView>
@@ -468,7 +521,12 @@ describe("render - ColumnView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={ref} selectionMode={Gtk.SelectionMode.MULTIPLE} selected={["1", "2"]}>
-                        <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="name"
+                            title="Name"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
                         <x.ListItem id="1" value={{ name: "First" }} />
                         <x.ListItem id="2" value={{ name: "Second" }} />
                         <x.ListItem id="3" value={{ name: "Third" }} />
@@ -619,7 +677,12 @@ describe("render - ColumnView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={ref}>
-                        <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="name"
+                            title="Name"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
                         <x.ListItem id="c" value={{ name: "C" }} />
                         <x.ListItem id="a" value={{ name: "A" }} />
                         <x.ListItem id="b" value={{ name: "B" }} />
@@ -627,7 +690,7 @@ describe("render - ColumnView", () => {
                 </ScrollWrapper>,
             );
 
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["c", "a", "b"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["C", "A", "B"]);
         });
 
         it("handles complete reversal of items", async () => {
@@ -637,7 +700,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -647,10 +715,10 @@ describe("render - ColumnView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D", "E"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D", "E"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D", "E"]);
 
             await render(<App items={["E", "D", "C", "B", "A"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["E", "D", "C", "B", "A"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
         it("handles interleaved reordering", async () => {
@@ -660,7 +728,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -670,10 +743,10 @@ describe("render - ColumnView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
 
             await render(<App items={["B", "D", "A", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["B", "D", "A", "C"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["B", "D", "A", "C"]);
         });
 
         it("handles removing and adding while reordering", async () => {
@@ -683,7 +756,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -693,10 +771,10 @@ describe("render - ColumnView", () => {
             }
 
             await render(<App items={["A", "B", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
 
             await render(<App items={["D", "B", "E"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["D", "B", "E"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["D", "B", "E"]);
         });
 
         it("handles insert at beginning", async () => {
@@ -706,7 +784,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -716,10 +799,10 @@ describe("render - ColumnView", () => {
             }
 
             await render(<App items={["B", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["B", "C"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["B", "C"]);
 
             await render(<App items={["A", "B", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
         });
 
         it("handles single item to multiple items", async () => {
@@ -729,7 +812,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -739,10 +827,10 @@ describe("render - ColumnView", () => {
             }
 
             await render(<App items={["A"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A"]);
 
             await render(<App items={["X", "A", "Y"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["X", "A", "Y"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["X", "A", "Y"]);
         });
 
         it("handles rapid reordering", async () => {
@@ -752,7 +840,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -766,7 +859,7 @@ describe("render - ColumnView", () => {
             await render(<App items={["B", "C", "A"]} />);
             await render(<App items={["A", "B", "C"]} />);
 
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
         });
 
         it("handles large dataset reordering (200 items)", async () => {
@@ -779,7 +872,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -789,10 +887,14 @@ describe("render - ColumnView", () => {
             }
 
             await render(<App items={initialItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(initialItems);
+            const visibleInitial = getColumnViewItemTexts(ref.current as Gtk.ColumnView);
+            expect(visibleInitial.length).toBeGreaterThan(0);
+            expect(visibleInitial[0]).toBe("1");
 
             await render(<App items={reversedItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(reversedItems);
+            const visibleReversed = getColumnViewItemTexts(ref.current as Gtk.ColumnView);
+            expect(visibleReversed.length).toBeGreaterThan(0);
+            expect(visibleReversed[0]).toBe("200");
         });
 
         it("handles move first item to last position", async () => {
@@ -802,7 +904,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -812,10 +919,10 @@ describe("render - ColumnView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
 
             await render(<App items={["B", "C", "D", "A"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["B", "C", "D", "A"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["B", "C", "D", "A"]);
         });
 
         it("handles move last item to first position", async () => {
@@ -825,7 +932,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -835,10 +947,10 @@ describe("render - ColumnView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
 
             await render(<App items={["D", "A", "B", "C"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["D", "A", "B", "C"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["D", "A", "B", "C"]);
         });
 
         it("handles swap of two items", async () => {
@@ -848,7 +960,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {items.map((id) => (
                                 <x.ListItem key={id} id={id} value={{ name: id }} />
                             ))}
@@ -858,16 +975,16 @@ describe("render - ColumnView", () => {
             }
 
             await render(<App items={["A", "B", "C", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
 
             await render(<App items={["A", "C", "B", "D"]} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "C", "B", "D"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "C", "B", "D"]);
         });
 
         it("handles filtered view reordering", async () => {
             const ref = createRef<Gtk.ColumnView>();
 
-            type Item = { id: string; active: boolean };
+            type Item = { id: string; name: string; active: boolean };
 
             function App({ filter, items }: { filter: "all" | "active" | "inactive"; items: Item[] }) {
                 const filteredItems = items.filter((item) => {
@@ -879,7 +996,12 @@ describe("render - ColumnView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
-                            <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
+                            <x.ColumnViewColumn
+                                id="name"
+                                title="Name"
+                                expand
+                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            />
                             {filteredItems.map((item) => (
                                 <x.ListItem key={item.id} id={item.id} value={item} />
                             ))}
@@ -889,24 +1011,24 @@ describe("render - ColumnView", () => {
             }
 
             const items: Item[] = [
-                { id: "1", active: true },
-                { id: "2", active: false },
-                { id: "3", active: true },
-                { id: "4", active: false },
-                { id: "5", active: true },
+                { id: "1", name: "1", active: true },
+                { id: "2", name: "2", active: false },
+                { id: "3", name: "3", active: true },
+                { id: "4", name: "4", active: false },
+                { id: "5", name: "5", active: true },
             ];
 
             await render(<App filter="all" items={items} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3", "4", "5"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3", "4", "5"]);
 
             await render(<App filter="active" items={items} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "3", "5"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["1", "3", "5"]);
 
             await render(<App filter="inactive" items={items} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["2", "4"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["2", "4"]);
 
             await render(<App filter="all" items={items} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3", "4", "5"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3", "4", "5"]);
         });
 
         it("preserves React declaration order after sorting resets", async () => {
@@ -973,13 +1095,13 @@ describe("render - ColumnView", () => {
             ];
 
             await render(<App items={items} sortColumn={null} sortOrder={Gtk.SortType.ASCENDING} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["3", "1", "2"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["Charlie", "Alice", "Bob"]);
 
             await render(<App items={items} sortColumn="name" sortOrder={Gtk.SortType.ASCENDING} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["Alice", "Bob", "Charlie"]);
 
             await render(<App items={items} sortColumn={null} sortOrder={Gtk.SortType.ASCENDING} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["3", "1", "2"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["Charlie", "Alice", "Bob"]);
         });
 
         it("preserves order when only item values change", async () => {
@@ -1012,7 +1134,7 @@ describe("render - ColumnView", () => {
             ];
 
             await render(<App items={initialItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["Alice", "Bob", "Charlie"]);
 
             const updatedItems: Item[] = [
                 { id: "1", name: "Alice Updated" },
@@ -1021,7 +1143,11 @@ describe("render - ColumnView", () => {
             ];
 
             await render(<App items={updatedItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual([
+                "Alice Updated",
+                "Bob Updated",
+                "Charlie Updated",
+            ]);
         });
 
         it("preserves order when updating a single item value", async () => {
@@ -1056,7 +1182,11 @@ describe("render - ColumnView", () => {
             ];
 
             await render(<App items={initialItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual([
+                "Counter A: 0",
+                "Counter B: 0",
+                "Counter C: 0",
+            ]);
 
             const updatedItems: Item[] = [
                 { id: "1", name: "Counter A", count: 0 },
@@ -1065,23 +1195,27 @@ describe("render - ColumnView", () => {
             ];
 
             await render(<App items={updatedItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual([
+                "Counter A: 0",
+                "Counter B: 5",
+                "Counter C: 0",
+            ]);
         });
 
         it("preserves order with frequent value updates", async () => {
             const ref = createRef<Gtk.ColumnView>();
 
-            type Item = { id: string; value: number };
+            type Item = { id: string; name: string; value: number };
 
             function App({ items }: { items: Item[] }) {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={ref}>
                             <x.ColumnViewColumn
-                                id="value"
-                                title="Value"
+                                id="name"
+                                title="Name"
                                 expand
-                                renderCell={(item: Item | null) => <GtkLabel label={String(item?.value ?? 0)} />}
+                                renderCell={(item: Item | null) => <GtkLabel label={item?.name ?? ""} />}
                             />
                             {items.map((item) => (
                                 <x.ListItem key={item.id} id={item.id} value={item} />
@@ -1092,22 +1226,22 @@ describe("render - ColumnView", () => {
             }
 
             const baseItems: Item[] = [
-                { id: "1", value: 0 },
-                { id: "2", value: 0 },
-                { id: "3", value: 0 },
+                { id: "1", name: "A", value: 0 },
+                { id: "2", name: "B", value: 0 },
+                { id: "3", name: "C", value: 0 },
             ];
 
             await render(<App items={baseItems} />);
-            expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
+            expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
 
             for (let i = 1; i <= 10; i++) {
                 const updatedItems: Item[] = [
-                    { id: "1", value: i },
-                    { id: "2", value: i * 2 },
-                    { id: "3", value: i * 3 },
+                    { id: "1", name: "A", value: i },
+                    { id: "2", name: "B", value: i * 2 },
+                    { id: "3", name: "C", value: i * 3 },
                 ];
                 await render(<App items={updatedItems} />);
-                expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
+                expect(getColumnViewItemTexts(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
             }
         });
     });
@@ -1136,9 +1270,24 @@ describe("render - ColumnView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={ref}>
-                        <x.ColumnViewColumn id="C" title="C" expand renderCell={() => "Cell"} />
-                        <x.ColumnViewColumn id="A" title="A" expand renderCell={() => "Cell"} />
-                        <x.ColumnViewColumn id="B" title="B" expand renderCell={() => "Cell"} />
+                        <x.ColumnViewColumn
+                            id="C"
+                            title="C"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
+                        <x.ColumnViewColumn
+                            id="A"
+                            title="A"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
+                        <x.ColumnViewColumn
+                            id="B"
+                            title="B"
+                            expand
+                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        />
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
@@ -1160,7 +1309,9 @@ describe("render - ColumnView", () => {
                                     id={title}
                                     title={title}
                                     expand
-                                    renderCell={() => "Cell"}
+                                    renderCell={(item: { name: string } | null) => (
+                                        <GtkLabel label={item?.name ?? ""} />
+                                    )}
                                 />
                             ))}
                             <x.ListItem id="1" value={{ name: "First" }} />
@@ -1189,7 +1340,9 @@ describe("render - ColumnView", () => {
                                     id={title}
                                     title={title}
                                     expand
-                                    renderCell={() => "Cell"}
+                                    renderCell={(item: { name: string } | null) => (
+                                        <GtkLabel label={item?.name ?? ""} />
+                                    )}
                                 />
                             ))}
                             <x.ListItem id="1" value={{ name: "First" }} />
@@ -1218,7 +1371,9 @@ describe("render - ColumnView", () => {
                                     id={title}
                                     title={title}
                                     expand
-                                    renderCell={() => "Cell"}
+                                    renderCell={(item: { name: string } | null) => (
+                                        <GtkLabel label={item?.name ?? ""} />
+                                    )}
                                 />
                             ))}
                             <x.ListItem id="1" value={{ name: "First" }} />

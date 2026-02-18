@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkDropDown, x } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { render, screen, tick } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -25,8 +25,15 @@ describe("render - DropDown", () => {
                 </GtkDropDown>,
             );
 
-            const model = dropDownRef.current?.getModel();
-            expect(model?.getNItems()).toBe(3);
+            expect(screen.queryAllByText("Option 1").length).toBeGreaterThan(0);
+
+            dropDownRef.current?.setSelected(1);
+            await tick();
+            expect(screen.queryAllByText("Option 2").length).toBeGreaterThan(0);
+
+            dropDownRef.current?.setSelected(2);
+            await tick();
+            expect(screen.queryAllByText("Option 3").length).toBeGreaterThan(0);
         });
 
         it("sets selected item by id", async () => {
@@ -80,7 +87,11 @@ describe("render - DropDown", () => {
                     ]}
                 />,
             );
-            expect(dropDownRef.current?.getModel()?.getNItems()).toBe(2);
+            expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
+
+            dropDownRef.current?.setSelected(1);
+            await tick();
+            expect(screen.queryAllByText("Second").length).toBeGreaterThan(0);
 
             await render(
                 <App
@@ -91,7 +102,10 @@ describe("render - DropDown", () => {
                     ]}
                 />,
             );
-            expect(dropDownRef.current?.getModel()?.getNItems()).toBe(3);
+
+            dropDownRef.current?.setSelected(2);
+            await tick();
+            expect(screen.queryAllByText("Third").length).toBeGreaterThan(0);
         });
 
         it("removes items", async () => {
@@ -116,10 +130,15 @@ describe("render - DropDown", () => {
                     ]}
                 />,
             );
-            expect(dropDownRef.current?.getModel()?.getNItems()).toBe(3);
+
+            dropDownRef.current?.setSelected(2);
+            await tick();
+            expect(screen.queryAllByText("Third").length).toBeGreaterThan(0);
 
             await render(<App items={[{ id: "1", value: "First" }]} />);
-            expect(dropDownRef.current?.getModel()?.getNItems()).toBe(1);
+            expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
+            expect(screen.queryAllByText("Second")).toHaveLength(0);
+            expect(screen.queryAllByText("Third")).toHaveLength(0);
         });
     });
 });

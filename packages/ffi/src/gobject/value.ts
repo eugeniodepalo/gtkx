@@ -169,11 +169,21 @@ Value.prototype.getBoxed = function <T extends NativeObject>(targetType: NativeC
         "g_value_get_boxed",
         [
             {
-                type: { type: "boxed", ownership: "borrowed", innerType: "GValue", library: "libgobject-2.0.so.0" },
+                type: {
+                    type: "boxed",
+                    ownership: "borrowed",
+                    innerType: "GValue",
+                    library: "libgobject-2.0.so.0",
+                },
                 value: this.handle,
             },
         ],
-        { type: "boxed", ownership: "borrowed", innerType: glibTypeName, library: "libgobject-2.0.so.0" },
+        {
+            type: "boxed",
+            ownership: "borrowed",
+            innerType: glibTypeName,
+            library: "libgobject-2.0.so.0",
+        },
     );
     if (ptr === null) return null;
     return getNativeObject(ptr as NativeHandle, targetType);
@@ -189,11 +199,21 @@ Value.prototype.dupBoxed = function <T extends NativeObject>(targetType: NativeC
         "g_value_dup_boxed",
         [
             {
-                type: { type: "boxed", ownership: "borrowed", innerType: "GValue", library: "libgobject-2.0.so.0" },
+                type: {
+                    type: "boxed",
+                    ownership: "borrowed",
+                    innerType: "GValue",
+                    library: "libgobject-2.0.so.0",
+                },
                 value: this.handle,
             },
         ],
-        { type: "boxed", ownership: "full", innerType: glibTypeName, library: "libgobject-2.0.so.0" },
+        {
+            type: "boxed",
+            ownership: "full",
+            innerType: glibTypeName,
+            library: "libgobject-2.0.so.0",
+        },
     );
     if (ptr === null) return null;
     return getNativeObject(ptr as NativeHandle, targetType);
@@ -415,7 +435,7 @@ ValueWithStatics.newFromFlags = (gtype: number, value: number): Value => {
     return v;
 };
 
-export function toGValue(ffiType: FfiType, value: unknown): Value {
+export function toValue(ffiType: FfiType, value: unknown): Value {
     switch (ffiType.type) {
         case "boolean":
             return Value.newFromBoolean(value as boolean);
