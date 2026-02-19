@@ -53,7 +53,8 @@
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",
-        "test": "vitest run"
+        "test": "vitest run",
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
         "@gtkx/native": "workspace:*"

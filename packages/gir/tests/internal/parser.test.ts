@@ -57,14 +57,14 @@ describe("GirParser", () => {
             const result = parser.parse(gir);
 
             expect(result.classes).toHaveLength(1);
-            expect(result.classes[0].name).toBe("Widget");
-            expect(result.classes[0].cType).toBe("TestWidget");
-            expect(result.classes[0].parent).toBe("GObject.Object");
-            expect(result.classes[0].abstract).toBe(true);
-            expect(result.classes[0].glibTypeName).toBe("TestWidget");
-            expect(result.classes[0].glibGetType).toBe("test_widget_get_type");
-            expect(result.classes[0].cSymbolPrefix).toBe("widget");
-            expect(result.classes[0].doc).toBe("A test widget");
+            expect(result.classes[0]?.name).toBe("Widget");
+            expect(result.classes[0]?.cType).toBe("TestWidget");
+            expect(result.classes[0]?.parent).toBe("GObject.Object");
+            expect(result.classes[0]?.abstract).toBe(true);
+            expect(result.classes[0]?.glibTypeName).toBe("TestWidget");
+            expect(result.classes[0]?.glibGetType).toBe("test_widget_get_type");
+            expect(result.classes[0]?.cSymbolPrefix).toBe("widget");
+            expect(result.classes[0]?.doc).toBe("A test widget");
         });
 
         it("parses class implementing interfaces", () => {
@@ -77,7 +77,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].implements).toEqual(["Buildable", "Actionable"]);
+            expect(result.classes[0]?.implements).toEqual(["Buildable", "Actionable"]);
         });
 
         it("parses class with single implements", () => {
@@ -89,7 +89,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].implements).toEqual(["Buildable"]);
+            expect(result.classes[0]?.implements).toEqual(["Buildable"]);
         });
 
         it("parses class methods", () => {
@@ -111,11 +111,11 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].methods).toHaveLength(2);
-            expect(result.classes[0].methods[0].name).toBe("show");
-            expect(result.classes[0].methods[0].cIdentifier).toBe("test_widget_show");
-            expect(result.classes[0].methods[0].doc).toBe("Shows the widget");
-            expect(result.classes[0].methods[1].name).toBe("get_name");
+            expect(result.classes[0]?.methods).toHaveLength(2);
+            expect(result.classes[0]?.methods[0]?.name).toBe("show");
+            expect(result.classes[0]?.methods[0]?.cIdentifier).toBe("test_widget_show");
+            expect(result.classes[0]?.methods[0]?.doc).toBe("Shows the widget");
+            expect(result.classes[0]?.methods[1]?.name).toBe("get_name");
         });
 
         it("filters out non-introspectable methods", () => {
@@ -132,8 +132,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].methods).toHaveLength(1);
-            expect(result.classes[0].methods[0].name).toBe("hide");
+            expect(result.classes[0]?.methods).toHaveLength(1);
+            expect(result.classes[0]?.methods[0]?.name).toBe("hide");
         });
 
         it("parses method with throws attribute", () => {
@@ -147,7 +147,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].methods[0].throws).toBe(true);
+            expect(result.classes[0]?.methods[0]?.throws).toBe(true);
         });
 
         it("parses class constructors", () => {
@@ -173,10 +173,10 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].constructors).toHaveLength(2);
-            expect(result.classes[0].constructors[0].name).toBe("new");
-            expect(result.classes[0].constructors[1].name).toBe("new_with_label");
-            expect(result.classes[0].constructors[1].parameters).toHaveLength(1);
+            expect(result.classes[0]?.constructors).toHaveLength(2);
+            expect(result.classes[0]?.constructors[0]?.name).toBe("new");
+            expect(result.classes[0]?.constructors[1]?.name).toBe("new_with_label");
+            expect(result.classes[0]?.constructors[1]?.parameters).toHaveLength(1);
         });
 
         it("parses class static functions", () => {
@@ -190,8 +190,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].functions).toHaveLength(1);
-            expect(result.classes[0].functions[0].name).toBe("get_default_direction");
+            expect(result.classes[0]?.functions).toHaveLength(1);
+            expect(result.classes[0]?.functions[0]?.name).toBe("get_default_direction");
         });
 
         it("parses class properties", () => {
@@ -210,17 +210,17 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].properties).toHaveLength(2);
-            expect(result.classes[0].properties[0].name).toBe("visible");
-            expect(result.classes[0].properties[0].readable).toBe(true);
-            expect(result.classes[0].properties[0].writable).toBe(true);
-            expect(result.classes[0].properties[0].constructOnly).toBe(false);
-            expect(result.classes[0].properties[0].defaultValueRaw).toBe("TRUE");
-            expect(result.classes[0].properties[0].getter).toBe("get_visible");
-            expect(result.classes[0].properties[0].setter).toBe("set_visible");
-            expect(result.classes[0].properties[0].doc).toBe("Widget visibility");
-            expect(result.classes[0].properties[1].readable).toBe(true);
-            expect(result.classes[0].properties[1].writable).toBe(false);
+            expect(result.classes[0]?.properties).toHaveLength(2);
+            expect(result.classes[0]?.properties[0]?.name).toBe("visible");
+            expect(result.classes[0]?.properties[0]?.readable).toBe(true);
+            expect(result.classes[0]?.properties[0]?.writable).toBe(true);
+            expect(result.classes[0]?.properties[0]?.constructOnly).toBe(false);
+            expect(result.classes[0]?.properties[0]?.defaultValueRaw).toBe("TRUE");
+            expect(result.classes[0]?.properties[0]?.getter).toBe("get_visible");
+            expect(result.classes[0]?.properties[0]?.setter).toBe("set_visible");
+            expect(result.classes[0]?.properties[0]?.doc).toBe("Widget visibility");
+            expect(result.classes[0]?.properties[1]?.readable).toBe(true);
+            expect(result.classes[0]?.properties[1]?.writable).toBe(false);
         });
 
         it("parses class signals", () => {
@@ -243,13 +243,13 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].signals).toHaveLength(2);
-            expect(result.classes[0].signals[0].name).toBe("clicked");
-            expect(result.classes[0].signals[0].when).toBe("first");
-            expect(result.classes[0].signals[0].doc).toBe("Emitted when clicked");
-            expect(result.classes[0].signals[1].name).toBe("toggled");
-            expect(result.classes[0].signals[1].when).toBe("last");
-            expect(result.classes[0].signals[1].parameters).toHaveLength(1);
+            expect(result.classes[0]?.signals).toHaveLength(2);
+            expect(result.classes[0]?.signals[0]?.name).toBe("clicked");
+            expect(result.classes[0]?.signals[0]?.when).toBe("first");
+            expect(result.classes[0]?.signals[0]?.doc).toBe("Emitted when clicked");
+            expect(result.classes[0]?.signals[1]?.name).toBe("toggled");
+            expect(result.classes[0]?.signals[1]?.when).toBe("last");
+            expect(result.classes[0]?.signals[1]?.parameters).toHaveLength(1);
         });
     });
 
@@ -273,13 +273,13 @@ describe("GirParser", () => {
             const result = parser.parse(gir);
 
             expect(result.interfaces).toHaveLength(1);
-            expect(result.interfaces[0].name).toBe("Buildable");
-            expect(result.interfaces[0].cType).toBe("TestBuildable");
-            expect(result.interfaces[0].glibTypeName).toBe("TestBuildable");
-            expect(result.interfaces[0].doc).toBe("Buildable interface");
-            expect(result.interfaces[0].methods).toHaveLength(1);
-            expect(result.interfaces[0].properties).toHaveLength(1);
-            expect(result.interfaces[0].signals).toHaveLength(1);
+            expect(result.interfaces[0]?.name).toBe("Buildable");
+            expect(result.interfaces[0]?.cType).toBe("TestBuildable");
+            expect(result.interfaces[0]?.glibTypeName).toBe("TestBuildable");
+            expect(result.interfaces[0]?.doc).toBe("Buildable interface");
+            expect(result.interfaces[0]?.methods).toHaveLength(1);
+            expect(result.interfaces[0]?.properties).toHaveLength(1);
+            expect(result.interfaces[0]?.signals).toHaveLength(1);
         });
     });
 
@@ -298,10 +298,10 @@ describe("GirParser", () => {
             const result = parser.parse(gir);
 
             expect(result.functions).toHaveLength(2);
-            expect(result.functions[0].name).toBe("init");
-            expect(result.functions[0].cIdentifier).toBe("test_init");
-            expect(result.functions[0].doc).toBe("Initializes the library");
-            expect(result.functions[1].name).toBe("get_version");
+            expect(result.functions[0]?.name).toBe("init");
+            expect(result.functions[0]?.cIdentifier).toBe("test_init");
+            expect(result.functions[0]?.doc).toBe("Initializes the library");
+            expect(result.functions[1]?.name).toBe("get_version");
         });
 
         it("parses function with parameters", () => {
@@ -317,9 +317,9 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].parameters).toHaveLength(2);
-            expect(result.functions[0].parameters[0].name).toBe("a");
-            expect(result.functions[0].parameters[1].name).toBe("b");
+            expect(result.functions[0]?.parameters).toHaveLength(2);
+            expect(result.functions[0]?.parameters[0]?.name).toBe("a");
+            expect(result.functions[0]?.parameters[1]?.name).toBe("b");
         });
     });
 
@@ -339,14 +339,14 @@ describe("GirParser", () => {
             const result = parser.parse(gir);
 
             expect(result.enumerations).toHaveLength(1);
-            expect(result.enumerations[0].name).toBe("TextDirection");
-            expect(result.enumerations[0].cType).toBe("TestTextDirection");
-            expect(result.enumerations[0].doc).toBe("Text direction");
-            expect(result.enumerations[0].members).toHaveLength(3);
-            expect(result.enumerations[0].members[0].name).toBe("ltr");
-            expect(result.enumerations[0].members[0].value).toBe("0");
-            expect(result.enumerations[0].members[0].cIdentifier).toBe("TEST_TEXT_DIRECTION_LTR");
-            expect(result.enumerations[0].members[0].doc).toBe("Left to right");
+            expect(result.enumerations[0]?.name).toBe("TextDirection");
+            expect(result.enumerations[0]?.cType).toBe("TestTextDirection");
+            expect(result.enumerations[0]?.doc).toBe("Text direction");
+            expect(result.enumerations[0]?.members).toHaveLength(3);
+            expect(result.enumerations[0]?.members[0]?.name).toBe("ltr");
+            expect(result.enumerations[0]?.members[0]?.value).toBe("0");
+            expect(result.enumerations[0]?.members[0]?.cIdentifier).toBe("TEST_TEXT_DIRECTION_LTR");
+            expect(result.enumerations[0]?.members[0]?.doc).toBe("Left to right");
         });
 
         it("parses bitfield", () => {
@@ -361,8 +361,8 @@ describe("GirParser", () => {
             const result = parser.parse(gir);
 
             expect(result.bitfields).toHaveLength(1);
-            expect(result.bitfields[0].name).toBe("StateFlags");
-            expect(result.bitfields[0].members).toHaveLength(3);
+            expect(result.bitfields[0]?.name).toBe("StateFlags");
+            expect(result.bitfields[0]?.members).toHaveLength(3);
         });
     });
 
@@ -382,14 +382,14 @@ describe("GirParser", () => {
             const result = parser.parse(gir);
 
             expect(result.records).toHaveLength(1);
-            expect(result.records[0].name).toBe("Rectangle");
-            expect(result.records[0].cType).toBe("TestRectangle");
-            expect(result.records[0].glibTypeName).toBe("TestRectangle");
-            expect(result.records[0].glibGetType).toBe("test_rectangle_get_type");
-            expect(result.records[0].doc).toBe("A rectangle");
-            expect(result.records[0].fields).toHaveLength(4);
-            expect(result.records[0].fields[0].name).toBe("x");
-            expect(result.records[0].fields[0].writable).toBe(true);
+            expect(result.records[0]?.name).toBe("Rectangle");
+            expect(result.records[0]?.cType).toBe("TestRectangle");
+            expect(result.records[0]?.glibTypeName).toBe("TestRectangle");
+            expect(result.records[0]?.glibGetType).toBe("test_rectangle_get_type");
+            expect(result.records[0]?.doc).toBe("A rectangle");
+            expect(result.records[0]?.fields).toHaveLength(4);
+            expect(result.records[0]?.fields[0]?.name).toBe("x");
+            expect(result.records[0]?.fields[0]?.writable).toBe(true);
         });
 
         it("parses opaque and disguised records", () => {
@@ -400,8 +400,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.records[0].opaque).toBe(true);
-            expect(result.records[1].disguised).toBe(true);
+            expect(result.records[0]?.opaque).toBe(true);
+            expect(result.records[1]?.disguised).toBe(true);
         });
 
         it("parses record with methods and constructors", () => {
@@ -425,9 +425,9 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.records[0].constructors).toHaveLength(1);
-            expect(result.records[0].methods).toHaveLength(1);
-            expect(result.records[0].functions).toHaveLength(1);
+            expect(result.records[0]?.constructors).toHaveLength(1);
+            expect(result.records[0]?.methods).toHaveLength(1);
+            expect(result.records[0]?.functions).toHaveLength(1);
         });
 
         it("filters out callback fields", () => {
@@ -444,8 +444,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.records[0].fields).toHaveLength(1);
-            expect(result.records[0].fields[0].name).toBe("parent");
+            expect(result.records[0]?.fields).toHaveLength(1);
+            expect(result.records[0]?.fields[0]?.name).toBe("parent");
         });
     });
 
@@ -464,11 +464,11 @@ describe("GirParser", () => {
             const result = parser.parse(gir);
 
             expect(result.callbacks).toHaveLength(1);
-            expect(result.callbacks[0].name).toBe("Callback");
-            expect(result.callbacks[0].cType).toBe("TestCallback");
-            expect(result.callbacks[0].doc).toBe("A callback function");
-            expect(result.callbacks[0].returnType.name).toBe("gboolean");
-            expect(result.callbacks[0].parameters).toHaveLength(1);
+            expect(result.callbacks[0]?.name).toBe("Callback");
+            expect(result.callbacks[0]?.cType).toBe("TestCallback");
+            expect(result.callbacks[0]?.doc).toBe("A callback function");
+            expect(result.callbacks[0]?.returnType.name).toBe("gboolean");
+            expect(result.callbacks[0]?.parameters).toHaveLength(1);
         });
 
         it("filters out non-introspectable callbacks", () => {
@@ -484,7 +484,7 @@ describe("GirParser", () => {
             const result = parser.parse(gir);
 
             expect(result.callbacks).toHaveLength(1);
-            expect(result.callbacks[0].name).toBe("PublicCallback");
+            expect(result.callbacks[0]?.name).toBe("PublicCallback");
         });
     });
 
@@ -503,12 +503,12 @@ describe("GirParser", () => {
             const result = parser.parse(gir);
 
             expect(result.constants).toHaveLength(2);
-            expect(result.constants[0].name).toBe("VERSION_MAJOR");
-            expect(result.constants[0].value).toBe("4");
-            expect(result.constants[0].cType).toBe("TEST_VERSION_MAJOR");
-            expect(result.constants[0].doc).toBe("Major version");
-            expect(result.constants[1].name).toBe("VERSION_STRING");
-            expect(result.constants[1].value).toBe("4.0.0");
+            expect(result.constants[0]?.name).toBe("VERSION_MAJOR");
+            expect(result.constants[0]?.value).toBe("4");
+            expect(result.constants[0]?.cType).toBe("TEST_VERSION_MAJOR");
+            expect(result.constants[0]?.doc).toBe("Major version");
+            expect(result.constants[1]?.name).toBe("VERSION_STRING");
+            expect(result.constants[1]?.value).toBe("4.0.0");
         });
     });
 
@@ -526,8 +526,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].parameters[0].direction).toBe("out");
-            expect(result.functions[0].parameters[1].direction).toBe("out");
+            expect(result.functions[0]?.parameters[0]?.direction).toBe("out");
+            expect(result.functions[0]?.parameters[1]?.direction).toBe("out");
         });
 
         it("parses nullable and optional parameters", () => {
@@ -543,8 +543,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].parameters[0].nullable).toBe(true);
-            expect(result.functions[0].parameters[1].optional).toBe(true);
+            expect(result.functions[0]?.parameters[0]?.nullable).toBe(true);
+            expect(result.functions[0]?.parameters[1]?.optional).toBe(true);
         });
 
         it("parses callback parameter attributes", () => {
@@ -563,9 +563,9 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].parameters[0].scope).toBe("call");
-            expect(result.functions[0].parameters[0].closure).toBe(1);
-            expect(result.functions[0].parameters[0].destroy).toBe(2);
+            expect(result.functions[0]?.parameters[0]?.scope).toBe("call");
+            expect(result.functions[0]?.parameters[0]?.closure).toBe(1);
+            expect(result.functions[0]?.parameters[0]?.destroy).toBe(2);
         });
 
         it("parses caller-allocates parameter", () => {
@@ -582,7 +582,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].parameters[0].callerAllocates).toBe(true);
+            expect(result.functions[0]?.parameters[0]?.callerAllocates).toBe(true);
         });
 
         it("parses transfer-ownership on parameters", () => {
@@ -597,7 +597,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].parameters[0].transferOwnership).toBe("full");
+            expect(result.functions[0]?.parameters[0]?.transferOwnership).toBe("full");
         });
     });
 
@@ -615,8 +615,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].returnType.isArray).toBe(true);
-            expect(result.functions[0].returnType.elementType?.name).toBe("utf8");
+            expect(result.functions[0]?.returnType.isArray).toBe(true);
+            expect(result.functions[0]?.returnType.elementType?.name).toBe("utf8");
         });
 
         it("parses GLib.List as array", () => {
@@ -632,8 +632,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].returnType.isArray).toBe(true);
-            expect(result.functions[0].returnType.elementType?.name).toBe("Widget");
+            expect(result.functions[0]?.returnType.isArray).toBe(true);
+            expect(result.functions[0]?.returnType.elementType?.name).toBe("Widget");
         });
 
         it("parses GLib.SList as array", () => {
@@ -649,8 +649,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].returnType.isArray).toBe(true);
-            expect(result.functions[0].returnType.elementType?.name).toBe("utf8");
+            expect(result.functions[0]?.returnType.isArray).toBe(true);
+            expect(result.functions[0]?.returnType.elementType?.name).toBe("utf8");
         });
 
         it("parses GLib.HashTable with key and value types", () => {
@@ -667,11 +667,11 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].returnType.name).toBe("GLib.HashTable");
-            expect(result.functions[0].returnType.containerType).toBe("ghashtable");
-            expect(result.functions[0].returnType.typeParameters).toHaveLength(2);
-            expect(result.functions[0].returnType.typeParameters?.[0].name).toBe("utf8");
-            expect(result.functions[0].returnType.typeParameters?.[1].name).toBe("Widget");
+            expect(result.functions[0]?.returnType.name).toBe("GLib.HashTable");
+            expect(result.functions[0]?.returnType.containerType).toBe("ghashtable");
+            expect(result.functions[0]?.returnType.typeParameters).toHaveLength(2);
+            expect(result.functions[0]?.returnType.typeParameters?.[0]?.name).toBe("utf8");
+            expect(result.functions[0]?.returnType.typeParameters?.[1]?.name).toBe("Widget");
         });
 
         it("parses GLib.PtrArray with element type", () => {
@@ -687,10 +687,10 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].returnType.name).toBe("GLib.PtrArray");
-            expect(result.functions[0].returnType.isArray).toBe(true);
-            expect(result.functions[0].returnType.containerType).toBe("gptrarray");
-            expect(result.functions[0].returnType.elementType?.name).toBe("Widget");
+            expect(result.functions[0]?.returnType.name).toBe("GLib.PtrArray");
+            expect(result.functions[0]?.returnType.isArray).toBe(true);
+            expect(result.functions[0]?.returnType.containerType).toBe("gptrarray");
+            expect(result.functions[0]?.returnType.elementType?.name).toBe("Widget");
         });
 
         it("parses GLib.Array with element type", () => {
@@ -706,10 +706,10 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].returnType.name).toBe("GLib.Array");
-            expect(result.functions[0].returnType.isArray).toBe(true);
-            expect(result.functions[0].returnType.containerType).toBe("garray");
-            expect(result.functions[0].returnType.elementType?.name).toBe("gint");
+            expect(result.functions[0]?.returnType.name).toBe("GLib.Array");
+            expect(result.functions[0]?.returnType.isArray).toBe(true);
+            expect(result.functions[0]?.returnType.containerType).toBe("garray");
+            expect(result.functions[0]?.returnType.elementType?.name).toBe("gint");
         });
 
         it("parses GLib.List with containerType", () => {
@@ -725,8 +725,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].returnType.containerType).toBe("glist");
-            expect(result.functions[0].returnType.typeParameters).toHaveLength(1);
+            expect(result.functions[0]?.returnType.containerType).toBe("glist");
+            expect(result.functions[0]?.returnType.typeParameters).toHaveLength(1);
         });
 
         it("parses GLib.SList with containerType", () => {
@@ -742,8 +742,8 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].returnType.containerType).toBe("gslist");
-            expect(result.functions[0].returnType.typeParameters).toHaveLength(1);
+            expect(result.functions[0]?.returnType.containerType).toBe("gslist");
+            expect(result.functions[0]?.returnType.typeParameters).toHaveLength(1);
         });
 
         it("parses return type transfer ownership", () => {
@@ -757,7 +757,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].returnType.transferOwnership).toBe("full");
+            expect(result.functions[0]?.returnType.transferOwnership).toBe("full");
         });
 
         it("parses nullable return type", () => {
@@ -771,7 +771,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.functions[0].returnType.nullable).toBe(true);
+            expect(result.functions[0]?.returnType.nullable).toBe(true);
         });
     });
 
@@ -804,7 +804,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].methods[0].parameters).toEqual([]);
+            expect(result.classes[0]?.methods[0]?.parameters).toEqual([]);
         });
 
         it("handles missing c:prefix attribute", () => {
@@ -842,7 +842,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].signals[0].when).toBe("cleanup");
+            expect(result.classes[0]?.signals[0]?.when).toBe("cleanup");
         });
 
         it("handles invalid signal when value", () => {
@@ -856,7 +856,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.classes[0].signals[0].when).toBe("last");
+            expect(result.classes[0]?.signals[0]?.when).toBe("last");
         });
 
         it("handles private fields", () => {
@@ -869,7 +869,7 @@ describe("GirParser", () => {
             const parser = new GirParser();
             const result = parser.parse(gir);
 
-            expect(result.records[0].fields[1].private).toBe(true);
+            expect(result.records[0]?.fields[1]?.private).toBe(true);
         });
     });
 });

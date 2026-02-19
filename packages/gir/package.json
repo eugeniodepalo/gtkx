@@ -38,7 +38,8 @@
     ],
     "scripts": {
         "build": "tsc -b tsconfig.lib.json",
-        "test": "vitest run"
+        "test": "vitest run",
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
         "fast-xml-parser": "^5.3.6"

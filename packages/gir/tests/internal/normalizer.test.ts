@@ -251,7 +251,7 @@ describe("normalizeNamespace", () => {
         const orientation = result.enumerations.get("Orientation");
         expect(orientation?.qualifiedName).toBe("Gtk.Orientation");
         expect(orientation?.members.length).toBe(2);
-        expect(orientation?.members[0].name).toBe("horizontal");
+        expect(orientation?.members[0]?.name).toBe("horizontal");
     });
 
     it("normalizes bitfields (flags)", () => {
@@ -312,7 +312,7 @@ describe("normalizeNamespace", () => {
         const callback = result.callbacks.get("AsyncReadyCallback");
         expect(callback?.qualifiedName).toBe("Gio.AsyncReadyCallback");
         expect(callback?.parameters.length).toBe(2);
-        expect(callback?.parameters[1].type.name).toBe("Gio.AsyncResult");
+        expect(callback?.parameters[1]?.type.name).toBe("Gio.AsyncResult");
     });
 
     it("normalizes functions", () => {
@@ -382,7 +382,7 @@ describe("normalizeNamespace", () => {
 
         const add = result.functions.get("add");
         expect(add?.returnType.name).toBe("gint");
-        expect(add?.parameters[0].type.name).toBe("gint");
+        expect(add?.parameters[0]?.type.name).toBe("gint");
     });
 
     it("normalizes array types with element type", () => {
@@ -447,7 +447,7 @@ describe("normalizeNamespace", () => {
         const result = normalizeNamespace(raw, ctx);
 
         const file = result.classes.get("File");
-        expect(file?.methods[0].throws).toBe(true);
+        expect(file?.methods[0]?.throws).toBe(true);
     });
 
     it("normalizes properties", () => {
@@ -473,7 +473,7 @@ describe("normalizeNamespace", () => {
                             readable: true,
                             writable: true,
                             constructOnly: false,
-                            hasDefault: true,
+                            defaultValueRaw: "TRUE",
                             getter: "get_visible",
                             setter: "set_visible",
                             doc: "Widget visibility",
@@ -489,10 +489,10 @@ describe("normalizeNamespace", () => {
 
         const widget = result.classes.get("Widget");
         expect(widget?.properties.length).toBe(1);
-        expect(widget?.properties[0].name).toBe("visible");
-        expect(widget?.properties[0].readable).toBe(true);
-        expect(widget?.properties[0].writable).toBe(true);
-        expect(widget?.properties[0].getter).toBe("get_visible");
+        expect(widget?.properties[0]?.name).toBe("visible");
+        expect(widget?.properties[0]?.readable).toBe(true);
+        expect(widget?.properties[0]?.writable).toBe(true);
+        expect(widget?.properties[0]?.getter).toBe("get_visible");
     });
 
     it("normalizes signals", () => {
@@ -530,8 +530,8 @@ describe("normalizeNamespace", () => {
 
         const button = result.classes.get("Button");
         expect(button?.signals.length).toBe(1);
-        expect(button?.signals[0].name).toBe("clicked");
-        expect(button?.signals[0].when).toBe("first");
+        expect(button?.signals[0]?.name).toBe("clicked");
+        expect(button?.signals[0]?.when).toBe("first");
     });
 
     it("normalizes implements list with qualified names", () => {

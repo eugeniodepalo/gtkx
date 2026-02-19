@@ -43,7 +43,8 @@
         "lint": "cargo fmt --check && cargo clippy -- -D warnings",
         "native-build": "node scripts/build.js",
         "native-test": "xvfb-run -a cargo test -- --test-threads=1",
-        "test": "vitest run"
+        "test": "vitest run",
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "optionalDependencies": {
         "@gtkx/native-linux-arm64": "workspace:*",

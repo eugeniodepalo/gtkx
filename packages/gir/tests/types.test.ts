@@ -343,7 +343,7 @@ describe("GirMethod", () => {
         });
         const outParams = method.getOutParameters();
         expect(outParams).toHaveLength(1);
-        expect(outParams[0].name).toBe("output");
+        expect(outParams[0]?.name).toBe("output");
     });
 
     it("gets required parameters", () => {
@@ -369,7 +369,7 @@ describe("GirMethod", () => {
         });
         const requiredParams = method.getRequiredParameters();
         expect(requiredParams).toHaveLength(1);
-        expect(requiredParams[0].name).toBe("required");
+        expect(requiredParams[0]?.name).toBe("required");
     });
 });
 

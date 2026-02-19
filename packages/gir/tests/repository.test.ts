@@ -443,7 +443,7 @@ describe("GirRepository", () => {
 
             const abstractClasses = repo.findClasses((cls) => cls.abstract);
             expect(abstractClasses.length).toBe(1);
-            expect(abstractClasses[0].name).toBe("Widget");
+            expect(abstractClasses[0]?.name).toBe("Widget");
         });
 
         it("returns empty array when no matches", () => {
@@ -471,7 +471,7 @@ describe("GirRepository", () => {
 
             const interfaces = repo.findInterfaces((iface) => iface.name.startsWith("Build"));
             expect(interfaces.length).toBe(1);
-            expect(interfaces[0].name).toBe("Buildable");
+            expect(interfaces[0]?.name).toBe("Buildable");
         });
     });
 
@@ -491,7 +491,7 @@ describe("GirRepository", () => {
 
             const boxedRecords = repo.findRecords((rec) => rec.isBoxed());
             expect(boxedRecords.length).toBe(1);
-            expect(boxedRecords[0].name).toBe("Rectangle");
+            expect(boxedRecords[0]?.name).toBe("Rectangle");
         });
     });
 

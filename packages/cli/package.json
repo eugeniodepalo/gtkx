@@ -61,7 +61,8 @@
     ],
     "scripts": {
         "build": "tsc -b",
-        "test": "vitest run"
+        "test": "vitest run",
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
         "@clack/prompts": "^1.0.1",

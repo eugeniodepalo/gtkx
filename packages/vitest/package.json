@@ -38,7 +38,8 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b && cp ../../README.md ."
+        "build": "tsc -b && cp ../../README.md .",
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "devDependencies": {
         "vitest": "^4.0.18"

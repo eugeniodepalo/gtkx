@@ -42,7 +42,8 @@
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",
-        "test": "vitest run"
+        "test": "vitest run",
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
         "@emotion/cache": "^11.14.0",

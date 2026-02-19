@@ -31,7 +31,8 @@
     ],
     "scripts": {
         "build": "tsc -p tsconfig.lib.json",
-        "test": "vitest run"
+        "test": "vitest run",
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "devDependencies": {
         "@biomejs/js-api": "^4.0.0",

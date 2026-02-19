@@ -5,7 +5,8 @@
     "type": "module",
     "scripts": {
         "build": "tsc -b",
-        "test": "vitest run"
+        "test": "vitest run",
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
