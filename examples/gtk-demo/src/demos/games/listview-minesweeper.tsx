@@ -64,15 +64,6 @@ const createBoard = (): Cell[] => {
     return cells;
 };
 
-const defaultCell: Cell = {
-    id: "",
-    row: 0,
-    col: 0,
-    isMine: false,
-    isRevealed: false,
-    adjacentMines: 0,
-};
-
 const ListViewMinesweeperDemo = () => {
     const [board, setBoard] = useState<Cell[]>(createBoard);
     const [gameState, setGameState] = useState<GameState>("playing");
@@ -155,20 +146,17 @@ const ListViewMinesweeperDemo = () => {
                     maxColumns={GRID_SIZE}
                     singleClickActivate
                     onActivate={(position) => handleCellClick(position)}
-                    renderItem={(item: Cell | null) => (
+                    renderItem={(item: Cell) => (
                         <GtkLabel
-                            label={getCellDisplay(item ?? defaultCell)}
+                            label={getCellDisplay(item)}
                             halign={Gtk.Align.CENTER}
                             valign={Gtk.Align.CENTER}
                             widthRequest={32}
                             heightRequest={32}
                         />
                     )}
-                >
-                    {board.map((cell) => (
-                        <x.ListItem key={cell.id} id={cell.id} value={cell} />
-                    ))}
-                </GtkGridView>
+                    items={board.map((cell) => ({ id: cell.id, value: cell }))}
+                />
             </GtkBox>
         </>
     );

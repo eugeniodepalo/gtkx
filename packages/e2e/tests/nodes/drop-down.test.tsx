@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkDropDown, x } from "@gtkx/react";
+import { GtkDropDown } from "@gtkx/react";
 import { render, screen, tick } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -18,11 +18,14 @@ describe("render - DropDown", () => {
             const dropDownRef = createRef<Gtk.DropDown>();
 
             await render(
-                <GtkDropDown ref={dropDownRef}>
-                    <x.ListItem id="1" value="Option 1" />
-                    <x.ListItem id="2" value="Option 2" />
-                    <x.ListItem id="3" value="Option 3" />
-                </GtkDropDown>,
+                <GtkDropDown
+                    ref={dropDownRef}
+                    items={[
+                        { id: "1", value: "Option 1" },
+                        { id: "2", value: "Option 2" },
+                        { id: "3", value: "Option 3" },
+                    ]}
+                />,
             );
 
             expect(screen.queryAllByText("Option 1").length).toBeGreaterThan(0);
@@ -40,11 +43,15 @@ describe("render - DropDown", () => {
             const dropDownRef = createRef<Gtk.DropDown>();
 
             await render(
-                <GtkDropDown ref={dropDownRef} selectedId="2">
-                    <x.ListItem id="1" value="Option 1" />
-                    <x.ListItem id="2" value="Option 2" />
-                    <x.ListItem id="3" value="Option 3" />
-                </GtkDropDown>,
+                <GtkDropDown
+                    ref={dropDownRef}
+                    selectedId="2"
+                    items={[
+                        { id: "1", value: "Option 1" },
+                        { id: "2", value: "Option 2" },
+                        { id: "3", value: "Option 3" },
+                    ]}
+                />,
             );
 
             expect(dropDownRef.current?.getSelected()).toBe(1);
@@ -55,10 +62,14 @@ describe("render - DropDown", () => {
             const onSelectionChanged = vi.fn();
 
             await render(
-                <GtkDropDown ref={dropDownRef} onSelectionChanged={onSelectionChanged}>
-                    <x.ListItem id="1" value="Option 1" />
-                    <x.ListItem id="2" value="Option 2" />
-                </GtkDropDown>,
+                <GtkDropDown
+                    ref={dropDownRef}
+                    onSelectionChanged={onSelectionChanged}
+                    items={[
+                        { id: "1", value: "Option 1" },
+                        { id: "2", value: "Option 2" },
+                    ]}
+                />,
             );
 
             dropDownRef.current?.setSelected(1);
@@ -71,11 +82,7 @@ describe("render - DropDown", () => {
 
             function App({ items }: { items: Array<{ id: string; value: string }> }) {
                 return (
-                    <GtkDropDown ref={dropDownRef}>
-                        {items.map((item) => (
-                            <x.ListItem key={item.id} id={item.id} value={item.value} />
-                        ))}
-                    </GtkDropDown>
+                    <GtkDropDown ref={dropDownRef} items={items.map((item) => ({ id: item.id, value: item.value }))} />
                 );
             }
 
@@ -113,11 +120,7 @@ describe("render - DropDown", () => {
 
             function App({ items }: { items: Array<{ id: string; value: string }> }) {
                 return (
-                    <GtkDropDown ref={dropDownRef}>
-                        {items.map((item) => (
-                            <x.ListItem key={item.id} id={item.id} value={item.value} />
-                        ))}
-                    </GtkDropDown>
+                    <GtkDropDown ref={dropDownRef} items={items.map((item) => ({ id: item.id, value: item.value }))} />
                 );
             }
 

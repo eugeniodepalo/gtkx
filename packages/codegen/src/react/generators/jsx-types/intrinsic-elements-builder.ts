@@ -24,14 +24,24 @@ export class IntrinsicElementsBuilder {
      * Builds widget export constants.
      * Uses ts-morph structures API for batched operations.
      */
+    private static readonly LIST_WIDGET_NAMES = new Set([
+        "GtkListView",
+        "GtkGridView",
+        "GtkColumnView",
+        "GtkDropDown",
+        "AdwComboRow",
+    ]);
+
     buildWidgetExports(sourceFile: SourceFile, widgets: JsxWidget[]): void {
-        const statements = widgets.map((widget) =>
-            createConstExport(widget.jsxName, `"${widget.jsxName}" as const`, {
-                docs: buildJsDocStructure(widget.meta.doc, widget.namespace) ?? [
-                    { description: `A ${widget.namespace}.${widget.className} widget element.` },
-                ],
-            }),
-        );
+        const statements = widgets
+            .filter((widget) => !IntrinsicElementsBuilder.LIST_WIDGET_NAMES.has(widget.jsxName))
+            .map((widget) =>
+                createConstExport(widget.jsxName, `"${widget.jsxName}" as const`, {
+                    docs: buildJsDocStructure(widget.meta.doc, widget.namespace) ?? [
+                        { description: `A ${widget.namespace}.${widget.className} widget element.` },
+                    ],
+                }),
+            );
 
         sourceFile.addVariableStatements(statements);
     }

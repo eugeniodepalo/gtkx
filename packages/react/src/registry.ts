@@ -10,21 +10,16 @@ import { AnimationNode } from "./nodes/animation.js";
 import { ApplicationNode } from "./nodes/application.js";
 import { CalendarNode } from "./nodes/calendar.js";
 import { ColorDialogButtonNode } from "./nodes/color-dialog-button.js";
-import { ColumnViewNode } from "./nodes/column-view.js";
 import { ColumnViewColumnNode } from "./nodes/column-view-column.js";
 import { ContainerSlotNode } from "./nodes/container-slot.js";
 import { DialogNode } from "./nodes/dialog.js";
 import { DrawingAreaNode } from "./nodes/drawing-area.js";
-import { DropDownNode } from "./nodes/drop-down.js";
 import { EventControllerNode } from "./nodes/event-controller.js";
 import { FixedChildNode } from "./nodes/fixed-child.js";
 import { FontDialogButtonNode } from "./nodes/font-dialog-button.js";
 import { GridChildNode } from "./nodes/grid-child.js";
-import { GridViewNode } from "./nodes/grid-view.js";
 import { LevelBarNode } from "./nodes/level-bar.js";
-import { ListItemNode } from "./nodes/list-item.js";
-import { ListSectionNode } from "./nodes/list-section.js";
-import { ListViewNode } from "./nodes/list-view.js";
+import { ListNode } from "./nodes/list.js";
 import { MenuNode } from "./nodes/menu.js";
 import { NavigationPageNode } from "./nodes/navigation-page.js";
 import { NavigationViewNode } from "./nodes/navigation-view.js";
@@ -53,17 +48,12 @@ import { WidgetNode } from "./nodes/widget.js";
 import { WindowNode } from "./nodes/window.js";
 
 export const AdjustableWidgets = [Gtk.SpinButton, Gtk.ScaleButton, Gtk.Range] as const;
-
 export type AdjustableWidget = InstanceType<(typeof AdjustableWidgets)[number]>;
 
 export const StackWidgets = [Gtk.Stack, Adw.ViewStack] as const;
 export type StackWidget = InstanceType<(typeof StackWidgets)[number]>;
 
-export const DropDownWidgets = [Gtk.DropDown, Adw.ComboRow] as const;
-export type DropDownWidget = InstanceType<(typeof DropDownWidgets)[number]>;
-
 export const PopoverMenuWidgets = [Gtk.PopoverMenu, Gtk.PopoverMenuBar, Gtk.MenuButton] as const;
-
 export type PopoverMenuWidget = InstanceType<(typeof PopoverMenuWidgets)[number]>;
 
 export type NodeClass = (new (
@@ -86,8 +76,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["ColumnViewColumn", ColumnViewColumnNode],
     ["FixedChild", FixedChildNode],
     ["GridChild", GridChildNode],
-    ["ListItem", ListItemNode],
-    ["ListSection", ListSectionNode],
     [["MenuItem", "MenuSection", "MenuSubmenu"], MenuNode],
     ["NavigationPage", NavigationPageNode],
     ["NotebookPage", NotebookPageNode],
@@ -120,10 +108,7 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     [Adw.ToggleGroup, ToggleGroupNode],
     [Gtk.Notebook, NotebookNode],
     [StackWidgets, StackNode],
-    [Gtk.ColumnView, ColumnViewNode],
-    [Gtk.ListView, ListViewNode],
-    [Gtk.GridView, GridViewNode],
-    [DropDownWidgets, DropDownNode],
+    [[Gtk.ListView, Gtk.ColumnView, Gtk.GridView, Gtk.DropDown, Adw.ComboRow], ListNode],
     [PopoverMenuWidgets, PopoverMenuNode],
     [AdjustableWidgets, AdjustableNode],
     [Gtk.Widget, WidgetNode],

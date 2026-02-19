@@ -1,4 +1,13 @@
-export { Arg, createRef, type NativeHandle, Ref, readPointer, Type, writePointer } from "@gtkx/native";
+export {
+    Arg,
+    createRef,
+    getNativeId,
+    type NativeHandle,
+    Ref,
+    readPointer,
+    Type,
+    writePointer,
+} from "@gtkx/native";
 export * from "./lifecycle.js";
 export * from "./native.js";
 export * from "./registry.js";

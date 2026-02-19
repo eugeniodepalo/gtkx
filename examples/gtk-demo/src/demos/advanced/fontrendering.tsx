@@ -475,11 +475,8 @@ const FontRenderingDemo = () => {
                                     const opt = hintStyleOptions.find((o) => o.id === id);
                                     if (opt) setHintStyle(opt.value);
                                 }}
-                            >
-                                {hintStyleOptions.map((opt) => (
-                                    <x.ListItem key={opt.id} id={opt.id} value={opt.label} />
-                                ))}
-                            </GtkDropDown>
+                                items={hintStyleOptions.map((opt) => ({ id: opt.id, value: opt.label }))}
+                            />
                         </GtkBox>
                     </x.GridChild>
                     <x.GridChild column={4} row={1}>

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkInscription, GtkListView, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry, x } from "@gtkx/react";
+import { GtkBox, GtkInscription, GtkListView, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/react";
 import { useDemo } from "../context/demo-context.js";
 import type { TreeItem } from "../demos/types.js";
 
@@ -8,23 +8,23 @@ interface SidebarProps {
     onSearchChanged: (text: string) => void;
 }
 
-const TreeItemNode = ({ item }: { item: TreeItem }) => {
-    if (item.type === "demo") {
-        return (
-            <x.ListItem key={item.demo.id} id={`demo-${item.demo.id}`} value={item} hideExpander>
-                {null}
-            </x.ListItem>
-        );
-    }
+interface SidebarItemData {
+    id: string;
+    value: TreeItem;
+    hideExpander?: true;
+    children?: SidebarItemData[];
+}
 
-    return (
-        <x.ListItem key={`category-${item.title}`} id={`category-${item.title}`} value={item}>
-            {item.children.map((child) => (
-                <TreeItemNode key={child.type === "demo" ? child.demo.id : child.title} item={child} />
-            ))}
-        </x.ListItem>
-    );
-};
+function treeItemToData(item: TreeItem): SidebarItemData {
+    if (item.type === "demo") {
+        return { id: `demo-${item.demo.id}`, value: item, hideExpander: true };
+    }
+    return {
+        id: `category-${item.title}`,
+        value: item,
+        children: item.children.map(treeItemToData),
+    };
+}
 
 export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
     const { filteredTreeItems, currentDemo, setCurrentDemo, searchQuery, demos } = useDemo();
@@ -57,9 +57,7 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
                             setCurrentDemo(demo);
                         }
                     }}
-                    renderItem={(item: TreeItem | null) => {
-                        if (!item) return null;
-
+                    renderItem={(item: TreeItem) => {
                         if (item.type === "category") {
                             return (
                                 <GtkInscription
@@ -78,11 +76,8 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
                             />
                         );
                     }}
-                >
-                    {filteredTreeItems.map((item) => (
-                        <TreeItemNode key={item.type === "demo" ? item.demo.id : item.title} item={item} />
-                    ))}
-                </GtkListView>
+                    items={filteredTreeItems.map(treeItemToData)}
+                />
             </GtkScrolledWindow>
         </GtkBox>
     );

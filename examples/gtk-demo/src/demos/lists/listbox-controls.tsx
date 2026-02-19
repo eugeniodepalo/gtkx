@@ -13,7 +13,6 @@ import {
     GtkSpinButton,
     GtkSwitch,
     GtkViewport,
-    x,
 } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
@@ -216,12 +215,16 @@ const ListBoxControlsDemo = () => {
                                     valign={Gtk.Align.CENTER}
                                     hexpand
                                 />
-                                <GtkDropDown halign={Gtk.Align.END} valign={Gtk.Align.CENTER}>
-                                    <x.ListItem id="1" value="Choice 1" />
-                                    <x.ListItem id="2" value="Choice 2" />
-                                    <x.ListItem id="3" value="Choice 3" />
-                                    <x.ListItem id="4" value="Choice 4" />
-                                </GtkDropDown>
+                                <GtkDropDown
+                                    halign={Gtk.Align.END}
+                                    valign={Gtk.Align.CENTER}
+                                    items={[
+                                        { id: "1", value: "Choice 1" },
+                                        { id: "2", value: "Choice 2" },
+                                        { id: "3", value: "Choice 3" },
+                                        { id: "4", value: "Choice 4" },
+                                    ]}
+                                />
                             </GtkBox>
                         </GtkListBoxRow>
 

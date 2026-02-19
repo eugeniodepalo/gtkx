@@ -152,9 +152,9 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
     }
 
     public override detachDeletedInstance(): void {
+        super.detachDeletedInstance();
         this.container.setVisible(false);
         this.container.destroy();
-        super.detachDeletedInstance();
     }
 
     private applyOwnProps(oldProps: WindowProps | null, newProps: WindowProps): void {

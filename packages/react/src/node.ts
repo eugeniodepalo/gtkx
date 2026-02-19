@@ -14,8 +14,6 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
     rootContainer: Container;
     parent: TParent | null = null;
     children: TChild[] = [];
-    private childIndices = new Map<TChild, number>();
-    private childrenDirty = false;
 
     constructor(typeName: string, props: TProps, container: TContainer, rootContainer: Container) {
         this.typeName = typeName;
@@ -37,6 +35,7 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
         if (parent !== null && !this.isValidParent(parent)) {
             throw new Error(`Cannot add '${this.typeName}' to '${parent.typeName}'`);
         }
+
         this.parent = parent;
     }
 
@@ -45,64 +44,49 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
     }
 
     public appendChild(child: TChild): void {
-        if (this.childrenDirty) this.flushChildRemovals();
         if (!this.isValidChild(child)) {
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}'`);
         }
-        this.childIndices.set(child, this.children.length);
+
+        const existingIndex = this.children.indexOf(child);
+        if (existingIndex !== -1) {
+            this.children.splice(existingIndex, 1);
+        }
         this.children.push(child);
-        child.setParent(this);
+
+        if (child.parent !== this) {
+            child.setParent(this);
+        }
     }
 
     public removeChild(child: TChild): void {
-        if (!this.childIndices.has(child)) return;
         child.setParent(null);
-        this.childIndices.delete(child);
-        if (!this.childrenDirty) {
-            this.childrenDirty = true;
-            queueMicrotask(() => this.flushChildRemovals());
+        const index = this.children.indexOf(child);
+
+        if (index !== -1) {
+            this.children.splice(index, 1);
         }
     }
 
     public insertBefore(child: TChild, before: TChild): void {
-        if (this.childrenDirty) this.flushChildRemovals();
-
-        const beforeIndex = this.childIndices.get(before);
-        if (beforeIndex === undefined) {
-            throw new Error(`Cannot find 'before' child '${before.typeName}' in '${this.typeName}'`);
-        }
-
-        const existingIndex = this.childIndices.get(child);
-        if (existingIndex !== undefined) {
-            this.children.splice(existingIndex, 1);
-            const adjustedIndex = existingIndex < beforeIndex ? beforeIndex - 1 : beforeIndex;
-            this.children.splice(adjustedIndex, 0, child);
-            this.rebuildChildIndices(Math.min(existingIndex, adjustedIndex));
-            return;
-        }
-
         if (!this.isValidChild(child)) {
             throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}'`);
         }
 
-        this.children.splice(beforeIndex, 0, child);
-        this.rebuildChildIndices(beforeIndex);
-        child.setParent(this);
-    }
-
-    private flushChildRemovals(): void {
-        if (!this.childrenDirty) return;
-        this.childrenDirty = false;
-        this.children = this.children.filter((c) => this.childIndices.has(c));
-        this.childIndices.clear();
-        for (let i = 0; i < this.children.length; i++) {
-            this.childIndices.set(this.children[i] as TChild, i);
+        const existingIndex = this.children.indexOf(child);
+        if (existingIndex !== -1) {
+            this.children.splice(existingIndex, 1);
         }
-    }
 
-    private rebuildChildIndices(fromIndex: number): void {
-        for (let i = fromIndex; i < this.children.length; i++) {
-            this.childIndices.set(this.children[i] as TChild, i);
+        const beforeIndex = this.children.indexOf(before);
+        if (beforeIndex === -1) {
+            throw new Error(`Cannot find 'before' child '${before.typeName}' in '${this.typeName}'`);
+        }
+
+        this.children.splice(beforeIndex, 0, child);
+
+        if (child.parent !== this) {
+            child.setParent(this);
         }
     }
 

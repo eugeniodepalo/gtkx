@@ -318,11 +318,11 @@ const ClipboardDemo = ({ window }: DemoProps) => {
             />
 
             <GtkBox spacing={12}>
-                <GtkDropDown valign={Gtk.Align.CENTER} onSelectionChanged={(id) => setSourceType(id as SourceType)}>
-                    {SOURCE_TYPES.map((type) => (
-                        <x.ListItem key={type} id={type} value={type} />
-                    ))}
-                </GtkDropDown>
+                <GtkDropDown
+                    valign={Gtk.Align.CENTER}
+                    onSelectionChanged={(id) => setSourceType(id as SourceType)}
+                    items={SOURCE_TYPES.map((type) => ({ id: type, value: type }))}
+                />
 
                 <GtkStack page={sourceType} vexpand>
                     <x.StackPage id="Text">

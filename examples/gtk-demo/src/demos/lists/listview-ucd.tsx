@@ -283,13 +283,13 @@ const ListViewUcdDemo = () => {
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
             <GtkScrolledWindow propagateNaturalWidth vexpand>
-                <GtkColumnView
+                <GtkColumnView<UcdEntry, string>
                     showColumnSeparators
                     estimatedRowHeight={32}
                     onActivate={handleActivate}
-                    renderHeader={(script: string | null) => (
+                    renderHeader={(script) => (
                         <GtkLabel
-                            label={script ?? ""}
+                            label={script}
                             halign={Gtk.Align.START}
                             cssClasses={["heading"]}
                             marginTop={20}
@@ -298,14 +298,20 @@ const ListViewUcdDemo = () => {
                             marginEnd={20}
                         />
                     )}
+                    items={characterSections.map((section) => ({
+                        id: section.script,
+                        value: section.script,
+                        section: true,
+                        children: section.entries.map((entry) => ({ id: entry.codepointStr, value: entry })),
+                    }))}
                 >
                     <x.ColumnViewColumn
                         id="codepoint"
                         title="Codepoint"
                         sortable
-                        renderCell={(item: UcdEntry | null) => (
+                        renderCell={(item: UcdEntry) => (
                             <GtkInscription
-                                text={item?.codepointStr ?? ""}
+                                text={item.codepointStr}
                                 cssClasses={["monospace"]}
                                 marginTop={4}
                                 marginBottom={4}
@@ -315,9 +321,9 @@ const ListViewUcdDemo = () => {
                     <x.ColumnViewColumn
                         id="char"
                         title="Char"
-                        renderCell={(item: UcdEntry | null) => (
+                        renderCell={(item: UcdEntry) => (
                             <GtkInscription
-                                text={item && GLib.unicharIsprint(item.codepoint) ? item.char : ""}
+                                text={GLib.unicharIsprint(item.codepoint) ? item.char : ""}
                                 marginTop={4}
                                 marginBottom={4}
                             />
@@ -327,9 +333,9 @@ const ListViewUcdDemo = () => {
                         id="name"
                         title="Name"
                         resizable
-                        renderCell={(item: UcdEntry | null) => (
+                        renderCell={(item: UcdEntry) => (
                             <GtkInscription
-                                text={item?.name ?? ""}
+                                text={item.name}
                                 xalign={0}
                                 textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
                                 natChars={20}
@@ -342,9 +348,9 @@ const ListViewUcdDemo = () => {
                         id="type"
                         title="Type"
                         resizable
-                        renderCell={(item: UcdEntry | null) => (
+                        renderCell={(item: UcdEntry) => (
                             <GtkInscription
-                                text={item ? (UNICODE_TYPE_NAMES[GLib.unicharType(item.codepoint)] ?? "Unknown") : ""}
+                                text={UNICODE_TYPE_NAMES[GLib.unicharType(item.codepoint)] ?? "Unknown"}
                                 cssClasses={["dim-label"]}
                                 xalign={0}
                                 textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
@@ -357,11 +363,9 @@ const ListViewUcdDemo = () => {
                         id="break-type"
                         title="Break Type"
                         resizable
-                        renderCell={(item: UcdEntry | null) => (
+                        renderCell={(item: UcdEntry) => (
                             <GtkInscription
-                                text={
-                                    item ? (BREAK_TYPE_NAMES[GLib.unicharBreakType(item.codepoint)] ?? "Unknown") : ""
-                                }
+                                text={BREAK_TYPE_NAMES[GLib.unicharBreakType(item.codepoint)] ?? "Unknown"}
                                 cssClasses={["dim-label"]}
                                 xalign={0}
                                 textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
@@ -374,14 +378,9 @@ const ListViewUcdDemo = () => {
                         id="combining-class"
                         title="Combining Class"
                         resizable
-                        renderCell={(item: UcdEntry | null) => (
+                        renderCell={(item: UcdEntry) => (
                             <GtkInscription
-                                text={
-                                    item
-                                        ? (COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.codepoint)] ??
-                                          "Unknown")
-                                        : ""
-                                }
+                                text={COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.codepoint)] ?? "Unknown"}
                                 cssClasses={["dim-label"]}
                                 xalign={0}
                                 textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
@@ -390,13 +389,6 @@ const ListViewUcdDemo = () => {
                             />
                         )}
                     />
-                    {characterSections.map((section) => (
-                        <x.ListSection key={section.script} id={section.script} value={section.script}>
-                            {section.entries.map((entry) => (
-                                <x.ListItem key={entry.codepointStr} id={entry.codepointStr} value={entry} />
-                            ))}
-                        </x.ListSection>
-                    ))}
                 </GtkColumnView>
             </GtkScrolledWindow>
             <GtkLabel label={selectedChar} cssClasses={[css`font-size: 80px;`]} hexpand widthChars={2} />

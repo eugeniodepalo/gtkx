@@ -73,6 +73,8 @@ export function createHostConfig(): HostConfig {
         supportsMutation: true,
         supportsPersistence: false,
         supportsHydration: false,
+        supportsMicrotasks: true,
+        scheduleMicrotask: (fn: () => unknown) => queueMicrotask(fn),
         isPrimaryRenderer: true,
         noTimeout: -1,
         getRootHostContext: () => ({}),

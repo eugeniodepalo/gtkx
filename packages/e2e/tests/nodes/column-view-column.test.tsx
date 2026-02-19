@@ -426,13 +426,14 @@ describe("render - ColumnViewColumn", () => {
                             sortColumn={sortColumn}
                             sortOrder={sortOrder}
                             onSortChanged={handleSortChange}
+                            items={sortedPeople.map((person) => ({ id: person.name, value: person }))}
                         >
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
                                 sortable
-                                renderCell={(item: Person | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: Person) => <GtkLabel label={item.name} />}
                             >
                                 <ColumnMenu column="name" onSort={handleSortChange} />
                             </x.ColumnViewColumn>
@@ -441,7 +442,7 @@ describe("render - ColumnViewColumn", () => {
                                 title="Role"
                                 fixedWidth={100}
                                 sortable
-                                renderCell={(item: Person | null) => <GtkLabel label={item?.role ?? ""} />}
+                                renderCell={(item: Person) => <GtkLabel label={item.role} />}
                             >
                                 <ColumnMenu column="role" onSort={handleSortChange}>
                                     <x.MenuSection>
@@ -454,9 +455,7 @@ describe("render - ColumnViewColumn", () => {
                                 title="Salary"
                                 fixedWidth={100}
                                 sortable
-                                renderCell={(item: Person | null) => (
-                                    <GtkLabel label={item?.salary?.toString() ?? ""} />
-                                )}
+                                renderCell={(item: Person) => <GtkLabel label={item.salary.toString()} />}
                             >
                                 <ColumnMenu column="salary" onSort={handleSortChange}>
                                     <x.MenuSection>
@@ -464,9 +463,6 @@ describe("render - ColumnViewColumn", () => {
                                     </x.MenuSection>
                                 </ColumnMenu>
                             </x.ColumnViewColumn>
-                            {sortedPeople.map((person) => (
-                                <x.ListItem key={person.name} id={person.name} value={person} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );

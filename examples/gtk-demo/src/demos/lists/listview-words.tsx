@@ -147,19 +147,16 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
                             hexpand
                             estimatedItemHeight={32}
                             selectionMode={Gtk.SelectionMode.NONE}
-                            renderItem={(word: string | null) => (
+                            items={filteredWords.map((word) => ({ id: word, value: word }))}
+                            renderItem={(word: string) => (
                                 <GtkInscription
-                                    text={word ?? ""}
+                                    text={word}
                                     xalign={0}
                                     natChars={20}
                                     textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
                                 />
                             )}
-                        >
-                            {filteredWords.map((word) => (
-                                <x.ListItem key={word} id={word} value={word} />
-                            ))}
-                        </GtkListView>
+                        />
                     </GtkScrolledWindow>
                     {filterProgress < 1 && (
                         <x.OverlayChild>

@@ -17,7 +17,7 @@ GTKX provides several list components for different use cases, from simple stati
 High-performance virtualized list for large datasets. Only visible items are rendered.
 
 ```tsx
-import { x, GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 interface Contact {
@@ -36,21 +36,18 @@ const ContactList = () => (
   <GtkScrolledWindow vexpand>
     <GtkListView
       estimatedItemHeight={48}
-      renderItem={(contact: Contact | null) => (
+      items={contacts.map((contact) => ({ id: contact.id, value: contact }))}
+      renderItem={(contact) => (
         <GtkBox spacing={12}>
           <GtkLabel
-            label={contact?.name ?? ""}
+            label={contact.name}
             hexpand
             halign={Gtk.Align.START}
           />
-          <GtkLabel label={contact?.email ?? ""} cssClasses={["dim-label"]} />
+          <GtkLabel label={contact.email} cssClasses={["dim-label"]} />
         </GtkBox>
       )}
-    >
-      {contacts.map((contact) => (
-        <x.ListItem key={contact.id} id={contact.id} value={contact} />
-      ))}
-    </GtkListView>
+    />
   </GtkScrolledWindow>
 );
 ```
@@ -65,12 +62,9 @@ const [selected, setSelected] = useState<string[]>([]);
   selectionMode={Gtk.SelectionMode.MULTIPLE}
   selected={selected}
   onSelectionChanged={setSelected}
-  renderItem={(item) => item?.name ?? ""}
->
-  {items.map((item) => (
-    <x.ListItem key={item.id} id={item.id} value={item} />
-  ))}
-</GtkListView>;
+  items={items.map((item) => ({ id: item.id, value: item }))}
+  renderItem={(item) => item.name}
+/>;
 ```
 
 ## GridView
@@ -78,7 +72,7 @@ const [selected, setSelected] = useState<string[]>([]);
 Grid layout with virtual scrolling. Ideal for photo galleries and icon views.
 
 ```tsx
-import { x, GtkBox, GtkGridView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkGridView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { css } from "@gtkx/css";
 
 interface Photo {
@@ -98,21 +92,18 @@ const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
       estimatedItemHeight={130}
       minColumns={2}
       maxColumns={6}
-      renderItem={(photo: Photo | null) => (
+      items={photos.map((photo) => ({ id: photo.id, value: photo }))}
+      renderItem={(photo) => (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
           <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             heightRequest={100}
-            cssClasses={[photoTile(photo?.color ?? "#ccc")]}
+            cssClasses={[photoTile(photo.color)]}
           />
-          {photo?.title ?? ""}
+          {photo.title}
         </GtkBox>
       )}
-    >
-      {photos.map((photo) => (
-        <x.ListItem key={photo.id} id={photo.id} value={photo} />
-      ))}
-    </GtkGridView>
+    />
   </GtkScrolledWindow>
 );
 ```
@@ -159,6 +150,7 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
         sortColumn={sortColumn}
         sortOrder={sortOrder}
         onSortChanged={handleSortChange}
+        items={sortedEmployees.map((emp) => ({ id: emp.id, value: emp }))}
       >
         <x.ColumnViewColumn
           id="name"
@@ -166,8 +158,8 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
           expand
           resizable
           sortable
-          renderCell={(emp: Employee | null) => (
-            <GtkLabel label={emp?.name ?? ""} halign={Gtk.Align.START} />
+          renderCell={(emp: Employee) => (
+            <GtkLabel label={emp.name} halign={Gtk.Align.START} />
           )}
         />
         <x.ColumnViewColumn
@@ -175,8 +167,8 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
           title="Department"
           resizable
           sortable
-          renderCell={(emp: Employee | null) => (
-            <GtkLabel label={emp?.department ?? ""} halign={Gtk.Align.START} />
+          renderCell={(emp: Employee) => (
+            <GtkLabel label={emp.department} halign={Gtk.Align.START} />
           )}
         />
         <x.ColumnViewColumn
@@ -184,16 +176,13 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
           title="Salary"
           resizable
           sortable
-          renderCell={(emp: Employee | null) => (
+          renderCell={(emp: Employee) => (
             <GtkLabel
-              label={emp ? `$${emp.salary.toLocaleString()}` : ""}
+              label={`$${emp.salary.toLocaleString()}`}
               halign={Gtk.Align.END}
             />
           )}
         />
-        {sortedEmployees.map((emp) => (
-          <x.ListItem key={emp.id} id={emp.id} value={emp} />
-        ))}
       </GtkColumnView>
     </GtkScrolledWindow>
   );
@@ -205,7 +194,7 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
 Simple selection from a small list.
 
 ```tsx
-import { x, GtkDropDown, GtkBox, GtkLabel } from "@gtkx/react";
+import { GtkDropDown, GtkBox } from "@gtkx/react";
 import { useState } from "react";
 
 const frameworks = [
@@ -221,11 +210,11 @@ const FrameworkSelector = () => {
   return (
     <GtkBox spacing={12}>
       Framework:
-      <GtkDropDown selectedId={selectedId} onSelectionChanged={setSelectedId}>
-        {frameworks.map((fw) => (
-          <x.ListItem key={fw.id} id={fw.id} value={fw.name} />
-        ))}
-      </GtkDropDown>
+      <GtkDropDown
+        selectedId={selectedId}
+        onSelectionChanged={setSelectedId}
+        items={frameworks.map((fw) => ({ id: fw.id, value: fw.name }))}
+      />
     </GtkBox>
   );
 };
@@ -303,10 +292,10 @@ const TagCloud = ({ tags }: { tags: string[] }) => (
 
 ## Tree Lists
 
-Hierarchical tree display with expand/collapse functionality and virtual scrolling. Use `GtkListView` with nested `x.ListItem` children for file browsers, settings panels, or any nested data structure. The `renderItem` callback receives an optional second parameter `row` of type `Gtk.TreeListRow | null`.
+Hierarchical tree display with expand/collapse functionality and virtual scrolling. Use `GtkListView` with nested `children` arrays in the `items` prop for file browsers, settings panels, or any nested data structure. The `renderItem` callback receives an optional second parameter `row` of type `Gtk.TreeListRow | null`.
 
 ```tsx
-import { x, GtkBox, GtkLabel, GtkImage, GtkListView, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkImage, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 interface Category {
@@ -356,9 +345,16 @@ const SettingsTree = () => (
     <GtkListView
       estimatedItemHeight={48}
       autoexpand
-      renderItem={(item: TreeItem | null, row?: Gtk.TreeListRow | null) => {
-        if (!item) return <GtkLabel label="Loading..." />;
-
+      items={categories.map((category) => ({
+        id: category.id,
+        value: category as TreeItem,
+        children: category.children.map((setting) => ({
+          id: setting.id,
+          value: setting as TreeItem,
+          hideExpander: true,
+        })),
+      }))}
+      renderItem={(item: TreeItem, row?: Gtk.TreeListRow | null) => {
         if (item.type === "category") {
           return (
             <GtkBox spacing={12}>
@@ -370,29 +366,12 @@ const SettingsTree = () => (
 
         return <GtkLabel label={item.title} />;
       }}
-    >
-      {categories.map((category) => (
-        <x.ListItem
-          key={category.id}
-          id={category.id}
-          value={category as TreeItem}
-        >
-          {category.children.map((setting) => (
-            <x.ListItem
-              key={setting.id}
-              id={setting.id}
-              value={setting as TreeItem}
-              hideExpander
-            />
-          ))}
-        </x.ListItem>
-      ))}
-    </GtkListView>
+    />
   </GtkScrolledWindow>
 );
 ```
 
-Nesting `x.ListItem` children triggers tree behavior automatically. Tree-specific props on `x.ListItem`: `indentForDepth`, `indentForIcon`, `hideExpander`.
+Items with nested `children` arrays trigger tree behavior automatically. Tree-specific properties on items: `indentForDepth`, `indentForIcon`, `hideExpander`.
 
 ### Selection
 
@@ -404,15 +383,11 @@ const [selected, setSelected] = useState<string[]>([]);
   autoexpand
   selected={selected}
   onSelectionChanged={setSelected}
-  renderItem={(item, row) => <GtkLabel label={item?.name ?? ""} />}
->
-  {items.map((item) => (
-    <x.ListItem key={item.id} id={item.id} value={item}>
-      {item.children?.map((child) => (
-        <x.ListItem key={child.id} id={child.id} value={child} />
-      ))}
-    </x.ListItem>
-  ))}
-</GtkListView>;
+  items={items.map((item) => ({
+    id: item.id,
+    value: item,
+    children: item.children?.map((child) => ({ id: child.id, value: child })),
+  }))}
+  renderItem={(item, row) => <GtkLabel label={item.name} />}
+/>;
 ```
-

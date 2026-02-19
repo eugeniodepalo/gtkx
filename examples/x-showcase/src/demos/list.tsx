@@ -117,7 +117,7 @@ export const ListDemo = () => {
         >
             <GtkLabel label="List Components" cssClasses={["title-1"]} halign={Gtk.Align.START} />
 
-            <AdwPreferencesGroup title="x.ListItem" description="String-based items for DropDown and simple lists">
+            <AdwPreferencesGroup title="ListItem" description="Data items for DropDown and simple lists">
                 <GtkFrame marginTop={12}>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -128,13 +128,15 @@ export const ListDemo = () => {
                         marginEnd={12}
                     >
                         <GtkLabel label="Select a fruit:" halign={Gtk.Align.START} />
-                        <GtkDropDown>
-                            <x.ListItem id="apple" value="Apple" />
-                            <x.ListItem id="banana" value="Banana" />
-                            <x.ListItem id="cherry" value="Cherry" />
-                            <x.ListItem id="date" value="Date" />
-                            <x.ListItem id="elderberry" value="Elderberry" />
-                        </GtkDropDown>
+                        <GtkDropDown
+                            items={[
+                                { id: "apple", value: "Apple" },
+                                { id: "banana", value: "Banana" },
+                                { id: "cherry", value: "Cherry" },
+                                { id: "date", value: "Date" },
+                                { id: "elderberry", value: "Elderberry" },
+                            ]}
+                        />
                     </GtkBox>
                 </GtkFrame>
             </AdwPreferencesGroup>
@@ -144,17 +146,14 @@ export const ListDemo = () => {
                     <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <GtkListView
                             estimatedItemHeight={48}
-                            renderItem={(item: FileItem | null) => (
+                            items={files.map((file) => ({ id: file.name, value: file }))}
+                            renderItem={(item: FileItem) => (
                                 <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8}>
-                                    <GtkLabel label={item?.isFolder ? "folder-symbolic" : "text-x-generic-symbolic"} />
-                                    <GtkLabel label={item?.name ?? ""} hexpand halign={Gtk.Align.START} />
+                                    <GtkLabel label={item.isFolder ? "folder-symbolic" : "text-x-generic-symbolic"} />
+                                    <GtkLabel label={item.name} hexpand halign={Gtk.Align.START} />
                                 </GtkBox>
                             )}
-                        >
-                            {files.map((file) => (
-                                <x.ListItem key={file.name} id={file.name} value={file} />
-                            ))}
-                        </GtkListView>
+                        />
                     </GtkScrolledWindow>
                 </GtkFrame>
             </AdwPreferencesGroup>
@@ -164,7 +163,8 @@ export const ListDemo = () => {
                     <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <GtkGridView
                             estimatedItemHeight={80}
-                            renderItem={(item: FileItem | null) => (
+                            items={files.map((file) => ({ id: file.name, value: file }))}
+                            renderItem={(item: FileItem) => (
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={6}
@@ -174,18 +174,11 @@ export const ListDemo = () => {
                                     marginEnd={12}
                                     halign={Gtk.Align.CENTER}
                                 >
-                                    <GtkLabel
-                                        label={item ? (item.isFolder ? "folder" : "file") : ""}
-                                        cssClasses={["title-3"]}
-                                    />
-                                    <GtkLabel label={item?.name ?? ""} ellipsize={3} maxWidthChars={12} />
+                                    <GtkLabel label={item.isFolder ? "folder" : "file"} cssClasses={["title-3"]} />
+                                    <GtkLabel label={item.name} ellipsize={3} maxWidthChars={12} />
                                 </GtkBox>
                             )}
-                        >
-                            {files.map((file) => (
-                                <x.ListItem key={file.name} id={file.name} value={file} />
-                            ))}
-                        </GtkGridView>
+                        />
                     </GtkScrolledWindow>
                 </GtkFrame>
             </AdwPreferencesGroup>
@@ -199,35 +192,47 @@ export const ListDemo = () => {
                         <GtkListView
                             estimatedItemHeight={32}
                             autoexpand
-                            renderItem={(item: { name: string } | null) => (
-                                <GtkLabel
-                                    label={item?.name ?? ""}
-                                    halign={Gtk.Align.START}
-                                    marginTop={4}
-                                    marginBottom={4}
-                                />
+                            items={[
+                                {
+                                    id: "src",
+                                    value: { name: "src" },
+                                    children: [
+                                        {
+                                            id: "components",
+                                            value: { name: "components" },
+                                            children: [
+                                                { id: "button", value: { name: "Button.tsx" } },
+                                                { id: "input", value: { name: "Input.tsx" } },
+                                                { id: "modal", value: { name: "Modal.tsx" } },
+                                            ],
+                                        },
+                                        {
+                                            id: "utils",
+                                            value: { name: "utils" },
+                                            children: [
+                                                { id: "helpers", value: { name: "helpers.ts" } },
+                                                { id: "constants", value: { name: "constants.ts" } },
+                                            ],
+                                        },
+                                        { id: "app", value: { name: "App.tsx" } },
+                                        { id: "index", value: { name: "index.tsx" } },
+                                    ],
+                                },
+                                {
+                                    id: "public",
+                                    value: { name: "public" },
+                                    children: [
+                                        { id: "favicon", value: { name: "favicon.ico" } },
+                                        { id: "index-html", value: { name: "index.html" } },
+                                    ],
+                                },
+                                { id: "package", value: { name: "package.json" } },
+                                { id: "readme", value: { name: "README.md" } },
+                            ]}
+                            renderItem={(item: { name: string }) => (
+                                <GtkLabel label={item.name} halign={Gtk.Align.START} marginTop={4} marginBottom={4} />
                             )}
-                        >
-                            <x.ListItem id="src" value={{ name: "src" }}>
-                                <x.ListItem id="components" value={{ name: "components" }}>
-                                    <x.ListItem id="button" value={{ name: "Button.tsx" }} />
-                                    <x.ListItem id="input" value={{ name: "Input.tsx" }} />
-                                    <x.ListItem id="modal" value={{ name: "Modal.tsx" }} />
-                                </x.ListItem>
-                                <x.ListItem id="utils" value={{ name: "utils" }}>
-                                    <x.ListItem id="helpers" value={{ name: "helpers.ts" }} />
-                                    <x.ListItem id="constants" value={{ name: "constants.ts" }} />
-                                </x.ListItem>
-                                <x.ListItem id="app" value={{ name: "App.tsx" }} />
-                                <x.ListItem id="index" value={{ name: "index.tsx" }} />
-                            </x.ListItem>
-                            <x.ListItem id="public" value={{ name: "public" }}>
-                                <x.ListItem id="favicon" value={{ name: "favicon.ico" }} />
-                                <x.ListItem id="index-html" value={{ name: "index.html" }} />
-                            </x.ListItem>
-                            <x.ListItem id="package" value={{ name: "package.json" }} />
-                            <x.ListItem id="readme" value={{ name: "README.md" }} />
-                        </GtkListView>
+                        />
                     </GtkScrolledWindow>
                 </GtkFrame>
             </AdwPreferencesGroup>
@@ -243,15 +248,16 @@ export const ListDemo = () => {
                             sortColumn={sortColumn}
                             sortOrder={sortOrder}
                             onSortChanged={handleSortChange}
+                            items={sortedPeople.map((person) => ({ id: person.email, value: person }))}
                         >
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
                                 sortable
-                                renderCell={(item: Person | null) => (
+                                renderCell={(item: Person) => (
                                     <GtkLabel
-                                        label={item?.name ?? ""}
+                                        label={item.name}
                                         halign={Gtk.Align.START}
                                         marginTop={8}
                                         marginBottom={8}
@@ -268,9 +274,9 @@ export const ListDemo = () => {
                                     title="Role"
                                     fixedWidth={100}
                                     sortable
-                                    renderCell={(item: Person | null) => (
+                                    renderCell={(item: Person) => (
                                         <GtkLabel
-                                            label={item?.role ?? ""}
+                                            label={item.role}
                                             halign={Gtk.Align.START}
                                             marginTop={8}
                                             marginBottom={8}
@@ -296,9 +302,9 @@ export const ListDemo = () => {
                                     title="Salary"
                                     fixedWidth={100}
                                     sortable
-                                    renderCell={(item: Person | null) => (
+                                    renderCell={(item: Person) => (
                                         <GtkLabel
-                                            label={item ? `$${item.salary.toLocaleString()}` : ""}
+                                            label={`$${item.salary.toLocaleString()}`}
                                             halign={Gtk.Align.END}
                                             marginTop={8}
                                             marginBottom={8}
@@ -318,9 +324,6 @@ export const ListDemo = () => {
                                     </ColumnMenu>
                                 </x.ColumnViewColumn>
                             )}
-                            {sortedPeople.map((person) => (
-                                <x.ListItem key={person.email} id={person.email} value={person} />
-                            ))}
                         </GtkColumnView>
                     </GtkScrolledWindow>
                 </GtkFrame>

@@ -130,7 +130,7 @@ Scrollable container.
 
 ## Virtual Lists
 
-All virtual list widgets use `ListItem` children and a `renderItem` function.
+All virtual list widgets use an `items` data prop and a `renderItem` function. Items are `{ id: string, value: T }` objects.
 
 ### GtkListView
 High-performance scrollable list with selection.
@@ -142,10 +142,9 @@ High-performance scrollable list with selection.
     selected={selectedId ? [selectedId] : []}
     selectionMode={Gtk.SelectionMode.SINGLE}
     onSelectionChanged={(ids) => setSelectedId(ids[0])}
-    renderItem={(item) => <GtkLabel label={item?.name ?? ""} />}
->
-    {items.map(item => <x.ListItem key={item.id} id={item.id} value={item} />)}
-</GtkListView>
+    items={items.map(item => ({ id: item.id, value: item }))}
+    renderItem={(item: Item) => <GtkLabel label={item.name} />}
+/>
 ```
 
 ### GtkGridView
@@ -156,37 +155,41 @@ Grid-based virtual scrolling.
     estimatedItemHeight={100}
     minColumns={2}
     maxColumns={4}
-    renderItem={(item) => (
+    items={items.map(item => ({ id: item.id, value: item }))}
+    renderItem={(item: Item) => (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkImage iconName={item?.icon ?? "image-missing"} />
-            <GtkLabel label={item?.name ?? ""} />
+            <GtkImage iconName={item.icon} />
+            <GtkLabel label={item.name} />
         </GtkBox>
     )}
->
-    {items.map(item => <x.ListItem key={item.id} id={item.id} value={item} />)}
-</GtkGridView>
+/>
 ```
 
 ### GtkColumnView
 Table with sortable columns.
 
 ```tsx
-<GtkColumnView estimatedRowHeight={48} sortColumn="name" sortOrder={Gtk.SortType.ASCENDING} onSortChanged={handleSort}>
+<GtkColumnView
+    estimatedRowHeight={48}
+    sortColumn="name"
+    sortOrder={Gtk.SortType.ASCENDING}
+    onSortChanged={handleSort}
+    items={items.map(item => ({ id: item.id, value: item }))}
+>
     <x.ColumnViewColumn
         title="Name"
         id="name"
         expand
         resizable
         sortable
-        renderCell={(item: Item | null) => <GtkLabel label={item?.name ?? ""} />}
+        renderCell={(item: Item) => <GtkLabel label={item.name} />}
     />
     <x.ColumnViewColumn
         title="Size"
         id="size"
         fixedWidth={100}
-        renderCell={(item: Item | null) => <GtkLabel label={`${item?.size ?? 0} KB`} />}
+        renderCell={(item: Item) => <GtkLabel label={`${item.size} KB`} />}
     />
-    {items.map(item => <x.ListItem key={item.id} id={item.id} value={item} />)}
 </GtkColumnView>
 ```
 
@@ -194,13 +197,15 @@ Table with sortable columns.
 Selection dropdown.
 
 ```tsx
-<GtkDropDown selectedId={selectedId} onSelectionChanged={setSelectedId}>
-    {options.map(opt => <x.ListItem key={opt.id} id={opt.id} value={opt.label} />)}
-</GtkDropDown>
+<GtkDropDown
+    selectedId={selectedId}
+    onSelectionChanged={setSelectedId}
+    items={options.map(opt => ({ id: opt.id, value: opt.label }))}
+/>
 ```
 
 ### GtkListView (tree mode)
-Hierarchical tree with expand/collapse. Nesting `x.ListItem` children triggers tree behavior.
+Hierarchical tree with expand/collapse. Items with nested `children` arrays trigger tree behavior.
 
 ```tsx
 <GtkListView
@@ -210,24 +215,21 @@ Hierarchical tree with expand/collapse. Nesting `x.ListItem` children triggers t
     selectionMode={Gtk.SelectionMode.SINGLE}
     selected={selectedId ? [selectedId] : []}
     onSelectionChanged={(ids) => setSelectedId(ids[0])}
-    renderItem={(item, row) => (
+    items={files.map(file => ({
+        id: file.id,
+        value: file,
+        children: file.children?.map(child => ({ id: child.id, value: child })),
+    }))}
+    renderItem={(item: FileNode, row) => (
         <GtkBox spacing={8}>
-            <GtkImage iconName={item?.isDirectory ? "folder-symbolic" : "text-x-generic-symbolic"} />
-            <GtkLabel label={item?.name ?? ""} />
+            <GtkImage iconName={item.isDirectory ? "folder-symbolic" : "text-x-generic-symbolic"} />
+            <GtkLabel label={item.name} />
         </GtkBox>
     )}
->
-    {files.map(file => (
-        <x.ListItem key={file.id} id={file.id} value={file}>
-            {file.children?.map(child => (
-                <x.ListItem key={child.id} id={child.id} value={child} />
-            ))}
-        </x.ListItem>
-    ))}
-</GtkListView>
+/>
 ```
 
-**ListItem tree props:** `id`, `value`, `indentForDepth`, `indentForIcon`, `hideExpander`, nested `children`
+**ListItem data props:** `id`, `value`, `children` (nested items for tree mode), `hideExpander`, `indentForDepth`, `indentForIcon`, `section` (for sectioned lists)
 
 ---
 

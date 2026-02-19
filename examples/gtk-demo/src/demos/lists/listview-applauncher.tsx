@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
 import "@gtkx/ffi/giounix";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
@@ -55,21 +55,18 @@ const ListViewApplauncherDemo = () => {
                 estimatedItemHeight={48}
                 selectionMode={Gtk.SelectionMode.SINGLE}
                 onActivate={handleActivate}
-                renderItem={(item: AppItem | null) => (
+                renderItem={(item: AppItem) => (
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                         <GtkImage
-                            {...(item?.icon ? { gicon: item.icon } : { iconName: "application-x-executable" })}
+                            {...(item.icon ? { gicon: item.icon } : { iconName: "application-x-executable" })}
                             iconSize={Gtk.IconSize.LARGE}
                             accessibleLabel="App icon"
                         />
-                        <GtkLabel label={item?.name ?? ""} accessibleLabel={item?.name ?? ""} />
+                        <GtkLabel label={item.name} accessibleLabel={item.name} />
                     </GtkBox>
                 )}
-            >
-                {apps.map((app) => (
-                    <x.ListItem key={app.id} id={app.id} value={app} />
-                ))}
-            </GtkListView>
+                items={apps.map((app) => ({ id: app.id, value: app }))}
+            />
         </GtkScrolledWindow>
     );
 };

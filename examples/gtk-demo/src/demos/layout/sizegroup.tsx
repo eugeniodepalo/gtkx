@@ -83,11 +83,8 @@ const SizeGroupDemo = () => {
                             valign={Gtk.Align.BASELINE_FILL}
                             selectedId={foreground}
                             onSelectionChanged={setForeground}
-                        >
-                            {COLOR_OPTIONS.map((option) => (
-                                <x.ListItem key={option} id={option} value={option} />
-                            ))}
-                        </GtkDropDown>
+                            items={COLOR_OPTIONS.map((option) => ({ id: option, value: option }))}
+                        />
                     </x.GridChild>
 
                     <x.GridChild column={0} row={1}>
@@ -100,11 +97,8 @@ const SizeGroupDemo = () => {
                             valign={Gtk.Align.BASELINE_FILL}
                             selectedId={background}
                             onSelectionChanged={setBackground}
-                        >
-                            {COLOR_OPTIONS.map((option) => (
-                                <x.ListItem key={option} id={option} value={option} />
-                            ))}
-                        </GtkDropDown>
+                            items={COLOR_OPTIONS.map((option) => ({ id: option, value: option }))}
+                        />
                     </x.GridChild>
                 </GtkGrid>
             </GtkFrame>
@@ -121,11 +115,8 @@ const SizeGroupDemo = () => {
                             valign={Gtk.Align.BASELINE_FILL}
                             selectedId={dashing}
                             onSelectionChanged={setDashing}
-                        >
-                            {DASH_OPTIONS.map((option) => (
-                                <x.ListItem key={option} id={option} value={option} />
-                            ))}
-                        </GtkDropDown>
+                            items={DASH_OPTIONS.map((option) => ({ id: option, value: option }))}
+                        />
                     </x.GridChild>
 
                     <x.GridChild column={0} row={1}>
@@ -138,11 +129,8 @@ const SizeGroupDemo = () => {
                             valign={Gtk.Align.BASELINE_FILL}
                             selectedId={lineEnd}
                             onSelectionChanged={setLineEnd}
-                        >
-                            {END_OPTIONS.map((option) => (
-                                <x.ListItem key={option} id={option} value={option} />
-                            ))}
-                        </GtkDropDown>
+                            items={END_OPTIONS.map((option) => ({ id: option, value: option }))}
+                        />
                     </x.GridChild>
                 </GtkGrid>
             </GtkFrame>
