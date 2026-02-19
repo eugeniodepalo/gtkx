@@ -1,19 +1,35 @@
+import * as Adw from "@gtkx/ffi/adw";
 import * as Gio from "@gtkx/ffi/gio";
+import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { ColumnViewColumnProps } from "../jsx.js";
+import type { ColumnViewColumnProps, ListItem } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
-import { GridItemRenderer } from "./internal/grid-item-renderer.js";
-import { ListItemRenderer } from "./internal/list-item-renderer.js";
-import type { ListStore } from "./internal/list-store.js";
+import type { BoundItem } from "./internal/bound-item.js";
+import { getNextContainerKey } from "./internal/container-key.js";
 import { hasChanged } from "./internal/props.js";
-import type { TreeStore } from "./internal/tree-store.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, WidgetNode<Gtk.ColumnView>, MenuNode> {
+const UNBOUND_POSITION = -1;
+
+export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, WidgetNode, MenuNode> {
+    private column: Gtk.ColumnViewColumn | null = null;
+    private columnFactory: Gtk.SignalListItemFactory | null = null;
+    private containers = new Map<Gtk.Widget, number>();
+    private containerKeys = new Map<Gtk.Widget, string>();
+    private menu: MenuModel;
+    private actionGroup: Gio.SimpleActionGroup;
+
+    constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
+        super(typeName, props, container, rootContainer);
+        this.actionGroup = new Gio.SimpleActionGroup();
+        this.menu = new MenuModel("root", {}, rootContainer, this.actionGroup);
+        this.menu.setActionMap(this.actionGroup, props.id);
+    }
+
     public override isValidChild(child: Node): boolean {
         return child instanceof MenuNode;
     }
@@ -21,172 +37,163 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     public override isValidParent(parent: Node): boolean {
         return parent instanceof WidgetNode && parent.container instanceof Gtk.ColumnView;
     }
-    private column: Gtk.ColumnViewColumn;
-    private treeRenderer: ListItemRenderer | null;
-    private flatRenderer: GridItemRenderer | null = null;
-    private menu: MenuModel | null = null;
-    private actionGroup: Gio.SimpleActionGroup | null = null;
-    private columnView: Gtk.ColumnView | null = null;
 
-    constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
-        super(typeName, props, container, rootContainer);
-        this.treeRenderer = new ListItemRenderer(this.signalStore);
-        this.column = new Gtk.ColumnViewColumn();
-        this.column.setFactory(this.treeRenderer.getFactory());
-    }
-
-    public override appendChild(child: MenuNode): void {
-        this.initMenu();
-        this.menu?.appendChild(child);
-    }
-
-    public override insertBefore(child: MenuNode, before: MenuNode): void {
-        this.initMenu();
-        if (before instanceof MenuNode) {
-            this.menu?.insertBefore(child, before);
-        } else {
-            this.menu?.appendChild(child);
-        }
-    }
-
-    public override removeChild(child: MenuNode): void {
-        this.menu?.removeChild(child);
-
-        if (this.menu && this.menu.getMenu().getNItems() === 0) {
-            this.cleanupMenu();
-        }
+    public override finalizeInitialChildren(props: ColumnViewColumnProps): boolean {
+        this.setupFactory();
+        this.setupColumn(props);
+        this.updateHeaderMenu();
+        return false;
     }
 
     public override commitUpdate(oldProps: ColumnViewColumnProps | null, newProps: ColumnViewColumnProps): void {
         super.commitUpdate(oldProps, newProps);
-        this.applyOwnProps(oldProps, newProps);
+        if (oldProps === null) return;
+        this.applyColumnProps(oldProps, newProps);
+    }
+
+    public override appendChild(child: MenuNode): void {
+        this.menu.appendChild(child);
+        this.updateHeaderMenu();
+    }
+
+    public override insertBefore(child: MenuNode, before: MenuNode): void {
+        this.menu.insertBefore(child, before);
+        this.updateHeaderMenu();
+    }
+
+    public override removeChild(child: MenuNode): void {
+        this.menu.removeChild(child);
+        this.updateHeaderMenu();
     }
 
     public override detachDeletedInstance(): void {
-        this.cleanupMenu();
-        this.treeRenderer?.dispose();
-        this.flatRenderer?.dispose();
         super.detachDeletedInstance();
     }
 
     public getColumn(): Gtk.ColumnViewColumn {
+        if (!this.column) throw new Error("ColumnViewColumn not initialized");
         return this.column;
     }
 
-    public rebindItem(id: string): void {
-        this.treeRenderer?.rebindItem(id);
-        this.flatRenderer?.rebindItem(id);
+    public collectBoundItems(flatItems: ListItem[]): BoundItem[] {
+        const { renderCell } = this.props;
+        if (!renderCell) return [];
+
+        const items: BoundItem[] = [];
+
+        for (const [container, position] of this.containers) {
+            if (position === UNBOUND_POSITION) continue;
+
+            const key = this.containerKeys.get(container);
+            if (!key) continue;
+
+            const item = flatItems[position];
+            if (!item) continue;
+            const content = renderCell(item.value);
+            items.push([content, container, key]);
+        }
+
+        return items;
     }
 
-    public setStore(model: TreeStore | null): void {
-        this.treeRenderer?.setStore(model);
+    public installActionGroup(widget: Gtk.Widget): void {
+        widget.insertActionGroup(this.props.id, this.actionGroup);
     }
 
-    public setFlatStore(store: ListStore): void {
-        if (this.treeRenderer) {
-            this.treeRenderer.dispose();
-            this.treeRenderer = null;
-        }
-        if (!this.flatRenderer) {
-            this.flatRenderer = new GridItemRenderer(this.signalStore);
-            this.flatRenderer.setRenderFn(this.props.renderCell);
-            this.column.setFactory(this.flatRenderer.getFactory());
-        }
-        this.flatRenderer.setStore(store);
+    public uninstallActionGroup(widget: Gtk.Widget): void {
+        widget.insertActionGroup(this.props.id, null);
     }
 
-    public setEstimatedRowHeight(height: number | null): void {
-        this.treeRenderer?.setEstimatedItemHeight(height);
-        this.flatRenderer?.setEstimatedItemHeight(height);
-    }
+    private setupFactory(): void {
+        this.columnFactory = new Gtk.SignalListItemFactory();
 
-    public attachToColumnView(columnView: Gtk.ColumnView): void {
-        this.columnView = columnView;
-
-        if (this.actionGroup) {
-            this.columnView.insertActionGroup(this.props.id, this.actionGroup);
-        }
-    }
-
-    public detachFromColumnView(): void {
-        if (this.columnView && this.actionGroup) {
-            this.columnView.insertActionGroup(this.props.id, null);
-        }
-
-        this.columnView = null;
-    }
-
-    private initMenu(): void {
-        if (this.menu) return;
-
-        this.actionGroup = new Gio.SimpleActionGroup();
-        this.menu = new MenuModel("root", {}, this.rootContainer);
-        this.menu.setActionMap(this.actionGroup, this.props.id);
-        this.column.setHeaderMenu(this.menu.getMenu());
-
-        if (this.columnView) {
-            this.columnView.insertActionGroup(this.props.id, this.actionGroup);
-        }
-    }
-
-    private cleanupMenu(): void {
-        if (!this.menu) return;
-
-        this.column.setHeaderMenu(null);
-
-        if (this.columnView && this.actionGroup) {
-            this.columnView.insertActionGroup(this.props.id, null);
-        }
-
-        this.menu = null;
-        this.actionGroup = null;
-    }
-
-    private applyOwnProps(oldProps: ColumnViewColumnProps | null, newProps: ColumnViewColumnProps): void {
-        if (hasChanged(oldProps, newProps, "renderCell")) {
-            this.treeRenderer?.setRenderFn(newProps.renderCell);
-            this.flatRenderer?.setRenderFn(newProps.renderCell);
-        }
-
-        if (hasChanged(oldProps, newProps, "title")) {
-            this.column.setTitle(newProps.title);
-        }
-
-        if (hasChanged(oldProps, newProps, "expand")) {
-            this.column.setExpand(newProps.expand ?? false);
-        }
-
-        if (hasChanged(oldProps, newProps, "resizable")) {
-            this.column.setResizable(newProps.resizable ?? false);
-        }
-
-        if (hasChanged(oldProps, newProps, "fixedWidth")) {
-            this.column.setFixedWidth(newProps.fixedWidth ?? -1);
-        }
-
-        if (hasChanged(oldProps, newProps, "id")) {
-            if (this.columnView && this.actionGroup && oldProps?.id) {
-                this.columnView.insertActionGroup(oldProps.id, null);
-                this.columnView.insertActionGroup(newProps.id, this.actionGroup);
+        this.columnFactory.connect("setup", (_self: GObject.Object, obj: GObject.Object) => {
+            const listItem = obj as unknown as Gtk.ListItem;
+            const container = new Adw.Bin();
+            const key = getNextContainerKey();
+            const estimatedRowHeight = this.getParentEstimatedRowHeight();
+            if (estimatedRowHeight !== -1) {
+                container.setSizeRequest(-1, estimatedRowHeight);
             }
+            listItem.setChild(container);
+            this.containers.set(container, UNBOUND_POSITION);
+            this.containerKeys.set(container, key);
+        });
 
-            this.column.setId(newProps.id);
+        this.columnFactory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
+            const listItem = obj as unknown as Gtk.ListItem;
+            const container = listItem.getChild() as Gtk.Widget;
+            this.containers.set(container, listItem.getPosition());
+            this.scheduleParentUpdate();
+        });
 
-            if (oldProps && this.menu && this.actionGroup) {
-                this.menu.setActionMap(this.actionGroup, newProps.id);
+        this.columnFactory.connect("unbind", (_self: GObject.Object, obj: GObject.Object) => {
+            const listItem = obj as unknown as Gtk.ListItem;
+            const container = listItem.getChild() as Gtk.Widget;
+            this.containers.set(container, UNBOUND_POSITION);
+            this.scheduleParentUpdate();
+        });
+
+        this.columnFactory.connect("teardown", (_self: GObject.Object, obj: GObject.Object) => {
+            const listItem = obj as unknown as Gtk.ListItem;
+            const container = listItem.getChild() as Gtk.Widget | null;
+            if (container) {
+                this.containers.delete(container);
+                this.containerKeys.delete(container);
             }
-        }
+            listItem.setChild(null);
+        });
+    }
 
-        if (hasChanged(oldProps, newProps, "visible")) {
-            this.column.setVisible(newProps.visible ?? true);
-        }
+    private setupColumn(props: ColumnViewColumnProps): void {
+        this.column = new Gtk.ColumnViewColumn(props.title, this.columnFactory);
+        this.column.setId(props.id);
 
+        if (props.expand !== undefined) this.column.setExpand(props.expand);
+        if (props.resizable !== undefined) this.column.setResizable(props.resizable);
+        if (props.fixedWidth !== undefined) this.column.setFixedWidth(props.fixedWidth);
+        if (props.visible !== undefined) this.column.setVisible(props.visible);
+        if (props.sortable) this.column.setSorter(new Gtk.Sorter());
+    }
+
+    private applyColumnProps(oldProps: ColumnViewColumnProps, newProps: ColumnViewColumnProps): void {
+        if (!this.column) return;
+
+        if (hasChanged(oldProps, newProps, "title")) this.column.setTitle(newProps.title);
+        if (hasChanged(oldProps, newProps, "expand")) this.column.setExpand(newProps.expand ?? false);
+        if (hasChanged(oldProps, newProps, "resizable")) this.column.setResizable(newProps.resizable ?? false);
+        if (hasChanged(oldProps, newProps, "fixedWidth")) this.column.setFixedWidth(newProps.fixedWidth ?? -1);
+        if (hasChanged(oldProps, newProps, "visible")) this.column.setVisible(newProps.visible ?? true);
         if (hasChanged(oldProps, newProps, "sortable")) {
-            if (newProps.sortable) {
-                this.column.setSorter(new Gtk.StringSorter());
-            } else {
-                this.column.setSorter(null);
-            }
+            this.column.setSorter(newProps.sortable ? new Gtk.Sorter() : null);
+        }
+        if (hasChanged(oldProps, newProps, "renderCell")) this.scheduleParentUpdate();
+    }
+
+    private updateHeaderMenu(): void {
+        if (!this.column) return;
+        const menu = this.menu.getMenu();
+        this.column.setHeaderMenu(menu.getNItems() > 0 ? menu : null);
+    }
+
+    private getParentEstimatedRowHeight(): number {
+        if (
+            this.parent &&
+            "getEstimatedRowHeight" in this.parent &&
+            typeof this.parent.getEstimatedRowHeight === "function"
+        ) {
+            return (this.parent as { getEstimatedRowHeight(): number }).getEstimatedRowHeight();
+        }
+        return -1;
+    }
+
+    private scheduleParentUpdate(): void {
+        if (
+            this.parent &&
+            "scheduleBoundItemsUpdate" in this.parent &&
+            typeof this.parent.scheduleBoundItemsUpdate === "function"
+        ) {
+            (this.parent as { scheduleBoundItemsUpdate(): void }).scheduleBoundItemsUpdate();
         }
     }
 }

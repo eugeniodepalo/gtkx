@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkDropDown, GtkLabel, GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkDropDown, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { render, screen, tick } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef } from "react";
@@ -12,13 +12,14 @@ const ScrollWrapper = ({ children }: { children: ReactNode }) => (
 );
 
 describe("render - ListItem", () => {
-    describe("ListItemNode", () => {
+    describe("ListItem", () => {
         it("renders list item in ListView", async () => {
             await render(
                 <ScrollWrapper>
-                    <GtkListView renderItem={(item: { text: string } | null) => <GtkLabel label={item?.text ?? ""} />}>
-                        <x.ListItem id="1" value={{ text: "First" }} />
-                    </GtkListView>
+                    <GtkListView
+                        items={[{ id: "1", value: { text: "First" } }]}
+                        renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -28,11 +29,14 @@ describe("render - ListItem", () => {
         it("renders multiple list items", async () => {
             await render(
                 <ScrollWrapper>
-                    <GtkListView renderItem={(item: { text: string } | null) => <GtkLabel label={item?.text ?? ""} />}>
-                        <x.ListItem id="1" value={{ text: "First" }} />
-                        <x.ListItem id="2" value={{ text: "Second" }} />
-                        <x.ListItem id="3" value={{ text: "Third" }} />
-                    </GtkListView>
+                    <GtkListView
+                        items={[
+                            { id: "1", value: { text: "First" } },
+                            { id: "2", value: { text: "Second" } },
+                            { id: "3", value: { text: "Third" } },
+                        ]}
+                        renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -42,14 +46,13 @@ describe("render - ListItem", () => {
         });
 
         it("updates item value on prop change", async () => {
-            function App({ value }: { value: Record<string, unknown> }) {
+            function App({ value }: { value: { text: string } }) {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { text: string } | null) => <GtkLabel label={item?.text ?? ""} />}
-                        >
-                            <x.ListItem id="dynamic" value={value} />
-                        </GtkListView>
+                            items={[{ id: "dynamic", value }]}
+                            renderItem={(item) => <GtkLabel label={item.text} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -67,12 +70,9 @@ describe("render - ListItem", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { text: string } | null) => <GtkLabel label={item?.text ?? ""} />}
-                        >
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((item) => ({ id: item.id, value: item }))}
+                            renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -101,12 +101,9 @@ describe("render - ListItem", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { text: string } | null) => <GtkLabel label={item?.text ?? ""} />}
-                        >
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((item) => ({ id: item.id, value: item }))}
+                            renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -137,34 +134,22 @@ describe("render - ListItem", () => {
         });
     });
 
-    describe("ListItemNode in DropDown", () => {
+    describe("ListItem in DropDown", () => {
         it("renders list item in DropDown", async () => {
-            await render(
-                <GtkDropDown>
-                    <x.ListItem id="item1" value="Item Value" />
-                </GtkDropDown>,
-            );
+            await render(<GtkDropDown items={[{ id: "item1", value: "Item Value" }]} />);
 
             expect(screen.queryAllByText("Item Value").length).toBeGreaterThan(0);
         });
 
         it("handles string value", async () => {
-            await render(
-                <GtkDropDown>
-                    <x.ListItem id="test" value="Test String" />
-                </GtkDropDown>,
-            );
+            await render(<GtkDropDown items={[{ id: "test", value: "Test String" }]} />);
 
             expect(screen.queryAllByText("Test String").length).toBeGreaterThan(0);
         });
 
         it("updates value on prop change", async () => {
             function App({ value }: { value: string }) {
-                return (
-                    <GtkDropDown>
-                        <x.ListItem id="dynamic" value={value} />
-                    </GtkDropDown>
-                );
+                return <GtkDropDown items={[{ id: "dynamic", value }]} />;
             }
 
             await render(<App value="Initial" />);
@@ -179,11 +164,14 @@ describe("render - ListItem", () => {
             const dropDownRef = createRef<Gtk.DropDown>();
 
             await render(
-                <GtkDropDown ref={dropDownRef}>
-                    <x.ListItem id="a" value="First" />
-                    <x.ListItem id="b" value="Second" />
-                    <x.ListItem id="c" value="Third" />
-                </GtkDropDown>,
+                <GtkDropDown
+                    ref={dropDownRef}
+                    items={[
+                        { id: "a", value: "First" },
+                        { id: "b", value: "Second" },
+                        { id: "c", value: "Third" },
+                    ]}
+                />,
             );
 
             expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
@@ -201,13 +189,7 @@ describe("render - ListItem", () => {
             const dropDownRef = createRef<Gtk.DropDown>();
 
             function App({ items }: { items: string[] }) {
-                return (
-                    <GtkDropDown ref={dropDownRef}>
-                        {items.map((item) => (
-                            <x.ListItem key={item} id={item} value={item} />
-                        ))}
-                    </GtkDropDown>
-                );
+                return <GtkDropDown ref={dropDownRef} items={items.map((item) => ({ id: item, value: item }))} />;
             }
 
             await render(<App items={["first", "last"]} />);

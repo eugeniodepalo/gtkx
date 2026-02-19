@@ -101,7 +101,7 @@ const LoginForm = () => {
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useCallback, useState } from "react";
 
 interface Todo {
@@ -133,17 +133,14 @@ const TodoList = () => {
             </GtkBox>
             <GtkScrolledWindow vexpand cssClasses={["card"]}>
                 <GtkListView
-                    renderItem={(todo) => (
+                    items={todos.map((todo) => ({ id: todo.id, value: todo }))}
+                    renderItem={(todo: Todo) => (
                         <GtkBox spacing={8} marginStart={12} marginEnd={12} marginTop={8} marginBottom={8}>
-                            <GtkLabel label={todo?.text ?? ""} hexpand halign={Gtk.Align.START} />
-                            <GtkButton iconName="edit-delete-symbolic" cssClasses={["flat"]} onClicked={() => todo && deleteTodo(todo.id)} />
+                            <GtkLabel label={todo.text} hexpand halign={Gtk.Align.START} />
+                            <GtkButton iconName="edit-delete-symbolic" cssClasses={["flat"]} onClicked={() => deleteTodo(todo.id)} />
                         </GtkBox>
                     )}
-                >
-                    {todos.map((todo) => (
-                        <x.ListItem key={todo.id} id={todo.id} value={todo} />
-                    ))}
-                </GtkListView>
+                />
             </GtkScrolledWindow>
         </GtkBox>
     );
@@ -158,7 +155,7 @@ const TodoList = () => {
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkPaned, GtkScrolledWindow, GtkStack, x } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkListView, GtkPaned, GtkScrolledWindow, GtkStack, x } from "@gtkx/react";
 import { useState } from "react";
 
 interface Page {
@@ -183,14 +180,11 @@ const SidebarNav = () => {
                         selected={[currentPage]}
                         selectionMode={Gtk.SelectionMode.SINGLE}
                         onSelectionChanged={(ids) => setCurrentPage(ids[0])}
-                        renderItem={(page) => (
-                            <GtkLabel label={page?.name ?? ""} halign={Gtk.Align.START} marginStart={12} marginTop={8} marginBottom={8} />
+                        items={pages.map((page) => ({ id: page.id, value: page }))}
+                        renderItem={(page: Page) => (
+                            <GtkLabel label={page.name} halign={Gtk.Align.START} marginStart={12} marginTop={8} marginBottom={8} />
                         )}
-                    >
-                        {pages.map((page) => (
-                            <x.ListItem key={page.id} id={page.id} value={page} />
-                        ))}
-                    </GtkListView>
+                    />
                 </GtkScrolledWindow>
             </x.Slot>
             <x.Slot for={GtkPaned} id="endChild">
@@ -339,13 +333,16 @@ const FileTable = () => {
 
     return (
         <GtkScrolledWindow vexpand cssClasses={["card"]}>
-            <GtkColumnView estimatedRowHeight={48} sortColumn={sortColumn} sortOrder={sortOrder} onSortChanged={handleSort}>
-                <x.ColumnViewColumn title="Name" id="name" expand sortable renderCell={(f: FileItem | null) => <GtkLabel label={f?.name ?? ""} />} />
-                <x.ColumnViewColumn title="Size" id="size" fixedWidth={100} sortable renderCell={(f: FileItem | null) => <GtkLabel label={`${f?.size ?? 0} KB`} />} />
-                <x.ColumnViewColumn title="Modified" id="modified" fixedWidth={120} sortable renderCell={(f: FileItem | null) => <GtkLabel label={f?.modified ?? ""} />} />
-                {sortedFiles.map((file) => (
-                    <x.ListItem key={file.id} id={file.id} value={file} />
-                ))}
+            <GtkColumnView
+                estimatedRowHeight={48}
+                sortColumn={sortColumn}
+                sortOrder={sortOrder}
+                onSortChanged={handleSort}
+                items={sortedFiles.map((file) => ({ id: file.id, value: file }))}
+            >
+                <x.ColumnViewColumn title="Name" id="name" expand sortable renderCell={(f: FileItem) => <GtkLabel label={f.name} />} />
+                <x.ColumnViewColumn title="Size" id="size" fixedWidth={100} sortable renderCell={(f: FileItem) => <GtkLabel label={`${f.size} KB`} />} />
+                <x.ColumnViewColumn title="Modified" id="modified" fixedWidth={120} sortable renderCell={(f: FileItem) => <GtkLabel label={f.modified} />} />
             </GtkColumnView>
         </GtkScrolledWindow>
     );
@@ -398,7 +395,7 @@ const MenuDemo = () => {
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AdwSpinner, GtkBox, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
+import { AdwSpinner, GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useEffect, useState } from "react";
 
 interface User {
@@ -442,17 +439,14 @@ const AsyncList = () => {
     return (
         <GtkScrolledWindow vexpand>
             <GtkListView
-                renderItem={(user) => (
+                items={users.map((user) => ({ id: user.id, value: user }))}
+                renderItem={(user: User) => (
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} marginStart={12} marginTop={8} marginBottom={8}>
-                        <GtkLabel label={user?.name ?? ""} halign={Gtk.Align.START} cssClasses={["heading"]} />
-                        <GtkLabel label={user?.email ?? ""} halign={Gtk.Align.START} cssClasses={["dim-label"]} />
+                        <GtkLabel label={user.name} halign={Gtk.Align.START} cssClasses={["heading"]} />
+                        <GtkLabel label={user.email} halign={Gtk.Align.START} cssClasses={["dim-label"]} />
                     </GtkBox>
                 )}
-            >
-                {users.map((user) => (
-                    <x.ListItem key={user.id} id={user.id} value={user} />
-                ))}
-            </GtkListView>
+            />
         </GtkScrolledWindow>
     );
 };
@@ -632,7 +626,7 @@ const SplitViewDemo = () => {
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 
 interface FileNode {
@@ -667,21 +661,18 @@ const FileBrowser = () => {
                 selectionMode={Gtk.SelectionMode.SINGLE}
                 selected={selected ? [selected] : []}
                 onSelectionChanged={(ids) => setSelected(ids[0] ?? null)}
-                renderItem={(item) => (
+                items={files.map((file) => ({
+                    id: file.id,
+                    value: file,
+                    children: file.children?.map((child) => ({ id: child.id, value: child })),
+                }))}
+                renderItem={(item: FileNode) => (
                     <GtkBox spacing={8}>
-                        <GtkImage iconName={item?.isDirectory ? "folder-symbolic" : "text-x-generic-symbolic"} />
-                        <GtkLabel label={item?.name ?? ""} halign={Gtk.Align.START} />
+                        <GtkImage iconName={item.isDirectory ? "folder-symbolic" : "text-x-generic-symbolic"} />
+                        <GtkLabel label={item.name} halign={Gtk.Align.START} />
                     </GtkBox>
                 )}
-            >
-                {files.map((file) => (
-                    <x.ListItem key={file.id} id={file.id} value={file}>
-                        {file.children?.map((child) => (
-                            <x.ListItem key={child.id} id={child.id} value={child} />
-                        ))}
-                    </x.ListItem>
-                ))}
-            </GtkListView>
+            />
         </GtkScrolledWindow>
     );
 };

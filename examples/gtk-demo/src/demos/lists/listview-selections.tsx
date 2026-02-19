@@ -188,17 +188,14 @@ const TimesDropDown = () => {
         <GtkDropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
-            renderListItem={(label: string | null) => (
+            renderListItem={(label: string) => (
                 <GtkBox spacing={10}>
-                    <GtkLabel label={label ?? ""} xalign={0} hexpand />
+                    <GtkLabel label={label} xalign={0} hexpand />
                     <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1.0 : 0.0} />
                 </GtkBox>
             )}
-        >
-            {times.map((t) => (
-                <x.ListItem key={t} id={t} value={t} />
-            ))}
-        </GtkDropDown>
+            items={times.map((t) => ({ id: t, value: t }))}
+        />
     );
 };
 
@@ -210,33 +207,36 @@ const TimesSectionedDropDown = () => {
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
             enableSearch
-            renderListItem={(label: string | null) => (
+            renderListItem={(label: string) => (
                 <GtkBox spacing={10}>
-                    <GtkLabel label={label ?? ""} xalign={0} hexpand />
+                    <GtkLabel label={label} xalign={0} hexpand />
                     <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1.0 : 0.0} />
                 </GtkBox>
             )}
-            renderHeader={(value: string | null) => (
+            renderHeader={(value: string) => (
                 <GtkLabel
-                    label={`<big><b>${escapeMarkup(value ?? "")}</b></big>`}
+                    label={`<big><b>${escapeMarkup(value)}</b></big>`}
                     useMarkup
                     xalign={0}
                     marginTop={10}
                     marginBottom={10}
                 />
             )}
-        >
-            <x.ListSection id="minutes" value="Minutes">
-                {minutes.map((m) => (
-                    <x.ListItem key={m} id={m} value={m} />
-                ))}
-            </x.ListSection>
-            <x.ListSection id="hours" value="Hours">
-                {hours.map((h) => (
-                    <x.ListItem key={h} id={h} value={h} />
-                ))}
-            </x.ListSection>
-        </GtkDropDown>
+            items={[
+                {
+                    id: "minutes",
+                    value: "Minutes",
+                    section: true,
+                    children: minutes.map((m) => ({ id: m, value: m })),
+                },
+                {
+                    id: "hours",
+                    value: "Hours",
+                    section: true,
+                    children: hours.map((h) => ({ id: h, value: h })),
+                },
+            ]}
+        />
     );
 };
 
@@ -247,10 +247,10 @@ const DevicesDropDown = () => {
         <GtkDropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
-            renderItem={(label: string | null) => {
+            renderItem={(label: string) => {
                 const device = devices.find((d) => d.id === label);
                 if (!device) {
-                    return <GtkLabel label={label ?? ""} />;
+                    return <GtkLabel label={label} />;
                 }
                 return (
                     <GtkBox spacing={10}>
@@ -259,10 +259,10 @@ const DevicesDropDown = () => {
                     </GtkBox>
                 );
             }}
-            renderListItem={(label: string | null) => {
+            renderListItem={(label: string) => {
                 const device = devices.find((d) => d.id === label);
                 if (!device) {
-                    return <GtkLabel label={label ?? ""} />;
+                    return <GtkLabel label={label} />;
                 }
                 return (
                     <GtkBox spacing={10}>
@@ -275,11 +275,8 @@ const DevicesDropDown = () => {
                     </GtkBox>
                 );
             }}
-        >
-            {devices.map((d) => (
-                <x.ListItem key={d.id} id={d.id} value={d.id} />
-            ))}
-        </GtkDropDown>
+            items={devices.map((d) => ({ id: d.id, value: d.id }))}
+        />
     );
 };
 
@@ -383,11 +380,8 @@ const ListViewSelectionsDemo = () => {
                         const idx = getFontFamilies().indexOf(id);
                         if (idx >= 0) setFontIndex(idx);
                     }}
-                >
-                    {getFontFamilies().map((f) => (
-                        <x.ListItem key={f} id={f} value={f} />
-                    ))}
-                </GtkDropDown>
+                    items={getFontFamilies().map((f) => ({ id: f, value: f }))}
+                />
 
                 <GtkSpinButton
                     halign={Gtk.Align.START}

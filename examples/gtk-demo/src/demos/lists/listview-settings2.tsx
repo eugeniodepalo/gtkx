@@ -194,38 +194,28 @@ const ListViewSettings2Demo = () => {
                     <GtkListView
                         vexpand
                         cssClasses={["rich-list"]}
-                        renderItem={(key: KeyItem | null) => {
-                            if (!key) return <GtkLabel label="" />;
-                            return (
-                                <GtkBox>
-                                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                                        <GtkLabel label={key.name} xalign={0} />
-                                        <GtkLabel
-                                            label={key.summary}
-                                            cssClasses={["dim-label"]}
-                                            xalign={0}
-                                            ellipsize={3}
-                                        />
-                                    </GtkBox>
-                                    <GtkEntry
-                                        text={keysState.current.get(key.id) ?? key.value}
-                                        halign={Gtk.Align.END}
-                                        hexpand
-                                        onChanged={(entry: Gtk.Entry) => handleValueEdit(key, entry)}
-                                    />
+                        renderItem={(key: KeyItem) => (
+                            <GtkBox>
+                                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                                    <GtkLabel label={key.name} xalign={0} />
+                                    <GtkLabel label={key.summary} cssClasses={["dim-label"]} xalign={0} ellipsize={3} />
                                 </GtkBox>
-                            );
-                        }}
-                        renderHeader={(schemaId: string | null) => <GtkLabel label={schemaId ?? ""} xalign={0} />}
-                    >
-                        {filteredSchemaKeys.map((schema) => (
-                            <x.ListSection key={schema.schemaId} id={schema.schemaId} value={schema.schemaId}>
-                                {schema.keys.map((key) => (
-                                    <x.ListItem key={key.id} id={key.id} value={key} />
-                                ))}
-                            </x.ListSection>
-                        ))}
-                    </GtkListView>
+                                <GtkEntry
+                                    text={keysState.current.get(key.id) ?? key.value}
+                                    halign={Gtk.Align.END}
+                                    hexpand
+                                    onChanged={(entry: Gtk.Entry) => handleValueEdit(key, entry)}
+                                />
+                            </GtkBox>
+                        )}
+                        renderHeader={(schemaId: string) => <GtkLabel label={schemaId} xalign={0} />}
+                        items={filteredSchemaKeys.map((schema) => ({
+                            id: schema.schemaId,
+                            value: schema.schemaId,
+                            section: true,
+                            children: schema.keys.map((key) => ({ id: key.id, value: key })),
+                        }))}
+                    />
                 </GtkScrolledWindow>
             </GtkBox>
         </>

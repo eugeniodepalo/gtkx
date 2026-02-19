@@ -14,6 +14,8 @@ export function detachChild(child: Gtk.Widget, container: Gtk.Widget): void {
         container.setChild(null);
     } else if (isRemovable(container)) {
         container.remove(child);
+    } else {
+        child.unparent();
     }
 }
 
@@ -27,7 +29,7 @@ export function attachChild(child: Gtk.Widget, container: Gtk.Widget): void {
     } else if (isSingleChild(container)) {
         container.setChild(child);
     } else {
-        throw new Error(`Cannot attach child to '${container.constructor.name}': container does not support children`);
+        child.setParent(container);
     }
 }
 

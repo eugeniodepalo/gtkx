@@ -1296,15 +1296,11 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                             onSelectionChanged={(id) => {
                                                 handleScriptLangChange(Number.parseInt(id, 10));
                                             }}
-                                        >
-                                            {scriptLangItems.map((item, i) => (
-                                                <x.ListItem
-                                                    key={`${item.scriptIndex}-${item.langTag}`}
-                                                    id={String(i)}
-                                                    value={item.label}
-                                                />
-                                            ))}
-                                        </GtkDropDown>
+                                            items={scriptLangItems.map((item, i) => ({
+                                                id: String(i),
+                                                value: item.label,
+                                            }))}
+                                        />
                                     )}
 
                                     {FEATURE_GROUPS.map((group) => {
@@ -1390,16 +1386,14 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                                     onSelectionChanged={(id) =>
                                                         handleInstanceChange(Number.parseInt(id, 10))
                                                     }
-                                                >
-                                                    <x.ListItem key="empty" id="0" value="" />
-                                                    {namedInstances.map((inst, i) => (
-                                                        <x.ListItem
-                                                            key={inst.name}
-                                                            id={String(i + 1)}
-                                                            value={inst.name}
-                                                        />
-                                                    ))}
-                                                </GtkDropDown>
+                                                    items={[
+                                                        { id: "0", value: "" },
+                                                        ...namedInstances.map((inst, i) => ({
+                                                            id: String(i + 1),
+                                                            value: inst.name,
+                                                        })),
+                                                    ]}
+                                                />
                                             </x.GridChild>,
                                         ]}
                                         {variableAxes.map((axis, i) => [

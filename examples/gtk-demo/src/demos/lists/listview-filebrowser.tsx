@@ -50,9 +50,7 @@ const VIEW_MODES: ViewModeItem[] = [
 const ATTRIBUTES =
     "standard::name,standard::display-name,standard::type,standard::size,standard::icon,standard::content-type";
 
-const ListItem = ({ item, mode }: { item: FileItem | null; mode: ViewMode }) => {
-    if (!item) return null;
-
+const ListItem = ({ item, mode }: { item: FileItem; mode: ViewMode }) => {
     if (mode === "grid") {
         return (
             <GtkBox orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER}>
@@ -183,14 +181,11 @@ const ListViewFilebrowserDemo = () => {
                                 const id = ids[0] as ViewMode | undefined;
                                 if (id) setViewMode(id);
                             }}
-                            renderItem={(item: ViewModeItem | null) =>
-                                item ? <GtkImage iconName={item.icon} tooltipText={item.label} /> : null
-                            }
-                        >
-                            {VIEW_MODES.map((mode) => (
-                                <x.ListItem key={mode.id} id={mode.id} value={mode} />
-                            ))}
-                        </GtkListView>
+                            renderItem={(item: ViewModeItem) => (
+                                <GtkImage iconName={item.icon} tooltipText={item.label} />
+                            )}
+                            items={VIEW_MODES.map((mode) => ({ id: mode.id, value: mode }))}
+                        />
                     </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
@@ -201,12 +196,9 @@ const ListViewFilebrowserDemo = () => {
                     maxColumns={15}
                     orientation={viewMode === "grid" ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL}
                     onActivate={handleActivate}
-                    renderItem={(item: FileItem | null) => <ListItem item={item} mode={viewMode} />}
-                >
-                    {files.map((file) => (
-                        <x.ListItem key={file.name} id={file.name} value={file} />
-                    ))}
-                </GtkGridView>
+                    renderItem={(item: FileItem) => <ListItem item={item} mode={viewMode} />}
+                    items={files.map((file) => ({ id: file.name, value: file }))}
+                />
             </GtkScrolledWindow>
         </>
     );

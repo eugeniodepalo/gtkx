@@ -9,7 +9,6 @@ import {
     GtkListBoxRow,
     GtkSwitch,
     GtkToggleButton,
-    x,
 } from "@gtkx/react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent, waitFor } from "../src/index.js";
@@ -176,11 +175,13 @@ describe("userEvent.tab", () => {
 describe("userEvent.selectOptions", () => {
     it("selects option in dropdown by index", async () => {
         await render(
-            <GtkDropDown>
-                <x.ListItem id="a" value="Option A" />
-                <x.ListItem id="b" value="Option B" />
-                <x.ListItem id="c" value="Option C" />
-            </GtkDropDown>,
+            <GtkDropDown
+                items={[
+                    { id: "a", value: "Option A" },
+                    { id: "b", value: "Option B" },
+                    { id: "c", value: "Option C" },
+                ]}
+            />,
         );
 
         const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
@@ -211,10 +212,12 @@ describe("userEvent.selectOptions", () => {
 
         it("throws when selecting multiple options on dropdown", async () => {
             await render(
-                <GtkDropDown>
-                    <x.ListItem id="a" value="A" />
-                    <x.ListItem id="b" value="B" />
-                </GtkDropDown>,
+                <GtkDropDown
+                    items={[
+                        { id: "a", value: "A" },
+                        { id: "b", value: "B" },
+                    ]}
+                />,
             );
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
@@ -241,11 +244,7 @@ describe("userEvent.deselectOptions", () => {
 
     describe("error handling", () => {
         it("throws when element is not a list box", async () => {
-            await render(
-                <GtkDropDown>
-                    <x.ListItem id="a" value="A" />
-                </GtkDropDown>,
-            );
+            await render(<GtkDropDown items={[{ id: "a", value: "A" }]} />);
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
             await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow(

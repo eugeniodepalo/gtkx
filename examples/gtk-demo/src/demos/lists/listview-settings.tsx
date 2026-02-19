@@ -16,7 +16,6 @@ import {
     GtkToggleButton,
     x,
 } from "@gtkx/react";
-import type { ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-settings.tsx?raw";
@@ -129,15 +128,22 @@ function loadKeysForNode(nodeId: string): KeyInfo[] {
     return result;
 }
 
-function renderSchemaNode(node: SchemaTreeNode): ReactNode {
+interface SchemaTreeItemData {
+    id: string;
+    value: string;
+    hideExpander?: true;
+    children?: SchemaTreeItemData[];
+}
+
+function schemaNodeToItem(node: SchemaTreeNode): SchemaTreeItemData {
     if (node.children.length === 0) {
-        return <x.ListItem key={node.nodeId} id={node.nodeId} value={node.schemaId} hideExpander />;
+        return { id: node.nodeId, value: node.schemaId, hideExpander: true };
     }
-    return (
-        <x.ListItem key={node.nodeId} id={node.nodeId} value={node.schemaId}>
-            {node.children.map(renderSchemaNode)}
-        </x.ListItem>
-    );
+    return {
+        id: node.nodeId,
+        value: node.schemaId,
+        children: node.children.map(schemaNodeToItem),
+    };
 }
 
 const ListViewSettingsDemo = () => {
@@ -280,10 +286,9 @@ const ListViewSettingsDemo = () => {
                             onSelectionChanged={handleSchemaSelected}
                             cssClasses={["navigation-sidebar"]}
                             autoexpand
-                            renderItem={(schemaId: string | null) => <GtkLabel label={schemaId ?? ""} xalign={0} />}
-                        >
-                            {getSchemaTree().map(renderSchemaNode)}
-                        </GtkListView>
+                            renderItem={(schemaId: string) => <GtkLabel label={schemaId} xalign={0} />}
+                            items={getSchemaTree().map(schemaNodeToItem)}
+                        />
                     </GtkScrolledWindow>
                 </x.Slot>
                 <x.Slot for={GtkPaned} id="endChild">
@@ -296,24 +301,23 @@ const ListViewSettingsDemo = () => {
                                 ref={columnViewRef}
                                 tabBehavior={Gtk.ListTabBehavior.CELL}
                                 cssClasses={["data-table"]}
+                                items={filteredKeyInfos.map((k) => ({ id: k.name, value: k }))}
                             >
                                 <x.ColumnViewColumn
                                     id="name"
                                     title="Name"
                                     sortable
-                                    renderCell={(item: KeyInfo | null) => (
-                                        <GtkLabel label={item?.name ?? ""} xalign={0} />
-                                    )}
+                                    renderCell={(item: KeyInfo) => <GtkLabel label={item.name} xalign={0} />}
                                 />
                                 <x.ColumnViewColumn
                                     id="value"
                                     title="Value"
                                     resizable
-                                    renderCell={(item: KeyInfo | null) => (
+                                    renderCell={(item: KeyInfo) => (
                                         <GtkEditableLabel
-                                            text={item?.value ?? ""}
+                                            text={item.value}
                                             onChanged={(label: Gtk.EditableLabel) => {
-                                                if (item) handleValueEdit(item, label.getText(), label);
+                                                handleValueEdit(item, label.getText(), label);
                                             }}
                                         />
                                     )}
@@ -323,18 +327,14 @@ const ListViewSettingsDemo = () => {
                                     title="Type"
                                     resizable
                                     sortable
-                                    renderCell={(item: KeyInfo | null) => (
-                                        <GtkLabel label={item?.type ?? ""} xalign={0} />
-                                    )}
+                                    renderCell={(item: KeyInfo) => <GtkLabel label={item.type} xalign={0} />}
                                 />
                                 <x.ColumnViewColumn
                                     id="default"
                                     title="Default"
                                     resizable
                                     expand
-                                    renderCell={(item: KeyInfo | null) => (
-                                        <GtkLabel label={item?.defaultValue ?? ""} xalign={0} />
-                                    )}
+                                    renderCell={(item: KeyInfo) => <GtkLabel label={item.defaultValue} xalign={0} />}
                                 />
                                 <x.ColumnViewColumn
                                     id="summary"
@@ -342,9 +342,7 @@ const ListViewSettingsDemo = () => {
                                     resizable
                                     visible={false}
                                     expand
-                                    renderCell={(item: KeyInfo | null) => (
-                                        <GtkLabel label={item?.summary ?? ""} xalign={0} wrap />
-                                    )}
+                                    renderCell={(item: KeyInfo) => <GtkLabel label={item.summary} xalign={0} wrap />}
                                 />
                                 <x.ColumnViewColumn
                                     id="description"
@@ -352,13 +350,10 @@ const ListViewSettingsDemo = () => {
                                     resizable
                                     visible={false}
                                     expand
-                                    renderCell={(item: KeyInfo | null) => (
-                                        <GtkLabel label={item?.description ?? ""} xalign={0} wrap />
+                                    renderCell={(item: KeyInfo) => (
+                                        <GtkLabel label={item.description} xalign={0} wrap />
                                     )}
                                 />
-                                {filteredKeyInfos.map((k) => (
-                                    <x.ListItem key={k.name} id={k.name} value={k} />
-                                ))}
                             </GtkColumnView>
                         </GtkScrolledWindow>
                     </GtkBox>

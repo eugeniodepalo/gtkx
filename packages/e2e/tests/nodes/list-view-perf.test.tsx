@@ -1,4 +1,5 @@
-import { GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
+import type { ListItem } from "@gtkx/react";
+import { GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { render, tick } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
@@ -8,14 +9,10 @@ const ScrollWrapper = ({ children }: { children: React.ReactNode }) => (
     </GtkScrolledWindow>
 );
 
-function App({ items }: { items: string[] }) {
+function App({ items }: { items: ListItem<string>[] }) {
     return (
         <ScrollWrapper>
-            <GtkListView renderItem={() => "Item"}>
-                {items.map((id) => (
-                    <x.ListItem key={id} id={id} value={id} />
-                ))}
-            </GtkListView>
+            <GtkListView items={items} renderItem={() => "Item"} />
         </ScrollWrapper>
     );
 }
@@ -23,7 +20,7 @@ function App({ items }: { items: string[] }) {
 describe("ListView performance", () => {
     it("filters 10k items to 2 in under 4s", { timeout: 30_000 }, async () => {
         const n = 10_000;
-        const items = Array.from({ length: n }, (_, i) => `w-${i}`);
+        const items: ListItem<string>[] = Array.from({ length: n }, (_, i) => ({ id: `w-${i}`, value: `w-${i}` }));
         const few = items.slice(0, 2);
 
         const { rerender } = await render(<App items={items} />);

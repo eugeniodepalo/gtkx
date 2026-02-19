@@ -191,9 +191,7 @@ function drawColorSwatch(cr: Context, width: number, height: number, r: number, 
     cr.fill();
 }
 
-const ColorGridItem = memo(({ item, showDetails }: { item: ColorItem | null; showDetails: boolean }) => {
-    if (!item) return null;
-
+const ColorGridItem = memo(({ item, showDetails }: { item: ColorItem; showDetails: boolean }) => {
     if (showDetails) {
         return (
             <GtkBox
@@ -238,12 +236,12 @@ const ColorGridItem = memo(({ item, showDetails }: { item: ColorItem | null; sho
     );
 });
 
-const renderSelectionItem = (item: ColorItem | null) => (
+const renderSelectionItem = (item: ColorItem) => (
     <GtkDrawingArea
         contentWidth={8}
         contentHeight={8}
         onDraw={(cr, w, h) => {
-            if (item) drawColorSwatch(cr, w, h, item.r, item.g, item.b);
+            drawColorSwatch(cr, w, h, item.r, item.g, item.b);
         }}
     />
 );
@@ -270,11 +268,8 @@ const SelectionInfoPanel = ({
                         cssClasses={SELECTION_GRID_CSS}
                         estimatedItemHeight={32}
                         renderItem={renderSelectionItem}
-                    >
-                        {selectedColors.map((c) => (
-                            <x.ListItem key={c.id} id={c.id} value={c} />
-                        ))}
-                    </GtkGridView>
+                        items={selectedColors.map((c) => ({ id: c.id, value: c }))}
+                    />
                 </GtkScrolledWindow>
             </x.GridChild>
             <x.GridChild column={0} row={2}>
@@ -567,7 +562,7 @@ const ListViewColorsDemo = () => {
     const showDetails = displayFactory === "everything";
 
     const renderGridItem = useCallback(
-        (item: ColorItem | null) => <ColorGridItem item={item} showDetails={showDetails} />,
+        (item: ColorItem) => <ColorGridItem item={item} showDetails={showDetails} />,
         [showDetails],
     );
 
@@ -591,31 +586,28 @@ const ListViewColorsDemo = () => {
                             widthChars={8}
                             xalign={1}
                         />
-                        <GtkDropDown selectedId={String(colorLimit)} onSelectionChanged={handleLimitChange}>
-                            {COLOR_LIMITS.map((l) => (
-                                <x.ListItem key={l.id} id={l.id} value={l.label} />
-                            ))}
-                        </GtkDropDown>
+                        <GtkDropDown
+                            selectedId={String(colorLimit)}
+                            onSelectionChanged={handleLimitChange}
+                            items={COLOR_LIMITS.map((l) => ({ id: l.id, value: l.label }))}
+                        />
                     </x.ContainerSlot>
                     <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkBox spacing={10}>
                             <GtkLabel label="Sort by:" />
-                            <GtkDropDown selectedId={sortMode} onSelectionChanged={(id) => setSortMode(id as SortMode)}>
-                                {SORT_MODES.map((m) => (
-                                    <x.ListItem key={m.id} id={m.id} value={m.label} />
-                                ))}
-                            </GtkDropDown>
+                            <GtkDropDown
+                                selectedId={sortMode}
+                                onSelectionChanged={(id) => setSortMode(id as SortMode)}
+                                items={SORT_MODES.map((m) => ({ id: m.id, value: m.label }))}
+                            />
                         </GtkBox>
                         <GtkBox spacing={10}>
                             <GtkLabel label="Show:" />
                             <GtkDropDown
                                 selectedId={displayFactory}
                                 onSelectionChanged={(id) => setDisplayFactory(id as DisplayFactory)}
-                            >
-                                {DISPLAY_FACTORIES.map((f) => (
-                                    <x.ListItem key={f.id} id={f.id} value={f.label} />
-                                ))}
-                            </GtkDropDown>
+                                items={DISPLAY_FACTORIES.map((f) => ({ id: f.id, value: f.label }))}
+                            />
                         </GtkBox>
                     </x.ContainerSlot>
                 </GtkHeaderBar>
@@ -638,11 +630,8 @@ const ListViewColorsDemo = () => {
                             enableRubberband
                             cssClasses={gridCssClasses}
                             renderItem={renderGridItem}
-                        >
-                            {sortedColors.map((color) => (
-                                <x.ListItem key={color.id} id={color.id} value={color} />
-                            ))}
-                        </GtkGridView>
+                            items={sortedColors.map((color) => ({ id: color.id, value: color }))}
+                        />
                     </GtkScrolledWindow>
                     {(isSorting || filling) && sortedColors.length > 0 && (
                         <x.OverlayChild>

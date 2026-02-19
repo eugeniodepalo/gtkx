@@ -7,14 +7,7 @@ import type * as GtkSource from "@gtkx/ffi/gtksource";
 import type * as Pango from "@gtkx/ffi/pango";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
-import type {
-    AdwComboRowProps as IntrinsicAdwComboRowProps,
-    GtkColumnViewProps as IntrinsicGtkColumnViewProps,
-    GtkDropDownProps as IntrinsicGtkDropDownProps,
-    GtkGridViewProps as IntrinsicGtkGridViewProps,
-    GtkListViewProps as IntrinsicGtkListViewProps,
-    WidgetSlotNames,
-} from "./generated/jsx.js";
+import type { WidgetSlotNames } from "./generated/jsx.js";
 
 /**
  * CSS properties that can be animated on a widget.
@@ -377,45 +370,36 @@ export type ContainerSlotProps = {
 };
 
 /**
- * Props for items in a GtkListView, GtkGridView, or GtkColumnView.
+ * A data item for list/grid/column views and dropdowns.
  *
- * When used inside a GtkListView, items can be nested to create tree hierarchies.
- * Tree-specific props (`indentForDepth`, `indentForIcon`, `hideExpander`) only
- * apply when items are used inside a GtkListView with nested children.
+ * Uses a discriminated union on the `section` field:
+ * - Regular items have `value: T` and optional tree-mode properties
+ * - Section headers have `value: S`, `section: true`, and required `children`
  *
- * @typeParam T - The type of data associated with this list item
+ * Mode is detected from data shape:
+ * - Any item has `section: true` → section mode
+ * - Any item has non-empty `children` (without `section`) → tree mode
+ * - Otherwise → flat mode
+ *
+ * @typeParam T - The type of data for regular items
+ * @typeParam S - The type of data for section headers
  */
-export type ListItemProps<T = unknown> = {
-    /** Unique identifier for this item */
-    id: string;
-    /** The data value for this item */
-    value: T;
-    /** Whether to indent based on tree depth (default: true) */
-    indentForDepth?: boolean;
-    /** Whether to indent for expander icon width */
-    indentForIcon?: boolean;
-    /** Whether to hide the expand/collapse arrow */
-    hideExpander?: boolean;
-    /** Nested list items (children of this item in a tree) */
-    children?: ReactNode;
-};
-
-/**
- * Props for section headers in a GtkListView, GtkGridView, or GtkColumnView.
- *
- * Wraps ListItems to group them into sections. When used with `renderHeader`,
- * the view displays a header at the top of each section.
- *
- * @typeParam T - The type of data associated with this section header
- */
-export type ListSectionProps<T = unknown> = {
-    /** Unique identifier for this section */
-    id: string;
-    /** The data value passed to `renderHeader` for this section */
-    value: T;
-    /** ListItem children belonging to this section */
-    children?: ReactNode;
-};
+export type ListItem<T = unknown, S = unknown> =
+    | {
+          id: string;
+          value: T;
+          section?: false | undefined;
+          children?: ListItem<T, S>[];
+          hideExpander?: boolean;
+          indentForDepth?: boolean;
+          indentForIcon?: boolean;
+      }
+    | {
+          id: string;
+          value: S;
+          section: true;
+          children: ListItem<T, S>[];
+      };
 
 /**
  * Props for positioning children within a GtkGrid.
@@ -474,7 +458,7 @@ export type ColumnViewColumnProps<T = unknown> = {
     /** Whether this column is visible */
     visible?: boolean;
     /** Function to render the cell content for each row */
-    renderCell: (item: T | null) => ReactNode;
+    renderCell: (item: T) => ReactNode;
     /** Menu items for the column header context menu */
     children?: ReactNode;
 };
@@ -688,6 +672,8 @@ export type TextBufferProps = {
 type BaseListViewProps = {
     /** Estimated item height in pixels for virtualization */
     estimatedItemHeight?: number;
+    /** Estimated item width in pixels for virtualization */
+    estimatedItemWidth?: number;
     /** Array of selected item IDs */
     selected?: string[] | null;
     /** Callback fired when the selection changes */
@@ -697,33 +683,39 @@ type BaseListViewProps = {
 };
 
 export type ListViewProps<T = unknown, S = unknown> = BaseListViewProps & {
+    /** Data items to display in the list */
+    items?: ListItem<T, S>[];
     /** Function to render each list item. The `row` parameter provides tree state for hierarchical lists. */
-    renderItem: (item: T | null, row?: Gtk.TreeListRow | null) => ReactNode;
+    renderItem: (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
     /** Whether to automatically expand new tree rows (default: false) */
     autoexpand?: boolean;
-    /** Function to render section headers when using ListSection children */
-    renderHeader?: ((item: S | null) => ReactNode) | null;
+    /** Function to render section headers when items contain section entries */
+    renderHeader?: ((item: S) => ReactNode) | null;
 };
 
 export type GridViewProps<T = unknown> = BaseListViewProps & {
+    /** Data items to display in the grid */
+    items?: ListItem<T>[];
     /** Function to render each grid item */
-    renderItem: (item: T | null) => ReactNode;
+    renderItem: (item: T) => ReactNode;
 };
 
 /**
  * Props shared by single-selection dropdown widgets (GtkDropDown, AdwComboRow).
  */
 export type DropDownProps<T = unknown, S = unknown> = {
+    /** Data items to display in the dropdown */
+    items?: ListItem<T, S>[];
     /** ID of the currently selected item */
     selectedId?: string | null;
     /** Callback fired when the selected item changes */
     onSelectionChanged?: ((id: string) => void) | null;
     /** Function to render each item. Sets the primary factory, used for both button and popup list unless overridden by renderListItem. */
-    renderItem?: ((item: T | null) => ReactNode) | null;
+    renderItem?: ((item: T) => ReactNode) | null;
     /** Function to render items in the popup list only, overriding renderItem for the list. */
-    renderListItem?: ((item: T | null) => ReactNode) | null;
-    /** Function to render section headers when using ListSection children */
-    renderHeader?: ((item: S | null) => ReactNode) | null;
+    renderListItem?: ((item: T) => ReactNode) | null;
+    /** Function to render section headers when items contain section entries */
+    renderHeader?: ((item: S) => ReactNode) | null;
 };
 
 /**
@@ -767,18 +759,13 @@ export type AdjustableProps = {
  *
  * @example
  * ```tsx
- * import { x, GtkHeaderBar, GtkDropDown } from "@gtkx/react";
+ * import { x, GtkHeaderBar } from "@gtkx/react";
  *
  * <GtkHeaderBar>
  *   <x.Slot for={GtkHeaderBar} id="titleWidget">
  *     <GtkLabel label="App Title" />
  *   </x.Slot>
  * </GtkHeaderBar>
- *
- * <GtkDropDown>
- *   <x.ListItem id="opt1" value="Option 1" />
- *   <x.ListItem id="opt2" value="Option 2" />
- * </GtkDropDown>
  * ```
  */
 export const x = {
@@ -865,53 +852,6 @@ export const x = {
      * Element type for a custom widget as the page tab label.
      */
     NotebookPageTab: "NotebookPageTab" as const,
-
-    /**
-     * Element type for items in a GtkListView, GtkGridView, or GtkColumnView.
-     *
-     * Items can be nested to create tree hierarchies inside a GtkListView.
-     *
-     * @example
-     * ```tsx
-     * // Flat list
-     * <GtkListView renderItem={(item) => <GtkLabel label={item.name} />}>
-     *   <x.ListItem id="1" value={{ name: "Item 1" }} />
-     * </GtkListView>
-     *
-     * // Tree list (nested items)
-     * <GtkListView renderItem={(item, row) => <GtkLabel label={item.name} />} autoexpand>
-     *   <x.ListItem id="parent" value={{ name: "Parent" }}>
-     *     <x.ListItem id="child" value={{ name: "Child" }} />
-     *   </x.ListItem>
-     * </GtkListView>
-     * ```
-     */
-    ListItem<T = unknown>(props: ListItemProps<T>): ReactElement {
-        return createElement("ListItem", props, props.children);
-    },
-
-    /**
-     * Component for defining section headers in list/grid views.
-     *
-     * Wraps ListItems to group them into sections with headers.
-     * Requires `renderHeader` on the parent view to render the header content.
-     *
-     * @example
-     * ```tsx
-     * <GtkGridView
-     *   renderItem={(item) => <GtkLabel label={item.name} />}
-     *   renderHeader={(header) => <GtkLabel label={header.title} />}
-     * >
-     *   <x.ListSection id="section1" value={{ title: "Section 1" }}>
-     *     <x.ListItem id="a" value={{ name: "Item A" }} />
-     *     <x.ListItem id="b" value={{ name: "Item B" }} />
-     *   </x.ListSection>
-     * </GtkGridView>
-     * ```
-     */
-    ListSection<T = unknown>(props: ListSectionProps<T>): ReactElement {
-        return createElement("ListSection", props, props.children);
-    },
 
     /**
      * Component for defining columns in a ColumnView (table widget).
@@ -1181,8 +1121,6 @@ declare global {
                 ColumnViewColumn: ColumnViewColumnProps;
                 FixedChild: FixedChildProps;
                 GridChild: GridChildProps;
-                ListItem: ListItemProps;
-                ListSection: ListSectionProps;
                 MenuItem: MenuItemProps;
                 MenuSection: MenuSectionProps;
                 MenuSubmenu: MenuSubmenuProps;
@@ -1316,6 +1254,8 @@ declare module "./generated/jsx.js" {
     interface GtkGridViewProps extends GridViewProps {}
 
     interface GtkColumnViewProps {
+        /** Data items to display in the column view */
+        items?: ListItem[];
         /** Array of selected row IDs */
         selected?: string[] | null;
         /** Callback fired when the selection changes */
@@ -1330,7 +1270,7 @@ declare module "./generated/jsx.js" {
         onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null;
         /** Estimated row height in pixels for virtualization */
         estimatedRowHeight?: number | null;
-        /** Function to render section headers when using ListSection children */
+        /** Function to render section headers when items contain section entries */
         renderHeader?: ((item: unknown) => ReactNode) | null;
     }
 
@@ -1411,37 +1351,5 @@ declare module "./generated/jsx.js" {
     }
 }
 
-export function GtkListView<T = unknown, S = unknown>(
-    props: Omit<IntrinsicGtkListViewProps, keyof ListViewProps> & ListViewProps<T, S> & { children?: ReactNode },
-): ReactElement {
-    return createElement("GtkListView", props);
-}
-
-export function GtkGridView<T = unknown>(
-    props: Omit<IntrinsicGtkGridViewProps, keyof GridViewProps> & GridViewProps<T> & { children?: ReactNode },
-): ReactElement {
-    return createElement("GtkGridView", props);
-}
-
-export function GtkDropDown<T = unknown, S = unknown>(
-    props: Omit<IntrinsicGtkDropDownProps, keyof DropDownProps> & DropDownProps<T, S> & { children?: ReactNode },
-): ReactElement {
-    return createElement("GtkDropDown", props);
-}
-
-export function AdwComboRow<T = unknown, S = unknown>(
-    props: Omit<IntrinsicAdwComboRowProps, keyof DropDownProps> & DropDownProps<T, S> & { children?: ReactNode },
-): ReactElement {
-    return createElement("AdwComboRow", props);
-}
-
-export function GtkColumnView<T = unknown>(
-    props: Omit<IntrinsicGtkColumnViewProps, "renderHeader"> & {
-        renderHeader?: ((item: T | null) => ReactNode) | null;
-        children?: ReactNode;
-    },
-): ReactElement {
-    return createElement("GtkColumnView", props);
-}
-
+export { AdwComboRow, GtkColumnView, GtkDropDown, GtkGridView, GtkListView } from "./components/list.js";
 export * from "./generated/jsx.js";

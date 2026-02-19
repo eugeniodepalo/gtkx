@@ -382,11 +382,13 @@ const TextViewDemo = () => {
                         </x.TextAnchor>
                         {" and a menu: "}
                         <x.TextAnchor>
-                            <GtkDropDown>
-                                <x.ListItem key="opt1" id="opt1" value="Option 1" />
-                                <x.ListItem key="opt2" id="opt2" value="Option 2" />
-                                <x.ListItem key="opt3" id="opt3" value="Option 3" />
-                            </GtkDropDown>
+                            <GtkDropDown
+                                items={[
+                                    { id: "opt1", value: "Option 1" },
+                                    { id: "opt2", value: "Option 2" },
+                                    { id: "opt3", value: "Option 3" },
+                                ]}
+                            />
                         </x.TextAnchor>
                         {" and a scale: "}
                         <x.TextAnchor>

@@ -366,7 +366,11 @@ export class WidgetNode<
 
 function detachChildFromParent(child: WidgetNode): void {
     const currentParent = child.container.getParent();
-    if (currentParent !== null && isRemovable(currentParent)) {
-        currentParent.remove(child.container);
+    if (currentParent !== null) {
+        if (isRemovable(currentParent)) {
+            currentParent.remove(child.container);
+        } else {
+            child.container.unparent();
+        }
     }
 }

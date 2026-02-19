@@ -1,8 +1,9 @@
+import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkGridView, GtkLabel, GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkBox, GtkGridView, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { cleanup, render, screen, tick, userEvent } from "@gtkx/testing";
 import type { ReactNode } from "react";
-import { createRef } from "react";
+import { createRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getVisibleItemTexts } from "../helpers/get-visible-item-texts.js";
 
@@ -21,10 +22,9 @@ describe("render - ListView", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                    </GtkListView>
+                        items={[{ id: "1", value: { name: "First" } }]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -36,10 +36,13 @@ describe("render - ListView", () => {
         it("adds item to list model", async () => {
             await render(
                 <ScrollWrapper>
-                    <GtkListView renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}>
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkListView>
+                    <GtkListView
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -52,12 +55,9 @@ describe("render - ListView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((item) => ({ id: item.id, value: item }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -94,12 +94,9 @@ describe("render - ListView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((item) => ({ id: item.id, value: item }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -137,10 +134,9 @@ describe("render - ListView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            <x.ListItem id="1" value={{ name: itemName }} />
-                        </GtkListView>
+                            items={[{ id: "1", value: { name: itemName } }]}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -155,10 +151,9 @@ describe("render - ListView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />}
-                        >
-                            <x.ListItem id="1" value={{ name: itemName }} />
-                        </GtkListView>
+                            items={[{ id: "1", value: { name: itemName } }]}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -176,13 +171,11 @@ describe("render - ListView", () => {
 
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = vi.fn((item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />);
+            const renderItem = vi.fn((item: { name: string }) => <GtkLabel label={item.name} />);
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView renderItem={renderItem}>
-                        <x.ListItem id="1" value={{ name: "Test Item" }} />
-                    </GtkListView>
+                    <GtkListView items={[{ id: "1", value: { name: "Test Item" } }]} renderItem={renderItem} />
                 </ScrollWrapper>,
             );
         });
@@ -192,12 +185,9 @@ describe("render - ListView", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => (
-                                <GtkLabel label={`${prefix}: ${item?.name ?? ""}`} />
-                            )}
-                        >
-                            <x.ListItem id="1" value={{ name: "Test" }} />
-                        </GtkListView>
+                            items={[{ id: "1", value: { name: "Test" } }]}
+                            renderItem={(item: { name: string }) => <GtkLabel label={`${prefix}: ${item.name}`} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -213,12 +203,13 @@ describe("render - ListView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkListView
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         selected={["2"]}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
         });
@@ -231,12 +222,13 @@ describe("render - ListView", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         onSelectionChanged={onSelectionChanged}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -245,16 +237,44 @@ describe("render - ListView", () => {
             expect(onSelectionChanged).toHaveBeenCalledWith(["1"]);
         });
 
+        it("selects correct item after scrolling to bottom of large list", async () => {
+            const ref = createRef<Gtk.ListView>();
+            const onSelectionChanged = vi.fn();
+            const items = Array.from({ length: 100 }, (_, i) => ({
+                id: `item-${i}`,
+                name: `Item ${i}`,
+            }));
+
+            await render(
+                <ScrollWrapper>
+                    <GtkListView
+                        ref={ref}
+                        items={items.map((item) => ({ id: item.id, value: item }))}
+                        renderItem={(item: { id: string; name: string }) => <GtkLabel label={item.name} />}
+                        onSelectionChanged={onSelectionChanged}
+                    />
+                </ScrollWrapper>,
+            );
+
+            const listView = ref.current as Gtk.ListView;
+            listView.scrollTo(99, Gtk.ListScrollFlags.NONE);
+            await tick();
+            await tick();
+
+            await userEvent.selectOptions(listView, 99);
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["item-99"]);
+        });
+
         it("handles unselect (empty selection)", async () => {
             function App({ selected }: { selected: string[] }) {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            items={[{ id: "1", value: { name: "First" } }]}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                             selected={selected}
-                        >
-                            <x.ListItem id="1" value={{ name: "First" }} />
-                        </GtkListView>
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -270,12 +290,13 @@ describe("render - ListView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkListView
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
         });
@@ -284,14 +305,15 @@ describe("render - ListView", () => {
             await render(
                 <ScrollWrapper>
                     <GtkListView
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                            { id: "3", value: { name: "Third" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
                         selected={["1", "3"]}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                        <x.ListItem id="3" value={{ name: "Third" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
         });
@@ -304,13 +326,14 @@ describe("render - ListView", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
                         onSelectionChanged={onSelectionChanged}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -328,10 +351,9 @@ describe("render - ListView", () => {
                 <ScrollWrapper>
                     <GtkGridView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                    </GtkGridView>
+                        items={[{ id: "1", value: { name: "First" } }]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -343,9 +365,12 @@ describe("render - ListView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkGridView ref={ref} renderItem={() => <GtkLabel label="Item" />} singleClickActivate>
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                    </GtkGridView>
+                    <GtkGridView
+                        ref={ref}
+                        items={[{ id: "1", value: { name: "First" } }]}
+                        renderItem={() => <GtkLabel label="Item" />}
+                        singleClickActivate
+                    />
                 </ScrollWrapper>,
             );
 
@@ -365,12 +390,13 @@ describe("render - ListView", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                    >
-                        <x.ListItem id="c" value={{ name: "C" }} />
-                        <x.ListItem id="a" value={{ name: "A" }} />
-                        <x.ListItem id="b" value={{ name: "B" }} />
-                    </GtkListView>
+                        items={[
+                            { id: "c", value: { name: "C" } },
+                            { id: "a", value: { name: "A" } },
+                            { id: "b", value: { name: "B" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -385,12 +411,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -410,12 +433,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -435,12 +455,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -460,12 +477,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -485,12 +499,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -510,12 +521,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -539,12 +547,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -568,12 +573,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -593,12 +595,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -618,12 +617,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -649,11 +645,11 @@ describe("render - ListView", () => {
 
                 return (
                     <ScrollWrapper>
-                        <GtkListView ref={ref} renderItem={(item: Item | null) => <GtkLabel label={item?.id ?? ""} />}>
-                            {filteredItems.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
-                        </GtkListView>
+                        <GtkListView
+                            ref={ref}
+                            items={filteredItems.map((item) => ({ id: item.id, value: item }))}
+                            renderItem={(item: Item) => <GtkLabel label={item.id} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -689,12 +685,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: Item | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((item) => ({ id: item.id, value: item }))}
+                            renderItem={(item: Item) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -732,14 +725,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: Item | null) => (
-                                <GtkLabel label={`${item?.name ?? ""}: ${item?.count ?? 0}`} />
-                            )}
-                        >
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((item) => ({ id: item.id, value: item }))}
+                            renderItem={(item: Item) => <GtkLabel label={`${item.name}: ${item.count}`} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -781,12 +769,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: Item | null) => <GtkLabel label={String(item?.value ?? 0)} />}
-                        >
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((item) => ({ id: item.id, value: item }))}
+                            renderItem={(item: Item) => <GtkLabel label={String(item.value)} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -829,12 +814,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkGridView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkGridView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -854,12 +836,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkGridView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkGridView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -879,12 +858,9 @@ describe("render - ListView", () => {
                     <ScrollWrapper>
                         <GtkGridView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkGridView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -912,10 +888,9 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                    </GtkListView>
+                        items={[{ id: "1", value: { name: "First" } }]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -927,10 +902,13 @@ describe("render - ListView (tree)", () => {
         it("adds item to tree model", async () => {
             await render(
                 <ScrollWrapper>
-                    <GtkListView renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}>
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkListView>
+                    <GtkListView
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -945,14 +923,19 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            {
+                                id: "parent",
+                                value: { name: "Parent" },
+                                children: [
+                                    { id: "child1", value: { name: "Child 1" } },
+                                    { id: "child2", value: { name: "Child 2" } },
+                                ],
+                            },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         autoexpand
-                    >
-                        <x.ListItem id="parent" value={{ name: "Parent" }}>
-                            <x.ListItem id="child1" value={{ name: "Child 1" }} />
-                            <x.ListItem id="child2" value={{ name: "Child 2" }} />
-                        </x.ListItem>
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -964,12 +947,9 @@ describe("render - ListView (tree)", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((item) => ({ id: item.id, value: item }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -1006,12 +986,9 @@ describe("render - ListView (tree)", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((item) => ({ id: item.id, value: item }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -1049,10 +1026,9 @@ describe("render - ListView (tree)", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            <x.ListItem id="1" value={{ name: itemName }} />
-                        </GtkListView>
+                            items={[{ id: "1", value: { name: itemName } }]}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -1065,29 +1041,33 @@ describe("render - ListView (tree)", () => {
 
     describe("renderItem (tree)", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = vi.fn((item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />);
+            const renderItem = vi.fn((item: { name: string }) => <GtkLabel label={item.name} />);
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView renderItem={renderItem}>
-                        <x.ListItem id="1" value={{ name: "Test Item" }} />
-                    </GtkListView>
+                    <GtkListView items={[{ id: "1", value: { name: "Test Item" } }]} renderItem={renderItem} />
                 </ScrollWrapper>,
             );
         });
 
         it("receives TreeListRow in renderItem", async () => {
-            const renderItem = vi.fn((item: { name: string } | null, row?: Gtk.TreeListRow | null) => (
-                <GtkLabel label={`${item?.name ?? ""} - depth: ${row?.getDepth() ?? 0}`} />
+            const renderItem = vi.fn((item: { name: string }, row?: Gtk.TreeListRow | null) => (
+                <GtkLabel label={`${item.name} - depth: ${row?.getDepth() ?? 0}`} />
             ));
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView renderItem={renderItem} autoexpand>
-                        <x.ListItem id="parent" value={{ name: "Parent" }}>
-                            <x.ListItem id="child" value={{ name: "Child" }} />
-                        </x.ListItem>
-                    </GtkListView>
+                    <GtkListView
+                        items={[
+                            {
+                                id: "parent",
+                                value: { name: "Parent" },
+                                children: [{ id: "child", value: { name: "Child" } }],
+                            },
+                        ]}
+                        renderItem={renderItem}
+                        autoexpand
+                    />
                 </ScrollWrapper>,
             );
         });
@@ -1097,12 +1077,9 @@ describe("render - ListView (tree)", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => (
-                                <GtkLabel label={`${prefix}: ${item?.name ?? ""}`} />
-                            )}
-                        >
-                            <x.ListItem id="1" value={{ name: "Test" }} />
-                        </GtkListView>
+                            items={[{ id: "1", value: { name: "Test" } }]}
+                            renderItem={(item: { name: string }) => <GtkLabel label={`${prefix}: ${item.name}`} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -1121,13 +1098,16 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            {
+                                id: "parent",
+                                value: { name: "Parent" },
+                                children: [{ id: "child", value: { name: "Child" } }],
+                            },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         autoexpand
-                    >
-                        <x.ListItem id="parent" value={{ name: "Parent" }}>
-                            <x.ListItem id="child" value={{ name: "Child" }} />
-                        </x.ListItem>
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1141,14 +1121,19 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            {
+                                id: "parent",
+                                value: { name: "Parent" },
+                                children: [
+                                    { id: "child1", value: { name: "Child 1" } },
+                                    { id: "child2", value: { name: "Child 2" } },
+                                ],
+                            },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         autoexpand
-                    >
-                        <x.ListItem id="parent" value={{ name: "Parent" }}>
-                            <x.ListItem id="child1" value={{ name: "Child 1" }} />
-                            <x.ListItem id="child2" value={{ name: "Child 2" }} />
-                        </x.ListItem>
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1158,11 +1143,16 @@ describe("render - ListView (tree)", () => {
         it("parent row is expandable when it has children", async () => {
             await render(
                 <ScrollWrapper>
-                    <GtkListView renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}>
-                        <x.ListItem id="parent" value={{ name: "Parent" }}>
-                            <x.ListItem id="child1" value={{ name: "Child 1" }} />
-                        </x.ListItem>
-                    </GtkListView>
+                    <GtkListView
+                        items={[
+                            {
+                                id: "parent",
+                                value: { name: "Parent" },
+                                children: [{ id: "child1", value: { name: "Child 1" } }],
+                            },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1184,13 +1174,18 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                    >
-                        <x.ListItem id="parent" value={{ name: "Parent" }}>
-                            <x.ListItem id="child1" value={{ name: "Child 1" }} />
-                            <x.ListItem id="child2" value={{ name: "Child 2" }} />
-                        </x.ListItem>
-                    </GtkListView>
+                        items={[
+                            {
+                                id: "parent",
+                                value: { name: "Parent" },
+                                children: [
+                                    { id: "child1", value: { name: "Child 1" } },
+                                    { id: "child2", value: { name: "Child 2" } },
+                                ],
+                            },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1216,13 +1211,16 @@ describe("render - ListView (tree)", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            items={[
+                                {
+                                    id: "parent",
+                                    value: { name: "Parent" },
+                                    children: [{ id: "child", value: { name: "Child" } }],
+                                },
+                            ]}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                             autoexpand={autoexpand}
-                        >
-                            <x.ListItem id="parent" value={{ name: "Parent" }}>
-                                <x.ListItem id="child" value={{ name: "Child" }} />
-                            </x.ListItem>
-                        </GtkListView>
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -1240,13 +1238,14 @@ describe("render - ListView (tree)", () => {
             await render(
                 <ScrollWrapper>
                     <GtkListView
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         selected={["2"]}
                         onSelectionChanged={onSelectionChanged}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1261,14 +1260,15 @@ describe("render - ListView (tree)", () => {
             await render(
                 <ScrollWrapper>
                     <GtkListView
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "first", value: { name: "First" } },
+                            { id: "second", value: { name: "Second" } },
+                            { id: "third", value: { name: "Third" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         selected={["first"]}
                         onSelectionChanged={onSelectionChanged}
-                    >
-                        <x.ListItem id="first" value={{ name: "First" }} />
-                        <x.ListItem id="second" value={{ name: "Second" }} />
-                        <x.ListItem id="third" value={{ name: "Third" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1283,12 +1283,13 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         onSelectionChanged={onSelectionChanged}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1302,11 +1303,10 @@ describe("render - ListView (tree)", () => {
                 return (
                     <ScrollWrapper>
                         <GtkListView
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            items={[{ id: "1", value: { name: "First" } }]}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                             selected={selected}
-                        >
-                            <x.ListItem id="1" value={{ name: "First" }} />
-                        </GtkListView>
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -1315,6 +1315,162 @@ describe("render - ListView (tree)", () => {
 
             await render(<App selected={[]} />);
         });
+
+        it("selects correct child item after scrolling to bottom of expanded tree", async () => {
+            const ref = createRef<Gtk.ListView>();
+            const onSelectionChanged = vi.fn();
+            const groups = Array.from({ length: 20 }, (_, gi) => ({
+                id: `group-${gi}`,
+                name: `Group ${gi}`,
+                children: Array.from({ length: 5 }, (_, ci) => ({
+                    id: `group-${gi}-child-${ci}`,
+                    name: `Group ${gi} Child ${ci}`,
+                })),
+            }));
+
+            await render(
+                <ScrollWrapper>
+                    <GtkListView
+                        ref={ref}
+                        autoexpand
+                        items={groups.map((group) => ({
+                            id: group.id,
+                            value: group,
+                            children: group.children.map((child) => ({
+                                id: child.id,
+                                value: child,
+                                hideExpander: true,
+                            })),
+                        }))}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        onSelectionChanged={onSelectionChanged}
+                    />
+                </ScrollWrapper>,
+            );
+
+            await tick();
+
+            const listView = ref.current as Gtk.ListView;
+            const model = listView.getModel() as Gio.ListModel;
+            const lastPosition = model.getNItems() - 1;
+            listView.scrollTo(lastPosition, Gtk.ListScrollFlags.NONE);
+            await tick();
+            await tick();
+
+            await userEvent.selectOptions(listView, lastPosition);
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["group-19-child-4"]);
+        });
+
+        it("preserves tree state and scroll position when selecting after scrolling down", async () => {
+            const ref = createRef<Gtk.ListView>();
+            const scrollRef = createRef<Gtk.ScrolledWindow>();
+
+            interface Item {
+                id: string;
+                name: string;
+                children?: Item[];
+            }
+
+            const data: Item[] = [
+                { id: "intro", name: "Introduction" },
+                ...Array.from({ length: 20 }, (_, gi) => ({
+                    id: `cat-${gi}`,
+                    name: `Category ${gi}`,
+                    children: Array.from({ length: 5 }, (_, ci) => ({
+                        id: `cat-${gi}-demo-${ci}`,
+                        name: `Cat ${gi} Demo ${ci}`,
+                    })),
+                })),
+            ];
+
+            function toListItems(items: Item[]) {
+                return items.map((item) => ({
+                    id: item.id,
+                    value: item,
+                    hideExpander: !item.children,
+                    children: item.children?.map((child) => ({
+                        id: child.id,
+                        value: child,
+                        hideExpander: true,
+                    })),
+                }));
+            }
+
+            function Sidebar({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) {
+                return (
+                    <GtkScrolledWindow
+                        ref={scrollRef}
+                        minContentHeight={200}
+                        maxContentHeight={200}
+                        minContentWidth={200}
+                    >
+                        <GtkListView
+                            ref={ref}
+                            cssClasses={["navigation-sidebar"]}
+                            autoexpand
+                            selectionMode={Gtk.SelectionMode.SINGLE}
+                            items={toListItems(data)}
+                            selected={selectedId ? [selectedId] : []}
+                            onSelectionChanged={(ids: string[]) => {
+                                const id = ids[0];
+                                if (id) onSelect(id);
+                            }}
+                            renderItem={(item: Item) => <GtkLabel label={item.name} />}
+                        />
+                    </GtkScrolledWindow>
+                );
+            }
+
+            function App() {
+                const [selectedId, setSelectedId] = useState<string | null>("intro");
+                const selectedItem = data.flatMap((d) => [d, ...(d.children ?? [])]).find((d) => d.id === selectedId);
+
+                return (
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
+                        <Sidebar selectedId={selectedId} onSelect={setSelectedId} />
+                        <GtkLabel label={selectedItem?.name ?? "None"} vexpand hexpand />
+                    </GtkBox>
+                );
+            }
+
+            await render(<App />);
+            await tick();
+
+            const listView = ref.current as Gtk.ListView;
+            const selectionModel = listView.getModel() as Gtk.SingleSelection;
+            const totalItems = selectionModel.getNItems();
+
+            const targetPosition = totalItems - 1;
+            const scrolledWindow = scrollRef.current as Gtk.ScrolledWindow;
+            const vadj = scrolledWindow.getVadjustment();
+
+            listView.scrollTo(targetPosition, Gtk.ListScrollFlags.FOCUS);
+            await tick();
+            await tick();
+            await tick();
+
+            if (vadj.getValue() === 0 && vadj.getUpper() > vadj.getPageSize()) {
+                vadj.setValue(vadj.getUpper() - vadj.getPageSize());
+                await tick();
+                await tick();
+            }
+
+            const scrollPosBefore = vadj.getValue();
+            expect(scrollPosBefore).toBeGreaterThan(0);
+
+            await userEvent.selectOptions(listView, targetPosition);
+            await tick();
+            await tick();
+            await tick();
+            await tick();
+            await tick();
+
+            expect(selectionModel.getSelected()).toBe(targetPosition);
+
+            const scrollPosAfter = vadj.getValue();
+            expect(scrollPosAfter).toBe(scrollPosBefore);
+        });
     });
 
     describe("selection - multiple (tree)", () => {
@@ -1322,12 +1478,13 @@ describe("render - ListView (tree)", () => {
             await render(
                 <ScrollWrapper>
                     <GtkListView
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
         });
@@ -1336,14 +1493,15 @@ describe("render - ListView (tree)", () => {
             await render(
                 <ScrollWrapper>
                     <GtkListView
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                            { id: "3", value: { name: "Third" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
                         selected={["1", "3"]}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                        <x.ListItem id="3" value={{ name: "Third" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
         });
@@ -1356,13 +1514,14 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
                         onSelectionChanged={onSelectionChanged}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1380,12 +1539,13 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                    >
-                        <x.ListItem id="c" value={{ name: "C" }} />
-                        <x.ListItem id="a" value={{ name: "A" }} />
-                        <x.ListItem id="b" value={{ name: "B" }} />
-                    </GtkListView>
+                        items={[
+                            { id: "c", value: { name: "C" } },
+                            { id: "a", value: { name: "A" } },
+                            { id: "b", value: { name: "B" } },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1400,12 +1560,9 @@ describe("render - ListView (tree)", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -1425,12 +1582,9 @@ describe("render - ListView (tree)", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -1450,12 +1604,9 @@ describe("render - ListView (tree)", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -1475,12 +1626,9 @@ describe("render - ListView (tree)", () => {
                     <ScrollWrapper>
                         <GtkListView
                             ref={ref}
-                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
-                        >
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
-                        </GtkListView>
+                            items={items.map((id) => ({ id, value: { name: id } }))}
+                            renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -1550,28 +1698,19 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView<TreeItem>
+                    <GtkListView
                         ref={ref}
-                        renderItem={(item) => {
-                            if (!item) {
-                                return <GtkLabel label="Loading..." />;
-                            }
-                            return <GtkLabel label={item.name} />;
-                        }}
-                    >
-                        {categories.map((category) => (
-                            <x.ListItem key={category.id} id={category.id} value={category as TreeItem}>
-                                {category.children.map((setting) => (
-                                    <x.ListItem
-                                        key={setting.id}
-                                        id={setting.id}
-                                        value={setting as TreeItem}
-                                        hideExpander
-                                    />
-                                ))}
-                            </x.ListItem>
-                        ))}
-                    </GtkListView>
+                        items={categories.map((category) => ({
+                            id: category.id,
+                            value: category as TreeItem,
+                            children: category.children.map((setting) => ({
+                                id: setting.id,
+                                value: setting as TreeItem,
+                                hideExpander: true,
+                            })),
+                        }))}
+                        renderItem={(item: TreeItem) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1640,29 +1779,20 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView<TreeItem>
+                    <GtkListView
                         ref={ref}
                         autoexpand
-                        renderItem={(item) => {
-                            if (!item) {
-                                return <GtkLabel label="Loading..." />;
-                            }
-                            return <GtkLabel label={item.name} />;
-                        }}
-                    >
-                        {categories.map((category) => (
-                            <x.ListItem key={category.id} id={category.id} value={category as TreeItem}>
-                                {category.children.map((setting) => (
-                                    <x.ListItem
-                                        key={setting.id}
-                                        id={setting.id}
-                                        value={setting as TreeItem}
-                                        hideExpander
-                                    />
-                                ))}
-                            </x.ListItem>
-                        ))}
-                    </GtkListView>
+                        items={categories.map((category) => ({
+                            id: category.id,
+                            value: category as TreeItem,
+                            children: category.children.map((setting) => ({
+                                id: setting.id,
+                                value: setting as TreeItem,
+                                hideExpander: true,
+                            })),
+                        }))}
+                        renderItem={(item: TreeItem) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1689,13 +1819,17 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            {
+                                id: "parent",
+                                value: { name: "Parent" },
+                                indentForDepth: false,
+                                children: [{ id: "child", value: { name: "Child" }, indentForDepth: true }],
+                            },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         autoexpand
-                    >
-                        <x.ListItem id="parent" value={{ name: "Parent" }} indentForDepth={false}>
-                            <x.ListItem id="child" value={{ name: "Child" }} indentForDepth={true} />
-                        </x.ListItem>
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1709,13 +1843,17 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            {
+                                id: "parent",
+                                value: { name: "Parent" },
+                                indentForIcon: true,
+                                children: [{ id: "child", value: { name: "Child" }, indentForIcon: false }],
+                            },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         autoexpand
-                    >
-                        <x.ListItem id="parent" value={{ name: "Parent" }} indentForIcon={true}>
-                            <x.ListItem id="child" value={{ name: "Child" }} indentForIcon={false} />
-                        </x.ListItem>
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1729,13 +1867,17 @@ describe("render - ListView (tree)", () => {
                 <ScrollWrapper>
                     <GtkListView
                         ref={ref}
-                        renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                        items={[
+                            {
+                                id: "parent",
+                                value: { name: "Parent" },
+                                hideExpander: false,
+                                children: [{ id: "child", value: { name: "Child" }, hideExpander: true }],
+                            },
+                        ]}
+                        renderItem={(item: { name: string }) => <GtkLabel label={item.name} />}
                         autoexpand
-                    >
-                        <x.ListItem id="parent" value={{ name: "Parent" }} hideExpander={false}>
-                            <x.ListItem id="child" value={{ name: "Child" }} hideExpander={true} />
-                        </x.ListItem>
-                    </GtkListView>
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1777,28 +1919,19 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView<TreeItem>
+                    <GtkListView
                         ref={ref}
-                        renderItem={(item) => {
-                            if (!item) {
-                                return <GtkLabel label="Loading..." />;
-                            }
-                            return <GtkLabel label={item.name} />;
-                        }}
-                    >
-                        {categories.map((category) => (
-                            <x.ListItem key={category.id} id={category.id} value={category as TreeItem}>
-                                {category.children.map((setting) => (
-                                    <x.ListItem
-                                        key={setting.id}
-                                        id={setting.id}
-                                        value={setting as TreeItem}
-                                        hideExpander
-                                    />
-                                ))}
-                            </x.ListItem>
-                        ))}
-                    </GtkListView>
+                        items={categories.map((category) => ({
+                            id: category.id,
+                            value: category as TreeItem,
+                            children: category.children.map((setting) => ({
+                                id: setting.id,
+                                value: setting as TreeItem,
+                                hideExpander: true,
+                            })),
+                        }))}
+                        renderItem={(item: TreeItem) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1857,28 +1990,19 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView<TreeItem>
+                    <GtkListView
                         ref={ref}
-                        renderItem={(item) => {
-                            if (!item) {
-                                return <GtkLabel label="Loading..." />;
-                            }
-                            return <GtkLabel label={item.name} />;
-                        }}
-                    >
-                        {categories.map((category) => (
-                            <x.ListItem key={category.id} id={category.id} value={category as TreeItem}>
-                                {category.children.map((setting) => (
-                                    <x.ListItem
-                                        key={setting.id}
-                                        id={setting.id}
-                                        value={setting as TreeItem}
-                                        hideExpander
-                                    />
-                                ))}
-                            </x.ListItem>
-                        ))}
-                    </GtkListView>
+                        items={categories.map((category) => ({
+                            id: category.id,
+                            value: category as TreeItem,
+                            children: category.children.map((setting) => ({
+                                id: setting.id,
+                                value: setting as TreeItem,
+                                hideExpander: true,
+                            })),
+                        }))}
+                        renderItem={(item: TreeItem) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -1979,28 +2103,19 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView<TreeItem>
+                    <GtkListView
                         ref={ref}
-                        renderItem={(item) => {
-                            if (!item) {
-                                return <GtkLabel label="Loading..." />;
-                            }
-                            return <GtkLabel label={item.name} />;
-                        }}
-                    >
-                        {categories.map((category) => (
-                            <x.ListItem key={category.id} id={category.id} value={category as TreeItem}>
-                                {category.children.map((setting) => (
-                                    <x.ListItem
-                                        key={setting.id}
-                                        id={setting.id}
-                                        value={setting as TreeItem}
-                                        hideExpander
-                                    />
-                                ))}
-                            </x.ListItem>
-                        ))}
-                    </GtkListView>
+                        items={categories.map((category) => ({
+                            id: category.id,
+                            value: category as TreeItem,
+                            children: category.children.map((setting) => ({
+                                id: setting.id,
+                                value: setting as TreeItem,
+                                hideExpander: true,
+                            })),
+                        }))}
+                        renderItem={(item: TreeItem) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -2112,29 +2227,20 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView<TreeItem>
+                    <GtkListView
                         ref={ref}
                         estimatedItemHeight={48}
-                        renderItem={(item) => {
-                            if (!item) {
-                                return <GtkLabel label="Loading..." />;
-                            }
-                            return <GtkLabel label={item.name} />;
-                        }}
-                    >
-                        {categories.map((category) => (
-                            <x.ListItem key={category.id} id={category.id} value={category as TreeItem}>
-                                {category.children.map((setting) => (
-                                    <x.ListItem
-                                        key={setting.id}
-                                        id={setting.id}
-                                        value={setting as TreeItem}
-                                        hideExpander
-                                    />
-                                ))}
-                            </x.ListItem>
-                        ))}
-                    </GtkListView>
+                        items={categories.map((category) => ({
+                            id: category.id,
+                            value: category as TreeItem,
+                            children: category.children.map((setting) => ({
+                                id: setting.id,
+                                value: setting as TreeItem,
+                                hideExpander: true,
+                            })),
+                        }))}
+                        renderItem={(item: TreeItem) => <GtkLabel label={item.name} />}
+                    />
                 </ScrollWrapper>,
             );
 
@@ -2179,6 +2285,480 @@ describe("render - ListView (tree)", () => {
             await tick();
             await tick();
             assertChildrenVisible();
+        });
+    });
+
+    describe("tree filtering", () => {
+        it("shows children after filtering from many root items to few", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            type Item = { type: "category"; name: string } | { type: "leaf"; name: string };
+
+            function App({ items }: { items: Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }> }) {
+                return (
+                    <ScrollWrapper>
+                        <GtkListView
+                            ref={ref}
+                            autoexpand
+                            items={items}
+                            renderItem={(item: Item) => <GtkLabel label={item.name} />}
+                        />
+                    </ScrollWrapper>
+                );
+            }
+
+            const fullItems = [
+                { id: "leaf-a", value: { type: "leaf" as const, name: "Alpha" } },
+                {
+                    id: "cat-b",
+                    value: { type: "category" as const, name: "Bravo" },
+                    children: [
+                        { id: "leaf-b1", value: { type: "leaf" as const, name: "B-One" }, hideExpander: true as const },
+                        { id: "leaf-b2", value: { type: "leaf" as const, name: "B-Two" }, hideExpander: true as const },
+                    ],
+                },
+                { id: "leaf-c", value: { type: "leaf" as const, name: "Charlie" } },
+                {
+                    id: "cat-d",
+                    value: { type: "category" as const, name: "Delta" },
+                    children: [
+                        { id: "leaf-d1", value: { type: "leaf" as const, name: "D-One" }, hideExpander: true as const },
+                        { id: "leaf-d2", value: { type: "leaf" as const, name: "D-Two" }, hideExpander: true as const },
+                        { id: "leaf-d3", value: { type: "leaf" as const, name: "D-Three" }, hideExpander: true as const },
+                    ],
+                },
+                { id: "leaf-e", value: { type: "leaf" as const, name: "Echo" } },
+            ];
+
+            await render(<App items={fullItems} />);
+            await tick();
+            await tick();
+            await tick();
+
+            const fullTexts = getVisibleItemTexts(ref.current as Gtk.ListView);
+            expect(fullTexts).toEqual([
+                "Alpha", "Bravo", "B-One", "B-Two", "Charlie",
+                "Delta", "D-One", "D-Two", "D-Three", "Echo",
+            ]);
+
+            const filteredItems = [
+                {
+                    id: "cat-d",
+                    value: { type: "category" as const, name: "Delta" },
+                    children: [
+                        { id: "leaf-d2", value: { type: "leaf" as const, name: "D-Two" }, hideExpander: true as const },
+                    ],
+                },
+            ];
+
+            await render(<App items={filteredItems} />);
+            await tick();
+            await tick();
+            await tick();
+
+            const filteredTexts = getVisibleItemTexts(ref.current as Gtk.ListView);
+            expect(filteredTexts).toEqual(["Delta", "D-Two"]);
+        });
+
+        it("shows children after multiple filter transitions", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            type Item = { type: "category"; name: string } | { type: "leaf"; name: string };
+
+            function App({ items }: { items: Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }> }) {
+                return (
+                    <ScrollWrapper>
+                        <GtkListView
+                            ref={ref}
+                            autoexpand
+                            items={items}
+                            renderItem={(item: Item) => <GtkLabel label={item.name} />}
+                        />
+                    </ScrollWrapper>
+                );
+            }
+
+            const fullItems = [
+                { id: "leaf-a", value: { type: "leaf" as const, name: "Alpha" } },
+                {
+                    id: "cat-b",
+                    value: { type: "category" as const, name: "Bravo" },
+                    children: [
+                        { id: "leaf-b1", value: { type: "leaf" as const, name: "B-One" }, hideExpander: true as const },
+                        { id: "leaf-b2", value: { type: "leaf" as const, name: "B-Two" }, hideExpander: true as const },
+                    ],
+                },
+                { id: "leaf-c", value: { type: "leaf" as const, name: "Charlie" } },
+                {
+                    id: "cat-d",
+                    value: { type: "category" as const, name: "Delta" },
+                    children: [
+                        { id: "leaf-d1", value: { type: "leaf" as const, name: "D-One" }, hideExpander: true as const },
+                        { id: "leaf-d2", value: { type: "leaf" as const, name: "D-Two" }, hideExpander: true as const },
+                        { id: "leaf-d3", value: { type: "leaf" as const, name: "D-Three" }, hideExpander: true as const },
+                    ],
+                },
+                { id: "leaf-e", value: { type: "leaf" as const, name: "Echo" } },
+            ];
+
+            await render(<App items={fullItems} />);
+            await tick();
+            await tick();
+            await tick();
+
+            const filter1 = [
+                { id: "leaf-a", value: { type: "leaf" as const, name: "Alpha" } },
+                {
+                    id: "cat-b",
+                    value: { type: "category" as const, name: "Bravo" },
+                    children: [
+                        { id: "leaf-b1", value: { type: "leaf" as const, name: "B-One" }, hideExpander: true as const },
+                    ],
+                },
+            ];
+
+            await render(<App items={filter1} />);
+            await tick();
+            await tick();
+            await tick();
+
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Alpha", "Bravo", "B-One"]);
+
+            await render(<App items={fullItems} />);
+            await tick();
+            await tick();
+            await tick();
+
+            const filter2 = [
+                {
+                    id: "cat-d",
+                    value: { type: "category" as const, name: "Delta" },
+                    children: [
+                        { id: "leaf-d2", value: { type: "leaf" as const, name: "D-Two" }, hideExpander: true as const },
+                    ],
+                },
+            ];
+
+            await render(<App items={filter2} />);
+            await tick();
+            await tick();
+            await tick();
+
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Delta", "D-Two"]);
+        });
+
+        it("shows children after filtering a large tree with many root items", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            type Item = { name: string };
+
+            function App({ items }: { items: Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }> }) {
+                return (
+                    <GtkScrolledWindow minContentHeight={400} minContentWidth={200}>
+                        <GtkListView
+                            ref={ref}
+                            autoexpand
+                            items={items}
+                            renderItem={(item: Item) => <GtkLabel label={item.name} />}
+                        />
+                    </GtkScrolledWindow>
+                );
+            }
+
+            const fullItems: Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }> = [];
+            for (let i = 0; i < 38; i++) {
+                if (i % 5 === 1) {
+                    fullItems.push({
+                        id: `cat-${i}`,
+                        value: { name: `Category ${i}` },
+                        children: Array.from({ length: 3 }, (_, j) => ({
+                            id: `child-${i}-${j}`,
+                            value: { name: `Child ${i}-${j}` },
+                            hideExpander: true as const,
+                        })),
+                    });
+                } else {
+                    fullItems.push({ id: `leaf-${i}`, value: { name: `Leaf ${i}` } });
+                }
+            }
+
+            await render(<App items={fullItems} />);
+            await tick();
+            await tick();
+            await tick();
+
+            const filteredItems = [
+                {
+                    id: "cat-21",
+                    value: { name: "Category 21" },
+                    children: [
+                        { id: "child-21-1", value: { name: "Child 21-1" }, hideExpander: true as const },
+                    ],
+                },
+            ];
+
+            await render(<App items={filteredItems} />);
+            await tick();
+            await tick();
+            await tick();
+
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Category 21", "Child 21-1"]);
+        });
+
+        it("shows children after filtering demo-like tree from 38 items to single category", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            type Item = { name: string };
+            type ListItems = Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }>;
+
+            function App({ items }: { items: ListItems }) {
+                return (
+                    <GtkScrolledWindow minContentHeight={600} minContentWidth={200}>
+                        <GtkListView
+                            ref={ref}
+                            autoexpand
+                            items={items}
+                            renderItem={(item: Item) => <GtkLabel label={item.name} />}
+                        />
+                    </GtkScrolledWindow>
+                );
+            }
+
+            const leaf = (id: string, name: string) => ({ id, value: { name } });
+            const cat = (id: string, name: string, children: Array<{ id: string; value: Item; hideExpander: true }>) => ({
+                id,
+                value: { name },
+                children,
+            });
+            const child = (id: string, name: string) => ({ id, value: { name }, hideExpander: true as const });
+
+            const fullItems: ListItems = [
+                leaf("demo-intro", "GTK Demo"),
+                cat("cat-Benchmark", "Benchmark", [child("demo-frames", "Frames"), child("demo-themes", "Themes")]),
+                leaf("demo-clipboard", "Clipboard"),
+                cat("cat-Constraints", "Constraints", [child("demo-interactive", "Interactive Constraints"), child("demo-simple", "Simple Constraints"), child("demo-vfl", "VFL")]),
+                leaf("demo-cursors", "Cursors"),
+                leaf("demo-dialog", "Dialogs"),
+                leaf("demo-dnd", "Drag-and-Drop"),
+                leaf("demo-drawingarea", "Drawing Area"),
+                cat("cat-Entry", "Entry", [child("demo-password", "Password Entry"), child("demo-search-entry", "Search Entry"), child("demo-undo-entry", "Undo and Redo")]),
+                leaf("demo-errorstates", "Error States"),
+                leaf("demo-expander", "Expander"),
+                cat("cat-Fixed-Layout", "Fixed Layout", [child("demo-cube", "Cube"), child("demo-transforms", "Transformations")]),
+                leaf("demo-flowbox", "Flow Box"),
+                leaf("demo-gestures", "Gestures"),
+                leaf("demo-headerbar", "Header Bar"),
+                leaf("demo-images", "Images"),
+                leaf("demo-links", "Links"),
+                cat("cat-List-Box", "List Box", [child("demo-listbox-complex", "Complex"), child("demo-listbox-controls", "Controls")]),
+                cat("cat-Lists", "Lists", [
+                    child("demo-alt-settings", "Alternative Settings"),
+                    child("demo-app-launcher", "Application launcher"),
+                    child("demo-characters", "Characters"),
+                    child("demo-colors", "Colors"),
+                    child("demo-file-browser", "File browser"),
+                    child("demo-minesweeper", "Minesweeper"),
+                    child("demo-selections", "Selections"),
+                    child("demo-settings", "Settings"),
+                    child("demo-weather", "Weather"),
+                    child("demo-words", "Words"),
+                ]),
+                cat("cat-OpenGL", "OpenGL", [child("demo-gears", "Gears"), child("demo-glarea", "OpenGL Area"), child("demo-shadertoy", "Shadertoy")]),
+                cat("cat-Overlay", "Overlay", [child("demo-decorative", "Decorative Overlay"), child("demo-interactive-overlay", "Interactive Overlay")]),
+                cat("cat-Paintable", "Paintable", [child("demo-svg", "SVG")]),
+                leaf("demo-panes", "Paned Widgets"),
+                cat("cat-Pango", "Pango", [child("demo-font-explorer", "Font Explorer"), child("demo-font-rendering", "Font Rendering"), child("demo-rotated-text", "Rotated Text"), child("demo-text-mask", "Text Mask")]),
+                leaf("demo-pickers", "Pickers and Launchers"),
+                cat("cat-Printing", "Printing", [child("demo-page-setup", "Page Setup"), child("demo-printing", "Printing")]),
+                leaf("demo-revealer", "Revealer"),
+                leaf("demo-scale", "Scales"),
+                leaf("demo-shortcut-triggers", "Shortcut Triggers"),
+                leaf("demo-shortcuts", "Shortcuts"),
+                leaf("demo-sizegroup", "Size Groups"),
+                leaf("demo-spinbutton", "Spin Buttons"),
+                leaf("demo-spinner", "Spinner"),
+                leaf("demo-stack", "Stack"),
+                leaf("demo-sidebar", "Stack Sidebar"),
+                cat("cat-Text-View", "Text View", [
+                    child("demo-auto-scroll", "Automatic Scrolling"),
+                    child("demo-hypertext", "Hypertext"),
+                    child("demo-markup", "Markup"),
+                    child("demo-multi-views", "Multiple Views"),
+                    child("demo-tabs", "Tabs"),
+                    child("demo-undo-text", "Undo and Redo"),
+                ]),
+                cat("cat-Theming", "Theming", [
+                    child("demo-accordion", "CSS Accordion"),
+                    child("demo-css-basics", "CSS Basics"),
+                    child("demo-blend-modes", "CSS Blend Modes"),
+                    child("demo-multi-bg", "Multiple Backgrounds"),
+                    child("demo-animated-bg", "Animated Backgrounds"),
+                    child("demo-shadows", "Shadows"),
+                    child("demo-style-classes", "Style Classes"),
+                ]),
+                leaf("demo-video-player", "Video Player"),
+            ];
+
+            await render(<App items={fullItems} />);
+            await tick();
+            await tick();
+            await tick();
+
+            const weatherFilter: ListItems = [
+                cat("cat-Lists", "Lists", [child("demo-weather", "Weather")]),
+            ];
+
+            await render(<App items={weatherFilter} />);
+            await tick();
+            await tick();
+            await tick();
+
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Lists", "Weather"]);
+        });
+
+        it("shows children after filtering demo-like tree with small viewport", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            type Item = { name: string };
+            type ListItems = Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }>;
+
+            function App({ items }: { items: ListItems }) {
+                return (
+                    <GtkScrolledWindow minContentHeight={100} maxContentHeight={100} minContentWidth={200}>
+                        <GtkListView
+                            ref={ref}
+                            autoexpand
+                            items={items}
+                            renderItem={(item: Item) => <GtkLabel label={item.name} />}
+                        />
+                    </GtkScrolledWindow>
+                );
+            }
+
+            const leaf = (id: string, name: string) => ({ id, value: { name } });
+            const cat = (id: string, name: string, children: Array<{ id: string; value: Item; hideExpander: true }>) => ({
+                id,
+                value: { name },
+                children,
+            });
+            const ch = (id: string, name: string) => ({ id, value: { name }, hideExpander: true as const });
+
+            const fullItems: ListItems = [];
+            for (let i = 0; i < 40; i++) {
+                if (i % 4 === 0) {
+                    fullItems.push(cat(`cat-${i}`, `Category ${i}`, [
+                        ch(`ch-${i}-0`, `Child ${i}-0`),
+                        ch(`ch-${i}-1`, `Child ${i}-1`),
+                    ]));
+                } else {
+                    fullItems.push(leaf(`leaf-${i}`, `Leaf ${i}`));
+                }
+            }
+
+            await render(<App items={fullItems} />);
+            await tick();
+            await tick();
+            await tick();
+
+            const filteredItems: ListItems = [
+                cat("cat-36", "Category 36", [ch("ch-36-0", "Child 36-0")]),
+            ];
+
+            await render(<App items={filteredItems} />);
+            await tick();
+            await tick();
+            await tick();
+
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Category 36", "Child 36-0"]);
+        });
+
+        it("shows children when transitioning from one filter to another without restoring full list", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            type Item = { type: "category"; name: string } | { type: "leaf"; name: string };
+
+            function App({ items }: { items: Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }> }) {
+                return (
+                    <ScrollWrapper>
+                        <GtkListView
+                            ref={ref}
+                            autoexpand
+                            items={items}
+                            renderItem={(item: Item) => <GtkLabel label={item.name} />}
+                        />
+                    </ScrollWrapper>
+                );
+            }
+
+            const fullItems = [
+                { id: "leaf-a", value: { type: "leaf" as const, name: "Alpha" } },
+                {
+                    id: "cat-b",
+                    value: { type: "category" as const, name: "Bravo" },
+                    children: [
+                        { id: "leaf-b1", value: { type: "leaf" as const, name: "B-One" }, hideExpander: true as const },
+                        { id: "leaf-b2", value: { type: "leaf" as const, name: "B-Two" }, hideExpander: true as const },
+                    ],
+                },
+                { id: "leaf-c", value: { type: "leaf" as const, name: "Charlie" } },
+                {
+                    id: "cat-d",
+                    value: { type: "category" as const, name: "Delta" },
+                    children: [
+                        { id: "leaf-d1", value: { type: "leaf" as const, name: "D-One" }, hideExpander: true as const },
+                        { id: "leaf-d2", value: { type: "leaf" as const, name: "D-Two" }, hideExpander: true as const },
+                        { id: "leaf-d3", value: { type: "leaf" as const, name: "D-Three" }, hideExpander: true as const },
+                    ],
+                },
+                { id: "leaf-e", value: { type: "leaf" as const, name: "Echo" } },
+            ];
+
+            await render(<App items={fullItems} />);
+            await tick();
+            await tick();
+            await tick();
+
+            const filter1 = [
+                { id: "leaf-a", value: { type: "leaf" as const, name: "Alpha" } },
+                {
+                    id: "cat-b",
+                    value: { type: "category" as const, name: "Bravo" },
+                    children: [
+                        { id: "leaf-b1", value: { type: "leaf" as const, name: "B-One" }, hideExpander: true as const },
+                    ],
+                },
+                {
+                    id: "cat-d",
+                    value: { type: "category" as const, name: "Delta" },
+                    children: [
+                        { id: "leaf-d1", value: { type: "leaf" as const, name: "D-One" }, hideExpander: true as const },
+                    ],
+                },
+            ];
+
+            await render(<App items={filter1} />);
+            await tick();
+            await tick();
+            await tick();
+
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Alpha", "Bravo", "B-One", "Delta", "D-One"]);
+
+            const filter2 = [
+                {
+                    id: "cat-d",
+                    value: { type: "category" as const, name: "Delta" },
+                    children: [
+                        { id: "leaf-d2", value: { type: "leaf" as const, name: "D-Two" }, hideExpander: true as const },
+                    ],
+                },
+            ];
+
+            await render(<App items={filter2} />);
+            await tick();
+            await tick();
+            await tick();
+
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Delta", "D-Two"]);
         });
     });
 });

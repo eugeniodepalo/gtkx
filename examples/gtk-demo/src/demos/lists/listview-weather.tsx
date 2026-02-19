@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo } from "../types.js";
 import rawWeatherData from "./listview_weather.txt?raw";
@@ -116,33 +116,29 @@ const ListViewWeatherDemo = () => {
     return (
         <GtkScrolledWindow vexpand hexpand>
             <GtkListView
+                estimatedItemWidth={56}
                 estimatedItemHeight={80}
                 orientation={Gtk.Orientation.HORIZONTAL}
                 showSeparators
                 selectionMode={Gtk.SelectionMode.NONE}
-                renderItem={(item: WeatherInfo | null) => {
-                    return (
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
-                            <GtkImage
-                                iconName={item ? WEATHER_ICONS[item.weatherType] : "weather-clear-symbolic"}
-                                iconSize={Gtk.IconSize.LARGE}
-                                valign={Gtk.Align.START}
-                            />
-                            <GtkLabel label={item?.hour ?? ""} widthChars={5} valign={Gtk.Align.START} />
-                            <GtkLabel
-                                label={`${Math.round(item?.temperature ?? 0)}°`}
-                                widthChars={4}
-                                vexpand
-                                valign={Gtk.Align.END}
-                            />
-                        </GtkBox>
-                    );
-                }}
-            >
-                {weatherData.map((info) => (
-                    <x.ListItem key={info.id} id={info.id} value={info} />
-                ))}
-            </GtkListView>
+                renderItem={(item: WeatherInfo) => (
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
+                        <GtkImage
+                            iconName={WEATHER_ICONS[item.weatherType]}
+                            iconSize={Gtk.IconSize.LARGE}
+                            valign={Gtk.Align.START}
+                        />
+                        <GtkLabel label={item.hour} widthChars={5} valign={Gtk.Align.START} />
+                        <GtkLabel
+                            label={`${Math.round(item.temperature)}°`}
+                            widthChars={4}
+                            vexpand
+                            valign={Gtk.Align.END}
+                        />
+                    </GtkBox>
+                )}
+                items={weatherData.map((info) => ({ id: info.id, value: info }))}
+            />
         </GtkScrolledWindow>
     );
 };

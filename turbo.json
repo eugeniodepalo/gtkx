@@ -113,6 +113,18 @@
             "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
             "outputLogs": "new-only"
         },
+        "@gtkx/ffi#typecheck": {
+            "dependsOn": ["^build", "//#codegen:run"],
+            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
+            "outputs": [],
+            "outputLogs": "new-only"
+        },
+        "@gtkx/react#typecheck": {
+            "dependsOn": ["^build", "//#codegen:run"],
+            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
+            "outputs": [],
+            "outputLogs": "new-only"
+        },
         "website#build": {
             "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
             "outputs": ["build/**", ".docusaurus/**", "docs/api/**"],

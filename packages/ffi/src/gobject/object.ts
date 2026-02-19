@@ -74,7 +74,7 @@ ObjectWithStatics.newWithProperties = (objectType: number, names: string[], valu
                 value: values.map((v) => v.handle),
             },
         ],
-        { type: "gobject", ownership: "full" },
+        { type: "gobject", ownership: "borrowed" },
     );
     return getNativeObject(ptr as NativeHandle) as GObject;
 };

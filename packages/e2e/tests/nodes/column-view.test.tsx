@@ -109,24 +109,22 @@ function SortableColumnView({
                 sortColumn={sortColumn}
                 sortOrder={sortOrder}
                 onSortChanged={handleSortChange}
+                items={sortedEmployees.map((emp) => ({ id: emp.id, value: emp }))}
             >
                 <x.ColumnViewColumn
                     id="name"
                     title="Name"
                     expand
                     sortable
-                    renderCell={(emp: Employee | null) => <GtkLabel label={emp?.name ?? ""} />}
+                    renderCell={(emp: Employee) => <GtkLabel label={emp.name} />}
                 />
                 <x.ColumnViewColumn
                     id="salary"
                     title="Salary"
                     expand
                     sortable
-                    renderCell={(emp: Employee | null) => <GtkLabel label={emp ? `$${emp.salary}` : ""} />}
+                    renderCell={(emp: Employee) => <GtkLabel label={`$${emp.salary}`} />}
                 />
-                {sortedEmployees.map((emp) => (
-                    <x.ListItem key={emp.id} id={emp.id} value={emp} />
-                ))}
             </GtkColumnView>
         </ScrollWrapper>
     );
@@ -139,14 +137,13 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref}>
+                    <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "First" } }]}>
                         <x.ColumnViewColumn
                             id="name"
                             title="Name"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -161,14 +158,13 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref}>
+                    <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "First" } }]}>
                         <x.ColumnViewColumn
                             id="column-title"
                             title="Column Title"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -183,19 +179,16 @@ describe("render - ColumnView", () => {
             function App({ columns }: { columns: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "First" } }]}>
                             {columns.map((title) => (
                                 <x.ColumnViewColumn
                                     key={title}
                                     id={title}
                                     title={title}
                                     expand
-                                    renderCell={(item: { name: string } | null) => (
-                                        <GtkLabel label={item?.name ?? ""} />
-                                    )}
+                                    renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                                 />
                             ))}
-                            <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -214,19 +207,16 @@ describe("render - ColumnView", () => {
             function App({ columns }: { columns: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "First" } }]}>
                             {columns.map((title) => (
                                 <x.ColumnViewColumn
                                     key={title}
                                     id={title}
                                     title={title}
                                     expand
-                                    renderCell={(item: { name: string } | null) => (
-                                        <GtkLabel label={item?.name ?? ""} />
-                                    )}
+                                    renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                                 />
                             ))}
-                            <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -244,15 +234,14 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref}>
+                    <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "First" } }]}>
                         <x.ColumnViewColumn
                             id="props"
                             title="Props"
                             expand={true}
                             fixedWidth={100}
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -264,14 +253,13 @@ describe("render - ColumnView", () => {
             function App({ title }: { title: string }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "First" } }]}>
                             <x.ColumnViewColumn
                                 id={title}
                                 title={title}
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -289,15 +277,19 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref}>
+                    <GtkColumnView
+                        ref={ref}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                    >
                         <x.ColumnViewColumn
                             id="name"
                             title="Name"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -311,16 +303,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((item) => ({ id: item.id, value: item }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -354,16 +343,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((item) => ({ id: item.id, value: item }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -395,13 +381,12 @@ describe("render - ColumnView", () => {
     describe("renderCell", () => {
         it("receives item data in renderCell", async () => {
             const ref = createRef<Gtk.ColumnView>();
-            const renderCell = vi.fn((item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />);
+            const renderCell = vi.fn((item: { name: string }) => <GtkLabel label={item.name} />);
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref}>
+                    <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "Test" } }]}>
                         <x.ColumnViewColumn id="name" title="Name" expand renderCell={renderCell} />
-                        <x.ListItem id="1" value={{ name: "Test" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -414,14 +399,13 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref} sortColumn="name">
+                    <GtkColumnView ref={ref} sortColumn="name" items={[{ id: "1", value: { name: "First" } }]}>
                         <x.ColumnViewColumn
                             id="name"
                             title="Name"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -432,14 +416,18 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref} sortColumn="name" sortOrder={Gtk.SortType.DESCENDING}>
+                    <GtkColumnView
+                        ref={ref}
+                        sortColumn="name"
+                        sortOrder={Gtk.SortType.DESCENDING}
+                        items={[{ id: "1", value: { name: "First" } }]}
+                    >
                         <x.ColumnViewColumn
                             id="name"
                             title="Name"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -451,14 +439,17 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref} onSortChanged={onSortChanged}>
+                    <GtkColumnView
+                        ref={ref}
+                        onSortChanged={onSortChanged}
+                        items={[{ id: "1", value: { name: "First" } }]}
+                    >
                         <x.ColumnViewColumn
                             id="name"
                             title="Name"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -470,20 +461,23 @@ describe("render - ColumnView", () => {
             function App({ sortColumn }: { sortColumn: string | null }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref} sortColumn={sortColumn}>
+                        <GtkColumnView
+                            ref={ref}
+                            sortColumn={sortColumn}
+                            items={[{ id: "1", value: { name: "First", age: 25 } }]}
+                        >
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
                             <x.ColumnViewColumn
                                 id="age"
                                 title="Age"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            <x.ListItem id="1" value={{ name: "First", age: 25 }} />
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -501,15 +495,20 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref} selected={["1"]}>
+                    <GtkColumnView
+                        ref={ref}
+                        selected={["1"]}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                        ]}
+                    >
                         <x.ColumnViewColumn
                             id="name"
                             title="Name"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -520,16 +519,22 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref} selectionMode={Gtk.SelectionMode.MULTIPLE} selected={["1", "2"]}>
+                    <GtkColumnView
+                        ref={ref}
+                        selectionMode={Gtk.SelectionMode.MULTIPLE}
+                        selected={["1", "2"]}
+                        items={[
+                            { id: "1", value: { name: "First" } },
+                            { id: "2", value: { name: "Second" } },
+                            { id: "3", value: { name: "Third" } },
+                        ]}
+                    >
                         <x.ColumnViewColumn
                             id="name"
                             title="Name"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                        <x.ListItem id="3" value={{ name: "Third" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -676,16 +681,20 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref}>
+                    <GtkColumnView
+                        ref={ref}
+                        items={[
+                            { id: "c", value: { name: "C" } },
+                            { id: "a", value: { name: "A" } },
+                            { id: "b", value: { name: "B" } },
+                        ]}
+                    >
                         <x.ColumnViewColumn
                             id="name"
                             title="Name"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="c" value={{ name: "C" }} />
-                        <x.ListItem id="a" value={{ name: "A" }} />
-                        <x.ListItem id="b" value={{ name: "B" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -699,16 +708,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((id) => ({ id, value: { name: id } }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -727,16 +733,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((id) => ({ id, value: { name: id } }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -755,16 +758,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((id) => ({ id, value: { name: id } }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -783,16 +783,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((id) => ({ id, value: { name: id } }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -811,16 +808,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((id) => ({ id, value: { name: id } }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -839,16 +833,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((id) => ({ id, value: { name: id } }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -871,16 +862,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((id) => ({ id, value: { name: id } }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -903,16 +891,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((id) => ({ id, value: { name: id } }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -931,16 +916,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((id) => ({ id, value: { name: id } }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -959,16 +941,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((id) => ({ id, value: { name: id } }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((id) => (
-                                <x.ListItem key={id} id={id} value={{ name: id }} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -995,16 +974,13 @@ describe("render - ColumnView", () => {
 
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={filteredItems.map((item) => ({ id: item.id, value: item }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                             />
-                            {filteredItems.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -1065,24 +1041,26 @@ describe("render - ColumnView", () => {
 
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref} sortColumn={sortColumn} sortOrder={sortOrder}>
+                        <GtkColumnView
+                            ref={ref}
+                            sortColumn={sortColumn}
+                            sortOrder={sortOrder}
+                            items={sortedItems.map((item) => ({ id: item.id, value: item }))}
+                        >
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
                                 sortable
-                                renderCell={(item: Item | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: Item) => <GtkLabel label={item.name} />}
                             />
                             <x.ColumnViewColumn
                                 id="salary"
                                 title="Salary"
                                 expand
                                 sortable
-                                renderCell={(item: Item | null) => <GtkLabel label={String(item?.salary ?? 0)} />}
+                                renderCell={(item: Item) => <GtkLabel label={String(item.salary)} />}
                             />
-                            {sortedItems.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -1112,16 +1090,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: Item[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((item) => ({ id: item.id, value: item }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: Item | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: Item) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -1158,18 +1133,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: Item[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((item) => ({ id: item.id, value: item }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: Item | null) => (
-                                    <GtkLabel label={`${item?.name ?? ""}: ${item?.count ?? 0}`} />
-                                )}
+                                renderCell={(item: Item) => <GtkLabel label={`${item.name}: ${item.count}`} />}
                             />
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -1210,16 +1180,13 @@ describe("render - ColumnView", () => {
             function App({ items }: { items: Item[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={items.map((item) => ({ id: item.id, value: item }))}>
                             <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
-                                renderCell={(item: Item | null) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: Item) => <GtkLabel label={item.name} />}
                             />
-                            {items.map((item) => (
-                                <x.ListItem key={item.id} id={item.id} value={item} />
-                            ))}
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -1269,26 +1236,25 @@ describe("render - ColumnView", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref}>
+                    <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "First" } }]}>
                         <x.ColumnViewColumn
                             id="C"
                             title="C"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
                         <x.ColumnViewColumn
                             id="A"
                             title="A"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
                         <x.ColumnViewColumn
                             id="B"
                             title="B"
                             expand
-                            renderCell={(item: { name: string } | null) => <GtkLabel label={item?.name ?? ""} />}
+                            renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                         />
-                        <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
@@ -1302,19 +1268,16 @@ describe("render - ColumnView", () => {
             function App({ columns }: { columns: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "First" } }]}>
                             {columns.map((title) => (
                                 <x.ColumnViewColumn
                                     key={title}
                                     id={title}
                                     title={title}
                                     expand
-                                    renderCell={(item: { name: string } | null) => (
-                                        <GtkLabel label={item?.name ?? ""} />
-                                    )}
+                                    renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                                 />
                             ))}
-                            <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -1333,19 +1296,16 @@ describe("render - ColumnView", () => {
             function App({ columns }: { columns: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "First" } }]}>
                             {columns.map((title) => (
                                 <x.ColumnViewColumn
                                     key={title}
                                     id={title}
                                     title={title}
                                     expand
-                                    renderCell={(item: { name: string } | null) => (
-                                        <GtkLabel label={item?.name ?? ""} />
-                                    )}
+                                    renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                                 />
                             ))}
-                            <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -1364,19 +1324,16 @@ describe("render - ColumnView", () => {
             function App({ columns }: { columns: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={ref}>
+                        <GtkColumnView ref={ref} items={[{ id: "1", value: { name: "First" } }]}>
                             {columns.map((title) => (
                                 <x.ColumnViewColumn
                                     key={title}
                                     id={title}
                                     title={title}
                                     expand
-                                    renderCell={(item: { name: string } | null) => (
-                                        <GtkLabel label={item?.name ?? ""} />
-                                    )}
+                                    renderCell={(item: { name: string }) => <GtkLabel label={item.name} />}
                                 />
                             ))}
-                            <x.ListItem id="1" value={{ name: "First" }} />
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
