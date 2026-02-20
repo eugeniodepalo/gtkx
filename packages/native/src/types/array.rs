@@ -204,17 +204,45 @@ impl ffi::FfiEncode for ArrayType {
                     }
                 }
 
-                let mut ptrs: Vec<*mut c_void> =
-                    cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
+                match self.kind {
+                    ArrayKind::GList => {
+                        let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
+                        for s in &cstrings {
+                            list = unsafe {
+                                glib::ffi::g_list_append(list, s.as_ptr() as *mut c_void)
+                            };
+                        }
+                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+                            list as *mut c_void,
+                            FfiStorageKind::StringGList(cstrings, list),
+                        )))
+                    }
+                    ArrayKind::GSList => {
+                        let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
+                        for s in cstrings.iter().rev() {
+                            list = unsafe {
+                                glib::ffi::g_slist_prepend(list, s.as_ptr() as *mut c_void)
+                            };
+                        }
+                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+                            list as *mut c_void,
+                            FfiStorageKind::StringGSList(cstrings, list),
+                        )))
+                    }
+                    _ => {
+                        let mut ptrs: Vec<*mut c_void> =
+                            cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
 
-                ptrs.push(std::ptr::null_mut());
+                        ptrs.push(std::ptr::null_mut());
 
-                let ptr = ptrs.as_ptr() as *mut c_void;
+                        let ptr = ptrs.as_ptr() as *mut c_void;
 
-                Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                    ptr,
-                    FfiStorageKind::StringArray(cstrings, ptrs),
-                )))
+                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+                            ptr,
+                            FfiStorageKind::StringArray(cstrings, ptrs),
+                        )))
+                    }
+                }
             }
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                 let mut handles = Vec::new();
@@ -246,19 +274,53 @@ impl ffi::FfiEncode for ArrayType {
                     return Ok(ffi::FfiValue::Storage(buffer.into()));
                 }
 
-                let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(handles.len());
-                for handle in &handles {
-                    match handle.get_ptr() {
-                        Some(ptr) => ptrs.push(ptr),
-                        None => bail!("GObject in array has been garbage collected"),
+                match self.kind {
+                    ArrayKind::GList => {
+                        let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
+                        for handle in &handles {
+                            match handle.get_ptr() {
+                                Some(ptr) => {
+                                    list = unsafe { glib::ffi::g_list_append(list, ptr) };
+                                }
+                                None => bail!("GObject in GList has been garbage collected"),
+                            }
+                        }
+                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+                            list as *mut c_void,
+                            FfiStorageKind::GList(handles, list),
+                        )))
+                    }
+                    ArrayKind::GSList => {
+                        let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
+                        for handle in handles.iter().rev() {
+                            match handle.get_ptr() {
+                                Some(ptr) => {
+                                    list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
+                                }
+                                None => bail!("GObject in GSList has been garbage collected"),
+                            }
+                        }
+                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+                            list as *mut c_void,
+                            FfiStorageKind::GSList(handles, list),
+                        )))
+                    }
+                    _ => {
+                        let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(handles.len());
+                        for handle in &handles {
+                            match handle.get_ptr() {
+                                Some(ptr) => ptrs.push(ptr),
+                                None => bail!("GObject in array has been garbage collected"),
+                            }
+                        }
+                        let ptr = ptrs.as_ptr() as *mut c_void;
+
+                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+                            ptr,
+                            FfiStorageKind::ObjectArray(handles, ptrs),
+                        )))
                     }
                 }
-                let ptr = ptrs.as_ptr() as *mut c_void;
-
-                Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                    ptr,
-                    FfiStorageKind::ObjectArray(handles, ptrs),
-                )))
             }
             Type::Boolean => {
                 let mut values = Vec::new();

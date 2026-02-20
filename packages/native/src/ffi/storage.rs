@@ -33,6 +33,10 @@ pub enum FfiStorageKind {
     F64Vec(Vec<f64>),
     StringArray(Vec<std::ffi::CString>, Vec<*mut c_void>),
     ObjectArray(Vec<crate::managed::NativeHandle>, Vec<*mut c_void>),
+    GList(Vec<crate::managed::NativeHandle>, *mut glib::ffi::GList),
+    GSList(Vec<crate::managed::NativeHandle>, *mut glib::ffi::GSList),
+    StringGList(Vec<std::ffi::CString>, *mut glib::ffi::GList),
+    StringGSList(Vec<std::ffi::CString>, *mut glib::ffi::GSList),
     CString(std::ffi::CString),
     Buffer(Vec<u8>),
     BoxedValue(Box<super::FfiValue>),
@@ -172,6 +176,26 @@ impl Drop for FfiStorage {
             FfiStorageKind::HashTable(data) => {
                 if !data.handle.is_null() {
                     unsafe { glib::ffi::g_hash_table_unref(data.handle) };
+                }
+            }
+            FfiStorageKind::GList(_, list_ptr) => {
+                if !list_ptr.is_null() {
+                    unsafe { glib::ffi::g_list_free(*list_ptr) };
+                }
+            }
+            FfiStorageKind::GSList(_, list_ptr) => {
+                if !list_ptr.is_null() {
+                    unsafe { glib::ffi::g_slist_free(*list_ptr) };
+                }
+            }
+            FfiStorageKind::StringGList(_, list_ptr) => {
+                if !list_ptr.is_null() {
+                    unsafe { glib::ffi::g_list_free(*list_ptr) };
+                }
+            }
+            FfiStorageKind::StringGSList(_, list_ptr) => {
+                if !list_ptr.is_null() {
+                    unsafe { glib::ffi::g_slist_free(*list_ptr) };
                 }
             }
             _ => {}
