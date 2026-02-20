@@ -1,6 +1,8 @@
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkStack, GtkStackSidebar, x } from "@gtkx/react";
-import { useState } from "react";
+import { GtkBox, GtkLabel, GtkPicture, GtkStack, GtkStackSidebar, x } from "@gtkx/react";
+import { useMemo, useState } from "react";
+import gtkLogoSvgPath from "../drawing/gtk-logo.svg";
 import type { Demo } from "../types.js";
 import sourceCode from "./sidebar.tsx?raw";
 
@@ -22,6 +24,7 @@ const pages = [
  */
 const SidebarDemo = () => {
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
+    const gtkLogo = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoSvgPath), []);
 
     return (
         <GtkBox>
@@ -30,7 +33,15 @@ const SidebarDemo = () => {
                 {pages.map((title, index) => (
                     <x.StackPage key={title} id={title} title={title}>
                         {index === 0 ? (
-                            <GtkImage iconName="org.gtk.Demo4" pixelSize={256} cssClasses={["icon-dropshadow"]} />
+                            <GtkPicture
+                                paintable={gtkLogo}
+                                widthRequest={256}
+                                heightRequest={256}
+                                canShrink
+                                cssClasses={["icon-dropshadow"]}
+                                halign={Gtk.Align.CENTER}
+                                valign={Gtk.Align.CENTER}
+                            />
                         ) : (
                             <GtkLabel label={title} />
                         )}

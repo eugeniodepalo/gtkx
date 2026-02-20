@@ -11,7 +11,6 @@ import {
     GtkListBox,
     GtkListBoxRow,
     GtkMenuButton,
-    GtkPicture,
     GtkRevealer,
     GtkScrolledWindow,
     x,
@@ -73,18 +72,18 @@ function getBoldAttrs() {
 
 function formatShortTime(timestamp: number): string {
     const date = new Date(timestamp * 1000);
-    const day = String(date.getDate()).padStart(2, " ");
-    const month = date.toLocaleString("en-US", { month: "short" });
-    const year = String(date.getFullYear()).slice(-2);
+    const day = String(date.getUTCDate()).padStart(2, " ");
+    const month = date.toLocaleString(undefined, { month: "short", timeZone: "UTC" });
+    const year = String(date.getUTCFullYear()).slice(-2);
     return `${day} ${month} ${year}`;
 }
 
 function formatDetailedTime(timestamp: number): string {
     const date = new Date(timestamp * 1000);
-    const time = date.toLocaleTimeString();
-    const day = String(date.getDate()).padStart(2, " ");
-    const month = date.toLocaleString("en-US", { month: "short" });
-    const year = date.getFullYear();
+    const time = date.toLocaleTimeString(undefined, { timeZone: "UTC" });
+    const day = String(date.getUTCDate()).padStart(2, " ");
+    const month = date.toLocaleString(undefined, { month: "short", timeZone: "UTC" });
+    const year = date.getUTCFullYear();
     return `${time} - ${day} ${month} ${year}`;
 }
 
@@ -109,33 +108,20 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
         <GtkListBoxRow onStateFlagsChanged={handleStateFlagsChanged}>
             <GtkGrid hexpand>
                 <x.GridChild column={0} row={0} rowSpan={5}>
-                    {message.senderNick === "GTKtoolkit" ? (
-                        <GtkImage
-                            iconName="org.gtk.Demo4"
-                            widthRequest={32}
-                            heightRequest={32}
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.START}
-                            marginTop={8}
-                            marginBottom={8}
-                            marginStart={8}
-                            marginEnd={8}
-                            iconSize={Gtk.IconSize.LARGE}
-                        />
-                    ) : (
-                        <GtkPicture
-                            paintable={getAppleRedTexture()}
-                            widthRequest={32}
-                            heightRequest={32}
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.START}
-                            marginTop={8}
-                            marginBottom={8}
-                            marginStart={8}
-                            marginEnd={8}
-                            canShrink
-                        />
-                    )}
+                    <GtkImage
+                        {...(message.senderNick === "GTKtoolkit"
+                            ? { iconName: "org.gtk.Demo4" }
+                            : { paintable: getAppleRedTexture() })}
+                        iconSize={Gtk.IconSize.LARGE}
+                        widthRequest={32}
+                        heightRequest={32}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.START}
+                        marginTop={8}
+                        marginBottom={8}
+                        marginStart={8}
+                        marginEnd={8}
+                    />
                 </x.GridChild>
 
                 <x.GridChild column={1} row={0}>

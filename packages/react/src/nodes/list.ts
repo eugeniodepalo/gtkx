@@ -1,3 +1,4 @@
+import { getNativeId } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
@@ -10,7 +11,6 @@ import { ColumnViewColumnNode } from "./column-view-column.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import type { BoundItem } from "./internal/bound-item.js";
-import { getNativeId } from "@gtkx/ffi";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
@@ -137,6 +137,9 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         this.commitUpdate(null, props);
         this.setupModel();
         this.setupFactory();
+        if (this.props.renderHeader && !this.isDropDown()) {
+            this.setupHeaderFactory();
+        }
         this.setupSelectionModel(props);
         this.assignModelToWidget();
         this.assignFactoryToWidget();
@@ -250,12 +253,19 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                 this.containerKeys.set(expander, String(getNativeId(expander.handle)));
                 this.treeExpanders.set(listItem, expander);
             } else {
+                const { width, height } = this.getEstimatedItemSize();
+                if (width !== -1 || height !== -1) {
+                    const placeholder = new Gtk.Box();
+                    placeholder.setSizeRequest(width, height);
+                    listItem.setChild(placeholder);
+                }
                 this.containers.set(listItem, UNBOUND_POSITION);
                 this.containerKeys.set(listItem, String(getNativeId(listItem.handle)));
             }
         });
 
         this.factory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
+            if (this.disposed) return;
             const listItem = obj as unknown as Gtk.ListItem;
             const position = listItem.getPosition();
 
@@ -279,6 +289,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         });
 
         this.factory.connect("unbind", (_self: GObject.Object, obj: GObject.Object) => {
+            if (this.disposed) return;
             const listItem = obj as unknown as Gtk.ListItem;
 
             if (isTree) {
@@ -293,6 +304,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         });
 
         this.factory.connect("teardown", (_self: GObject.Object, obj: GObject.Object) => {
+            if (this.disposed) return;
             const listItem = obj as unknown as Gtk.ListItem;
 
             if (isTree) {
@@ -312,10 +324,6 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         if (this.props.renderListItem && this.isDropDown()) {
             this.setupListFactory();
-        }
-
-        if (this.props.renderHeader && !this.isDropDown() && !this.isColumnView()) {
-            this.setupHeaderFactory();
         }
     }
 
@@ -435,6 +443,10 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         if (widget instanceof Gtk.ListView) {
             widget.setFactory(this.factory);
+            if (this.headerFactory) {
+                widget.setHeaderFactory(this.headerFactory);
+            }
+        } else if (widget instanceof Gtk.ColumnView) {
             if (this.headerFactory) {
                 widget.setHeaderFactory(this.headerFactory);
             }
@@ -680,15 +692,9 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
     private applyTreeExpanderProps(expander: Gtk.TreeExpander, item: ListItem): void {
         if (item.section) return;
-        if (item.indentForDepth !== undefined) {
-            expander.setIndentForDepth(item.indentForDepth);
-        }
-        if (item.indentForIcon !== undefined) {
-            expander.setIndentForIcon(item.indentForIcon);
-        }
-        if (item.hideExpander !== undefined) {
-            expander.setHideExpander(item.hideExpander);
-        }
+        expander.setIndentForDepth(item.indentForDepth ?? true);
+        expander.setIndentForIcon(item.indentForIcon ?? true);
+        expander.setHideExpander(item.hideExpander ?? false);
     }
 
     private resolveItemIdAtPosition(position: number): string | null {

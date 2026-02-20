@@ -107,6 +107,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
 
     public override removeChild(child: WindowChild): void {
         if (child instanceof WindowNode) {
+            child.container.setVisible(false);
             child.container.setTransientFor(null);
             super.removeChild(child);
             return;
@@ -153,7 +154,6 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
 
     public override detachDeletedInstance(): void {
         super.detachDeletedInstance();
-        this.container.setVisible(false);
         this.container.destroy();
     }
 

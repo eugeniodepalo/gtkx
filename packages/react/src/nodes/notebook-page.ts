@@ -81,6 +81,10 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
     public override detachDeletedInstance(): void {
         const childWidget = this.findContentChild()?.container ?? null;
         if (childWidget && this.parent) {
+            const notebook = this.getParentWidget();
+            if (notebook.getNPages() <= 1) {
+                notebook.setShowTabs(false);
+            }
             this.detachPage(childWidget);
         }
         super.detachDeletedInstance();

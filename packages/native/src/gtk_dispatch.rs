@@ -7,7 +7,9 @@
 //! ## Scheduling Modes
 //!
 //! - [`GtkDispatcher::schedule`]: Queue a task for execution during the next GTK idle cycle.
-//!   Uses `glib::idle_add_once` for integration with the GLib event loop.
+//!   Uses `glib::idle_add_full` at `HIGH_IDLE` priority (100) for integration with the GLib
+//!   event loop. This priority is higher than `GDK_PRIORITY_REDRAW` (120), ensuring dispatched
+//!   tasks run before the frame clock paint in the same main context iteration.
 //! - [`GtkDispatcher::dispatch_pending`]: Manually execute all queued tasks immediately.
 //!   Used during blocking FFI calls to prevent deadlocks.
 //!
@@ -272,7 +274,10 @@ impl GtkDispatcher {
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .is_ok()
         {
-            glib::idle_add_once(Self::idle_dispatch_callback);
+            glib::idle_add_full(glib::Priority::HIGH_IDLE, || {
+                Self::idle_dispatch_callback();
+                glib::ControlFlow::Break
+            });
         }
     }
 
@@ -293,7 +298,10 @@ impl GtkDispatcher {
                     .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
                     .is_ok()
             {
-                glib::idle_add_once(Self::idle_dispatch_callback);
+                glib::idle_add_full(glib::Priority::HIGH_IDLE, || {
+                    Self::idle_dispatch_callback();
+                    glib::ControlFlow::Break
+                });
             }
         }
 
@@ -315,7 +323,10 @@ impl GtkDispatcher {
                 .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
                 .is_ok()
         {
-            glib::idle_add_once(Self::idle_dispatch_callback);
+            glib::idle_add_full(glib::Priority::HIGH_IDLE, || {
+                Self::idle_dispatch_callback();
+                glib::ControlFlow::Break
+            });
         }
     }
 

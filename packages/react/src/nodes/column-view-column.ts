@@ -1,3 +1,4 @@
+import { getNativeId } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -5,7 +6,6 @@ import type { ColumnViewColumnProps, ListItem } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import type { BoundItem } from "./internal/bound-item.js";
-import { getNativeId } from "@gtkx/ffi";
 import { hasChanged } from "./internal/props.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
@@ -170,7 +170,9 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
 
     private getParentEstimatedItemSize(): { width: number; height: number } {
         if (this.parent && "getEstimatedItemSize" in this.parent) {
-            return (this.parent as { getEstimatedItemSize(): { width: number; height: number } }).getEstimatedItemSize();
+            return (
+                this.parent as { getEstimatedItemSize(): { width: number; height: number } }
+            ).getEstimatedItemSize();
         }
         return { width: -1, height: -1 };
     }

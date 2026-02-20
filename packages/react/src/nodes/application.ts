@@ -3,6 +3,7 @@ import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
+import { WindowNode } from "./window.js";
 
 export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
     private menu: MenuModel;
@@ -49,6 +50,10 @@ export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
                 this.container.setMenubar(null);
             }
             return;
+        }
+
+        if (child instanceof WindowNode) {
+            child.container.setVisible(false);
         }
 
         super.removeChild(child);

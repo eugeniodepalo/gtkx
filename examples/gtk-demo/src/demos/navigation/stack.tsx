@@ -1,6 +1,8 @@
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkCheckButton, GtkImage, GtkSpinner, GtkStack, GtkStackSwitcher, x } from "@gtkx/react";
-import { useState } from "react";
+import { GtkBox, GtkCheckButton, GtkPicture, GtkSpinner, GtkStack, GtkStackSwitcher, x } from "@gtkx/react";
+import { useMemo, useState } from "react";
+import gtkLogoSvgPath from "../drawing/gtk-logo.svg";
 import type { Demo } from "../types.js";
 import sourceCode from "./stack.tsx?raw";
 
@@ -10,13 +12,22 @@ import sourceCode from "./stack.tsx?raw";
  */
 const StackDemo = () => {
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
+    const gtkLogo = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoSvgPath), []);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} />
             <GtkStack ref={setStack} transitionType={Gtk.StackTransitionType.CROSSFADE}>
                 <x.StackPage id="page1" title="Page 1">
-                    <GtkImage iconName="org.gtk.Demo4" pixelSize={100} marginTop={20} marginBottom={20} />
+                    <GtkPicture
+                        paintable={gtkLogo}
+                        widthRequest={100}
+                        heightRequest={100}
+                        marginTop={20}
+                        marginBottom={20}
+                        canShrink
+                        halign={Gtk.Align.CENTER}
+                    />
                 </x.StackPage>
                 <x.StackPage id="page2" title="Page 2">
                     <GtkCheckButton label="Page 2" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
