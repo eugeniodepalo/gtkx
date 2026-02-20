@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/gir",
-    "version": "0.19.0",
+    "version": "0.20.0",
     "description": "GObject Introspection file parser for GTKX",
     "keywords": [
         "gtkx",
