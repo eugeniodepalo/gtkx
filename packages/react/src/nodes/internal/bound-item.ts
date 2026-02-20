@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
+import type { Container } from "../../types.js";
 
-export type BoundItem = [ReactNode, Gtk.Widget, string];
+export type BoundItem = [ReactNode, Container, string];

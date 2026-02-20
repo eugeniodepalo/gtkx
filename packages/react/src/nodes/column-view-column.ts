@@ -1,4 +1,3 @@
-import * as Adw from "@gtkx/ffi/adw";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -6,7 +5,7 @@ import type { ColumnViewColumnProps, ListItem } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import type { BoundItem } from "./internal/bound-item.js";
-import { getNextContainerKey } from "./internal/container-key.js";
+import { getNativeId } from "@gtkx/ffi";
 import { hasChanged } from "./internal/props.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
@@ -18,8 +17,8 @@ const UNBOUND_POSITION = -1;
 export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, WidgetNode, MenuNode> {
     private column: Gtk.ColumnViewColumn | null = null;
     private columnFactory: Gtk.SignalListItemFactory | null = null;
-    private containers = new Map<Gtk.Widget, number>();
-    private containerKeys = new Map<Gtk.Widget, string>();
+    private containers = new Map<Gtk.ListItem, number>();
+    private containerKeys = new Map<Gtk.ListItem, string>();
     private menu: MenuModel;
     private actionGroup: Gio.SimpleActionGroup;
 
@@ -109,38 +108,31 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
 
         this.columnFactory.connect("setup", (_self: GObject.Object, obj: GObject.Object) => {
             const listItem = obj as unknown as Gtk.ListItem;
-            const container = new Adw.Bin();
-            const key = getNextContainerKey();
-            const estimatedRowHeight = this.getParentEstimatedRowHeight();
-            if (estimatedRowHeight !== -1) {
-                container.setSizeRequest(-1, estimatedRowHeight);
-            }
-            listItem.setChild(container);
-            this.containers.set(container, UNBOUND_POSITION);
-            this.containerKeys.set(container, key);
+            const key = String(getNativeId(listItem.handle));
+            const placeholder = new Gtk.Box();
+            const { width, height } = this.getParentEstimatedItemSize();
+            placeholder.setSizeRequest(width, height);
+            listItem.setChild(placeholder);
+            this.containers.set(listItem, UNBOUND_POSITION);
+            this.containerKeys.set(listItem, key);
         });
 
         this.columnFactory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
             const listItem = obj as unknown as Gtk.ListItem;
-            const container = listItem.getChild() as Gtk.Widget;
-            this.containers.set(container, listItem.getPosition());
+            this.containers.set(listItem, listItem.getPosition());
             this.scheduleParentUpdate();
         });
 
         this.columnFactory.connect("unbind", (_self: GObject.Object, obj: GObject.Object) => {
             const listItem = obj as unknown as Gtk.ListItem;
-            const container = listItem.getChild() as Gtk.Widget;
-            this.containers.set(container, UNBOUND_POSITION);
+            this.containers.set(listItem, UNBOUND_POSITION);
             this.scheduleParentUpdate();
         });
 
         this.columnFactory.connect("teardown", (_self: GObject.Object, obj: GObject.Object) => {
             const listItem = obj as unknown as Gtk.ListItem;
-            const container = listItem.getChild() as Gtk.Widget | null;
-            if (container) {
-                this.containers.delete(container);
-                this.containerKeys.delete(container);
-            }
+            this.containers.delete(listItem);
+            this.containerKeys.delete(listItem);
             listItem.setChild(null);
         });
     }
@@ -176,15 +168,11 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
         this.column.setHeaderMenu(menu.getNItems() > 0 ? menu : null);
     }
 
-    private getParentEstimatedRowHeight(): number {
-        if (
-            this.parent &&
-            "getEstimatedRowHeight" in this.parent &&
-            typeof this.parent.getEstimatedRowHeight === "function"
-        ) {
-            return (this.parent as { getEstimatedRowHeight(): number }).getEstimatedRowHeight();
+    private getParentEstimatedItemSize(): { width: number; height: number } {
+        if (this.parent && "getEstimatedItemSize" in this.parent) {
+            return (this.parent as { getEstimatedItemSize(): { width: number; height: number } }).getEstimatedItemSize();
         }
-        return -1;
+        return { width: -1, height: -1 };
     }
 
     private scheduleParentUpdate(): void {

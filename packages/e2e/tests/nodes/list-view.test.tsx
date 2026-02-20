@@ -2294,7 +2294,15 @@ describe("render - ListView (tree)", () => {
 
             type Item = { type: "category"; name: string } | { type: "leaf"; name: string };
 
-            function App({ items }: { items: Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }> }) {
+            function App({
+                items,
+            }: {
+                items: Array<{
+                    id: string;
+                    value: Item;
+                    children?: Array<{ id: string; value: Item; hideExpander: true }>;
+                }>;
+            }) {
                 return (
                     <ScrollWrapper>
                         <GtkListView
@@ -2324,7 +2332,11 @@ describe("render - ListView (tree)", () => {
                     children: [
                         { id: "leaf-d1", value: { type: "leaf" as const, name: "D-One" }, hideExpander: true as const },
                         { id: "leaf-d2", value: { type: "leaf" as const, name: "D-Two" }, hideExpander: true as const },
-                        { id: "leaf-d3", value: { type: "leaf" as const, name: "D-Three" }, hideExpander: true as const },
+                        {
+                            id: "leaf-d3",
+                            value: { type: "leaf" as const, name: "D-Three" },
+                            hideExpander: true as const,
+                        },
                     ],
                 },
                 { id: "leaf-e", value: { type: "leaf" as const, name: "Echo" } },
@@ -2337,8 +2349,16 @@ describe("render - ListView (tree)", () => {
 
             const fullTexts = getVisibleItemTexts(ref.current as Gtk.ListView);
             expect(fullTexts).toEqual([
-                "Alpha", "Bravo", "B-One", "B-Two", "Charlie",
-                "Delta", "D-One", "D-Two", "D-Three", "Echo",
+                "Alpha",
+                "Bravo",
+                "B-One",
+                "B-Two",
+                "Charlie",
+                "Delta",
+                "D-One",
+                "D-Two",
+                "D-Three",
+                "Echo",
             ]);
 
             const filteredItems = [
@@ -2365,7 +2385,15 @@ describe("render - ListView (tree)", () => {
 
             type Item = { type: "category"; name: string } | { type: "leaf"; name: string };
 
-            function App({ items }: { items: Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }> }) {
+            function App({
+                items,
+            }: {
+                items: Array<{
+                    id: string;
+                    value: Item;
+                    children?: Array<{ id: string; value: Item; hideExpander: true }>;
+                }>;
+            }) {
                 return (
                     <ScrollWrapper>
                         <GtkListView
@@ -2395,7 +2423,11 @@ describe("render - ListView (tree)", () => {
                     children: [
                         { id: "leaf-d1", value: { type: "leaf" as const, name: "D-One" }, hideExpander: true as const },
                         { id: "leaf-d2", value: { type: "leaf" as const, name: "D-Two" }, hideExpander: true as const },
-                        { id: "leaf-d3", value: { type: "leaf" as const, name: "D-Three" }, hideExpander: true as const },
+                        {
+                            id: "leaf-d3",
+                            value: { type: "leaf" as const, name: "D-Three" },
+                            hideExpander: true as const,
+                        },
                     ],
                 },
                 { id: "leaf-e", value: { type: "leaf" as const, name: "Echo" } },
@@ -2452,7 +2484,15 @@ describe("render - ListView (tree)", () => {
 
             type Item = { name: string };
 
-            function App({ items }: { items: Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }> }) {
+            function App({
+                items,
+            }: {
+                items: Array<{
+                    id: string;
+                    value: Item;
+                    children?: Array<{ id: string; value: Item; hideExpander: true }>;
+                }>;
+            }) {
                 return (
                     <GtkScrolledWindow minContentHeight={400} minContentWidth={200}>
                         <GtkListView
@@ -2465,7 +2505,11 @@ describe("render - ListView (tree)", () => {
                 );
             }
 
-            const fullItems: Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }> = [];
+            const fullItems: Array<{
+                id: string;
+                value: Item;
+                children?: Array<{ id: string; value: Item; hideExpander: true }>;
+            }> = [];
             for (let i = 0; i < 38; i++) {
                 if (i % 5 === 1) {
                     fullItems.push({
@@ -2491,9 +2535,7 @@ describe("render - ListView (tree)", () => {
                 {
                     id: "cat-21",
                     value: { name: "Category 21" },
-                    children: [
-                        { id: "child-21-1", value: { name: "Child 21-1" }, hideExpander: true as const },
-                    ],
+                    children: [{ id: "child-21-1", value: { name: "Child 21-1" }, hideExpander: true as const }],
                 },
             ];
 
@@ -2509,7 +2551,11 @@ describe("render - ListView (tree)", () => {
             const ref = createRef<Gtk.ListView>();
 
             type Item = { name: string };
-            type ListItems = Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }>;
+            type ListItems = Array<{
+                id: string;
+                value: Item;
+                children?: Array<{ id: string; value: Item; hideExpander: true }>;
+            }>;
 
             function App({ items }: { items: ListItems }) {
                 return (
@@ -2525,7 +2571,11 @@ describe("render - ListView (tree)", () => {
             }
 
             const leaf = (id: string, name: string) => ({ id, value: { name } });
-            const cat = (id: string, name: string, children: Array<{ id: string; value: Item; hideExpander: true }>) => ({
+            const cat = (
+                id: string,
+                name: string,
+                children: Array<{ id: string; value: Item; hideExpander: true }>,
+            ) => ({
                 id,
                 value: { name },
                 children,
@@ -2536,21 +2586,35 @@ describe("render - ListView (tree)", () => {
                 leaf("demo-intro", "GTK Demo"),
                 cat("cat-Benchmark", "Benchmark", [child("demo-frames", "Frames"), child("demo-themes", "Themes")]),
                 leaf("demo-clipboard", "Clipboard"),
-                cat("cat-Constraints", "Constraints", [child("demo-interactive", "Interactive Constraints"), child("demo-simple", "Simple Constraints"), child("demo-vfl", "VFL")]),
+                cat("cat-Constraints", "Constraints", [
+                    child("demo-interactive", "Interactive Constraints"),
+                    child("demo-simple", "Simple Constraints"),
+                    child("demo-vfl", "VFL"),
+                ]),
                 leaf("demo-cursors", "Cursors"),
                 leaf("demo-dialog", "Dialogs"),
                 leaf("demo-dnd", "Drag-and-Drop"),
                 leaf("demo-drawingarea", "Drawing Area"),
-                cat("cat-Entry", "Entry", [child("demo-password", "Password Entry"), child("demo-search-entry", "Search Entry"), child("demo-undo-entry", "Undo and Redo")]),
+                cat("cat-Entry", "Entry", [
+                    child("demo-password", "Password Entry"),
+                    child("demo-search-entry", "Search Entry"),
+                    child("demo-undo-entry", "Undo and Redo"),
+                ]),
                 leaf("demo-errorstates", "Error States"),
                 leaf("demo-expander", "Expander"),
-                cat("cat-Fixed-Layout", "Fixed Layout", [child("demo-cube", "Cube"), child("demo-transforms", "Transformations")]),
+                cat("cat-Fixed-Layout", "Fixed Layout", [
+                    child("demo-cube", "Cube"),
+                    child("demo-transforms", "Transformations"),
+                ]),
                 leaf("demo-flowbox", "Flow Box"),
                 leaf("demo-gestures", "Gestures"),
                 leaf("demo-headerbar", "Header Bar"),
                 leaf("demo-images", "Images"),
                 leaf("demo-links", "Links"),
-                cat("cat-List-Box", "List Box", [child("demo-listbox-complex", "Complex"), child("demo-listbox-controls", "Controls")]),
+                cat("cat-List-Box", "List Box", [
+                    child("demo-listbox-complex", "Complex"),
+                    child("demo-listbox-controls", "Controls"),
+                ]),
                 cat("cat-Lists", "Lists", [
                     child("demo-alt-settings", "Alternative Settings"),
                     child("demo-app-launcher", "Application launcher"),
@@ -2563,13 +2627,28 @@ describe("render - ListView (tree)", () => {
                     child("demo-weather", "Weather"),
                     child("demo-words", "Words"),
                 ]),
-                cat("cat-OpenGL", "OpenGL", [child("demo-gears", "Gears"), child("demo-glarea", "OpenGL Area"), child("demo-shadertoy", "Shadertoy")]),
-                cat("cat-Overlay", "Overlay", [child("demo-decorative", "Decorative Overlay"), child("demo-interactive-overlay", "Interactive Overlay")]),
+                cat("cat-OpenGL", "OpenGL", [
+                    child("demo-gears", "Gears"),
+                    child("demo-glarea", "OpenGL Area"),
+                    child("demo-shadertoy", "Shadertoy"),
+                ]),
+                cat("cat-Overlay", "Overlay", [
+                    child("demo-decorative", "Decorative Overlay"),
+                    child("demo-interactive-overlay", "Interactive Overlay"),
+                ]),
                 cat("cat-Paintable", "Paintable", [child("demo-svg", "SVG")]),
                 leaf("demo-panes", "Paned Widgets"),
-                cat("cat-Pango", "Pango", [child("demo-font-explorer", "Font Explorer"), child("demo-font-rendering", "Font Rendering"), child("demo-rotated-text", "Rotated Text"), child("demo-text-mask", "Text Mask")]),
+                cat("cat-Pango", "Pango", [
+                    child("demo-font-explorer", "Font Explorer"),
+                    child("demo-font-rendering", "Font Rendering"),
+                    child("demo-rotated-text", "Rotated Text"),
+                    child("demo-text-mask", "Text Mask"),
+                ]),
                 leaf("demo-pickers", "Pickers and Launchers"),
-                cat("cat-Printing", "Printing", [child("demo-page-setup", "Page Setup"), child("demo-printing", "Printing")]),
+                cat("cat-Printing", "Printing", [
+                    child("demo-page-setup", "Page Setup"),
+                    child("demo-printing", "Printing"),
+                ]),
                 leaf("demo-revealer", "Revealer"),
                 leaf("demo-scale", "Scales"),
                 leaf("demo-shortcut-triggers", "Shortcut Triggers"),
@@ -2604,9 +2683,7 @@ describe("render - ListView (tree)", () => {
             await tick();
             await tick();
 
-            const weatherFilter: ListItems = [
-                cat("cat-Lists", "Lists", [child("demo-weather", "Weather")]),
-            ];
+            const weatherFilter: ListItems = [cat("cat-Lists", "Lists", [child("demo-weather", "Weather")])];
 
             await render(<App items={weatherFilter} />);
             await tick();
@@ -2620,7 +2697,11 @@ describe("render - ListView (tree)", () => {
             const ref = createRef<Gtk.ListView>();
 
             type Item = { name: string };
-            type ListItems = Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }>;
+            type ListItems = Array<{
+                id: string;
+                value: Item;
+                children?: Array<{ id: string; value: Item; hideExpander: true }>;
+            }>;
 
             function App({ items }: { items: ListItems }) {
                 return (
@@ -2636,7 +2717,11 @@ describe("render - ListView (tree)", () => {
             }
 
             const leaf = (id: string, name: string) => ({ id, value: { name } });
-            const cat = (id: string, name: string, children: Array<{ id: string; value: Item; hideExpander: true }>) => ({
+            const cat = (
+                id: string,
+                name: string,
+                children: Array<{ id: string; value: Item; hideExpander: true }>,
+            ) => ({
                 id,
                 value: { name },
                 children,
@@ -2646,10 +2731,12 @@ describe("render - ListView (tree)", () => {
             const fullItems: ListItems = [];
             for (let i = 0; i < 40; i++) {
                 if (i % 4 === 0) {
-                    fullItems.push(cat(`cat-${i}`, `Category ${i}`, [
-                        ch(`ch-${i}-0`, `Child ${i}-0`),
-                        ch(`ch-${i}-1`, `Child ${i}-1`),
-                    ]));
+                    fullItems.push(
+                        cat(`cat-${i}`, `Category ${i}`, [
+                            ch(`ch-${i}-0`, `Child ${i}-0`),
+                            ch(`ch-${i}-1`, `Child ${i}-1`),
+                        ]),
+                    );
                 } else {
                     fullItems.push(leaf(`leaf-${i}`, `Leaf ${i}`));
                 }
@@ -2660,9 +2747,7 @@ describe("render - ListView (tree)", () => {
             await tick();
             await tick();
 
-            const filteredItems: ListItems = [
-                cat("cat-36", "Category 36", [ch("ch-36-0", "Child 36-0")]),
-            ];
+            const filteredItems: ListItems = [cat("cat-36", "Category 36", [ch("ch-36-0", "Child 36-0")])];
 
             await render(<App items={filteredItems} />);
             await tick();
@@ -2677,7 +2762,15 @@ describe("render - ListView (tree)", () => {
 
             type Item = { type: "category"; name: string } | { type: "leaf"; name: string };
 
-            function App({ items }: { items: Array<{ id: string; value: Item; children?: Array<{ id: string; value: Item; hideExpander: true }> }> }) {
+            function App({
+                items,
+            }: {
+                items: Array<{
+                    id: string;
+                    value: Item;
+                    children?: Array<{ id: string; value: Item; hideExpander: true }>;
+                }>;
+            }) {
                 return (
                     <ScrollWrapper>
                         <GtkListView
@@ -2707,7 +2800,11 @@ describe("render - ListView (tree)", () => {
                     children: [
                         { id: "leaf-d1", value: { type: "leaf" as const, name: "D-One" }, hideExpander: true as const },
                         { id: "leaf-d2", value: { type: "leaf" as const, name: "D-Two" }, hideExpander: true as const },
-                        { id: "leaf-d3", value: { type: "leaf" as const, name: "D-Three" }, hideExpander: true as const },
+                        {
+                            id: "leaf-d3",
+                            value: { type: "leaf" as const, name: "D-Three" },
+                            hideExpander: true as const,
+                        },
                     ],
                 },
                 { id: "leaf-e", value: { type: "leaf" as const, name: "Echo" } },
@@ -2741,7 +2838,13 @@ describe("render - ListView (tree)", () => {
             await tick();
             await tick();
 
-            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Alpha", "Bravo", "B-One", "Delta", "D-One"]);
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual([
+                "Alpha",
+                "Bravo",
+                "B-One",
+                "Delta",
+                "D-One",
+            ]);
 
             const filter2 = [
                 {

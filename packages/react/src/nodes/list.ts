@@ -5,11 +5,12 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
 import type { DropDownProps, GridViewProps, ListItem, ListViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import type { BoundItem } from "./internal/bound-item.js";
-import { getNextContainerKey } from "./internal/container-key.js";
+import { getNativeId } from "@gtkx/ffi";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
@@ -68,12 +69,13 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     private factory: Gtk.SignalListItemFactory | null = null;
     private headerFactory: Gtk.SignalListItemFactory | null = null;
     private listFactory: Gtk.SignalListItemFactory | null = null;
-    private containers = new Map<Gtk.Widget, number>();
-    private containerKeys = new Map<Gtk.Widget, string>();
-    private headerContainers = new Map<Gtk.Widget, number>();
-    private headerContainerKeys = new Map<Gtk.Widget, string>();
-    private listContainers = new Map<Gtk.Widget, number>();
-    private listContainerKeys = new Map<Gtk.Widget, string>();
+    private containers = new Map<Gtk.Widget | Gtk.ListItem, number>();
+    private containerKeys = new Map<Gtk.Widget | Gtk.ListItem, string>();
+    private headerContainers = new Map<Gtk.ListHeader, number>();
+    private headerContainerKeys = new Map<Gtk.ListHeader, string>();
+    private listContainers = new Map<Gtk.ListItem, number>();
+    private listContainerKeys = new Map<Gtk.ListItem, string>();
+    private treeExpanders = new Map<Gtk.ListItem, Gtk.TreeExpander>();
     private disposed = false;
     private boundItemsUpdateScheduled = false;
     private syncScheduled = false;
@@ -160,6 +162,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         this.disposed = true;
         this.treeChildModels.clear();
         this.queriedLeaves.clear();
+        this.treeExpanders.clear();
         this.rootItemIds = [];
         super.detachDeletedInstance();
     }
@@ -239,20 +242,17 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         this.factory.connect("setup", (_self: GObject.Object, obj: GObject.Object) => {
             const listItem = obj as unknown as Gtk.ListItem;
-            const container = new Adw.Bin();
-            const key = getNextContainerKey();
-            this.applyEstimatedItemSize(container);
 
             if (isTree) {
                 const expander = new Gtk.TreeExpander();
-                expander.setChild(container);
                 listItem.setChild(expander);
+                this.containers.set(expander, UNBOUND_POSITION);
+                this.containerKeys.set(expander, String(getNativeId(expander.handle)));
+                this.treeExpanders.set(listItem, expander);
             } else {
-                listItem.setChild(container);
+                this.containers.set(listItem, UNBOUND_POSITION);
+                this.containerKeys.set(listItem, String(getNativeId(listItem.handle)));
             }
-
-            this.containers.set(container, UNBOUND_POSITION);
-            this.containerKeys.set(container, key);
         });
 
         this.factory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
@@ -260,20 +260,19 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             const position = listItem.getPosition();
 
             if (isTree) {
-                const expander = listItem.getChild() as Gtk.TreeExpander;
+                const expander = this.treeExpanders.get(listItem) as Gtk.TreeExpander;
                 const row = (listItem as unknown as { getItem(): GObject.Object | null }).getItem() as Gtk.TreeListRow;
                 expander.setListRow(row);
+                this.applyEstimatedItemSize(expander);
 
                 const treeItem = this.resolveTreeItem(row);
                 if (treeItem) {
                     this.applyTreeExpanderProps(expander, treeItem);
                 }
 
-                const container = expander.getChild() as Gtk.Widget;
-                this.containers.set(container, position);
+                this.containers.set(expander, position);
             } else {
-                const container = listItem.getChild() as Gtk.Widget;
-                this.containers.set(container, position);
+                this.containers.set(listItem, position);
             }
 
             this.scheduleBoundItemsUpdate();
@@ -283,13 +282,11 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             const listItem = obj as unknown as Gtk.ListItem;
 
             if (isTree) {
-                const expander = listItem.getChild() as Gtk.TreeExpander;
-                const container = expander.getChild() as Gtk.Widget;
-                this.containers.set(container, UNBOUND_POSITION);
+                const expander = this.treeExpanders.get(listItem) as Gtk.TreeExpander;
+                this.containers.set(expander, UNBOUND_POSITION);
                 expander.setListRow(null);
             } else {
-                const container = listItem.getChild() as Gtk.Widget;
-                this.containers.set(container, UNBOUND_POSITION);
+                this.containers.set(listItem, UNBOUND_POSITION);
             }
 
             this.scheduleBoundItemsUpdate();
@@ -299,20 +296,15 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             const listItem = obj as unknown as Gtk.ListItem;
 
             if (isTree) {
-                const expander = listItem.getChild() as Gtk.TreeExpander | null;
+                const expander = this.treeExpanders.get(listItem);
                 if (expander) {
-                    const container = expander.getChild() as Gtk.Widget | null;
-                    if (container) {
-                        this.containers.delete(container);
-                        this.containerKeys.delete(container);
-                    }
+                    this.containers.delete(expander);
+                    this.containerKeys.delete(expander);
                 }
+                this.treeExpanders.delete(listItem);
             } else {
-                const container = listItem.getChild() as Gtk.Widget | null;
-                if (container) {
-                    this.containers.delete(container);
-                    this.containerKeys.delete(container);
-                }
+                this.containers.delete(listItem);
+                this.containerKeys.delete(listItem);
             }
 
             listItem.setChild(null);
@@ -332,34 +324,26 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         this.listFactory.connect("setup", (_self: GObject.Object, obj: GObject.Object) => {
             const listItem = obj as unknown as Gtk.ListItem;
-            const container = new Adw.Bin();
-            const key = getNextContainerKey();
-            listItem.setChild(container);
-            this.listContainers.set(container, UNBOUND_POSITION);
-            this.listContainerKeys.set(container, key);
+            this.listContainers.set(listItem, UNBOUND_POSITION);
+            this.listContainerKeys.set(listItem, String(getNativeId(listItem.handle)));
         });
 
         this.listFactory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
             const listItem = obj as unknown as Gtk.ListItem;
-            const container = listItem.getChild() as Gtk.Widget;
-            this.listContainers.set(container, listItem.getPosition());
+            this.listContainers.set(listItem, listItem.getPosition());
             this.scheduleBoundItemsUpdate();
         });
 
         this.listFactory.connect("unbind", (_self: GObject.Object, obj: GObject.Object) => {
             const listItem = obj as unknown as Gtk.ListItem;
-            const container = listItem.getChild() as Gtk.Widget;
-            this.listContainers.set(container, UNBOUND_POSITION);
+            this.listContainers.set(listItem, UNBOUND_POSITION);
             this.scheduleBoundItemsUpdate();
         });
 
         this.listFactory.connect("teardown", (_self: GObject.Object, obj: GObject.Object) => {
             const listItem = obj as unknown as Gtk.ListItem;
-            const container = listItem.getChild() as Gtk.Widget | null;
-            if (container) {
-                this.listContainers.delete(container);
-                this.listContainerKeys.delete(container);
-            }
+            this.listContainers.delete(listItem);
+            this.listContainerKeys.delete(listItem);
             listItem.setChild(null);
         });
     }
@@ -369,34 +353,26 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         this.headerFactory.connect("setup", (_self: GObject.Object, obj: GObject.Object) => {
             const listHeader = obj as unknown as Gtk.ListHeader;
-            const container = new Adw.Bin();
-            const key = getNextContainerKey();
-            listHeader.setChild(container);
-            this.headerContainers.set(container, UNBOUND_POSITION);
-            this.headerContainerKeys.set(container, key);
+            this.headerContainers.set(listHeader, UNBOUND_POSITION);
+            this.headerContainerKeys.set(listHeader, String(getNativeId(listHeader.handle)));
         });
 
         this.headerFactory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
             const listHeader = obj as unknown as Gtk.ListHeader;
-            const container = listHeader.getChild() as Gtk.Widget;
-            this.headerContainers.set(container, listHeader.getStart());
+            this.headerContainers.set(listHeader, listHeader.getStart());
             this.scheduleBoundItemsUpdate();
         });
 
         this.headerFactory.connect("unbind", (_self: GObject.Object, obj: GObject.Object) => {
             const listHeader = obj as unknown as Gtk.ListHeader;
-            const container = listHeader.getChild() as Gtk.Widget;
-            this.headerContainers.set(container, UNBOUND_POSITION);
+            this.headerContainers.set(listHeader, UNBOUND_POSITION);
             this.scheduleBoundItemsUpdate();
         });
 
         this.headerFactory.connect("teardown", (_self: GObject.Object, obj: GObject.Object) => {
             const listHeader = obj as unknown as Gtk.ListHeader;
-            const container = listHeader.getChild() as Gtk.Widget | null;
-            if (container) {
-                this.headerContainers.delete(container);
-                this.headerContainerKeys.delete(container);
-            }
+            this.headerContainers.delete(listHeader);
+            this.headerContainerKeys.delete(listHeader);
             listHeader.setChild(null);
         });
     }
@@ -1046,8 +1022,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private collectContainerBoundItems(
-        containers: Map<Gtk.Widget, number>,
-        containerKeys: Map<Gtk.Widget, string>,
+        containers: Map<Container, number>,
+        containerKeys: Map<Container, string>,
         flatItems: ListItem[],
         renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode,
         out: BoundItem[],
@@ -1061,8 +1037,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             if (!key) continue;
 
             if (isTree) {
-                const expander = container.getParent() as Gtk.TreeExpander | null;
-                const row = expander?.getListRow() ?? null;
+                const expander = container as Gtk.TreeExpander;
+                const row = expander.getListRow() ?? null;
                 if (!row) continue;
                 const item = this.resolveTreeItem(row);
                 if (!item) continue;
@@ -1077,14 +1053,16 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         }
     }
 
-    private applyEstimatedItemSize(container: Adw.Bin): void {
-        const height = this.props.estimatedItemHeight ?? -1;
-        const width = this.props.estimatedItemWidth ?? -1;
-        container.setSizeRequest(width, height);
+    public getEstimatedItemSize(): { width: number; height: number } {
+        return {
+            width: this.props.estimatedItemWidth ?? -1,
+            height: this.props.estimatedItemHeight ?? -1,
+        };
     }
 
-    public getEstimatedRowHeight(): number {
-        return this.props.estimatedItemHeight ?? -1;
+    private applyEstimatedItemSize(widget: Gtk.Widget): void {
+        const { width, height } = this.getEstimatedItemSize();
+        widget.setSizeRequest(width, height);
     }
 
     private getColumnPosition(columnNode: ColumnViewColumnNode): number {

@@ -20,6 +20,7 @@ import { FontDialogButtonNode } from "./nodes/font-dialog-button.js";
 import { GridChildNode } from "./nodes/grid-child.js";
 import { LevelBarNode } from "./nodes/level-bar.js";
 import { ListNode } from "./nodes/list.js";
+import { ListItemNode } from "./nodes/list-item-node.js";
 import { MenuNode } from "./nodes/menu.js";
 import { NavigationPageNode } from "./nodes/navigation-page.js";
 import { NavigationViewNode } from "./nodes/navigation-view.js";
@@ -111,5 +112,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     [[Gtk.ListView, Gtk.ColumnView, Gtk.GridView, Gtk.DropDown, Adw.ComboRow], ListNode],
     [PopoverMenuWidgets, PopoverMenuNode],
     [AdjustableWidgets, AdjustableNode],
+    [[Gtk.ListItem, Gtk.ListHeader], ListItemNode],
     [Gtk.Widget, WidgetNode],
 ];

@@ -34,10 +34,7 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
 
     const items = useMemo(() => filteredTreeItems.map(treeItemToData), [filteredTreeItems]);
 
-    const selected = useMemo(
-        () => (currentDemo ? [`demo-${currentDemo.id}`] : EMPTY_SELECTION),
-        [currentDemo],
-    );
+    const selected = useMemo(() => (currentDemo ? [`demo-${currentDemo.id}`] : EMPTY_SELECTION), [currentDemo]);
 
     const handleSelectionChanged = useCallback(
         (ids: string[]) => {
@@ -55,11 +52,7 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
     const renderItem = useCallback((item: TreeItem) => {
         if (item.type === "category") {
             return (
-                <GtkInscription
-                    text={item.title}
-                    natChars={25}
-                    textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                />
+                <GtkInscription text={item.title} natChars={25} textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END} />
             );
         }
 
