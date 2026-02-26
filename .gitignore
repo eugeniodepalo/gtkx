@@ -1,6 +1,5 @@
 .turbo
 *.log
-*.node
 *.tsbuildinfo
 dist
 generated

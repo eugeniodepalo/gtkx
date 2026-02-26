@@ -7,7 +7,7 @@ import { renderFile, type TemplateContext } from "./templates.js";
 /**
  * Supported package managers for GTKX projects.
  */
-export type PackageManager = "pnpm" | "npm" | "yarn";
+type PackageManager = "pnpm" | "npm" | "yarn";
 
 /**
  * Whether to include testing setup in GTKX projects.
@@ -19,7 +19,7 @@ export type TestingOption = "vitest" | "none";
  *
  * All options are optional; missing values will be prompted interactively.
  */
-export type CreateOptions = {
+type CreateOptions = {
     name?: string;
     appId?: string;
     packageManager?: PackageManager;

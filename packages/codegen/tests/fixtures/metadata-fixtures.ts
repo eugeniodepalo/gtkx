@@ -1,6 +1,6 @@
 import type { CodegenWidgetMeta } from "../../src/core/codegen-metadata.js";
 import { getHiddenPropNames } from "../../src/core/config/index.js";
-import type { PropertyAnalysis, SignalAnalysis, SignalParam } from "../../src/core/generator-types.js";
+import type { PropertyAnalysis, SignalAnalysis } from "../../src/core/generator-types.js";
 
 export function createPropertyAnalysis(overrides: Partial<PropertyAnalysis> = {}): PropertyAnalysis {
     return {
@@ -13,14 +13,6 @@ export function createPropertyAnalysis(overrides: Partial<PropertyAnalysis> = {}
         getter: "getLabel",
         setter: "setLabel",
         referencedNamespaces: [],
-        ...overrides,
-    };
-}
-
-export function createSignalParam(overrides: Partial<SignalParam> = {}): SignalParam {
-    return {
-        name: "object",
-        type: "Widget",
         ...overrides,
     };
 }
@@ -168,31 +160,3 @@ export function createLabelMeta(overrides: Partial<CodegenWidgetMeta> = {}): Cod
     });
 }
 
-export function createAdwHeaderBarMeta(overrides: Partial<CodegenWidgetMeta> = {}): CodegenWidgetMeta {
-    return createCodegenWidgetMeta({
-        className: "HeaderBar",
-        namespace: "Adw",
-        jsxName: "AdwHeaderBar",
-        slots: ["title-widget"],
-        parentClassName: "Widget",
-        parentNamespace: "Gtk",
-        modulePath: "./adw/header-bar.js",
-        propNames: ["title-widget", "show-back-button"],
-        signalNames: [],
-        properties: [
-            createPropertyAnalysis({
-                name: "title-widget",
-                camelName: "titleWidget",
-                type: "Widget | null",
-                referencedNamespaces: ["Gtk"],
-            }),
-            createPropertyAnalysis({
-                name: "show-back-button",
-                camelName: "showBackButton",
-                type: "boolean",
-            }),
-        ],
-        signals: [],
-        ...overrides,
-    });
-}

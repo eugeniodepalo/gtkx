@@ -15,7 +15,6 @@ import {
     GirRecord,
     GirSignal,
     GirType,
-    type QualifiedName,
     qualifiedName,
 } from "@gtkx/gir";
 
@@ -37,7 +36,6 @@ type NormalizedConstantData = ConstructorParameters<typeof GirConstant>[0];
 type NormalizedNamespaceData = ConstructorParameters<typeof GirNamespace>[0];
 
 export { qualifiedName };
-export type { QualifiedName };
 
 export function createNormalizedType(overrides: Partial<NormalizedTypeData> = {}): GirType {
     return new GirType({

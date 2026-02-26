@@ -1,77 +1,67 @@
 {
     "$schema": "https://unpkg.com/knip@5/schema.json",
-    "ignore": ["**/node_modules/**", "**/.pnpm-store/**", "**/.turbo/**", "**/build-dir/**", "**/.flatpak-builder/**"],
+    "ignore": [
+        "**/node_modules/**",
+        "**/.turbo/**",
+        "**/dist/**",
+        "**/target/**",
+        "**/out-tsc/**",
+        "**/generated/**",
+        "**/*.tsbuildinfo",
+        "**/*.log",
+        "**/*.node"
+    ],
     "ignoreIssues": {
-        "**/src/generated/**": ["enumMembers"],
         "examples/*/src/app.tsx": ["exports", "duplicates"],
-        "packages/cli/src/create.ts": ["exports", "types"],
-        "packages/cli/src/dev-server.tsx": ["exports", "types"],
-        "packages/cli/src/refresh-runtime.ts": ["exports"],
-        "packages/ffi/src/types.ts": ["types"]
+        "packages/cli/src/create.ts": ["exports"],
+        "packages/cli/src/dev-server.tsx": ["exports"],
+        "packages/cli/src/refresh-runtime.ts": ["exports"]
     },
     "workspaces": {
-        "packages/native": {
-            "entry": ["vitest.config.ts", "tests/**/*.test.ts"],
+        "packages/*": {
+            "project": ["bin/**/*", "src/**/*", "scripts/**/*", "tests/**/*", "vitest.config.ts"],
+            "entry": ["src/index.ts", "vitest.config.ts", "tests/**/*.test.ts", "tests/**/*.test.tsx"]
+        },
+        "examples/*": {
             "project": ["src/**/*", "scripts/**/*", "tests/**/*", "vitest.config.ts"],
-            "ignoreDependencies": ["@neon-rs/cli", "@gtkx/vitest"]
-        },
-        "examples/deploying": {
-            "project": ["src/**/*", "scripts/**/*"],
-            "ignoreDependencies": ["postject", "vite"],
-            "ignore": ["vendor/**", "src/gtkx-env.d.ts"],
-            "entry": ["src/app.tsx", "src/index.tsx", "src/dev.tsx"]
-        },
-        "examples/gtk-demo": {
-            "project": ["src/**/*"],
-            "entry": ["src/app.tsx", "src/index.tsx", "src/dev.tsx"],
-            "ignore": ["src/gtkx-env.d.ts"],
+            "entry": [
+                "src/app.tsx",
+                "src/dev.tsx",
+                "src/index.tsx",
+                "tests/**/*.test.ts",
+                "tests/**/*.test.tsx",
+                "src/gtkx-env.d.ts",
+                "vitest.config.ts"
+            ],
             "ignoreDependencies": ["vite"]
+        },
+        "packages/ffi": {
+            "entry": ["src/index.ts", "src/*/index.ts", "src/generated/*/index.ts", "vitest.config.ts"]
+        },
+        "packages/cli": {
+            "entry": ["src/index.ts", "src/global.d.ts", "src/cli.tsx"],
+            "ignore": ["bin/gtkx.js"],
+            "ignoreDependencies": ["@gtkx/testing"]
+        },
+        "packages/mcp": {
+            "entry": ["src/index.ts", "src/cli.ts"],
+            "ignore": ["bin/gtkx-mcp.js"]
+        },
+        "packages/codegen": {
+            "entry": ["src/index.ts", "src/cli.ts"],
+            "ignore": ["bin/gtkx-codegen.js"]
+        },
+        "packages/native": {
+            "entry": ["index.ts", "types.ts", "vitest.config.ts"],
+            "ignoreDependencies": ["@neon-rs/cli"]
+        },
+        "packages/vitest": {
+            "entry": ["src/index.ts", "src/setup.ts"]
         },
         "website": {
             "docusaurus": true,
             "ignore": ["build/**", ".docusaurus/**", "docs/api/**", "sidebars.ts"],
             "ignoreDependencies": ["typedoc", "@docusaurus/*", "@theme/*"]
-        },
-        "packages/*": {
-            "project": ["src/**/*"],
-            "entry": ["src/index.ts"]
-        },
-        "examples/*": {
-            "project": ["src/**/*"],
-            "entry": ["src/app.tsx", "src/dev.tsx", "src/index.tsx"],
-            "ignore": ["src/gtkx-env.d.ts"],
-            "ignoreDependencies": ["vite"]
-        },
-        "packages/cli": {
-            "entry": ["src/cli.tsx", "src/index.ts"],
-            "project": ["src/**/*"],
-            "ignore": ["src/global.d.ts", "bin/gtkx.js"],
-            "ignoreDependencies": ["@gtkx/testing"]
-        },
-        "packages/mcp": {
-            "entry": ["src/cli.ts", "src/index.ts"],
-            "project": ["src/**/*"],
-            "ignore": ["bin/gtkx-mcp.js"]
-        },
-        "packages/codegen": {
-            "entry": ["src/cli.ts", "src/index.ts"],
-            "project": ["src/**/*"]
-        },
-        "packages/ffi": {
-            "project": ["src/**/*"],
-            "ignore": ["src/generated/**"],
-            "entry": ["src/index.ts", "src/*/index.ts"]
-        },
-        "packages/react": {
-            "project": ["src/**/*"]
-        },
-        "packages/e2e": {
-            "project": ["tests/**/*"],
-            "entry": ["tests/**/*.test.tsx"]
-        },
-        "packages/vitest": {
-            "project": ["src/**/*"],
-            "entry": ["src/index.ts", "src/setup.ts", "src/global-setup.ts"]
         }
     }
 }

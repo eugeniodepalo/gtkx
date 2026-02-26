@@ -158,5 +158,3 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
 
     return server;
 };
-
-export type { ViteDevServer };
