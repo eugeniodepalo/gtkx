@@ -1,5 +1,5 @@
 {
-    "$schema": "https://biomejs.dev/schemas/2.4.2/schema.json",
+    "$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
     "assist": {
         "enabled": true
     },
@@ -14,24 +14,9 @@
         "indentStyle": "space",
         "lineWidth": 120
     },
-    "linter": {
-        "rules": {
-            "style": {
-                "useConsistentArrayType": {
-                    "level": "error",
-                    "options": {
-                        "syntax": "shorthand"
-                    }
-                }
-            },
-            "suspicious": {
-                "noRedeclare": "off"
-            }
-        }
-    },
     "overrides": [
         {
-            "includes": ["examples/gtk-demo/src/demos/css/*.css"],
+            "includes": ["examples/**/*.css"],
             "linter": {
                 "enabled": false
             },
