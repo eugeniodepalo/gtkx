@@ -22,7 +22,7 @@
     "devDependencies": {
         "@biomejs/biome": "^2.4.4",
         "@gtkx/codegen": "workspace:*",
-        "@types/node": "^25.3.0",
+        "@types/node": "^25.3.2",
         "@types/react": "^19.2.14",
         "knip": "^5.85.0",
         "react": "^19.2.4",
