@@ -6,8 +6,6 @@ import { GIRS_DIR, SYSTEM_GIRS_DIR } from "./constants.js";
 
 const GIRS_TO_SYNC = new Set([
     "Adw-1.gir",
-    "AppStream-1.0.gir",
-    "Atspi-2.0.gir",
     "cairo-1.0.gir",
     "freetype2-2.0.gir",
     "Gdk-4.0.gir",
@@ -29,11 +27,8 @@ const GIRS_TO_SYNC = new Set([
     "GtkSource-5.gir",
     "HarfBuzz-0.0.gir",
     "JavaScriptCore-6.0.gir",
-    "Json-1.0.gir",
-    "libxml2-2.0.gir",
     "Pango-1.0.gir",
     "PangoCairo-1.0.gir",
-    "Secret-1.gir",
     "Soup-3.0.gir",
     "Vte-3.91.gir",
     "WebKit-6.0.gir",
