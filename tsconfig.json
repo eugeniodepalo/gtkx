@@ -33,6 +33,9 @@
             "path": "packages/vitest/tsconfig.json"
         },
         {
+            "path": "examples/browser/tsconfig.json"
+        },
+        {
             "path": "examples/todo/tsconfig.json"
         },
         {
@@ -40,6 +43,12 @@
         },
         {
             "path": "examples/deploying/tsconfig.json"
+        },
+        {
+            "path": "examples/x-showcase/tsconfig.json"
+        },
+        {
+            "path": "examples/hello-world/tsconfig.json"
         }
     ]
 }

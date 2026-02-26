@@ -4,11 +4,6 @@
 
 GTKX is currently in pre-release (0.x) and not yet recommended for production use. Security updates are applied to the latest minor version only.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.10.x  | :white_check_mark: |
-| < 0.10  | :x:                |
-
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in GTKX, please report it responsibly:
