@@ -9,14 +9,16 @@ import styles from "./index.module.css";
 
 function HeroSection() {
     const { siteConfig } = useDocusaurusContext();
-    const logoUrl = useBaseUrl("/logo.svg");
+    const illustrationUrl = useBaseUrl("/hero-illustration.svg");
     return (
         <header className={styles.hero}>
             <div className={styles.heroInner}>
-                <div className={styles.heroHeader}>
-                    <h1 className={styles.heroTitle}>GTK</h1>
-                    <img src={logoUrl} alt="GTKX Logo" className={styles.heroLogo} />
-                </div>
+                <img
+                    src={illustrationUrl}
+                    alt="React components composing into a native GTK4 desktop application"
+                    className={styles.heroIllustration}
+                />
+                <h1 className={styles.heroTitle}>GTKX</h1>
                 <p className={styles.heroSubtitle}>{siteConfig.tagline}</p>
                 <div className={styles.heroButtons}>
                     <Link className={styles.heroButtonPrimary} to="/docs/getting-started">

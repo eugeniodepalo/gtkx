@@ -21,9 +21,9 @@
     <img src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/demo.gif" alt="GTKX Demo" width="100%">
 </p>
 
-## Introduction
+---
 
-GTKX is a modern framework for building native Linux applications using React and GTK. It provides access to the full range of GTK4, GLib, and Node.js APIs, allowing you to create rich, performant desktop applications with the tools and libraries you already know.
+GTKX is a modern framework for building native Linux applications using React and GTK. It provides the full range of GTK4, GLib, and Node.js APIs, allowing you to create rich, performant desktop applications with the tools and libraries you already know.
 
 ## Features
 
@@ -41,29 +41,6 @@ GTKX is a modern framework for building native Linux applications using React an
 npx @gtkx/cli create my-app
 cd my-app
 npm run dev
-```
-
-## Hello World
-
-```tsx
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit, render } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
-
-const App = () => {
-    const [count, setCount] = useState(0);
-
-    return (
-        <GtkApplicationWindow title="Counter" defaultWidth={300} defaultHeight={200} onClose={quit}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} valign={Gtk.Align.CENTER}>
-                {`Count: ${count}`}
-                <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
-            </GtkBox>
-        </GtkApplicationWindow>
-    );
-};
-
-render(<App />, "com.gtkx.example");
 ```
 
 ## Examples

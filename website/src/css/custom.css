@@ -34,4 +34,9 @@
 .navbar__brand {
     display: flex;
     align-items: center;
+    margin-right: 0;
+}
+
+.navbar__title {
+    font-weight: 700;
 }

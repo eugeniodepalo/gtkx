@@ -124,7 +124,7 @@ const config: Config = {
         navbar: {
             title: "GTKX",
             logo: {
-                alt: "GTKX Logo",
+                alt: "GTKX",
                 src: "/logo.svg",
             },
             items: [
