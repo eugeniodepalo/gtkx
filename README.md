@@ -5,7 +5,7 @@
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-    <strong>Native Linux app development for the modern age</strong>
+    <strong>Linux application development for the modern age powered by GTK4 and React</strong>
 </p>
 
 <p align="center">
@@ -18,10 +18,22 @@
 ---
 
 <p align="center">
-    <video src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/website/static/demo.mp4" autoplay loop muted playsinline width="600" height="400"></video>
+    <img src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/demo.gif" alt="GTKX Demo" width="100%">
 </p>
 
-GTKX is a modern framework for building native Linux applications using React and GTK. It provides a seamless development experience with hot module replacement, TypeScript support, and access to the full power of GTK and GLib libraries and Node.js APIs.
+## Introduction
+
+GTKX is a modern framework for building native Linux applications using React and GTK. It provides access to the full range of GTK4, GLib, and Node.js APIs, allowing you to create rich, performant desktop applications with the tools and libraries you already know.
+
+## Features
+
+- **React 19** — Hooks, concurrent features, and the component model you know
+- **Fully native Node.js environment** - Runs on vanilla Node.js, with the help of a Neon native module
+- **TypeScript first** — Full type safety with auto-generated bindings
+- **Rich GLib support** — Provides bindings for most modern GLib/GObject libraries, including Adwaita
+- **HMR** — Fast refresh during development powered by Vite
+- **CSS-in-JS styling** — Easy styling with GTK CSS powered by Emotion
+- **Testing library** — Testing Library-inspired API for testing components and E2E
 
 ## Quick Start
 
@@ -31,7 +43,7 @@ cd my-app
 npm run dev
 ```
 
-## Example
+## Hello World
 
 ```tsx
 import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit, render } from "@gtkx/react";
@@ -53,16 +65,6 @@ const App = () => {
 
 render(<App />, "com.gtkx.example");
 ```
-
-## Features
-
-- **React 19** — Hooks, concurrent features, and the component model you know
-- **Fully native Node.js environment** - Runs on vanilla Node.js, with the help of a Neon native module
-- **TypeScript first** — Full type safety with auto-generated bindings
-- **Rich GLib support** — Provides bindings for most modern GLib/GObject libraries, including Adwaita
-- **HMR** — Fast refresh during development powered by Vite
-- **CSS-in-JS styling** — Easy styling with GTK CSS powered by Emotion
-- **Testing library** — Testing Library-inspired API for testing components and E2E
 
 ## Examples
 
