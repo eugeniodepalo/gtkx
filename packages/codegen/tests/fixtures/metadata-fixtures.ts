@@ -159,4 +159,3 @@ export function createLabelMeta(overrides: Partial<CodegenWidgetMeta> = {}): Cod
         ...overrides,
     });
 }
-

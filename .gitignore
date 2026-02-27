@@ -6,3 +6,4 @@ generated
 node_modules
 out-tsc
 packages/**/README.md
+.pnpm-store

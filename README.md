@@ -1,11 +1,11 @@
 <p align="center">
-    <img src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/logo.svg" alt="GTKX" width="60" height="60">
+    <img src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/logo.svg" alt="GTKX" width="100" height="100">
 </p>
 
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-    <strong>Build native GTK4 desktop applications with React and TypeScript.</strong>
+    <strong>Native Linux app development for the modern age</strong>
 </p>
 
 <p align="center">
@@ -17,7 +17,11 @@
 
 ---
 
-GTKX lets you write Linux desktop applications using React. Your components render as native GTK4 widgets through a Rust FFI bridge—no webviews, no Electron, just native performance with the developer experience you already know.
+<p align="center">
+    <video src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/website/static/demo.mp4" autoplay loop muted playsinline width="600" height="400"></video>
+</p>
+
+GTKX is a modern framework for building native Linux applications using React and GTK. It provides a seamless development experience with hot module replacement, TypeScript support, and access to the full power of GTK and GLib libraries and Node.js APIs.
 
 ## Quick Start
 
@@ -40,34 +44,33 @@ const App = () => {
     return (
         <GtkApplicationWindow title="Counter" defaultWidth={300} defaultHeight={200} onClose={quit}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} valign={Gtk.Align.CENTER}>
-                <GtkLabel label={`Count: ${count}`} cssClasses={["title-1"]} />
+                {`Count: ${count}`}
                 <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
             </GtkBox>
         </GtkApplicationWindow>
     );
 };
 
-render(<App />, "com.example.counter");
+render(<App />, "com.gtkx.example");
 ```
 
 ## Features
 
 - **React 19** — Hooks, concurrent features, and the component model you know
-- **Native GTK4 widgets** — Real native controls, not web components in a webview
-- **Adwaita support** — Modern GNOME styling with Libadwaita components
-- **Declarative animations** — Framer Motion-like API using native Adwaita animations
-- **Hot Module Replacement** — Fast refresh during development
+- **Fully native Node.js environment** - Runs on vanilla Node.js, with the help of a Neon native module
 - **TypeScript first** — Full type safety with auto-generated bindings
-- **CSS-in-JS styling** — Familiar styling patterns adapted for GTK
-- **Testing utilities** — Component testing similar to Testing Library
+- **Rich GLib support** — Provides bindings for most modern GLib/GObject libraries, including Adwaita
+- **HMR** — Fast refresh during development powered by Vite
+- **CSS-in-JS styling** — Easy styling with GTK CSS powered by Emotion
+- **Testing library** — Testing Library-inspired API for testing components and E2E
 
 ## Examples
 
 Explore complete applications in the [`examples/`](./examples) directory:
 
-- **[gtk-demo](./examples/gtk-demo)** — Full replica of the official GTK demo app
 - **[hello-world](./examples/hello-world)** — Minimal application showing a counter
-- **[todo](./examples/todo)** — Full-featured todo application with Adwaita styling and testing
+- **[gtk-demo](./examples/gtk-demo)** — Full replica of the official GTK demo app
+- **[todo](./examples/todo)** — Full-featured todo application with Adwaita components and testing
 - **[x-showcase](./examples/x-showcase)** — Showcase of all x.\* virtual components
 - **[browser](./examples/browser)** — Simple browser using WebKitWebView
 - **[deploying](./examples/deploying)** — Example of packaging and distributing a GTKX app
@@ -78,7 +81,7 @@ Visit [https://gtkx.dev](https://gtkx.dev) for the full documentation.
 
 ## Contributing
 
-Contributions are welcome! Please see the [contributing guidelines](./CONTRIBUTING.md) and check out the [good first issues](https://github.com/gtkx-org/gtkx/labels/good%20first%20issue).
+Contributions are welcome! Please see the [contributing guidelines](./CONTRIBUTING.md).
 
 ## Community
 
