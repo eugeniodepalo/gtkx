@@ -1,52 +1,32 @@
 # Introduction
 
-GTKX is a framework for building native Linux desktop applications using React and TypeScript. Instead of rendering to a browser DOM or webview, your React components render as native GTK4 widgets through a Rust FFI bridge.
-
-## Why GTKX?
-
-If you're a React developer who wants to build Linux desktop applications, you typically have two choices:
-
-1. **Electron** — Bundle an entire Chromium browser with your app. Works, but results in 150MB+ bundles and web-based UI that doesn't feel native.
-
-2. **Learn a new toolkit** — Pick up GTK, Qt, or another native toolkit from scratch. Powerful, but steep learning curve if you're coming from web development.
-
-GTKX offers a third path: use the React patterns you already know to build applications with native GTK4 widgets. You get the developer experience of React with the performance and integration of native applications.
+Developing native applications for Linux has traditionally been a complex and repetitive process, requiring imperative UI management, complex state synchronization, slow feedback loop, and a limited ecosystem of libraries. GTKX addresses these challenges by providing a React reconciler that renders to GTK4 widgets, and runs natively on vanilla Node.js thanks to a custom Rust/Neon native module. This allows you to leverage the immense ecosystem of React/Node.js libraries and tools while building rich, native applications that integrate seamlessly with the Linux desktop.
 
 ## What you get
 
-- **Familiar React patterns** — Hooks, JSX, component composition, state management. If you know React, you know most of GTKX.
-
-- **Native GTK4 widgets** — Real native controls rendered by GTK, not HTML elements styled to look native. Your app integrates properly with the Linux desktop.
-
-- **Adwaita styling** — First-class support for Libadwaita, GNOME's design system. Build modern, polished applications that fit the Linux desktop.
-
-- **Hot Module Replacement** — Fast refresh during development. See your changes instantly without losing application state.
-
-- **TypeScript first** — Full type safety with auto-generated type definitions from GTK's introspection data.
+- **Familiar React API** — Build your UI with the component model and hooks you already know
+- **Native performance** — Runs on vanilla Node.js ensuring maximum compatibility with the NPM ecosystem
+- **TypeScript support** — Full type safety with auto-generated bindings for GTK4 and many GLib libraries
+- **Rich GTK ecosystem** — Access to the full range of GTK4 widgets and GLib/GObject libraries, including Adwaita
+- **Fast development** — HMR powered by Vite for a smooth development experience
+- **Easy styling** — Style your application with GTK CSS using Emotion's CSS-in-JS API
+- **Testing tools** — Testing Library-inspired API for testing components and end-to-end scenarios
 
 ## How it works
 
-GTKX uses a custom React reconciler that translates React operations into GTK widget operations:
+GTKX uses a multi-layer architecture to bridge the gap between React and GTK:
 
 ```
-React Components (JSX)
+Your app (JSX intrinsic elements)
  ↓
 @gtkx/react (reconciler)
  ↓
 @gtkx/ffi (TypeScript bindings)
  ↓
-@gtkx/native (Rust/Neon)
+@gtkx/native (Rust/Neon/libffi)
  ↓
-GTK4 Widgets
+GTK4/GLib (native libraries)
 ```
-
-When you write:
-
-```tsx
-<GtkButton label="Click me" onClicked={() => console.log("clicked")} />
-```
-
-GTKX creates a native `GtkButton` widget, sets its label property, and connects a signal handler for the `clicked` signal. The React reconciler handles updates efficiently, only changing properties that actually changed.
 
 ## Who is this for?
 
@@ -59,9 +39,7 @@ GTKX is a good fit if you:
 
 GTKX may not be the best choice if you:
 
-- Need cross-platform support (Windows, macOS) — GTKX targets Linux
-- Are building performance-critical applications like games or video editors
-- Prefer a non-React approach to UI development
+- Need cross-platform support (Windows, macOS) — GTKX targets Linux exclusively
 
 ## What's next?
 

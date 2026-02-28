@@ -1,10 +1,10 @@
 # Deploying
 
-GTKX apps are Node.js applications with native GTK4 bindings. Distribution requires:
+Distributing a GTKX application involves three main steps:
 
 1. **Bundle** the JavaScript code with `gtkx build`
 2. **Create a SEA** (Single Executable Application) using Node.js
-3. **Package** with Flatpak or Snap
+3. **Package** with Flatpak, Snap, or distro-specific packaging tools
 
 ## Single Executable Application (SEA)
 
@@ -26,11 +26,11 @@ Create `sea-config.json`:
 
 ```json
 {
-  "main": "dist/bundle.js",
-  "output": "dist/sea-prep.blob",
-  "disableExperimentalSEAWarning": true,
-  "useSnapshot": false,
-  "useCodeCache": true
+    "main": "dist/bundle.js",
+    "output": "dist/sea-prep.blob",
+    "disableExperimentalSEAWarning": true,
+    "useSnapshot": false,
+    "useCodeCache": true
 }
 ```
 
@@ -106,31 +106,20 @@ base: core24
 confinement: strict
 
 apps:
-  myapp:
-  command: bin/myapp
-  extensions: [gnome] # Required for GTK4
+    myapp:
+    command: bin/myapp
+    extensions: [gnome] # Required for GTK4
 
 parts:
-  myapp:
-  plugin: dump
-  source: dist/
-  organize:
-  app: bin/myapp
-  index.node: bin/index.node # GTKX native module
+    myapp:
+    plugin: dump
+    source: dist/
+    organize:
+    app: bin/myapp
+    index.node: bin/index.node # GTKX native module
 ```
 
 For complete Snap setup, see the [Snapcraft Documentation](https://snapcraft.io/docs).
-
-## Troubleshooting
-
-### App crashes on startup
-
-Ensure `index.node` is in the same directory as the executable.
-
-### Missing GTK4 libraries
-
-- **Flatpak:** Use `org.gnome.Platform` runtime
-- **Snap:** Use the `gnome` extension
 
 ## Complete Example
 

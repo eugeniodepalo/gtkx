@@ -1,16 +1,14 @@
 # GTKX
 
-> React framework for building native GTK4 desktop applications on Linux. Uses a custom React reconciler to render real GTK widgets through a Rust FFI bridge — no webviews, no Electron.
-
-GTKX enables React developers to build Linux desktop applications using familiar patterns (hooks, JSX, component composition) while rendering native GTK4 widgets. Apps integrate properly with the Linux desktop and support Libadwaita for modern GNOME styling.
+> GTKX is a modern framework for building native Linux applications using React and GTK. It provides the full range of GTK4, GLib, and Node.js APIs, allowing you to create rich, performant desktop applications with the tools and libraries you already know.
 
 ## Core Packages
 
-- `@gtkx/react`: React reconciler, GTK/Adwaita components, render() function, portals
-- `@gtkx/ffi`: TypeScript FFI bindings, GTK/GLib/Adwaita type definitions and enums
-- `@gtkx/css`: CSS-in-JS styling (Emotion-based, adapted for GTK CSS syntax)
+- `@gtkx/react`: React reconciler, GTK/Adwaita intrinsic elements, render() function, createPortal() function
+- `@gtkx/ffi`: TypeScript FFI bindings, GLib type definitions and enums
+- `@gtkx/css`: CSS-in-JS styling (Powered by Emotion)
 - `@gtkx/testing`: Component testing utilities (Testing Library-style API for GTK)
-- `@gtkx/cli`: Project scaffolding (gtkx create), dev server with hot module replacement, and production bundling (gtkx build)
+- `@gtkx/cli`: Project scaffolding (gtkx create), dev server with HMR, and production bundling (gtkx build)
 - `@gtkx/mcp`: MCP server for AI-powered app interaction, widget tree inspection, automated testing
 
 ## Documentation
@@ -18,24 +16,27 @@ GTKX enables React developers to build Linux desktop applications using familiar
 - [Introduction](https://gtkx.dev/docs/introduction): What GTKX is, how it works, architecture overview, and target audience
 - [Getting Started](https://gtkx.dev/docs/getting-started): Create first app, project structure, basic component patterns
 - [CLI Reference](https://gtkx.dev/docs/cli): gtkx create, gtkx dev, gtkx build commands, npm scripts, programmatic API
-- [Styling](https://gtkx.dev/docs/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
-- [Event Controllers](https://gtkx.dev/docs/event-controllers): Event controllers as JSX children (GtkEventControllerMotion, GtkEventControllerKey, GtkEventControllerFocus, GtkGestureClick, GtkGestureDrag, GtkDragSource, GtkDropTarget, etc.)
-- [Async Operations](https://gtkx.dev/docs/async-operations): Async event handlers, loading states, file I/O, network requests
-- [Error Handling](https://gtkx.dev/docs/error-handling): Try/catch patterns, error states, toast notifications, form validation
-- [Widgets](https://gtkx.dev/docs/widgets): Declarative widget features — direct props for adjustments/marks/offsets on Scale/Calendar/LevelBar, x.TextTag for rich text, x.TextAnchor for embedded widgets, GtkShortcutController, x.GridChild, x.Toggle, x.AlertDialogResponse, x.ContainerSlot (unified container slots for HeaderBar packing, ToolbarView bars, ActionRow prefix/suffix, ExpanderRow rows/actions), x.Animation (spring/timed animations with opacity, translate, scale, rotate, skew), GtkSearchBar with onSearchModeChanged, AdwToggleGroup with onActiveChanged, GtkStack/AdwViewStack with onPageChanged, GtkTextView/GtkSourceView with granular callbacks (onTextInserted, onTextDeleted, onCanUndoChanged), custom drawing (onDraw), drag-and-drop, GValue factories
-- [Lists](https://gtkx.dev/docs/lists): GtkListView (flat and tree mode), GtkGridView, GtkColumnView, GtkDropDown with virtual scrolling
-- [Menus](https://gtkx.dev/docs/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu, keyboard shortcuts, GtkPopoverMenu
-- [Slots](https://gtkx.dev/docs/slots): Named child positions (x.Slot) for widgets like GtkPaned, GtkMenuButton; x.ContainerSlot for packing (HeaderBar, ActionBar), toolbar positioning (ToolbarView), and row slots (ActionRow, ExpanderRow)
-- [Portals and Dialogs](https://gtkx.dev/docs/portals): createPortal(), AdwDialog, AdwAlertDialog, GtkAboutDialog, FileDialog, ColorDialogButton, FontDialogButton, modal windows
-- [Adwaita](https://gtkx.dev/docs/adwaita): Libadwaita components — AdwToolbarView, AdwHeaderBar, AdwActionRow, AdwNavigationView, AdwAlertDialog with x.AlertDialogResponse, AdwToggleGroup with x.Toggle
-- [Animations](https://gtkx.dev/docs/animations): x.Animation component, spring and timed animations via transition discriminated union, animatable properties (opacity, translate, scale, rotate, skew), exit animations, callbacks
-- [Testing](https://gtkx.dev/docs/testing): render(), renderHook(), screen queries (role state filters: pressed/expanded/selected), userEvent, fireEvent, waitFor, queryByLabelText (mnemonic-widget lookup), Xvfb setup for CI
+- [Styling](https://gtkx.dev/docs/styling): css(), cx(), injectGlobal()
+- [Event Controllers](https://gtkx.dev/docs/event-controllers): Event controllers as JSX children
+- [Async Operations](https://gtkx.dev/docs/async-operations): Gio.AsyncResult mapped to promises
+- [Error Handling](https://gtkx.dev/docs/error-handling): GError mapped to JavaScript NativeError
+- [Widgets](https://gtkx.dev/docs/widgets): x.* widget overview and examples
+- [Lists](https://gtkx.dev/docs/lists): GtkListView, GtkGridView, GtkColumnView, GtkDropDown examples
+- [Menus](https://gtkx.dev/docs/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu examples
+- [Slots](https://gtkx.dev/docs/slots): Named child positions (x.Slot) for widgets like GtkPaned, GtkMenuButton; x.ContainerSlot for widgets like HeaderBar, ToolbarView
+- [Portals](https://gtkx.dev/docs/portals): createPortal()
+- [Adwaita](https://gtkx.dev/docs/adwaita): Adwaita x.* components examples
+- [Animations](https://gtkx.dev/docs/animations): x.Animation declarative animation component examples
+- [Testing](https://gtkx.dev/docs/testing): render(), renderHook(), screen queries and userEvent utilities, testing patterns
 - [MCP Integration](https://gtkx.dev/docs/mcp): AI assistant integration via Model Context Protocol, widget tree inspection, automated UI interaction
-- [Deploying](https://gtkx.dev/docs/deploying): Node.js Single Executable Application (SEA), Flatpak packaging
+- [Deploying](https://gtkx.dev/docs/deploying): Node.js Single Executable Application (SEA), Flatpak/Snap packaging
 
 ## API Reference
 
-- [React Package API](https://gtkx.dev/docs/api/react): Component props, render functions, hooks, and utilities
+- [React Package API](https://gtkx.dev/docs/api/react)
+- [FFI Package API](https://gtkx.dev/docs/api/ffi)
+- [CSS Package API](https://gtkx.dev/docs/api/css)
+- [Testing Package API](https://gtkx.dev/docs/api/testing)
 
 ## Optional
 

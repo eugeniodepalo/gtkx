@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as p from "@clack/prompts";
@@ -248,6 +248,13 @@ const installDependencies = async (
     }
 };
 
+const initializeGitRepo = (projectPath: string): void => {
+    const opts = { cwd: projectPath, stdio: "pipe" as const };
+    execFileSync("git", ["init"], opts);
+    execFileSync("git", ["add", "-A"], opts);
+    execFileSync("git", ["commit", "-m", "Initial commit"], opts);
+};
+
 const printNextSteps = (name: string, packageManager: PackageManager, testing: TestingOption): void => {
     const runCmd = getRunCommand(packageManager);
     const nextSteps = `cd ${name}\n${runCmd}`;
@@ -305,6 +312,15 @@ export const createApp = async (options: CreateOptions = {}): Promise<void> => {
 
     const devDeps = getDevDependencies(resolved.testing);
     await installDependencies(projectPath, resolved.name, resolved.packageManager, devDeps);
+
+    const gitSpinner = p.spinner();
+    gitSpinner.start("Initializing git repository...");
+    try {
+        initializeGitRepo(projectPath);
+        gitSpinner.stop("Git repository initialized!");
+    } catch {
+        gitSpinner.stop("Failed to initialize git repository");
+    }
 
     printNextSteps(resolved.name, resolved.packageManager, resolved.testing);
 };

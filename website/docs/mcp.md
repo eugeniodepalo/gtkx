@@ -8,19 +8,12 @@ The `@gtkx/mcp` package exposes your application's widget tree and provides tool
 
 ## Setup
 
-### Claude Desktop Configuration
+### Claude Code Configuration
 
-Add the MCP server to your Claude Desktop configuration (`~/.config/claude/claude_desktop_config.json`):
+Add the MCP server to your Claude Code:
 
-```json
-{
-  "mcpServers": {
-    "gtkx": {
-      "command": "npx",
-      "args": ["-y", "@gtkx/mcp@latest"]
-    }
-  }
-}
+```bash
+claude mcp add gtkx --scope user npx @gtkx/mcp@latest
 ```
 
 ### Running Your App
@@ -135,41 +128,21 @@ Widgets are serialized with the following properties:
 
 ```typescript
 interface SerializedWidget {
-  id: string;
-  type: string;
-  role: string;
-  name: string | null;
-  label: string | null;
-  text: string | null;
-  sensitive: boolean;
-  visible: boolean;
-  cssClasses: string[];
-  children: SerializedWidget[];
-  bounds?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
+    id: string;
+    type: string;
+    role: string;
+    name: string | null;
+    label: string | null;
+    text: string | null;
+    sensitive: boolean;
+    visible: boolean;
+    cssClasses: string[];
+    children: SerializedWidget[];
+    bounds?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
 }
 ```
-
-## Use Cases
-
-### AI-Assisted Testing
-
-Ask your AI assistant to interact with your running app:
-
-> "Click the 'Add Task' button, type 'Buy groceries' in the input field, then press Enter"
-
-### Debugging UI State
-
-Inspect the current widget tree:
-
-> "Show me the widget tree and find all buttons that are currently disabled"
-
-### Automated Workflows
-
-Create complex interaction sequences:
-
-> "Fill out the login form with test credentials and submit it"

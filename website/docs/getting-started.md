@@ -14,7 +14,7 @@ Before you begin, ensure you have:
 The fastest way to start is with the GTKX CLI:
 
 ```bash
-npx @gtkx/cli create my-app
+npx @gtkx/cli@latest create my-app
 ```
 
 The CLI will prompt you for:
@@ -23,6 +23,7 @@ The CLI will prompt you for:
 - **App ID** — reverse domain notation (e.g., `com.example.myapp`)
 - **Package manager** — pnpm (recommended), npm, or yarn
 - **Testing** — whether to include Vitest testing setup
+- **Claude Skills** — optional helper files for AI code generation
 
 After the prompts, the CLI creates your project and installs dependencies.
 
@@ -44,42 +45,25 @@ my-app/
 
 ### Key Files
 
-**`src/app.tsx`** — Your main React component:
+**`src/app.tsx`** — The default app component (just an example, can be removed or renamed):
 
 ```tsx
 import { useState } from "react";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-  GtkApplicationWindow,
-  GtkBox,
-  GtkButton,
-  GtkLabel,
-  quit,
-} from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
 
 export default function App() {
-  const [count, setCount] = useState(0);
+    const [count, setCount] = useState(0);
 
-  return (
-    <GtkApplicationWindow
-      title="My App"
-      defaultWidth={400}
-      defaultHeight={300}
-      onClose={quit}
-    >
-      <GtkBox
-        orientation={Gtk.Orientation.VERTICAL}
-        spacing={20}
-        marginTop={40}
-        marginStart={40}
-        marginEnd={40}
-      >
-        Welcome to GTKX!
-        <GtkLabel label={`Count: ${count}`} />
-        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
-      </GtkBox>
-    </GtkApplicationWindow>
-  );
+    return (
+        <GtkApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onClose={quit}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginTop={40} marginStart={40} marginEnd={40}>
+                Welcome to GTKX!
+                <GtkLabel label={`Count: ${count}`} />
+                <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+            </GtkBox>
+        </GtkApplicationWindow>
+    );
 }
 ```
 
@@ -97,9 +81,9 @@ render(<App />, pkg.gtkx.appId);
 
 ```json
 {
-  "gtkx": {
-    "appId": "com.example.myapp"
-  }
+    "gtkx": {
+        "appId": "com.example.myapp"
+    }
 }
 ```
 
@@ -136,53 +120,52 @@ Tests run in a real GTK environment using the `@gtkx/vitest` plugin, which autom
 
 ## Understanding the Basics
 
-### Components Map to Widgets
+### Intrinsic Elements
 
-GTKX components correspond to GTK widgets. The naming convention:
+Intrinsic elements are imported as constants from `@gtkx/react` and correspond to GTK widgets or event controllers. They accept props that map to GTK properties, signals, and child widgets.
 
-- GTK widgets: `GtkButton`, `GtkLabel`, `GtkBox`, `GtkEntry`
-- Adwaita widgets: `AdwHeaderBar`, `AdwViewStack`, `AdwActionRow`
-
-### Props Set Widget Properties
-
-Component props map to GTK widget properties:
+#### Widget Example
 
 ```tsx
-<GtkButton
-  label="Click me" // Sets the button label
-  sensitive={false} // Disables the button
-  cssClasses={["suggested-action"]} // Adds CSS classes
-/>
+import { GtkButton, GtkEntry } from "@gtkx/react";
+
+<GtkButton>Click me</GtkButton>
+<GtkEntry placeholderText="Type here" />
 ```
 
-### Callbacks Handle Signals
-
-GTK signals become React callbacks with an `on` prefix:
+#### Event Controller Example
 
 ```tsx
-<GtkButton
- onClicked={() => console.log("clicked")} // "clicked" signal
-/>
+import { GtkBox, GtkLabel, GtkEventControllerMotion, GtkEventControllerKey } from "@gtkx/react";
+import { useState } from "react";
 
-<GtkEntry
- onChanged={() => console.log("text changed")} // "changed" signal
-/>
-```
+const InteractiveBox = () => {
+    const [position, setPosition] = useState({ x: 0, y: 0 });
 
-### GTK Enums
-
-GTK enums come from the FFI package:
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-
-<GtkBox orientation={Gtk.Orientation.VERTICAL} />
-<GtkLabel halign={Gtk.Align.CENTER} />
+    return (
+        <GtkBox focusable>
+            <GtkEventControllerMotion
+                onEnter={(x, y) => console.log("Entered at", x, y)}
+                onMotion={(x, y) => setPosition({ x, y })}
+                onLeave={() => console.log("Left")}
+            />
+            <GtkEventControllerKey
+                onKeyPressed={(keyval) => {
+                    console.log("Key:", keyval);
+                    return false;
+                }}
+            />
+            <GtkLabel label={`Position: ${Math.round(position.x)}, ${Math.round(position.y)}`} />
+        </GtkBox>
+    );
+};
 ```
 
 ## What's Next?
 
+- [FFI Bindings](./ffi-bindings.md) — Using GTK and GLib bindings
+- [x.\* Elements](./x-elements.md) — Comprehensive list of available x.\* elements
 - [CLI Reference](./cli.md) — All CLI commands and options
 - [Styling](./styling.md) — CSS-in-JS for GTK
-- [Lists](./lists.md) — Building list interfaces
 - [Testing](./testing.md) — Testing your components
+- [Deploying](./deploying.md) — Packaging and distributing your app

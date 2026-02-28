@@ -36,7 +36,7 @@ function DemoSection() {
         <section className={styles.demo}>
             <div className={styles.demoInner}>
                 <h2 className={styles.sectionTitle}>See it in Action</h2>
-                <p className={styles.sectionSubtitle}>Build native GTK4 applications with familiar React patterns</p>
+                <p className={styles.sectionSubtitle}>Build native GTK4 applications with the full power of Node and React</p>
                 <div className={styles.demoVideo}>
                     <video autoPlay loop muted playsInline className={styles.video}>
                         <source src={demoUrl} type="video/mp4" />
@@ -53,16 +53,17 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const App = () => {
- const [count, setCount] = useState(0);
+    const [count, setCount] = useState(0);
 
- return (
- <GtkApplicationWindow title="Counter" defaultWidth={400} defaultHeight={300} onClose={quit}>
- <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} spacing={20}>
- <GtkLabel label={\`Count: \${count}\`} cssClasses={["title-1"]} />
- <GtkButton label="Increment" onClicked={() => setCount(c => c + 1)} cssClasses={["pill", "suggested-action"]} />
- </GtkBox>
- </GtkApplicationWindow>
- );
+    return (
+        <GtkApplicationWindow title="Counter" defaultWidth={400} defaultHeight={300} onClose={quit}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} spacing={20}>
+                Hello, GTKX!
+                <GtkLabel label={\`Count: \${count}\`} cssClasses={["title-1"]} />
+                <GtkButton label="Increment" onClicked={() => setCount(c => c + 1)} cssClasses={["suggested-action"]} />
+            </GtkBox>
+        </GtkApplicationWindow>
+    );
 };`;
 
     return (
@@ -70,7 +71,7 @@ const App = () => {
             <div className={styles.codeExampleInner}>
                 <h2 className={styles.sectionTitle}>Write React, Ship Native</h2>
                 <p className={styles.sectionSubtitle}>
-                    Use the React you know — components, hooks, state management — to build real GTK4 desktop apps
+                    Use the React you know — components, hooks, state management, full NPM ecosystem — to build performant Linux desktop apps.
                 </p>
                 <div className={styles.codeBlock}>
                     <CodeBlock language="tsx">{code}</CodeBlock>
@@ -105,7 +106,7 @@ function FeaturesSection() {
         },
         {
             title: "Native Performance",
-            description: "No Electron. No WebView. Direct GTK4 bindings via Rust/Neon for true native speed.",
+            description: "No Electron. No WebView. Runs on vanilla Node with the help of a Rust/Neon native module.",
             icon: "🚀",
         },
         {
@@ -114,13 +115,13 @@ function FeaturesSection() {
             icon: "🧩",
         },
         {
-            title: "Hot Module Replacement",
+            title: "HMR & Fast Refresh",
             description: "Instant feedback during development with Vite-powered HMR for rapid iteration.",
             icon: "⚡",
         },
         {
             title: "CSS-in-JS",
-            description: "Style your apps with familiar CSS-in-JS patterns that compile to GTK CSS.",
+            description: "Style your apps with familiar CSS-in-JS patterns.",
             icon: "🎨",
         },
         {
@@ -152,7 +153,7 @@ function CTASection() {
                 <h2 className={styles.ctaTitle}>Ready to build?</h2>
                 <p className={styles.ctaSubtitle}>Get started with GTKX in under a minute</p>
                 <pre className={styles.ctaCode}>
-                    <code>npx @gtkx/cli create my-app</code>
+                    <code>npx @gtkx/cli@latest create my-app</code>
                 </pre>
                 <div>
                     <Link className={styles.heroButtonPrimary} to="/docs/getting-started">

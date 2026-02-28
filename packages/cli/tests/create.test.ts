@@ -24,6 +24,7 @@ vi.mock("node:child_process", () => ({
         };
         return emitter;
     }),
+    execFileSync: vi.fn(),
 }));
 
 vi.mock("@clack/prompts", () => ({
@@ -468,6 +469,44 @@ describe("createApp", () => {
 
         expect(vol.existsSync(`${testDir}/test-app-yarn`)).toBe(true);
         expect(vol.existsSync(`${testDir}/test-app-yarn/package.json`)).toBe(true);
+    });
+
+    it("initializes a git repository", async () => {
+        const { execFileSync } = await import("node:child_process");
+        const { createApp } = await import("../src/create.js");
+        await createApp({
+            name: "test-app",
+            appId: "org.test.app",
+            packageManager: "pnpm",
+            testing: "none",
+            claudeSkills: false,
+        });
+
+        const projectPath = `${testDir}/test-app`;
+        const opts = { cwd: projectPath, stdio: "pipe" };
+
+        expect(execFileSync).toHaveBeenCalledWith("git", ["init"], opts);
+        expect(execFileSync).toHaveBeenCalledWith("git", ["add", "-A"], opts);
+        expect(execFileSync).toHaveBeenCalledWith("git", ["commit", "-m", "Initial commit"], opts);
+    });
+
+    it("handles git initialization failure gracefully", async () => {
+        const { execFileSync } = await import("node:child_process");
+        vi.mocked(execFileSync).mockImplementationOnce(() => {
+            throw new Error("git not found");
+        });
+
+        const { createApp } = await import("../src/create.js");
+        await createApp({
+            name: "test-app",
+            appId: "org.test.app",
+            packageManager: "pnpm",
+            testing: "none",
+            claudeSkills: false,
+        });
+
+        expect(vol.existsSync(`${testDir}/test-app`)).toBe(true);
+        expect(vol.existsSync(`${testDir}/test-app/package.json`)).toBe(true);
     });
 
     describe("error handling", () => {

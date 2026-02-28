@@ -4,7 +4,7 @@ import { themes as prismThemes } from "prism-react-renderer";
 
 const config: Config = {
     title: "GTKX",
-    tagline: "Build native Linux desktop apps with React and GTK4",
+    tagline: "Linux application development for the modern age powered by GTK4 and React",
     favicon: "/favicon.svg",
 
     url: "https://gtkx.dev",
