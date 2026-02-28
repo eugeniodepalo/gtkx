@@ -90,7 +90,7 @@ describe("useCounter", () => {
 });
 ```
 
-See the [renderHook API reference](./api/testing/functions/renderHook.md) for full details.
+See the [renderHook API reference](/api/testing/functions/renderHook.md) for full details.
 
 ## Querying by Widget State
 

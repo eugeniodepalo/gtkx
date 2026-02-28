@@ -38,7 +38,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: website/build
+          path: website/.vitepress/dist
 
   deploy:
     environment:

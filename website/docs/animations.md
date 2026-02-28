@@ -18,7 +18,7 @@ const FadeInButton = () => (
 
 The `initial` prop sets the starting values, `animate` sets the target values, and `animateOnMount` triggers the animation when the component first renders.
 
-You can animate properties like `opacity`, `translateX`, `translateY`, `scale`, `scaleX`, `scaleY`, `rotate`, `skewX`, and `skewY`. See the [AnimatableProperties API reference](./api/react/type-aliases/AnimatableProperties.md) for the full list.
+You can animate properties like `opacity`, `translateX`, `translateY`, `scale`, `scaleX`, `scaleY`, `rotate`, `skewX`, and `skewY`. See the [AnimatableProperties API reference](/api/react/type-aliases/AnimatableProperties.md) for the full list.
 
 ```tsx
 <x.Animation
@@ -56,7 +56,7 @@ const TimedExample = () => (
 );
 ```
 
-See the [TimedTransition API reference](./api/react/type-aliases/TimedTransition.md) for all available options.
+See the [TimedTransition API reference](/api/react/type-aliases/TimedTransition.md) for all available options.
 
 ## Spring Animations
 
@@ -82,7 +82,7 @@ const SpringExample = () => (
 );
 ```
 
-See the [SpringTransition API reference](./api/react/type-aliases/SpringTransition.md) for all available options.
+See the [SpringTransition API reference](/api/react/type-aliases/SpringTransition.md) for all available options.
 
 ## Animating on Prop Changes
 

@@ -127,10 +127,19 @@
         },
         "website#build": {
             "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
-            "outputs": ["build/**", ".docusaurus/**", "docs/api/**"],
+            "inputs": [
+                "package.json",
+                ".vitepress/**",
+                "guide/**",
+                "index.md",
+                "public/**",
+                "scripts/**",
+                "tsconfig.json"
+            ],
+            "outputs": [".vitepress/dist/**", "api/**"],
             "outputLogs": "new-only"
         },
-        "website#start": {
+        "website#dev": {
             "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
             "persistent": true,
             "cache": false
