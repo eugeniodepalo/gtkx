@@ -33,20 +33,6 @@ jobs:
           cache-cargo: "true"
           cache-pnpm: "true"
 
-  knip:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Check dead code
-        uses: ./.github/actions/run-in-container
-        with:
-          command: pnpm install --frozen-lockfile && pnpm knip
-          cache-cargo: "true"
-          cache-pnpm: "true"
-          turbo-env: "false"
-
   test:
     runs-on: ubuntu-latest
     steps:

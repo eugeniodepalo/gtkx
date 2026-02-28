@@ -9,10 +9,10 @@ use gtk4::glib::{
 };
 use neon::prelude::*;
 
+use crate::callback::{ClosureCallbackData, ClosureGuard};
 use crate::ffi::{CallbackValue, FfiStorage, FfiStorageKind};
 use crate::gtk_dispatch::GtkDispatcher;
 use crate::js_dispatch;
-use crate::trampoline::{ClosureCallbackData, ClosureGuard};
 use crate::types::Type;
 use crate::value::Callback;
 use crate::{ffi, value};
@@ -354,7 +354,7 @@ impl CallbackKind {
 
                 Self::build_callback_value(
                     closure,
-                    crate::trampoline::async_ready_trampoline as *mut c_void,
+                    crate::callback::async_ready_trampoline as *mut c_void,
                     None,
                     false,
                 )
@@ -376,7 +376,7 @@ impl CallbackKind {
 
                 Self::build_callback_value(
                     closure,
-                    crate::trampoline::destroy_trampoline as *mut c_void,
+                    crate::callback::destroy_trampoline as *mut c_void,
                     None,
                     true,
                 )
@@ -409,7 +409,7 @@ impl CallbackKind {
             }
 
             CallbackKind::TickCallback => {
-                let tick_data = crate::trampoline::TickCallbackData {
+                let tick_data = crate::callback::TickCallbackData {
                     channel: callback.channel.clone(),
                     js_func: callback.js_func.clone(),
                     arg_types: callback_type.arg_types.clone(),
@@ -417,13 +417,13 @@ impl CallbackKind {
 
                 Self::build_custom_data_value(
                     tick_data,
-                    crate::trampoline::TickCallbackData::tick_callback as *mut c_void,
-                    crate::trampoline::TickCallbackData::release as *mut c_void,
+                    crate::callback::TickCallbackData::tick_callback as *mut c_void,
+                    crate::callback::TickCallbackData::release as *mut c_void,
                 )
             }
 
             CallbackKind::PathIntersectionFunc => {
-                let data = crate::trampoline::PathIntersectionCallbackData {
+                let data = crate::callback::PathIntersectionCallbackData {
                     channel: callback.channel.clone(),
                     js_func: callback.js_func.clone(),
                     arg_types: callback_type.arg_types.clone(),
@@ -431,9 +431,9 @@ impl CallbackKind {
 
                 Self::build_custom_data_value(
                     data,
-                    crate::trampoline::PathIntersectionCallbackData::path_intersection_func
+                    crate::callback::PathIntersectionCallbackData::path_intersection_func
                         as *mut c_void,
-                    crate::trampoline::PathIntersectionCallbackData::release as *mut c_void,
+                    crate::callback::PathIntersectionCallbackData::release as *mut c_void,
                 )
             }
 
@@ -446,7 +446,7 @@ impl CallbackKind {
             }
 
             CallbackKind::ShapeRendererFunc => {
-                let data = crate::trampoline::ShapeRendererCallbackData {
+                let data = crate::callback::ShapeRendererCallbackData {
                     channel: callback.channel.clone(),
                     js_func: callback.js_func.clone(),
                     arg_types: callback_type.arg_types.clone(),
@@ -454,9 +454,8 @@ impl CallbackKind {
 
                 Self::build_custom_data_value(
                     data,
-                    crate::trampoline::ShapeRendererCallbackData::shape_renderer_func
-                        as *mut c_void,
-                    crate::trampoline::ShapeRendererCallbackData::release as *mut c_void,
+                    crate::callback::ShapeRendererCallbackData::shape_renderer_func as *mut c_void,
+                    crate::callback::ShapeRendererCallbackData::release as *mut c_void,
                 )
             }
         }

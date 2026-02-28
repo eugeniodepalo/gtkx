@@ -36,13 +36,13 @@
 //! - `ffi::FfiValue`: Low-level libffi argument representation
 
 pub mod arg;
+pub mod callback;
 pub mod ffi;
 pub mod gtk_dispatch;
 mod js_dispatch;
 pub mod managed;
 pub mod module;
 pub mod state;
-pub mod trampoline;
 pub mod types;
 pub mod value;
 pub mod wait_signal;

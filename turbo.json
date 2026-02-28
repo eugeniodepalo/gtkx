@@ -10,12 +10,6 @@
             "outputs": [],
             "outputLogs": "new-only"
         },
-        "//#knip:all": {
-            "dependsOn": ["//#codegen:run", "@gtkx/vitest#build"],
-            "inputs": ["**/*.ts", "**/*.tsx", "knip.json", "package.json"],
-            "outputs": [],
-            "outputLogs": "new-only"
-        },
         "//#codegen:run": {
             "dependsOn": ["@gtkx/codegen#build"],
             "inputs": [

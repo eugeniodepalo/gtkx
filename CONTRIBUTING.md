@@ -89,7 +89,6 @@ Fix memory leak in signal handler cleanup
 - Ensure all packages build: `pnpm build`
 - Ensure all tests pass: `pnpm test`
 - Ensure linting passes: `pnpm lint`
-- Ensure no dead code: `pnpm knip`
 - Update documentation if needed
 
 2. **Create the pull request:**

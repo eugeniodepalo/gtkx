@@ -11,7 +11,7 @@ use gtk4::glib;
 use gtk4::glib::translate::FromGlibPtrFull as _;
 use gtk4::glib::value::ToValue as _;
 
-use native::trampoline::{
+use native::callback::{
     ClosureCallbackData, ClosureGuard, async_ready_trampoline, destroy_trampoline,
 };
 

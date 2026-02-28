@@ -32,13 +32,13 @@ impl CallbackValue {
         let closure_nonnull =
             NonNull::new(closure_ptr).expect("closure pointer should not be null");
 
-        let callback_data = Box::new(crate::trampoline::ClosureCallbackData::new(closure_nonnull));
+        let callback_data = Box::new(crate::callback::ClosureCallbackData::new(closure_nonnull));
         let data_ptr = Box::into_raw(callback_data) as *mut c_void;
 
         FfiValue::Callback(CallbackValue {
             callback_fn,
             closure: FfiStorage::new(data_ptr, FfiStorageKind::Callback(data_ptr)),
-            destroy_ptr: Some(crate::trampoline::ClosureCallbackData::release as *mut c_void),
+            destroy_ptr: Some(crate::callback::ClosureCallbackData::release as *mut c_void),
             data_first: false,
         })
     }
