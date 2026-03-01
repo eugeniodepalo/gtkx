@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
@@ -35,24 +35,32 @@ rmSync(apiDir, { recursive: true, force: true });
 for (const pkg of packages) {
     const args = [
         "typedoc",
-        ...pkg.entryPoints.map((e) => `--entryPoints ${e}`),
-        `--tsconfig ${pkg.tsconfig}`,
-        `--out ${resolve(apiDir, pkg.name)}`,
-        "--plugin typedoc-plugin-markdown",
-        "--plugin typedoc-vitepress-theme",
-        "--readme none",
-        "--indexFormat table",
-        "--parametersFormat table",
-        "--enumMembersFormat table",
-        "--typeDeclarationFormat table",
-        '--groupOrder "Functions,Variables,Interfaces,*"',
-        pkg.excludeInternal ? "--excludeInternal" : "",
-    ]
-        .filter(Boolean)
-        .join(" ");
+        ...pkg.entryPoints.flatMap((e) => ["--entryPoints", e]),
+        "--tsconfig",
+        pkg.tsconfig,
+        "--out",
+        resolve(apiDir, pkg.name),
+        "--plugin",
+        "typedoc-plugin-markdown",
+        "--plugin",
+        "typedoc-vitepress-theme",
+        "--readme",
+        "none",
+        "--indexFormat",
+        "table",
+        "--parametersFormat",
+        "table",
+        "--enumMembersFormat",
+        "table",
+        "--typeDeclarationFormat",
+        "table",
+        "--groupOrder",
+        "Functions,Variables,Interfaces,*",
+        ...(pkg.excludeInternal ? ["--excludeInternal"] : []),
+    ].filter(Boolean);
 
     console.log(`Generating API docs for @gtkx/${pkg.name}...`);
-    execSync(`npx ${args}`, { cwd: root, stdio: "inherit" });
+    execFileSync("npx", args, { cwd: root, stdio: "inherit" });
 }
 
 function escapeJsxTags(dir) {
