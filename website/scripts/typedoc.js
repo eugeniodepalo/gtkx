@@ -57,7 +57,7 @@ for (const pkg of packages) {
         "--groupOrder",
         "Functions,Variables,Interfaces,*",
         ...(pkg.excludeInternal ? ["--excludeInternal"] : []),
-    ].filter(Boolean);
+    ];
 
     console.log(`Generating API docs for @gtkx/${pkg.name}...`);
     execFileSync("npx", args, { cwd: root, stdio: "inherit" });
