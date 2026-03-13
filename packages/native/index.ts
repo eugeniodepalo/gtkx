@@ -182,4 +182,4 @@ export function unfreeze(): void {
     native.unfreeze();
 }
 
-export type { NativeHandle, Ref, Arg, Type, CallbackType };
+export type { Arg, CallbackType, NativeHandle, Ref, Type };
