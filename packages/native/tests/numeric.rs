@@ -40,44 +40,6 @@ fn integer_dispatch_read_slice_signed() {
 }
 
 #[test]
-fn integer_kind_from_size_and_sign() {
-    assert!(matches!(
-        IntegerKind::from_size_and_sign(8, true),
-        Some(IntegerKind::U8)
-    ));
-    assert!(matches!(
-        IntegerKind::from_size_and_sign(8, false),
-        Some(IntegerKind::I8)
-    ));
-    assert!(matches!(
-        IntegerKind::from_size_and_sign(16, true),
-        Some(IntegerKind::U16)
-    ));
-    assert!(matches!(
-        IntegerKind::from_size_and_sign(16, false),
-        Some(IntegerKind::I16)
-    ));
-    assert!(matches!(
-        IntegerKind::from_size_and_sign(32, true),
-        Some(IntegerKind::U32)
-    ));
-    assert!(matches!(
-        IntegerKind::from_size_and_sign(32, false),
-        Some(IntegerKind::I32)
-    ));
-    assert!(matches!(
-        IntegerKind::from_size_and_sign(64, true),
-        Some(IntegerKind::U64)
-    ));
-    assert!(matches!(
-        IntegerKind::from_size_and_sign(64, false),
-        Some(IntegerKind::I64)
-    ));
-    assert!(IntegerKind::from_size_and_sign(128, true).is_none());
-    assert!(IntegerKind::from_size_and_sign(1, false).is_none());
-}
-
-#[test]
 fn integer_kind_is_unsigned() {
     assert!(IntegerKind::U8.is_unsigned());
     assert!(IntegerKind::U16.is_unsigned());
@@ -175,12 +137,4 @@ fn float_dispatch_to_ffi_value_f64() {
     } else {
         panic!("Expected FfiValue::F64");
     }
-}
-
-#[test]
-fn float_kind_from_size() {
-    assert!(matches!(FloatKind::from_size(32), Some(FloatKind::F32)));
-    assert!(matches!(FloatKind::from_size(64), Some(FloatKind::F64)));
-    assert!(FloatKind::from_size(16).is_none());
-    assert!(FloatKind::from_size(128).is_none());
 }

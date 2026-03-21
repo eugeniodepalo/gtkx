@@ -6,8 +6,8 @@ use gtk4::glib;
 
 use native::ffi::{FfiValue, HashTableStorage};
 use native::types::{
-    FloatKind, HashTableEntryEncoder, HashTableType, IntegerKind, IntegerType, Ownership,
-    StringType, StructType, Type,
+    FloatKind, HashTableEntryEncoder, HashTableType, IntegerKind, Ownership, StringType,
+    StructType, Type,
 };
 use native::value::Value;
 
@@ -27,7 +27,7 @@ fn encoder_from_type_float() {
 
 #[test]
 fn encoder_from_type_integer() {
-    let ty = Type::Integer(IntegerType::from(IntegerKind::I32));
+    let ty = Type::Integer(IntegerKind::I32);
     let encoder = HashTableEntryEncoder::from_type(&ty);
     assert_eq!(encoder, Some(HashTableEntryEncoder::Integer));
 }
@@ -278,7 +278,7 @@ fn hashtable_encode_decode_booleans() {
 fn hashtable_encode_decode_floats() {
     common::ensure_gtk_init();
 
-    let key_type = Type::Integer(IntegerType::from(IntegerKind::I32));
+    let key_type = Type::Integer(IntegerKind::I32);
     let value_type = Type::Float(FloatKind::F64);
     let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
 
@@ -357,7 +357,7 @@ fn hashtable_encode_decode_float_keys() {
     common::ensure_gtk_init();
 
     let key_type = Type::Float(FloatKind::F64);
-    let value_type = Type::Integer(IntegerType::from(IntegerKind::I32));
+    let value_type = Type::Integer(IntegerKind::I32);
     let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
 
     let input = Value::Array(vec![
@@ -421,8 +421,8 @@ fn hashtable_null_optional() {
 fn hashtable_borrowed_does_not_free() {
     common::ensure_gtk_init();
 
-    let key_type = Type::Integer(IntegerType::from(IntegerKind::I32));
-    let value_type = Type::Integer(IntegerType::from(IntegerKind::I32));
+    let key_type = Type::Integer(IntegerKind::I32);
+    let value_type = Type::Integer(IntegerKind::I32);
     let ht_type = HashTableType::new(key_type, value_type, Ownership::Borrowed);
 
     let hash_table = unsafe {
@@ -477,7 +477,7 @@ fn float_memory_properly_freed_on_drop() {
 fn boolean_roundtrip_preserves_values() {
     common::ensure_gtk_init();
 
-    let key_type = Type::Integer(IntegerType::from(IntegerKind::I32));
+    let key_type = Type::Integer(IntegerKind::I32);
     let value_type = Type::Boolean;
     let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
 

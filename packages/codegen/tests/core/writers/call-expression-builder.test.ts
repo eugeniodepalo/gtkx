@@ -65,8 +65,8 @@ describe("CallExpressionBuilder", () => {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "gtk_box_new",
                 args: [
-                    { type: { type: "int", size: 32, unsigned: false }, value: "orientation" },
-                    { type: { type: "int", size: 32, unsigned: false }, value: "spacing" },
+                    { type: { type: "int32" }, value: "orientation" },
+                    { type: { type: "int32" }, value: "spacing" },
                 ],
                 returnType: { type: "gobject", ownership: "full" },
             });
@@ -81,7 +81,7 @@ describe("CallExpressionBuilder", () => {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "gtk_button_set_label",
                 args: [{ type: { type: "string", ownership: "borrowed" }, value: "label" }],
-                returnType: { type: "undefined" },
+                returnType: { type: "void" },
                 selfArg: {
                     type: { type: "gobject", ownership: "borrowed" },
                     value: "this.handle",
@@ -97,8 +97,8 @@ describe("CallExpressionBuilder", () => {
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "some_method",
-                args: [{ type: { type: "int", size: 32, unsigned: false }, value: "arg1" }],
-                returnType: { type: "undefined" },
+                args: [{ type: { type: "int32" }, value: "arg1" }],
+                returnType: { type: "void" },
                 selfArg: {
                     type: { type: "gobject", ownership: "borrowed" },
                     value: "self",
@@ -116,7 +116,7 @@ describe("CallExpressionBuilder", () => {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "gtk_widget_set_name",
                 args: [{ type: { type: "string", ownership: "borrowed" }, value: "name", optional: true }],
-                returnType: { type: "undefined" },
+                returnType: { type: "void" },
                 selfArg: {
                     type: { type: "gobject", ownership: "borrowed" },
                     value: "this.handle",
@@ -132,14 +132,14 @@ describe("CallExpressionBuilder", () => {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "gtk_widget_show",
                 args: [],
-                returnType: { type: "undefined" },
+                returnType: { type: "void" },
                 selfArg: {
                     type: { type: "gobject", ownership: "borrowed" },
                     value: "this.handle",
                 },
             });
 
-            expect(output).toContain('"undefined"');
+            expect(output).toContain('"void"');
         });
 
         it("builds call expression with boxed return type", () => {
@@ -182,7 +182,7 @@ describe("CallExpressionBuilder", () => {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "gtk_init",
                 args: [],
-                returnType: { type: "undefined" },
+                returnType: { type: "void" },
             });
 
             expect(output).toMatch(/\[\s*\]/);
@@ -200,7 +200,7 @@ describe("CallExpressionBuilder", () => {
                         value: "color",
                     },
                 ],
-                returnType: { type: "undefined" },
+                returnType: { type: "void" },
             });
 
             expect(output).toContain('"libgtk-4.so.1"');
@@ -213,7 +213,7 @@ describe("CallExpressionBuilder", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
                 ts: "number",
-                ffi: { type: "int", size: 32, unsigned: false },
+                ffi: { type: "int32" },
             };
 
             const result = builder.buildValueExpression("count", mappedType);
@@ -383,7 +383,7 @@ describe("CallExpressionBuilder", () => {
                         value: "color",
                     },
                 ],
-                returnType: { type: "undefined" },
+                returnType: { type: "void" },
             });
 
             expect(output).toContain('"libgdk-4.so.1"');
@@ -400,7 +400,7 @@ describe("CallExpressionBuilder", () => {
                 cIdentifier: "complex_function",
                 args: [
                     { type: { type: "string", ownership: "borrowed" }, value: "name" },
-                    { type: { type: "int", size: 32, unsigned: false }, value: "count" },
+                    { type: { type: "int32" }, value: "count" },
                     { type: { type: "gobject", ownership: "borrowed" }, value: "widget" },
                     { type: { type: "boolean" }, value: "enabled" },
                     {
@@ -422,7 +422,7 @@ describe("CallExpressionBuilder", () => {
             expect(output).toContain("value: enabled");
             expect(output).toContain("value: color");
             expect(output).toContain('"string"');
-            expect(output).toContain('"int"');
+            expect(output).toContain('"int32"');
             expect(output).toContain('"gobject"');
             expect(output).toContain('"boolean"');
             expect(output).toContain('"boxed"');
@@ -436,10 +436,10 @@ describe("CallExpressionBuilder", () => {
                 args: [
                     { type: { type: "string", ownership: "borrowed" }, value: "required1" },
                     { type: { type: "string", ownership: "borrowed" }, value: "optional1", optional: true },
-                    { type: { type: "int", size: 32, unsigned: false }, value: "required2" },
-                    { type: { type: "int", size: 32, unsigned: false }, value: "optional2", optional: true },
+                    { type: { type: "int32" }, value: "required2" },
+                    { type: { type: "int32" }, value: "optional2", optional: true },
                 ],
-                returnType: { type: "undefined" },
+                returnType: { type: "void" },
             });
 
             const optionalCount = (output.match(/optional: true/g) || []).length;

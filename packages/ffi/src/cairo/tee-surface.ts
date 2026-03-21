@@ -24,7 +24,7 @@ export class TeeSurface extends Surface {
                 { type: SURFACE_T_NONE, value: this.handle },
                 { type: SURFACE_T_NONE, value: target.handle },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 
@@ -36,7 +36,7 @@ export class TeeSurface extends Surface {
                 { type: SURFACE_T_NONE, value: this.handle },
                 { type: SURFACE_T_NONE, value: target.handle },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 }

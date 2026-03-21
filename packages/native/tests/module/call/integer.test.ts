@@ -13,13 +13,13 @@ import {
     INT16,
     INT32,
     INT64,
-    NULL,
+    POINTER,
     STRING,
     UINT8,
     UINT16,
     UINT32,
     UINT64,
-    UNDEFINED,
+    VOID,
 } from "../utils.js";
 
 describe("call - integer types", () => {
@@ -34,7 +34,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT8, value: 1 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], INT8);
@@ -52,7 +52,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT8, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], INT8);
@@ -72,7 +72,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: UINT8, value: 1 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], UINT8);
@@ -92,7 +92,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT16, value: 100 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -115,7 +115,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT16, value: -1 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -140,7 +140,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: UINT16, value: 500 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -165,7 +165,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 42 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -188,7 +188,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: -1 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -211,7 +211,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -234,7 +234,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 100000 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -298,7 +298,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: UINT32, value: 200 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -321,7 +321,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: UINT32, value: 10 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const spacing = call(GTK_LIB, "gtk_box_get_spacing", [{ type: GOBJECT_BORROWED, value: box }], UINT32);
@@ -341,11 +341,11 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
                     {
-                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
+                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
                         value: () => {},
                     },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                     { type: INT32, value: 0 },
                 ],
                 INT64,
@@ -367,11 +367,11 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
                     {
-                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
+                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
                         value: () => {},
                     },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                     { type: INT32, value: 0 },
                 ],
                 UINT64,
@@ -391,11 +391,11 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
                     {
-                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
+                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
                         value: () => {},
                     },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                     { type: INT32, value: 0 },
                 ],
                 UINT64,
@@ -408,7 +408,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: button },
                     { type: UINT64, value: handlerId },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const isConnected = call(
@@ -436,7 +436,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 50 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -464,7 +464,7 @@ describe("call - integer types", () => {
                     { type: INT32, value: 1 },
                     { type: INT32, value: 1 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const firstChild = call(
@@ -487,7 +487,7 @@ describe("call - integer types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: INT32, value: 15 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const spacing = call(GTK_LIB, "gtk_box_get_spacing", [{ type: GOBJECT_BORROWED, value: box }], INT32);

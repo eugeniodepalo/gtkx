@@ -12,13 +12,16 @@ import { normalizeClassName, toCamelCase, toPascalCase, toValidIdentifier } from
 import {
     arrayType,
     boxedType,
+    enumType,
     FFI_INT32,
     FFI_POINTER,
     FFI_UINT32,
     FFI_VOID,
     type FfiTypeDescriptor,
+    flagsType,
     fundamentalType,
     gArrayType,
+    getFfiTypeByteSize,
     gobjectType,
     hashTableType,
     type ImportType,
@@ -544,37 +547,25 @@ export class FfiMapper {
         });
 
         switch (resolved.kind) {
-            case "enum":
+            case "enum": {
+                const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
                 return {
                     ts: qualifiedName,
-                    ffi: resolved.glibGetType
-                        ? {
-                              type: "int",
-                              size: 32,
-                              unsigned: false,
-                              library: this.repo.getNamespace(resolved.namespace)?.sharedLibrary,
-                              getTypeFn: resolved.glibGetType,
-                          }
-                        : FFI_INT32,
+                    ffi: resolved.glibGetType && sharedLib ? enumType(sharedLib, resolved.glibGetType) : FFI_INT32,
                     imports,
                     kind: "enum",
                 };
+            }
 
-            case "flags":
+            case "flags": {
+                const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
                 return {
                     ts: qualifiedName,
-                    ffi: resolved.glibGetType
-                        ? {
-                              type: "int",
-                              size: 32,
-                              unsigned: true,
-                              library: this.repo.getNamespace(resolved.namespace)?.sharedLibrary,
-                              getTypeFn: resolved.glibGetType,
-                          }
-                        : FFI_UINT32,
+                    ffi: resolved.glibGetType && sharedLib ? flagsType(sharedLib, resolved.glibGetType) : FFI_UINT32,
                     imports,
                     kind: "flags",
                 };
+            }
 
             case "record": {
                 const transferFull = this.computeTransferFull(isReturn, transferOwnership);
@@ -737,8 +728,8 @@ export class FfiMapper {
     private getElementSize(type: GirType): number {
         if (type.isNumeric()) {
             const primitive = PRIMITIVE_TYPE_MAP.get(type.name as string);
-            if (primitive?.ffi.size) {
-                return primitive.ffi.size / 8;
+            if (primitive) {
+                return getFfiTypeByteSize(primitive.ffi.type);
             }
         }
         return 8;

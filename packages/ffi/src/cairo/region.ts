@@ -97,7 +97,7 @@ Region.prototype.getExtents = function (): RectangleInt {
             { type: REGION_T_NONE, value: this.handle },
             { type: RECT_INT_T, value: rect.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return rect;
 };
@@ -116,7 +116,7 @@ Region.prototype.getRectangle = function (nth: number): RectangleInt {
             { type: INT_TYPE, value: nth },
             { type: RECT_INT_T, value: rect.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return rect;
 };
@@ -173,7 +173,7 @@ Region.prototype.translate = function (dx: number, dy: number): void {
             { type: INT_TYPE, value: dx },
             { type: INT_TYPE, value: dy },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 

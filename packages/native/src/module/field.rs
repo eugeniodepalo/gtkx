@@ -33,7 +33,7 @@ use neon::prelude::*;
 use crate::{
     gtk_dispatch,
     managed::{Boxed, Fundamental, NativeHandle, NativeValue},
-    types::Type,
+    types::{IntegerKind, Type},
     value::Value,
 };
 
@@ -63,8 +63,16 @@ impl ReadRequest {
         let field_ptr = unsafe { (base_ptr as *const u8).add(self.offset) };
 
         match self.field_type {
-            Type::Integer(int_type) => {
-                let number = int_type.kind.read_ptr(field_ptr);
+            Type::Integer(int_kind) => {
+                let number = int_kind.read_ptr(field_ptr);
+                Ok(Value::Number(number))
+            }
+            Type::Enum(_) => {
+                let number = IntegerKind::I32.read_ptr(field_ptr);
+                Ok(Value::Number(number))
+            }
+            Type::Flags(_) => {
+                let number = IntegerKind::U32.read_ptr(field_ptr);
                 Ok(Value::Number(number))
             }
             Type::Float(float_kind) => {
@@ -190,8 +198,14 @@ impl WriteRequest {
         let field_ptr = unsafe { (base_ptr as *mut u8).add(self.offset) };
 
         match (&self.field_type, &self.value) {
-            (Type::Integer(int_type), Value::Number(n)) => {
-                int_type.kind.write_ptr(field_ptr, *n);
+            (Type::Integer(int_kind), Value::Number(n)) => {
+                int_kind.write_ptr(field_ptr, *n);
+            }
+            (Type::Enum(_), Value::Number(n)) => {
+                IntegerKind::I32.write_ptr(field_ptr, *n);
+            }
+            (Type::Flags(_), Value::Number(n)) => {
+                IntegerKind::U32.write_ptr(field_ptr, *n);
             }
             (Type::Float(float_kind), Value::Number(n)) => {
                 float_kind.write_ptr(field_ptr, *n);

@@ -45,49 +45,49 @@ describe("FfiMapper", () => {
                 expect(result.ffi).toEqual(FFI_UINT32);
             });
 
-            it("maps gint64 to number with int/64", () => {
+            it("maps gint64 to number with int64", () => {
                 const { mapper } = createTestSetup();
                 const type = createNormalizedType({ name: "gint64" });
                 const result = mapper.mapType(type);
 
                 expect(result.ts).toBe("number");
-                expect(result.ffi).toEqual({ type: "int", size: 64, unsigned: false });
+                expect(result.ffi).toEqual({ type: "int64" });
             });
 
-            it("maps guint64 to number with int/64 unsigned", () => {
+            it("maps guint64 to number with uint64", () => {
                 const { mapper } = createTestSetup();
                 const type = createNormalizedType({ name: "guint64" });
                 const result = mapper.mapType(type);
 
                 expect(result.ts).toBe("number");
-                expect(result.ffi).toEqual({ type: "int", size: 64, unsigned: true });
+                expect(result.ffi).toEqual({ type: "uint64" });
             });
 
-            it("maps guint8 to number with int/8 unsigned", () => {
+            it("maps guint8 to number with uint8", () => {
                 const { mapper } = createTestSetup();
                 const type = createNormalizedType({ name: "guint8" });
                 const result = mapper.mapType(type);
 
                 expect(result.ts).toBe("number");
-                expect(result.ffi).toEqual({ type: "int", size: 8, unsigned: true });
+                expect(result.ffi).toEqual({ type: "uint8" });
             });
 
-            it("maps gfloat to number with float/32", () => {
+            it("maps gfloat to number with float32", () => {
                 const { mapper } = createTestSetup();
                 const type = createNormalizedType({ name: "gfloat" });
                 const result = mapper.mapType(type);
 
                 expect(result.ts).toBe("number");
-                expect(result.ffi).toEqual({ type: "float", size: 32 });
+                expect(result.ffi).toEqual({ type: "float32" });
             });
 
-            it("maps gdouble to number with float/64", () => {
+            it("maps gdouble to number with float64", () => {
                 const { mapper } = createTestSetup();
                 const type = createNormalizedType({ name: "gdouble" });
                 const result = mapper.mapType(type);
 
                 expect(result.ts).toBe("number");
-                expect(result.ffi).toEqual({ type: "float", size: 64 });
+                expect(result.ffi).toEqual({ type: "float64" });
             });
 
             it("maps gboolean to boolean", () => {
@@ -1068,7 +1068,7 @@ describe("FfiMapper - Extended Coverage", () => {
             expect(result.ts).toBe("Ref<number>");
             expect(result.ffi.type).toBe("ref");
             if (result.ffi.type === "ref") {
-                expect(result.ffi.innerType).toEqual({ type: "float", size: 32 });
+                expect(result.ffi.innerType).toEqual({ type: "float32" });
             }
         });
 
@@ -1413,8 +1413,7 @@ describe("FfiMapper - Extended Coverage", () => {
             expect(result.ffi.kind).toBe("fixed");
             expect(result.ffi.fixedSize).toBe(16);
             if (result.ffi.itemType) {
-                expect(result.ffi.itemType.type).toBe("float");
-                expect(result.ffi.itemType.size).toBe(64);
+                expect(result.ffi.itemType.type).toBe("float64");
             }
         });
 
@@ -1507,7 +1506,7 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ts).toBe("Map<number, string>");
             if (result.ffi.keyType) {
-                expect(result.ffi.keyType.type).toBe("int");
+                expect(result.ffi.keyType.type).toBe("int32");
             }
         });
 
@@ -1577,8 +1576,7 @@ describe("FfiMapper - Extended Coverage", () => {
             expect(result.ts).toBe("Map<string, number>");
             expect(result.ffi.type).toBe("hashtable");
             if (result.ffi.valueType) {
-                expect(result.ffi.valueType.type).toBe("float");
-                expect(result.ffi.valueType.size).toBe(64);
+                expect(result.ffi.valueType.type).toBe("float64");
             }
         });
 
@@ -1595,8 +1593,7 @@ describe("FfiMapper - Extended Coverage", () => {
             expect(result.ts).toBe("Map<number, number>");
             expect(result.ffi.type).toBe("hashtable");
             if (result.ffi.keyType) {
-                expect(result.ffi.keyType.type).toBe("float");
-                expect(result.ffi.keyType.size).toBe(32);
+                expect(result.ffi.keyType.type).toBe("float32");
             }
         });
     });
@@ -1888,7 +1885,6 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ffi.library).toBe("libgtk-4.so.1");
             expect(result.ffi.getTypeFn).toBe("gtk_state_flags_get_type");
-            expect(result.ffi.unsigned).toBe(true);
         });
     });
 });

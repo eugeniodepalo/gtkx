@@ -9,7 +9,7 @@ import {
     STRING,
     STRING_ARRAY,
     startMemoryMeasurement,
-    UNDEFINED,
+    VOID,
 } from "../utils.js";
 
 describe("call - array types", () => {
@@ -24,7 +24,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["class-a", "class-b", "class-c"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -47,7 +47,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["foo", "bar"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const classes = call(
@@ -72,7 +72,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: [] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -95,7 +95,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["single"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -118,7 +118,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["class-世界", "class-🎉"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -142,7 +142,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "my-class" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -165,7 +165,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["keep", "remove"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             call(
@@ -175,7 +175,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "remove" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -200,7 +200,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: classes },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -227,7 +227,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["owned-class"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -254,7 +254,7 @@ describe("call - array types", () => {
                         { type: GOBJECT_BORROWED, value: label },
                         { type: STRING_ARRAY, value: [`class-${i}-a`, `class-${i}-b`] },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }
 
@@ -284,7 +284,7 @@ describe("call - array types", () => {
                         { type: GOBJECT_BORROWED, value: label },
                         { type: STRING_ARRAY, value: Array.from({ length: 10 }, (_, j) => `class-${i}-${j}`) },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
 
                 call(GTK_LIB, "gtk_widget_get_css_classes", [{ type: GOBJECT_BORROWED, value: label }], STRING_ARRAY);
@@ -305,7 +305,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["test-class"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             for (let i = 0; i < 1000; i++) {
@@ -328,7 +328,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["a", "b", "c"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -351,7 +351,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["old-1", "old-2"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             call(
@@ -361,7 +361,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["new-1", "new-2", "new-3"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -388,7 +388,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["dup", "dup", "unique"] },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -412,7 +412,7 @@ describe("call - array types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "valid-class" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(

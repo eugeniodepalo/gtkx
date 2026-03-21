@@ -30,7 +30,7 @@ export class ScriptDevice extends Device {
                 { type: DEVICE_T, value: this.handle },
                 { type: INT_TYPE, value: mode },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 
@@ -49,7 +49,7 @@ export class ScriptDevice extends Device {
                 { type: { type: "string", ownership: "full" }, value: comment },
                 { type: INT_TYPE, value: utf8.length },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 

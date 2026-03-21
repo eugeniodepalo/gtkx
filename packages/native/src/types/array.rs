@@ -167,9 +167,7 @@ impl ArrayType {
                     }
                 }
 
-                Ok(ffi::FfiValue::Storage(
-                    int_type.kind.to_ffi_storage(&values),
-                ))
+                Ok(ffi::FfiValue::Storage(int_type.to_ffi_storage(&values)))
             }
             Type::Float(ref float_kind) => {
                 let mut values = Vec::new();
@@ -400,7 +398,7 @@ impl ArrayType {
 
                     return match &*self.item_type {
                         Type::Integer(int_type) => {
-                            Self::decode_sized_byte_array(*ptr, length, &int_type.kind)
+                            Self::decode_sized_byte_array(*ptr, length, int_type)
                         }
                         Type::GObject(_)
                         | Type::Boxed(_)
@@ -422,7 +420,7 @@ impl ArrayType {
 
                     return match &*self.item_type {
                         Type::Integer(int_type) => {
-                            Self::decode_sized_byte_array(*ptr, *size, &int_type.kind)
+                            Self::decode_sized_byte_array(*ptr, *size, int_type)
                         }
                         Type::GObject(_)
                         | Type::Boxed(_)
@@ -492,7 +490,7 @@ impl ArrayType {
     fn decode_storage(&self, storage: &FfiStorage) -> anyhow::Result<value::Value> {
         let values = match &*self.item_type {
             Type::Integer(int_type) => {
-                let f64_vec = int_type.kind.vec_to_f64(storage)?;
+                let f64_vec = int_type.vec_to_f64(storage)?;
                 f64_vec.into_iter().map(value::Value::Number).collect()
             }
             Type::Float(float_kind) => match float_kind {
@@ -589,12 +587,12 @@ impl ArrayType {
         {
             match ffi_arg {
                 ffi::FfiValue::Storage(storage) => {
-                    let size = int_type.kind.read_ptr(storage.ptr() as *const u8);
+                    let size = int_type.read_ptr(storage.ptr() as *const u8);
                     return Ok(size as usize);
                 }
                 ffi::FfiValue::Ptr(ptr) => {
                     if !ptr.is_null() {
-                        let size = int_type.kind.read_ptr(*ptr as *const u8);
+                        let size = int_type.read_ptr(*ptr as *const u8);
                         return Ok(size as usize);
                     }
                 }

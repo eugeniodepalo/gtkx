@@ -107,7 +107,7 @@ describe("InternalGenerator", () => {
                         camelName: "orientation",
                         isWritable: true,
                         isConstructOnly: true,
-                        ffiType: { type: "int", size: 32, unsigned: false },
+                        ffiType: { type: "int32" },
                     }),
                 ],
             });

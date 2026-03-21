@@ -58,7 +58,7 @@ pub use callback::CallbackType;
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
 pub use hashtable::{HashTableEntryEncoder, HashTableType};
-pub use numeric::{FloatKind, IntegerKind, IntegerPrimitive, IntegerType, NumericPrimitive};
+pub use numeric::{FloatKind, IntegerKind, IntegerPrimitive, NumericPrimitive, TaggedType};
 pub use ref_type::RefType;
 pub use string::StringType;
 pub use trampoline::TrampolineType;
@@ -132,11 +132,12 @@ impl std::str::FromStr for Ownership {
 
 #[derive(Debug, Clone)]
 pub enum Type {
-    Integer(IntegerType),
+    Integer(IntegerKind),
     Float(FloatKind),
+    Enum(TaggedType),
+    Flags(TaggedType),
     String(StringType),
-    Null,
-    Undefined,
+    Void,
     Boolean,
     GObject(GObjectType),
     Boxed(BoxedType),
@@ -152,11 +153,12 @@ pub enum Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Integer(t) => write!(f, "Integer({:?})", t.kind),
+            Type::Integer(kind) => write!(f, "Integer({:?})", kind),
             Type::Float(kind) => write!(f, "Float({:?})", kind),
+            Type::Enum(t) => write!(f, "Enum({})", t.get_type_fn),
+            Type::Flags(t) => write!(f, "Flags({})", t.get_type_fn),
             Type::String(_) => write!(f, "String"),
-            Type::Null => write!(f, "Null"),
-            Type::Undefined => write!(f, "Undefined"),
+            Type::Void => write!(f, "Void"),
             Type::Boolean => write!(f, "Boolean"),
             Type::GObject(_) => write!(f, "GObject"),
             Type::Boxed(t) => write!(f, "Boxed({})", t.type_name),
@@ -182,12 +184,21 @@ impl Type {
             .value(cx);
 
         match ty.as_str() {
-            "int" => Ok(Type::Integer(IntegerType::from_js_value(cx, value)?)),
-            "float" => Ok(Type::Float(FloatKind::from_js_value(cx, value)?)),
+            "int8" => Ok(Type::Integer(IntegerKind::I8)),
+            "uint8" => Ok(Type::Integer(IntegerKind::U8)),
+            "int16" => Ok(Type::Integer(IntegerKind::I16)),
+            "uint16" => Ok(Type::Integer(IntegerKind::U16)),
+            "int32" => Ok(Type::Integer(IntegerKind::I32)),
+            "uint32" => Ok(Type::Integer(IntegerKind::U32)),
+            "int64" => Ok(Type::Integer(IntegerKind::I64)),
+            "uint64" => Ok(Type::Integer(IntegerKind::U64)),
+            "float32" => Ok(Type::Float(FloatKind::F32)),
+            "float64" => Ok(Type::Float(FloatKind::F64)),
+            "enum" => Ok(Type::Enum(TaggedType::from_js_value(cx, value)?)),
+            "flags" => Ok(Type::Flags(TaggedType::from_js_value(cx, value)?)),
             "string" => Ok(Type::String(StringType::from_js_value(cx, value)?)),
             "boolean" => Ok(Type::Boolean),
-            "null" => Ok(Type::Null),
-            "undefined" => Ok(Type::Undefined),
+            "void" => Ok(Type::Void),
             "gobject" => Ok(Type::GObject(GObjectType::from_js_value(cx, value)?)),
             "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
             "struct" => Ok(Type::Struct(StructType::from_js_value(cx, value)?)),
@@ -213,14 +224,22 @@ impl Type {
                 let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
                 Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
             }
-            Type::Integer(int_type) => {
-                let number = match int_type.kind {
+            Type::Integer(int_kind) => {
+                let number = match int_kind {
                     IntegerKind::I32 => ptr as i32 as f64,
                     IntegerKind::U32 => ptr as u32 as f64,
                     IntegerKind::I64 => ptr as i64 as f64,
                     IntegerKind::U64 => ptr as u64 as f64,
                     _ => ptr as isize as f64,
                 };
+                Ok(value::Value::Number(number))
+            }
+            Type::Enum(_) => {
+                let number = ptr as i32 as f64;
+                Ok(value::Value::Number(number))
+            }
+            Type::Flags(_) => {
+                let number = ptr as u32 as f64;
                 Ok(value::Value::Number(number))
             }
             Type::GObject(_) => {
@@ -356,11 +375,12 @@ impl Type {
 impl From<&Type> for libffi::Type {
     fn from(value: &Type) -> Self {
         match value {
-            Type::Integer(ty) => ty.into(),
-            Type::Float(ty) => (*ty).into(),
+            Type::Integer(kind) => (*kind).into(),
+            Type::Float(kind) => (*kind).into(),
+            Type::Enum(_) => libffi::Type::i32(),
+            Type::Flags(_) => libffi::Type::u32(),
             Type::String(ty) => ty.into(),
             Type::Boolean => libffi::Type::u8(),
-            Type::Null => libffi::Type::pointer(),
             Type::GObject(ty) => ty.into(),
             Type::Boxed(ty) => ty.into(),
             Type::Struct(ty) => ty.into(),
@@ -370,7 +390,7 @@ impl From<&Type> for libffi::Type {
             Type::Callback(_) => libffi::Type::pointer(),
             Type::Trampoline(_) => libffi::Type::pointer(),
             Type::Ref(ty) => ty.into(),
-            Type::Undefined => libffi::Type::void(),
+            Type::Void => libffi::Type::void(),
         }
     }
 }
@@ -378,8 +398,10 @@ impl From<&Type> for libffi::Type {
 impl Type {
     pub fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         match self {
-            Type::Integer(t) => t.encode(value, optional),
-            Type::Float(t) => t.encode(value, optional),
+            Type::Integer(kind) => kind.encode(value, optional),
+            Type::Float(kind) => kind.encode(value, optional),
+            Type::Enum(_) => IntegerKind::I32.encode(value, optional),
+            Type::Flags(_) => IntegerKind::U32.encode(value, optional),
             Type::String(t) => t.encode(value, optional),
             Type::Boolean => {
                 let boolean = match value {
@@ -388,8 +410,7 @@ impl Type {
                 };
                 Ok(ffi::FfiValue::U8(u8::from(boolean)))
             }
-            Type::Null => Ok(ffi::FfiValue::Ptr(std::ptr::null_mut())),
-            Type::Undefined => Ok(ffi::FfiValue::Ptr(std::ptr::null_mut())),
+            Type::Void => Ok(ffi::FfiValue::Ptr(std::ptr::null_mut())),
             Type::GObject(t) => t.encode(value, optional),
             Type::Boxed(t) => t.encode(value, optional),
             Type::Struct(t) => t.encode(value, optional),
@@ -404,10 +425,11 @@ impl Type {
 
     pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         match self {
-            Type::Null => Ok(value::Value::Null),
-            Type::Undefined => Ok(value::Value::Undefined),
-            Type::Integer(t) => t.decode(ffi_value),
-            Type::Float(t) => t.decode(ffi_value),
+            Type::Void => Ok(value::Value::Undefined),
+            Type::Integer(kind) => kind.decode(ffi_value),
+            Type::Float(kind) => kind.decode(ffi_value),
+            Type::Enum(_) => IntegerKind::I32.decode(ffi_value),
+            Type::Flags(_) => IntegerKind::U32.decode(ffi_value),
             Type::String(t) => t.decode(ffi_value),
             Type::Boolean => {
                 let b = match ffi_value {

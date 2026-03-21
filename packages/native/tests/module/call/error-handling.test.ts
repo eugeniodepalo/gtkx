@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
-import { createLabel, GOBJECT, GOBJECT_BORROWED, GTK_LIB, INT32, STRING, UNDEFINED } from "../utils.js";
+import { createLabel, GOBJECT, GOBJECT_BORROWED, GTK_LIB, INT32, POINTER, STRING, VOID } from "../utils.js";
 
 describe("call - error handling", () => {
     describe("symbol errors", () => {
         it("throws on invalid symbol name", () => {
             expect(() => {
-                call(GTK_LIB, "nonexistent_function_xyz", [], UNDEFINED);
+                call(GTK_LIB, "nonexistent_function_xyz", [], VOID);
             }).toThrow();
         });
 
@@ -18,7 +18,7 @@ describe("call - error handling", () => {
 
         it("throws on empty symbol name", () => {
             expect(() => {
-                call(GTK_LIB, "", [], UNDEFINED);
+                call(GTK_LIB, "", [], VOID);
             }).toThrow();
         });
 
@@ -32,13 +32,13 @@ describe("call - error handling", () => {
     describe("library errors", () => {
         it("throws on invalid library name", () => {
             expect(() => {
-                call("libnonexistent.so.1", "some_function", [], UNDEFINED);
+                call("libnonexistent.so.1", "some_function", [], VOID);
             }).toThrow();
         });
 
         it("throws on library not found", () => {
             expect(() => {
-                call("libfoobar123456.so.99", "foo", [], UNDEFINED);
+                call("libfoobar123456.so.99", "foo", [], VOID);
             }).toThrow();
         });
     });
@@ -60,30 +60,30 @@ describe("call - error handling", () => {
             }).toThrow();
         });
 
-        it("throws on invalid integer size", () => {
+        it("throws on invalid integer type", () => {
             expect(() => {
                 call(
                     GTK_LIB,
                     "gtk_label_set_max_width_chars",
                     [
                         { type: GOBJECT_BORROWED, value: createLabel("Test") },
-                        { type: { type: "int", size: 7 as 8, unsigned: false }, value: 42 },
+                        { type: { type: "int7" as "int8" }, value: 42 },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }).toThrow();
         });
 
-        it("throws on invalid float size", () => {
+        it("throws on invalid float type", () => {
             expect(() => {
                 call(
                     GTK_LIB,
                     "gtk_widget_set_opacity",
                     [
                         { type: GOBJECT_BORROWED, value: createLabel("Test") },
-                        { type: { type: "float", size: 16 as 32 }, value: 0.5 },
+                        { type: { type: "float16" as "float32" }, value: 0.5 },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }).toThrow();
         });
@@ -99,7 +99,7 @@ describe("call - error handling", () => {
                         { type: GOBJECT_BORROWED, value: createLabel("Test") },
                         { type: INT32, value: "not a number" },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }).toThrow();
         });
@@ -123,15 +123,15 @@ describe("call - error handling", () => {
                                 type: "callback",
                                 kind: "closure",
                                 argTypes: [],
-                                returnType: { type: "undefined" },
+                                returnType: { type: "void" },
                             },
                             value: "not a function",
                         },
-                        { type: { type: "null" }, value: null },
-                        { type: { type: "null" }, value: null },
+                        { type: POINTER, value: 0 },
+                        { type: POINTER, value: 0 },
                         { type: INT32, value: 0 },
                     ],
-                    { type: "int", size: 64, unsigned: true },
+                    { type: "uint64" as const },
                 );
             }).toThrow();
         });
@@ -165,7 +165,7 @@ describe("call - error handling", () => {
 
         it("throws descriptive error for library load failure", () => {
             try {
-                call("libnonexistent.so", "foo", [], UNDEFINED);
+                call("libnonexistent.so", "foo", [], VOID);
                 expect.fail("Should have thrown");
             } catch (error) {
                 expect(error).toBeInstanceOf(Error);

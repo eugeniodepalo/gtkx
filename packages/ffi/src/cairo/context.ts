@@ -159,7 +159,7 @@ Context.prototype.moveTo = function (x: number, y: number): void {
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -172,7 +172,7 @@ Context.prototype.lineTo = function (x: number, y: number): void {
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -185,7 +185,7 @@ Context.prototype.relMoveTo = function (dx: number, dy: number): void {
             { type: DOUBLE_TYPE, value: dx },
             { type: DOUBLE_TYPE, value: dy },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -198,7 +198,7 @@ Context.prototype.relLineTo = function (dx: number, dy: number): void {
             { type: DOUBLE_TYPE, value: dx },
             { type: DOUBLE_TYPE, value: dy },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -222,7 +222,7 @@ Context.prototype.relCurveTo = function (
             { type: DOUBLE_TYPE, value: dx3 },
             { type: DOUBLE_TYPE, value: dy3 },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -239,7 +239,7 @@ Context.prototype.curveTo = function (x1: number, y1: number, x2: number, y2: nu
             { type: DOUBLE_TYPE, value: x3 },
             { type: DOUBLE_TYPE, value: y3 },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -255,7 +255,7 @@ Context.prototype.arc = function (xc: number, yc: number, radius: number, angle1
             { type: DOUBLE_TYPE, value: angle1 },
             { type: DOUBLE_TYPE, value: angle2 },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -277,7 +277,7 @@ Context.prototype.arcNegative = function (
             { type: DOUBLE_TYPE, value: angle1 },
             { type: DOUBLE_TYPE, value: angle2 },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -292,40 +292,40 @@ Context.prototype.rectangle = function (x: number, y: number, width: number, hei
             { type: DOUBLE_TYPE, value: width },
             { type: DOUBLE_TYPE, value: height },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
 Context.prototype.closePath = function (): void {
-    call(LIB, "cairo_close_path", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_close_path", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.newPath = function (): void {
-    call(LIB, "cairo_new_path", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_new_path", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.newSubPath = function (): void {
-    call(LIB, "cairo_new_sub_path", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_new_sub_path", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.stroke = function (): void {
-    call(LIB, "cairo_stroke", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_stroke", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.strokePreserve = function (): void {
-    call(LIB, "cairo_stroke_preserve", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_stroke_preserve", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.fill = function (): void {
-    call(LIB, "cairo_fill", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_fill", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.fillPreserve = function (): void {
-    call(LIB, "cairo_fill_preserve", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_fill_preserve", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.paint = function (): void {
-    call(LIB, "cairo_paint", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_paint", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.paintWithAlpha = function (alpha: number): void {
@@ -336,20 +336,20 @@ Context.prototype.paintWithAlpha = function (alpha: number): void {
             { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: alpha },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
 Context.prototype.clip = function (): void {
-    call(LIB, "cairo_clip", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_clip", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.clipPreserve = function (): void {
-    call(LIB, "cairo_clip_preserve", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_clip_preserve", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.resetClip = function (): void {
-    call(LIB, "cairo_reset_clip", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_reset_clip", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.setSourceRgb = function (red: number, green: number, blue: number): void {
@@ -362,7 +362,7 @@ Context.prototype.setSourceRgb = function (red: number, green: number, blue: num
             { type: DOUBLE_TYPE, value: green },
             { type: DOUBLE_TYPE, value: blue },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -377,7 +377,7 @@ Context.prototype.setSourceRgba = function (red: number, green: number, blue: nu
             { type: DOUBLE_TYPE, value: blue },
             { type: DOUBLE_TYPE, value: alpha },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -389,7 +389,7 @@ Context.prototype.setSource = function (pattern: Pattern): void {
             { type: CAIRO_T, value: this.handle },
             { type: PATTERN_T_NONE, value: pattern.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -401,7 +401,7 @@ Context.prototype.setLineWidth = function (width: number): void {
             { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: width },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -417,7 +417,7 @@ Context.prototype.setLineCap = function (lineCap: LineCap): void {
             { type: CAIRO_T, value: this.handle },
             { type: INT_TYPE, value: lineCap },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -433,7 +433,7 @@ Context.prototype.setLineJoin = function (lineJoin: LineJoin): void {
             { type: CAIRO_T, value: this.handle },
             { type: INT_TYPE, value: lineJoin },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -451,7 +451,7 @@ Context.prototype.setDash = function (dashes: number[], offset: number): void {
             { type: INT_TYPE, value: dashes.length },
             { type: DOUBLE_TYPE, value: offset },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -474,7 +474,7 @@ Context.prototype.getDash = function (): { dashes: number[]; offset: number } {
             { type: { type: "boxed", innerType: "double[]", library: LIB, ownership: "borrowed" }, value: dashBuf },
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: offsetRef },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     const dashes: number[] = [];
     for (let i = 0; i < count; i++) {
@@ -491,7 +491,7 @@ Context.prototype.setMiterLimit = function (limit: number): void {
             { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: limit },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -507,7 +507,7 @@ Context.prototype.setTolerance = function (tolerance: number): void {
             { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: tolerance },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -523,7 +523,7 @@ Context.prototype.setFillRule = function (fillRule: FillRule): void {
             { type: CAIRO_T, value: this.handle },
             { type: INT_TYPE, value: fillRule },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -532,11 +532,11 @@ Context.prototype.getFillRule = function (): FillRule {
 };
 
 Context.prototype.save = function (): void {
-    call(LIB, "cairo_save", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_save", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.restore = function (): void {
-    call(LIB, "cairo_restore", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_restore", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.translate = function (tx: number, ty: number): void {
@@ -548,7 +548,7 @@ Context.prototype.translate = function (tx: number, ty: number): void {
             { type: DOUBLE_TYPE, value: tx },
             { type: DOUBLE_TYPE, value: ty },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -561,7 +561,7 @@ Context.prototype.scale = function (sx: number, sy: number): void {
             { type: DOUBLE_TYPE, value: sx },
             { type: DOUBLE_TYPE, value: sy },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -573,7 +573,7 @@ Context.prototype.rotate = function (angle: number): void {
             { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: angle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -585,7 +585,7 @@ Context.prototype.setOperator = function (op: Operator): void {
             { type: CAIRO_T, value: this.handle },
             { type: INT_TYPE, value: op },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -603,7 +603,7 @@ Context.prototype.selectFontFace = function (family: string, slant: FontSlant, w
             { type: INT_TYPE, value: slant },
             { type: INT_TYPE, value: weight },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -615,7 +615,7 @@ Context.prototype.setFontSize = function (size: number): void {
             { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: size },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -627,7 +627,7 @@ Context.prototype.showText = function (text: string): void {
             { type: CAIRO_T, value: this.handle },
             { type: { type: "string", ownership: "full" }, value: text },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -639,7 +639,7 @@ Context.prototype.textPath = function (text: string): void {
             { type: CAIRO_T, value: this.handle },
             { type: { type: "string", ownership: "full" }, value: text },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -658,7 +658,7 @@ Context.prototype.textExtents = function (text: string): TextExtents {
                 value: extents,
             },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return readTextExtents(extents);
 };
@@ -675,7 +675,7 @@ Context.prototype.fontExtents = function (): FontExtents {
                 value: extents,
             },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return readFontExtents(extents);
 };
@@ -688,7 +688,7 @@ Context.prototype.setFontOptions = function (options: FontOptions): void {
             { type: CAIRO_T, value: this.handle },
             { type: FONT_OPTIONS_T, value: options.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -701,7 +701,7 @@ Context.prototype.getFontOptions = function (): FontOptions {
             { type: CAIRO_T, value: this.handle },
             { type: FONT_OPTIONS_T, value: options.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return options;
 };
@@ -714,7 +714,7 @@ Context.prototype.setAntialias = function (antialias: Antialias): void {
             { type: CAIRO_T, value: this.handle },
             { type: INT_TYPE, value: antialias },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -723,11 +723,11 @@ Context.prototype.getAntialias = function (): Antialias {
 };
 
 Context.prototype.showPage = function (): void {
-    call(LIB, "cairo_show_page", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_show_page", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.copyPage = function (): void {
-    call(LIB, "cairo_copy_page", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_copy_page", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.getTarget = function (): Surface {
@@ -745,7 +745,7 @@ Context.prototype.setSourceSurface = function (surface: Surface, x: number, y: n
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -773,7 +773,7 @@ Context.prototype.getCurrentPoint = function (): { x: number; y: number } | null
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 
     return {
@@ -802,7 +802,7 @@ const getExtents = (ctx: Context, fn: string): { x1: number; y1: number; x2: num
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: x2Ref },
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: y2Ref },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return { x1: x1Ref.value, y1: y1Ref.value, x2: x2Ref.value, y2: y2Ref.value };
 };
@@ -889,7 +889,7 @@ Context.prototype.copyClipRectangleList = function (): Array<{
 
     const numRectangles = read(listHandle, INT_TYPE, 16) as number;
     if (numRectangles === 0) {
-        call(LIB, "cairo_rectangle_list_destroy", [{ type: RECT_LIST_T, value: listHandle }], { type: "undefined" });
+        call(LIB, "cairo_rectangle_list_destroy", [{ type: RECT_LIST_T, value: listHandle }], { type: "void" });
         return [];
     }
     const rectsArray = read(
@@ -909,7 +909,7 @@ Context.prototype.copyClipRectangleList = function (): Array<{
         });
     }
 
-    call(LIB, "cairo_rectangle_list_destroy", [{ type: RECT_LIST_T, value: listHandle }], { type: "undefined" });
+    call(LIB, "cairo_rectangle_list_destroy", [{ type: RECT_LIST_T, value: listHandle }], { type: "void" });
 
     return result;
 };
@@ -922,7 +922,7 @@ Context.prototype.mask = function (pattern: Pattern): void {
             { type: CAIRO_T, value: this.handle },
             { type: PATTERN_T_NONE, value: pattern.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -936,7 +936,7 @@ Context.prototype.maskSurface = function (surface: Surface, x: number, y: number
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -948,7 +948,7 @@ Context.prototype.setMatrix = function (matrix: Matrix): void {
             { type: CAIRO_T, value: this.handle },
             { type: MATRIX_T, value: matrix.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -961,7 +961,7 @@ Context.prototype.getMatrix = function (): Matrix {
             { type: CAIRO_T, value: this.handle },
             { type: MATRIX_T, value: handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return obj;
 };
@@ -974,12 +974,12 @@ Context.prototype.transform = function (matrix: Matrix): void {
             { type: CAIRO_T, value: this.handle },
             { type: MATRIX_T, value: matrix.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
 Context.prototype.identityMatrix = function (): void {
-    call(LIB, "cairo_identity_matrix", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_identity_matrix", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 const coordTransform = (ctx: Context, fn: string, a: number, b: number): { a: number; b: number } => {
@@ -993,7 +993,7 @@ const coordTransform = (ctx: Context, fn: string, a: number, b: number): { a: nu
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: aRef },
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: bRef },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return { a: aRef.value, b: bRef.value };
 };
@@ -1048,7 +1048,7 @@ declare module "../generated/cairo/context.js" {
 }
 
 Context.prototype.pushGroup = function (): void {
-    call(LIB, "cairo_push_group", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_push_group", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.pushGroupWithContent = function (content: Content): void {
@@ -1059,7 +1059,7 @@ Context.prototype.pushGroupWithContent = function (content: Content): void {
             { type: CAIRO_T, value: this.handle },
             { type: INT_TYPE, value: content },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -1069,7 +1069,7 @@ Context.prototype.popGroup = function (): Pattern {
 };
 
 Context.prototype.popGroupToSource = function (): void {
-    call(LIB, "cairo_pop_group_to_source", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_pop_group_to_source", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
 Context.prototype.getGroupTarget = function (): Surface {
@@ -1090,7 +1090,7 @@ Context.prototype.setFontFace = function (fontFace: FontFace): void {
             { type: CAIRO_T, value: this.handle },
             { type: FONT_FACE_T_NONE, value: fontFace.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -1112,7 +1112,7 @@ Context.prototype.setFontMatrix = function (matrix: Matrix): void {
             { type: CAIRO_T, value: this.handle },
             { type: MATRIX_T, value: matrix.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -1125,7 +1125,7 @@ Context.prototype.getFontMatrix = function (): Matrix {
             { type: CAIRO_T, value: this.handle },
             { type: MATRIX_T, value: handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return obj;
 };
@@ -1138,7 +1138,7 @@ Context.prototype.setScaledFont = function (scaledFont: ScaledFont): void {
             { type: CAIRO_T, value: this.handle },
             { type: SCALED_FONT_T_NONE, value: scaledFont.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -1162,7 +1162,7 @@ Context.prototype.showGlyphs = function (glyphs: Array<{ index: number; x: numbe
             { type: GLYPH_BUF_T, value: buf },
             { type: INT_TYPE, value: glyphs.length },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -1176,7 +1176,7 @@ Context.prototype.glyphPath = function (glyphs: Array<{ index: number; x: number
             { type: GLYPH_BUF_T, value: buf },
             { type: INT_TYPE, value: glyphs.length },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -1195,7 +1195,7 @@ Context.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: num
                 value: extents,
             },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return readTextExtents(extents);
 };
@@ -1284,7 +1284,7 @@ Context.prototype.tagBegin = function (tagName: string, attributes: string): voi
             { type: { type: "string", ownership: "full" }, value: tagName },
             { type: { type: "string", ownership: "full" }, value: attributes },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -1296,7 +1296,7 @@ Context.prototype.tagEnd = function (tagName: string): void {
             { type: CAIRO_T, value: this.handle },
             { type: { type: "string", ownership: "full" }, value: tagName },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -1323,6 +1323,6 @@ Context.prototype.showTextGlyphs = function (
             { type: INT_TYPE, value: clusters.length },
             { type: INT_TYPE, value: clusterFlags },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };

@@ -30,7 +30,13 @@ use anyhow::bail;
 use libffi::middle as libffi;
 use neon::prelude::*;
 
-use crate::{arg::Arg, ffi, gtk_dispatch, state::GtkThreadState, types::Type, value::Value};
+use crate::{
+    arg::Arg,
+    ffi, gtk_dispatch,
+    state::GtkThreadState,
+    types::{IntegerKind, Type},
+    value::Value,
+};
 
 type RefUpdate = (Arc<Root<JsObject>>, Value);
 
@@ -98,12 +104,14 @@ impl CallRequest {
         // Argument types are validated by the FFI binding definitions.
         let result = unsafe {
             match self.result_type {
-                Type::Undefined => {
+                Type::Void => {
                     cif.call::<()>(symbol_ptr, &ffi_args);
                     ffi::FfiValue::Void
                 }
-                Type::Integer(ref int_type) => int_type.kind.call_cif(&cif, symbol_ptr, &ffi_args),
+                Type::Integer(ref int_kind) => int_kind.call_cif(&cif, symbol_ptr, &ffi_args),
                 Type::Float(ref float_kind) => float_kind.call_cif(&cif, symbol_ptr, &ffi_args),
+                Type::Enum(_) => IntegerKind::I32.call_cif(&cif, symbol_ptr, &ffi_args),
+                Type::Flags(_) => IntegerKind::U32.call_cif(&cif, symbol_ptr, &ffi_args),
                 Type::String(_) => {
                     let ptr = cif.call::<*const c_char>(symbol_ptr, &ffi_args);
                     ffi::FfiValue::Ptr(ptr as *mut c_void)
@@ -117,7 +125,6 @@ impl CallRequest {
                     let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
                     ffi::FfiValue::Ptr(ptr)
                 }
-                Type::Null => ffi::FfiValue::Void,
                 Type::Callback(_) => bail!("Callbacks cannot be return types"),
                 Type::Trampoline(_) => bail!("Trampolines cannot be return types"),
                 Type::Ref(_) => bail!("Ref types cannot be return types"),

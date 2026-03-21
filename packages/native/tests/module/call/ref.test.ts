@@ -7,9 +7,9 @@ import {
     GTK_LIB,
     getRefCount,
     INT32,
-    NULL,
+    POINTER,
     startMemoryMeasurement,
-    UNDEFINED,
+    VOID,
 } from "../utils.js";
 
 describe("call - ref types", () => {
@@ -28,10 +28,10 @@ describe("call - ref types", () => {
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: minRef },
                     { type: { type: "ref", innerType: INT32 }, value: naturalRef },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(typeof minRef.value).toBe("number");
@@ -59,7 +59,7 @@ describe("call - ref types", () => {
                     { type: { type: "ref", innerType: INT32 }, value: minBaselineRef },
                     { type: { type: "ref", innerType: INT32 }, value: naturalBaselineRef },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(typeof minWidthRef.value).toBe("number");
@@ -83,10 +83,10 @@ describe("call - ref types", () => {
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: horizontalMinRef },
                     { type: { type: "ref", innerType: INT32 }, value: horizontalNaturalRef },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const verticalMinRef = createRef(0);
@@ -101,10 +101,10 @@ describe("call - ref types", () => {
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: verticalMinRef },
                     { type: { type: "ref", innerType: INT32 }, value: verticalNaturalRef },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(horizontalMinRef.value).toBeGreaterThanOrEqual(0);
@@ -125,10 +125,10 @@ describe("call - ref types", () => {
                     { type: INT32, value: 100 },
                     { type: { type: "ref", innerType: INT32 }, value: minRef },
                     { type: { type: "ref", innerType: INT32 }, value: naturalRef },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(typeof minRef.value).toBe("number");
@@ -149,11 +149,11 @@ describe("call - ref types", () => {
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: minRef },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(typeof minRef.value).toBe("number");
@@ -170,12 +170,12 @@ describe("call - ref types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
                     { type: { type: "ref", innerType: INT32 }, value: naturalRef },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(typeof naturalRef.value).toBe("number");
@@ -191,12 +191,12 @@ describe("call - ref types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
         });
     });
@@ -220,10 +220,10 @@ describe("call - ref types", () => {
                         { type: INT32, value: -1 },
                         { type: { type: "ref", innerType: INT32 }, value: minRef },
                         { type: { type: "ref", innerType: INT32 }, value: naturalRef },
-                        { type: NULL, value: null },
-                        { type: NULL, value: null },
+                        { type: POINTER, value: 0 },
+                        { type: POINTER, value: 0 },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }
 
@@ -247,17 +247,17 @@ describe("call - ref types", () => {
                         { type: INT32, value: i % 2 },
                         { type: INT32, value: -1 },
                         {
-                            type: i % 2 === 0 ? { type: "ref", innerType: INT32 } : NULL,
-                            value: i % 2 === 0 ? ref : null,
+                            type: i % 2 === 0 ? { type: "ref", innerType: INT32 } : POINTER,
+                            value: i % 2 === 0 ? ref : 0,
                         },
                         {
-                            type: i % 2 === 1 ? { type: "ref", innerType: INT32 } : NULL,
-                            value: i % 2 === 1 ? ref : null,
+                            type: i % 2 === 1 ? { type: "ref", innerType: INT32 } : POINTER,
+                            value: i % 2 === 1 ? ref : 0,
                         },
-                        { type: NULL, value: null },
-                        { type: NULL, value: null },
+                        { type: POINTER, value: 0 },
+                        { type: POINTER, value: 0 },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }
 
@@ -279,11 +279,11 @@ describe("call - ref types", () => {
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: ref },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(ref.value).not.toBe(9999);
@@ -302,11 +302,11 @@ describe("call - ref types", () => {
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: minRef },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
                     { type: { type: "ref", innerType: INT32 }, value: baselineRef },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(typeof minRef.value).toBe("number");
@@ -326,11 +326,11 @@ describe("call - ref types", () => {
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: ref },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const shortWidth = ref.value;
@@ -343,11 +343,11 @@ describe("call - ref types", () => {
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: ref },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const longWidth = ref.value;
@@ -368,11 +368,11 @@ describe("call - ref types", () => {
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: ref1 },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             call(
@@ -383,11 +383,11 @@ describe("call - ref types", () => {
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: ref2 },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(ref1.value).toBe(ref2.value);

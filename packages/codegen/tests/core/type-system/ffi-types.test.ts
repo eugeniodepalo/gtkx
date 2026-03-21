@@ -24,8 +24,8 @@ import {
 
 describe("PRIMITIVE_TYPE_MAP", () => {
     it("maps void types correctly", () => {
-        expect(PRIMITIVE_TYPE_MAP.get("void")).toEqual({ ts: "void", ffi: { type: "undefined" } });
-        expect(PRIMITIVE_TYPE_MAP.get("none")).toEqual({ ts: "void", ffi: { type: "undefined" } });
+        expect(PRIMITIVE_TYPE_MAP.get("void")).toEqual({ ts: "void", ffi: { type: "void" } });
+        expect(PRIMITIVE_TYPE_MAP.get("none")).toEqual({ ts: "void", ffi: { type: "void" } });
     });
 
     it("maps boolean type correctly", () => {
@@ -33,47 +33,47 @@ describe("PRIMITIVE_TYPE_MAP", () => {
     });
 
     it("maps integer types with correct sizes", () => {
-        expect(PRIMITIVE_TYPE_MAP.get("gint")?.ffi).toEqual({ type: "int", size: 32, unsigned: false });
-        expect(PRIMITIVE_TYPE_MAP.get("guint")?.ffi).toEqual({ type: "int", size: 32, unsigned: true });
-        expect(PRIMITIVE_TYPE_MAP.get("gint64")?.ffi).toEqual({ type: "int", size: 64, unsigned: false });
-        expect(PRIMITIVE_TYPE_MAP.get("guint64")?.ffi).toEqual({ type: "int", size: 64, unsigned: true });
+        expect(PRIMITIVE_TYPE_MAP.get("gint")?.ffi).toEqual({ type: "int32" });
+        expect(PRIMITIVE_TYPE_MAP.get("guint")?.ffi).toEqual({ type: "uint32" });
+        expect(PRIMITIVE_TYPE_MAP.get("gint64")?.ffi).toEqual({ type: "int64" });
+        expect(PRIMITIVE_TYPE_MAP.get("guint64")?.ffi).toEqual({ type: "uint64" });
     });
 
     it("maps 8-bit types correctly", () => {
-        expect(PRIMITIVE_TYPE_MAP.get("gint8")?.ffi).toEqual({ type: "int", size: 8, unsigned: false });
-        expect(PRIMITIVE_TYPE_MAP.get("guint8")?.ffi).toEqual({ type: "int", size: 8, unsigned: true });
-        expect(PRIMITIVE_TYPE_MAP.get("gchar")?.ffi).toEqual({ type: "int", size: 8, unsigned: false });
-        expect(PRIMITIVE_TYPE_MAP.get("guchar")?.ffi).toEqual({ type: "int", size: 8, unsigned: true });
+        expect(PRIMITIVE_TYPE_MAP.get("gint8")?.ffi).toEqual({ type: "int8" });
+        expect(PRIMITIVE_TYPE_MAP.get("guint8")?.ffi).toEqual({ type: "uint8" });
+        expect(PRIMITIVE_TYPE_MAP.get("gchar")?.ffi).toEqual({ type: "int8" });
+        expect(PRIMITIVE_TYPE_MAP.get("guchar")?.ffi).toEqual({ type: "uint8" });
     });
 
     it("maps 16-bit types correctly", () => {
-        expect(PRIMITIVE_TYPE_MAP.get("gint16")?.ffi).toEqual({ type: "int", size: 16, unsigned: false });
-        expect(PRIMITIVE_TYPE_MAP.get("guint16")?.ffi).toEqual({ type: "int", size: 16, unsigned: true });
-        expect(PRIMITIVE_TYPE_MAP.get("gshort")?.ffi).toEqual({ type: "int", size: 16, unsigned: false });
-        expect(PRIMITIVE_TYPE_MAP.get("gushort")?.ffi).toEqual({ type: "int", size: 16, unsigned: true });
+        expect(PRIMITIVE_TYPE_MAP.get("gint16")?.ffi).toEqual({ type: "int16" });
+        expect(PRIMITIVE_TYPE_MAP.get("guint16")?.ffi).toEqual({ type: "uint16" });
+        expect(PRIMITIVE_TYPE_MAP.get("gshort")?.ffi).toEqual({ type: "int16" });
+        expect(PRIMITIVE_TYPE_MAP.get("gushort")?.ffi).toEqual({ type: "uint16" });
     });
 
     it("maps floating point types correctly", () => {
-        expect(PRIMITIVE_TYPE_MAP.get("gfloat")?.ffi).toEqual({ type: "float", size: 32 });
-        expect(PRIMITIVE_TYPE_MAP.get("gdouble")?.ffi).toEqual({ type: "float", size: 64 });
-        expect(PRIMITIVE_TYPE_MAP.get("float")?.ffi).toEqual({ type: "float", size: 32 });
-        expect(PRIMITIVE_TYPE_MAP.get("double")?.ffi).toEqual({ type: "float", size: 64 });
+        expect(PRIMITIVE_TYPE_MAP.get("gfloat")?.ffi).toEqual({ type: "float32" });
+        expect(PRIMITIVE_TYPE_MAP.get("gdouble")?.ffi).toEqual({ type: "float64" });
+        expect(PRIMITIVE_TYPE_MAP.get("float")?.ffi).toEqual({ type: "float32" });
+        expect(PRIMITIVE_TYPE_MAP.get("double")?.ffi).toEqual({ type: "float64" });
     });
 
     it("maps pointer types correctly", () => {
-        expect(PRIMITIVE_TYPE_MAP.get("gpointer")?.ffi).toEqual({ type: "int", size: 64, unsigned: true });
-        expect(PRIMITIVE_TYPE_MAP.get("gconstpointer")?.ffi).toEqual({ type: "int", size: 64, unsigned: true });
+        expect(PRIMITIVE_TYPE_MAP.get("gpointer")?.ffi).toEqual({ type: "uint64" });
+        expect(PRIMITIVE_TYPE_MAP.get("gconstpointer")?.ffi).toEqual({ type: "uint64" });
     });
 
     it("maps GLib special types correctly", () => {
-        expect(PRIMITIVE_TYPE_MAP.get("GType")?.ffi).toEqual({ type: "int", size: 64, unsigned: true });
-        expect(PRIMITIVE_TYPE_MAP.get("GQuark")?.ffi).toEqual({ type: "int", size: 32, unsigned: true });
-        expect(PRIMITIVE_TYPE_MAP.get("GLib.Quark")?.ffi).toEqual({ type: "int", size: 32, unsigned: true });
+        expect(PRIMITIVE_TYPE_MAP.get("GType")?.ffi).toEqual({ type: "uint64" });
+        expect(PRIMITIVE_TYPE_MAP.get("GQuark")?.ffi).toEqual({ type: "uint32" });
+        expect(PRIMITIVE_TYPE_MAP.get("GLib.Quark")?.ffi).toEqual({ type: "uint32" });
     });
 
     it("maps size types correctly", () => {
-        expect(PRIMITIVE_TYPE_MAP.get("gsize")?.ffi).toEqual({ type: "int", size: 64, unsigned: true });
-        expect(PRIMITIVE_TYPE_MAP.get("gssize")?.ffi).toEqual({ type: "int", size: 64, unsigned: false });
+        expect(PRIMITIVE_TYPE_MAP.get("gsize")?.ffi).toEqual({ type: "uint64" });
+        expect(PRIMITIVE_TYPE_MAP.get("gssize")?.ffi).toEqual({ type: "int64" });
     });
 
     it("maps all primitives to number TypeScript type except boolean and void", () => {
@@ -90,20 +90,20 @@ describe("PRIMITIVE_TYPE_MAP", () => {
 });
 
 describe("FFI constants", () => {
-    it("FFI_VOID is undefined type", () => {
-        expect(FFI_VOID).toEqual({ type: "undefined" });
+    it("FFI_VOID is void type", () => {
+        expect(FFI_VOID).toEqual({ type: "void" });
     });
 
-    it("FFI_POINTER is 64-bit unsigned", () => {
-        expect(FFI_POINTER).toEqual({ type: "int", size: 64, unsigned: true });
+    it("FFI_POINTER is uint64", () => {
+        expect(FFI_POINTER).toEqual({ type: "uint64" });
     });
 
-    it("FFI_INT32 is 32-bit signed", () => {
-        expect(FFI_INT32).toEqual({ type: "int", size: 32, unsigned: false });
+    it("FFI_INT32 is int32", () => {
+        expect(FFI_INT32).toEqual({ type: "int32" });
     });
 
-    it("FFI_UINT32 is 32-bit unsigned", () => {
-        expect(FFI_UINT32).toEqual({ type: "int", size: 32, unsigned: true });
+    it("FFI_UINT32 is uint32", () => {
+        expect(FFI_UINT32).toEqual({ type: "uint32" });
     });
 });
 

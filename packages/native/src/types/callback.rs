@@ -11,7 +11,7 @@ use neon::prelude::*;
 use crate::callback::ClosureGuard;
 use crate::ffi::{self, FfiStorage};
 use crate::js_dispatch;
-use crate::types::Type;
+use crate::types::{IntegerKind, Type};
 use crate::value;
 use crate::value::Callback;
 
@@ -127,7 +127,13 @@ fn write_ref_value_to_ptr(ptr: *mut c_void, val: &value::Value, inner_type: &Typ
             float_kind.write_ptr(ptr as *mut u8, *n);
         }
         (value::Value::Number(n), Type::Integer(int_type)) => {
-            int_type.kind.write_ptr(ptr as *mut u8, *n);
+            int_type.write_ptr(ptr as *mut u8, *n);
+        }
+        (value::Value::Number(n), Type::Enum(_)) => {
+            IntegerKind::I32.write_ptr(ptr as *mut u8, *n);
+        }
+        (value::Value::Number(n), Type::Flags(_)) => {
+            IntegerKind::U32.write_ptr(ptr as *mut u8, *n);
         }
         (value::Value::Boolean(b), Type::Boolean) => unsafe {
             *(ptr as *mut i32) = if *b { 1 } else { 0 };
@@ -180,11 +186,11 @@ impl CallbackKind {
                 let source_type = callback_type
                     .source_type
                     .clone()
-                    .unwrap_or(Box::new(Type::Null));
+                    .unwrap_or(Box::new(Type::Void));
                 let result_type = callback_type
                     .result_type
                     .clone()
-                    .unwrap_or(Box::new(Type::Null));
+                    .unwrap_or(Box::new(Type::Void));
 
                 let channel = callback.channel.clone();
                 let js_func = callback.js_func.clone();

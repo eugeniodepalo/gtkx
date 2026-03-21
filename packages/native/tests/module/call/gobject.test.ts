@@ -12,7 +12,7 @@ import {
     STRING,
     STRING_BORROWED,
     startMemoryMeasurement,
-    UNDEFINED,
+    VOID,
 } from "../utils.js";
 
 describe("call - gobject types", () => {
@@ -35,7 +35,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const firstChild = call(
@@ -74,7 +74,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const parent = call(
@@ -98,7 +98,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const child1 = call(
@@ -146,7 +146,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label1 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             call(
@@ -156,7 +156,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label2 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const firstChild = call(
@@ -189,7 +189,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const child = call(
@@ -213,7 +213,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const parent = call(
@@ -239,7 +239,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label1 },
                 ],
-                UNDEFINED,
+                VOID,
             );
             call(
                 GTK_LIB,
@@ -248,7 +248,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label2 },
                 ],
-                UNDEFINED,
+                VOID,
             );
             call(
                 GTK_LIB,
@@ -257,7 +257,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label3 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const first = call(
@@ -297,7 +297,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             let child = call(
@@ -315,7 +315,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             child = call(
@@ -341,7 +341,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(getRefCount(label)).toBe(initialRefCount + 1);
@@ -379,7 +379,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(getRefCount(label)).toBe(initialRefCount + 1);
@@ -391,7 +391,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(getRefCount(label)).toBe(initialRefCount);
@@ -423,7 +423,7 @@ describe("call - gobject types", () => {
                         { type: GOBJECT_BORROWED, value: box },
                         { type: GOBJECT_BORROWED, value: label },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }
 
@@ -455,7 +455,7 @@ describe("call - gobject types", () => {
                         { type: GOBJECT_BORROWED, value: box },
                         { type: GOBJECT_BORROWED, value: label },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }
 
@@ -467,7 +467,7 @@ describe("call - gobject types", () => {
                         { type: GOBJECT_BORROWED, value: box },
                         { type: GOBJECT_BORROWED, value: label },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }
 
@@ -511,7 +511,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             call(
@@ -521,7 +521,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Updated" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const text = call(
@@ -547,7 +547,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: outerBox },
                     { type: GOBJECT_BORROWED, value: middleBox },
                 ],
-                UNDEFINED,
+                VOID,
             );
             call(
                 GTK_LIB,
@@ -556,7 +556,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: middleBox },
                     { type: GOBJECT_BORROWED, value: innerBox },
                 ],
-                UNDEFINED,
+                VOID,
             );
             call(
                 GTK_LIB,
@@ -565,7 +565,7 @@ describe("call - gobject types", () => {
                     { type: GOBJECT_BORROWED, value: innerBox },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             let current = call(

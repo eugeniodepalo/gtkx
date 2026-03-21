@@ -95,7 +95,7 @@ ScaledFont.prototype.extents = function (): FontExtents {
                 value: ext,
             },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return readFontExtents(ext);
 };
@@ -113,7 +113,7 @@ ScaledFont.prototype.textExtents = function (text: string): TextExtents {
                 value: ext,
             },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return readTextExtents(ext);
 };
@@ -133,7 +133,7 @@ ScaledFont.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: 
                 value: ext,
             },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return readTextExtents(ext);
 };
@@ -157,7 +157,7 @@ ScaledFont.prototype.getFontOptions = function (): FontOptions {
             { type: SCALED_FONT_T_NONE, value: this.handle },
             { type: FONT_OPTIONS_T, value: options.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return options;
 };
@@ -171,7 +171,7 @@ ScaledFont.prototype.getFontMatrix = function (): Matrix {
             { type: SCALED_FONT_T_NONE, value: this.handle },
             { type: MATRIX_T, value: handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return obj;
 };
@@ -185,7 +185,7 @@ ScaledFont.prototype.getCtm = function (): Matrix {
             { type: SCALED_FONT_T_NONE, value: this.handle },
             { type: MATRIX_T, value: handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return obj;
 };
@@ -199,7 +199,7 @@ ScaledFont.prototype.getScaleMatrix = function (): Matrix {
             { type: SCALED_FONT_T_NONE, value: this.handle },
             { type: MATRIX_T, value: handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return obj;
 };
@@ -283,11 +283,11 @@ ScaledFont.prototype.textToGlyphs = function (
     }
 
     if (glyphsRef.value !== null) {
-        call(LIB, "cairo_glyph_free", [{ type: GLYPH_BUF_T, value: glyphsRef.value }], { type: "undefined" });
+        call(LIB, "cairo_glyph_free", [{ type: GLYPH_BUF_T, value: glyphsRef.value }], { type: "void" });
     }
     if (clustersRef.value !== null) {
         call(LIB, "cairo_text_cluster_free", [{ type: CLUSTER_BUF_T, value: clustersRef.value }], {
-            type: "undefined",
+            type: "void",
         });
     }
 
@@ -309,6 +309,6 @@ ScaledFont.prototype.ftLockFace = function (): NativeHandle {
 
 ScaledFont.prototype.ftUnlockFace = function (): void {
     call(LIB, "cairo_ft_scaled_font_unlock_face", [{ type: SCALED_FONT_T_NONE, value: this.handle }], {
-        type: "undefined",
+        type: "void",
     });
 };

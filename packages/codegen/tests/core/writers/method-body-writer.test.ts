@@ -276,7 +276,7 @@ describe("MethodBodyWriter", () => {
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
                 ts: "void",
-                ffi: { type: "undefined" },
+                ffi: { type: "void" },
             };
 
             const result = writer.needsObjectWrap(mappedType);
@@ -289,7 +289,7 @@ describe("MethodBodyWriter", () => {
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
                 ts: "number",
-                ffi: { type: "int", size: 32, unsigned: false },
+                ffi: { type: "int32" },
             };
 
             const result = writer.needsObjectWrap(mappedType);
@@ -626,7 +626,7 @@ describe("MethodBodyWriter", () => {
             });
             const returnTypeMapping: MappedType = {
                 ts: "void",
-                ffi: { type: "undefined" },
+                ffi: { type: "void" },
             };
 
             const project = createTestProject();
@@ -717,7 +717,7 @@ describe("MethodBodyWriter", () => {
             };
             const returnTypeMapping: MappedType = {
                 ts: "void",
-                ffi: { type: "undefined" },
+                ffi: { type: "void" },
             };
 
             const project = createTestProject();
@@ -858,7 +858,7 @@ describe("MethodBodyWriter", () => {
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
                 ts: "number",
-                ffi: { type: "int", size: 32, unsigned: false },
+                ffi: { type: "int32" },
             };
 
             const result = writer.buildValueExpression("count", mappedType);

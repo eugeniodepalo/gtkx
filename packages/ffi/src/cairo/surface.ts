@@ -21,7 +21,7 @@ declare module "../generated/cairo/surface.js" {
 }
 
 Surface.prototype.finish = function (): void {
-    call(LIB, "cairo_surface_finish", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_surface_finish", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
 };
 
 const CONTENT_MAP = {
@@ -50,11 +50,11 @@ Surface.prototype.createSimilar = function (
 };
 
 Surface.prototype.flush = function (): void {
-    call(LIB, "cairo_surface_flush", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_surface_flush", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
 };
 
 Surface.prototype.markDirty = function (): void {
-    call(LIB, "cairo_surface_mark_dirty", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_surface_mark_dirty", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
 };
 
 Surface.prototype.writeToPng = function (filename: string): void {
@@ -141,7 +141,7 @@ Surface.prototype.setDeviceOffset = function (xOffset: number, yOffset: number):
             { type: DOUBLE_TYPE, value: xOffset },
             { type: DOUBLE_TYPE, value: yOffset },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -156,7 +156,7 @@ Surface.prototype.getDeviceOffset = function (): { x: number; y: number } {
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return { x: xRef.value, y: yRef.value };
 };
@@ -170,7 +170,7 @@ Surface.prototype.setDeviceScale = function (xScale: number, yScale: number): vo
             { type: DOUBLE_TYPE, value: xScale },
             { type: DOUBLE_TYPE, value: yScale },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -185,7 +185,7 @@ Surface.prototype.getDeviceScale = function (): { x: number; y: number } {
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return { x: xRef.value, y: yRef.value };
 };
@@ -199,7 +199,7 @@ Surface.prototype.setFallbackResolution = function (xPpi: number, yPpi: number):
             { type: DOUBLE_TYPE, value: xPpi },
             { type: DOUBLE_TYPE, value: yPpi },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -214,7 +214,7 @@ Surface.prototype.getFallbackResolution = function (): { x: number; y: number } 
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return { x: xRef.value, y: yRef.value };
 };
@@ -230,16 +230,16 @@ Surface.prototype.markDirtyRectangle = function (x: number, y: number, width: nu
             { type: INT_TYPE, value: width },
             { type: INT_TYPE, value: height },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
 Surface.prototype.copyPage = function (): void {
-    call(LIB, "cairo_surface_copy_page", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_surface_copy_page", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
 };
 
 Surface.prototype.showPage = function (): void {
-    call(LIB, "cairo_surface_show_page", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_surface_show_page", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
 };
 
 Surface.prototype.hasShowTextGlyphs = function (): boolean {
@@ -262,7 +262,7 @@ declare module "../generated/cairo/surface.js" {
 Surface.prototype.setMimeData = function (mimeType: string, data: Uint8Array): void {
     const buf = alloc(data.length, "mime_data", LIB);
     for (let i = 0; i < data.length; i++) {
-        write(buf, { type: "int", size: 8, unsigned: true }, i, data[i]);
+        write(buf, { type: "uint8" }, i, data[i]);
     }
     call(
         LIB,
@@ -275,8 +275,8 @@ Surface.prototype.setMimeData = function (mimeType: string, data: Uint8Array): v
                 value: buf,
             },
             { type: ULONG_TYPE, value: data.length },
-            { type: { type: "null" }, value: null },
-            { type: { type: "null" }, value: null },
+            { type: { type: "uint64" }, value: 0 },
+            { type: { type: "uint64" }, value: 0 },
         ],
         INT_TYPE,
     );
@@ -300,13 +300,13 @@ Surface.prototype.getMimeData = function (mimeType: string): Uint8Array | null {
             },
             { type: { type: "ref", innerType: ULONG_TYPE }, value: lengthRef },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     const length = lengthRef.value;
     if (length === 0 || dataRef.value === null) return null;
     const result = new Uint8Array(length as number);
     for (let i = 0; i < (length as number); i++) {
-        result[i] = read(dataRef.value, { type: "int", size: 8, unsigned: true }, i) as number;
+        result[i] = read(dataRef.value, { type: "uint8" }, i) as number;
     }
     return result;
 };
@@ -339,7 +339,7 @@ Surface.prototype.mapToImage = function (extents?: RectangleInt): ImageSurface {
               "cairo_surface_map_to_image",
               [
                   { type: SURFACE_T_NONE, value: this.handle },
-                  { type: { type: "null" } as const, value: null },
+                  { type: { type: "uint64" } as const, value: 0 },
               ],
               SURFACE_T_NONE,
           );
@@ -356,7 +356,7 @@ Surface.prototype.unmapImage = function (image: ImageSurface): void {
             { type: SURFACE_T_NONE, value: this.handle },
             { type: SURFACE_T_NONE, value: image.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -387,7 +387,7 @@ export const imageCreateForData = (
         ownership: "borrowed",
     }) as NativeHandle;
     const rowBytes = Math.min(stride, actualStride);
-    const byteType = { type: "int", size: 8, unsigned: true } as const;
+    const byteType = { type: "uint8" } as const;
     for (let row = 0; row < height; row++) {
         const srcOffset = row * stride;
         const dstOffset = row * actualStride;

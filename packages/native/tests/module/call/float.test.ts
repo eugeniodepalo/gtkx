@@ -8,7 +8,7 @@ import {
     GOBJECT,
     GOBJECT_BORROWED,
     GTK_LIB,
-    UNDEFINED,
+    VOID,
 } from "../utils.js";
 
 describe("call - float types", () => {
@@ -23,7 +23,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.5 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
@@ -41,7 +41,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.1 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
@@ -59,7 +59,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 1.0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
@@ -79,7 +79,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.75 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
@@ -98,7 +98,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: preciseValue },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
@@ -116,7 +116,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.05 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
@@ -134,7 +134,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: scale },
                     { type: FLOAT64, value: 42.5 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_range_get_value", [{ type: GOBJECT_BORROWED, value: scale }], FLOAT64);
@@ -152,7 +152,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: progressBar },
                     { type: FLOAT64, value: 0.65 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -196,7 +196,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: adjustment },
                     { type: FLOAT64, value: 75.0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const newValue = call(
@@ -221,7 +221,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
@@ -241,7 +241,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: scale },
                     { type: FLOAT64, value: preciseValue },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(GTK_LIB, "gtk_range_get_value", [{ type: GOBJECT_BORROWED, value: scale }], FLOAT64);
@@ -259,7 +259,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(
@@ -273,7 +273,7 @@ describe("call - float types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 1.0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(

@@ -9,7 +9,7 @@ use neon::handle::Root;
 use neon::types::JsFunction;
 
 use crate::js_dispatch::JsDispatcher;
-use crate::types::{FloatKind, Type};
+use crate::types::{FloatKind, IntegerKind, Type};
 use crate::value::Value;
 
 pub struct TrampolineData {
@@ -92,7 +92,7 @@ unsafe extern "C" fn universal_handler(
         }
     }
 
-    let capture_result = !matches!(data.return_type, Type::Undefined);
+    let capture_result = !matches!(data.return_type, Type::Void);
 
     let channel = data.channel.clone();
     let js_func = data.js_func.clone();
@@ -114,8 +114,16 @@ unsafe extern "C" fn universal_handler(
 
 unsafe fn read_arg(arg_ptr: *const c_void, ty: &Type) -> anyhow::Result<Value> {
     match ty {
-        Type::Integer(int_type) => {
-            let val = int_type.kind.read_ptr(arg_ptr as *const u8);
+        Type::Integer(int_kind) => {
+            let val = int_kind.read_ptr(arg_ptr as *const u8);
+            Ok(Value::Number(val))
+        }
+        Type::Enum(_) => {
+            let val = IntegerKind::I32.read_ptr(arg_ptr as *const u8);
+            Ok(Value::Number(val))
+        }
+        Type::Flags(_) => {
+            let val = IntegerKind::U32.read_ptr(arg_ptr as *const u8);
             Ok(Value::Number(val))
         }
         Type::Float(FloatKind::F32) => {
@@ -138,7 +146,7 @@ unsafe fn read_arg(arg_ptr: *const c_void, ty: &Type) -> anyhow::Result<Value> {
             let ptr = unsafe { *(arg_ptr as *const *mut c_void) };
             ty.ptr_to_value(ptr, "trampoline arg")
         }
-        Type::Null | Type::Undefined => Ok(Value::Null),
+        Type::Void => Ok(Value::Null),
         Type::Ref(ref_type) => {
             let ptr = unsafe { *(arg_ptr as *const *mut c_void) };
             if ptr.is_null() {
@@ -149,8 +157,16 @@ unsafe fn read_arg(arg_ptr: *const c_void, ty: &Type) -> anyhow::Result<Value> {
                     let val = float_kind.read_ptr(ptr as *const u8);
                     Ok(Value::Number(val))
                 }
-                Type::Integer(int_type) => {
-                    let val = int_type.kind.read_ptr(ptr as *const u8);
+                Type::Integer(int_kind) => {
+                    let val = int_kind.read_ptr(ptr as *const u8);
+                    Ok(Value::Number(val))
+                }
+                Type::Enum(_) => {
+                    let val = IntegerKind::I32.read_ptr(ptr as *const u8);
+                    Ok(Value::Number(val))
+                }
+                Type::Flags(_) => {
+                    let val = IntegerKind::U32.read_ptr(ptr as *const u8);
                     Ok(Value::Number(val))
                 }
                 Type::Boolean => {
@@ -173,7 +189,7 @@ unsafe fn read_arg(arg_ptr: *const c_void, ty: &Type) -> anyhow::Result<Value> {
 
 fn write_return_value(ret: *mut c_void, js_result: Result<Value, ()>, return_type: &Type) {
     match return_type {
-        Type::Undefined => {}
+        Type::Void => {}
         Type::Boolean => {
             let val = match js_result {
                 Ok(Value::Boolean(b)) => b,
@@ -181,12 +197,26 @@ fn write_return_value(ret: *mut c_void, js_result: Result<Value, ()>, return_typ
             };
             unsafe { *(ret as *mut i32) = val as i32 };
         }
-        Type::Integer(int_type) => {
+        Type::Integer(int_kind) => {
             let val = match js_result {
                 Ok(Value::Number(n)) => n,
                 _ => 0.0,
             };
-            int_type.kind.write_ptr(ret as *mut u8, val);
+            int_kind.write_ptr(ret as *mut u8, val);
+        }
+        Type::Enum(_) => {
+            let val = match js_result {
+                Ok(Value::Number(n)) => n,
+                _ => 0.0,
+            };
+            IntegerKind::I32.write_ptr(ret as *mut u8, val);
+        }
+        Type::Flags(_) => {
+            let val = match js_result {
+                Ok(Value::Number(n)) => n,
+                _ => 0.0,
+            };
+            IntegerKind::U32.write_ptr(ret as *mut u8, val);
         }
         Type::Float(FloatKind::F32) => {
             let val = match js_result {

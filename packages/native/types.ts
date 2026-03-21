@@ -14,9 +14,20 @@ export type NativeHandle = { readonly __brand: "NativeHandle" };
  */
 export type FfiValue = NativeHandle | number | string | boolean | FfiValue[] | null | undefined;
 
-type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned: boolean; library?: string; getTypeFn?: string };
+type Int8Type = { type: "int8" };
+type Uint8Type = { type: "uint8" };
+type Int16Type = { type: "int16" };
+type Uint16Type = { type: "uint16" };
+type Int32Type = { type: "int32" };
+type Uint32Type = { type: "uint32" };
+type Int64Type = { type: "int64" };
+type Uint64Type = { type: "uint64" };
 
-type FloatType = { type: "float"; size: 32 | 64 };
+type Float32Type = { type: "float32" };
+type Float64Type = { type: "float64" };
+
+type EnumType = { type: "enum"; library: string; getTypeFn: string };
+type FlagsType = { type: "flags"; library: string; getTypeFn: string };
 
 type BooleanType = { type: "boolean" };
 
@@ -57,9 +68,7 @@ type HashTableType = {
 
 type RefType = { type: "ref"; innerType: Type };
 
-type NullType = { type: "null" };
-
-type UndefinedType = { type: "undefined" };
+type VoidType = { type: "void" };
 
 export type CallbackType = {
     type: "callback";
@@ -84,8 +93,18 @@ export type TrampolineType = {
  * Describes how to marshal values between JavaScript and native code.
  */
 export type Type =
-    | IntegerType
-    | FloatType
+    | Int8Type
+    | Uint8Type
+    | Int16Type
+    | Uint16Type
+    | Int32Type
+    | Uint32Type
+    | Int64Type
+    | Uint64Type
+    | Float32Type
+    | Float64Type
+    | EnumType
+    | FlagsType
     | BooleanType
     | StringType
     | GObjectType
@@ -97,8 +116,7 @@ export type Type =
     | RefType
     | CallbackType
     | TrampolineType
-    | NullType
-    | UndefinedType;
+    | VoidType;
 
 /**
  * An argument for an FFI call.

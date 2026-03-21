@@ -230,7 +230,7 @@ export class MethodBuilder {
                         writer.writeLine("{");
                         writer.indent(() => {
                             writer.writeLine(
-                                'type: { type: "callback", kind: "asyncReadyCallback", argTypes: [], returnType: { type: "undefined" }, sourceType: { type: "gobject", ownership: "borrowed" }, resultType: { type: "gobject", ownership: "borrowed" } },',
+                                'type: { type: "callback", kind: "asyncReadyCallback", argTypes: [], returnType: { type: "void" }, sourceType: { type: "gobject", ownership: "borrowed" }, resultType: { type: "gobject", ownership: "borrowed" } },',
                             );
                             writer.writeLine("value: (_source: unknown, result: unknown) => {");
                             writer.indent(() => {
@@ -326,10 +326,10 @@ export class MethodBuilder {
                         });
                         writer.writeLine("},");
 
-                        writer.writeLine('{ type: { type: "null" }, value: null },');
+                        writer.writeLine('{ type: { type: "void" }, value: null },');
                     });
                     writer.writeLine("],");
-                    writer.writeLine('{ type: "undefined" }');
+                    writer.writeLine('{ type: "void" }');
                 });
                 writer.writeLine(");");
             });

@@ -28,8 +28,8 @@ import sourceCode from "./fontrendering.tsx?raw";
 const PANGO_SCALE = 1024;
 const DEFAULT_TEXT = "Fonts render";
 const GLYPH_INFO_SIZE = 24;
-const U32 = { type: "int", size: 32, unsigned: true } as const;
-const I32 = { type: "int", size: 32, unsigned: false } as const;
+const U32 = { type: "uint32" } as const;
+const I32 = { type: "int32" } as const;
 const GLYPHS_STRUCT = (numGlyphs: number) =>
     ({ type: "struct", innerType: "PangoGlyphInfo", size: numGlyphs * GLYPH_INFO_SIZE, ownership: "full" }) as const;
 

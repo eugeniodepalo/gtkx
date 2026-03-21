@@ -70,10 +70,7 @@ fn owned_ptr_drops_value_when_dropped() {
 
 #[test]
 fn try_from_integer_i8() {
-    let arg = Arg::new(
-        Type::Integer(IntegerKind::I8.into()),
-        value::Value::Number(-42.0),
-    );
+    let arg = Arg::new(Type::Integer(IntegerKind::I8), value::Value::Number(-42.0));
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
@@ -86,10 +83,7 @@ fn try_from_integer_i8() {
 
 #[test]
 fn try_from_integer_u8() {
-    let arg = Arg::new(
-        Type::Integer(IntegerKind::U8.into()),
-        value::Value::Number(200.0),
-    );
+    let arg = Arg::new(Type::Integer(IntegerKind::U8), value::Value::Number(200.0));
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
@@ -103,7 +97,7 @@ fn try_from_integer_u8() {
 #[test]
 fn try_from_integer_i32() {
     let arg = Arg::new(
-        Type::Integer(IntegerKind::I32.into()),
+        Type::Integer(IntegerKind::I32),
         value::Value::Number(-123456.0),
     );
 
@@ -119,7 +113,7 @@ fn try_from_integer_i32() {
 #[test]
 fn try_from_integer_u64() {
     let arg = Arg::new(
-        Type::Integer(IntegerKind::U64.into()),
+        Type::Integer(IntegerKind::U64),
         value::Value::Number(9999999999.0),
     );
 
@@ -135,7 +129,7 @@ fn try_from_integer_u64() {
 #[test]
 fn try_from_integer_optional_null() {
     let arg = Arg {
-        ty: Type::Integer(IntegerKind::I32.into()),
+        ty: Type::Integer(IntegerKind::I32),
         value: value::Value::Null,
         optional: true,
     };
@@ -244,7 +238,7 @@ fn try_from_boolean_false() {
 
 #[test]
 fn try_from_null() {
-    let arg = Arg::new(Type::Null, value::Value::Null);
+    let arg = Arg::new(Type::Void, value::Value::Null);
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
@@ -257,7 +251,7 @@ fn try_from_null() {
 
 #[test]
 fn try_from_undefined() {
-    let arg = Arg::new(Type::Undefined, value::Value::Undefined);
+    let arg = Arg::new(Type::Void, value::Value::Undefined);
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
@@ -272,7 +266,7 @@ fn try_from_undefined() {
 fn try_from_array_u8() {
     let arg = Arg::new(
         Type::Array(ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8.into())),
+            item_type: Box::new(Type::Integer(IntegerKind::U8)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -300,7 +294,7 @@ fn try_from_array_u8() {
 fn try_from_array_i32() {
     let arg = Arg::new(
         Type::Array(ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::I32.into())),
+            item_type: Box::new(Type::Integer(IntegerKind::I32)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,

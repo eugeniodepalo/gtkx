@@ -68,7 +68,7 @@ export type CallExpressionOptions = {
  *   sharedLibrary: "libgtk-4.so.1",
  *   cIdentifier: "gtk_button_set_label",
  *   args: [{ type: { type: "string" }, value: "label" }],
- *   returnType: { type: "undefined" },
+ *   returnType: { type: "void" },
  *   selfArg: { type: { type: "gobject" }, value: "this.handle" },
  * });
  * ```

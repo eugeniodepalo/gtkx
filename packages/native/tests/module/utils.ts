@@ -9,23 +9,23 @@ export const GDK_LIB = "libgtk-4.so.1";
 export const GOBJECT_LIB = "libgobject-2.0.so.0";
 export const GIO_LIB = "libgio-2.0.so.0";
 export const PANGO_LIB = "libpango-1.0.so.0";
-export const INT8 = { type: "int" as const, size: 8 as const, unsigned: false as const };
-export const INT16 = { type: "int" as const, size: 16 as const, unsigned: false as const };
-export const INT32 = { type: "int" as const, size: 32 as const, unsigned: false as const };
-export const INT64 = { type: "int" as const, size: 64 as const, unsigned: false as const };
-export const UINT8 = { type: "int" as const, size: 8 as const, unsigned: true as const };
-export const UINT16 = { type: "int" as const, size: 16 as const, unsigned: true as const };
-export const UINT32 = { type: "int" as const, size: 32 as const, unsigned: true as const };
-export const UINT64 = { type: "int" as const, size: 64 as const, unsigned: true as const };
-export const FLOAT32 = { type: "float" as const, size: 32 as const };
-export const FLOAT64 = { type: "float" as const, size: 64 as const };
+export const INT8 = { type: "int8" as const };
+export const INT16 = { type: "int16" as const };
+export const INT32 = { type: "int32" as const };
+export const INT64 = { type: "int64" as const };
+export const UINT8 = { type: "uint8" as const };
+export const UINT16 = { type: "uint16" as const };
+export const UINT32 = { type: "uint32" as const };
+export const UINT64 = { type: "uint64" as const };
+export const FLOAT32 = { type: "float32" as const };
+export const FLOAT64 = { type: "float64" as const };
 export const BOOLEAN = { type: "boolean" as const };
 export const STRING = { type: "string" as const, ownership: "full" as const };
 export const STRING_BORROWED = { type: "string" as const, ownership: "borrowed" as const };
 export const GOBJECT = { type: "gobject" as const, ownership: "full" as const };
 export const GOBJECT_BORROWED = { type: "gobject" as const, ownership: "borrowed" as const };
-export const NULL = { type: "null" as const };
-export const UNDEFINED = { type: "undefined" as const };
+export const POINTER = { type: "uint64" as const };
+export const VOID = { type: "void" as const };
 export const STRING_ARRAY = {
     type: "array" as const,
     itemType: STRING,
@@ -90,7 +90,7 @@ export function forceGC(): void {
 }
 
 export function getRefCount(obj: unknown): number {
-    return read(obj as NativeHandle, { type: "int", size: 32, unsigned: true }, GOBJECT_REF_COUNT_OFFSET) as number;
+    return read(obj as NativeHandle, { type: "uint32" }, GOBJECT_REF_COUNT_OFFSET) as number;
 }
 
 type MemoryMeasurement = {
@@ -118,11 +118,11 @@ export function connectSignal(obj: unknown, signalName: string, callback: (...ar
             { type: GOBJECT_BORROWED, value: obj },
             { type: STRING, value: signalName },
             {
-                type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
+                type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
                 value: callback,
             },
-            { type: NULL, value: null },
-            { type: NULL, value: null },
+            { type: POINTER, value: 0 },
+            { type: POINTER, value: 0 },
             { type: INT32, value: 0 },
         ],
         UINT64,
@@ -137,6 +137,6 @@ export function disconnectSignal(obj: unknown, handlerId: number): void {
             { type: GOBJECT_BORROWED, value: obj },
             { type: UINT64, value: handlerId },
         ],
-        UNDEFINED,
+        VOID,
     );
 }

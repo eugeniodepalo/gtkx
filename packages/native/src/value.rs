@@ -125,18 +125,14 @@ impl Value {
         match &self {
             Value::Undefined => match return_type {
                 Some(Type::Boolean) => Some(false.into()),
-                Some(Type::Integer(int_type)) => {
-                    if int_type.is_enum_or_flags() {
-                        Self::number_to_enum_or_flags_value(0.0, int_type).ok()
-                    } else {
-                        Some(0i32.into())
-                    }
-                }
+                Some(Type::Integer(_)) => Some(0i32.into()),
+                Some(Type::Enum(tagged)) => Self::number_to_enum_value(0.0, tagged).ok(),
+                Some(Type::Flags(tagged)) => Self::number_to_flags_value(0.0, tagged).ok(),
                 Some(Type::Float(FloatKind::F32)) => Some(0.0f32.into()),
                 Some(Type::Float(FloatKind::F64)) => Some(0.0f64.into()),
                 Some(Type::String(_)) => Some(Option::<String>::None.into()),
                 Some(Type::GObject(_)) => Some(Option::<glib::Object>::None.into()),
-                Some(Type::Undefined) | None => None,
+                Some(Type::Void) | None => None,
                 _ => None,
             },
             _ => self.to_glib_value_typed(return_type).ok(),
@@ -150,11 +146,14 @@ impl Value {
     pub fn to_glib_value_typed(self, expected_type: Option<&Type>) -> anyhow::Result<glib::Value> {
         match self {
             Value::Number(n) => {
-                if let Some(Type::Integer(int_type)) = expected_type {
-                    if int_type.is_enum_or_flags() {
-                        return Self::number_to_enum_or_flags_value(n, int_type);
-                    }
-                    match int_type.kind {
+                if let Some(Type::Enum(tagged)) = expected_type {
+                    return Self::number_to_enum_value(n, tagged);
+                }
+                if let Some(Type::Flags(tagged)) = expected_type {
+                    return Self::number_to_flags_value(n, tagged);
+                }
+                if let Some(Type::Integer(int_kind)) = expected_type {
+                    return match int_kind {
                         IntegerKind::I8 => Ok((n as i8).into()),
                         IntegerKind::U8 => Ok((n as u8).into()),
                         IntegerKind::I16 => Ok((n as i16 as i32).into()),
@@ -163,15 +162,15 @@ impl Value {
                         IntegerKind::U32 => Ok((n as u32).into()),
                         IntegerKind::I64 => Ok((n as i64).into()),
                         IntegerKind::U64 => Ok((n as u64).into()),
-                    }
-                } else if let Some(Type::Float(float_kind)) = expected_type {
-                    match float_kind {
+                    };
+                }
+                if let Some(Type::Float(float_kind)) = expected_type {
+                    return match float_kind {
                         FloatKind::F32 => Ok((n as f32).into()),
                         FloatKind::F64 => Ok(n.into()),
-                    }
-                } else {
-                    Ok(n.into())
+                    };
                 }
+                Ok(n.into())
             }
             Value::String(s) => Ok(s.into()),
             Value::Boolean(b) => Ok(b.into()),
@@ -193,7 +192,7 @@ impl Value {
                 }
             }
             Value::Null | Value::Undefined => {
-                bail!("Cannot convert Null/Undefined to glib::Value")
+                bail!("Cannot convert Null/Undefined to glib::Value without a type hint")
             }
             other => bail!(
                 "Unsupported Value type for glib::Value conversion: {:?}",
@@ -202,32 +201,21 @@ impl Value {
         }
     }
 
-    fn number_to_enum_or_flags_value(
-        n: f64,
-        int_type: &IntegerType,
-    ) -> anyhow::Result<glib::Value> {
-        let library_name = int_type
-            .library
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Missing library for enum/flags type"))?;
-        let get_type_fn_name = int_type
-            .get_type_fn
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Missing get_type_fn for enum/flags type"))?;
-
-        let gtype = crate::ffi::get_gtype_from_lib(library_name, get_type_fn_name)?;
-
+    fn number_to_enum_value(n: f64, tagged: &TaggedType) -> anyhow::Result<glib::Value> {
+        let gtype = crate::ffi::get_gtype_from_lib(&tagged.library, &tagged.get_type_fn)?;
         let mut value = glib::Value::from_type(gtype);
-        let is_flags = gtype.is_a(glib::types::Type::FLAGS);
-
         unsafe {
-            if is_flags {
-                glib::gobject_ffi::g_value_set_flags(value.to_glib_none_mut().0, n as u32);
-            } else {
-                glib::gobject_ffi::g_value_set_enum(value.to_glib_none_mut().0, n as i32);
-            }
+            glib::gobject_ffi::g_value_set_enum(value.to_glib_none_mut().0, n as i32);
         }
+        Ok(value)
+    }
 
+    fn number_to_flags_value(n: f64, tagged: &TaggedType) -> anyhow::Result<glib::Value> {
+        let gtype = crate::ffi::get_gtype_from_lib(&tagged.library, &tagged.get_type_fn)?;
+        let mut value = glib::Value::from_type(gtype);
+        unsafe {
+            glib::gobject_ffi::g_value_set_flags(value.to_glib_none_mut().0, n as u32);
+        }
         Ok(value)
     }
 
@@ -310,12 +298,8 @@ impl Value {
 
     pub fn from_glib_value(gvalue: &glib::Value, ty: &Type) -> anyhow::Result<Self> {
         match ty {
-            Type::Integer(int_type) => {
-                let gtype = gvalue.type_();
-                let is_enum = gtype.is_a(glib::types::Type::ENUM);
-                let is_flags = gtype.is_a(glib::types::Type::FLAGS);
-
-                let number = match int_type.kind {
+            Type::Integer(int_kind) => {
+                let number = match int_kind {
                     IntegerKind::I8 => gvalue
                         .get::<i8>()
                         .map_err(|e| anyhow::anyhow!("Failed to get i8 from GValue: {}", e))?
@@ -330,36 +314,14 @@ impl Value {
                     IntegerKind::U16 => gvalue.get::<u32>().map_err(|e| {
                         anyhow::anyhow!("Failed to get u32 (as u16) from GValue: {}", e)
                     })? as u16 as f64,
-                    IntegerKind::I32 => {
-                        if is_enum {
-                            // SAFETY: gvalue contains a valid enum type checked above
-                            let enum_value = unsafe {
-                                glib::gobject_ffi::g_value_get_enum(
-                                    gvalue.to_glib_none().0 as *const _,
-                                )
-                            };
-                            enum_value as f64
-                        } else {
-                            gvalue.get::<i32>().map_err(|e| {
-                                anyhow::anyhow!("Failed to get i32 from GValue: {}", e)
-                            })? as f64
-                        }
-                    }
-                    IntegerKind::U32 => {
-                        if is_flags {
-                            // SAFETY: gvalue contains a valid flags type checked above
-                            let flags_value = unsafe {
-                                glib::gobject_ffi::g_value_get_flags(
-                                    gvalue.to_glib_none().0 as *const _,
-                                )
-                            };
-                            flags_value as f64
-                        } else {
-                            gvalue.get::<u32>().map_err(|e| {
-                                anyhow::anyhow!("Failed to get u32 from GValue: {}", e)
-                            })? as f64
-                        }
-                    }
+                    IntegerKind::I32 => gvalue
+                        .get::<i32>()
+                        .map_err(|e| anyhow::anyhow!("Failed to get i32 from GValue: {}", e))?
+                        as f64,
+                    IntegerKind::U32 => gvalue
+                        .get::<u32>()
+                        .map_err(|e| anyhow::anyhow!("Failed to get u32 from GValue: {}", e))?
+                        as f64,
                     IntegerKind::I64 => gvalue
                         .get::<i64>()
                         .map_err(|e| anyhow::anyhow!("Failed to get i64 from GValue: {}", e))?
@@ -370,6 +332,18 @@ impl Value {
                         as f64,
                 };
                 Ok(Value::Number(number))
+            }
+            Type::Enum(_) => {
+                let enum_value = unsafe {
+                    glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _)
+                };
+                Ok(Value::Number(enum_value as f64))
+            }
+            Type::Flags(_) => {
+                let flags_value = unsafe {
+                    glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _)
+                };
+                Ok(Value::Number(flags_value as f64))
             }
             Type::Float(float_kind) => {
                 let number = match float_kind {
@@ -423,7 +397,7 @@ impl Value {
                 let handle = NativeValue::Boxed(boxed).into();
                 Ok(Value::Object(handle))
             }
-            Type::Null | Type::Undefined => Ok(Value::Null),
+            Type::Void => Ok(Value::Null),
             Type::Struct(_) => {
                 bail!(
                     "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
@@ -472,8 +446,16 @@ impl Value {
                         let val = float_kind.read_ptr(ptr as *const u8);
                         Ok(Value::Number(val))
                     }
-                    Type::Integer(int_type) => {
-                        let val = int_type.kind.read_ptr(ptr as *const u8);
+                    Type::Integer(int_kind) => {
+                        let val = int_kind.read_ptr(ptr as *const u8);
+                        Ok(Value::Number(val))
+                    }
+                    Type::Enum(_) => {
+                        let val = IntegerKind::I32.read_ptr(ptr as *const u8);
+                        Ok(Value::Number(val))
+                    }
+                    Type::Flags(_) => {
+                        let val = IntegerKind::U32.read_ptr(ptr as *const u8);
                         Ok(Value::Number(val))
                     }
                     Type::Boolean => {

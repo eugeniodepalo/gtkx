@@ -18,7 +18,7 @@ export function getEnumList<T extends number>(fnName: string): T[] {
             },
             { type: { type: "ref", innerType: INT_TYPE }, value: numRef },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     const count = numRef.value as number;
     const result: T[] = [];

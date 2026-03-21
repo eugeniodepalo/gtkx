@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
-import { BOOLEAN, createButton, createLabel, GOBJECT_BORROWED, GTK_LIB, UNDEFINED } from "../utils.js";
+import { BOOLEAN, createButton, createLabel, GOBJECT_BORROWED, GTK_LIB, VOID } from "../utils.js";
 
 describe("call - boolean type", () => {
     it("passes true and returns true", () => {
@@ -13,7 +13,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         const result = call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN);
@@ -31,7 +31,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         call(
@@ -41,7 +41,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: false },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         const result = call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN);
@@ -59,7 +59,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: false },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         expect(call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN)).toBe(
@@ -73,7 +73,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         expect(call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN)).toBe(
@@ -87,7 +87,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: false },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         expect(call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN)).toBe(
@@ -105,7 +105,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         const result = call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN);
@@ -123,7 +123,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: false },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         const visible = call(GTK_LIB, "gtk_widget_get_visible", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN);
@@ -141,7 +141,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: button },
                 { type: BOOLEAN, value: false },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         const sensitive = call(
@@ -164,7 +164,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: button },
                 { type: BOOLEAN, value: false },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         const hasFrame = call(
@@ -187,7 +187,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         const wrap = call(GTK_LIB, "gtk_label_get_wrap", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN);
@@ -205,7 +205,7 @@ describe("call - boolean type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         const useMarkup = call(
@@ -242,7 +242,7 @@ describe("call - boolean type", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: BOOLEAN, value: true },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             call(
@@ -252,7 +252,7 @@ describe("call - boolean type", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: BOOLEAN, value: true },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             call(
@@ -262,7 +262,7 @@ describe("call - boolean type", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: BOOLEAN, value: false },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN)).toBe(

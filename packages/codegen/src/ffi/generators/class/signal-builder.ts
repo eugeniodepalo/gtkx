@@ -325,7 +325,7 @@ export class SignalBuilder {
             writer.write(", ");
             this.writers.ffiTypeWriter.toWriter(p.mapped.ffi)(writer);
         }
-        writer.write(', { type: "null" }');
+        writer.write(', { type: "void" }');
         writer.write("]");
     }
 
@@ -335,7 +335,7 @@ export class SignalBuilder {
             const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
             this.writers.ffiTypeWriter.toWriter(mapped.ffi)(writer);
         } else {
-            writer.write('{ type: "undefined" }');
+            writer.write('{ type: "void" }');
         }
     }
 
@@ -360,7 +360,7 @@ export class SignalBuilder {
         writer.writeLine("};");
         this.writeClosureSignalConnectCall(writer, (w) => {
             w.write(
-                'type: "callback", argTypes: [{ type: "gobject", ownership: "borrowed" }], returnType: { type: "undefined" }, kind: "closure"',
+                'type: "callback", argTypes: [{ type: "gobject", ownership: "borrowed" }], returnType: { type: "void" }, kind: "closure"',
             );
         });
     }
@@ -385,10 +385,10 @@ export class SignalBuilder {
                     writer.writeLine("value: wrappedHandler,");
                 });
                 writer.writeLine("},");
-                writer.writeLine('{ type: { type: "int", size: 32, unsigned: true }, value: after ? 1 : 0 },');
+                writer.writeLine('{ type: { type: "uint32" }, value: after ? 1 : 0 },');
             });
             writer.writeLine("],");
-            writer.writeLine('{ type: "int", size: 64, unsigned: true }');
+            writer.writeLine('{ type: "uint64" }');
         });
         writer.writeLine(") as number;");
     }
@@ -416,7 +416,7 @@ export class SignalBuilder {
                 writer.writeLine('{ type: { type: "boolean" }, value: after },');
             });
             writer.writeLine("],");
-            writer.writeLine('{ type: "int", size: 64, unsigned: true }');
+            writer.writeLine('{ type: "uint64" }');
         });
         writer.writeLine(") as number;");
     }

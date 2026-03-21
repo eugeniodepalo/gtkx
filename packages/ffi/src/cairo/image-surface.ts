@@ -96,7 +96,7 @@ export class ImageSurface extends Surface {
         if (ptr === null) return new Uint8Array(0);
         const result = new Uint8Array(totalBytes);
         for (let i = 0; i < totalBytes; i++) {
-            result[i] = read(ptr, { type: "int", size: 8, unsigned: true }, i) as number;
+            result[i] = read(ptr, { type: "uint8" }, i) as number;
         }
         return result;
     }

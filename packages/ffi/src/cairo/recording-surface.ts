@@ -33,7 +33,7 @@ export class RecordingSurface extends Surface {
                 "cairo_recording_surface_create",
                 [
                     { type: INT_TYPE, value: content },
-                    { type: { type: "null" }, value: null },
+                    { type: { type: "uint64" }, value: 0 },
                 ],
                 SURFACE_T,
             ) as NativeHandle;
@@ -55,7 +55,7 @@ export class RecordingSurface extends Surface {
                 { type: { type: "ref", innerType: DOUBLE_TYPE }, value: wRef },
                 { type: { type: "ref", innerType: DOUBLE_TYPE }, value: hRef },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
         return { x: xRef.value, y: yRef.value, width: wRef.value, height: hRef.value };
     }

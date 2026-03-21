@@ -316,38 +316,6 @@ pub enum IntegerKind {
 }
 
 impl IntegerKind {
-    pub fn from_size_and_sign(size: u64, unsigned: bool) -> Option<Self> {
-        match (size, unsigned) {
-            (8, true) => Some(Self::U8),
-            (8, false) => Some(Self::I8),
-            (16, true) => Some(Self::U16),
-            (16, false) => Some(Self::I16),
-            (32, true) => Some(Self::U32),
-            (32, false) => Some(Self::I32),
-            (64, true) => Some(Self::U64),
-            (64, false) => Some(Self::I64),
-            _ => None,
-        }
-    }
-
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-
-        let size_prop: Handle<JsNumber> = obj.prop(cx, "size").get()?;
-        let size = size_prop.value(cx) as u64;
-
-        let unsigned_prop: Handle<JsBoolean> = obj.get_opt(cx, "unsigned")?.ok_or_else(|| {
-            cx.throw_type_error::<_, ()>("'unsigned' property is required for integer types")
-                .unwrap_err()
-        })?;
-        let unsigned = unsigned_prop.value(cx);
-
-        IntegerKind::from_size_and_sign(size, unsigned).ok_or_else(|| {
-            cx.throw_type_error::<_, ()>(format!("Invalid integer size: {}", size))
-                .unwrap_err()
-        })
-    }
-
     pub fn is_unsigned(self) -> bool {
         matches!(self, Self::U8 | Self::U16 | Self::U32 | Self::U64)
     }
@@ -445,59 +413,22 @@ impl IntegerKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct IntegerType {
-    pub kind: IntegerKind,
-    pub library: Option<String>,
-    pub get_type_fn: Option<String>,
+pub struct TaggedType {
+    pub library: String,
+    pub get_type_fn: String,
 }
 
-impl IntegerType {
+impl TaggedType {
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let kind = IntegerKind::from_js_value(cx, value)?;
 
-        let library: Option<String> = obj
-            .get_opt::<JsString, _, _>(cx, "library")?
-            .map(|h| h.value(cx));
-        let get_type_fn: Option<String> = obj
-            .get_opt::<JsString, _, _>(cx, "getTypeFn")?
-            .map(|h| h.value(cx));
+        let library: Handle<JsString> = obj.prop(cx, "library").get()?;
+        let get_type_fn: Handle<JsString> = obj.prop(cx, "getTypeFn").get()?;
 
-        Ok(IntegerType {
-            kind,
-            library,
-            get_type_fn,
+        Ok(TaggedType {
+            library: library.value(cx),
+            get_type_fn: get_type_fn.value(cx),
         })
-    }
-
-    pub fn is_enum_or_flags(&self) -> bool {
-        self.library.is_some() && self.get_type_fn.is_some()
-    }
-}
-
-impl From<IntegerKind> for IntegerType {
-    fn from(kind: IntegerKind) -> Self {
-        IntegerType {
-            kind,
-            library: None,
-            get_type_fn: None,
-        }
-    }
-}
-
-impl From<&IntegerType> for libffi::Type {
-    fn from(value: &IntegerType) -> Self {
-        value.kind.ffi_type()
-    }
-}
-
-impl IntegerType {
-    pub fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        self.kind.encode(value, optional)
-    }
-
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        self.kind.decode(ffi_value)
     }
 }
 
@@ -532,25 +463,6 @@ pub enum FloatKind {
 }
 
 impl FloatKind {
-    pub fn from_size(size: u64) -> Option<Self> {
-        match size {
-            32 => Some(Self::F32),
-            64 => Some(Self::F64),
-            _ => None,
-        }
-    }
-
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let size_prop: Handle<JsNumber> = obj.prop(cx, "size").get()?;
-        let size = size_prop.value(cx) as u64;
-
-        FloatKind::from_size(size).ok_or_else(|| {
-            cx.throw_type_error::<_, ()>(format!("Invalid float size: {}", size))
-                .unwrap_err()
-        })
-    }
-
     fn dispatch(&self) -> &'static FloatDispatch {
         match self {
             Self::F32 => &F32_DISPATCH,

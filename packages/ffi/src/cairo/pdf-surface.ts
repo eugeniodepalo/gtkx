@@ -57,7 +57,7 @@ export class PdfSurface extends Surface {
                 { type: DOUBLE_TYPE, value: widthInPoints },
                 { type: DOUBLE_TYPE, value: heightInPoints },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 
@@ -70,7 +70,7 @@ export class PdfSurface extends Surface {
                 { type: INT_TYPE, value: metadata },
                 { type: { type: "string", ownership: "full" }, value: value },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 
@@ -82,7 +82,7 @@ export class PdfSurface extends Surface {
                 { type: SURFACE_T_NONE, value: this.handle },
                 { type: { type: "string", ownership: "full" }, value: label },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 
@@ -95,7 +95,7 @@ export class PdfSurface extends Surface {
                 { type: INT_TYPE, value: width },
                 { type: INT_TYPE, value: height },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 }
@@ -108,7 +108,7 @@ PdfSurface.prototype.restrictToVersion = function (this: PdfSurface, version: Pd
             { type: SURFACE_T_NONE, value: this.handle },
             { type: INT_TYPE, value: version },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 

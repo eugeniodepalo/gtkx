@@ -39,11 +39,11 @@ ObjectWithStatics.newWithProperties = (objectType: number, names: string[], valu
         "g_object_new_with_properties",
         [
             {
-                type: { type: "int", size: 64, unsigned: true },
+                type: { type: "uint64" },
                 value: objectType,
             },
             {
-                type: { type: "int", size: 32, unsigned: true },
+                type: { type: "uint32" },
                 value: names.length,
             },
             {

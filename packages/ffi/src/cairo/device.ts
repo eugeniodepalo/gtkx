@@ -19,11 +19,11 @@ Device.prototype.status = function (): Status {
 };
 
 Device.prototype.finish = function (): void {
-    call(LIB, "cairo_device_finish", [{ type: DEVICE_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_device_finish", [{ type: DEVICE_T, value: this.handle }], { type: "void" });
 };
 
 Device.prototype.flush = function (): void {
-    call(LIB, "cairo_device_flush", [{ type: DEVICE_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_device_flush", [{ type: DEVICE_T, value: this.handle }], { type: "void" });
 };
 
 Device.prototype.getType = function (): DeviceType {
@@ -35,5 +35,5 @@ Device.prototype.acquire = function (): Status {
 };
 
 Device.prototype.release = function (): void {
-    call(LIB, "cairo_device_release", [{ type: DEVICE_T, value: this.handle }], { type: "undefined" });
+    call(LIB, "cairo_device_release", [{ type: DEVICE_T, value: this.handle }], { type: "void" });
 };

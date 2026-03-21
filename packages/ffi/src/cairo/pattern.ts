@@ -130,7 +130,7 @@ Pattern.prototype.addColorStopRgb = function (offset: number, red: number, green
             { type: DOUBLE_TYPE, value: green },
             { type: DOUBLE_TYPE, value: blue },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -152,7 +152,7 @@ Pattern.prototype.addColorStopRgba = function (
             { type: DOUBLE_TYPE, value: blue },
             { type: DOUBLE_TYPE, value: alpha },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -164,7 +164,7 @@ Pattern.prototype.setFilter = function (filter: Filter): void {
             { type: PATTERN_T_NONE, value: this.handle },
             { type: INT_TYPE, value: filter },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -180,7 +180,7 @@ Pattern.prototype.setExtend = function (extend: Extend): void {
             { type: PATTERN_T_NONE, value: this.handle },
             { type: INT_TYPE, value: extend },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -196,7 +196,7 @@ Pattern.prototype.setMatrix = function (matrix: Matrix): void {
             { type: PATTERN_T_NONE, value: this.handle },
             { type: MATRIX_T, value: matrix.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -209,7 +209,7 @@ Pattern.prototype.getMatrix = function (): Matrix {
             { type: PATTERN_T_NONE, value: this.handle },
             { type: MATRIX_T, value: handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return obj;
 };
@@ -253,13 +253,13 @@ export class MeshPattern extends Pattern {
 
 Pattern.prototype.meshBeginPatch = function (): void {
     call(LIB, "cairo_mesh_pattern_begin_patch", [{ type: PATTERN_T_NONE, value: this.handle }], {
-        type: "undefined",
+        type: "void",
     });
 };
 
 Pattern.prototype.meshEndPatch = function (): void {
     call(LIB, "cairo_mesh_pattern_end_patch", [{ type: PATTERN_T_NONE, value: this.handle }], {
-        type: "undefined",
+        type: "void",
     });
 };
 
@@ -272,7 +272,7 @@ Pattern.prototype.meshMoveTo = function (x: number, y: number): void {
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -285,7 +285,7 @@ Pattern.prototype.meshLineTo = function (x: number, y: number): void {
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -309,7 +309,7 @@ Pattern.prototype.meshCurveTo = function (
             { type: DOUBLE_TYPE, value: x3 },
             { type: DOUBLE_TYPE, value: y3 },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -323,7 +323,7 @@ Pattern.prototype.meshSetControlPoint = function (pointNum: number, x: number, y
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -338,7 +338,7 @@ Pattern.prototype.meshSetCornerColorRgb = function (cornerNum: number, r: number
             { type: DOUBLE_TYPE, value: g },
             { type: DOUBLE_TYPE, value: b },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -360,7 +360,7 @@ Pattern.prototype.meshSetCornerColorRgba = function (
             { type: DOUBLE_TYPE, value: b },
             { type: DOUBLE_TYPE, value: a },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -602,7 +602,7 @@ Pattern.prototype.setDither = function (dither: Dither): void {
             { type: PATTERN_T_NONE, value: this.handle },
             { type: INT_TYPE, value: dither },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 

@@ -10,7 +10,7 @@ import {
     INT32,
     STRING,
     STRING_BORROWED,
-    UNDEFINED,
+    VOID,
 } from "../utils.js";
 
 describe("call - undefined type", () => {
@@ -24,7 +24,7 @@ describe("call - undefined type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: STRING, value: "Updated" },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         expect(result).toBeUndefined();
@@ -33,7 +33,7 @@ describe("call - undefined type", () => {
     it("handles void function with no args", () => {
         const button = createButton("Test");
 
-        const result = call(GTK_LIB, "gtk_widget_show", [{ type: GOBJECT_BORROWED, value: button }], UNDEFINED);
+        const result = call(GTK_LIB, "gtk_widget_show", [{ type: GOBJECT_BORROWED, value: button }], VOID);
 
         expect(result).toBeUndefined();
     });
@@ -49,7 +49,7 @@ describe("call - undefined type", () => {
                 { type: GOBJECT_BORROWED, value: box },
                 { type: GOBJECT_BORROWED, value: label },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         expect(result).toBeUndefined();
@@ -58,7 +58,7 @@ describe("call - undefined type", () => {
     it("handles gtk_widget_hide", () => {
         const button = createButton("Test");
 
-        const result = call(GTK_LIB, "gtk_widget_hide", [{ type: GOBJECT_BORROWED, value: button }], UNDEFINED);
+        const result = call(GTK_LIB, "gtk_widget_hide", [{ type: GOBJECT_BORROWED, value: button }], VOID);
 
         expect(result).toBeUndefined();
     });
@@ -73,7 +73,7 @@ describe("call - undefined type", () => {
                 { type: GOBJECT_BORROWED, value: button },
                 { type: BOOLEAN, value: false },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         expect(result).toBeUndefined();
@@ -90,7 +90,7 @@ describe("call - undefined type", () => {
                 { type: GOBJECT_BORROWED, value: box },
                 { type: GOBJECT_BORROWED, value: label },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         const result = call(
@@ -100,7 +100,7 @@ describe("call - undefined type", () => {
                 { type: GOBJECT_BORROWED, value: box },
                 { type: GOBJECT_BORROWED, value: label },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         expect(result).toBeUndefined();
@@ -116,7 +116,7 @@ describe("call - undefined type", () => {
                 { type: GOBJECT_BORROWED, value: box },
                 { type: INT32, value: 10 },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         expect(result).toBeUndefined();
@@ -133,7 +133,7 @@ describe("call - undefined type", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Test" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(result).toBeUndefined();
@@ -152,7 +152,7 @@ describe("call - undefined type", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "First" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result2 = call(
@@ -162,7 +162,7 @@ describe("call - undefined type", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Second" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(result1).toBeUndefined();
@@ -179,7 +179,7 @@ describe("call - undefined type", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Modified" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(result).toBeUndefined();

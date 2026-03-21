@@ -17,23 +17,8 @@ export type ImportType = TypeKind;
  * for the native module.
  */
 export type FfiTypeDescriptor = {
-    /**
-     * The FFI type discriminant, matching native Type["type"].
-     */
     type: Type["type"];
 
-    /**
-     * Size in bits for numeric types, or bytes for struct types.
-     */
-    size?: number;
-
-    unsigned?: boolean;
-
-    /**
-     * Ownership transfer semantics:
-     * - "full": Caller takes ownership, responsible for freeing
-     * - "borrowed": Caller borrows reference, must not free
-     */
     ownership?: "full" | "borrowed";
 
     innerType?: FfiTypeDescriptor | string;
@@ -48,22 +33,10 @@ export type FfiTypeDescriptor = {
 
     itemType?: FfiTypeDescriptor;
 
-    /**
-     * Container kind discriminant:
-     * - For arrays: "array", "glist", "gslist", "gptrarray", "garray", "sized", "fixed"
-     * - For callbacks: the callback name (e.g., "closure", "asyncReadyCallback")
-     */
     kind?: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed" | CallbackType["kind"];
 
-    /**
-     * For sized arrays, the index of the parameter that contains the length.
-     * This is the parameter index in the FFI call arguments array.
-     */
     sizeParamIndex?: number;
 
-    /**
-     * For fixed-size arrays, the compile-time known size.
-     */
     fixedSize?: number;
 
     keyType?: FfiTypeDescriptor;
@@ -149,32 +122,19 @@ export type MappedType = {
     innerTsType?: string;
 };
 
-/** FFI type descriptor for void/undefined. */
-export const FFI_VOID: FfiTypeDescriptor = { type: "undefined" };
-
-/** FFI type descriptor for boolean. */
+export const FFI_VOID: FfiTypeDescriptor = { type: "void" };
 const FFI_BOOLEAN: FfiTypeDescriptor = { type: "boolean" };
-
-/** FFI type descriptor for pointer (64-bit unsigned). */
-export const FFI_POINTER: FfiTypeDescriptor = { type: "int", size: 64, unsigned: true };
-
-/** FFI type descriptor for 32-bit signed integer. */
-export const FFI_INT32: FfiTypeDescriptor = { type: "int", size: 32, unsigned: false };
-
-/** FFI type descriptor for 32-bit unsigned integer. */
-export const FFI_UINT32: FfiTypeDescriptor = { type: "int", size: 32, unsigned: true };
-
-/** FFI type descriptor for 64-bit signed integer. */
-const FFI_INT64: FfiTypeDescriptor = { type: "int", size: 64, unsigned: false };
-
-/** FFI type descriptor for 64-bit unsigned integer. */
-const FFI_UINT64: FfiTypeDescriptor = { type: "int", size: 64, unsigned: true };
-
-/** FFI type descriptor for 32-bit float. */
-const FFI_FLOAT32: FfiTypeDescriptor = { type: "float", size: 32 };
-
-/** FFI type descriptor for 64-bit float. */
-const FFI_FLOAT64: FfiTypeDescriptor = { type: "float", size: 64 };
+export const FFI_POINTER: FfiTypeDescriptor = { type: "uint64" };
+const FFI_INT8: FfiTypeDescriptor = { type: "int8" };
+const FFI_UINT8: FfiTypeDescriptor = { type: "uint8" };
+const FFI_INT16: FfiTypeDescriptor = { type: "int16" };
+const FFI_UINT16: FfiTypeDescriptor = { type: "uint16" };
+export const FFI_INT32: FfiTypeDescriptor = { type: "int32" };
+export const FFI_UINT32: FfiTypeDescriptor = { type: "uint32" };
+const FFI_INT64: FfiTypeDescriptor = { type: "int64" };
+const FFI_UINT64: FfiTypeDescriptor = { type: "uint64" };
+const FFI_FLOAT32: FfiTypeDescriptor = { type: "float32" };
+const FFI_FLOAT64: FfiTypeDescriptor = { type: "float64" };
 
 /**
  * Mapping of primitive type names to their FFI and TypeScript representations.
@@ -183,14 +143,14 @@ export const PRIMITIVE_TYPE_MAP = new Map<string, { ts: string; ffi: FfiTypeDesc
     ["void", { ts: "void", ffi: FFI_VOID }],
     ["none", { ts: "void", ffi: FFI_VOID }],
     ["gboolean", { ts: "boolean", ffi: FFI_BOOLEAN }],
-    ["gchar", { ts: "number", ffi: { type: "int", size: 8, unsigned: false } }],
-    ["guchar", { ts: "number", ffi: { type: "int", size: 8, unsigned: true } }],
-    ["gint8", { ts: "number", ffi: { type: "int", size: 8, unsigned: false } }],
-    ["guint8", { ts: "number", ffi: { type: "int", size: 8, unsigned: true } }],
-    ["gshort", { ts: "number", ffi: { type: "int", size: 16, unsigned: false } }],
-    ["gushort", { ts: "number", ffi: { type: "int", size: 16, unsigned: true } }],
-    ["gint16", { ts: "number", ffi: { type: "int", size: 16, unsigned: false } }],
-    ["guint16", { ts: "number", ffi: { type: "int", size: 16, unsigned: true } }],
+    ["gchar", { ts: "number", ffi: FFI_INT8 }],
+    ["guchar", { ts: "number", ffi: FFI_UINT8 }],
+    ["gint8", { ts: "number", ffi: FFI_INT8 }],
+    ["guint8", { ts: "number", ffi: FFI_UINT8 }],
+    ["gshort", { ts: "number", ffi: FFI_INT16 }],
+    ["gushort", { ts: "number", ffi: FFI_UINT16 }],
+    ["gint16", { ts: "number", ffi: FFI_INT16 }],
+    ["guint16", { ts: "number", ffi: FFI_UINT16 }],
     ["gint", { ts: "number", ffi: FFI_INT32 }],
     ["guint", { ts: "number", ffi: FFI_UINT32 }],
     ["gint32", { ts: "number", ffi: FFI_INT32 }],
@@ -222,8 +182,8 @@ export const PRIMITIVE_TYPE_MAP = new Map<string, { ts: string; ffi: FfiTypeDesc
     ["GLib.Quark", { ts: "number", ffi: FFI_UINT32 }],
     ["TimeSpan", { ts: "number", ffi: FFI_INT64 }],
     ["GLib.TimeSpan", { ts: "number", ffi: FFI_INT64 }],
-    ["DateDay", { ts: "number", ffi: { type: "int", size: 8, unsigned: true } }],
-    ["GLib.DateDay", { ts: "number", ffi: { type: "int", size: 8, unsigned: true } }],
+    ["DateDay", { ts: "number", ffi: FFI_UINT8 }],
+    ["GLib.DateDay", { ts: "number", ffi: FFI_UINT8 }],
     ["DateYear", { ts: "number", ffi: FFI_UINT32 }],
     ["GLib.DateYear", { ts: "number", ffi: FFI_UINT32 }],
     ["DateMonth", { ts: "number", ffi: FFI_INT32 }],
@@ -417,6 +377,18 @@ export const hashTableType = (
 export const refType = (innerType: FfiTypeDescriptor): FfiTypeDescriptor => ({
     type: "ref",
     innerType,
+});
+
+export const enumType = (library: string, getTypeFn: string): FfiTypeDescriptor => ({
+    type: "enum",
+    library,
+    getTypeFn,
+});
+
+export const flagsType = (library: string, getTypeFn: string): FfiTypeDescriptor => ({
+    type: "flags",
+    library,
+    getTypeFn,
 });
 
 export const trampolineType = (
@@ -659,18 +631,32 @@ export const boxedSelfType = (
     return result;
 };
 
-/**
- * Gets the size in bytes for a primitive type.
- * Derives size from PRIMITIVE_TYPE_MAP to maintain DRY.
- */
+const FFI_TYPE_BYTE_SIZES: Record<string, number> = {
+    int8: 1,
+    uint8: 1,
+    boolean: 1,
+    int16: 2,
+    uint16: 2,
+    int32: 4,
+    uint32: 4,
+    float32: 4,
+    enum: 4,
+    flags: 4,
+    int64: 8,
+    uint64: 8,
+    float64: 8,
+};
+
+export const getFfiTypeByteSize = (ffiType: string): number => FFI_TYPE_BYTE_SIZES[ffiType] ?? 8;
+
 export const getPrimitiveTypeSize = (typeName: string): number => {
     if (typeName === "gboolean") {
         return 1;
     }
 
     const entry = PRIMITIVE_TYPE_MAP.get(typeName);
-    if (entry?.ffi.size) {
-        return entry.ffi.size / 8;
+    if (entry) {
+        return getFfiTypeByteSize(entry.ffi.type);
     }
 
     return 8;

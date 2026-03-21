@@ -35,7 +35,7 @@ export class PsSurface extends Surface {
                 { type: DOUBLE_TYPE, value: widthInPoints },
                 { type: DOUBLE_TYPE, value: heightInPoints },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 
@@ -47,7 +47,7 @@ export class PsSurface extends Surface {
                 { type: SURFACE_T_NONE, value: this.handle },
                 { type: { type: "boolean" }, value: eps },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 
@@ -65,7 +65,7 @@ export class PsSurface extends Surface {
                 { type: SURFACE_T_NONE, value: this.handle },
                 { type: INT_TYPE, value: level },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 
@@ -77,19 +77,19 @@ export class PsSurface extends Surface {
                 { type: SURFACE_T_NONE, value: this.handle },
                 { type: { type: "string", ownership: "full" }, value: comment },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
     }
 
     dscBeginSetup(): void {
         call(LIB, "cairo_ps_surface_dsc_begin_setup", [{ type: SURFACE_T_NONE, value: this.handle }], {
-            type: "undefined",
+            type: "void",
         });
     }
 
     dscBeginPageSetup(): void {
         call(LIB, "cairo_ps_surface_dsc_begin_page_setup", [{ type: SURFACE_T_NONE, value: this.handle }], {
-            type: "undefined",
+            type: "void",
         });
     }
 

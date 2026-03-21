@@ -86,67 +86,55 @@ describe("FfiTypeWriter", () => {
 
     describe("toWriter", () => {
         describe("int types", () => {
-            it("writes signed 32-bit int", () => {
+            it("writes int32 type", () => {
                 const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "int", size: 32, unsigned: false });
+                const output = getWriterOutput(writer, { type: "int32" });
 
-                expect(output).toContain('"int"');
-                expect(output).toContain("size: 32");
-                expect(output).toContain("unsigned: false");
+                expect(output).toContain('"int32"');
             });
 
-            it("writes unsigned 32-bit int", () => {
+            it("writes uint32 type", () => {
                 const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "int", size: 32, unsigned: true });
+                const output = getWriterOutput(writer, { type: "uint32" });
 
-                expect(output).toContain("unsigned: true");
+                expect(output).toContain('"uint32"');
             });
 
-            it("writes 64-bit int", () => {
+            it("writes int64 type", () => {
                 const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "int", size: 64, unsigned: false });
+                const output = getWriterOutput(writer, { type: "int64" });
 
-                expect(output).toContain("size: 64");
+                expect(output).toContain('"int64"');
             });
 
-            it("writes 8-bit int", () => {
+            it("writes uint8 type", () => {
                 const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "int", size: 8, unsigned: true });
+                const output = getWriterOutput(writer, { type: "uint8" });
 
-                expect(output).toContain("size: 8");
-                expect(output).toContain("unsigned: true");
+                expect(output).toContain('"uint8"');
             });
 
-            it("defaults to 32-bit signed when size not specified", () => {
+            it("writes int8 type", () => {
                 const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "int" } as FfiTypeDescriptor);
+                const output = getWriterOutput(writer, { type: "int8" });
 
-                expect(output).toContain("size: 32");
-                expect(output).toContain("unsigned: false");
+                expect(output).toContain('"int8"');
             });
         });
 
         describe("float types", () => {
-            it("writes 64-bit float (double)", () => {
+            it("writes float64 type", () => {
                 const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "float", size: 64 });
+                const output = getWriterOutput(writer, { type: "float64" });
 
-                expect(output).toContain('"float"');
-                expect(output).toContain("size: 64");
+                expect(output).toContain('"float64"');
             });
 
-            it("writes 32-bit float", () => {
+            it("writes float32 type", () => {
                 const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "float", size: 32 });
+                const output = getWriterOutput(writer, { type: "float32" });
 
-                expect(output).toContain("size: 32");
-            });
-
-            it("defaults to 64-bit when size not specified", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "float" } as FfiTypeDescriptor);
-
-                expect(output).toContain("size: 64");
+                expect(output).toContain('"float32"');
             });
         });
 
@@ -291,11 +279,11 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "ref",
-                    innerType: { type: "int", size: 32, unsigned: false },
+                    innerType: { type: "int32" },
                 });
 
                 expect(output).toContain('"ref"');
-                expect(output).toContain('"int"');
+                expect(output).toContain('"int32"');
             });
         });
 
@@ -401,7 +389,7 @@ describe("FfiTypeWriter", () => {
                 const output = getWriterOutput(writer, {
                     type: "callback",
                     kind: "closure",
-                    returnType: { type: "int", size: 32, unsigned: false },
+                    returnType: { type: "int32" },
                 });
 
                 expect(output).toContain("returnType:");
@@ -423,18 +411,11 @@ describe("FfiTypeWriter", () => {
                 expect(output).toContain('"boolean"');
             });
 
-            it("writes undefined type", () => {
+            it("writes void type", () => {
                 const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "undefined" });
+                const output = getWriterOutput(writer, { type: "void" });
 
-                expect(output).toContain('"undefined"');
-            });
-
-            it("writes null type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "null" });
-
-                expect(output).toContain('"null"');
+                expect(output).toContain('"void"');
             });
         });
 

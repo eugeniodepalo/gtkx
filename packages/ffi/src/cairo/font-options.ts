@@ -40,7 +40,7 @@ FontOptions.prototype.setHintStyle = function (hintStyle: HintStyle): void {
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: INT_TYPE, value: hintStyle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -61,7 +61,7 @@ FontOptions.prototype.setAntialias = function (antialias: Antialias): void {
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: INT_TYPE, value: antialias },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -82,7 +82,7 @@ FontOptions.prototype.setHintMetrics = function (hintMetrics: HintMetrics): void
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: INT_TYPE, value: hintMetrics },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -103,7 +103,7 @@ FontOptions.prototype.setSubpixelOrder = function (subpixelOrder: SubpixelOrder)
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: INT_TYPE, value: subpixelOrder },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -136,7 +136,7 @@ FontOptions.prototype.merge = function (other: FontOptions): void {
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: FONT_OPTIONS_T, value: other.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -165,9 +165,7 @@ FontOptions.prototype.status = function (): Status {
 
 FontOptions.prototype.hash = function (): number {
     return call(LIB, "cairo_font_options_hash", [{ type: FONT_OPTIONS_T, value: this.handle }], {
-        type: "int",
-        size: 64,
-        unsigned: true,
+        type: "uint64",
     }) as number;
 };
 
@@ -179,7 +177,7 @@ FontOptions.prototype.setVariations = function (variations: string): void {
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: { type: "string", ownership: "full" }, value: variations },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 

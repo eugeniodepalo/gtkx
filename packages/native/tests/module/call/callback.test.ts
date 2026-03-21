@@ -12,11 +12,11 @@ import {
     GOBJECT_LIB,
     getRefCount,
     INT32,
-    NULL,
+    POINTER,
     STRING,
     startMemoryMeasurement,
     UINT64,
-    UNDEFINED,
+    VOID,
 } from "../utils.js";
 
 describe("call - callback types", () => {
@@ -31,11 +31,11 @@ describe("call - callback types", () => {
                     { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
                     {
-                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
+                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
                         value: () => {},
                     },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                     { type: INT32, value: 0 },
                 ],
                 UINT64,
@@ -60,7 +60,7 @@ describe("call - callback types", () => {
                             type: "callback",
                             kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                            returnType: { type: "undefined" },
+                            returnType: { type: "void" },
                         },
                         value: () => {
                             callbackInvoked = true;
@@ -71,7 +71,7 @@ describe("call - callback types", () => {
                 UINT64,
             );
 
-            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
             expect(callbackInvoked).toBe(true);
         });
@@ -91,7 +91,7 @@ describe("call - callback types", () => {
                             type: "callback",
                             kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                            returnType: { type: "undefined" },
+                            returnType: { type: "void" },
                         },
                         value: (arg: unknown) => {
                             receivedArg = arg;
@@ -102,7 +102,7 @@ describe("call - callback types", () => {
                 UINT64,
             );
 
-            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
             expect(receivedArg).toBeDefined();
         });
@@ -117,11 +117,11 @@ describe("call - callback types", () => {
                     { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
                     {
-                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
+                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
                         value: () => {},
                     },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                     { type: INT32, value: 0 },
                 ],
                 UINT64,
@@ -158,7 +158,7 @@ describe("call - callback types", () => {
                             type: "callback",
                             kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                            returnType: { type: "undefined" },
+                            returnType: { type: "void" },
                         },
                         value: () => {
                             count1++;
@@ -180,7 +180,7 @@ describe("call - callback types", () => {
                             type: "callback",
                             kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                            returnType: { type: "undefined" },
+                            returnType: { type: "void" },
                         },
                         value: () => {
                             count2++;
@@ -191,7 +191,7 @@ describe("call - callback types", () => {
                 UINT64,
             );
 
-            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
             expect(count1).toBe(1);
             expect(count2).toBe(1);
@@ -212,8 +212,8 @@ describe("call - callback types", () => {
                     {
                         type: {
                             type: "trampoline",
-                            argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "null" }],
-                            returnType: { type: "undefined" },
+                            argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "uint64" }],
+                            returnType: { type: "void" },
                             hasDestroy: true,
                             userDataIndex: 1,
                         },
@@ -229,7 +229,7 @@ describe("call - callback types", () => {
             expect(typeof handlerId).toBe("number");
             expect(handlerId).toBeGreaterThan(0);
 
-            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
             expect(callbackInvoked).toBe(true);
         });
@@ -251,7 +251,7 @@ describe("call - callback types", () => {
                             type: "callback",
                             kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                            returnType: { type: "undefined" },
+                            returnType: { type: "void" },
                         },
                         value: (obj: unknown) => {
                             receivedObject = obj;
@@ -262,7 +262,7 @@ describe("call - callback types", () => {
                 UINT64,
             );
 
-            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
             expect(receivedObject).not.toBeNull();
         });
@@ -308,8 +308,8 @@ describe("call - callback types", () => {
                         {
                             type: {
                                 type: "trampoline",
-                                argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "null" }],
-                                returnType: { type: "undefined" },
+                                argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "uint64" }],
+                                returnType: { type: "void" },
                                 hasDestroy: true,
                                 userDataIndex: 1,
                             },
@@ -342,7 +342,7 @@ describe("call - callback types", () => {
                             type: "callback",
                             kind: "closure",
                             argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                            returnType: { type: "undefined" },
+                            returnType: { type: "void" },
                         },
                         value: () => {
                             throw new Error("Test error in callback");
@@ -354,7 +354,7 @@ describe("call - callback types", () => {
             );
 
             expect(() => {
-                call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
+                call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
             }).toThrow();
         });
 
@@ -395,11 +395,11 @@ describe("call - callback types", () => {
                     { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
                     {
-                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
+                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
                         value: () => {},
                     },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                     { type: INT32, value: 0 },
                 ],
                 UINT64,

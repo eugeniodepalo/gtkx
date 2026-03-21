@@ -11,7 +11,7 @@ use crate::ffi::{FfiStorage, FfiStorageKind};
 use crate::managed::{Boxed, Fundamental, NativeValue};
 use crate::{
     ffi,
-    types::{ArrayKind, Type},
+    types::{ArrayKind, IntegerKind, Type},
     value,
 };
 
@@ -195,7 +195,15 @@ impl RefType {
                 ))
             }
             Type::Integer(int_type) => {
-                let number = int_type.kind.read_ptr(storage.ptr() as *const u8);
+                let number = int_type.read_ptr(storage.ptr() as *const u8);
+                Ok(value::Value::Number(number))
+            }
+            Type::Enum(_) => {
+                let number = IntegerKind::I32.read_ptr(storage.ptr() as *const u8);
+                Ok(value::Value::Number(number))
+            }
+            Type::Flags(_) => {
+                let number = IntegerKind::U32.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
             }
             Type::Float(float_kind) => {

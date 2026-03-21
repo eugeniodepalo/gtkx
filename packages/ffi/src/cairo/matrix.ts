@@ -38,7 +38,7 @@ class MatrixImpl extends Matrix {
         super();
         this.handle = alloc(48, "cairo_matrix_t", LIB);
         if (xx === undefined) {
-            call(LIB, "cairo_matrix_init_identity", [{ type: MATRIX_T, value: this.handle }], { type: "undefined" });
+            call(LIB, "cairo_matrix_init_identity", [{ type: MATRIX_T, value: this.handle }], { type: "void" });
         } else {
             call(
                 LIB,
@@ -52,7 +52,7 @@ class MatrixImpl extends Matrix {
                     { type: DOUBLE_TYPE, value: x0 },
                     { type: DOUBLE_TYPE, value: y0 },
                 ],
-                { type: "undefined" },
+                { type: "void" },
             );
         }
     }
@@ -67,7 +67,7 @@ class MatrixImpl extends Matrix {
                 { type: DOUBLE_TYPE, value: tx },
                 { type: DOUBLE_TYPE, value: ty },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
         return obj;
     }
@@ -82,7 +82,7 @@ class MatrixImpl extends Matrix {
                 { type: DOUBLE_TYPE, value: sx },
                 { type: DOUBLE_TYPE, value: sy },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
         return obj;
     }
@@ -96,7 +96,7 @@ class MatrixImpl extends Matrix {
                 { type: MATRIX_T, value: handle },
                 { type: DOUBLE_TYPE, value: radians },
             ],
-            { type: "undefined" },
+            { type: "void" },
         );
         return obj;
     }
@@ -155,7 +155,7 @@ Matrix.prototype.translate = function (tx: number, ty: number): void {
             { type: DOUBLE_TYPE, value: tx },
             { type: DOUBLE_TYPE, value: ty },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -168,7 +168,7 @@ Matrix.prototype.scale = function (sx: number, sy: number): void {
             { type: DOUBLE_TYPE, value: sx },
             { type: DOUBLE_TYPE, value: sy },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -180,7 +180,7 @@ Matrix.prototype.rotate = function (radians: number): void {
             { type: MATRIX_T, value: this.handle },
             { type: DOUBLE_TYPE, value: radians },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -198,7 +198,7 @@ Matrix.prototype.multiply = function (other: Matrix): Matrix {
             { type: MATRIX_T, value: this.handle },
             { type: MATRIX_T, value: other.handle },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return obj;
 };
@@ -214,7 +214,7 @@ Matrix.prototype.transformPoint = function (x: number, y: number): { x: number; 
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return { x: xRef.value, y: yRef.value };
 };
@@ -230,7 +230,7 @@ Matrix.prototype.transformDistance = function (dx: number, dy: number): { dx: nu
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: dxRef },
             { type: { type: "ref", innerType: DOUBLE_TYPE }, value: dyRef },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return { dx: dxRef.value, dy: dyRef.value };
 };

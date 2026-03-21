@@ -52,7 +52,7 @@ SvgSurface.prototype.setDocumentUnit = function (this: SvgSurface, unit: SvgUnit
             { type: SURFACE_T_NONE, value: this.handle },
             { type: INT_TYPE, value: unit },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -73,7 +73,7 @@ SvgSurface.prototype.restrictToVersion = function (this: SvgSurface, version: Sv
             { type: SURFACE_T_NONE, value: this.handle },
             { type: INT_TYPE, value: version },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 

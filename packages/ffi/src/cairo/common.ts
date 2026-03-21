@@ -61,9 +61,9 @@ export const SURFACE_T_NONE = {
     ownership: "borrowed",
 } as const;
 
-export const DOUBLE_TYPE = { type: "float", size: 64 } as const;
-export const INT_TYPE = { type: "int", size: 32, unsigned: false } as const;
-export const ULONG_TYPE = { type: "int", size: 64, unsigned: true } as const;
+export const DOUBLE_TYPE = { type: "float64" } as const;
+export const INT_TYPE = { type: "int32" } as const;
+export const ULONG_TYPE = { type: "uint64" } as const;
 
 export const FONT_FACE_T = {
     type: "boxed",
@@ -254,7 +254,7 @@ export type PathData =
 export const parsePath = (pathHandle: NativeHandle): PathData[] => {
     const numData = read(pathHandle, INT_TYPE, 16) as number;
     if (numData === 0) {
-        call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], { type: "undefined" });
+        call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], { type: "void" });
         return [];
     }
     const dataArray = read(
@@ -309,6 +309,6 @@ export const parsePath = (pathHandle: NativeHandle): PathData[] => {
         }
         i += length;
     }
-    call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], { type: "undefined" });
+    call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], { type: "void" });
     return result;
 };

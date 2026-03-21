@@ -10,9 +10,7 @@ import { Type } from "./types.js";
 let cachedStrvGType: number | undefined;
 function getStrvGType(): number {
     cachedStrvGType ??= call("libgobject-2.0.so.0", "g_strv_get_type", [], {
-        type: "int",
-        size: 64,
-        unsigned: true,
+        type: "uint64",
     }) as number;
     return cachedStrvGType;
 }
@@ -138,7 +136,7 @@ declare module "../generated/gobject/value.js" {
 }
 
 Value.prototype.getType = function (): number {
-    return read(this.handle, { type: "int", size: 64, unsigned: true }, 0) as number;
+    return read(this.handle, { type: "uint64" }, 0) as number;
 };
 
 Value.prototype.getTypeName = function (): string {
@@ -312,7 +310,7 @@ ValueWithStatics.newFromBoxed = (value: NativeObject): Value => {
                 value: value.handle,
             },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return v;
 };
@@ -344,7 +342,7 @@ ValueWithStatics.newFromStrv = (value: string[]): Value => {
                 value,
             },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return v;
 };
@@ -377,7 +375,7 @@ ValueWithStatics.newFromVariant = (value: NativeObject): Value => {
                 value: value.handle,
             },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
     return v;
 };
@@ -404,28 +402,45 @@ export function toValue(ffiType: FfiType, value: unknown): Value {
         case "string":
             return Value.newFromString(value as string | null);
 
-        case "int": {
-            if (ffiType.getTypeFn && ffiType.library) {
-                const gtype = call(ffiType.library, ffiType.getTypeFn, [], {
-                    type: "int",
-                    size: 64,
-                    unsigned: true,
-                }) as number;
-                const fundamental = typeFundamental(gtype);
-                if (fundamental === Type.FLAGS) {
-                    return Value.newFromFlags(gtype, value as number);
-                }
-                return Value.newFromEnum(gtype, value as number);
+        case "enum": {
+            const gtype = call(ffiType.library, ffiType.getTypeFn, [], {
+                type: "uint64",
+            }) as number;
+            const fundamental = typeFundamental(gtype);
+            if (fundamental === Type.FLAGS) {
+                return Value.newFromFlags(gtype, value as number);
             }
-
-            if (ffiType.size === 64) {
-                return ffiType.unsigned ? Value.newFromUint64(value as number) : Value.newFromInt64(value as number);
-            }
-            return ffiType.unsigned ? Value.newFromUint(value as number) : Value.newFromInt(value as number);
+            return Value.newFromEnum(gtype, value as number);
         }
 
-        case "float":
-            return ffiType.size === 64 ? Value.newFromDouble(value as number) : Value.newFromFloat(value as number);
+        case "flags": {
+            const gtype = call(ffiType.library, ffiType.getTypeFn, [], {
+                type: "uint64",
+            }) as number;
+            return Value.newFromFlags(gtype, value as number);
+        }
+
+        case "int8":
+        case "int16":
+        case "int32":
+            return Value.newFromInt(value as number);
+
+        case "uint8":
+        case "uint16":
+        case "uint32":
+            return Value.newFromUint(value as number);
+
+        case "int64":
+            return Value.newFromInt64(value as number);
+
+        case "uint64":
+            return Value.newFromUint64(value as number);
+
+        case "float32":
+            return Value.newFromFloat(value as number);
+
+        case "float64":
+            return Value.newFromDouble(value as number);
 
         case "gobject":
             return Value.newFromObject(value as GObject | null);

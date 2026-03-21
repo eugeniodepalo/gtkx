@@ -132,7 +132,7 @@ FontFace.prototype.ftSetSynthesize = function (flags: number): void {
             { type: FONT_FACE_T_NONE, value: this.handle },
             { type: INT_TYPE, value: flags },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };
 
@@ -144,6 +144,6 @@ FontFace.prototype.ftUnsetSynthesize = function (flags: number): void {
             { type: FONT_FACE_T_NONE, value: this.handle },
             { type: INT_TYPE, value: flags },
         ],
-        { type: "undefined" },
+        { type: "void" },
     );
 };

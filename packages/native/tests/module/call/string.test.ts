@@ -11,7 +11,7 @@ import {
     STRING,
     STRING_BORROWED,
     startMemoryMeasurement,
-    UNDEFINED,
+    VOID,
 } from "../utils.js";
 
 describe("call - string types", () => {
@@ -26,7 +26,7 @@ describe("call - string types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Updated" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const result = call(
@@ -141,7 +141,7 @@ describe("call - string types", () => {
                     { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "Updated Label" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const label = call(
@@ -204,7 +204,7 @@ describe("call - string types", () => {
                         { type: GOBJECT_BORROWED, value: label },
                         { type: STRING, value: `String ${i}` },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }
 
@@ -246,7 +246,7 @@ describe("call - string types", () => {
                         { type: GOBJECT_BORROWED, value: label },
                         { type: STRING, value: `${longString}_${i}` },
                     ],
-                    UNDEFINED,
+                    VOID,
                 );
             }
 
@@ -350,7 +350,7 @@ describe("call - string types", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "<b>Bold</b> and <i>italic</i>" },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const text = call(

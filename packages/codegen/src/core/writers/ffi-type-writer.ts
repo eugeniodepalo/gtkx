@@ -151,10 +151,22 @@ export class FfiTypeWriter {
 
     private buildProperties(type: FfiTypeDescriptor): ObjectProperty[] {
         switch (type.type) {
-            case "int":
-                return this.buildIntProperties(type);
-            case "float":
-                return this.buildFloatProperties(type);
+            case "int8":
+            case "uint8":
+            case "int16":
+            case "uint16":
+            case "int32":
+            case "uint32":
+            case "int64":
+            case "uint64":
+            case "float32":
+            case "float64":
+            case "boolean":
+            case "void":
+                return [{ name: "type", value: `"${type.type}"` }];
+            case "enum":
+            case "flags":
+                return this.buildTaggedProperties(type);
             case "string":
                 return this.buildOwnershipProperties("string", type.ownership);
             case "gobject":
@@ -175,39 +187,20 @@ export class FfiTypeWriter {
                 return this.buildCallbackProperties(type);
             case "trampoline":
                 return this.buildTrampolineProperties(type);
-            case "boolean":
-                return [{ name: "type", value: '"boolean"' }];
-            case "undefined":
-                return [{ name: "type", value: '"undefined"' }];
-            case "null":
-                return [{ name: "type", value: '"null"' }];
             default:
                 return [{ name: "type", value: `"${type.type}"` }];
         }
     }
 
-    private buildIntProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        const props: ObjectProperty[] = [
-            { name: "type", value: '"int"' },
-            { name: "size", value: type.size ?? 32 },
-            { name: "unsigned", value: type.unsigned ?? false },
-        ];
-
+    private buildTaggedProperties(type: FfiTypeDescriptor): ObjectProperty[] {
+        const props: ObjectProperty[] = [{ name: "type", value: `"${type.type}"` }];
         if (type.library) {
             props.push({ name: "library", value: `"${type.library}"` });
         }
         if (type.getTypeFn) {
             props.push({ name: "getTypeFn", value: `"${type.getTypeFn}"` });
         }
-
         return props;
-    }
-
-    private buildFloatProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        return [
-            { name: "type", value: '"float"' },
-            { name: "size", value: type.size ?? 64 },
-        ];
     }
 
     private buildOwnershipProperties(typeName: string, ownership?: "full" | "borrowed"): ObjectProperty[] {
@@ -323,7 +316,7 @@ export class FfiTypeWriter {
             },
         });
 
-        props.push({ name: "returnType", value: this.toWriter(type.returnType ?? { type: "undefined" }) });
+        props.push({ name: "returnType", value: this.toWriter(type.returnType ?? { type: "void" }) });
 
         if (type.sourceType) {
             props.push({ name: "sourceType", value: this.toWriter(type.sourceType) });
@@ -351,7 +344,7 @@ export class FfiTypeWriter {
             },
         });
 
-        props.push({ name: "returnType", value: this.toWriter(type.returnType ?? { type: "undefined" }) });
+        props.push({ name: "returnType", value: this.toWriter(type.returnType ?? { type: "void" }) });
 
         if (type.hasDestroy) {
             props.push({ name: "hasDestroy", value: true });

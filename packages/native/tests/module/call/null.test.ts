@@ -8,14 +8,14 @@ import {
     GOBJECT_BORROWED,
     GTK_LIB,
     INT32,
-    NULL,
+    POINTER,
     STRING_BORROWED,
-    UNDEFINED,
+    VOID,
 } from "../utils.js";
 
-describe("call - null type", () => {
-    it("passes null as optional argument", () => {
-        const label = call(GTK_LIB, "gtk_label_new", [{ type: NULL, value: null }], GOBJECT);
+describe("call - null pointer arguments", () => {
+    it("passes null pointer as optional argument", () => {
+        const label = call(GTK_LIB, "gtk_label_new", [{ type: POINTER, value: 0 }], GOBJECT);
 
         const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
 
@@ -32,12 +32,12 @@ describe("call - null type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: INT32, value: 0 },
                 { type: INT32, value: -1 },
-                { type: NULL, value: null },
-                { type: NULL, value: null },
-                { type: NULL, value: null },
-                { type: NULL, value: null },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
             ],
-            UNDEFINED,
+            VOID,
         );
     });
 
@@ -65,7 +65,7 @@ describe("call - null type", () => {
                 { type: GOBJECT_BORROWED, value: box },
                 { type: GOBJECT_BORROWED, value: label },
             ],
-            UNDEFINED,
+            VOID,
         );
 
         const nextSibling = call(
@@ -91,7 +91,7 @@ describe("call - null type", () => {
         expect(firstChild).toBeNull();
     });
 
-    it("handles null in callback user_data", () => {
+    it("handles null pointers in callback user_data position", () => {
         const label = createLabel("Test");
 
         call(
@@ -101,17 +101,17 @@ describe("call - null type", () => {
                 { type: GOBJECT_BORROWED, value: label },
                 { type: INT32, value: 0 },
                 { type: INT32, value: -1 },
-                { type: NULL, value: null },
-                { type: NULL, value: null },
-                { type: NULL, value: null },
-                { type: NULL, value: null },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
             ],
-            UNDEFINED,
+            VOID,
         );
     });
 
     describe("edge cases", () => {
-        it("distinguishes null from undefined in return", () => {
+        it("returns null for absent optional GObject return", () => {
             const label = createLabel("Test");
 
             const parent = call(
@@ -144,7 +144,7 @@ describe("call - null type", () => {
                     { type: GOBJECT_BORROWED, value: box },
                     { type: GOBJECT_BORROWED, value: label },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             child = call(
@@ -168,17 +168,17 @@ describe("call - null type", () => {
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: minRef },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             expect(typeof minRef.value).toBe("number");
         });
 
-        it("handles consecutive null arguments", () => {
+        it("handles consecutive null pointer arguments", () => {
             const label = createLabel("Test");
 
             call(
@@ -188,12 +188,12 @@ describe("call - null type", () => {
                     { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
-                    { type: NULL, value: null },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
+                    { type: POINTER, value: 0 },
                 ],
-                UNDEFINED,
+                VOID,
             );
         });
     });

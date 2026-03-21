@@ -9,7 +9,7 @@ import {
     STRING,
     STRING_BORROWED,
     startMemoryMeasurement,
-    UNDEFINED,
+    VOID,
 } from "../utils.js";
 
 const RGBA_BOXED_NONE = { type: "boxed" as const, innerType: "GdkRGBA", lib: GDK_LIB, ownership: "borrowed" as const };
@@ -203,7 +203,7 @@ describe("call - boxed types", () => {
                     { type: RECTANGLE_BOXED_NONE, value: rect2 },
                     { type: RECTANGLE_BOXED_NONE, value: dest },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const destWidth = read(dest, INT32, 8);
@@ -284,7 +284,7 @@ describe("call - boxed types", () => {
                     { type: PANGO_FONT_DESC_NONE, value: fontDesc },
                     { type: INT32, value: 14 * 1024 },
                 ],
-                UNDEFINED,
+                VOID,
             );
 
             const size = call(

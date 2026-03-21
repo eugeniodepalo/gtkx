@@ -369,7 +369,7 @@ export class ClassGenerator {
             name: "getGType",
             isStatic: true,
             returnType: "number",
-            statements: `return call("${this.options.sharedLibrary}", "${this.cls.glibGetType}", [], { type: "int", size: 64, unsigned: true }) as number;`,
+            statements: `return call("${this.options.sharedLibrary}", "${this.cls.glibGetType}", [], { type: "uint64" }) as number;`,
         };
     }
 

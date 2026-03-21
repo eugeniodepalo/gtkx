@@ -236,14 +236,12 @@ export class ConstructorBuilder {
             writer.writeLine(`"${this.options.sharedLibrary}",`);
             writer.writeLine(`"${getTypeFunc}",`);
             writer.writeLine("[],");
-            writer.writeLine('{ type: "int", size: 64, unsigned: true }');
+            writer.writeLine('{ type: "uint64" }');
         });
         writer.writeLine(");");
 
         if (props.length > 0) {
-            writer.writeLine(
-                'const __args: Arg[] = [{ type: { type: "int", size: 64, unsigned: true }, value: gtype, optional: false }];',
-            );
+            writer.writeLine('const __args: Arg[] = [{ type: { type: "uint64" }, value: gtype, optional: false }];');
             for (const prop of props) {
                 writer.writeLine(`if (${prop.guardExpr} !== undefined) {`);
                 writer.indent(() => {
@@ -260,7 +258,7 @@ export class ConstructorBuilder {
                 });
                 writer.writeLine("}");
             }
-            writer.writeLine('__args.push({ type: { type: "null" }, value: null, optional: false });');
+            writer.writeLine('__args.push({ type: { type: "void" }, value: null, optional: false });');
             writer.write("this.handle = call(");
             writer.newLine();
             writer.indent(() => {
@@ -278,10 +276,8 @@ export class ConstructorBuilder {
                 writer.writeLine('"g_object_new",');
                 writer.writeLine("[");
                 writer.indent(() => {
-                    writer.writeLine(
-                        '{ type: { type: "int", size: 64, unsigned: true }, value: gtype, optional: false },',
-                    );
-                    writer.writeLine('{ type: { type: "null" }, value: null, optional: false },');
+                    writer.writeLine('{ type: { type: "uint64" }, value: gtype, optional: false },');
+                    writer.writeLine('{ type: { type: "void" }, value: null, optional: false },');
                 });
                 writer.writeLine("],");
                 writer.writeLine('{ type: "gobject", ownership: "full" }');

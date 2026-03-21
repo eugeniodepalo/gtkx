@@ -198,7 +198,7 @@ export class PropertySetterBuilder {
                     );
                 });
                 writer.writeLine("],");
-                writer.writeLine(`{ type: "undefined" }`);
+                writer.writeLine(`{ type: "void" }`);
             });
             writer.writeLine(");");
         };
