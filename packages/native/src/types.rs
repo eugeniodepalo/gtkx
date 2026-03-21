@@ -424,8 +424,8 @@ impl std::fmt::Display for Type {
         match self {
             Type::Integer(kind) => write!(f, "Integer({:?})", kind),
             Type::Float(kind) => write!(f, "Float({:?})", kind),
-            Type::Enum(t) => write!(f, "Enum({})", t.0.get_type_fn),
-            Type::Flags(t) => write!(f, "Flags({})", t.0.get_type_fn),
+            Type::Enum(t) => write!(f, "Enum({})", t.tagged.get_type_fn),
+            Type::Flags(t) => write!(f, "Flags({})", t.tagged.get_type_fn),
             Type::String(_) => write!(f, "String"),
             Type::Void(_) => write!(f, "Void"),
             Type::Boolean(_) => write!(f, "Boolean"),
@@ -464,10 +464,8 @@ impl Type {
             "uint64" => Ok(Type::Integer(IntegerKind::U64)),
             "float32" => Ok(Type::Float(FloatKind::F32)),
             "float64" => Ok(Type::Float(FloatKind::F64)),
-            "enum" => Ok(Type::Enum(EnumType(TaggedType::from_js_value(cx, value)?))),
-            "flags" => Ok(Type::Flags(FlagsType(TaggedType::from_js_value(
-                cx, value,
-            )?))),
+            "enum" => Ok(Type::Enum(EnumType::from_js_value(cx, value)?)),
+            "flags" => Ok(Type::Flags(FlagsType::from_js_value(cx, value)?)),
             "string" => Ok(Type::String(StringType::from_js_value(cx, value)?)),
             "boolean" => Ok(Type::Boolean(BooleanType)),
             "void" => Ok(Type::Void(VoidType)),

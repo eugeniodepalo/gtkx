@@ -60,6 +60,8 @@ export type FfiTypeDescriptor = {
     userDataIndex?: number;
 
     scope?: "call" | "notified" | "async" | "forever";
+
+    signed?: boolean;
 };
 
 /**
@@ -382,16 +384,18 @@ export const refType = (innerType: FfiTypeDescriptor): FfiTypeDescriptor => ({
     innerType,
 });
 
-export const enumType = (library: string, getTypeFn: string): FfiTypeDescriptor => ({
+export const enumType = (library: string, getTypeFn: string, signed: boolean): FfiTypeDescriptor => ({
     type: "enum",
     library,
     getTypeFn,
+    signed,
 });
 
-export const flagsType = (library: string, getTypeFn: string): FfiTypeDescriptor => ({
+export const flagsType = (library: string, getTypeFn: string, signed: boolean): FfiTypeDescriptor => ({
     type: "flags",
     library,
     getTypeFn,
+    signed,
 });
 
 export const trampolineType = (

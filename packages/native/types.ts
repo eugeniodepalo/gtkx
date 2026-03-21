@@ -26,8 +26,8 @@ type Uint64Type = { type: "uint64" };
 type Float32Type = { type: "float32" };
 type Float64Type = { type: "float64" };
 
-type EnumType = { type: "enum"; library: string; getTypeFn: string };
-type FlagsType = { type: "flags"; library: string; getTypeFn: string };
+type EnumType = { type: "enum"; library: string; getTypeFn: string; signed: boolean };
+type FlagsType = { type: "flags"; library: string; getTypeFn: string; signed: boolean };
 
 type BooleanType = { type: "boolean" };
 

@@ -385,15 +385,32 @@ impl From<FloatKind> for libffi::Type {
 }
 
 #[derive(Debug, Clone)]
-pub struct EnumType(pub TaggedType);
+pub struct EnumType {
+    pub tagged: TaggedType,
+    pub storage: IntegerKind,
+}
+
+impl EnumType {
+    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
+        let tagged = TaggedType::from_js_value(cx, value)?;
+        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+        let signed: Handle<JsBoolean> = obj.prop(cx, "signed").get()?;
+        let storage = if signed.value(cx) {
+            IntegerKind::I32
+        } else {
+            IntegerKind::U32
+        };
+        Ok(EnumType { tagged, storage })
+    }
+}
 
 impl FfiCodec for EnumType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        FfiCodec::encode(&IntegerKind::I32, value, optional)
+        FfiCodec::encode(&self.storage, value, optional)
     }
 
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        FfiCodec::decode(&IntegerKind::I32, ffi_value)
+        FfiCodec::decode(&self.storage, ffi_value)
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
@@ -402,7 +419,7 @@ impl FfiCodec for EnumType {
     }
 
     fn libffi_type(&self) -> libffi::Type {
-        libffi::Type::i32()
+        self.storage.ffi_type()
     }
 
     fn call_cif(
@@ -411,11 +428,11 @@ impl FfiCodec for EnumType {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
-        FfiCodec::call_cif(&IntegerKind::I32, cif, ptr, args)
+        FfiCodec::call_cif(&self.storage, cif, ptr, args)
     }
 
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        Ok(IntegerKind::I32.ptr_to_value_raw(ptr))
+        Ok(self.storage.ptr_to_value_raw(ptr))
     }
 
     fn read_from_raw_ptr(
@@ -424,25 +441,42 @@ impl FfiCodec for EnumType {
         _context: &str,
     ) -> anyhow::Result<value::Value> {
         Ok(value::Value::Number(
-            IntegerKind::I32.read_ptr(ptr as *const u8),
+            self.storage.read_ptr(ptr as *const u8),
         ))
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        FfiCodec::write_return_to_raw_ptr(&IntegerKind::I32, ret, value);
+        FfiCodec::write_return_to_raw_ptr(&self.storage, ret, value);
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct FlagsType(pub TaggedType);
+pub struct FlagsType {
+    pub tagged: TaggedType,
+    pub storage: IntegerKind,
+}
+
+impl FlagsType {
+    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
+        let tagged = TaggedType::from_js_value(cx, value)?;
+        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+        let signed: Handle<JsBoolean> = obj.prop(cx, "signed").get()?;
+        let storage = if signed.value(cx) {
+            IntegerKind::I32
+        } else {
+            IntegerKind::U32
+        };
+        Ok(FlagsType { tagged, storage })
+    }
+}
 
 impl FfiCodec for FlagsType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        FfiCodec::encode(&IntegerKind::U32, value, optional)
+        FfiCodec::encode(&self.storage, value, optional)
     }
 
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        FfiCodec::decode(&IntegerKind::U32, ffi_value)
+        FfiCodec::decode(&self.storage, ffi_value)
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
@@ -452,7 +486,7 @@ impl FfiCodec for FlagsType {
     }
 
     fn libffi_type(&self) -> libffi::Type {
-        libffi::Type::u32()
+        self.storage.ffi_type()
     }
 
     fn call_cif(
@@ -461,11 +495,11 @@ impl FfiCodec for FlagsType {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
-        FfiCodec::call_cif(&IntegerKind::U32, cif, ptr, args)
+        FfiCodec::call_cif(&self.storage, cif, ptr, args)
     }
 
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        Ok(IntegerKind::U32.ptr_to_value_raw(ptr))
+        Ok(self.storage.ptr_to_value_raw(ptr))
     }
 
     fn read_from_raw_ptr(
@@ -474,11 +508,11 @@ impl FfiCodec for FlagsType {
         _context: &str,
     ) -> anyhow::Result<value::Value> {
         Ok(value::Value::Number(
-            IntegerKind::U32.read_ptr(ptr as *const u8),
+            self.storage.read_ptr(ptr as *const u8),
         ))
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        FfiCodec::write_return_to_raw_ptr(&IntegerKind::U32, ret, value);
+        FfiCodec::write_return_to_raw_ptr(&self.storage, ret, value);
     }
 }

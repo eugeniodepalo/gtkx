@@ -201,6 +201,7 @@ export class FfiTypeWriter {
         if (type.getTypeFn) {
             props.push({ name: "getTypeFn", value: `"${type.getTypeFn}"` });
         }
+        props.push({ name: "signed", value: type.signed ? "true" : "false" });
         return props;
     }
 

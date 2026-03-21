@@ -8,7 +8,7 @@ use neon::prelude::*;
 use super::{FfiCodec, NeonContextExt as _, Ownership};
 use crate::arg::Arg;
 use crate::ffi::{FfiStorage, FfiStorageKind};
-use crate::types::{FloatKind, IntegerKind, Type};
+use crate::types::{FloatKind, Type};
 use crate::{ffi, value};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -187,8 +187,8 @@ impl ArrayType {
             | Type::Struct(_)
             | Type::Fundamental(_)
             | Type::String(_) => Some(std::mem::size_of::<*mut c_void>()),
-            Type::Enum(_) => Some(size_of::<i32>()),
-            Type::Flags(_) => Some(size_of::<u32>()),
+            Type::Enum(e) => Some(e.storage.byte_size()),
+            Type::Flags(f) => Some(f.storage.byte_size()),
             Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
@@ -212,12 +212,12 @@ impl ArrayType {
             return self.encode_garray(array);
         }
 
-        match *self.item_type {
-            Type::Integer(ref int_type) => {
+        match &*self.item_type {
+            Type::Integer(int_type) => {
                 let values = Self::extract_numbers(array)?;
                 Ok(ffi::FfiValue::Storage(int_type.to_ffi_storage(&values)))
             }
-            Type::Float(ref float_kind) => {
+            Type::Float(float_kind) => {
                 let values = Self::extract_numbers(array)?;
                 match float_kind {
                     FloatKind::F32 => {
@@ -384,17 +384,13 @@ impl ArrayType {
                 let values = Self::extract_booleans(array)?;
                 Ok(ffi::FfiValue::Storage(values.into()))
             }
-            Type::Enum(_) => {
+            Type::Enum(e) => {
                 let values = Self::extract_numbers(array)?;
-                Ok(ffi::FfiValue::Storage(
-                    IntegerKind::I32.to_ffi_storage(&values),
-                ))
+                Ok(ffi::FfiValue::Storage(e.storage.to_ffi_storage(&values)))
             }
-            Type::Flags(_) => {
+            Type::Flags(f) => {
                 let values = Self::extract_numbers(array)?;
-                Ok(ffi::FfiValue::Storage(
-                    IntegerKind::U32.to_ffi_storage(&values),
-                ))
+                Ok(ffi::FfiValue::Storage(f.storage.to_ffi_storage(&values)))
             }
             Type::Void(_)
             | Type::Array(_)
@@ -491,27 +487,21 @@ impl ArrayType {
                     }
                 }
             }
-            Type::Enum(_) => {
+            Type::Enum(e) => {
                 for n in Self::extract_numbers(array)? {
-                    let v = n as i32;
+                    let mut buf = vec![0u8; e.storage.byte_size()];
+                    e.storage.write_ptr(buf.as_mut_ptr(), n);
                     unsafe {
-                        glib::ffi::g_array_append_vals(
-                            g_array,
-                            &v as *const i32 as *const c_void,
-                            1,
-                        );
+                        glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
                     }
                 }
             }
-            Type::Flags(_) => {
+            Type::Flags(f) => {
                 for n in Self::extract_numbers(array)? {
-                    let v = n as u32;
+                    let mut buf = vec![0u8; f.storage.byte_size()];
+                    f.storage.write_ptr(buf.as_mut_ptr(), n);
                     unsafe {
-                        glib::ffi::g_array_append_vals(
-                            g_array,
-                            &v as *const u32 as *const c_void,
-                            1,
-                        );
+                        glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
                     }
                 }
             }
@@ -688,12 +678,12 @@ impl ArrayType {
                 }
                 values
             }
-            Type::Enum(_) => {
-                let f64_values = IntegerKind::I32.read_slice(data, len);
+            Type::Enum(e) => {
+                let f64_values = e.storage.read_slice(data, len);
                 f64_values.into_iter().map(value::Value::Number).collect()
             }
-            Type::Flags(_) => {
-                let f64_values = IntegerKind::U32.read_slice(data, len);
+            Type::Flags(f) => {
+                let f64_values = f.storage.read_slice(data, len);
                 f64_values.into_iter().map(value::Value::Number).collect()
             }
             Type::Void(_)
@@ -824,12 +814,12 @@ impl ArrayType {
                     .map(|handle| value::Value::Object(*handle))
                     .collect()
             }
-            Type::Enum(_) => {
-                let f64_vec = IntegerKind::I32.vec_to_f64(storage)?;
+            Type::Enum(e) => {
+                let f64_vec = e.storage.vec_to_f64(storage)?;
                 f64_vec.into_iter().map(value::Value::Number).collect()
             }
-            Type::Flags(_) => {
-                let f64_vec = IntegerKind::U32.vec_to_f64(storage)?;
+            Type::Flags(f) => {
+                let f64_vec = f.storage.vec_to_f64(storage)?;
                 f64_vec.into_iter().map(value::Value::Number).collect()
             }
             Type::Void(_)
@@ -857,8 +847,8 @@ impl ArrayType {
             | Type::Struct(_)
             | Type::String(_)
             | Type::Fundamental(_) => self.decode_sized_ptr_array(ptr, length),
-            Type::Enum(_) => Self::decode_sized_byte_array(ptr, length, &IntegerKind::I32),
-            Type::Flags(_) => Self::decode_sized_byte_array(ptr, length, &IntegerKind::U32),
+            Type::Enum(e) => Self::decode_sized_byte_array(ptr, length, &e.storage),
+            Type::Flags(f) => Self::decode_sized_byte_array(ptr, length, &f.storage),
             Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)

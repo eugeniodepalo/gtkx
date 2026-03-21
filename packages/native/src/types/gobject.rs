@@ -49,11 +49,12 @@ impl FfiCodec for GObjectType {
 
         let gobject_ptr = object_ptr as *mut glib::gobject_ffi::GObject;
 
-        let object = if self.ownership.is_full() {
-            let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
-            if is_floating {
-                unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
-            }
+        let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
+
+        let object = if is_floating {
+            unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
+            NativeValue::GObject(unsafe { glib::Object::from_glib_full(gobject_ptr) })
+        } else if self.ownership.is_full() {
             NativeValue::GObject(unsafe { glib::Object::from_glib_full(gobject_ptr) })
         } else {
             NativeValue::GObject(unsafe { glib::Object::from_glib_none(gobject_ptr) })

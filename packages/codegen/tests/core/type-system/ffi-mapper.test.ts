@@ -492,7 +492,7 @@ describe("FfiMapper", () => {
         });
 
         describe("enums and flags", () => {
-            it("maps enum to FFI_INT32", () => {
+            it("maps enum to FFI_UINT32", () => {
                 const enumType = createNormalizedEnumeration({ name: "Orientation" });
                 const ns = createNormalizedNamespace({
                     name: "Gtk",
@@ -504,7 +504,7 @@ describe("FfiMapper", () => {
                 const result = mapper.mapType(type);
 
                 expect(result.ts).toBe("Orientation");
-                expect(result.ffi).toEqual(FFI_INT32);
+                expect(result.ffi).toEqual(FFI_UINT32);
                 expect(result.kind).toBe("enum");
             });
 

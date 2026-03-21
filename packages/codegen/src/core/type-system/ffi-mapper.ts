@@ -432,6 +432,7 @@ export class FfiMapper {
 
         const enumeration = ns.enumerations.get(name);
         if (enumeration) {
+            const signed = enumeration.members.some((m) => m.value.startsWith("-"));
             return {
                 kind: "enum",
                 name,
@@ -439,11 +440,13 @@ export class FfiMapper {
                 transformedName: toPascalCase(name),
                 isExternal,
                 glibGetType: enumeration.glibGetType,
+                signed,
             };
         }
 
         const bitfield = ns.bitfields.get(name);
         if (bitfield) {
+            const signed = bitfield.members.some((m) => m.value.startsWith("-"));
             return {
                 kind: "flags",
                 name,
@@ -451,6 +454,7 @@ export class FfiMapper {
                 transformedName: toPascalCase(name),
                 isExternal,
                 glibGetType: bitfield.glibGetType,
+                signed,
             };
         }
 
@@ -552,9 +556,15 @@ export class FfiMapper {
         switch (resolved.kind) {
             case "enum": {
                 const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
+                const signed = resolved.signed ?? false;
                 return {
                     ts: qualifiedName,
-                    ffi: resolved.glibGetType && sharedLib ? enumType(sharedLib, resolved.glibGetType) : FFI_INT32,
+                    ffi:
+                        resolved.glibGetType && sharedLib
+                            ? enumType(sharedLib, resolved.glibGetType, signed)
+                            : signed
+                              ? FFI_INT32
+                              : FFI_UINT32,
                     imports,
                     kind: "enum",
                 };
@@ -562,9 +572,15 @@ export class FfiMapper {
 
             case "flags": {
                 const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
+                const signed = resolved.signed ?? false;
                 return {
                     ts: qualifiedName,
-                    ffi: resolved.glibGetType && sharedLib ? flagsType(sharedLib, resolved.glibGetType) : FFI_UINT32,
+                    ffi:
+                        resolved.glibGetType && sharedLib
+                            ? flagsType(sharedLib, resolved.glibGetType, signed)
+                            : signed
+                              ? FFI_INT32
+                              : FFI_UINT32,
                     imports,
                     kind: "flags",
                 };
@@ -756,4 +772,5 @@ type ResolvedType = {
     unrefFunc?: string;
     copyFunction?: string;
     freeFunction?: string;
+    signed?: boolean;
 };

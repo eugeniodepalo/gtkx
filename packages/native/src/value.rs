@@ -137,8 +137,8 @@ impl Value {
             Value::Undefined => match return_type {
                 Some(Type::Boolean(_)) => Some(false.into()),
                 Some(Type::Integer(_)) => Some(0i32.into()),
-                Some(Type::Enum(tagged)) => Self::number_to_enum_value(0.0, &tagged.0).ok(),
-                Some(Type::Flags(tagged)) => Self::number_to_flags_value(0.0, &tagged.0).ok(),
+                Some(Type::Enum(tagged)) => Self::number_to_enum_value(0.0, &tagged.tagged).ok(),
+                Some(Type::Flags(tagged)) => Self::number_to_flags_value(0.0, &tagged.tagged).ok(),
                 Some(Type::Float(FloatKind::F32)) => Some(0.0f32.into()),
                 Some(Type::Float(FloatKind::F64)) => Some(0.0f64.into()),
                 Some(Type::String(_)) => Some(Option::<String>::None.into()),
@@ -175,10 +175,10 @@ impl Value {
         match self {
             Value::Number(n) => {
                 if let Some(Type::Enum(tagged)) = expected_type {
-                    return Self::number_to_enum_value(n, &tagged.0);
+                    return Self::number_to_enum_value(n, &tagged.tagged);
                 }
                 if let Some(Type::Flags(tagged)) = expected_type {
-                    return Self::number_to_flags_value(n, &tagged.0);
+                    return Self::number_to_flags_value(n, &tagged.tagged);
                 }
                 if let Some(Type::Integer(int_kind)) = expected_type {
                     return match int_kind {
