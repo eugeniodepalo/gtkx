@@ -136,6 +136,29 @@ impl GtkThreadState {
         Ok(result)
     }
 
+    pub fn gtype_from_lib(
+        lib_name: &str,
+        get_type_fn_name: &str,
+    ) -> anyhow::Result<gtk4::glib::Type> {
+        use gtk4::glib::translate::FromGlib as _;
+
+        Self::with(|state| {
+            let lib = state.library(lib_name)?;
+
+            type GetTypeFn = unsafe extern "C" fn() -> gtk4::glib::ffi::GType;
+
+            let func = unsafe {
+                lib.get::<GetTypeFn>(get_type_fn_name.as_bytes())
+                    .map_err(|e| {
+                        anyhow::anyhow!("Failed to find symbol '{}': {}", get_type_fn_name, e)
+                    })?
+            };
+
+            let gtype_raw = unsafe { func() };
+            Ok(unsafe { gtk4::glib::Type::from_glib(gtype_raw) })
+        })
+    }
+
     pub fn library(&mut self, name: &str) -> anyhow::Result<&Library> {
         match self.libraries.entry(name.to_string()) {
             Entry::Occupied(entry) => Ok(entry.into_mut()),

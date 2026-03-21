@@ -1,10 +1,11 @@
 use std::ffi::c_void;
 
 use anyhow::bail;
-use gtk4::glib;
+use gtk4::glib::{self, translate::ToGlibPtr as _};
 use libffi::middle as libffi;
 use neon::prelude::*;
 
+use super::FfiCodec;
 use crate::{ffi, value};
 
 #[derive(Debug, Clone, Copy)]
@@ -184,6 +185,20 @@ impl IntegerKind {
     }
 }
 
+impl FfiCodec for IntegerKind {
+    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        IntegerKind::encode(self, value, optional)
+    }
+
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        IntegerKind::decode(self, ffi_value)
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        IntegerKind::from_glib_value(*self, gvalue)
+    }
+}
+
 impl From<IntegerKind> for libffi::Type {
     fn from(kind: IntegerKind) -> Self {
         kind.ffi_type()
@@ -312,8 +327,59 @@ impl FloatKind {
     }
 }
 
+impl FfiCodec for FloatKind {
+    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        FloatKind::encode(self, value, optional)
+    }
+
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        FloatKind::decode(self, ffi_value)
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        FloatKind::from_glib_value(*self, gvalue)
+    }
+}
+
 impl From<FloatKind> for libffi::Type {
     fn from(kind: FloatKind) -> Self {
         kind.ffi_type()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumType(pub TaggedType);
+
+impl FfiCodec for EnumType {
+    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        IntegerKind::I32.encode(value, optional)
+    }
+
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        IntegerKind::I32.decode(ffi_value)
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let v = unsafe { glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _) };
+        Ok(value::Value::Number(v as f64))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FlagsType(pub TaggedType);
+
+impl FfiCodec for FlagsType {
+    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        IntegerKind::U32.encode(value, optional)
+    }
+
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        IntegerKind::U32.decode(ffi_value)
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let v =
+            unsafe { glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _) };
+        Ok(value::Value::Number(v as f64))
     }
 }

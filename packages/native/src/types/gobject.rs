@@ -8,7 +8,7 @@ use gtk4::glib::{
 use libffi::middle as libffi;
 use neon::prelude::*;
 
-use super::Ownership;
+use super::{FfiCodec, Ownership};
 use crate::managed::NativeValue;
 use crate::{ffi, value};
 
@@ -31,8 +31,8 @@ impl From<&GObjectType> for libffi::Type {
     }
 }
 
-impl GObjectType {
-    pub fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FfiCodec for GObjectType {
+    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("GObject")?;
 
         if self.ownership.is_full() && !ptr.is_null() {
@@ -42,7 +42,7 @@ impl GObjectType {
         Ok(ffi::FfiValue::Ptr(ptr))
     }
 
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(object_ptr) = ffi_value.as_non_null_ptr("GObject")? else {
             return Ok(value::Value::Null);
         };
@@ -62,18 +62,7 @@ impl GObjectType {
         Ok(value::Value::Object(object.into()))
     }
 
-    /// # Safety
-    /// `ptr` must be null or point to a valid GObject.
-    pub unsafe fn ptr_to_value(ptr: *mut c_void) -> value::Value {
-        if ptr.is_null() {
-            return value::Value::Null;
-        }
-        let object =
-            unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
-        value::Value::Object(NativeValue::GObject(object).into())
-    }
-
-    pub fn from_glib_value(gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let obj_ptr =
             unsafe { glib::gobject_ffi::g_value_get_object(gvalue.to_glib_none().0 as *const _) };
         if obj_ptr.is_null() {
@@ -85,6 +74,19 @@ impl GObjectType {
         }
         let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
         Ok(value::Value::Object(NativeValue::GObject(obj).into()))
+    }
+}
+
+impl GObjectType {
+    /// # Safety
+    /// `ptr` must be null or point to a valid GObject.
+    pub unsafe fn ptr_to_value(ptr: *mut c_void) -> value::Value {
+        if ptr.is_null() {
+            return value::Value::Null;
+        }
+        let object =
+            unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
+        value::Value::Object(NativeValue::GObject(object).into())
     }
 
     /// # Safety

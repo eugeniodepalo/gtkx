@@ -5,15 +5,16 @@ use std::ffi::c_void;
 use gtk4::glib;
 
 use native::ffi::FfiValue;
+use native::types::FfiCodec;
 use native::types::{
-    FloatKind, HashTableEntryEncoder, HashTableType, IntegerKind, Ownership, StringType,
-    StructType, Type,
+    BooleanType, FloatKind, HashTableEntryEncoder, HashTableType, IntegerKind, Ownership,
+    StringType, StructType, Type,
 };
 use native::value::Value;
 
 #[test]
 fn encoder_from_type_boolean() {
-    let ty = Type::Boolean;
+    let ty = Type::Boolean(BooleanType);
     let encoder = HashTableEntryEncoder::from_type(&ty);
     assert_eq!(encoder, Some(HashTableEntryEncoder::Boolean));
 }
@@ -130,7 +131,7 @@ fn encode_float_wrong_type_fails() {
 
 #[test]
 fn ptr_to_value_boolean_true() {
-    let ty = Type::Boolean;
+    let ty = Type::Boolean(BooleanType);
     let ptr = std::ptr::dangling_mut::<c_void>();
 
     let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
@@ -143,7 +144,7 @@ fn ptr_to_value_boolean_true() {
 
 #[test]
 fn ptr_to_value_boolean_false() {
-    let ty = Type::Boolean;
+    let ty = Type::Boolean(BooleanType);
     let ptr = std::ptr::null_mut::<c_void>();
 
     let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
@@ -156,7 +157,7 @@ fn ptr_to_value_boolean_false() {
 
 #[test]
 fn ptr_to_value_boolean_nonzero_is_true() {
-    let ty = Type::Boolean;
+    let ty = Type::Boolean(BooleanType);
     let ptr = 42isize as *mut c_void;
 
     let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
@@ -230,8 +231,8 @@ fn ptr_to_value_struct_non_null() {
 fn hashtable_encode_decode_booleans() {
     common::ensure_gtk_init();
 
-    let key_type = Type::Boolean;
-    let value_type = Type::Boolean;
+    let key_type = Type::Boolean(BooleanType);
+    let value_type = Type::Boolean(BooleanType);
     let ht_type = HashTableType {
         key_type: Box::new(key_type),
         value_type: Box::new(value_type),
@@ -317,7 +318,7 @@ fn hashtable_encode_decode_string_to_boolean() {
         ownership: Ownership::Borrowed,
         length: None,
     });
-    let value_type = Type::Boolean;
+    let value_type = Type::Boolean(BooleanType);
     let ht_type = HashTableType {
         key_type: Box::new(key_type),
         value_type: Box::new(value_type),
@@ -392,8 +393,8 @@ fn hashtable_encode_decode_float_keys() {
 fn hashtable_empty() {
     common::ensure_gtk_init();
 
-    let key_type = Type::Boolean;
-    let value_type = Type::Boolean;
+    let key_type = Type::Boolean(BooleanType);
+    let value_type = Type::Boolean(BooleanType);
     let ht_type = HashTableType {
         key_type: Box::new(key_type),
         value_type: Box::new(value_type),
@@ -417,8 +418,8 @@ fn hashtable_empty() {
 fn hashtable_null_optional() {
     common::ensure_gtk_init();
 
-    let key_type = Type::Boolean;
-    let value_type = Type::Boolean;
+    let key_type = Type::Boolean(BooleanType);
+    let value_type = Type::Boolean(BooleanType);
     let ht_type = HashTableType {
         key_type: Box::new(key_type),
         value_type: Box::new(value_type),
@@ -512,7 +513,7 @@ fn boolean_roundtrip_preserves_values() {
     common::ensure_gtk_init();
 
     let key_type = Type::Integer(IntegerKind::I32);
-    let value_type = Type::Boolean;
+    let value_type = Type::Boolean(BooleanType);
     let ht_type = HashTableType {
         key_type: Box::new(key_type),
         value_type: Box::new(value_type),

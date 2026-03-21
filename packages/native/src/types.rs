@@ -34,14 +34,26 @@
 use std::ffi::c_void;
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::IntoGlib as _, translate::ToGlibPtr as _};
+use enum_dispatch::enum_dispatch;
+use gtk4::glib::{self, translate::IntoGlib as _};
 use libffi::middle as libffi;
 use neon::prelude::*;
 
 use crate::{ffi, value};
 
-pub(crate) fn throw_str_error(cx: &mut FunctionContext, msg: String) -> neon::result::Throw {
-    cx.throw_type_error::<_, ()>(msg).unwrap_err()
+mod sealed {
+    pub trait Sealed {}
+    impl Sealed for neon::prelude::FunctionContext<'_> {}
+}
+
+pub(crate) trait NeonContextExt: sealed::Sealed {
+    fn throw_str_error(&mut self, msg: String) -> neon::result::Throw;
+}
+
+impl NeonContextExt for FunctionContext<'_> {
+    fn throw_str_error(&mut self, msg: String) -> neon::result::Throw {
+        self.throw_type_error::<_, ()>(msg).unwrap_err()
+    }
 }
 
 mod array;
@@ -62,7 +74,7 @@ pub use callback::CallbackType;
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
 pub use hashtable::{HashTableEntryEncoder, HashTableType};
-pub use numeric::{FloatKind, IntegerKind, TaggedType};
+pub use numeric::{EnumType, FlagsType, FloatKind, IntegerKind, TaggedType};
 pub use ref_type::RefType;
 pub use string::StringType;
 pub use trampoline::TrampolineType;
@@ -107,9 +119,7 @@ impl Ownership {
             })?
             .value(cx);
 
-        ownership
-            .parse()
-            .map_err(|e: String| throw_str_error(cx, e))
+        ownership.parse().map_err(|e: String| cx.throw_str_error(e))
     }
 }
 
@@ -137,16 +147,102 @@ impl std::str::FromStr for Ownership {
     }
 }
 
+#[enum_dispatch]
+#[allow(clippy::wrong_self_convention)]
+pub trait FfiCodec {
+    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue>;
+
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let _ = ffi_value;
+        bail!("This type cannot be decoded from FfiValue")
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let _ = gvalue;
+        bail!("This type does not support GLib value conversion")
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct BooleanType;
+
+impl FfiCodec for BooleanType {
+    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        let boolean = match value {
+            value::Value::Boolean(b) => *b,
+            _ => bail!("Expected a Boolean for boolean type, got {:?}", value),
+        };
+        Ok(ffi::FfiValue::I32(i32::from(boolean)))
+    }
+
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let b = match ffi_value {
+            ffi::FfiValue::I32(v) => *v != 0,
+            _ => bail!("Expected a boolean ffi::FfiValue, got {:?}", ffi_value),
+        };
+        Ok(value::Value::Boolean(b))
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let boolean: bool = gvalue
+            .get()
+            .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {}", e))?;
+        Ok(value::Value::Boolean(boolean))
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct VoidType;
+
+impl FfiCodec for VoidType {
+    fn encode(&self, _value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()))
+    }
+
+    fn decode(&self, _ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Undefined)
+    }
+
+    fn from_glib_value(&self, _gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Null)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct UnicharType;
+
+impl FfiCodec for UnicharType {
+    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        let cp = match value {
+            value::Value::String(s) => s.chars().next().map(|c| c as u32).unwrap_or(0),
+            value::Value::Number(n) => *n as u32,
+            value::Value::Null | value::Value::Undefined if optional => 0,
+            _ => bail!("Expected a string for unichar type, got {:?}", value),
+        };
+        Ok(ffi::FfiValue::U32(cp))
+    }
+
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let cp = match ffi_value {
+            ffi::FfiValue::U32(v) => *v,
+            _ => bail!("Expected FfiValue::U32 for unichar, got {:?}", ffi_value),
+        };
+        let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
+        Ok(value::Value::String(ch.to_string()))
+    }
+}
+
+#[enum_dispatch(FfiCodec)]
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Type {
     Integer(IntegerKind),
     Float(FloatKind),
-    Enum(TaggedType),
-    Flags(TaggedType),
+    Enum(EnumType),
+    Flags(FlagsType),
     String(StringType),
-    Void,
-    Boolean,
+    Void(VoidType),
+    Boolean(BooleanType),
     GObject(GObjectType),
     Boxed(BoxedType),
     Struct(StructType),
@@ -156,7 +252,7 @@ pub enum Type {
     Callback(CallbackType),
     Trampoline(TrampolineType),
     Ref(RefType),
-    Unichar,
+    Unichar(UnicharType),
 }
 
 impl std::fmt::Display for Type {
@@ -164,11 +260,11 @@ impl std::fmt::Display for Type {
         match self {
             Type::Integer(kind) => write!(f, "Integer({:?})", kind),
             Type::Float(kind) => write!(f, "Float({:?})", kind),
-            Type::Enum(t) => write!(f, "Enum({})", t.get_type_fn),
-            Type::Flags(t) => write!(f, "Flags({})", t.get_type_fn),
+            Type::Enum(t) => write!(f, "Enum({})", t.0.get_type_fn),
+            Type::Flags(t) => write!(f, "Flags({})", t.0.get_type_fn),
             Type::String(_) => write!(f, "String"),
-            Type::Void => write!(f, "Void"),
-            Type::Boolean => write!(f, "Boolean"),
+            Type::Void(_) => write!(f, "Void"),
+            Type::Boolean(_) => write!(f, "Boolean"),
             Type::GObject(_) => write!(f, "GObject"),
             Type::Boxed(t) => write!(f, "Boxed({})", t.type_name),
             Type::Struct(t) => write!(f, "Struct({})", t.type_name),
@@ -178,7 +274,7 @@ impl std::fmt::Display for Type {
             Type::Callback(_) => write!(f, "Callback"),
             Type::Trampoline(_) => write!(f, "Trampoline"),
             Type::Ref(t) => write!(f, "Ref({})", t.inner_type),
-            Type::Unichar => write!(f, "Unichar"),
+            Type::Unichar(_) => write!(f, "Unichar"),
         }
     }
 }
@@ -204,11 +300,13 @@ impl Type {
             "uint64" => Ok(Type::Integer(IntegerKind::U64)),
             "float32" => Ok(Type::Float(FloatKind::F32)),
             "float64" => Ok(Type::Float(FloatKind::F64)),
-            "enum" => Ok(Type::Enum(TaggedType::from_js_value(cx, value)?)),
-            "flags" => Ok(Type::Flags(TaggedType::from_js_value(cx, value)?)),
+            "enum" => Ok(Type::Enum(EnumType(TaggedType::from_js_value(cx, value)?))),
+            "flags" => Ok(Type::Flags(FlagsType(TaggedType::from_js_value(
+                cx, value,
+            )?))),
             "string" => Ok(Type::String(StringType::from_js_value(cx, value)?)),
-            "boolean" => Ok(Type::Boolean),
-            "void" => Ok(Type::Void),
+            "boolean" => Ok(Type::Boolean(BooleanType)),
+            "void" => Ok(Type::Void(VoidType)),
             "gobject" => Ok(Type::GObject(GObjectType::from_js_value(cx, value)?)),
             "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
             "struct" => Ok(Type::Struct(StructType::from_js_value(cx, value)?)),
@@ -217,7 +315,7 @@ impl Type {
             "callback" => Ok(Type::Callback(CallbackType::from_js_value(cx, value)?)),
             "trampoline" => Ok(Type::Trampoline(TrampolineType::from_js_value(cx, value)?)),
             "ref" => Ok(Type::Ref(RefType::from_js_value(cx, obj.upcast())?)),
-            "unichar" => Ok(Type::Unichar),
+            "unichar" => Ok(Type::Unichar(UnicharType)),
             "fundamental" => Ok(Type::Fundamental(FundamentalType::from_js_value(
                 cx, value,
             )?)),
@@ -239,7 +337,7 @@ impl Type {
             Type::Flags(_) => Ok(IntegerKind::U32.ptr_to_value(ptr)),
             Type::GObject(_) => Ok(unsafe { GObjectType::ptr_to_value(ptr) }),
             Type::Boxed(t) => unsafe { t.ptr_to_value(ptr) },
-            Type::Boolean => Ok(value::Value::Boolean(ptr as isize != 0)),
+            Type::Boolean(_) => Ok(value::Value::Boolean(ptr as isize != 0)),
             Type::Float(kind) => Ok(unsafe { kind.ptr_to_value(ptr) }),
             Type::Struct(t) => unsafe { t.ptr_to_value(ptr) },
             Type::Fundamental(t) => unsafe { t.ptr_to_value(ptr) },
@@ -250,12 +348,12 @@ impl Type {
                 }
                 t.decode(&ffi::FfiValue::Ptr(ptr))
             }
-            Type::Unichar => {
+            Type::Unichar(_) => {
                 let cp = ptr as u32;
                 let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
                 Ok(value::Value::String(ch.to_string()))
             }
-            Type::Void => Ok(value::Value::Undefined),
+            Type::Void(_) => Ok(value::Value::Undefined),
             Type::Callback(_) | Type::Trampoline(_) | Type::Ref(_) => {
                 bail!("Type {} cannot be read from pointer in {}", self, context)
             }
@@ -293,14 +391,14 @@ impl Type {
             | Type::Enum(_)
             | Type::Flags(_)
             | Type::String(_)
-            | Type::Boolean
-            | Type::Void
+            | Type::Boolean(_)
+            | Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
             | Type::Callback(_)
             | Type::Trampoline(_)
             | Type::Ref(_)
-            | Type::Unichar
+            | Type::Unichar(_)
             | Type::Struct(_)
             | Type::GObject(_)
             | Type::Boxed(_)
@@ -325,8 +423,8 @@ impl Type {
             | Type::Enum(_)
             | Type::Flags(_)
             | Type::String(_)
-            | Type::Boolean
-            | Type::Void
+            | Type::Boolean(_)
+            | Type::Void(_)
             | Type::GObject(_)
             | Type::Boxed(_)
             | Type::Struct(_)
@@ -335,7 +433,7 @@ impl Type {
             | Type::HashTable(_)
             | Type::Callback(_)
             | Type::Ref(_)
-            | Type::Unichar => types.push(self.into()),
+            | Type::Unichar(_) => types.push(self.into()),
         }
     }
 }
@@ -348,7 +446,7 @@ impl From<&Type> for libffi::Type {
             Type::Enum(_) => libffi::Type::i32(),
             Type::Flags(_) => libffi::Type::u32(),
             Type::String(ty) => ty.into(),
-            Type::Boolean => libffi::Type::i32(),
+            Type::Boolean(_) => libffi::Type::i32(),
             Type::GObject(ty) => ty.into(),
             Type::Boxed(ty) => ty.into(),
             Type::Struct(ty) => ty.into(),
@@ -358,84 +456,13 @@ impl From<&Type> for libffi::Type {
             Type::Callback(_) => libffi::Type::pointer(),
             Type::Trampoline(_) => libffi::Type::pointer(),
             Type::Ref(ty) => ty.into(),
-            Type::Unichar => libffi::Type::u32(),
-            Type::Void => libffi::Type::void(),
+            Type::Unichar(_) => libffi::Type::u32(),
+            Type::Void(_) => libffi::Type::void(),
         }
     }
 }
 
 impl Type {
-    pub fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        match self {
-            Type::Integer(kind) => kind.encode(value, optional),
-            Type::Float(kind) => kind.encode(value, optional),
-            Type::Enum(_) => IntegerKind::I32.encode(value, optional),
-            Type::Flags(_) => IntegerKind::U32.encode(value, optional),
-            Type::String(t) => t.encode(value, optional),
-            Type::Boolean => {
-                let boolean = match value {
-                    value::Value::Boolean(b) => *b,
-                    _ => bail!("Expected a Boolean for boolean type, got {:?}", value),
-                };
-                Ok(ffi::FfiValue::I32(i32::from(boolean)))
-            }
-            Type::Void => Ok(ffi::FfiValue::Ptr(std::ptr::null_mut())),
-            Type::GObject(t) => t.encode(value, optional),
-            Type::Boxed(t) => t.encode(value, optional),
-            Type::Struct(t) => t.encode(value, optional),
-            Type::Fundamental(t) => t.encode(value, optional),
-            Type::Array(t) => t.encode(value, optional),
-            Type::HashTable(t) => t.encode(value, optional),
-            Type::Callback(t) => t.encode(value, optional),
-            Type::Trampoline(t) => t.encode(value, optional),
-            Type::Ref(t) => t.encode(value, optional),
-            Type::Unichar => {
-                let cp = match value {
-                    value::Value::String(s) => s.chars().next().map(|c| c as u32).unwrap_or(0),
-                    value::Value::Number(n) => *n as u32,
-                    value::Value::Null | value::Value::Undefined if optional => 0,
-                    _ => bail!("Expected a string for unichar type, got {:?}", value),
-                };
-                Ok(ffi::FfiValue::U32(cp))
-            }
-        }
-    }
-
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        match self {
-            Type::Void => Ok(value::Value::Undefined),
-            Type::Integer(kind) => kind.decode(ffi_value),
-            Type::Float(kind) => kind.decode(ffi_value),
-            Type::Enum(_) => IntegerKind::I32.decode(ffi_value),
-            Type::Flags(_) => IntegerKind::U32.decode(ffi_value),
-            Type::String(t) => t.decode(ffi_value),
-            Type::Boolean => {
-                let b = match ffi_value {
-                    ffi::FfiValue::I32(v) => *v != 0,
-                    _ => bail!("Expected a boolean ffi::FfiValue, got {:?}", ffi_value),
-                };
-                Ok(value::Value::Boolean(b))
-            }
-            Type::GObject(t) => t.decode(ffi_value),
-            Type::Boxed(t) => t.decode(ffi_value),
-            Type::Struct(t) => t.decode(ffi_value),
-            Type::Fundamental(t) => t.decode(ffi_value),
-            Type::Array(t) => t.decode(ffi_value),
-            Type::HashTable(t) => t.decode(ffi_value),
-            Type::Callback(_) => bail!("Callbacks cannot be converted from ffi::FfiValue"),
-            Type::Trampoline(_) => bail!("Trampolines cannot be converted from ffi::FfiValue"),
-            Type::Ref(t) => t.decode(ffi_value),
-            Type::Unichar => {
-                let cp = match ffi_value {
-                    ffi::FfiValue::U32(v) => *v,
-                    _ => bail!("Expected FfiValue::U32 for unichar, got {:?}", ffi_value),
-                };
-                let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
-                Ok(value::Value::String(ch.to_string()))
-            }
-        }
-    }
-
     pub fn decode_with_context(
         &self,
         ffi_value: &ffi::FfiValue,
@@ -450,8 +477,8 @@ impl Type {
             | Type::Enum(_)
             | Type::Flags(_)
             | Type::String(_)
-            | Type::Boolean
-            | Type::Void
+            | Type::Boolean(_)
+            | Type::Void(_)
             | Type::GObject(_)
             | Type::Boxed(_)
             | Type::Struct(_)
@@ -459,49 +486,7 @@ impl Type {
             | Type::HashTable(_)
             | Type::Callback(_)
             | Type::Trampoline(_)
-            | Type::Unichar => self.decode(ffi_value),
-        }
-    }
-
-    pub fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        match self {
-            Type::Integer(kind) => kind.from_glib_value(gvalue),
-            Type::Float(kind) => kind.from_glib_value(gvalue),
-            Type::Enum(_) => {
-                let v = unsafe {
-                    glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _)
-                };
-                Ok(value::Value::Number(v as f64))
-            }
-            Type::Flags(_) => {
-                let v = unsafe {
-                    glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _)
-                };
-                Ok(value::Value::Number(v as f64))
-            }
-            Type::String(_) => StringType::from_glib_value(gvalue),
-            Type::Boolean => {
-                let boolean: bool = gvalue
-                    .get()
-                    .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {}", e))?;
-                Ok(value::Value::Boolean(boolean))
-            }
-            Type::GObject(_) => GObjectType::from_glib_value(gvalue),
-            Type::Boxed(t) => t.from_glib_value(gvalue),
-            Type::Struct(t) => t.from_glib_value(gvalue),
-            Type::Fundamental(t) => t.from_glib_value(gvalue),
-            Type::Ref(t) => t.from_glib_value(gvalue),
-            Type::Void => Ok(value::Value::Null),
-            Type::Unichar => {
-                let val = unsafe {
-                    glib::gobject_ffi::g_value_get_uint(gvalue.to_glib_none().0 as *const _)
-                };
-                let ch = char::from_u32(val).unwrap_or('\u{FFFD}');
-                Ok(value::Value::String(ch.to_string()))
-            }
-            Type::Array(_) | Type::HashTable(_) | Type::Callback(_) | Type::Trampoline(_) => {
-                bail!("Type {:?} should not appear in glib value conversion", self)
-            }
+            | Type::Unichar(_) => self.decode(ffi_value),
         }
     }
 }

@@ -5,7 +5,7 @@ use gtk4::glib;
 use libffi::middle as libffi;
 use neon::prelude::*;
 
-use super::Ownership;
+use super::{FfiCodec, Ownership};
 use crate::ffi::{FfiStorage, FfiStorageKind, HashTableData};
 use crate::types::Type;
 use crate::types::array::ArrayKind;
@@ -33,7 +33,7 @@ impl HashTableEntryEncoder {
         match ty {
             Type::String(_) => Some(Self::String),
             Type::Integer(_) => Some(Self::Integer),
-            Type::Boolean => Some(Self::Boolean),
+            Type::Boolean(_) => Some(Self::Boolean),
             Type::Float(_) => Some(Self::Float),
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                 Some(Self::NativeHandle)
@@ -218,8 +218,8 @@ impl From<&HashTableType> for libffi::Type {
     }
 }
 
-impl HashTableType {
-    pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FfiCodec for HashTableType {
+    fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let tuples = match val {
             value::Value::Array(arr) => arr,
             value::Value::Null | value::Value::Undefined if optional => {
@@ -242,7 +242,7 @@ impl HashTableType {
         self.encode_hashtable(tuples, &key_encoder, &value_encoder)
     }
 
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(hash_ptr) = ffi_value.as_non_null_ptr("GHashTable")? else {
             return Ok(value::Value::Array(vec![]));
         };

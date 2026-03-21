@@ -5,7 +5,7 @@ use neon::prelude::*;
 
 use crate::ffi;
 use crate::trampoline::{TrampolineData, TrampolineState, destroy_handler};
-use crate::types::Type;
+use crate::types::{FfiCodec, NeonContextExt as _, Type};
 use crate::value;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -75,7 +75,7 @@ impl TrampolineType {
                 let scope_str = s.value(cx);
                 scope_str
                     .parse()
-                    .map_err(|e: String| super::throw_str_error(cx, e))?
+                    .map_err(|e: String| cx.throw_str_error(e))?
             }
             None => {
                 if has_destroy {
@@ -96,8 +96,8 @@ impl TrampolineType {
     }
 }
 
-impl TrampolineType {
-    pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FfiCodec for TrampolineType {
+    fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 
         let callback = match val {

@@ -9,7 +9,10 @@ use gtk4::prelude::ObjectType as _;
 use gtk4::prelude::StaticType as _;
 
 use native::ffi;
-use native::types::{ArrayKind, ArrayType, BoxedType, GObjectType, Ownership, StringType, Type};
+use native::types::{
+    ArrayKind, ArrayType, BooleanType, BoxedType, GObjectType, Ownership, StringType, Type,
+    VoidType,
+};
 use native::value::Value;
 
 use common::get_gobject_refcount;
@@ -502,7 +505,7 @@ fn from_glib_value_boolean() {
     let gvalue_true: glib::Value = true.into();
     let gvalue_false: glib::Value = false.into();
 
-    let type_ = Type::Boolean;
+    let type_ = Type::Boolean(BooleanType);
 
     let result_true = Value::from_glib_value(&gvalue_true, &type_);
     let result_false = Value::from_glib_value(&gvalue_false, &type_);
@@ -653,8 +656,8 @@ fn from_glib_value_null_undefined() {
 
     let gvalue: glib::Value = glib::Value::from_type(glib::types::Type::POINTER);
 
-    let result_null = Value::from_glib_value(&gvalue, &Type::Void);
-    let result_undefined = Value::from_glib_value(&gvalue, &Type::Void);
+    let result_null = Value::from_glib_value(&gvalue, &Type::Void(VoidType));
+    let result_undefined = Value::from_glib_value(&gvalue, &Type::Void(VoidType));
 
     assert!(result_null.is_ok());
     assert!(result_undefined.is_ok());
@@ -812,7 +815,7 @@ fn into_glib_value_with_default_undefined_boolean() {
     common::ensure_gtk_init();
 
     let value = Value::Undefined;
-    let result = value.into_glib_value_with_default(Some(&Type::Boolean));
+    let result = value.into_glib_value_with_default(Some(&Type::Boolean(BooleanType)));
 
     assert!(result.is_some());
 }
@@ -833,7 +836,7 @@ fn into_glib_value_with_default_regular_value() {
     common::ensure_gtk_init();
 
     let value = Value::Number(42.0);
-    let result = value.into_glib_value_with_default(Some(&Type::Boolean));
+    let result = value.into_glib_value_with_default(Some(&Type::Boolean(BooleanType)));
 
     assert!(result.is_some());
 }

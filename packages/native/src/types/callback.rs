@@ -11,7 +11,7 @@ use neon::prelude::*;
 use crate::callback::ClosureGuard;
 use crate::ffi::{self, FfiStorage};
 use crate::js_dispatch;
-use crate::types::{IntegerKind, Type};
+use crate::types::{FfiCodec, IntegerKind, Type};
 use crate::value;
 use crate::value::Callback;
 
@@ -79,7 +79,7 @@ impl ClosureContext {
                                 if let Some(val) = arr.get(i + 1)
                                     && !(*ptr).is_null()
                                 {
-                                    write_ref_value_to_ptr(*ptr, val, inner_type);
+                                    Self::write_ref_value_to_ptr(*ptr, val, inner_type);
                                 }
                             }
                             let return_val =
@@ -119,48 +119,34 @@ impl ClosureContext {
 
         unsafe { glib::Closure::from_glib_full(closure_ptr) }
     }
-}
 
-fn write_ref_value_to_ptr(ptr: *mut c_void, val: &value::Value, inner_type: &Type) {
-    match (val, inner_type) {
-        (value::Value::Number(n), Type::Float(float_kind)) => {
-            float_kind.write_ptr(ptr as *mut u8, *n);
-        }
-        (value::Value::Number(n), Type::Integer(int_type)) => {
-            int_type.write_ptr(ptr as *mut u8, *n);
-        }
-        (value::Value::Number(n), Type::Enum(_)) => {
-            IntegerKind::I32.write_ptr(ptr as *mut u8, *n);
-        }
-        (value::Value::Number(n), Type::Flags(_)) => {
-            IntegerKind::U32.write_ptr(ptr as *mut u8, *n);
-        }
-        (value::Value::Boolean(b), Type::Boolean) => unsafe {
-            *(ptr as *mut i32) = if *b { 1 } else { 0 };
-        },
-        (value::Value::Null | value::Value::Undefined, _) => {}
-        _ => {
-            gtkx_warn!(
-                "write_ref_value_to_ptr: unexpected value/type pair: {:?} / {:?}",
-                val,
-                inner_type
-            );
+    fn write_ref_value_to_ptr(ptr: *mut c_void, val: &value::Value, inner_type: &Type) {
+        match (val, inner_type) {
+            (value::Value::Number(n), Type::Float(float_kind)) => {
+                float_kind.write_ptr(ptr as *mut u8, *n);
+            }
+            (value::Value::Number(n), Type::Integer(int_type)) => {
+                int_type.write_ptr(ptr as *mut u8, *n);
+            }
+            (value::Value::Number(n), Type::Enum(_)) => {
+                IntegerKind::I32.write_ptr(ptr as *mut u8, *n);
+            }
+            (value::Value::Number(n), Type::Flags(_)) => {
+                IntegerKind::U32.write_ptr(ptr as *mut u8, *n);
+            }
+            (value::Value::Boolean(b), Type::Boolean(_)) => unsafe {
+                *(ptr as *mut i32) = if *b { 1 } else { 0 };
+            },
+            (value::Value::Null | value::Value::Undefined, _) => {}
+            _ => {
+                gtkx_warn!(
+                    "write_ref_value_to_ptr: unexpected value/type pair: {:?} / {:?}",
+                    val,
+                    inner_type
+                );
+            }
         }
     }
-}
-
-pub fn build_closure_ffi_value(callback: &Callback, callback_type: &CallbackType) -> ffi::FfiValue {
-    let ctx = ClosureContext::from_callback(callback, callback_type);
-    let closure = ctx.build_closure_with_guard(callback_type.return_type.clone());
-    let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
-    ffi::FfiValue::Storage(FfiStorage::closure(closure_ptr))
-}
-
-fn build_null_closure_ffi_value() -> ffi::FfiValue {
-    ffi::FfiValue::Storage(FfiStorage::new(
-        std::ptr::null_mut(),
-        ffi::FfiStorageKind::Unit,
-    ))
 }
 
 #[derive(Debug, Clone)]
@@ -193,20 +179,35 @@ impl CallbackType {
             return_type,
         })
     }
+
+    #[must_use]
+    pub fn build_ffi_value(&self, callback: &Callback) -> ffi::FfiValue {
+        let ctx = ClosureContext::from_callback(callback, self);
+        let closure = ctx.build_closure_with_guard(self.return_type.clone());
+        let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
+        ffi::FfiValue::Storage(FfiStorage::closure(closure_ptr))
+    }
+
+    fn build_null_ffi_value(&self) -> ffi::FfiValue {
+        ffi::FfiValue::Storage(FfiStorage::new(
+            std::ptr::null_mut(),
+            ffi::FfiStorageKind::Unit,
+        ))
+    }
 }
 
-impl CallbackType {
-    pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FfiCodec for CallbackType {
+    fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 
         let callback = match val {
             value::Value::Callback(callback) => callback,
             value::Value::Null | value::Value::Undefined if optional => {
-                return Ok(build_null_closure_ffi_value());
+                return Ok(self.build_null_ffi_value());
             }
             _ => bail!("Expected a Callback for callback type, got {:?}", val),
         };
 
-        Ok(build_closure_ffi_value(callback, self))
+        Ok(self.build_ffi_value(callback))
     }
 }

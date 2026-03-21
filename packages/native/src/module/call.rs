@@ -34,7 +34,7 @@ use crate::{
     arg::Arg,
     ffi, gtk_dispatch,
     state::GtkThreadState,
-    types::{IntegerKind, Type},
+    types::{FfiCodec as _, IntegerKind, Type},
     value::Value,
 };
 
@@ -103,21 +103,21 @@ impl CallRequest {
         // Argument types are validated by the FFI binding definitions.
         let result = unsafe {
             match self.result_type {
-                Type::Void => {
+                Type::Void(_) => {
                     cif.call::<()>(symbol_ptr, &ffi_args);
                     ffi::FfiValue::Void
                 }
                 Type::Integer(ref int_kind) => int_kind.call_cif(&cif, symbol_ptr, &ffi_args),
                 Type::Float(ref float_kind) => float_kind.call_cif(&cif, symbol_ptr, &ffi_args),
                 Type::Enum(_) => IntegerKind::I32.call_cif(&cif, symbol_ptr, &ffi_args),
-                Type::Flags(_) | Type::Unichar => {
+                Type::Flags(_) | Type::Unichar(_) => {
                     IntegerKind::U32.call_cif(&cif, symbol_ptr, &ffi_args)
                 }
                 Type::String(_) => {
                     let ptr = cif.call::<*const c_char>(symbol_ptr, &ffi_args);
                     ffi::FfiValue::Ptr(ptr as *mut c_void)
                 }
-                Type::Boolean => ffi::FfiValue::I32(cif.call::<i32>(symbol_ptr, &ffi_args)),
+                Type::Boolean(_) => ffi::FfiValue::I32(cif.call::<i32>(symbol_ptr, &ffi_args)),
                 Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                     let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
                     ffi::FfiValue::Ptr(ptr)

@@ -5,7 +5,7 @@ use gtk4::glib;
 use libffi::middle as libffi;
 use neon::prelude::*;
 
-use super::Ownership;
+use super::{FfiCodec, Ownership};
 use crate::{ffi, value};
 
 #[derive(Debug, Clone, Copy)]
@@ -35,8 +35,8 @@ impl From<&StringType> for libffi::Type {
     }
 }
 
-impl StringType {
-    pub fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FfiCodec for StringType {
+    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         match value {
             value::Value::String(s) => {
                 let cstring = CString::new(s.as_bytes())?;
@@ -53,7 +53,7 @@ impl StringType {
         }
     }
 
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(str_ptr) = ffi_value.as_non_null_ptr("string")? else {
             return Ok(value::Value::Null);
         };
@@ -68,6 +68,15 @@ impl StringType {
         Ok(value::Value::String(string))
     }
 
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let string: String = gvalue
+            .get()
+            .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
+        Ok(value::Value::String(string))
+    }
+}
+
+impl StringType {
     /// # Safety
     /// `ptr` must be null or point to a valid null-terminated C string.
     pub unsafe fn ptr_to_value(ptr: *mut c_void) -> value::Value {
@@ -76,13 +85,6 @@ impl StringType {
         }
         let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
         value::Value::String(c_str.to_string_lossy().into_owned())
-    }
-
-    pub fn from_glib_value(gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let string: String = gvalue
-            .get()
-            .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
-        Ok(value::Value::String(string))
     }
 
     /// # Safety

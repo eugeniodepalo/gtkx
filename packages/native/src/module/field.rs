@@ -78,7 +78,7 @@ impl ReadRequest {
                 let number = float_kind.read_ptr(field_ptr);
                 Ok(Value::Number(number))
             }
-            Type::Boolean => {
+            Type::Boolean(_) => {
                 let value = unsafe { field_ptr.cast::<i32>().read_unaligned() != 0 };
                 Ok(Value::Boolean(value))
             }
@@ -144,13 +144,13 @@ impl ReadRequest {
                 let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
                 Ok(Value::Object(NativeValue::Fundamental(fundamental).into()))
             }
-            Type::Void
+            Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
             | Type::Callback(_)
             | Type::Trampoline(_)
             | Type::Ref(_)
-            | Type::Unichar => {
+            | Type::Unichar(_) => {
                 bail!("Unsupported field type for read: {:?}", self.field_type)
             }
         }
@@ -210,7 +210,7 @@ impl WriteRequest {
             (Type::Float(float_kind), Value::Number(n)) => {
                 float_kind.write_ptr(field_ptr, *n);
             }
-            (Type::Boolean, Value::Boolean(b)) => unsafe {
+            (Type::Boolean(_), Value::Boolean(b)) => unsafe {
                 field_ptr.cast::<i32>().write_unaligned(i32::from(*b));
             },
             (Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_), value) => {

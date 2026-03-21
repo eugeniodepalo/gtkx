@@ -14,7 +14,7 @@ use crate::ffi::{FfiStorage, FfiStorageKind};
 use crate::managed::{Boxed, Fundamental, NativeValue};
 use crate::{
     ffi,
-    types::{ArrayKind, IntegerKind, Type},
+    types::{ArrayKind, FfiCodec, IntegerKind, Type},
     value,
 };
 
@@ -46,8 +46,8 @@ impl From<&RefType> for libffi::Type {
     }
 }
 
-impl RefType {
-    pub fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FfiCodec for RefType {
+    fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ref_val = match val {
             value::Value::Ref(r) => r,
             value::Value::Null | value::Value::Undefined => {
@@ -139,7 +139,7 @@ impl RefType {
         }
     }
 
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let storage = match ffi_value {
             ffi::FfiValue::Storage(s) => s,
             ffi::FfiValue::Ptr(ptr) if ptr.is_null() => return Ok(value::Value::Null),
@@ -225,6 +225,42 @@ impl RefType {
         }
     }
 
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let ptr =
+            unsafe { glib::gobject_ffi::g_value_get_pointer(gvalue.to_glib_none().0 as *const _) };
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        match &*self.inner_type {
+            Type::Float(float_kind) => {
+                let val = float_kind.read_ptr(ptr as *const u8);
+                Ok(value::Value::Number(val))
+            }
+            Type::Integer(int_kind) => {
+                let val = int_kind.read_ptr(ptr as *const u8);
+                Ok(value::Value::Number(val))
+            }
+            Type::Enum(_) => {
+                let val = IntegerKind::I32.read_ptr(ptr as *const u8);
+                Ok(value::Value::Number(val))
+            }
+            Type::Flags(_) => {
+                let val = IntegerKind::U32.read_ptr(ptr as *const u8);
+                Ok(value::Value::Number(val))
+            }
+            Type::Boolean(_) => {
+                let val = unsafe { *(ptr as *const i32) };
+                Ok(value::Value::Boolean(val != 0))
+            }
+            _ => bail!(
+                "Unsupported Ref inner type for GValue conversion: {:?}",
+                self.inner_type
+            ),
+        }
+    }
+}
+
+impl RefType {
     pub fn decode_with_context(
         &self,
         ffi_value: &ffi::FfiValue,
@@ -270,42 +306,6 @@ impl RefType {
         }
 
         self.decode(ffi_value)
-    }
-}
-
-impl RefType {
-    pub fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let ptr =
-            unsafe { glib::gobject_ffi::g_value_get_pointer(gvalue.to_glib_none().0 as *const _) };
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        match &*self.inner_type {
-            Type::Float(float_kind) => {
-                let val = float_kind.read_ptr(ptr as *const u8);
-                Ok(value::Value::Number(val))
-            }
-            Type::Integer(int_kind) => {
-                let val = int_kind.read_ptr(ptr as *const u8);
-                Ok(value::Value::Number(val))
-            }
-            Type::Enum(_) => {
-                let val = IntegerKind::I32.read_ptr(ptr as *const u8);
-                Ok(value::Value::Number(val))
-            }
-            Type::Flags(_) => {
-                let val = IntegerKind::U32.read_ptr(ptr as *const u8);
-                Ok(value::Value::Number(val))
-            }
-            Type::Boolean => {
-                let val = unsafe { *(ptr as *const i32) };
-                Ok(value::Value::Boolean(val != 0))
-            }
-            _ => bail!(
-                "Unsupported Ref inner type for GValue conversion: {:?}",
-                self.inner_type
-            ),
-        }
     }
 
     fn decode_ref_string(

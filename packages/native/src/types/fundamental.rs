@@ -12,7 +12,7 @@ use libffi::middle as libffi;
 use neon::object::Object as _;
 use neon::prelude::*;
 
-use super::Ownership;
+use super::{FfiCodec, Ownership};
 use crate::managed::{Fundamental, NativeValue, RefFn, UnrefFn};
 use crate::state::GtkThreadState;
 use crate::{ffi, value};
@@ -55,8 +55,8 @@ impl From<&FundamentalType> for libffi::Type {
     }
 }
 
-impl FundamentalType {
-    pub fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FfiCodec for FundamentalType {
+    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let mut ptr = value.object_ptr("Fundamental")?;
 
         if self.ownership.is_full() && !ptr.is_null() {
@@ -73,7 +73,7 @@ impl FundamentalType {
         Ok(ffi::FfiValue::Ptr(ptr))
     }
 
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(ptr) = ffi_value.as_non_null_ptr("Fundamental")? else {
             return Ok(value::Value::Null);
         };
@@ -90,20 +90,7 @@ impl FundamentalType {
         ))
     }
 
-    /// # Safety
-    /// `ptr` must be null or point to a valid fundamental type instance.
-    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let (ref_fn, unref_fn) = self.lookup_fns()?;
-        let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
-        Ok(value::Value::Object(
-            NativeValue::Fundamental(fundamental).into(),
-        ))
-    }
-
-    pub fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let gvalue_type = gvalue.type_();
         let ptr = if gvalue_type.is_a(glib::types::Type::VARIANT) {
             unsafe {
@@ -127,6 +114,21 @@ impl FundamentalType {
         } else {
             unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
         };
+        Ok(value::Value::Object(
+            NativeValue::Fundamental(fundamental).into(),
+        ))
+    }
+}
+
+impl FundamentalType {
+    /// # Safety
+    /// `ptr` must be null or point to a valid fundamental type instance.
+    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let (ref_fn, unref_fn) = self.lookup_fns()?;
+        let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
         Ok(value::Value::Object(
             NativeValue::Fundamental(fundamental).into(),
         ))

@@ -16,7 +16,7 @@ use libffi::middle as libffi;
 use neon::object::Object as _;
 use neon::prelude::*;
 
-use super::Ownership;
+use super::{FfiCodec, Ownership};
 use crate::managed::{Boxed, NativeValue};
 use crate::state::GtkThreadState;
 use crate::{ffi, value};
@@ -91,8 +91,8 @@ impl From<&BoxedType> for libffi::Type {
     }
 }
 
-impl BoxedType {
-    pub fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FfiCodec for BoxedType {
+    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("Boxed object")?;
 
         if let Some(gtype) = self.gtype()
@@ -107,7 +107,7 @@ impl BoxedType {
         Ok(ffi::FfiValue::Ptr(ptr))
     }
 
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(boxed_ptr) = ffi_value.as_non_null_ptr("Boxed")? else {
             return Ok(value::Value::Null);
         };
@@ -127,18 +127,7 @@ impl BoxedType {
         Ok(value::Value::Object(boxed.into()))
     }
 
-    /// # Safety
-    /// `ptr` must be null or point to a valid boxed type instance.
-    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let gtype = self.gtype();
-        let boxed = Boxed::from_glib_none(gtype, ptr)?;
-        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-    }
-
-    pub fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let gvalue_type = gvalue.type_();
         let boxed_ptr =
             unsafe { glib::gobject_ffi::g_value_get_boxed(gvalue.to_glib_none().0 as *const _) };
@@ -154,6 +143,19 @@ impl BoxedType {
         } else {
             Boxed::from_glib_none(gtype, boxed_ptr)?
         };
+        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+    }
+}
+
+impl BoxedType {
+    /// # Safety
+    /// `ptr` must be null or point to a valid boxed type instance.
+    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let gtype = self.gtype();
+        let boxed = Boxed::from_glib_none(gtype, ptr)?;
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
     }
 
@@ -213,13 +215,13 @@ impl From<&StructType> for libffi::Type {
     }
 }
 
-impl StructType {
-    pub fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FfiCodec for StructType {
+    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("Struct object")?;
         Ok(ffi::FfiValue::Ptr(ptr))
     }
 
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(struct_ptr) = ffi_value.as_non_null_ptr("Struct")? else {
             return Ok(value::Value::Null);
         };
@@ -241,6 +243,14 @@ impl StructType {
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
     }
 
+    fn from_glib_value(&self, _gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        bail!(
+            "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
+        )
+    }
+}
+
+impl StructType {
     /// # Safety
     /// `ptr` must be null or point to a valid struct instance.
     pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
@@ -249,11 +259,5 @@ impl StructType {
         }
         let boxed = Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))?;
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-    }
-
-    pub fn from_glib_value(&self, _gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        bail!(
-            "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
-        )
     }
 }

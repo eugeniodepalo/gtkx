@@ -4,7 +4,10 @@ use std::ffi::{CString, c_void};
 
 use native::arg::Arg;
 use native::ffi::{FfiStorage, FfiStorageKind, FfiValue};
-use native::types::{ArrayKind, ArrayType, FloatKind, IntegerKind, Ownership, StringType, Type};
+use native::types::{
+    ArrayKind, ArrayType, BooleanType, FloatKind, IntegerKind, Ownership, StringType, Type,
+    VoidType,
+};
 use native::value;
 
 #[test]
@@ -212,7 +215,7 @@ fn try_from_string_null() {
 
 #[test]
 fn try_from_boolean_true() {
-    let arg = Arg::new(Type::Boolean, value::Value::Boolean(true));
+    let arg = Arg::new(Type::Boolean(BooleanType), value::Value::Boolean(true));
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
@@ -225,7 +228,7 @@ fn try_from_boolean_true() {
 
 #[test]
 fn try_from_boolean_false() {
-    let arg = Arg::new(Type::Boolean, value::Value::Boolean(false));
+    let arg = Arg::new(Type::Boolean(BooleanType), value::Value::Boolean(false));
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
@@ -238,7 +241,7 @@ fn try_from_boolean_false() {
 
 #[test]
 fn try_from_null() {
-    let arg = Arg::new(Type::Void, value::Value::Null);
+    let arg = Arg::new(Type::Void(VoidType), value::Value::Null);
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
@@ -251,7 +254,7 @@ fn try_from_null() {
 
 #[test]
 fn try_from_undefined() {
-    let arg = Arg::new(Type::Void, value::Value::Undefined);
+    let arg = Arg::new(Type::Void(VoidType), value::Value::Undefined);
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
@@ -381,7 +384,7 @@ fn try_from_array_string() {
 fn try_from_array_boolean() {
     let arg = Arg::new(
         Type::Array(ArrayType {
-            item_type: Box::new(Type::Boolean),
+            item_type: Box::new(Type::Boolean(BooleanType)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,

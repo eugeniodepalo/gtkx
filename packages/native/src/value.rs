@@ -135,15 +135,15 @@ impl Value {
     pub fn into_glib_value_with_default(self, return_type: Option<&Type>) -> Option<glib::Value> {
         match &self {
             Value::Undefined => match return_type {
-                Some(Type::Boolean) => Some(false.into()),
+                Some(Type::Boolean(_)) => Some(false.into()),
                 Some(Type::Integer(_)) => Some(0i32.into()),
-                Some(Type::Enum(tagged)) => Self::number_to_enum_value(0.0, tagged).ok(),
-                Some(Type::Flags(tagged)) => Self::number_to_flags_value(0.0, tagged).ok(),
+                Some(Type::Enum(tagged)) => Self::number_to_enum_value(0.0, &tagged.0).ok(),
+                Some(Type::Flags(tagged)) => Self::number_to_flags_value(0.0, &tagged.0).ok(),
                 Some(Type::Float(FloatKind::F32)) => Some(0.0f32.into()),
                 Some(Type::Float(FloatKind::F64)) => Some(0.0f64.into()),
                 Some(Type::String(_)) => Some(Option::<String>::None.into()),
                 Some(Type::GObject(_)) => Some(Option::<glib::Object>::None.into()),
-                Some(Type::Void) | None => None,
+                Some(Type::Void(_)) | None => None,
                 Some(
                     Type::Boxed(_)
                     | Type::Struct(_)
@@ -153,7 +153,7 @@ impl Value {
                     | Type::Callback(_)
                     | Type::Trampoline(_)
                     | Type::Ref(_)
-                    | Type::Unichar,
+                    | Type::Unichar(_),
                 ) => None,
             },
             Value::Number(_)
@@ -175,10 +175,10 @@ impl Value {
         match self {
             Value::Number(n) => {
                 if let Some(Type::Enum(tagged)) = expected_type {
-                    return Self::number_to_enum_value(n, tagged);
+                    return Self::number_to_enum_value(n, &tagged.0);
                 }
                 if let Some(Type::Flags(tagged)) = expected_type {
-                    return Self::number_to_flags_value(n, tagged);
+                    return Self::number_to_flags_value(n, &tagged.0);
                 }
                 if let Some(Type::Integer(int_kind)) = expected_type {
                     return match int_kind {
@@ -230,7 +230,8 @@ impl Value {
     }
 
     fn number_to_enum_value(n: f64, tagged: &TaggedType) -> anyhow::Result<glib::Value> {
-        let gtype = crate::ffi::get_gtype_from_lib(&tagged.library, &tagged.get_type_fn)?;
+        let gtype =
+            crate::state::GtkThreadState::gtype_from_lib(&tagged.library, &tagged.get_type_fn)?;
         let mut value = glib::Value::from_type(gtype);
         unsafe {
             glib::gobject_ffi::g_value_set_enum(value.to_glib_none_mut().0, n as i32);
@@ -239,7 +240,8 @@ impl Value {
     }
 
     fn number_to_flags_value(n: f64, tagged: &TaggedType) -> anyhow::Result<glib::Value> {
-        let gtype = crate::ffi::get_gtype_from_lib(&tagged.library, &tagged.get_type_fn)?;
+        let gtype =
+            crate::state::GtkThreadState::gtype_from_lib(&tagged.library, &tagged.get_type_fn)?;
         let mut value = glib::Value::from_type(gtype);
         unsafe {
             glib::gobject_ffi::g_value_set_flags(value.to_glib_none_mut().0, n as u32);
