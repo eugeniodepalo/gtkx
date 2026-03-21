@@ -15,20 +15,6 @@ pub struct StringType {
 }
 
 impl StringType {
-    pub fn new(ownership: Ownership) -> Self {
-        StringType {
-            ownership,
-            length: None,
-        }
-    }
-
-    pub fn with_length(ownership: Ownership, length: usize) -> Self {
-        StringType {
-            ownership,
-            length: Some(length),
-        }
-    }
-
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let ownership = Ownership::from_js_value(cx, obj, "string")?;

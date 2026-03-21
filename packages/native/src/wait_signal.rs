@@ -21,13 +21,13 @@ impl WaitSignal {
     }
 
     pub fn notify(&self) {
-        let mut notified = self.state.lock().unwrap();
+        let mut notified = self.state.lock().unwrap_or_else(|e| e.into_inner());
         *notified = true;
         self.condvar.notify_one();
     }
 
     pub fn wait(&self) {
-        let mut notified = self.state.lock().unwrap();
+        let mut notified = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if *notified {
             *notified = false;
             return;
@@ -35,7 +35,7 @@ impl WaitSignal {
         let (mut guard, _) = self
             .condvar
             .wait_timeout(notified, Duration::from_millis(5))
-            .unwrap();
+            .unwrap_or_else(|e| e.into_inner());
         *guard = false;
     }
 }

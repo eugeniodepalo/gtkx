@@ -52,15 +52,6 @@ pub struct ArrayType {
 }
 
 impl ArrayType {
-    pub fn new(item_type: Type, kind: ArrayKind, ownership: Ownership) -> Self {
-        ArrayType {
-            item_type: Box::new(item_type),
-            kind,
-            ownership,
-            element_size: None,
-        }
-    }
-
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let item_type_value: Handle<'_, JsValue> = obj.prop(cx, "itemType").get()?;
@@ -74,16 +65,16 @@ impl ArrayType {
 
         let kind: ArrayKind = kind_str
             .parse()
-            .map_err(|e: String| cx.throw_type_error::<_, ()>(e).unwrap_err())?;
+            .map_err(|e: String| super::throw_str_error(cx, e))?;
 
         let kind = match kind {
             ArrayKind::Sized { .. } => {
                 let size_index: Handle<JsNumber> =
                     obj.get_opt(cx, "sizeParamIndex")?.ok_or_else(|| {
-                        cx.throw_type_error::<_, ()>(
-                            "'sizeParamIndex' is required for sized arrays",
+                        super::throw_str_error(
+                            cx,
+                            "'sizeParamIndex' is required for sized arrays".into(),
                         )
-                        .unwrap_err()
                     })?;
                 ArrayKind::Sized {
                     size_index: size_index.value(cx) as usize,
@@ -92,8 +83,10 @@ impl ArrayType {
             ArrayKind::Fixed { .. } => {
                 let fixed_size: Handle<JsNumber> =
                     obj.get_opt(cx, "fixedSize")?.ok_or_else(|| {
-                        cx.throw_type_error::<_, ()>("'fixedSize' is required for fixed arrays")
-                            .unwrap_err()
+                        super::throw_str_error(
+                            cx,
+                            "'fixedSize' is required for fixed arrays".into(),
+                        )
                     })?;
                 ArrayKind::Fixed {
                     size: fixed_size.value(cx) as usize,
@@ -124,29 +117,62 @@ impl From<&ArrayType> for libffi::Type {
     }
 }
 
-struct GListGuard {
-    ptr: *mut glib::ffi::GList,
-    should_free: bool,
+fn extract_numbers(array: &[value::Value]) -> anyhow::Result<Vec<f64>> {
+    array
+        .iter()
+        .map(|v| match v {
+            value::Value::Number(n) => Ok(*n),
+            _ => bail!("Expected a Number, got {:?}", v),
+        })
+        .collect()
 }
 
-impl GListGuard {
-    fn new(ptr: *mut c_void, should_free: bool) -> Self {
-        Self {
-            ptr: ptr as *mut glib::ffi::GList,
-            should_free,
-        }
-    }
+fn extract_booleans(array: &[value::Value]) -> anyhow::Result<Vec<i32>> {
+    array
+        .iter()
+        .map(|v| match v {
+            value::Value::Boolean(b) => Ok(i32::from(*b)),
+            _ => bail!("Expected a Boolean, got {:?}", v),
+        })
+        .collect()
 }
 
-impl Drop for GListGuard {
-    fn drop(&mut self) {
-        if self.should_free && !self.ptr.is_null() {
-            unsafe { glib::ffi::g_list_free(self.ptr) };
-        }
-    }
+fn extract_strings(array: &[value::Value]) -> anyhow::Result<Vec<CString>> {
+    array
+        .iter()
+        .map(|v| match v {
+            value::Value::String(s) => Ok(CString::new(s.as_bytes())?),
+            _ => bail!("Expected a String, got {:?}", v),
+        })
+        .collect()
+}
+
+fn extract_handles(array: &[value::Value]) -> anyhow::Result<Vec<crate::managed::NativeHandle>> {
+    array
+        .iter()
+        .map(|v| match v {
+            value::Value::Object(handle) => Ok(*handle),
+            _ => bail!("Expected an Object, got {:?}", v),
+        })
+        .collect()
 }
 
 impl ArrayType {
+    fn item_element_size(&self) -> Option<usize> {
+        match &*self.item_type {
+            Type::Integer(int_type) => Some(int_type.byte_size()),
+            Type::Float(super::FloatKind::F32) => Some(4),
+            Type::Float(super::FloatKind::F64) => Some(8),
+            Type::Boolean => Some(size_of::<i32>()),
+            Type::GObject(_)
+            | Type::Boxed(_)
+            | Type::Struct(_)
+            | Type::Fundamental(_)
+            | Type::String(_) => Some(std::mem::size_of::<*mut c_void>()),
+            _ => None,
+        }
+    }
+
     pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let array = match val {
             value::Value::Array(arr) => arr,
@@ -156,52 +182,27 @@ impl ArrayType {
             _ => bail!("Expected an Array for array type, got {:?}", val),
         };
 
+        if self.kind == ArrayKind::GArray {
+            return self.encode_garray(array);
+        }
+
         match *self.item_type {
             Type::Integer(ref int_type) => {
-                let mut values = Vec::new();
-
-                for value in array {
-                    match value {
-                        value::Value::Number(n) => values.push(*n),
-                        _ => bail!("Expected a Number for integer item type, got {:?}", value),
-                    }
-                }
-
+                let values = extract_numbers(array)?;
                 Ok(ffi::FfiValue::Storage(int_type.to_ffi_storage(&values)))
             }
             Type::Float(ref float_kind) => {
-                let mut values = Vec::new();
-
-                for value in array {
-                    match value {
-                        value::Value::Number(n) => values.push(n),
-                        _ => bail!("Expected a Number for float item type, got {:?}", value),
-                    }
-                }
-
+                let values = extract_numbers(array)?;
                 match float_kind {
                     FloatKind::F32 => {
-                        let values: Vec<f32> = values.iter().map(|&v| *v as f32).collect();
+                        let values: Vec<f32> = values.iter().map(|&v| v as f32).collect();
                         Ok(ffi::FfiValue::Storage(values.into()))
                     }
-                    FloatKind::F64 => {
-                        let values: Vec<f64> = values.iter().map(|&v| *v).collect();
-                        Ok(ffi::FfiValue::Storage(values.into()))
-                    }
+                    FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.into())),
                 }
             }
             Type::String(_) => {
-                let mut cstrings = Vec::new();
-
-                for v in array {
-                    match v {
-                        value::Value::String(s) => {
-                            cstrings.push(CString::new(s.as_bytes())?);
-                        }
-                        _ => bail!("Expected a String for string item type, got {:?}", v),
-                    }
-                }
-
+                let cstrings = extract_strings(array)?;
                 let should_free = self.ownership.is_borrowed();
                 let dup_strings =
                     matches!(&*self.item_type, Type::String(s) if s.ownership.is_full());
@@ -253,14 +254,7 @@ impl ArrayType {
                 }
             }
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
-                let mut handles = Vec::new();
-
-                for value in array {
-                    match value {
-                        value::Value::Object(handle) => handles.push(*handle),
-                        _ => bail!("Expected an Object for gobject item type, got {:?}", value),
-                    }
-                }
+                let handles = extract_handles(array)?;
 
                 if let Some(element_size) = self.element_size {
                     let mut buffer = vec![0u8; handles.len() * element_size];
@@ -335,24 +329,122 @@ impl ArrayType {
                 }
             }
             Type::Boolean => {
-                let mut values = Vec::new();
-
-                for value in array {
-                    match value {
-                        value::Value::Boolean(b) => values.push(u8::from(*b)),
-                        _ => bail!("Expected a Boolean for boolean item type, got {:?}", value),
-                    }
-                }
-
+                let values = extract_booleans(array)?;
                 Ok(ffi::FfiValue::Storage(values.into()))
             }
             _ => bail!("Unsupported array item type: {:?}", self.item_type),
         }
     }
 
+    fn encode_garray(&self, array: &[value::Value]) -> anyhow::Result<ffi::FfiValue> {
+        let element_size = self
+            .element_size
+            .or_else(|| self.item_element_size())
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Cannot determine element size for GArray with item type {:?}",
+                    self.item_type
+                )
+            })?;
+
+        let g_array =
+            unsafe { glib::ffi::g_array_sized_new(0, 0, element_size as u32, array.len() as u32) };
+
+        match &*self.item_type {
+            Type::Integer(int_type) => {
+                for n in extract_numbers(array)? {
+                    let mut buf = vec![0u8; int_type.byte_size()];
+                    int_type.write_ptr(buf.as_mut_ptr(), n);
+                    unsafe {
+                        glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
+                    }
+                }
+            }
+            Type::Float(float_kind) => {
+                for n in extract_numbers(array)? {
+                    match float_kind {
+                        super::FloatKind::F32 => {
+                            let v = n as f32;
+                            unsafe {
+                                glib::ffi::g_array_append_vals(
+                                    g_array,
+                                    &v as *const f32 as *const c_void,
+                                    1,
+                                );
+                            }
+                        }
+                        super::FloatKind::F64 => unsafe {
+                            glib::ffi::g_array_append_vals(
+                                g_array,
+                                &n as *const f64 as *const c_void,
+                                1,
+                            );
+                        },
+                    }
+                }
+            }
+            Type::Boolean => {
+                for b in extract_booleans(array)? {
+                    unsafe {
+                        glib::ffi::g_array_append_vals(
+                            g_array,
+                            &b as *const i32 as *const c_void,
+                            1,
+                        );
+                    }
+                }
+            }
+            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
+                for handle in extract_handles(array)? {
+                    let ptr = handle.get_ptr().ok_or_else(|| {
+                        anyhow::anyhow!("Object in GArray has been garbage collected")
+                    })?;
+                    let ptr = self.item_type.ref_for_transfer(ptr)?;
+                    unsafe {
+                        glib::ffi::g_array_append_vals(
+                            g_array,
+                            &ptr as *const *mut c_void as *const c_void,
+                            1,
+                        );
+                    }
+                }
+            }
+            Type::String(_) => {
+                for cstr in extract_strings(array)? {
+                    let dup = unsafe { glib::ffi::g_strdup(cstr.as_ptr()) };
+                    unsafe {
+                        glib::ffi::g_array_append_vals(
+                            g_array,
+                            &dup as *const *mut c_char as *const c_void,
+                            1,
+                        );
+                    }
+                }
+            }
+            _ => {
+                unsafe { glib::ffi::g_array_unref(g_array) };
+                bail!("Unsupported GArray item type: {:?}", self.item_type);
+            }
+        }
+
+        let should_free = self.ownership.is_borrowed();
+        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+            g_array as *mut c_void,
+            FfiStorageKind::GArray(g_array, should_free),
+        )))
+    }
+
     pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         if self.kind == ArrayKind::GList || self.kind == ArrayKind::GSList {
             return self.decode_glist(ffi_value);
+        }
+
+        if self.kind == ArrayKind::GArray {
+            return self.decode_garray(ffi_value);
+        }
+
+        if self.kind == ArrayKind::GPtrArray {
+            return self.decode_gptrarray(ffi_value);
         }
 
         if let ffi::FfiValue::Ptr(ptr) = ffi_value {
@@ -364,10 +456,7 @@ impl ArrayType {
                 return self.decode_null_terminated_string_array(*ptr);
             }
 
-            bail!(
-                "Unsupported null-terminated array item type: {:?}",
-                self.item_type
-            );
+            return self.decode_null_terminated_ptr_array(*ptr);
         }
 
         let storage = match ffi_value {
@@ -396,20 +485,7 @@ impl ArrayType {
                         return Ok(value::Value::Array(vec![]));
                     }
 
-                    return match &*self.item_type {
-                        Type::Integer(int_type) => {
-                            Self::decode_sized_byte_array(*ptr, length, int_type)
-                        }
-                        Type::GObject(_)
-                        | Type::Boxed(_)
-                        | Type::Struct(_)
-                        | Type::String(_)
-                        | Type::Fundamental(_) => self.decode_sized_ptr_array(*ptr, length),
-                        _ => bail!(
-                            "Unsupported item type for sized array: {:?}",
-                            self.item_type
-                        ),
-                    };
+                    return self.decode_sized_array(*ptr, length);
                 }
             }
             ArrayKind::Fixed { size } => {
@@ -418,20 +494,7 @@ impl ArrayType {
                         return Ok(value::Value::Array(vec![]));
                     }
 
-                    return match &*self.item_type {
-                        Type::Integer(int_type) => {
-                            Self::decode_sized_byte_array(*ptr, *size, int_type)
-                        }
-                        Type::GObject(_)
-                        | Type::Boxed(_)
-                        | Type::Struct(_)
-                        | Type::String(_)
-                        | Type::Fundamental(_) => self.decode_sized_ptr_array(*ptr, *size),
-                        _ => bail!(
-                            "Unsupported item type for fixed-size array: {:?}",
-                            self.item_type
-                        ),
-                    };
+                    return self.decode_sized_array(*ptr, *size);
                 }
             }
             _ => {}
@@ -442,12 +505,10 @@ impl ArrayType {
 }
 
 impl ArrayType {
-    fn decode_glist(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub(crate) fn decode_glist(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(list_ptr) = ffi_value.as_non_null_ptr("GList/GSList")? else {
             return Ok(value::Value::Array(vec![]));
         };
-
-        let list_guard = GListGuard::new(list_ptr, self.ownership.is_full());
 
         let mut values = Vec::new();
         let mut current = list_ptr as *mut glib::ffi::GList;
@@ -459,7 +520,127 @@ impl ArrayType {
             current = unsafe { (*current).next };
         }
 
-        drop(list_guard);
+        if self.ownership.is_full() {
+            if self.kind == ArrayKind::GSList {
+                unsafe { glib::ffi::g_slist_free(list_ptr as *mut glib::ffi::GSList) };
+            } else {
+                unsafe { glib::ffi::g_list_free(list_ptr as *mut glib::ffi::GList) };
+            }
+        }
+
+        Ok(value::Value::Array(values))
+    }
+
+    pub(crate) fn decode_garray(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let Some(array_ptr) = ffi_value.as_non_null_ptr("GArray")? else {
+            return Ok(value::Value::Array(vec![]));
+        };
+
+        let g_array = array_ptr as *const glib::ffi::GArray;
+        let data = unsafe { (*g_array).data as *const u8 };
+        let len = unsafe { (*g_array).len as usize };
+
+        let values = match &*self.item_type {
+            Type::Integer(int_type) => {
+                let f64_values = int_type.read_slice(data, len);
+                f64_values.into_iter().map(value::Value::Number).collect()
+            }
+            Type::Float(float_kind) => match float_kind {
+                super::FloatKind::F32 => unsafe {
+                    std::slice::from_raw_parts(data as *const f32, len)
+                        .iter()
+                        .map(|&v| value::Value::Number(v as f64))
+                        .collect()
+                },
+                super::FloatKind::F64 => unsafe {
+                    std::slice::from_raw_parts(data as *const f64, len)
+                        .iter()
+                        .map(|&v| value::Value::Number(v))
+                        .collect()
+                },
+            },
+            Type::Boolean => unsafe {
+                std::slice::from_raw_parts(data as *const i32, len)
+                    .iter()
+                    .map(|&v| value::Value::Boolean(v != 0))
+                    .collect()
+            },
+            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
+                let ptrs = unsafe { std::slice::from_raw_parts(data as *const *mut c_void, len) };
+                let mut values = Vec::with_capacity(len);
+                for &item_ptr in ptrs {
+                    values.push(self.item_type.ptr_to_value(item_ptr, "GArray item")?);
+                }
+                values
+            }
+            Type::String(_) => {
+                let ptrs = unsafe { std::slice::from_raw_parts(data as *const *const c_char, len) };
+                let mut values = Vec::with_capacity(len);
+                for &str_ptr in ptrs {
+                    if str_ptr.is_null() {
+                        values.push(value::Value::Null);
+                    } else {
+                        let c_str = unsafe { CStr::from_ptr(str_ptr) };
+                        values.push(value::Value::String(c_str.to_string_lossy().into_owned()));
+                    }
+                }
+                values
+            }
+            _ => bail!("Unsupported GArray item type: {:?}", self.item_type),
+        };
+
+        if self.ownership.is_full() {
+            let storage_owns = matches!(ffi_value, ffi::FfiValue::Storage(_));
+            if !storage_owns {
+                unsafe { glib::ffi::g_array_unref(array_ptr as *mut glib::ffi::GArray) };
+            }
+        }
+
+        Ok(value::Value::Array(values))
+    }
+
+    fn decode_gptrarray(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let Some(ptr) = ffi_value.as_non_null_ptr("GPtrArray")? else {
+            return Ok(value::Value::Array(vec![]));
+        };
+
+        let ptr_array = ptr as *mut glib::ffi::GPtrArray;
+        let len = unsafe { (*ptr_array).len as usize };
+        let pdata = unsafe { (*ptr_array).pdata };
+        let mut values = Vec::with_capacity(len);
+        for i in 0..len {
+            let item_ptr = unsafe { *pdata.add(i) };
+            let item_value = self.item_type.ptr_to_value(item_ptr, "GPtrArray item")?;
+            values.push(item_value);
+        }
+
+        if self.ownership.is_full() {
+            unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
+        }
+
+        Ok(value::Value::Array(values))
+    }
+
+    fn decode_null_terminated_ptr_array(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+        let ptr_array = ptr as *const *mut c_void;
+        let mut values = Vec::new();
+        let mut i = 0;
+        loop {
+            let item_ptr = unsafe { *ptr_array.offset(i) };
+            if item_ptr.is_null() {
+                break;
+            }
+            values.push(
+                self.item_type
+                    .ptr_to_value(item_ptr, "null-terminated array item")?,
+            );
+            i += 1;
+        }
+
+        if self.ownership.is_full() {
+            unsafe { glib::ffi::g_free(ptr) };
+        }
+
         Ok(value::Value::Array(values))
     }
 
@@ -536,6 +717,23 @@ impl ArrayType {
         Ok(value::Value::Array(values))
     }
 
+    fn decode_sized_array(&self, ptr: *mut c_void, length: usize) -> anyhow::Result<value::Value> {
+        match &*self.item_type {
+            Type::Integer(int_type) => Self::decode_sized_byte_array(ptr, length, int_type),
+            Type::Float(float_kind) => Self::decode_sized_float_array(ptr, length, *float_kind),
+            Type::Boolean => Self::decode_sized_bool_array(ptr, length),
+            Type::GObject(_)
+            | Type::Boxed(_)
+            | Type::Struct(_)
+            | Type::String(_)
+            | Type::Fundamental(_) => self.decode_sized_ptr_array(ptr, length),
+            _ => bail!(
+                "Unsupported item type for sized array: {:?}",
+                self.item_type
+            ),
+        }
+    }
+
     fn decode_sized_ptr_array(
         &self,
         ptr: *mut c_void,
@@ -547,6 +745,48 @@ impl ArrayType {
             let item_ptr = unsafe { *ptr_array.add(i) };
             values.push(self.item_type.ptr_to_value(item_ptr, "sized array item")?);
         }
+        Ok(value::Value::Array(values))
+    }
+
+    fn decode_sized_float_array(
+        ptr: *mut c_void,
+        length: usize,
+        float_kind: super::FloatKind,
+    ) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Array(vec![]));
+        }
+
+        let values = match float_kind {
+            super::FloatKind::F32 => unsafe {
+                std::slice::from_raw_parts(ptr as *const f32, length)
+                    .iter()
+                    .map(|&v| value::Value::Number(v as f64))
+                    .collect()
+            },
+            super::FloatKind::F64 => unsafe {
+                std::slice::from_raw_parts(ptr as *const f64, length)
+                    .iter()
+                    .map(|&v| value::Value::Number(v))
+                    .collect()
+            },
+        };
+
+        Ok(value::Value::Array(values))
+    }
+
+    fn decode_sized_bool_array(ptr: *mut c_void, length: usize) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Array(vec![]));
+        }
+
+        let values = unsafe {
+            std::slice::from_raw_parts(ptr as *const i32, length)
+                .iter()
+                .map(|&v| value::Value::Boolean(v != 0))
+                .collect()
+        };
+
         Ok(value::Value::Array(values))
     }
 

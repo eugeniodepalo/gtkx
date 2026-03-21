@@ -672,12 +672,12 @@ fn from_cif_value_fundamental_gvariant_transfer_none() {
         ptr
     };
 
-    let fundamental_type = native::types::FundamentalType::new(
-        Ownership::Borrowed,
-        "libglib-2.0.so.0".to_string(),
-        "g_variant_ref_sink".to_string(),
-        "g_variant_unref".to_string(),
-    );
+    let fundamental_type = native::types::FundamentalType {
+        ownership: Ownership::Borrowed,
+        library: "libglib-2.0.so.0".to_string(),
+        ref_func: "g_variant_ref_sink".to_string(),
+        unref_func: "g_variant_unref".to_string(),
+    };
     let type_ = Type::Fundamental(fundamental_type);
 
     let cif_value = ffi::FfiValue::Ptr(variant as *mut c_void);
@@ -698,12 +698,12 @@ fn from_cif_value_fundamental_gvariant_transfer_none() {
 fn from_cif_value_fundamental_null() {
     common::ensure_gtk_init();
 
-    let fundamental_type = native::types::FundamentalType::new(
-        Ownership::Full,
-        "libglib-2.0.so.0".to_string(),
-        "g_variant_ref_sink".to_string(),
-        "g_variant_unref".to_string(),
-    );
+    let fundamental_type = native::types::FundamentalType {
+        ownership: Ownership::Full,
+        library: "libglib-2.0.so.0".to_string(),
+        ref_func: "g_variant_ref_sink".to_string(),
+        unref_func: "g_variant_unref".to_string(),
+    };
     let type_ = Type::Fundamental(fundamental_type);
 
     let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
@@ -888,8 +888,11 @@ fn from_cif_value_struct_transfer_none_logs_warning() {
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-    let struct_type =
-        native::types::StructType::new(Ownership::Borrowed, "TestRect".to_string(), Some(16));
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "TestRect".to_string(),
+        size: Some(16),
+    };
     let type_ = Type::Struct(struct_type);
 
     let cif_value = ffi::FfiValue::Ptr(struct_ptr);
@@ -912,8 +915,11 @@ fn from_cif_value_struct_full_transfer() {
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(32) };
 
-    let struct_type =
-        native::types::StructType::new(Ownership::Full, "CustomStruct".to_string(), Some(32));
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Full,
+        type_name: "CustomStruct".to_string(),
+        size: Some(32),
+    };
     let type_ = Type::Struct(struct_type);
 
     let cif_value = ffi::FfiValue::Ptr(struct_ptr);
@@ -930,8 +936,11 @@ fn from_cif_value_struct_full_transfer() {
 fn from_cif_value_struct_null_returns_null_value() {
     common::ensure_gtk_init();
 
-    let struct_type =
-        native::types::StructType::new(Ownership::Borrowed, "TestStruct".to_string(), Some(16));
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "TestStruct".to_string(),
+        size: Some(16),
+    };
     let type_ = Type::Struct(struct_type);
 
     let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
@@ -947,8 +956,11 @@ fn from_glib_value_struct_fails() {
 
     let gvalue: glib::Value = glib::Value::from_type(glib::types::Type::POINTER);
 
-    let struct_type =
-        native::types::StructType::new(Ownership::Borrowed, "PlainStruct".to_string(), Some(16));
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "PlainStruct".to_string(),
+        size: Some(16),
+    };
     let type_ = Type::Struct(struct_type);
 
     let result = Value::from_glib_value(&gvalue, &type_);
@@ -962,8 +974,11 @@ fn from_cif_value_struct_transfer_none_without_size_creates_unowned() {
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
 
-    let struct_type =
-        native::types::StructType::new(Ownership::Borrowed, "UnknownSizeStruct".to_string(), None);
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "UnknownSizeStruct".to_string(),
+        size: None,
+    };
     let type_ = Type::Struct(struct_type);
 
     let cif_value = ffi::FfiValue::Ptr(struct_ptr);
@@ -986,8 +1001,11 @@ fn from_cif_value_struct_owned_without_size() {
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
 
-    let struct_type =
-        native::types::StructType::new(Ownership::Full, "UnknownSizeStruct".to_string(), None);
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Full,
+        type_name: "UnknownSizeStruct".to_string(),
+        size: None,
+    };
     let type_ = Type::Struct(struct_type);
 
     let cif_value = ffi::FfiValue::Ptr(struct_ptr);

@@ -50,12 +50,18 @@ impl JsDispatcher {
     }
 
     fn push_callback(&self, callback: PendingCallback) {
-        self.queue.lock().unwrap().push_back(callback);
+        self.queue
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push_back(callback);
         gtk_dispatch::GtkDispatcher::global().wake.notify();
     }
 
     fn pop_callback(&self) -> Option<PendingCallback> {
-        self.queue.lock().unwrap().pop_front()
+        self.queue
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .pop_front()
     }
 
     pub fn queue(

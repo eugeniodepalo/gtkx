@@ -40,6 +40,10 @@ use neon::prelude::*;
 
 use crate::{ffi, value};
 
+pub(crate) fn throw_str_error(cx: &mut FunctionContext, msg: String) -> neon::result::Throw {
+    cx.throw_type_error::<_, ()>(msg).unwrap_err()
+}
+
 mod array;
 mod boxed;
 mod callback;
@@ -58,7 +62,7 @@ pub use callback::CallbackType;
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
 pub use hashtable::{HashTableEntryEncoder, HashTableType};
-pub use numeric::{FloatKind, IntegerKind, IntegerPrimitive, NumericPrimitive, TaggedType};
+pub use numeric::{FloatKind, IntegerKind, TaggedType};
 pub use ref_type::RefType;
 pub use string::StringType;
 pub use trampoline::TrampolineType;
@@ -102,7 +106,7 @@ impl Ownership {
 
         ownership
             .parse()
-            .map_err(|e: String| cx.throw_type_error::<_, ()>(e).unwrap_err())
+            .map_err(|e: String| throw_str_error(cx, e))
     }
 }
 
@@ -266,8 +270,11 @@ impl Type {
                 let boolean = ptr as isize != 0;
                 Ok(value::Value::Boolean(boolean))
             }
-            Type::Float(_) => {
-                let float_val = unsafe { *(ptr as *const f64) };
+            Type::Float(float_kind) => {
+                let float_val = match float_kind {
+                    FloatKind::F32 => (unsafe { *(ptr as *const f32) }) as f64,
+                    FloatKind::F64 => unsafe { *(ptr as *const f64) },
+                };
                 Ok(value::Value::Number(float_val))
             }
             Type::Struct(struct_type) => {
@@ -311,6 +318,36 @@ impl Type {
                     values.push(item_value);
                 }
                 Ok(value::Value::Array(values))
+            }
+            Type::Array(array_type) if array_type.kind == ArrayKind::GArray => {
+                if ptr.is_null() {
+                    return Ok(value::Value::Array(vec![]));
+                }
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                array_type.decode_garray(&ffi_value)
+            }
+            Type::Array(array_type)
+                if array_type.kind == ArrayKind::GList || array_type.kind == ArrayKind::GSList =>
+            {
+                if ptr.is_null() {
+                    return Ok(value::Value::Array(vec![]));
+                }
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                array_type.decode_glist(&ffi_value)
+            }
+            Type::Array(array_type) => {
+                if ptr.is_null() {
+                    return Ok(value::Value::Array(vec![]));
+                }
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                array_type.decode(&ffi_value)
+            }
+            Type::HashTable(ht_type) => {
+                if ptr.is_null() {
+                    return Ok(value::Value::Array(vec![]));
+                }
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                ht_type.decode(&ffi_value)
             }
             _ => bail!("Unsupported {} type: {:?}", context, self),
         }
@@ -380,7 +417,7 @@ impl From<&Type> for libffi::Type {
             Type::Enum(_) => libffi::Type::i32(),
             Type::Flags(_) => libffi::Type::u32(),
             Type::String(ty) => ty.into(),
-            Type::Boolean => libffi::Type::u8(),
+            Type::Boolean => libffi::Type::i32(),
             Type::GObject(ty) => ty.into(),
             Type::Boxed(ty) => ty.into(),
             Type::Struct(ty) => ty.into(),
@@ -408,7 +445,7 @@ impl Type {
                     value::Value::Boolean(b) => *b,
                     _ => bail!("Expected a Boolean for boolean type, got {:?}", value),
                 };
-                Ok(ffi::FfiValue::U8(u8::from(boolean)))
+                Ok(ffi::FfiValue::I32(i32::from(boolean)))
             }
             Type::Void => Ok(ffi::FfiValue::Ptr(std::ptr::null_mut())),
             Type::GObject(t) => t.encode(value, optional),
@@ -433,7 +470,7 @@ impl Type {
             Type::String(t) => t.decode(ffi_value),
             Type::Boolean => {
                 let b = match ffi_value {
-                    ffi::FfiValue::U8(v) => *v != 0,
+                    ffi::FfiValue::I32(v) => *v != 0,
                     _ => bail!("Expected a boolean ffi::FfiValue, got {:?}", ffi_value),
                 };
                 Ok(value::Value::Boolean(b))

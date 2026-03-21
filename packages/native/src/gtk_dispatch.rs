@@ -81,7 +81,10 @@ impl GtkDispatcher {
     }
 
     fn push_task(&self, task: Task) {
-        self.queue.lock().unwrap().push_back(task);
+        self.queue
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push_back(task);
         if self.freeze_loop_active.load(Ordering::Acquire) {
             self.freeze_wake.notify();
         }
@@ -89,7 +92,10 @@ impl GtkDispatcher {
     }
 
     fn pop_task(&self) -> Option<Task> {
-        self.queue.lock().unwrap().pop_front()
+        self.queue
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .pop_front()
     }
 
     pub fn run_on_gtk_thread<F, T>(&self, task: F) -> mpsc::Receiver<T>
@@ -199,6 +205,24 @@ impl GtkDispatcher {
         }
 
         dispatched
+    }
+
+    pub fn dispatch_and_wait<'a, R, C, F>(
+        &self,
+        cx: &mut C,
+        task: F,
+    ) -> Result<R, GtkDisconnectedError>
+    where
+        C: Context<'a>,
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        let (tx, rx) = mpsc::channel();
+        self.enter_js_wait();
+        self.schedule(move || {
+            let _ = tx.send(task());
+        });
+        self.wait_for_gtk_result(cx, &rx)
     }
 
     pub fn wait_for_gtk_result<'a, R, C: Context<'a>>(

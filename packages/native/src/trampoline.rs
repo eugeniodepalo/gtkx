@@ -232,7 +232,7 @@ fn write_return_value(ret: *mut c_void, js_result: Result<Value, ()>, return_typ
             };
             unsafe { *(ret as *mut f64) = val };
         }
-        Type::GObject(_) | Type::Boxed(_) | Type::Fundamental(_) => {
+        Type::GObject(_) => {
             let ptr = match js_result {
                 Ok(Value::Object(handle)) => {
                     let p = handle.get_ptr().unwrap_or(std::ptr::null_mut());
@@ -244,6 +244,47 @@ fn write_return_value(ret: *mut c_void, js_result: Result<Value, ()>, return_typ
                         };
                     }
                     p
+                }
+                _ => std::ptr::null_mut(),
+            };
+            unsafe { *(ret as *mut *mut c_void) = ptr };
+        }
+        Type::Boxed(boxed_type) => {
+            let ptr = match js_result {
+                Ok(Value::Object(handle)) => {
+                    let p = handle.get_ptr().unwrap_or(std::ptr::null_mut());
+                    if !p.is_null() {
+                        if let Some(gtype) = boxed_type.gtype() {
+                            unsafe {
+                                gtk4::glib::gobject_ffi::g_boxed_copy(
+                                    gtk4::glib::translate::IntoGlib::into_glib(gtype),
+                                    p as *const _,
+                                )
+                            }
+                        } else {
+                            p
+                        }
+                    } else {
+                        p
+                    }
+                }
+                _ => std::ptr::null_mut(),
+            };
+            unsafe { *(ret as *mut *mut c_void) = ptr };
+        }
+        Type::Fundamental(fundamental_type) => {
+            let ptr = match js_result {
+                Ok(Value::Object(handle)) => {
+                    let p = handle.get_ptr().unwrap_or(std::ptr::null_mut());
+                    if !p.is_null() {
+                        if let Ok((Some(ref_fn), _)) = fundamental_type.lookup_fns() {
+                            unsafe { ref_fn(p) }
+                        } else {
+                            p
+                        }
+                    } else {
+                        p
+                    }
                 }
                 _ => std::ptr::null_mut(),
             };
@@ -261,7 +302,10 @@ fn write_return_value(ret: *mut c_void, js_result: Result<Value, ()>, return_typ
             };
             unsafe { *(ret as *mut *mut c_void) = ptr };
         }
-        _ => {
+        other => {
+            eprintln!(
+                "[gtkx] WARNING: write_return_value: unsupported return type {other}, writing null"
+            );
             unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
         }
     }

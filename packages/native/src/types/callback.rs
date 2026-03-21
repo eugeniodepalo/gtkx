@@ -40,13 +40,18 @@ impl ClosureContext {
             let _guard =
                 ClosureGuard::from_ptr(closure_holder_for_callback.load(Ordering::Acquire));
 
-            let return_type_inner = *return_type.clone();
+            let args_values = match value::Value::from_glib_values(args, &self.arg_types) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("[gtkx] WARNING: closure: failed to convert callback arguments: {e}");
+                    return None;
+                }
+            };
 
-            let args_values = value::Value::from_glib_values(args, &self.arg_types)
-                .expect("Failed to convert GLib callback arguments");
+            let return_type_ref: Option<&Type> = Some(&return_type);
 
             if has_ref_params {
-                let ref_pointers: Vec<(*mut c_void, Type)> = args
+                let ref_pointers: Vec<(*mut c_void, &Type)> = args
                     .iter()
                     .zip(self.arg_types.iter())
                     .filter_map(|(gval, ty)| {
@@ -56,7 +61,7 @@ impl ClosureContext {
                                     gval.to_glib_none().0 as *const _,
                                 )
                             };
-                            Some((ptr, *ref_type.inner_type.clone()))
+                            Some((ptr, &*ref_type.inner_type))
                         } else {
                             None
                         }
@@ -79,18 +84,14 @@ impl ClosureContext {
                             }
                             let return_val =
                                 arr.into_iter().next().unwrap_or(value::Value::Undefined);
-                            value::Value::into_glib_value_with_default(
-                                return_val,
-                                Some(&return_type_inner),
-                            )
+                            value::Value::into_glib_value_with_default(return_val, return_type_ref)
                         }
-                        Ok(value) => value::Value::into_glib_value_with_default(
-                            value,
-                            Some(&return_type_inner),
-                        ),
+                        Ok(value) => {
+                            value::Value::into_glib_value_with_default(value, return_type_ref)
+                        }
                         Err(_) => value::Value::into_glib_value_with_default(
                             value::Value::Undefined,
-                            Some(&return_type_inner),
+                            return_type_ref,
                         ),
                     },
                 )
@@ -101,13 +102,12 @@ impl ClosureContext {
                     args_values,
                     true,
                     |result| match result {
-                        Ok(value) => value::Value::into_glib_value_with_default(
-                            value,
-                            Some(&return_type_inner),
-                        ),
+                        Ok(value) => {
+                            value::Value::into_glib_value_with_default(value, return_type_ref)
+                        }
                         Err(_) => value::Value::into_glib_value_with_default(
                             value::Value::Undefined,
-                            Some(&return_type_inner),
+                            return_type_ref,
                         ),
                     },
                 )
@@ -198,17 +198,19 @@ impl CallbackKind {
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
                     let source_value = args
                         .first()
-                        .map(|gval| {
+                        .and_then(|gval| {
                             value::Value::from_glib_value(gval, &source_type)
-                                .expect("Failed to convert async source value")
+                                .map_err(|e| eprintln!("[gtkx] WARNING: async callback: failed to convert source value: {e}"))
+                                .ok()
                         })
                         .unwrap_or(value::Value::Null);
 
                     let result_value = args
                         .get(1)
-                        .map(|gval| {
+                        .and_then(|gval| {
                             value::Value::from_glib_value(gval, &result_type)
-                                .expect("Failed to convert async result value")
+                                .map_err(|e| eprintln!("[gtkx] WARNING: async callback: failed to convert result value: {e}"))
+                                .ok()
                         })
                         .unwrap_or(value::Value::Null);
 
@@ -270,7 +272,7 @@ impl CallbackType {
 
         let kind: CallbackKind = kind_str
             .parse()
-            .map_err(|e: String| cx.throw_type_error::<_, ()>(e).unwrap_err())?;
+            .map_err(|e: String| super::throw_str_error(cx, e))?;
 
         let arg_types_prop: Handle<'_, JsValue> = obj.prop(cx, "argTypes").get()?;
         let arg_types_arr = arg_types_prop.downcast::<JsArray, _>(cx).or_else(|_| {

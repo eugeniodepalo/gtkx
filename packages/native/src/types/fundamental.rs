@@ -22,20 +22,6 @@ pub struct FundamentalType {
 }
 
 impl FundamentalType {
-    pub fn new(
-        ownership: Ownership,
-        library: String,
-        ref_func: String,
-        unref_func: String,
-    ) -> Self {
-        FundamentalType {
-            ownership,
-            library,
-            ref_func,
-            unref_func,
-        }
-    }
-
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let ownership = Ownership::from_js_value(cx, obj, "fundamental")?;
@@ -44,12 +30,12 @@ impl FundamentalType {
         let ref_func: Handle<JsString> = obj.get(cx, "refFn")?;
         let unref_func: Handle<JsString> = obj.get(cx, "unrefFn")?;
 
-        Ok(Self::new(
+        Ok(Self {
             ownership,
-            library.value(cx),
-            ref_func.value(cx),
-            unref_func.value(cx),
-        ))
+            library: library.value(cx),
+            ref_func: ref_func.value(cx),
+            unref_func: unref_func.value(cx),
+        })
     }
 
     pub fn lookup_fns(&self) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {

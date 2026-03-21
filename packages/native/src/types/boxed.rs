@@ -24,20 +24,6 @@ pub struct BoxedType {
 }
 
 impl BoxedType {
-    pub fn new(
-        ownership: Ownership,
-        type_name: String,
-        library: Option<String>,
-        get_type_fn: Option<String>,
-    ) -> Self {
-        BoxedType {
-            ownership,
-            type_name,
-            library,
-            get_type_fn,
-        }
-    }
-
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let ownership = Ownership::from_js_value(cx, obj, "boxed")?;
@@ -60,16 +46,16 @@ impl BoxedType {
             .map(|s: Handle<'_, JsString>| s.value(cx))
             .ok();
 
-        Ok(Self::new(ownership, type_name, library, get_type_fn))
-    }
-
-    pub fn gtype_from_name(&self) -> Option<glib::Type> {
-        glib::Type::from_name(&self.type_name)
+        Ok(Self {
+            ownership,
+            type_name,
+            library,
+            get_type_fn,
+        })
     }
 
     pub fn gtype(&self) -> Option<glib::Type> {
-        self.gtype_from_name()
-            .or_else(|| self.resolve_gtype_from_library())
+        glib::Type::from_name(&self.type_name).or_else(|| self.resolve_gtype_from_library())
     }
 
     fn resolve_gtype_from_library(&self) -> Option<glib::Type> {
@@ -143,14 +129,6 @@ pub struct StructType {
 }
 
 impl StructType {
-    pub fn new(ownership: Ownership, type_name: String, size: Option<usize>) -> Self {
-        StructType {
-            ownership,
-            type_name,
-            size,
-        }
-    }
-
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let ownership = Ownership::from_js_value(cx, obj, "struct")?;
@@ -167,7 +145,11 @@ impl StructType {
             .map(|n: Handle<'_, JsNumber>| n.value(cx) as usize)
             .ok();
 
-        Ok(Self::new(ownership, type_name, size))
+        Ok(Self {
+            ownership,
+            type_name,
+            size,
+        })
     }
 }
 

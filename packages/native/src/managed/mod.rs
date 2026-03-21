@@ -90,8 +90,7 @@ impl Finalize for NativeHandle {
             return;
         }
         glib::idle_add_once(move || {
-            let removed = GtkThreadState::with(|state| state.handle_map.remove(&self.0));
-            drop(removed);
+            GtkThreadState::with(|state| state.handle_map.remove(&self.0));
         });
     }
 }

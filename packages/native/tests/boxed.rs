@@ -283,12 +283,13 @@ fn plain_struct_debug_format() {
 }
 
 #[test]
-#[should_panic(expected = "Cannot clone Boxed without GType")]
-fn clone_owned_without_gtype_panics() {
+fn clone_without_gtype_returns_non_owned_shallow_copy() {
     common::ensure_gtk_init();
 
     let ptr = unsafe { glib::ffi::g_malloc0(16) };
     let boxed = Boxed::from_glib_full(None, ptr);
 
-    let _cloned = boxed.clone();
+    let cloned = boxed.clone();
+    assert_eq!(cloned.as_ptr(), boxed.as_ptr());
+    assert!(!cloned.is_owned());
 }

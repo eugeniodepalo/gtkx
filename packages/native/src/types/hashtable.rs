@@ -6,7 +6,7 @@ use libffi::middle as libffi;
 use neon::prelude::*;
 
 use super::Ownership;
-use crate::ffi::{FfiStorage, FfiStorageKind, HashTableData, HashTableStorage};
+use crate::ffi::{FfiStorage, FfiStorageKind, HashTableData};
 use crate::types::Type;
 use crate::types::array::ArrayKind;
 use crate::{ffi, value};
@@ -72,7 +72,7 @@ impl HashTableEntryEncoder {
         }
     }
 
-    pub fn encode(&self, val: &value::Value) -> anyhow::Result<(*mut c_void, HashTableStorage)> {
+    pub fn encode(&self, val: &value::Value) -> anyhow::Result<*mut c_void> {
         match self {
             Self::String => {
                 let s = match val {
@@ -81,18 +81,14 @@ impl HashTableEntryEncoder {
                 };
                 let cstr = CString::new(s.as_bytes())?;
                 let ptr = unsafe { glib::ffi::g_strdup(cstr.as_ptr()) };
-                Ok((ptr as *mut c_void, HashTableStorage::Strings(vec![cstr])))
+                Ok(ptr as *mut c_void)
             }
             Self::Integer => match val {
-                value::Value::Number(n) => {
-                    Ok((*n as isize as *mut c_void, HashTableStorage::Integers))
-                }
+                value::Value::Number(n) => Ok(*n as isize as *mut c_void),
                 _ => bail!("Expected number in GHashTable, got {:?}", val),
             },
             Self::Boolean => match val {
-                value::Value::Boolean(b) => {
-                    Ok((*b as isize as *mut c_void, HashTableStorage::Booleans))
-                }
+                value::Value::Boolean(b) => Ok(*b as isize as *mut c_void),
                 _ => bail!("Expected boolean in GHashTable, got {:?}", val),
             },
             Self::Float => match val {
@@ -102,7 +98,7 @@ impl HashTableEntryEncoder {
                         *mem = *n;
                         mem as *mut c_void
                     };
-                    Ok((ptr, HashTableStorage::Floats))
+                    Ok(ptr)
                 }
                 _ => bail!("Expected number in GHashTable for float, got {:?}", val),
             },
@@ -111,11 +107,9 @@ impl HashTableEntryEncoder {
                     let ptr = handle.get_ptr().ok_or_else(|| {
                         anyhow::anyhow!("Native object in GHashTable has been garbage collected")
                     })?;
-                    Ok((ptr, HashTableStorage::NativeHandles))
+                    Ok(ptr)
                 }
-                value::Value::Null | value::Value::Undefined => {
-                    Ok((std::ptr::null_mut(), HashTableStorage::NativeHandles))
-                }
+                value::Value::Null | value::Value::Undefined => Ok(std::ptr::null_mut()),
                 _ => bail!("Expected native object in GHashTable, got {:?}", val),
             },
             Self::PtrArray(_item_type) => {
@@ -134,7 +128,7 @@ impl HashTableEntryEncoder {
                     };
                     unsafe { glib::ffi::g_ptr_array_add(ptr_array, item_ptr) };
                 }
-                Ok((ptr_array as *mut c_void, HashTableStorage::PtrArrays))
+                Ok(ptr_array as *mut c_void)
             }
         }
     }
@@ -154,14 +148,6 @@ pub struct HashTableType {
 }
 
 impl HashTableType {
-    pub fn new(key_type: Type, value_type: Type, ownership: Ownership) -> Self {
-        HashTableType {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-            ownership,
-        }
-    }
-
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
 
@@ -202,15 +188,10 @@ impl HashTableType {
             )
         };
 
-        let mut key_storage = HashTableStorage::Integers;
-        let mut val_storage = HashTableStorage::Integers;
-
         for tuple in tuples {
             let (key, val) = Self::tuple(tuple)?;
-            let (key_ptr, ks) = key_encoder.encode(key)?;
-            let (val_ptr, vs) = value_encoder.encode(val)?;
-            key_storage = ks;
-            val_storage = vs;
+            let key_ptr = key_encoder.encode(key)?;
+            let val_ptr = value_encoder.encode(val)?;
 
             let key_ptr = self.key_type.ref_for_transfer(key_ptr)?;
             let val_ptr = self.value_type.ref_for_transfer(val_ptr)?;
@@ -224,8 +205,6 @@ impl HashTableType {
             hash_table as *mut c_void,
             FfiStorageKind::HashTable(HashTableData {
                 handle: hash_table,
-                keys: key_storage,
-                values: val_storage,
                 should_free: self.ownership.is_borrowed(),
             }),
         )))

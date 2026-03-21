@@ -94,11 +94,11 @@ fn float_dispatch_read_ptr_f32() {
 
 #[test]
 fn float_dispatch_read_ptr_f64() {
-    let value: f64 = 2.718281828;
+    let value: f64 = std::f64::consts::E;
     let ptr = &value as *const f64 as *const u8;
 
     let result = FloatKind::F64.read_ptr(ptr);
-    assert!((result - 2.718281828).abs() < 0.0000001);
+    assert!((result - std::f64::consts::E).abs() < 0.0000001);
 }
 
 #[test]
@@ -115,8 +115,8 @@ fn float_dispatch_write_ptr_f64() {
     let mut value: f64 = 0.0;
     let ptr = &mut value as *mut f64 as *mut u8;
 
-    FloatKind::F64.write_ptr(ptr, 3.14159265358979);
-    assert!((value - 3.14159265358979).abs() < 0.0000001);
+    FloatKind::F64.write_ptr(ptr, std::f64::consts::PI);
+    assert!((value - std::f64::consts::PI).abs() < 0.0000001);
 }
 
 #[test]
@@ -131,9 +131,9 @@ fn float_dispatch_to_ffi_value_f32() {
 
 #[test]
 fn float_dispatch_to_ffi_value_f64() {
-    let result = FloatKind::F64.to_ffi_value(2.718281828);
+    let result = FloatKind::F64.to_ffi_value(std::f64::consts::E);
     if let ffi::FfiValue::F64(v) = result {
-        assert!((v - 2.718281828).abs() < 0.0000001);
+        assert!((v - std::f64::consts::E).abs() < 0.0000001);
     } else {
         panic!("Expected FfiValue::F64");
     }

@@ -121,12 +121,11 @@ impl Clone for Boxed {
                     gtype: self.gtype,
                 }
             }
-            None => {
-                panic!(
-                    "Cannot clone Boxed without GType - the size is unknown. \
-                     Ensure the Boxed was created with a known size or GType."
-                );
-            }
+            None => Self {
+                ptr: self.ptr,
+                owned: false,
+                gtype: None,
+            },
         }
     }
 }

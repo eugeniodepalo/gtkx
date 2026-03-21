@@ -65,7 +65,7 @@ impl TrampolineType {
             channel: callback.channel.clone(),
             js_func: callback.js_func.clone(),
             arg_types: self.arg_types.clone(),
-            return_type: *self.return_type.clone(),
+            return_type: (*self.return_type).clone(),
             user_data_index: self.user_data_index,
         };
 

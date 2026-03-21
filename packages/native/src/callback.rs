@@ -58,6 +58,4 @@ pub unsafe extern "C" fn async_ready_trampoline(
             std::ptr::null_mut(),
         );
     }
-
-    unsafe { gobject_ffi::g_closure_unref(closure_ptr.as_ptr()) };
 }

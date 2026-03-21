@@ -216,10 +216,10 @@ fn try_from_boolean_true() {
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
-    if let FfiValue::U8(v) = result.unwrap() {
+    if let FfiValue::I32(v) = result.unwrap() {
         assert_eq!(v, 1);
     } else {
-        panic!("Expected FfiValue::U8");
+        panic!("Expected FfiValue::I32");
     }
 }
 
@@ -229,10 +229,10 @@ fn try_from_boolean_false() {
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
-    if let FfiValue::U8(v) = result.unwrap() {
+    if let FfiValue::I32(v) = result.unwrap() {
         assert_eq!(v, 0);
     } else {
-        panic!("Expected FfiValue::U8");
+        panic!("Expected FfiValue::I32");
     }
 }
 
@@ -397,7 +397,7 @@ fn try_from_array_boolean() {
     assert!(result.is_ok());
     if let FfiValue::Storage(owned) = result.unwrap() {
         unsafe {
-            let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
+            let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
             assert_eq!(slice, &[1, 0, 1]);
         }
     } else {
@@ -464,8 +464,11 @@ fn value_to_libffi_arg_owned_ptr() {
 
 #[test]
 fn try_from_struct_null() {
-    let struct_type =
-        native::types::StructType::new(Ownership::Borrowed, "TestStruct".to_string(), Some(16));
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "TestStruct".to_string(),
+        size: Some(16),
+    };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Null);
 
     let result = FfiValue::try_from(arg);
@@ -479,7 +482,11 @@ fn try_from_struct_null() {
 
 #[test]
 fn try_from_struct_undefined() {
-    let struct_type = native::types::StructType::new(Ownership::Full, "TestRect".to_string(), None);
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Full,
+        type_name: "TestRect".to_string(),
+        size: None,
+    };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Undefined);
 
     let result = FfiValue::try_from(arg);
@@ -493,8 +500,11 @@ fn try_from_struct_undefined() {
 
 #[test]
 fn try_from_struct_invalid_type() {
-    let struct_type =
-        native::types::StructType::new(Ownership::Borrowed, "TestStruct".to_string(), Some(16));
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "TestStruct".to_string(),
+        size: Some(16),
+    };
     let arg = Arg::new(
         Type::Struct(struct_type),
         value::Value::String("invalid".to_string()),
@@ -506,8 +516,11 @@ fn try_from_struct_invalid_type() {
 
 #[test]
 fn try_from_struct_invalid_number() {
-    let struct_type =
-        native::types::StructType::new(Ownership::Borrowed, "TestStruct".to_string(), Some(16));
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "TestStruct".to_string(),
+        size: Some(16),
+    };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Number(42.0));
 
     let result = FfiValue::try_from(arg);
@@ -516,8 +529,11 @@ fn try_from_struct_invalid_number() {
 
 #[test]
 fn try_from_struct_invalid_boolean() {
-    let struct_type =
-        native::types::StructType::new(Ownership::Full, "TestRect".to_string(), Some(8));
+    let struct_type = native::types::StructType {
+        ownership: Ownership::Full,
+        type_name: "TestRect".to_string(),
+        size: Some(8),
+    };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Boolean(true));
 
     let result = FfiValue::try_from(arg);
@@ -526,10 +542,16 @@ fn try_from_struct_invalid_boolean() {
 
 #[test]
 fn try_from_struct_transfer_none_vs_full() {
-    let transfer_none_type =
-        native::types::StructType::new(Ownership::Full, "TestStruct".to_string(), Some(16));
-    let transfer_full_type =
-        native::types::StructType::new(Ownership::Borrowed, "TestStruct".to_string(), Some(16));
+    let transfer_none_type = native::types::StructType {
+        ownership: Ownership::Full,
+        type_name: "TestStruct".to_string(),
+        size: Some(16),
+    };
+    let transfer_full_type = native::types::StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "TestStruct".to_string(),
+        size: Some(16),
+    };
 
     let transfer_none_arg = Arg::new(Type::Struct(transfer_none_type), value::Value::Null);
 

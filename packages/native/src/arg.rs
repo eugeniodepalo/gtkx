@@ -54,23 +54,10 @@ impl Arg {
         let ty = Type::from_js_value(cx, type_prop)?;
         let value = Value::from_js_value(cx, value_prop)?;
 
-        let optional = {
-            let optional_prop: Result<Handle<JsValue>, _> = obj.prop(cx, "optional").get();
-            match optional_prop {
-                Ok(prop) => {
-                    if prop.is_a::<JsUndefined, _>(cx) || prop.is_a::<JsNull, _>(cx) {
-                        false
-                    } else {
-                        prop.downcast::<JsBoolean, _>(cx)
-                            .or_else(|_| {
-                                cx.throw_type_error("'optional' property must be a boolean")
-                            })?
-                            .value(cx)
-                    }
-                }
-                Err(_) => false,
-            }
-        };
+        let optional = obj
+            .get_opt::<JsBoolean, _, _>(cx, "optional")?
+            .map(|v| v.value(cx))
+            .unwrap_or(false);
 
         Ok(Arg {
             ty,

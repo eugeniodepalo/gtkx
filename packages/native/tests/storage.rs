@@ -8,7 +8,7 @@ use std::sync::{
 };
 
 use gtk4::glib;
-use native::ffi::{FfiStorage, FfiStorageKind, HashTableData, HashTableStorage};
+use native::ffi::{FfiStorage, FfiStorageKind, HashTableData};
 
 fn create_test_closure() -> NonNull<glib::gobject_ffi::GClosure> {
     common::ensure_gtk_init();
@@ -119,8 +119,6 @@ fn hashtable_storage_unrefs_on_drop() {
             hash_table as *mut c_void,
             FfiStorageKind::HashTable(HashTableData {
                 handle: hash_table,
-                keys: HashTableStorage::Integers,
-                values: HashTableStorage::Integers,
                 should_free: true,
             }),
         );
@@ -136,8 +134,6 @@ fn hashtable_storage_null_handle_safe_on_drop() {
             std::ptr::null_mut(),
             FfiStorageKind::HashTable(HashTableData {
                 handle: std::ptr::null_mut(),
-                keys: HashTableStorage::Integers,
-                values: HashTableStorage::Integers,
                 should_free: true,
             }),
         );

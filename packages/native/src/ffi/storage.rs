@@ -11,7 +11,6 @@ use gtk4::glib;
 use crate::types::IntegerKind;
 
 #[derive(Debug)]
-#[repr(C)]
 pub struct FfiStorage {
     ptr: *mut c_void,
     kind: FfiStorageKind,
@@ -46,6 +45,7 @@ pub enum FfiStorageKind {
     StringGList(Vec<std::ffi::CString>, *mut glib::ffi::GList, bool),
     StringGSList(Vec<std::ffi::CString>, *mut glib::ffi::GSList, bool),
     CString(std::ffi::CString),
+    GArray(*mut glib::ffi::GArray, bool),
     Buffer(Vec<u8>),
     BoxedValue(Box<super::FfiValue>),
     PtrStorage(Box<*mut c_void>),
@@ -55,19 +55,7 @@ pub enum FfiStorageKind {
 #[derive(Debug)]
 pub struct HashTableData {
     pub handle: *mut glib::ffi::GHashTable,
-    pub keys: HashTableStorage,
-    pub values: HashTableStorage,
     pub should_free: bool,
-}
-
-#[derive(Debug)]
-pub enum HashTableStorage {
-    Strings(Vec<std::ffi::CString>),
-    Integers,
-    Booleans,
-    Floats,
-    NativeHandles,
-    PtrArrays,
 }
 
 impl FfiStorage {
@@ -147,10 +135,10 @@ impl FfiStorage {
         }
     }
 
-    pub fn as_bool_slice(&self) -> anyhow::Result<&[u8]> {
+    pub fn as_bool_slice(&self) -> anyhow::Result<&[i32]> {
         match &self.kind {
-            FfiStorageKind::U8Vec(v) => Ok(v),
-            _ => anyhow::bail!("FfiStorage does not contain bool/u8 data"),
+            FfiStorageKind::I32Vec(v) => Ok(v),
+            _ => anyhow::bail!("FfiStorage does not contain bool/i32 data"),
         }
     }
 
@@ -194,6 +182,11 @@ impl Drop for FfiStorage {
             FfiStorageKind::GSList(_, list_ptr, should_free) => {
                 if *should_free && !list_ptr.is_null() {
                     unsafe { glib::ffi::g_slist_free(*list_ptr) };
+                }
+            }
+            FfiStorageKind::GArray(array_ptr, should_free) => {
+                if *should_free && !array_ptr.is_null() {
+                    unsafe { glib::ffi::g_array_unref(*array_ptr) };
                 }
             }
             FfiStorageKind::StringGList(_, list_ptr, should_free) => {

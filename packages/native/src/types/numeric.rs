@@ -4,305 +4,6 @@ use neon::prelude::*;
 
 use crate::{ffi, value};
 
-mod sealed {
-    pub trait Sealed {}
-    impl Sealed for u8 {}
-    impl Sealed for i8 {}
-    impl Sealed for u16 {}
-    impl Sealed for i16 {}
-    impl Sealed for u32 {}
-    impl Sealed for i32 {}
-    impl Sealed for u64 {}
-    impl Sealed for i64 {}
-    impl Sealed for f32 {}
-    impl Sealed for f64 {}
-}
-
-pub trait NumericConfig: sealed::Sealed + Sized + Copy + 'static {
-    const FFI_TYPE: fn() -> libffi::Type;
-    fn into_ffi_value(self) -> ffi::FfiValue;
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage;
-}
-
-impl NumericConfig for u8 {
-    const FFI_TYPE: fn() -> libffi::Type = libffi::Type::u8;
-    fn into_ffi_value(self) -> ffi::FfiValue {
-        ffi::FfiValue::U8(self)
-    }
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        vec.into()
-    }
-}
-
-impl NumericConfig for i8 {
-    const FFI_TYPE: fn() -> libffi::Type = libffi::Type::i8;
-    fn into_ffi_value(self) -> ffi::FfiValue {
-        ffi::FfiValue::I8(self)
-    }
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        vec.into()
-    }
-}
-
-impl NumericConfig for u16 {
-    const FFI_TYPE: fn() -> libffi::Type = libffi::Type::u16;
-    fn into_ffi_value(self) -> ffi::FfiValue {
-        ffi::FfiValue::U16(self)
-    }
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        vec.into()
-    }
-}
-
-impl NumericConfig for i16 {
-    const FFI_TYPE: fn() -> libffi::Type = libffi::Type::i16;
-    fn into_ffi_value(self) -> ffi::FfiValue {
-        ffi::FfiValue::I16(self)
-    }
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        vec.into()
-    }
-}
-
-impl NumericConfig for u32 {
-    const FFI_TYPE: fn() -> libffi::Type = libffi::Type::u32;
-    fn into_ffi_value(self) -> ffi::FfiValue {
-        ffi::FfiValue::U32(self)
-    }
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        vec.into()
-    }
-}
-
-impl NumericConfig for i32 {
-    const FFI_TYPE: fn() -> libffi::Type = libffi::Type::i32;
-    fn into_ffi_value(self) -> ffi::FfiValue {
-        ffi::FfiValue::I32(self)
-    }
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        vec.into()
-    }
-}
-
-impl NumericConfig for u64 {
-    const FFI_TYPE: fn() -> libffi::Type = libffi::Type::u64;
-    fn into_ffi_value(self) -> ffi::FfiValue {
-        ffi::FfiValue::U64(self)
-    }
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        vec.into()
-    }
-}
-
-impl NumericConfig for i64 {
-    const FFI_TYPE: fn() -> libffi::Type = libffi::Type::i64;
-    fn into_ffi_value(self) -> ffi::FfiValue {
-        ffi::FfiValue::I64(self)
-    }
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        vec.into()
-    }
-}
-
-impl NumericConfig for f32 {
-    const FFI_TYPE: fn() -> libffi::Type = libffi::Type::f32;
-    fn into_ffi_value(self) -> ffi::FfiValue {
-        ffi::FfiValue::F32(self)
-    }
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        vec.into()
-    }
-}
-
-impl NumericConfig for f64 {
-    const FFI_TYPE: fn() -> libffi::Type = libffi::Type::f64;
-    fn into_ffi_value(self) -> ffi::FfiValue {
-        ffi::FfiValue::F64(self)
-    }
-    fn into_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        vec.into()
-    }
-}
-
-pub trait NumericPrimitive: NumericConfig {
-    fn ffi_type() -> libffi::Type {
-        (Self::FFI_TYPE)()
-    }
-
-    fn to_f64(self) -> f64;
-    fn from_f64(value: f64) -> Self;
-
-    fn to_ffi_value(self) -> ffi::FfiValue {
-        self.into_ffi_value()
-    }
-
-    fn vec_to_ffi_storage(vec: Vec<Self>) -> ffi::FfiStorage {
-        Self::into_ffi_storage(vec)
-    }
-
-    fn read_unaligned(ptr: *const u8) -> Self {
-        unsafe { ptr.cast::<Self>().read_unaligned() }
-    }
-
-    fn write_unaligned(ptr: *mut u8, value: Self) {
-        unsafe { ptr.cast::<Self>().write_unaligned(value) }
-    }
-}
-
-pub trait IntegerPrimitive: NumericPrimitive {
-    fn read_slice(ptr: *const u8, length: usize) -> Vec<f64> {
-        unsafe {
-            std::slice::from_raw_parts(ptr.cast::<Self>(), length)
-                .iter()
-                .map(|v| v.to_f64())
-                .collect()
-        }
-    }
-
-    fn to_ffi_storage(values: &[f64]) -> ffi::FfiStorage {
-        let vec: Vec<Self> = values.iter().map(|&v| Self::from_f64(v)).collect();
-        Self::vec_to_ffi_storage(vec)
-    }
-}
-
-impl NumericPrimitive for u8 {
-    fn to_f64(self) -> f64 {
-        self as f64
-    }
-    fn from_f64(value: f64) -> Self {
-        value as Self
-    }
-}
-
-impl NumericPrimitive for i8 {
-    fn to_f64(self) -> f64 {
-        self as f64
-    }
-    fn from_f64(value: f64) -> Self {
-        value as Self
-    }
-}
-
-impl NumericPrimitive for u16 {
-    fn to_f64(self) -> f64 {
-        self as f64
-    }
-    fn from_f64(value: f64) -> Self {
-        value as Self
-    }
-}
-
-impl NumericPrimitive for i16 {
-    fn to_f64(self) -> f64 {
-        self as f64
-    }
-    fn from_f64(value: f64) -> Self {
-        value as Self
-    }
-}
-
-impl NumericPrimitive for u32 {
-    fn to_f64(self) -> f64 {
-        self as f64
-    }
-    fn from_f64(value: f64) -> Self {
-        value as Self
-    }
-}
-
-impl NumericPrimitive for i32 {
-    fn to_f64(self) -> f64 {
-        self as f64
-    }
-    fn from_f64(value: f64) -> Self {
-        value as Self
-    }
-}
-
-impl NumericPrimitive for u64 {
-    fn to_f64(self) -> f64 {
-        self as f64
-    }
-    fn from_f64(value: f64) -> Self {
-        value as Self
-    }
-}
-
-impl NumericPrimitive for i64 {
-    fn to_f64(self) -> f64 {
-        self as f64
-    }
-    fn from_f64(value: f64) -> Self {
-        value as Self
-    }
-}
-
-impl NumericPrimitive for f32 {
-    fn to_f64(self) -> f64 {
-        self as f64
-    }
-    fn from_f64(value: f64) -> Self {
-        value as Self
-    }
-}
-
-impl NumericPrimitive for f64 {
-    fn to_f64(self) -> f64 {
-        self
-    }
-    fn from_f64(value: f64) -> Self {
-        value
-    }
-}
-
-impl IntegerPrimitive for u8 {}
-impl IntegerPrimitive for i8 {}
-impl IntegerPrimitive for u16 {}
-impl IntegerPrimitive for i16 {}
-impl IntegerPrimitive for u32 {}
-impl IntegerPrimitive for i32 {}
-impl IntegerPrimitive for u64 {}
-impl IntegerPrimitive for i64 {}
-
-struct IntegerDispatch {
-    ffi_type: fn() -> libffi::Type,
-    read_ptr: fn(*const u8) -> f64,
-    write_ptr: fn(*mut u8, f64),
-    to_ffi_value: fn(f64) -> ffi::FfiValue,
-    read_slice: fn(*const u8, usize) -> Vec<f64>,
-    to_ffi_storage: fn(&[f64]) -> ffi::FfiStorage,
-    call_cif: unsafe fn(&libffi::Cif, libffi::CodePtr, &[libffi::Arg]) -> ffi::FfiValue,
-}
-
-fn dispatch_for<T: IntegerPrimitive>() -> IntegerDispatch {
-    IntegerDispatch {
-        ffi_type: T::ffi_type,
-        read_ptr: |ptr| T::read_unaligned(ptr).to_f64(),
-        write_ptr: |ptr, v| T::write_unaligned(ptr, T::from_f64(v)),
-        to_ffi_value: |v| T::from_f64(v).to_ffi_value(),
-        read_slice: T::read_slice,
-        to_ffi_storage: T::to_ffi_storage,
-        call_cif: |cif, ptr, args| unsafe { cif.call::<T>(ptr, args).to_ffi_value() },
-    }
-}
-
-static U8_DISPATCH: std::sync::LazyLock<IntegerDispatch> =
-    std::sync::LazyLock::new(dispatch_for::<u8>);
-static I8_DISPATCH: std::sync::LazyLock<IntegerDispatch> =
-    std::sync::LazyLock::new(dispatch_for::<i8>);
-static U16_DISPATCH: std::sync::LazyLock<IntegerDispatch> =
-    std::sync::LazyLock::new(dispatch_for::<u16>);
-static I16_DISPATCH: std::sync::LazyLock<IntegerDispatch> =
-    std::sync::LazyLock::new(dispatch_for::<i16>);
-static U32_DISPATCH: std::sync::LazyLock<IntegerDispatch> =
-    std::sync::LazyLock::new(dispatch_for::<u32>);
-static I32_DISPATCH: std::sync::LazyLock<IntegerDispatch> =
-    std::sync::LazyLock::new(dispatch_for::<i32>);
-static U64_DISPATCH: std::sync::LazyLock<IntegerDispatch> =
-    std::sync::LazyLock::new(dispatch_for::<u64>);
-static I64_DISPATCH: std::sync::LazyLock<IntegerDispatch> =
-    std::sync::LazyLock::new(dispatch_for::<i64>);
-
 #[derive(Debug, Clone, Copy)]
 pub enum IntegerKind {
     U8,
@@ -329,45 +30,116 @@ impl IntegerKind {
         }
     }
 
-    fn dispatch(&self) -> &'static IntegerDispatch {
+    pub fn ffi_type(self) -> libffi::Type {
         match self {
-            Self::U8 => &U8_DISPATCH,
-            Self::I8 => &I8_DISPATCH,
-            Self::U16 => &U16_DISPATCH,
-            Self::I16 => &I16_DISPATCH,
-            Self::U32 => &U32_DISPATCH,
-            Self::I32 => &I32_DISPATCH,
-            Self::U64 => &U64_DISPATCH,
-            Self::I64 => &I64_DISPATCH,
+            Self::U8 => libffi::Type::u8(),
+            Self::I8 => libffi::Type::i8(),
+            Self::U16 => libffi::Type::u16(),
+            Self::I16 => libffi::Type::i16(),
+            Self::U32 => libffi::Type::u32(),
+            Self::I32 => libffi::Type::i32(),
+            Self::U64 => libffi::Type::u64(),
+            Self::I64 => libffi::Type::i64(),
         }
     }
 
-    pub fn ffi_type(self) -> libffi::Type {
-        (self.dispatch().ffi_type)()
-    }
-
     pub fn read_ptr(self, ptr: *const u8) -> f64 {
-        (self.dispatch().read_ptr)(ptr)
+        unsafe {
+            match self {
+                Self::U8 => ptr.cast::<u8>().read_unaligned() as f64,
+                Self::I8 => ptr.cast::<i8>().read_unaligned() as f64,
+                Self::U16 => ptr.cast::<u16>().read_unaligned() as f64,
+                Self::I16 => ptr.cast::<i16>().read_unaligned() as f64,
+                Self::U32 => ptr.cast::<u32>().read_unaligned() as f64,
+                Self::I32 => ptr.cast::<i32>().read_unaligned() as f64,
+                Self::U64 => ptr.cast::<u64>().read_unaligned() as f64,
+                Self::I64 => ptr.cast::<i64>().read_unaligned() as f64,
+            }
+        }
     }
 
     pub fn write_ptr(self, ptr: *mut u8, value: f64) {
-        (self.dispatch().write_ptr)(ptr, value)
+        unsafe {
+            match self {
+                Self::U8 => ptr.cast::<u8>().write_unaligned(value as u8),
+                Self::I8 => ptr.cast::<i8>().write_unaligned(value as i8),
+                Self::U16 => ptr.cast::<u16>().write_unaligned(value as u16),
+                Self::I16 => ptr.cast::<i16>().write_unaligned(value as i16),
+                Self::U32 => ptr.cast::<u32>().write_unaligned(value as u32),
+                Self::I32 => ptr.cast::<i32>().write_unaligned(value as i32),
+                Self::U64 => ptr.cast::<u64>().write_unaligned(value as u64),
+                Self::I64 => ptr.cast::<i64>().write_unaligned(value as i64),
+            }
+        }
     }
 
     pub fn to_ffi_value(self, value: f64) -> ffi::FfiValue {
-        (self.dispatch().to_ffi_value)(value)
+        match self {
+            Self::U8 => ffi::FfiValue::U8(value as u8),
+            Self::I8 => ffi::FfiValue::I8(value as i8),
+            Self::U16 => ffi::FfiValue::U16(value as u16),
+            Self::I16 => ffi::FfiValue::I16(value as i16),
+            Self::U32 => ffi::FfiValue::U32(value as u32),
+            Self::I32 => ffi::FfiValue::I32(value as i32),
+            Self::U64 => ffi::FfiValue::U64(value as u64),
+            Self::I64 => ffi::FfiValue::I64(value as i64),
+        }
     }
 
     pub fn read_slice(self, ptr: *const u8, length: usize) -> Vec<f64> {
-        (self.dispatch().read_slice)(ptr, length)
+        unsafe {
+            match self {
+                Self::U8 => std::slice::from_raw_parts(ptr.cast::<u8>(), length)
+                    .iter()
+                    .map(|&v| v as f64)
+                    .collect(),
+                Self::I8 => std::slice::from_raw_parts(ptr.cast::<i8>(), length)
+                    .iter()
+                    .map(|&v| v as f64)
+                    .collect(),
+                Self::U16 => std::slice::from_raw_parts(ptr.cast::<u16>(), length)
+                    .iter()
+                    .map(|&v| v as f64)
+                    .collect(),
+                Self::I16 => std::slice::from_raw_parts(ptr.cast::<i16>(), length)
+                    .iter()
+                    .map(|&v| v as f64)
+                    .collect(),
+                Self::U32 => std::slice::from_raw_parts(ptr.cast::<u32>(), length)
+                    .iter()
+                    .map(|&v| v as f64)
+                    .collect(),
+                Self::I32 => std::slice::from_raw_parts(ptr.cast::<i32>(), length)
+                    .iter()
+                    .map(|&v| v as f64)
+                    .collect(),
+                Self::U64 => std::slice::from_raw_parts(ptr.cast::<u64>(), length)
+                    .iter()
+                    .map(|&v| v as f64)
+                    .collect(),
+                Self::I64 => std::slice::from_raw_parts(ptr.cast::<i64>(), length)
+                    .iter()
+                    .map(|&v| v as f64)
+                    .collect(),
+            }
+        }
+    }
+
+    pub fn to_ffi_storage(self, values: &[f64]) -> ffi::FfiStorage {
+        match self {
+            Self::U8 => values.iter().map(|&v| v as u8).collect::<Vec<_>>().into(),
+            Self::I8 => values.iter().map(|&v| v as i8).collect::<Vec<_>>().into(),
+            Self::U16 => values.iter().map(|&v| v as u16).collect::<Vec<_>>().into(),
+            Self::I16 => values.iter().map(|&v| v as i16).collect::<Vec<_>>().into(),
+            Self::U32 => values.iter().map(|&v| v as u32).collect::<Vec<_>>().into(),
+            Self::I32 => values.iter().map(|&v| v as i32).collect::<Vec<_>>().into(),
+            Self::U64 => values.iter().map(|&v| v as u64).collect::<Vec<_>>().into(),
+            Self::I64 => values.iter().map(|&v| v as i64).collect::<Vec<_>>().into(),
+        }
     }
 
     pub fn vec_to_f64(self, storage: &ffi::FfiStorage) -> anyhow::Result<Vec<f64>> {
         storage.as_numeric_slice(self)
-    }
-
-    pub fn to_ffi_storage(self, values: &[f64]) -> ffi::FfiStorage {
-        (self.dispatch().to_ffi_storage)(values)
     }
 
     /// # Safety
@@ -382,7 +154,18 @@ impl IntegerKind {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> ffi::FfiValue {
-        unsafe { (self.dispatch().call_cif)(cif, ptr, args) }
+        unsafe {
+            match self {
+                Self::U8 => ffi::FfiValue::U8(cif.call::<u8>(ptr, args)),
+                Self::I8 => ffi::FfiValue::I8(cif.call::<i8>(ptr, args)),
+                Self::U16 => ffi::FfiValue::U16(cif.call::<u16>(ptr, args)),
+                Self::I16 => ffi::FfiValue::I16(cif.call::<i16>(ptr, args)),
+                Self::U32 => ffi::FfiValue::U32(cif.call::<u32>(ptr, args)),
+                Self::I32 => ffi::FfiValue::I32(cif.call::<i32>(ptr, args)),
+                Self::U64 => ffi::FfiValue::U64(cif.call::<u64>(ptr, args)),
+                Self::I64 => ffi::FfiValue::I64(cif.call::<i64>(ptr, args)),
+            }
+        }
     }
 }
 
@@ -432,30 +215,6 @@ impl TaggedType {
     }
 }
 
-struct FloatDispatch {
-    ffi_type: fn() -> libffi::Type,
-    read_ptr: fn(*const u8) -> f64,
-    write_ptr: fn(*mut u8, f64),
-    to_ffi_value: fn(f64) -> ffi::FfiValue,
-    call_cif: unsafe fn(&libffi::Cif, libffi::CodePtr, &[libffi::Arg]) -> ffi::FfiValue,
-}
-
-static F32_DISPATCH: FloatDispatch = FloatDispatch {
-    ffi_type: f32::ffi_type,
-    read_ptr: |ptr| f32::read_unaligned(ptr).to_f64(),
-    write_ptr: |ptr, v| f32::write_unaligned(ptr, v as f32),
-    to_ffi_value: |v| ffi::FfiValue::F32(v as f32),
-    call_cif: |cif, ptr, args| unsafe { cif.call::<f32>(ptr, args).to_ffi_value() },
-};
-
-static F64_DISPATCH: FloatDispatch = FloatDispatch {
-    ffi_type: f64::ffi_type,
-    read_ptr: f64::read_unaligned,
-    write_ptr: f64::write_unaligned,
-    to_ffi_value: ffi::FfiValue::F64,
-    call_cif: |cif, ptr, args| unsafe { cif.call::<f64>(ptr, args).to_ffi_value() },
-};
-
 #[derive(Debug, Clone, Copy)]
 pub enum FloatKind {
     F32,
@@ -463,27 +222,36 @@ pub enum FloatKind {
 }
 
 impl FloatKind {
-    fn dispatch(&self) -> &'static FloatDispatch {
+    pub fn ffi_type(self) -> libffi::Type {
         match self {
-            Self::F32 => &F32_DISPATCH,
-            Self::F64 => &F64_DISPATCH,
+            Self::F32 => libffi::Type::f32(),
+            Self::F64 => libffi::Type::f64(),
         }
     }
 
-    pub fn ffi_type(self) -> libffi::Type {
-        (self.dispatch().ffi_type)()
-    }
-
     pub fn read_ptr(self, ptr: *const u8) -> f64 {
-        (self.dispatch().read_ptr)(ptr)
+        unsafe {
+            match self {
+                Self::F32 => ptr.cast::<f32>().read_unaligned() as f64,
+                Self::F64 => ptr.cast::<f64>().read_unaligned(),
+            }
+        }
     }
 
     pub fn write_ptr(self, ptr: *mut u8, value: f64) {
-        (self.dispatch().write_ptr)(ptr, value)
+        unsafe {
+            match self {
+                Self::F32 => ptr.cast::<f32>().write_unaligned(value as f32),
+                Self::F64 => ptr.cast::<f64>().write_unaligned(value),
+            }
+        }
     }
 
     pub fn to_ffi_value(self, value: f64) -> ffi::FfiValue {
-        (self.dispatch().to_ffi_value)(value)
+        match self {
+            Self::F32 => ffi::FfiValue::F32(value as f32),
+            Self::F64 => ffi::FfiValue::F64(value),
+        }
     }
 
     /// # Safety
@@ -498,7 +266,12 @@ impl FloatKind {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> ffi::FfiValue {
-        unsafe { (self.dispatch().call_cif)(cif, ptr, args) }
+        unsafe {
+            match self {
+                Self::F32 => ffi::FfiValue::F32(cif.call::<f32>(ptr, args)),
+                Self::F64 => ffi::FfiValue::F64(cif.call::<f64>(ptr, args)),
+            }
+        }
     }
 }
 

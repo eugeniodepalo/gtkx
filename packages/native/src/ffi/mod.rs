@@ -12,7 +12,7 @@
 mod storage;
 mod value;
 
-pub use storage::{FfiStorage, FfiStorageKind, HashTableData, HashTableStorage};
+pub use storage::{FfiStorage, FfiStorageKind, HashTableData};
 pub use value::{FfiValue, TrampolineValue};
 
 use crate::arg::Arg;

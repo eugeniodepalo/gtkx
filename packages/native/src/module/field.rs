@@ -24,7 +24,6 @@
 //! - `GObject` / `Boxed` / `Struct` / `Fundamental` (writes pointer value)
 
 use std::ffi::{CStr, c_char, c_void};
-use std::sync::mpsc;
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::FromGlibPtrNone as _};
@@ -80,7 +79,7 @@ impl ReadRequest {
                 Ok(Value::Number(number))
             }
             Type::Boolean => {
-                let value = unsafe { field_ptr.cast::<u8>().read_unaligned() != 0 };
+                let value = unsafe { field_ptr.cast::<i32>().read_unaligned() != 0 };
                 Ok(Value::Boolean(value))
             }
             Type::String(_) => {
@@ -153,15 +152,8 @@ impl ReadRequest {
 pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
     let request = ReadRequest::from_js(&mut cx)?;
 
-    let (tx, rx) = mpsc::channel::<anyhow::Result<Value>>();
-
-    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
-    gtk_dispatch::GtkDispatcher::global().schedule(move || {
-        let _ = tx.send(request.execute());
-    });
-
     let value = gtk_dispatch::GtkDispatcher::global()
-        .wait_for_gtk_result(&mut cx, &rx)
+        .dispatch_and_wait(&mut cx, || request.execute())
         .or_else(|err| cx.throw_error(err.to_string()))?
         .or_else(|err| cx.throw_error(format!("Error during read: {err}")))?;
 
@@ -211,7 +203,7 @@ impl WriteRequest {
                 float_kind.write_ptr(field_ptr, *n);
             }
             (Type::Boolean, Value::Boolean(b)) => unsafe {
-                field_ptr.cast::<u8>().write_unaligned(u8::from(*b));
+                field_ptr.cast::<i32>().write_unaligned(i32::from(*b));
             },
             (Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_), value) => {
                 let ptr = value.object_ptr("field write target")?;
@@ -241,15 +233,8 @@ impl WriteRequest {
 pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let request = WriteRequest::from_js(&mut cx)?;
 
-    let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
-
-    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
-    gtk_dispatch::GtkDispatcher::global().schedule(move || {
-        let _ = tx.send(request.execute());
-    });
-
     gtk_dispatch::GtkDispatcher::global()
-        .wait_for_gtk_result(&mut cx, &rx)
+        .dispatch_and_wait(&mut cx, || request.execute())
         .or_else(|err| cx.throw_error(err.to_string()))?
         .or_else(|err| cx.throw_error(format!("Error during write: {err}")))?;
 

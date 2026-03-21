@@ -23,7 +23,7 @@
 use std::{
     ffi::{c_char, c_void},
     ops::Deref,
-    sync::{Arc, mpsc},
+    sync::Arc,
 };
 
 use anyhow::bail;
@@ -77,9 +77,8 @@ impl CallRequest {
 
         let ffi_values = self
             .args
-            .clone()
-            .into_iter()
-            .map(TryInto::<ffi::FfiValue>::try_into)
+            .iter()
+            .map(|arg| arg.ty.encode(&arg.value, arg.optional))
             .collect::<anyhow::Result<Vec<ffi::FfiValue>>>()?;
 
         let mut ffi_args: Vec<libffi::Arg> = Vec::with_capacity(ffi_values.len() + 1);
@@ -116,7 +115,7 @@ impl CallRequest {
                     let ptr = cif.call::<*const c_char>(symbol_ptr, &ffi_args);
                     ffi::FfiValue::Ptr(ptr as *mut c_void)
                 }
-                Type::Boolean => ffi::FfiValue::U8(cif.call::<u8>(symbol_ptr, &ffi_args)),
+                Type::Boolean => ffi::FfiValue::I32(cif.call::<i32>(symbol_ptr, &ffi_args)),
                 Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                     let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
                     ffi::FfiValue::Ptr(ptr)
@@ -158,15 +157,8 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     let request = CallRequest::from_js(&mut cx)?;
 
-    let (tx, rx) = mpsc::channel::<anyhow::Result<(Value, Vec<RefUpdate>)>>();
-
-    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
-    gtk_dispatch::GtkDispatcher::global().schedule(move || {
-        let _ = tx.send(request.execute());
-    });
-
     let result = gtk_dispatch::GtkDispatcher::global()
-        .wait_for_gtk_result(&mut cx, &rx)
+        .dispatch_and_wait(&mut cx, || request.execute())
         .or_else(|err| cx.throw_error(err.to_string()))?;
 
     let (value, ref_updates) =

@@ -3,8 +3,6 @@
 //! The [`get_native_id`] function returns the raw pointer value for a managed
 //! object. This is primarily used for debugging and introspection.
 
-use std::sync::mpsc;
-
 use neon::prelude::*;
 
 use crate::gtk_dispatch;
@@ -14,15 +12,8 @@ pub fn get_native_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let boxed_handle = cx.argument::<JsBox<NativeHandle>>(0)?;
     let native_handle = *boxed_handle.as_inner();
 
-    let (tx, rx) = mpsc::channel();
-
-    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
-    gtk_dispatch::GtkDispatcher::global().schedule(move || {
-        let _ = tx.send(native_handle.get_ptr_as_usize());
-    });
-
     let ptr = gtk_dispatch::GtkDispatcher::global()
-        .wait_for_gtk_result(&mut cx, &rx)
+        .dispatch_and_wait(&mut cx, move || native_handle.get_ptr_as_usize())
         .or_else(|err| cx.throw_error(err.to_string()))?;
 
     match ptr {

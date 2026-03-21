@@ -4,7 +4,7 @@ use std::ffi::c_void;
 
 use gtk4::glib;
 
-use native::ffi::{FfiValue, HashTableStorage};
+use native::ffi::FfiValue;
 use native::types::{
     FloatKind, HashTableEntryEncoder, HashTableType, IntegerKind, Ownership, StringType,
     StructType, Type,
@@ -34,7 +34,10 @@ fn encoder_from_type_integer() {
 
 #[test]
 fn encoder_from_type_string() {
-    let ty = Type::String(StringType::new(Ownership::Borrowed));
+    let ty = Type::String(StringType {
+        ownership: Ownership::Borrowed,
+        length: None,
+    });
     let encoder = HashTableEntryEncoder::from_type(&ty);
     assert_eq!(encoder, Some(HashTableEntryEncoder::String));
 }
@@ -62,10 +65,9 @@ fn encode_boolean_true() {
     let encoder = HashTableEntryEncoder::Boolean;
     let value = Value::Boolean(true);
 
-    let (ptr, storage) = encoder.encode(&value).expect("encoding should succeed");
+    let ptr = encoder.encode(&value).expect("encoding should succeed");
 
     assert_eq!(ptr as isize, 1);
-    assert!(matches!(storage, HashTableStorage::Booleans));
 }
 
 #[test]
@@ -73,10 +75,9 @@ fn encode_boolean_false() {
     let encoder = HashTableEntryEncoder::Boolean;
     let value = Value::Boolean(false);
 
-    let (ptr, storage) = encoder.encode(&value).expect("encoding should succeed");
+    let ptr = encoder.encode(&value).expect("encoding should succeed");
 
     assert_eq!(ptr as isize, 0);
-    assert!(matches!(storage, HashTableStorage::Booleans));
 }
 
 #[test]
@@ -92,15 +93,14 @@ fn encode_boolean_wrong_type_fails() {
 #[test]
 fn encode_float_value() {
     let encoder = HashTableEntryEncoder::Float;
-    let value = Value::Number(3.14159);
+    let value = Value::Number(std::f64::consts::PI);
 
-    let (ptr, storage) = encoder.encode(&value).expect("encoding should succeed");
+    let ptr = encoder.encode(&value).expect("encoding should succeed");
 
     assert!(!ptr.is_null());
-    assert!(matches!(storage, HashTableStorage::Floats));
 
     let stored_value = unsafe { *(ptr as *const f64) };
-    assert!((stored_value - 3.14159).abs() < f64::EPSILON);
+    assert!((stored_value - std::f64::consts::PI).abs() < f64::EPSILON);
 
     unsafe { glib::ffi::g_free(ptr) };
 }
@@ -110,11 +110,10 @@ fn encode_float_negative() {
     let encoder = HashTableEntryEncoder::Float;
     let value = Value::Number(-123.456);
 
-    let (ptr, storage) = encoder.encode(&value).expect("encoding should succeed");
+    let ptr = encoder.encode(&value).expect("encoding should succeed");
 
     let stored_value = unsafe { *(ptr as *const f64) };
     assert!((stored_value - (-123.456)).abs() < f64::EPSILON);
-    assert!(matches!(storage, HashTableStorage::Floats));
 
     unsafe { glib::ffi::g_free(ptr) };
 }
@@ -132,7 +131,7 @@ fn encode_float_wrong_type_fails() {
 #[test]
 fn ptr_to_value_boolean_true() {
     let ty = Type::Boolean;
-    let ptr = 1isize as *mut c_void;
+    let ptr = std::ptr::dangling_mut::<c_void>();
 
     let value = ty
         .ptr_to_value(ptr, "test")
@@ -147,7 +146,7 @@ fn ptr_to_value_boolean_true() {
 #[test]
 fn ptr_to_value_boolean_false() {
     let ty = Type::Boolean;
-    let ptr = 0isize as *mut c_void;
+    let ptr = std::ptr::null_mut::<c_void>();
 
     let value = ty
         .ptr_to_value(ptr, "test")
@@ -177,7 +176,7 @@ fn ptr_to_value_boolean_nonzero_is_true() {
 #[test]
 fn ptr_to_value_float() {
     let ty = Type::Float(FloatKind::F64);
-    let float_val: f64 = 2.71828;
+    let float_val: f64 = std::f64::consts::E;
     let ptr = unsafe {
         let mem = glib::ffi::g_malloc(std::mem::size_of::<f64>()) as *mut f64;
         *mem = float_val;
@@ -189,7 +188,7 @@ fn ptr_to_value_float() {
         .expect("decoding should succeed");
 
     match value {
-        Value::Number(n) => assert!((n - 2.71828).abs() < f64::EPSILON),
+        Value::Number(n) => assert!((n - std::f64::consts::E).abs() < f64::EPSILON),
         other => panic!("Expected Number, got {:?}", other),
     }
 
@@ -198,11 +197,11 @@ fn ptr_to_value_float() {
 
 #[test]
 fn ptr_to_value_struct_null() {
-    let ty = Type::Struct(StructType::new(
-        Ownership::Borrowed,
-        "TestStruct".to_string(),
-        Some(16),
-    ));
+    let ty = Type::Struct(StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "TestStruct".to_string(),
+        size: Some(16),
+    });
 
     let value = ty
         .ptr_to_value(std::ptr::null_mut(), "test")
@@ -218,11 +217,11 @@ fn ptr_to_value_struct_null() {
 fn ptr_to_value_struct_non_null() {
     common::ensure_gtk_init();
 
-    let ty = Type::Struct(StructType::new(
-        Ownership::Borrowed,
-        "TestStruct".to_string(),
-        Some(16),
-    ));
+    let ty = Type::Struct(StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "TestStruct".to_string(),
+        size: Some(16),
+    });
 
     let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
@@ -244,7 +243,11 @@ fn hashtable_encode_decode_booleans() {
 
     let key_type = Type::Boolean;
     let value_type = Type::Boolean;
-    let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
+    let ht_type = HashTableType {
+        key_type: Box::new(key_type),
+        value_type: Box::new(value_type),
+        ownership: Ownership::Full,
+    };
 
     let input = Value::Array(vec![
         Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]),
@@ -280,11 +283,18 @@ fn hashtable_encode_decode_floats() {
 
     let key_type = Type::Integer(IntegerKind::I32);
     let value_type = Type::Float(FloatKind::F64);
-    let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
+    let ht_type = HashTableType {
+        key_type: Box::new(key_type),
+        value_type: Box::new(value_type),
+        ownership: Ownership::Full,
+    };
 
     let input = Value::Array(vec![
-        Value::Array(vec![Value::Number(1.0), Value::Number(3.14159)]),
-        Value::Array(vec![Value::Number(2.0), Value::Number(2.71828)]),
+        Value::Array(vec![
+            Value::Number(1.0),
+            Value::Number(std::f64::consts::PI),
+        ]),
+        Value::Array(vec![Value::Number(2.0), Value::Number(std::f64::consts::E)]),
     ]);
 
     let encoded = ht_type
@@ -314,9 +324,16 @@ fn hashtable_encode_decode_floats() {
 fn hashtable_encode_decode_string_to_boolean() {
     common::ensure_gtk_init();
 
-    let key_type = Type::String(StringType::new(Ownership::Borrowed));
+    let key_type = Type::String(StringType {
+        ownership: Ownership::Borrowed,
+        length: None,
+    });
     let value_type = Type::Boolean;
-    let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
+    let ht_type = HashTableType {
+        key_type: Box::new(key_type),
+        value_type: Box::new(value_type),
+        ownership: Ownership::Full,
+    };
 
     let input = Value::Array(vec![
         Value::Array(vec![
@@ -358,7 +375,11 @@ fn hashtable_encode_decode_float_keys() {
 
     let key_type = Type::Float(FloatKind::F64);
     let value_type = Type::Integer(IntegerKind::I32);
-    let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
+    let ht_type = HashTableType {
+        key_type: Box::new(key_type),
+        value_type: Box::new(value_type),
+        ownership: Ownership::Full,
+    };
 
     let input = Value::Array(vec![
         Value::Array(vec![Value::Number(1.5), Value::Number(100.0)]),
@@ -384,7 +405,11 @@ fn hashtable_empty() {
 
     let key_type = Type::Boolean;
     let value_type = Type::Boolean;
-    let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
+    let ht_type = HashTableType {
+        key_type: Box::new(key_type),
+        value_type: Box::new(value_type),
+        ownership: Ownership::Full,
+    };
 
     let input = Value::Array(vec![]);
 
@@ -405,7 +430,11 @@ fn hashtable_null_optional() {
 
     let key_type = Type::Boolean;
     let value_type = Type::Boolean;
-    let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
+    let ht_type = HashTableType {
+        key_type: Box::new(key_type),
+        value_type: Box::new(value_type),
+        ownership: Ownership::Full,
+    };
 
     let encoded = ht_type
         .encode(&Value::Null, true)
@@ -423,7 +452,11 @@ fn hashtable_borrowed_does_not_free() {
 
     let key_type = Type::Integer(IntegerKind::I32);
     let value_type = Type::Integer(IntegerKind::I32);
-    let ht_type = HashTableType::new(key_type, value_type, Ownership::Borrowed);
+    let ht_type = HashTableType {
+        key_type: Box::new(key_type),
+        value_type: Box::new(value_type),
+        ownership: Ownership::Borrowed,
+    };
 
     let hash_table = unsafe {
         glib::ffi::g_hash_table_new_full(
@@ -435,8 +468,16 @@ fn hashtable_borrowed_does_not_free() {
     };
 
     unsafe {
-        glib::ffi::g_hash_table_insert(hash_table, 1 as *mut c_void, 100 as *mut c_void);
-        glib::ffi::g_hash_table_insert(hash_table, 2 as *mut c_void, 200 as *mut c_void);
+        glib::ffi::g_hash_table_insert(
+            hash_table,
+            std::ptr::without_provenance_mut(1),
+            std::ptr::without_provenance_mut(100),
+        );
+        glib::ffi::g_hash_table_insert(
+            hash_table,
+            std::ptr::without_provenance_mut(2),
+            std::ptr::without_provenance_mut(200),
+        );
     }
 
     let ffi_value = FfiValue::Ptr(hash_table as *mut c_void);
@@ -459,7 +500,11 @@ fn float_memory_properly_freed_on_drop() {
 
     let key_type = Type::Float(FloatKind::F64);
     let value_type = Type::Float(FloatKind::F64);
-    let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
+    let ht_type = HashTableType {
+        key_type: Box::new(key_type),
+        value_type: Box::new(value_type),
+        ownership: Ownership::Full,
+    };
 
     let input = Value::Array(vec![
         Value::Array(vec![Value::Number(1.1), Value::Number(2.2)]),
@@ -479,7 +524,11 @@ fn boolean_roundtrip_preserves_values() {
 
     let key_type = Type::Integer(IntegerKind::I32);
     let value_type = Type::Boolean;
-    let ht_type = HashTableType::new(key_type, value_type, Ownership::Full);
+    let ht_type = HashTableType {
+        key_type: Box::new(key_type),
+        value_type: Box::new(value_type),
+        ownership: Ownership::Full,
+    };
 
     let input = Value::Array(vec![
         Value::Array(vec![Value::Number(0.0), Value::Boolean(true)]),

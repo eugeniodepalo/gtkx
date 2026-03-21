@@ -11,21 +11,18 @@
 //! - **Plain structs** (without type_name): Memory is allocated with `g_malloc0`
 //!   and freed with `g_free` on drop.
 
-use std::sync::mpsc;
-
+use gtk4::glib;
 use gtk4::glib::ffi::g_malloc0;
 use neon::prelude::*;
 
 use crate::{
     gtk_dispatch,
     managed::{Boxed, NativeHandle, NativeValue},
-    types::{BoxedType, Ownership},
 };
 
 struct AllocRequest {
     size: usize,
     type_name: Option<String>,
-    library_name: Option<String>,
 }
 
 impl AllocRequest {
@@ -37,16 +34,7 @@ impl AllocRequest {
             .and_then(|v| v.downcast::<JsString, _>(cx).ok())
             .map(|s| s.value(cx));
 
-        let library_name = cx
-            .argument_opt(2)
-            .and_then(|v| v.downcast::<JsString, _>(cx).ok())
-            .map(|s| s.value(cx));
-
-        Ok(Self {
-            size,
-            type_name,
-            library_name,
-        })
+        Ok(Self { size, type_name })
     }
 
     fn execute(self) -> anyhow::Result<NativeHandle> {
@@ -58,15 +46,7 @@ impl AllocRequest {
             anyhow::bail!("Failed to allocate memory for {}", type_desc);
         }
 
-        let gtype = self.type_name.as_ref().and_then(|type_name| {
-            let boxed_type = BoxedType::new(
-                Ownership::Full,
-                type_name.clone(),
-                self.library_name.clone(),
-                None,
-            );
-            boxed_type.gtype()
-        });
+        let gtype = self.type_name.as_ref().and_then(glib::Type::from_name);
 
         let boxed = Boxed::from_glib_full(gtype, ptr);
         Ok(NativeValue::Boxed(boxed).into())
@@ -76,15 +56,8 @@ impl AllocRequest {
 pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
     let request = AllocRequest::from_js(&mut cx)?;
 
-    let (tx, rx) = mpsc::channel::<anyhow::Result<NativeHandle>>();
-
-    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
-    gtk_dispatch::GtkDispatcher::global().schedule(move || {
-        let _ = tx.send(request.execute());
-    });
-
     let handle = gtk_dispatch::GtkDispatcher::global()
-        .wait_for_gtk_result(&mut cx, &rx)
+        .dispatch_and_wait(&mut cx, || request.execute())
         .or_else(|err| cx.throw_error(err.to_string()))?
         .or_else(|err| cx.throw_error(format!("Error during alloc: {err}")))?;
 

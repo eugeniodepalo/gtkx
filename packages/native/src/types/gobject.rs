@@ -12,14 +12,10 @@ pub struct GObjectType {
 }
 
 impl GObjectType {
-    pub fn new(ownership: Ownership) -> Self {
-        GObjectType { ownership }
-    }
-
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let ownership = Ownership::from_js_value(cx, obj, "gobject")?;
-        Ok(Self::new(ownership))
+        Ok(Self { ownership })
     }
 }
 
