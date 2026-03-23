@@ -3,6 +3,7 @@ use std::sync::mpsc;
 use neon::prelude::*;
 
 use super::handler::{JsThreadCommand, execute_js_command};
+use crate::error_reporter::NativeErrorReporter;
 use crate::gtk_dispatch;
 
 struct FreezeCommand;
@@ -26,7 +27,10 @@ impl JsThreadCommand for FreezeCommand {
 
             dispatcher.enter_js_wait();
             dispatcher.schedule(move || {
-                let _ = tx.send(());
+                if tx.send(()).is_err() {
+                    NativeErrorReporter::global()
+                        .report_str("Freeze ready signal channel was closed");
+                }
                 let d = gtk_dispatch::GtkDispatcher::global();
                 d.wake.notify();
                 d.run_freeze_loop();

@@ -10,6 +10,7 @@ use libffi::middle as libffi;
 use neon::prelude::*;
 
 use crate::callback::ClosureGuard;
+use crate::error_reporter::NativeErrorReporter;
 use crate::ffi::{self, FfiStorage};
 use crate::js_dispatch;
 use crate::managed::{Boxed, NativeValue};
@@ -44,7 +45,8 @@ impl ClosureContext {
             let args_values = match Self::convert_closure_args(args, &self.arg_types) {
                 Ok(v) => v,
                 Err(e) => {
-                    gtkx_warn!("closure: failed to convert callback arguments: {e}");
+                    NativeErrorReporter::global()
+                        .report(&e.context("closure: failed to convert callback arguments"));
                     return None;
                 }
             };
@@ -81,15 +83,18 @@ impl ClosureContext {
                                 && !matches!(val, value::Value::Null | value::Value::Undefined)
                                 && let Err(e) = inner_type.write_value_to_raw_ptr(*ptr, val)
                             {
-                                gtkx_warn!("closure: failed to write ref value: {e}");
+                                NativeErrorReporter::global()
+                                    .report(&e.context("closure: failed to write ref value"));
                             }
                         }
                         let return_val = arr.into_iter().next().unwrap_or(value::Value::Undefined);
                         value::Value::into_glib_value_with_default(return_val, return_type_ref)
                     }
                     Ok(value) => value::Value::into_glib_value_with_default(value, return_type_ref),
-                    Err(_) => {
-                        gtkx_warn!("closure callback: JS callback threw an exception");
+                    Err(ref e) => {
+                        NativeErrorReporter::global().report(&anyhow::anyhow!(
+                            "closure callback: JS callback error: {e:#}"
+                        ));
                         value::Value::into_glib_value_with_default(
                             value::Value::Undefined,
                             return_type_ref,

@@ -80,3 +80,18 @@ export const stop = (): void => {
     nativeStop();
     application = null;
 };
+
+export const suppressUnhandledRejections = async (fn: () => void): Promise<void> => {
+    const savedListeners = process.rawListeners("unhandledRejection").slice();
+    process.removeAllListeners("unhandledRejection");
+    process.on("unhandledRejection", () => {});
+
+    fn();
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    process.removeAllListeners("unhandledRejection");
+    for (const listener of savedListeners) {
+        process.on("unhandledRejection", listener as (...args: unknown[]) => void);
+    }
+};

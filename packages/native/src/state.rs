@@ -46,7 +46,7 @@ impl GtkThread {
             .replace(handle);
     }
 
-    pub fn join(&self) {
+    pub fn join(&self) -> Option<String> {
         let handle = self
             .handle
             .lock()
@@ -61,8 +61,9 @@ impl GtkThread {
                 .copied()
                 .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
                 .unwrap_or("unknown panic");
-            gtkx_warn!("GTK thread panicked: {msg}");
+            return Some(msg.to_owned());
         }
+        None
     }
 }
 
@@ -244,18 +245,24 @@ impl FundamentalFnCache {
 
         let library = libs.get_or_load(library_name)?;
 
-        let ref_fn = unsafe {
-            library
-                .get::<RefFn>(ref_func.as_bytes())
-                .ok()
-                .map(|sym| *sym)
+        let ref_fn = if ref_func.is_empty() {
+            None
+        } else {
+            Some(unsafe {
+                *library
+                    .get::<RefFn>(ref_func.as_bytes())
+                    .map_err(|e| anyhow::anyhow!("Failed to find ref symbol '{ref_func}': {e}"))?
+            })
         };
 
-        let unref_fn = unsafe {
-            library
-                .get::<UnrefFn>(unref_func.as_bytes())
-                .ok()
-                .map(|sym| *sym)
+        let unref_fn = if unref_func.is_empty() {
+            None
+        } else {
+            Some(unsafe {
+                *library.get::<UnrefFn>(unref_func.as_bytes()).map_err(|e| {
+                    anyhow::anyhow!("Failed to find unref symbol '{unref_func}': {e}")
+                })?
+            })
         };
 
         let result = (ref_fn, unref_fn);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
+import { suppressUnhandledRejections } from "../lifecycle.js";
 import {
     BOOLEAN,
     connectSignal,
@@ -328,7 +329,7 @@ describe("call - callback types", () => {
     });
 
     describe("edge cases", () => {
-        it("handles callback that throws exception gracefully", () => {
+        it("handles callback that throws exception gracefully", async () => {
             const cancellable = createCancellable();
 
             call(
@@ -353,9 +354,11 @@ describe("call - callback types", () => {
                 UINT64,
             );
 
-            expect(() => {
-                call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
-            }).toThrow();
+            await suppressUnhandledRejections(() => {
+                expect(() => {
+                    call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+                }).not.toThrow();
+            });
         });
 
         it("handles multiple callbacks on same object", () => {

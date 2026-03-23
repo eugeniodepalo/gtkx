@@ -40,7 +40,9 @@ mod macros;
 
 pub mod arg;
 pub mod callback;
+pub mod error_reporter;
 pub mod ffi;
+pub mod glib_log_handler;
 pub mod gtk_dispatch;
 mod js_dispatch;
 pub mod managed;

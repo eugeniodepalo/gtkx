@@ -42,6 +42,7 @@ use std::sync::{
 use gtk4::glib;
 use neon::prelude::*;
 
+use crate::error_reporter::NativeErrorReporter;
 use crate::js_dispatch;
 use crate::wait_signal::WaitSignal;
 
@@ -116,7 +117,10 @@ impl GtkDispatcher {
         let (tx, rx) = mpsc::channel();
 
         self.schedule(move || {
-            let _ = tx.send(task());
+            if tx.send(task()).is_err() {
+                NativeErrorReporter::global()
+                    .report_str("GTK task completed but result channel was closed");
+            }
         });
 
         rx
@@ -230,7 +234,10 @@ impl GtkDispatcher {
         let (tx, rx) = mpsc::channel();
         self.enter_js_wait();
         self.schedule(move || {
-            let _ = tx.send(task());
+            if tx.send(task()).is_err() {
+                NativeErrorReporter::global()
+                    .report_str("GTK dispatch completed but result channel was closed");
+            }
         });
         self.wait_for_gtk_result(cx, &rx)
     }

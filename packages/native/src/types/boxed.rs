@@ -16,6 +16,7 @@ use neon::object::Object as _;
 use neon::prelude::*;
 
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
+use crate::error_reporter::NativeErrorReporter;
 use crate::managed::{Boxed, NativeValue};
 use crate::state::GtkThreadState;
 use crate::{ffi, value};
@@ -61,26 +62,38 @@ impl BoxedType {
 
     #[must_use]
     pub fn gtype(&self) -> Option<glib::Type> {
-        glib::Type::from_name(&self.type_name).or_else(|| self.resolve_gtype_from_library())
+        glib::Type::from_name(&self.type_name).or_else(|| {
+            match self.try_resolve_gtype_from_library() {
+                Ok(gtype) => gtype,
+                Err(e) => {
+                    NativeErrorReporter::global().report(&e);
+                    None
+                }
+            }
+        })
     }
 
-    fn resolve_gtype_from_library(&self) -> Option<glib::Type> {
-        let lib_name = self.library.as_ref()?;
-        let get_type_fn = self.get_type_fn.as_ref()?;
+    fn try_resolve_gtype_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
+        let Some(lib_name) = self.library.as_ref() else {
+            return Ok(None);
+        };
+        let Some(get_type_fn) = self.get_type_fn.as_ref() else {
+            return Ok(None);
+        };
 
-        let symbol = GtkThreadState::with(|state| {
-            let library = state.library(lib_name).ok()?;
-            unsafe {
+        let symbol = GtkThreadState::with(|state| -> anyhow::Result<_> {
+            let library = state.library(lib_name)?;
+            let sym = unsafe {
                 library
                     .get::<unsafe extern "C" fn() -> glib::ffi::GType>(get_type_fn.as_bytes())
-                    .ok()
-                    .map(|s| *s)
-            }
+                    .map_err(|e| anyhow::anyhow!("Failed to find symbol '{get_type_fn}': {e}"))?
+            };
+            Ok(*sym)
         })?;
 
         let gtype_raw = unsafe { symbol() };
         let gtype = unsafe { glib::Type::from_glib(gtype_raw) };
-        Some(gtype)
+        Ok(Some(gtype))
     }
 }
 

@@ -9,6 +9,7 @@ use neon::event::Channel;
 use neon::handle::Root;
 use neon::types::JsFunction;
 
+use crate::error_reporter::NativeErrorReporter;
 use crate::js_dispatch::JsDispatcher;
 use crate::types::{FfiEncoder as _, RawPtrCodec as _, Type};
 use crate::value::Value;
@@ -118,7 +119,8 @@ impl TrampolineData {
             match ty.read_from_raw_ptr(arg_ptr, "trampoline arg") {
                 Ok(val) => values.push(val),
                 Err(e) => {
-                    gtkx_warn!("trampoline: failed to read arg {i}: {e}");
+                    NativeErrorReporter::global()
+                        .report(&e.context(format!("trampoline: failed to read arg {i}")));
                     values.push(Value::Null);
                 }
             }
@@ -143,14 +145,16 @@ impl TrampolineData {
             |result| result,
         );
 
-        if js_result.is_err() {
-            gtkx_warn!(
-                "trampoline: JS callback threw an exception (return type: {})",
+        if let Err(ref e) = js_result {
+            NativeErrorReporter::global().report(&anyhow::anyhow!(
+                "trampoline: JS callback error (return type: {}): {e:#}",
                 self.return_type
-            );
+            ));
         }
 
-        self.return_type.write_return_to_raw_ptr(result, &js_result);
+        let write_result = js_result.map_err(|_| ());
+        self.return_type
+            .write_return_to_raw_ptr(result, &write_result);
 
         state_ptr
     }

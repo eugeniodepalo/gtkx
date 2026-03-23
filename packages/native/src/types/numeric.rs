@@ -525,12 +525,10 @@ impl EnumType {
                 if !enum_class.is_null() {
                     let enum_value = glib::gobject_ffi::g_enum_get_value(enum_class, value);
                     if enum_value.is_null() {
-                        gtkx_warn!(
+                        crate::error_reporter::NativeErrorReporter::global().report_str(&format!(
                             "Enum value {} is not a valid member of {} (GType {})",
-                            value,
-                            self.tagged.get_type_fn,
-                            gtype
-                        );
+                            value, self.tagged.get_type_fn, gtype
+                        ));
                     }
                     glib::gobject_ffi::g_type_class_unref(enum_class as *mut _);
                 }

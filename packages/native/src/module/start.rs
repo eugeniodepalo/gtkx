@@ -20,6 +20,8 @@ use neon::prelude::*;
 
 use super::handler::{JsThreadCommand, execute_js_command};
 use crate::{
+    error_reporter::NativeErrorReporter,
+    glib_log_handler::GlibLogHandler,
     gtk_dispatch::GtkDispatcher,
     managed::{NativeHandle, NativeValue},
     state::{GtkThread, GtkThreadState},
@@ -48,9 +50,15 @@ impl JsThreadCommand for StartCommand {
     }
 
     fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
+        let mut error_channel = cx.channel();
+        error_channel.unref(cx);
+        NativeErrorReporter::global().initialize(error_channel);
+
         let (tx, rx) = mpsc::channel::<NativeHandle>();
 
         let handle = std::thread::spawn(move || {
+            GlibLogHandler::install();
+
             let app = gtk4::Application::builder()
                 .application_id(self.app_id)
                 .flags(self.flags)
@@ -63,7 +71,11 @@ impl JsThreadCommand for StartCommand {
             });
 
             app.connect_activate(move |_| {
-                let _ = tx.send(app_handle);
+                if tx.send(app_handle).is_err() {
+                    NativeErrorReporter::global().report_str(
+                        "GTK application activated but startup channel was already closed",
+                    );
+                }
             });
 
             app.run_with_args::<&str>(&[]);

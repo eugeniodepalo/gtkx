@@ -47,7 +47,9 @@ impl JsThreadCommand for StopCommand {
 
         dispatcher.mark_stopped();
 
-        GtkThread::global().join();
+        if let Some(panic_msg) = GtkThread::global().join() {
+            return cx.throw_error(format!("GTK thread panicked: {panic_msg}"));
+        }
 
         Ok(cx.undefined().upcast())
     }

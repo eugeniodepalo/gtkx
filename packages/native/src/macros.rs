@@ -12,9 +12,3 @@ macro_rules! with_integer_kinds {
         }
     };
 }
-
-macro_rules! gtkx_warn {
-    ($($arg:tt)*) => {
-        eprintln!("[gtkx] WARNING: {}", format_args!($($arg)*))
-    };
-}

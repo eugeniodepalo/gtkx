@@ -27,7 +27,7 @@ struct PendingCallback {
     callback: Arc<Root<JsFunction>>,
     args: Vec<Value>,
     capture_result: bool,
-    result_tx: mpsc::Sender<Result<Value, ()>>,
+    result_tx: mpsc::Sender<anyhow::Result<Value>>,
 }
 
 pub struct JsDispatcher {
@@ -70,7 +70,7 @@ impl JsDispatcher {
         callback: Arc<Root<JsFunction>>,
         args: Vec<Value>,
         capture_result: bool,
-    ) -> mpsc::Receiver<Result<Value, ()>> {
+    ) -> mpsc::Receiver<anyhow::Result<Value>> {
         let (tx, rx) = mpsc::channel();
 
         self.push_callback(PendingCallback {
@@ -96,7 +96,9 @@ impl JsDispatcher {
                 &pending.args,
                 pending.capture_result,
             );
-            let _ = pending.result_tx.send(result);
+            if pending.result_tx.send(result).is_err() {
+                // Receiver dropped — GTK thread is shutting down
+            }
             self.wake.notify();
         }
     }
@@ -110,22 +112,24 @@ impl JsDispatcher {
         on_result: F,
     ) -> T
     where
-        F: FnOnce(Result<Value, ()>) -> T,
+        F: FnOnce(anyhow::Result<Value>) -> T,
     {
         let rx = self.queue(channel, callback.clone(), args, capture_result);
         self.wait_for_result(&rx, on_result)
     }
 
-    fn wait_for_result<T, F>(&self, rx: &mpsc::Receiver<Result<Value, ()>>, on_result: F) -> T
+    fn wait_for_result<T, F>(&self, rx: &mpsc::Receiver<anyhow::Result<Value>>, on_result: F) -> T
     where
-        F: FnOnce(Result<Value, ()>) -> T,
+        F: FnOnce(anyhow::Result<Value>) -> T,
     {
         loop {
             gtk_dispatch::GtkDispatcher::global().dispatch_pending();
 
             match rx.try_recv() {
                 Ok(result) => return on_result(result),
-                Err(mpsc::TryRecvError::Disconnected) => return on_result(Err(())),
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    return on_result(Err(anyhow::anyhow!("JS callback channel disconnected")));
+                }
                 Err(mpsc::TryRecvError::Empty) => self.wake.wait(),
             }
         }
@@ -136,22 +140,48 @@ impl JsDispatcher {
         callback: &Arc<Root<JsFunction>>,
         args: &[Value],
         capture_result: bool,
-    ) -> Result<Value, ()> {
-        let js_args: Vec<Handle<JsValue>> = args
-            .iter()
-            .map(|v| v.to_js_value(cx))
-            .collect::<NeonResult<Vec<_>>>()
-            .map_err(|_| ())?;
+    ) -> anyhow::Result<Value> {
+        let callback = callback.clone();
+        let args: Vec<Value> = args.to_vec();
 
-        let js_this = cx.undefined();
-        let js_callback = callback.to_inner(cx);
+        match cx.try_catch(|cx| {
+            let js_args: Vec<Handle<JsValue>> = args
+                .iter()
+                .map(|v| v.to_js_value(cx))
+                .collect::<NeonResult<Vec<_>>>()?;
 
-        if capture_result {
-            let js_result = js_callback.call(cx, js_this, js_args).map_err(|_| ())?;
-            Value::from_js_value(cx, js_result).map_err(|_| ())
-        } else {
-            js_callback.call(cx, js_this, js_args).map_err(|_| ())?;
-            Ok(Value::Undefined)
+            let js_this = cx.undefined();
+            let js_callback = callback.to_inner(cx);
+
+            if capture_result {
+                let js_result = js_callback.call(cx, js_this, js_args)?;
+                Value::from_js_value(cx, js_result)
+            } else {
+                js_callback.call(cx, js_this, js_args)?;
+                Ok(Value::Undefined)
+            }
+        }) {
+            Ok(value) => Ok(value),
+            Err(exception) => {
+                let msg = Self::extract_exception_message(cx, exception);
+                Err(anyhow::anyhow!("{msg}"))
+            }
         }
+    }
+
+    fn extract_exception_message<'a, C: Context<'a>>(
+        cx: &mut C,
+        exception: Handle<'a, JsValue>,
+    ) -> String {
+        if let Ok(obj) = exception.downcast::<JsObject, _>(cx)
+            && let Ok(msg_handle) = obj.get_value(cx, "message")
+            && let Ok(msg_str) = msg_handle.downcast::<JsString, _>(cx)
+        {
+            return msg_str.value(cx);
+        }
+        if let Ok(s) = exception.downcast::<JsString, _>(cx) {
+            return s.value(cx);
+        }
+        "unknown exception".to_owned()
     }
 }

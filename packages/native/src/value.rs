@@ -23,6 +23,7 @@ use gtk4::glib::{
 };
 use neon::{handle::Root, object::Object as _, prelude::*};
 
+use crate::error_reporter::NativeErrorReporter;
 use crate::managed::NativeHandle;
 use crate::types::*;
 use crate::{arg::Arg, ffi};
@@ -152,7 +153,14 @@ impl Value {
                     Type::Void(_) => return None,
                     _ => return None,
                 };
-                ty.to_glib_value(&default).ok().flatten()
+                match ty.to_glib_value(&default) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        NativeErrorReporter::global()
+                            .report(&e.context("failed to compute default glib value"));
+                        None
+                    }
+                }
             }
             Value::Number(_)
             | Value::String(_)
@@ -161,7 +169,14 @@ impl Value {
             | Value::Null
             | Value::Array(_)
             | Value::Callback(_)
-            | Value::Ref(_) => self.to_glib_value_typed(return_type).ok(),
+            | Value::Ref(_) => match self.to_glib_value_typed(return_type) {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    NativeErrorReporter::global()
+                        .report(&e.context("failed to convert value to glib::Value"));
+                    None
+                }
+            },
         }
     }
 
