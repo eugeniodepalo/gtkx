@@ -141,6 +141,13 @@ unsafe extern "C" fn trampoline_handler(
         |result| result,
     );
 
+    if js_result.is_err() {
+        gtkx_warn!(
+            "trampoline_handler: JS callback threw an exception (return type: {})",
+            data.return_type
+        );
+    }
+
     data.return_type
         .write_return_to_raw_ptr(result as *mut u64 as *mut c_void, &js_result);
 

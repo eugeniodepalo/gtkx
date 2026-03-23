@@ -12,6 +12,7 @@ use neon::prelude::*;
 use crate::callback::ClosureGuard;
 use crate::ffi::{self, FfiStorage};
 use crate::js_dispatch;
+use crate::managed::{Boxed, NativeValue};
 use crate::types::{FfiCodec, IntegerKind, Type};
 use crate::value;
 use crate::value::Callback;
@@ -40,7 +41,7 @@ impl ClosureContext {
             let _guard =
                 ClosureGuard::from_ptr(closure_holder_for_callback.load(Ordering::Acquire));
 
-            let args_values = match value::Value::from_glib_values(args, &self.arg_types) {
+            let args_values = match Self::convert_closure_args(args, &self.arg_types) {
                 Ok(v) => v,
                 Err(e) => {
                     gtkx_warn!("closure: failed to convert callback arguments: {e}");
@@ -85,10 +86,13 @@ impl ClosureContext {
                         value::Value::into_glib_value_with_default(return_val, return_type_ref)
                     }
                     Ok(value) => value::Value::into_glib_value_with_default(value, return_type_ref),
-                    Err(_) => value::Value::into_glib_value_with_default(
-                        value::Value::Undefined,
-                        return_type_ref,
-                    ),
+                    Err(_) => {
+                        gtkx_warn!("closure callback: JS callback threw an exception");
+                        value::Value::into_glib_value_with_default(
+                            value::Value::Undefined,
+                            return_type_ref,
+                        )
+                    }
                 },
             )
         });
@@ -97,6 +101,37 @@ impl ClosureContext {
         closure_holder.store(closure_ptr, Ordering::Release);
 
         unsafe { glib::Closure::from_glib_full(closure_ptr) }
+    }
+
+    fn convert_closure_args(
+        args: &[glib::Value],
+        arg_types: &[Type],
+    ) -> anyhow::Result<Vec<value::Value>> {
+        args.iter()
+            .zip(arg_types.iter())
+            .map(|(gval, ty)| {
+                if let Type::Boxed(boxed_type) = ty {
+                    let boxed_ptr = unsafe {
+                        glib::gobject_ffi::g_value_get_boxed(gval.to_glib_none().0 as *const _)
+                    };
+                    if boxed_ptr.is_null() {
+                        return Ok(value::Value::Null);
+                    }
+                    let boxed = if boxed_type.ownership.is_full() {
+                        let gtype = boxed_type.gtype();
+                        let owned_ptr = unsafe {
+                            glib::gobject_ffi::g_value_dup_boxed(gval.to_glib_none().0 as *const _)
+                        };
+                        Boxed::from_glib_full(gtype, owned_ptr)
+                    } else {
+                        Boxed::from_ptr_unowned(boxed_ptr)
+                    };
+                    Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+                } else {
+                    value::Value::from_glib_value(gval, ty)
+                }
+            })
+            .collect()
     }
 
     fn write_ref_value_to_ptr(ptr: *mut c_void, val: &value::Value, inner_type: &Type) {
