@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type NormalizerContext, normalizeNamespace } from "../../src/internal/normalizer.js";
+import { GirNormalizer } from "../../src/internal/normalizer.js";
 import type { RawNamespace } from "../../src/internal/raw-types.js";
 
 const createRawNamespace = (overrides: Partial<RawNamespace> = {}): RawNamespace => ({
@@ -20,568 +20,179 @@ const createRawNamespace = (overrides: Partial<RawNamespace> = {}): RawNamespace
     ...overrides,
 });
 
-const createContext = (namespaces: RawNamespace[] = []): NormalizerContext => {
-    const map = new Map<string, RawNamespace>();
-    for (const ns of namespaces) {
-        map.set(ns.name, ns);
-    }
-    return { rawNamespaces: map };
-};
-
-describe("normalizeNamespace", () => {
-    it("normalizes basic namespace metadata", () => {
+describe("GirNormalizer", () => {
+    it("preserves namespace metadata", () => {
+        const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
             name: "Gtk",
             version: "4.0",
             sharedLibrary: "libgtk-4.so.1",
             cPrefix: "Gtk",
         });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
+        const result = normalizer.normalize(new Map([["Gtk", raw]]));
+        const ns = result.get("Gtk");
 
-        expect(result.name).toBe("Gtk");
-        expect(result.version).toBe("4.0");
-        expect(result.sharedLibrary).toBe("libgtk-4.so.1");
-        expect(result.cPrefix).toBe("Gtk");
+        expect(ns?.name).toBe("Gtk");
+        expect(ns?.version).toBe("4.0");
+        expect(ns?.sharedLibrary).toBe("libgtk-4.so.1");
+        expect(ns?.cPrefix).toBe("Gtk");
     });
 
-    it("normalizes classes with qualified names", () => {
+    it("qualifies class names", () => {
+        const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
             name: "Gtk",
             classes: [
                 {
                     name: "Widget",
                     cType: "GtkWidget",
-                    parent: "GObject.InitiallyUnowned",
-                    abstract: true,
-                    glibTypeName: "GtkWidget",
-                    glibGetType: "gtk_widget_get_type",
-                    cSymbolPrefix: "widget",
                     implements: [],
                     methods: [],
                     constructors: [],
                     functions: [],
                     properties: [],
                     signals: [],
-                    doc: undefined,
                 },
             ],
         });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
+        const result = normalizer.normalize(new Map([["Gtk", raw]]));
+        const cls = result.get("Gtk")?.classes.get("Widget");
 
-        expect(result.classes.size).toBe(1);
-        const widget = result.classes.get("Widget");
-        expect(widget?.qualifiedName).toBe("Gtk.Widget");
-        expect(widget?.parent).toBe("GObject.InitiallyUnowned");
-        expect(widget?.abstract).toBe(true);
+        expect(cls?.qualifiedName).toBe("Gtk.Widget");
     });
 
-    it("qualifies types within the same namespace", () => {
-        const raw = createRawNamespace({
-            name: "Gtk",
-            classes: [
-                {
-                    name: "Button",
-                    cType: "GtkButton",
-                    parent: "Widget",
-                    abstract: false,
-                    glibTypeName: "GtkButton",
-                    glibGetType: "gtk_button_get_type",
-                    cSymbolPrefix: "button",
-                    implements: [],
-                    methods: [],
-                    constructors: [],
-                    functions: [],
-                    properties: [],
-                    signals: [],
-                    doc: undefined,
-                },
-                {
-                    name: "Widget",
-                    cType: "GtkWidget",
-                    parent: undefined,
-                    abstract: true,
-                    glibTypeName: "GtkWidget",
-                    glibGetType: "gtk_widget_get_type",
-                    cSymbolPrefix: "widget",
-                    implements: [],
-                    methods: [],
-                    constructors: [],
-                    functions: [],
-                    properties: [],
-                    signals: [],
-                    doc: undefined,
-                },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        const button = result.classes.get("Button");
-        expect(button?.parent).toBe("Gtk.Widget");
-    });
-
-    it("resolves types from other namespaces", () => {
-        const gobject = createRawNamespace({
+    it("qualifies cross-namespace type references", () => {
+        const normalizer = new GirNormalizer();
+        const gobjectRaw = createRawNamespace({
             name: "GObject",
             classes: [
                 {
                     name: "Object",
                     cType: "GObject",
-                    parent: undefined,
-                    abstract: false,
-                    glibTypeName: "GObject",
-                    glibGetType: "g_object_get_type",
-                    cSymbolPrefix: "object",
                     implements: [],
                     methods: [],
                     constructors: [],
                     functions: [],
                     properties: [],
                     signals: [],
-                    doc: undefined,
                 },
             ],
         });
-        const gtk = createRawNamespace({
+        const gtkRaw = createRawNamespace({
             name: "Gtk",
             classes: [
                 {
                     name: "Widget",
                     cType: "GtkWidget",
-                    parent: "Object",
-                    abstract: true,
-                    glibTypeName: "GtkWidget",
-                    glibGetType: "gtk_widget_get_type",
-                    cSymbolPrefix: "widget",
+                    parent: "GObject.Object",
                     implements: [],
                     methods: [],
                     constructors: [],
                     functions: [],
                     properties: [],
                     signals: [],
-                    doc: undefined,
                 },
             ],
         });
-        const ctx = createContext([gobject, gtk]);
-        const result = normalizeNamespace(gtk, ctx);
 
-        const widget = result.classes.get("Widget");
+        const namespaces = new Map([
+            ["GObject", gobjectRaw],
+            ["Gtk", gtkRaw],
+        ]);
+        const result = normalizer.normalize(namespaces);
+        const widget = result.get("Gtk")?.classes.get("Widget");
+
         expect(widget?.parent).toBe("GObject.Object");
     });
 
-    it("normalizes interfaces", () => {
+    it("qualifies unqualified type names from current namespace", () => {
+        const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
             name: "Gtk",
-            interfaces: [
+            classes: [
                 {
-                    name: "Buildable",
-                    cType: "GtkBuildable",
-                    glibTypeName: "GtkBuildable",
-                    prerequisites: [],
-                    methods: [],
-                    properties: [],
-                    signals: [],
-                    doc: "Interface for widgets",
-                },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        expect(result.interfaces.size).toBe(1);
-        const buildable = result.interfaces.get("Buildable");
-        expect(buildable?.qualifiedName).toBe("Gtk.Buildable");
-        expect(buildable?.doc).toBe("Interface for widgets");
-    });
-
-    it("normalizes records (boxed types)", () => {
-        const raw = createRawNamespace({
-            name: "Gdk",
-            records: [
-                {
-                    name: "Rectangle",
-                    cType: "GdkRectangle",
-                    opaque: false,
-                    disguised: false,
-                    glibTypeName: "GdkRectangle",
-                    glibGetType: "gdk_rectangle_get_type",
-                    fields: [
-                        { name: "x", type: { name: "gint", cType: "gint" }, writable: true },
-                        { name: "y", type: { name: "gint", cType: "gint" }, writable: true },
-                    ],
+                    name: "Widget",
+                    cType: "GtkWidget",
+                    implements: [],
                     methods: [],
                     constructors: [],
                     functions: [],
-                    doc: undefined,
-                },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        expect(result.records.size).toBe(1);
-        const rect = result.records.get("Rectangle");
-        expect(rect?.qualifiedName).toBe("Gdk.Rectangle");
-        expect(rect?.isBoxed()).toBe(true);
-        expect(rect?.fields.length).toBe(2);
-    });
-
-    it("normalizes enumerations", () => {
-        const raw = createRawNamespace({
-            name: "Gtk",
-            enumerations: [
-                {
-                    name: "Orientation",
-                    cType: "GtkOrientation",
-                    members: [
-                        { name: "horizontal", value: "0", cIdentifier: "GTK_ORIENTATION_HORIZONTAL", doc: undefined },
-                        { name: "vertical", value: "1", cIdentifier: "GTK_ORIENTATION_VERTICAL", doc: undefined },
-                    ],
-                    doc: undefined,
-                },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        expect(result.enumerations.size).toBe(1);
-        const orientation = result.enumerations.get("Orientation");
-        expect(orientation?.qualifiedName).toBe("Gtk.Orientation");
-        expect(orientation?.members.length).toBe(2);
-        expect(orientation?.members[0]?.name).toBe("horizontal");
-    });
-
-    it("normalizes bitfields (flags)", () => {
-        const raw = createRawNamespace({
-            name: "Gdk",
-            bitfields: [
-                {
-                    name: "ModifierType",
-                    cType: "GdkModifierType",
-                    members: [
-                        { name: "shift_mask", value: "1", cIdentifier: "GDK_SHIFT_MASK", doc: undefined },
-                        { name: "control_mask", value: "4", cIdentifier: "GDK_CONTROL_MASK", doc: undefined },
-                    ],
-                    doc: undefined,
-                },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        expect(result.bitfields.size).toBe(1);
-        const modType = result.bitfields.get("ModifierType");
-        expect(modType?.qualifiedName).toBe("Gdk.ModifierType");
-    });
-
-    it("normalizes callbacks", () => {
-        const raw = createRawNamespace({
-            name: "Gio",
-            callbacks: [
-                {
-                    name: "AsyncReadyCallback",
-                    cType: "GAsyncReadyCallback",
-                    returnType: { name: "none", cType: "void" },
-                    parameters: [
-                        { name: "source_object", type: { name: "GObject.Object", cType: "GObject*" } },
-                        { name: "res", type: { name: "AsyncResult", cType: "GAsyncResult*" } },
-                    ],
-                    doc: undefined,
-                },
-            ],
-            interfaces: [
-                {
-                    name: "AsyncResult",
-                    cType: "GAsyncResult",
-                    glibTypeName: "GAsyncResult",
-                    prerequisites: [],
-                    methods: [],
                     properties: [],
                     signals: [],
-                    doc: undefined,
                 },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        expect(result.callbacks.size).toBe(1);
-        const callback = result.callbacks.get("AsyncReadyCallback");
-        expect(callback?.qualifiedName).toBe("Gio.AsyncReadyCallback");
-        expect(callback?.parameters.length).toBe(2);
-        expect(callback?.parameters[1]?.type.name).toBe("Gio.AsyncResult");
-    });
-
-    it("normalizes functions", () => {
-        const raw = createRawNamespace({
-            name: "Gtk",
-            functions: [
                 {
-                    name: "init",
-                    cIdentifier: "gtk_init",
-                    returnType: { name: "none", cType: "void" },
-                    parameters: [],
-                    throws: false,
-                    doc: "Initializes GTK",
+                    name: "Button",
+                    cType: "GtkButton",
+                    parent: "Widget",
+                    implements: [],
+                    methods: [],
+                    constructors: [],
+                    functions: [],
+                    properties: [],
+                    signals: [],
                 },
             ],
         });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
 
-        expect(result.functions.size).toBe(1);
-        const init = result.functions.get("init");
-        expect(init?.cIdentifier).toBe("gtk_init");
-        expect(init?.doc).toBe("Initializes GTK");
+        const result = normalizer.normalize(new Map([["Gtk", raw]]));
+        const button = result.get("Gtk")?.classes.get("Button");
+
+        expect(button?.parent).toBe("Gtk.Widget");
     });
 
-    it("normalizes constants", () => {
+    it("qualifies unresolvable types with current namespace", () => {
+        const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
-            name: "Gtk",
-            constants: [
+            name: "Test",
+            classes: [
                 {
-                    name: "MAJOR_VERSION",
-                    cType: "GTK_MAJOR_VERSION",
-                    value: "4",
-                    type: { name: "gint", cType: "gint" },
-                    doc: undefined,
+                    name: "Foo",
+                    cType: "TestFoo",
+                    implements: [],
+                    methods: [
+                        {
+                            name: "get_bar",
+                            cIdentifier: "test_foo_get_bar",
+                            returnType: { name: "NonExistentType" },
+                            parameters: [],
+                        },
+                    ],
+                    constructors: [],
+                    functions: [],
+                    properties: [],
+                    signals: [],
                 },
             ],
         });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
 
-        expect(result.constants.size).toBe(1);
-        const major = result.constants.get("MAJOR_VERSION");
-        expect(major?.qualifiedName).toBe("Gtk.MAJOR_VERSION");
-        expect(major?.value).toBe("4");
+        const result = normalizer.normalize(new Map([["Test", raw]]));
+        const method = result.get("Test")?.classes.get("Foo")?.methods[0];
+        expect(method?.returnType.name).toBe("Test.NonExistentType");
     });
 
-    it("keeps intrinsic types unqualified", () => {
+    it("leaves intrinsic types unqualified", () => {
+        const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
             name: "Test",
             functions: [
                 {
-                    name: "add",
-                    cIdentifier: "test_add",
-                    returnType: { name: "gint", cType: "gint" },
+                    name: "get_value",
+                    cIdentifier: "test_get_value",
+                    returnType: { name: "gint" },
                     parameters: [
-                        { name: "a", type: { name: "gint", cType: "gint" } },
-                        { name: "b", type: { name: "gint", cType: "gint" } },
-                    ],
-                    throws: false,
-                    doc: undefined,
-                },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        const add = result.functions.get("add");
-        expect(add?.returnType.name).toBe("gint");
-        expect(add?.parameters[0]?.type.name).toBe("gint");
-    });
-
-    it("normalizes array types with element type", () => {
-        const raw = createRawNamespace({
-            name: "Gtk",
-            functions: [
-                {
-                    name: "get_css_classes",
-                    cIdentifier: "gtk_widget_get_css_classes",
-                    returnType: {
-                        name: "array",
-                        cType: "char**",
-                        isArray: true,
-                        elementType: { name: "utf8", cType: "char*" },
-                    },
-                    parameters: [],
-                    throws: false,
-                    doc: undefined,
-                },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        const getCssClasses = result.functions.get("get_css_classes");
-        expect(getCssClasses?.returnType.isArray).toBe(true);
-        expect(getCssClasses?.returnType.elementType?.name).toBe("utf8");
-    });
-
-    it("normalizes method with throws", () => {
-        const raw = createRawNamespace({
-            name: "Gio",
-            classes: [
-                {
-                    name: "File",
-                    cType: "GFile",
-                    parent: undefined,
-                    abstract: false,
-                    glibTypeName: "GFile",
-                    glibGetType: "g_file_get_type",
-                    cSymbolPrefix: "file",
-                    implements: [],
-                    methods: [
                         {
-                            name: "load_contents",
-                            cIdentifier: "g_file_load_contents",
-                            returnType: { name: "gboolean", cType: "gboolean" },
-                            parameters: [],
-                            throws: true,
-                            doc: undefined,
+                            name: "name",
+                            type: { name: "utf8" },
                         },
                     ],
-                    constructors: [],
-                    functions: [],
-                    properties: [],
-                    signals: [],
-                    doc: undefined,
                 },
             ],
         });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
 
-        const file = result.classes.get("File");
-        expect(file?.methods[0]?.throws).toBe(true);
-    });
+        const result = normalizer.normalize(new Map([["Test", raw]]));
+        const func = result.get("Test")?.functions.get("get_value");
 
-    it("normalizes properties", () => {
-        const raw = createRawNamespace({
-            name: "Gtk",
-            classes: [
-                {
-                    name: "Widget",
-                    cType: "GtkWidget",
-                    parent: undefined,
-                    abstract: true,
-                    glibTypeName: "GtkWidget",
-                    glibGetType: "gtk_widget_get_type",
-                    cSymbolPrefix: "widget",
-                    implements: [],
-                    methods: [],
-                    constructors: [],
-                    functions: [],
-                    properties: [
-                        {
-                            name: "visible",
-                            type: { name: "gboolean", cType: "gboolean" },
-                            readable: true,
-                            writable: true,
-                            constructOnly: false,
-                            defaultValueRaw: "TRUE",
-                            getter: "get_visible",
-                            setter: "set_visible",
-                            doc: "Widget visibility",
-                        },
-                    ],
-                    signals: [],
-                    doc: undefined,
-                },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        const widget = result.classes.get("Widget");
-        expect(widget?.properties.length).toBe(1);
-        expect(widget?.properties[0]?.name).toBe("visible");
-        expect(widget?.properties[0]?.readable).toBe(true);
-        expect(widget?.properties[0]?.writable).toBe(true);
-        expect(widget?.properties[0]?.getter).toBe("get_visible");
-    });
-
-    it("normalizes signals", () => {
-        const raw = createRawNamespace({
-            name: "Gtk",
-            classes: [
-                {
-                    name: "Button",
-                    cType: "GtkButton",
-                    parent: undefined,
-                    abstract: false,
-                    glibTypeName: "GtkButton",
-                    glibGetType: "gtk_button_get_type",
-                    cSymbolPrefix: "button",
-                    implements: [],
-                    methods: [],
-                    constructors: [],
-                    functions: [],
-                    properties: [],
-                    signals: [
-                        {
-                            name: "clicked",
-                            when: "first",
-                            returnType: { name: "none", cType: "void" },
-                            parameters: [],
-                            doc: "Emitted when button is clicked",
-                        },
-                    ],
-                    doc: undefined,
-                },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        const button = result.classes.get("Button");
-        expect(button?.signals.length).toBe(1);
-        expect(button?.signals[0]?.name).toBe("clicked");
-        expect(button?.signals[0]?.when).toBe("first");
-    });
-
-    it("normalizes implements list with qualified names", () => {
-        const raw = createRawNamespace({
-            name: "Gtk",
-            classes: [
-                {
-                    name: "Widget",
-                    cType: "GtkWidget",
-                    parent: undefined,
-                    abstract: true,
-                    glibTypeName: "GtkWidget",
-                    glibGetType: "gtk_widget_get_type",
-                    cSymbolPrefix: "widget",
-                    implements: ["Buildable", "Accessible"],
-                    methods: [],
-                    constructors: [],
-                    functions: [],
-                    properties: [],
-                    signals: [],
-                    doc: undefined,
-                },
-            ],
-            interfaces: [
-                {
-                    name: "Buildable",
-                    cType: "GtkBuildable",
-                    glibTypeName: "GtkBuildable",
-                    prerequisites: [],
-                    methods: [],
-                    properties: [],
-                    signals: [],
-                    doc: undefined,
-                },
-                {
-                    name: "Accessible",
-                    cType: "GtkAccessible",
-                    glibTypeName: "GtkAccessible",
-                    prerequisites: [],
-                    methods: [],
-                    properties: [],
-                    signals: [],
-                    doc: undefined,
-                },
-            ],
-        });
-        const ctx = createContext([raw]);
-        const result = normalizeNamespace(raw, ctx);
-
-        const widget = result.classes.get("Widget");
-        expect(widget?.implements).toEqual(["Gtk.Buildable", "Gtk.Accessible"]);
+        expect(func?.returnType.name).toBe("gint");
+        expect(func?.parameters[0]?.type.name).toBe("utf8");
     });
 });

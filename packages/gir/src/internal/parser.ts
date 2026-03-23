@@ -1,20 +1,12 @@
-/**
- * GObject Introspection XML (GIR) parser.
- *
- * Parses GIR files to extract type information for GTK/GLib libraries.
- * Outputs raw GIR types that are then normalized by the normalizer.
- *
- * @internal
- */
-
 import { XMLParser } from "fast-xml-parser";
+import type { ContainerType } from "../model/type.js";
 import type {
-    ContainerType,
     RawAlias,
     RawCallback,
     RawClass,
     RawConstant,
     RawConstructor,
+    RawDependency,
     RawEnumeration,
     RawEnumerationMember,
     RawField,
@@ -25,6 +17,7 @@ import type {
     RawParameter,
     RawProperty,
     RawRecord,
+    RawRepositoryHeader,
     RawSignal,
     RawType,
 } from "./raw-types.js";
@@ -68,33 +61,32 @@ const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.callback.parameters.parameter",
 ]);
 
-const extractDoc = (node: Record<string, unknown>): string | undefined => {
+const INCLUDE_RE = /<include\s+name="([^"]+)"\s+version="([^"]+)"/g;
+const NS_NAME_RE = /<namespace\s[^>]*name="([^"]+)"/;
+const NS_VERSION_RE = /<namespace\s[^>]*version="([^"]+)"/;
+
+function extractDoc(node: Record<string, unknown>): string | undefined {
     const doc = node.doc as Record<string, unknown> | undefined;
     if (!doc) return undefined;
     const text = doc["#text"];
     if (typeof text !== "string") return undefined;
     return text.trim();
-};
+}
 
-const ensureArray = (value: unknown): Record<string, unknown>[] =>
-    Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
-
-export type ParserOptions = {
-    includeNonIntrospectableNamespaces?: Set<string>;
-};
+function ensureArray(value: unknown): Record<string, unknown>[] {
+    return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
+}
 
 /**
  * Parser for GObject Introspection XML (GIR) files.
  *
- * Converts GIR XML into raw TypeScript objects.
+ * Provides both a lightweight header parse (for dependency graph discovery)
+ * and a full parse (for complete namespace extraction).
  */
-export class RawGirParser {
-    private parser: XMLParser;
-    private includeNonIntrospectableNamespaces: Set<string>;
-    private currentNamespace: string = "";
+export class GirParser {
+    private readonly parser: XMLParser;
 
-    constructor(options: ParserOptions = {}) {
-        this.includeNonIntrospectableNamespaces = options.includeNonIntrospectableNamespaces ?? new Set();
+    constructor() {
         this.parser = new XMLParser({
             ignoreAttributes: false,
             attributeNamePrefix: "@_",
@@ -109,21 +101,41 @@ export class RawGirParser {
         });
     }
 
-    private shouldIncludeNonIntrospectable(): boolean {
-        return this.includeNonIntrospectableNamespaces.has(this.currentNamespace);
-    }
+    /**
+     * Lightweight header parse using regex — extracts namespace name, version,
+     * and `<include>` dependencies without paying the cost of full XML parsing.
+     */
+    parseHeader(girXml: string): RawRepositoryHeader {
+        const nameMatch = NS_NAME_RE.exec(girXml);
+        const versionMatch = NS_VERSION_RE.exec(girXml);
 
-    private isIntrospectable(node: Record<string, unknown>): boolean {
-        if (node["@_introspectable"] === "0") {
-            return this.shouldIncludeNonIntrospectable();
+        if (!nameMatch || !versionMatch) {
+            throw new Error("Failed to parse GIR header: missing namespace name or version");
         }
-        return true;
+
+        const dependencies: RawDependency[] = [];
+        INCLUDE_RE.lastIndex = 0;
+        for (let m = INCLUDE_RE.exec(girXml); m !== null; m = INCLUDE_RE.exec(girXml)) {
+            const name = m[1];
+            const version = m[2];
+            if (name && version) {
+                dependencies.push({ name, version });
+            }
+        }
+
+        const namespaceName = nameMatch[1];
+        const namespaceVersion = versionMatch[1];
+        if (!namespaceName || !namespaceVersion) {
+            throw new Error("Failed to parse GIR header: missing namespace name or version");
+        }
+
+        return { namespaceName, namespaceVersion, dependencies };
     }
 
     /**
-     * Parses a GIR XML string into a raw namespace object.
+     * Full parse of a GIR XML string into a raw namespace.
      */
-    parse(girXml: string): RawNamespace {
+    parseNamespace(girXml: string): RawNamespace {
         const parsed = this.parser.parse(girXml);
         const repository = parsed.repository;
 
@@ -132,7 +144,6 @@ export class RawGirParser {
         }
 
         const namespace = repository.namespace;
-        this.currentNamespace = namespace["@_name"];
 
         return {
             name: namespace["@_name"],
@@ -149,25 +160,6 @@ export class RawGirParser {
             constants: this.parseConstants(namespace.constant ?? []),
             aliases: this.parseAliases(namespace.alias ?? []),
         };
-    }
-
-    private parseCallbacks(callbacks: Record<string, unknown>[]): RawCallback[] {
-        if (!callbacks || !Array.isArray(callbacks)) {
-            return [];
-        }
-        return callbacks
-            .filter((cb) => this.isIntrospectable(cb))
-            .map((cb) => ({
-                name: String(cb["@_name"] ?? ""),
-                cType: String(cb["@_c:type"] ?? ""),
-                returnType: this.parseReturnType(cb["return-value"] as Record<string, unknown> | undefined),
-                parameters: this.parseParameters(
-                    (cb.parameters && typeof cb.parameters === "object" && cb.parameters !== null
-                        ? cb.parameters
-                        : {}) as Record<string, unknown>,
-                ),
-                doc: extractDoc(cb),
-            }));
     }
 
     private parseClasses(classes: Record<string, unknown>[]): RawClass[] {
@@ -201,9 +193,7 @@ export class RawGirParser {
     }
 
     private parseInterfaces(interfaces: Record<string, unknown>[]): RawInterface[] {
-        if (!interfaces || !Array.isArray(interfaces)) {
-            return [];
-        }
+        if (!interfaces || !Array.isArray(interfaces)) return [];
         return interfaces.map((iface) => ({
             name: String(iface["@_name"] ?? ""),
             cType: String(iface["@_c:type"] ?? iface["@_glib:type-name"] ?? ""),
@@ -227,20 +217,12 @@ export class RawGirParser {
     }
 
     private parseMethods(methods: Record<string, unknown>[]): RawMethod[] {
-        if (!methods || !Array.isArray(methods)) {
-            return [];
-        }
+        if (!methods || !Array.isArray(methods)) return [];
         return methods
-            .filter((method) => this.isIntrospectable(method))
+            .filter((m) => m["@_introspectable"] !== "0")
             .map((method) => {
                 const returnValue = method["return-value"] as Record<string, unknown> | undefined;
-                const finishFunc = method["@_glib:finish-func"] as string | undefined;
-                const shadows = method["@_shadows"] as string | undefined;
-                const shadowedBy = method["@_shadowed-by"] as string | undefined;
-                const parametersNode =
-                    method.parameters && typeof method.parameters === "object" && method.parameters !== null
-                        ? (method.parameters as Record<string, unknown>)
-                        : {};
+                const parametersNode = this.extractParametersNode(method);
                 return {
                     name: String(method["@_name"] ?? ""),
                     cIdentifier: String(method["@_c:identifier"] ?? ""),
@@ -250,84 +232,212 @@ export class RawGirParser {
                     throws: method["@_throws"] === "1",
                     doc: extractDoc(method),
                     returnDoc: returnValue ? extractDoc(returnValue) : undefined,
-                    finishFunc: finishFunc || undefined,
-                    shadows: shadows || undefined,
-                    shadowedBy: shadowedBy || undefined,
+                    finishFunc: (method["@_glib:finish-func"] as string) || undefined,
+                    shadows: (method["@_shadows"] as string) || undefined,
+                    shadowedBy: (method["@_shadowed-by"] as string) || undefined,
                 };
             });
     }
 
     private parseConstructors(constructors: Record<string, unknown>[]): RawConstructor[] {
-        if (!constructors || !Array.isArray(constructors)) {
-            return [];
-        }
+        if (!constructors || !Array.isArray(constructors)) return [];
         return constructors
-            .filter((ctor) => this.isIntrospectable(ctor))
+            .filter((c) => c["@_introspectable"] !== "0")
             .map((ctor) => {
                 const returnValue = ctor["return-value"] as Record<string, unknown> | undefined;
-                const shadows = ctor["@_shadows"] as string | undefined;
-                const shadowedBy = ctor["@_shadowed-by"] as string | undefined;
                 return {
                     name: String(ctor["@_name"] ?? ""),
                     cIdentifier: String(ctor["@_c:identifier"] ?? ""),
                     returnType: this.parseReturnType(returnValue),
-                    parameters: this.parseParameters(
-                        (ctor.parameters && typeof ctor.parameters === "object" && ctor.parameters !== null
-                            ? ctor.parameters
-                            : {}) as Record<string, unknown>,
-                    ),
+                    parameters: this.parseParameters(this.extractParametersNode(ctor)),
                     throws: ctor["@_throws"] === "1",
                     doc: extractDoc(ctor),
                     returnDoc: returnValue ? extractDoc(returnValue) : undefined,
-                    shadows: shadows || undefined,
-                    shadowedBy: shadowedBy || undefined,
+                    shadows: (ctor["@_shadows"] as string) || undefined,
+                    shadowedBy: (ctor["@_shadowed-by"] as string) || undefined,
                 };
             });
     }
 
     private parseFunctions(functions: Record<string, unknown>[]): RawFunction[] {
-        if (!functions || !Array.isArray(functions)) {
-            return [];
-        }
+        if (!functions || !Array.isArray(functions)) return [];
         return functions
-            .filter((func) => this.isIntrospectable(func))
+            .filter((f) => f["@_introspectable"] !== "0")
             .map((func) => {
                 const returnValue = func["return-value"] as Record<string, unknown> | undefined;
-                const shadows = func["@_shadows"] as string | undefined;
-                const shadowedBy = func["@_shadowed-by"] as string | undefined;
                 return {
                     name: String(func["@_name"] ?? ""),
                     cIdentifier: String(func["@_c:identifier"] ?? ""),
                     returnType: this.parseReturnType(returnValue),
-                    parameters: this.parseParameters(
-                        (func.parameters && typeof func.parameters === "object" && func.parameters !== null
-                            ? func.parameters
-                            : {}) as Record<string, unknown>,
-                    ),
+                    parameters: this.parseParameters(this.extractParametersNode(func)),
                     throws: func["@_throws"] === "1",
                     doc: extractDoc(func),
                     returnDoc: returnValue ? extractDoc(returnValue) : undefined,
-                    shadows: shadows || undefined,
-                    shadowedBy: shadowedBy || undefined,
+                    shadows: (func["@_shadows"] as string) || undefined,
+                    shadowedBy: (func["@_shadowed-by"] as string) || undefined,
                 };
             });
     }
 
+    private parseCallbacks(callbacks: Record<string, unknown>[]): RawCallback[] {
+        if (!callbacks || !Array.isArray(callbacks)) return [];
+        return callbacks
+            .filter((cb) => cb["@_introspectable"] !== "0")
+            .map((cb) => ({
+                name: String(cb["@_name"] ?? ""),
+                cType: String(cb["@_c:type"] ?? ""),
+                returnType: this.parseReturnType(cb["return-value"] as Record<string, unknown> | undefined),
+                parameters: this.parseParameters(this.extractParametersNode(cb)),
+                doc: extractDoc(cb),
+            }));
+    }
+
+    private parseRecords(records: Record<string, unknown>[]): RawRecord[] {
+        if (!records || !Array.isArray(records)) return [];
+        return records.map((record) => ({
+            name: String(record["@_name"] ?? ""),
+            cType: String(record["@_c:type"] ?? record["@_glib:type-name"] ?? ""),
+            opaque: record["@_opaque"] === "1",
+            disguised: record["@_disguised"] === "1",
+            glibTypeName: record["@_glib:type-name"] ? String(record["@_glib:type-name"]) : undefined,
+            glibGetType: record["@_glib:get-type"] ? String(record["@_glib:get-type"]) : undefined,
+            isGtypeStructFor: record["@_glib:is-gtype-struct-for"]
+                ? String(record["@_glib:is-gtype-struct-for"])
+                : undefined,
+            copyFunction: record["@_copy-function"] ? String(record["@_copy-function"]) : undefined,
+            freeFunction: record["@_free-function"] ? String(record["@_free-function"]) : undefined,
+            fields: this.parseFields(ensureArray(record.field)),
+            methods: this.parseMethods(ensureArray(record.method)),
+            constructors: this.parseConstructors(ensureArray(record._constructor)),
+            functions: this.parseFunctions(ensureArray(record.function)),
+            doc: extractDoc(record),
+        }));
+    }
+
+    private parseEnumerations(enumerations: Record<string, unknown>[]): RawEnumeration[] {
+        if (!enumerations || !Array.isArray(enumerations)) return [];
+        return enumerations.map((enumeration) => ({
+            name: String(enumeration["@_name"] ?? ""),
+            cType: String(enumeration["@_c:type"] ?? ""),
+            members: this.parseEnumerationMembers(ensureArray(enumeration.member)),
+            glibGetType:
+                typeof enumeration["@_glib:get-type"] === "string" ? enumeration["@_glib:get-type"] : undefined,
+            doc: extractDoc(enumeration),
+        }));
+    }
+
+    private parseEnumerationMembers(members: Record<string, unknown>[]): RawEnumerationMember[] {
+        if (!members || !Array.isArray(members)) return [];
+        return members.map((member) => ({
+            name: String(member["@_name"] ?? ""),
+            value: String(member["@_value"] ?? ""),
+            cIdentifier: String(member["@_c:identifier"] ?? ""),
+            doc: extractDoc(member),
+        }));
+    }
+
+    private parseConstants(constants: Record<string, unknown>[]): RawConstant[] {
+        if (!constants || !Array.isArray(constants)) return [];
+        return constants.map((constant) => ({
+            name: String(constant["@_name"] ?? ""),
+            cType: String(constant["@_c:type"] ?? ""),
+            value: String(constant["@_value"] ?? ""),
+            type: this.parseType((constant.type ?? constant.array) as Record<string, unknown> | undefined),
+            doc: extractDoc(constant),
+        }));
+    }
+
+    private parseAliases(aliases: Record<string, unknown>[]): RawAlias[] {
+        if (!aliases || !Array.isArray(aliases)) return [];
+        return aliases.map((alias) => ({
+            name: String(alias["@_name"] ?? ""),
+            cType: String(alias["@_c:type"] ?? ""),
+            targetType: this.parseType(alias.type as Record<string, unknown> | undefined),
+            doc: extractDoc(alias),
+        }));
+    }
+
+    private parseProperties(properties: Record<string, unknown>[]): RawProperty[] {
+        if (!properties || !Array.isArray(properties)) return [];
+        return properties.map((prop) => {
+            let getter = prop["@_getter"] ? String(prop["@_getter"]) : undefined;
+            let setter = prop["@_setter"] ? String(prop["@_setter"]) : undefined;
+
+            const attributes = prop.attribute as Record<string, unknown>[] | Record<string, unknown> | undefined;
+            if (attributes) {
+                const attrList = Array.isArray(attributes) ? attributes : [attributes];
+                for (const attr of attrList) {
+                    if (attr["@_name"] === "org.gtk.Property.get" && attr["@_value"]) {
+                        getter = String(attr["@_value"]);
+                    } else if (attr["@_name"] === "org.gtk.Property.set" && attr["@_value"]) {
+                        setter = String(attr["@_value"]);
+                    }
+                }
+            }
+
+            return {
+                name: String(prop["@_name"] ?? ""),
+                type: this.parseType((prop.type ?? prop.array) as Record<string, unknown> | undefined),
+                readable: prop["@_readable"] !== "0",
+                writable: prop["@_writable"] === "1",
+                constructOnly: prop["@_construct-only"] === "1",
+                defaultValueRaw: prop["@_default-value"] !== undefined ? String(prop["@_default-value"]) : undefined,
+                getter,
+                setter,
+                doc: extractDoc(prop),
+            };
+        });
+    }
+
+    private parseSignals(signals: Record<string, unknown>[]): RawSignal[] {
+        if (!signals || !Array.isArray(signals)) return [];
+        return signals.map((signal) => {
+            const whenValue = String(signal["@_when"] ?? "last");
+            const validWhen = whenValue === "first" || whenValue === "last" || whenValue === "cleanup";
+            return {
+                name: String(signal["@_name"] ?? ""),
+                when: validWhen ? (whenValue as "first" | "last" | "cleanup") : "last",
+                returnType: signal["return-value"]
+                    ? this.parseReturnType(signal["return-value"] as Record<string, unknown>)
+                    : undefined,
+                parameters:
+                    signal.parameters && typeof signal.parameters === "object" && signal.parameters !== null
+                        ? this.parseParameters(signal.parameters as Record<string, unknown>)
+                        : [],
+                doc: extractDoc(signal),
+            };
+        });
+    }
+
+    private parseFields(fields: Record<string, unknown>[]): RawField[] {
+        if (!fields || !Array.isArray(fields)) return [];
+        return fields
+            .filter((field) => field.callback === undefined)
+            .map((field) => ({
+                name: String(field["@_name"] ?? ""),
+                type: this.parseType((field.type ?? field.array) as Record<string, unknown> | undefined),
+                writable: field["@_writable"] === "1",
+                readable: field["@_readable"] !== "0",
+                private: field["@_private"] === "1",
+                doc: extractDoc(field),
+            }));
+    }
+
+    private extractParametersNode(node: Record<string, unknown>): Record<string, unknown> {
+        return node.parameters && typeof node.parameters === "object" && node.parameters !== null
+            ? (node.parameters as Record<string, unknown>)
+            : {};
+    }
+
     private parseParameters(parametersNode: Record<string, unknown>): RawParameter[] {
-        if (!parametersNode?.parameter) {
-            return [];
-        }
-
+        if (!parametersNode?.parameter) return [];
         const params = Array.isArray(parametersNode.parameter) ? parametersNode.parameter : [parametersNode.parameter];
-
         return params.map((param: Record<string, unknown>) => this.parseSingleParameter(param));
     }
 
     private parseInstanceParameter(parametersNode: Record<string, unknown>): RawParameter | undefined {
         const instanceParam = parametersNode?.["instance-parameter"] as Record<string, unknown> | undefined;
-        if (!instanceParam) {
-            return undefined;
-        }
+        if (!instanceParam) return undefined;
         return this.parseSingleParameter(instanceParam);
     }
 
@@ -356,9 +466,7 @@ export class RawGirParser {
     }
 
     private parseReturnType(returnValue: Record<string, unknown> | undefined): RawType {
-        if (!returnValue) {
-            return { name: "void" };
-        }
+        if (!returnValue) return { name: "void" };
         const type = this.parseType((returnValue.type ?? returnValue.array) as Record<string, unknown> | undefined);
         const transferOwnership = returnValue["@_transfer-ownership"] as string | undefined;
         if (transferOwnership === "none" || transferOwnership === "full" || transferOwnership === "container") {
@@ -371,21 +479,15 @@ export class RawGirParser {
     }
 
     private parseType(typeNode: Record<string, unknown> | undefined): RawType {
-        if (!typeNode) {
-            return { name: "void" };
-        }
+        if (!typeNode) return { name: "void" };
 
         const typeName = typeNode["@_name"] ? String(typeNode["@_name"]) : undefined;
         const cType = typeNode["@_c:type"] ? String(typeNode["@_c:type"]) : undefined;
 
         const containerResult = this.parseGLibContainerType(typeName, typeNode, cType);
-        if (containerResult) {
-            return containerResult;
-        }
+        if (containerResult) return containerResult;
 
-        if (typeName) {
-            return { name: typeName, cType };
-        }
+        if (typeName) return { name: typeName, cType };
 
         const isArrayNode =
             typeNode.type ||
@@ -394,17 +496,14 @@ export class RawGirParser {
             typeNode["@_length"] !== undefined;
 
         if (isArrayNode) {
-            const lengthAttr = typeNode["@_length"];
-            const zeroTerminatedAttr = typeNode["@_zero-terminated"];
-            const fixedSizeAttr = typeNode["@_fixed-size"];
-
             return {
                 name: "array",
                 isArray: true,
                 elementType: typeNode.type ? this.parseType(typeNode.type as Record<string, unknown>) : undefined,
-                sizeParamIndex: lengthAttr !== undefined ? Number(lengthAttr) : undefined,
-                zeroTerminated: zeroTerminatedAttr !== undefined ? zeroTerminatedAttr !== "0" : undefined,
-                fixedSize: fixedSizeAttr !== undefined ? Number(fixedSizeAttr) : undefined,
+                sizeParamIndex: typeNode["@_length"] !== undefined ? Number(typeNode["@_length"]) : undefined,
+                zeroTerminated:
+                    typeNode["@_zero-terminated"] !== undefined ? typeNode["@_zero-terminated"] !== "0" : undefined,
+                fixedSize: typeNode["@_fixed-size"] !== undefined ? Number(typeNode["@_fixed-size"]) : undefined,
             };
         }
 
@@ -488,159 +587,5 @@ export class RawGirParser {
         }
 
         return null;
-    }
-
-    private parseProperties(properties: Record<string, unknown>[]): RawProperty[] {
-        if (!properties || !Array.isArray(properties)) {
-            return [];
-        }
-        return properties.map((prop) => {
-            let getter = prop["@_getter"] ? String(prop["@_getter"]) : undefined;
-            let setter = prop["@_setter"] ? String(prop["@_setter"]) : undefined;
-
-            const attributes = prop.attribute as Record<string, unknown>[] | Record<string, unknown> | undefined;
-            if (attributes) {
-                const attrList = Array.isArray(attributes) ? attributes : [attributes];
-                for (const attr of attrList) {
-                    const attrName = attr["@_name"];
-                    const attrValue = attr["@_value"];
-                    if (attrName === "org.gtk.Property.get" && attrValue) {
-                        getter = String(attrValue);
-                    } else if (attrName === "org.gtk.Property.set" && attrValue) {
-                        setter = String(attrValue);
-                    }
-                }
-            }
-
-            return {
-                name: String(prop["@_name"] ?? ""),
-                type: this.parseType((prop.type ?? prop.array) as Record<string, unknown> | undefined),
-                readable: prop["@_readable"] !== "0",
-                writable: prop["@_writable"] === "1",
-                constructOnly: prop["@_construct-only"] === "1",
-                defaultValueRaw: prop["@_default-value"] !== undefined ? String(prop["@_default-value"]) : undefined,
-                getter,
-                setter,
-                doc: extractDoc(prop),
-            };
-        });
-    }
-
-    private parseSignals(signals: Record<string, unknown>[]): RawSignal[] {
-        if (!signals || !Array.isArray(signals)) {
-            return [];
-        }
-        return signals.map((signal) => {
-            const whenValue = String(signal["@_when"] ?? "last");
-            const validWhen = whenValue === "first" || whenValue === "last" || whenValue === "cleanup";
-            return {
-                name: String(signal["@_name"] ?? ""),
-                when: validWhen ? (whenValue as "first" | "last" | "cleanup") : "last",
-                returnType: signal["return-value"]
-                    ? this.parseReturnType(signal["return-value"] as Record<string, unknown>)
-                    : undefined,
-                parameters:
-                    signal.parameters && typeof signal.parameters === "object" && signal.parameters !== null
-                        ? this.parseParameters(signal.parameters as Record<string, unknown>)
-                        : [],
-                doc: extractDoc(signal),
-            };
-        });
-    }
-
-    private parseRecords(records: Record<string, unknown>[]): RawRecord[] {
-        if (!records || !Array.isArray(records)) {
-            return [];
-        }
-        return records.map((record) => ({
-            name: String(record["@_name"] ?? ""),
-            cType: String(record["@_c:type"] ?? record["@_glib:type-name"] ?? ""),
-            opaque: record["@_opaque"] === "1",
-            disguised: record["@_disguised"] === "1",
-            glibTypeName: record["@_glib:type-name"] ? String(record["@_glib:type-name"]) : undefined,
-            glibGetType: record["@_glib:get-type"] ? String(record["@_glib:get-type"]) : undefined,
-            isGtypeStructFor: record["@_glib:is-gtype-struct-for"]
-                ? String(record["@_glib:is-gtype-struct-for"])
-                : undefined,
-            copyFunction: record["@_copy-function"] ? String(record["@_copy-function"]) : undefined,
-            freeFunction: record["@_free-function"] ? String(record["@_free-function"]) : undefined,
-            fields: this.parseFields(ensureArray(record.field)),
-            methods: this.parseMethods(ensureArray(record.method)),
-            constructors: this.parseConstructors(ensureArray(record._constructor)),
-            functions: this.parseFunctions(ensureArray(record.function)),
-            doc: extractDoc(record),
-        }));
-    }
-
-    private parseFields(fields: Record<string, unknown>[]): RawField[] {
-        if (!fields || !Array.isArray(fields)) {
-            return [];
-        }
-        return fields
-            .filter((field) => {
-                const hasCallback = field.callback !== undefined;
-                return !hasCallback;
-            })
-            .map((field) => ({
-                name: String(field["@_name"] ?? ""),
-                type: this.parseType((field.type ?? field.array) as Record<string, unknown> | undefined),
-                writable: field["@_writable"] === "1",
-                readable: field["@_readable"] !== "0",
-                private: field["@_private"] === "1",
-                doc: extractDoc(field),
-            }));
-    }
-
-    private parseEnumerations(enumerations: Record<string, unknown>[]): RawEnumeration[] {
-        if (!enumerations || !Array.isArray(enumerations)) {
-            return [];
-        }
-        return enumerations.map((enumeration) => {
-            const glibGetType = enumeration["@_glib:get-type"];
-            return {
-                name: String(enumeration["@_name"] ?? ""),
-                cType: String(enumeration["@_c:type"] ?? ""),
-                members: this.parseEnumerationMembers(ensureArray(enumeration.member)),
-                glibGetType: typeof glibGetType === "string" ? glibGetType : undefined,
-                doc: extractDoc(enumeration),
-            };
-        });
-    }
-
-    private parseEnumerationMembers(members: Record<string, unknown>[]): RawEnumerationMember[] {
-        if (!members || !Array.isArray(members)) {
-            return [];
-        }
-        return members.map((member) => ({
-            name: String(member["@_name"] ?? ""),
-            value: String(member["@_value"] ?? ""),
-            cIdentifier: String(member["@_c:identifier"] ?? ""),
-            doc: extractDoc(member),
-        }));
-    }
-
-    private parseConstants(constants: Record<string, unknown>[]): RawConstant[] {
-        if (!constants || !Array.isArray(constants)) {
-            return [];
-        }
-        return constants.map((constant) => ({
-            name: String(constant["@_name"] ?? ""),
-            cType: String(constant["@_c:type"] ?? ""),
-            value: String(constant["@_value"] ?? ""),
-            type: this.parseType((constant.type ?? constant.array) as Record<string, unknown> | undefined),
-            doc: extractDoc(constant),
-        }));
-    }
-
-    private parseAliases(aliases: Record<string, unknown>[]): RawAlias[] {
-        if (!aliases || !Array.isArray(aliases)) {
-            return [];
-        }
-        return aliases.map((alias) => ({
-            name: String(alias["@_name"] ?? ""),
-            cType: String(alias["@_c:type"] ?? ""),
-            targetType: this.parseType(alias.type as Record<string, unknown> | undefined),
-            doc: extractDoc(alias),
-        }));
     }
 }

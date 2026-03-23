@@ -48,6 +48,11 @@ export const INTRINSIC_TYPES = new Set([
     "double",
     "size_t",
     "ssize_t",
+    "time_t",
+    "pid_t",
+    "uid_t",
+    "int32",
+    "long double",
 ]);
 
 /**

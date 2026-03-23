@@ -72,7 +72,6 @@ Run codegen with: `turbo codegen`
 - Run specific package lint: `turbo lint --filter<package-name>`
 - Run typecheck: `pnpm typecheck` (at root level)
 - Run specific package typecheck: `turbo typecheck --filter=<package-name>`
-- Run knip: `pnpm knip` (at root level)
 - **Autofix linter issues:** If linter issues are autofixable, use `pnpm biome check --write` instead of fixing them manually
 
 **CRITICAL:** Any GTK/GLib warning or error in test output (e.g., `Gtk-CRITICAL`, `GLib-GObject-WARNING`, `Adwaita-CRITICAL`) must be treated as a critical issue and fixed immediately, even if tests pass.
