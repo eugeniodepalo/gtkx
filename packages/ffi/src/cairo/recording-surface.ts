@@ -8,35 +8,43 @@ export class RecordingSurface extends Surface {
     static override readonly glibTypeName: string = "CairoSurface";
 
     constructor(content: Content, extents?: { x: number; y: number; width: number; height: number }) {
-        super();
         if (extents) {
             const rect = alloc(32, "cairo_rectangle_t", LIB);
             write(rect, DOUBLE_TYPE, 0, extents.x);
             write(rect, DOUBLE_TYPE, 8, extents.y);
             write(rect, DOUBLE_TYPE, 16, extents.width);
             write(rect, DOUBLE_TYPE, 24, extents.height);
-            this.handle = call(
-                LIB,
-                "cairo_recording_surface_create",
-                [
-                    { type: INT_TYPE, value: content },
-                    {
-                        type: { type: "boxed", innerType: "cairo_rectangle_t", library: LIB, ownership: "borrowed" },
-                        value: rect,
-                    },
-                ],
-                SURFACE_T,
-            ) as NativeHandle;
+            super(
+                call(
+                    LIB,
+                    "cairo_recording_surface_create",
+                    [
+                        { type: INT_TYPE, value: content },
+                        {
+                            type: {
+                                type: "boxed",
+                                innerType: "cairo_rectangle_t",
+                                library: LIB,
+                                ownership: "borrowed",
+                            },
+                            value: rect,
+                        },
+                    ],
+                    SURFACE_T,
+                ) as NativeHandle,
+            );
         } else {
-            this.handle = call(
-                LIB,
-                "cairo_recording_surface_create",
-                [
-                    { type: INT_TYPE, value: content },
-                    { type: { type: "uint64" }, value: 0 },
-                ],
-                SURFACE_T,
-            ) as NativeHandle;
+            super(
+                call(
+                    LIB,
+                    "cairo_recording_surface_create",
+                    [
+                        { type: INT_TYPE, value: content },
+                        { type: { type: "uint64" }, value: 0 },
+                    ],
+                    SURFACE_T,
+                ) as NativeHandle,
+            );
         }
     }
 

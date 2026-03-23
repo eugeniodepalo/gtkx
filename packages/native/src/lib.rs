@@ -66,6 +66,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("write", module::write)?;
     cx.export_function("alloc", module::alloc)?;
     cx.export_function("getNativeId", module::get_native_id)?;
+    cx.export_function("isNativeHandle", module::is_native_handle)?;
     cx.export_function("freeze", module::freeze)?;
     cx.export_function("unfreeze", module::unfreeze)?;
     Ok(())

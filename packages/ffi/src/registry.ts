@@ -169,8 +169,7 @@ export function getNativeObject<
             }
         }
 
-        const instance = Object.create(targetType.prototype) as NativeObject;
-        instance.handle = handle;
+        const instance = new targetType(handle);
 
         if (isIdentityType) {
             registerNativeObject(instance);
@@ -184,20 +183,17 @@ export function getNativeObject<
         return existing as Result;
     }
 
-    const typeInstance = Object.create(TypeInstance.prototype) as TypeInstance;
-    typeInstance.handle = handle;
+    const typeInstance = new TypeInstance(handle);
     const runtimeTypeName = typeNameFromInstance(typeInstance);
 
     if (targetType && targetType.objectType === "interface") {
         const cls = findNativeClass(runtimeTypeName, false);
         if (cls) {
-            const instance = Object.create(cls.prototype) as NativeObject;
-            instance.handle = handle;
+            const instance = new cls(handle);
             registerNativeObject(instance);
             return instance as Result;
         }
-        const instance = Object.create(targetType.prototype) as NativeObject;
-        instance.handle = handle;
+        const instance = new targetType(handle);
         registerNativeObject(instance);
         return instance as Result;
     }
@@ -208,8 +204,7 @@ export function getNativeObject<
         throw new Error(`Expected registered GLib type, got '${runtimeTypeName}'`);
     }
 
-    const instance = Object.create(cls.prototype) as NativeObject;
-    instance.handle = handle;
+    const instance = new cls(handle);
     registerNativeObject(instance);
     return instance as Result;
 }

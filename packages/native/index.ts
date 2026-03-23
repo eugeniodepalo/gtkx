@@ -137,6 +137,10 @@ export function getNativeId(handle: NativeHandle): number {
     return native.getNativeId(handle);
 }
 
+export function isNativeHandle(value: unknown): value is NativeHandle {
+    return native.isNativeHandle(value);
+}
+
 export function freeze(): void {
     native.freeze();
 }

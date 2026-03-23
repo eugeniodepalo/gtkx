@@ -1250,13 +1250,7 @@ class ContextImpl extends Context {
     static override readonly glibTypeName: string = "CairoContext";
 
     constructor(surface: Surface) {
-        super();
-        this.handle = call(
-            LIB,
-            "cairo_create",
-            [{ type: SURFACE_T_NONE, value: surface.handle }],
-            CAIRO_T,
-        ) as NativeHandle;
+        super(call(LIB, "cairo_create", [{ type: SURFACE_T_NONE, value: surface.handle }], CAIRO_T) as NativeHandle);
     }
 }
 

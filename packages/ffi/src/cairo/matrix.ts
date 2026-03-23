@@ -35,8 +35,7 @@ class MatrixImpl extends Matrix {
     constructor();
     constructor(xx: number, yx: number, xy: number, yy: number, x0: number, y0: number);
     constructor(xx?: number, yx?: number, xy?: number, yy?: number, x0?: number, y0?: number) {
-        super();
-        this.handle = alloc(48, "cairo_matrix_t", LIB);
+        super(alloc(48, "cairo_matrix_t", LIB));
         if (xx === undefined) {
             call(LIB, "cairo_matrix_init_identity", [{ type: MATRIX_T, value: this.handle }], { type: "void" });
         } else {

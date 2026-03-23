@@ -13,13 +13,14 @@ export enum ScriptMode {
 
 export class ScriptDevice extends Device {
     constructor(filename: string) {
-        super();
-        this.handle = call(
-            LIB,
-            "cairo_script_create",
-            [{ type: { type: "string", ownership: "full" }, value: filename }],
-            DEVICE_T_FULL,
-        ) as NativeHandle;
+        super(
+            call(
+                LIB,
+                "cairo_script_create",
+                [{ type: { type: "string", ownership: "full" }, value: filename }],
+                DEVICE_T_FULL,
+            ) as NativeHandle,
+        );
     }
 
     setMode(mode: ScriptMode): void {

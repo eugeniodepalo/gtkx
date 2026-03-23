@@ -188,6 +188,7 @@ export class RecordGenerator {
         );
 
         if (mainConstructor) {
+            this.ctx.usesIsNativeHandle = true;
             const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
             const args = this.methodBody.buildCallArgumentsArray(mainConstructor.parameters);
             const glibTypeName = record.glibTypeName ?? record.cType;
@@ -195,8 +196,13 @@ export class RecordGenerator {
 
             if (filteredParams.length === 0) {
                 classDecl.addConstructor({
-                    docs: buildJsDocStructure(mainConstructor.doc, this.options.namespace),
-                    statements: this.writeConstructorWithCall(
+                    overloads: [
+                        { parameters: [{ name: "handle", type: "NativeHandle" }] },
+                        { docs: buildJsDocStructure(mainConstructor.doc, this.options.namespace) },
+                    ],
+                    parameters: [{ name: "handle", type: "NativeHandle", hasQuestionToken: true }],
+                    statements: this.writeConstructorWithCallOverloaded(
+                        "handle",
                         mainConstructor,
                         args,
                         glibTypeName,
@@ -207,10 +213,21 @@ export class RecordGenerator {
                 });
             } else {
                 const params = this.methodBody.buildParameterList(mainConstructor.parameters);
+                const firstParam = params[0]!;
+                const baseType = firstParam.type.includes("=>") ? `(${firstParam.type})` : firstParam.type;
+                const implParams = params.map((p, i) =>
+                    i === 0
+                        ? { ...p, type: `${baseType} | NativeHandle`, hasQuestionToken: p.hasQuestionToken }
+                        : { ...p, hasQuestionToken: true },
+                );
                 classDecl.addConstructor({
-                    docs: buildJsDocStructure(mainConstructor.doc, this.options.namespace),
-                    parameters: params,
-                    statements: this.writeConstructorWithCall(
+                    overloads: [
+                        { parameters: [{ name: "handle", type: "NativeHandle" }] },
+                        { parameters: params, docs: buildJsDocStructure(mainConstructor.doc, this.options.namespace) },
+                    ],
+                    parameters: implParams,
+                    statements: this.writeConstructorWithCallOverloaded(
+                        firstParam.name,
                         mainConstructor,
                         args,
                         glibTypeName,
@@ -238,6 +255,7 @@ export class RecordGenerator {
         } else {
             const initFields = this.fieldBuilder.getInitializableFields(record.fields);
             if (record.fields.length > 0) {
+                this.ctx.usesIsNativeHandle = true;
                 const structSize = this.fieldBuilder.calculateStructSize(record.fields);
                 this.ctx.usesAlloc = true;
 
@@ -248,26 +266,75 @@ export class RecordGenerator {
                 if (initFields.length > 0) {
                     this.ctx.usesWrite = true;
                     classDecl.addConstructor({
-                        parameters: [{ name: "init", type: `${recordName}Init`, initializer: "{}" }],
-                        statements: this.writeConstructorWithAlloc(allocFn, record.fields),
+                        overloads: [
+                            { parameters: [{ name: "handle", type: "NativeHandle" }] },
+                            { parameters: [{ name: "init", type: `${recordName}Init`, hasQuestionToken: true }] },
+                        ],
+                        parameters: [{ name: "init", type: `${recordName}Init | NativeHandle`, initializer: "{}" }],
+                        statements: this.writeConstructorWithAllocOverloaded(allocFn, record.fields),
                     });
                 } else {
                     classDecl.addConstructor({
+                        overloads: [{ parameters: [{ name: "handle", type: "NativeHandle" }] }, {}],
+                        parameters: [{ name: "handle", type: "NativeHandle", hasQuestionToken: true }],
                         statements: (writer) => {
-                            writer.writeLine("super();");
-                            writer.writeLine(`this.handle = ${allocFn} as NativeHandle;`);
+                            writer.writeLine("if (isNativeHandle(handle)) {");
+                            writer.indent(() => {
+                                writer.writeLine("super(handle);");
+                            });
+                            writer.writeLine("} else {");
+                            writer.indent(() => {
+                                writer.writeLine(`super(${allocFn} as NativeHandle);`);
+                            });
+                            writer.writeLine("}");
                         },
                     });
                 }
-            } else {
-                classDecl.addConstructor({
-                    statements: ["super();", "this.handle = null as unknown as NativeHandle;"],
-                });
             }
         }
     }
 
-    private writeConstructorWithCall(
+    private writeCallExpression(
+        writer: Parameters<WriterFunction>[0],
+        mainConstructor: GirConstructor,
+        args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
+        glibTypeName: string | undefined,
+        glibGetType: string | undefined,
+        copyFunction?: string,
+        freeFunction?: string,
+    ): void {
+        const ownership = mainConstructor.returnType.transferOwnership === "full" ? "full" : "borrowed";
+
+        writer.write("const __handle = call(");
+        writer.newLine();
+        writer.indent(() => {
+            writer.writeLine(`"${this.options.sharedLibrary}",`);
+            writer.writeLine(`"${mainConstructor.cIdentifier}",`);
+            writer.writeLine("[");
+            writer.indent(() => {
+                for (const arg of args) {
+                    writer.write("{ type: ");
+                    this.methodBody.getFfiTypeWriter().toWriter(arg.type)(writer);
+                    writer.writeLine(`, value: ${arg.value}, optional: ${arg.optional ?? false} },`);
+                }
+            });
+            writer.writeLine("],");
+            if (copyFunction && freeFunction) {
+                writer.writeLine(
+                    `{ type: "fundamental", ownership: "${ownership}", library: "${this.options.sharedLibrary}", refFn: "${copyFunction}", unrefFn: "${freeFunction}" }`,
+                );
+            } else {
+                const getTypeFnPart = glibGetType ? `, getTypeFn: "${glibGetType}"` : "";
+                writer.writeLine(
+                    `{ type: "boxed", ownership: "${ownership}", innerType: "${glibTypeName}", library: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
+                );
+            }
+        });
+        writer.writeLine(") as NativeHandle;");
+    }
+
+    private writeConstructorWithCallOverloaded(
+        firstParamName: string,
         mainConstructor: GirConstructor,
         args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
         glibTypeName: string | undefined,
@@ -275,44 +342,56 @@ export class RecordGenerator {
         copyFunction?: string,
         freeFunction?: string,
     ): WriterFunction {
-        const ownership = mainConstructor.returnType.transferOwnership === "full" ? "full" : "borrowed";
+        const params = this.methodBody.buildParameterList(mainConstructor.parameters);
+        const forceOptionalNames = new Set(
+            params
+                .slice(1)
+                .filter((p) => !p.hasQuestionToken)
+                .map((p) => p.name),
+        );
+        for (const arg of args) {
+            for (const name of forceOptionalNames) {
+                if (arg.value.startsWith(`${name}.`)) {
+                    arg.value = arg.value.replace(`${name}.`, `${name}!.`);
+                }
+            }
+        }
 
         return (writer) => {
-            writer.writeLine("super();");
-            writer.write("this.handle = call(");
-            writer.newLine();
+            writer.writeLine(`if (isNativeHandle(${firstParamName})) {`);
             writer.indent(() => {
-                writer.writeLine(`"${this.options.sharedLibrary}",`);
-                writer.writeLine(`"${mainConstructor.cIdentifier}",`);
-                writer.writeLine("[");
-                writer.indent(() => {
-                    for (const arg of args) {
-                        writer.write("{ type: ");
-                        this.methodBody.getFfiTypeWriter().toWriter(arg.type)(writer);
-                        writer.writeLine(`, value: ${arg.value}, optional: ${arg.optional ?? false} },`);
-                    }
-                });
-                writer.writeLine("],");
-                if (copyFunction && freeFunction) {
-                    writer.writeLine(
-                        `{ type: "fundamental", ownership: "${ownership}", library: "${this.options.sharedLibrary}", refFn: "${copyFunction}", unrefFn: "${freeFunction}" }`,
-                    );
-                } else {
-                    const getTypeFnPart = glibGetType ? `, getTypeFn: "${glibGetType}"` : "";
-                    writer.writeLine(
-                        `{ type: "boxed", ownership: "${ownership}", innerType: "${glibTypeName}", library: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
-                    );
-                }
+                writer.writeLine(`super(${firstParamName});`);
             });
-            writer.writeLine(") as NativeHandle;");
+            writer.writeLine("} else {");
+            writer.indent(() => {
+                this.writeCallExpression(
+                    writer,
+                    mainConstructor,
+                    args,
+                    glibTypeName,
+                    glibGetType,
+                    copyFunction,
+                    freeFunction,
+                );
+                writer.writeLine("super(__handle);");
+            });
+            writer.writeLine("}");
         };
     }
 
-    private writeConstructorWithAlloc(allocFn: string, fields: readonly GirField[]): WriterFunction {
+    private writeConstructorWithAllocOverloaded(allocFn: string, fields: readonly GirField[]): WriterFunction {
         return (writer) => {
-            writer.writeLine("super();");
-            writer.writeLine(`this.handle = ${allocFn} as NativeHandle;`);
-            this.fieldBuilder.writeFieldWrites(fields)(writer);
+            writer.writeLine("if (isNativeHandle(init)) {");
+            writer.indent(() => {
+                writer.writeLine("super(init);");
+            });
+            writer.writeLine("} else {");
+            writer.indent(() => {
+                writer.writeLine(`const __handle = ${allocFn} as NativeHandle;`);
+                writer.writeLine("super(__handle);");
+                this.fieldBuilder.writeFieldWrites(fields)(writer);
+            });
+            writer.writeLine("}");
         };
     }
 

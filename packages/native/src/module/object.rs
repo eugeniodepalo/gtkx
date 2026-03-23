@@ -46,3 +46,9 @@ pub fn get_native_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let result = dispatch_request::<GetNativeIdRequest>(&mut cx)?;
     result.downcast_or_throw::<JsNumber, _>(&mut cx)
 }
+
+pub fn is_native_handle(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+    let value = cx.argument::<JsValue>(0)?;
+    let result = value.downcast::<JsBox<NativeHandle>, _>(&mut cx).is_ok();
+    Ok(cx.boolean(result))
+}

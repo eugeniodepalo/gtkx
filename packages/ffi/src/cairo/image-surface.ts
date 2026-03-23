@@ -8,17 +8,18 @@ export class ImageSurface extends Surface {
     static override readonly glibTypeName: string = "CairoSurface";
 
     constructor(format: Format, width: number, height: number) {
-        super();
-        this.handle = call(
-            LIB,
-            "cairo_image_surface_create",
-            [
-                { type: INT_TYPE, value: format },
-                { type: INT_TYPE, value: width },
-                { type: INT_TYPE, value: height },
-            ],
-            SURFACE_T,
-        ) as NativeHandle;
+        super(
+            call(
+                LIB,
+                "cairo_image_surface_create",
+                [
+                    { type: INT_TYPE, value: format },
+                    { type: INT_TYPE, value: width },
+                    { type: INT_TYPE, value: height },
+                ],
+                SURFACE_T,
+            ) as NativeHandle,
+        );
     }
 
     static createFromPng(filename: string): ImageSurface {

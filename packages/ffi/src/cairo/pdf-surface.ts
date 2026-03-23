@@ -35,17 +35,18 @@ export class PdfSurface extends Surface {
     declare addOutline: (parentId: number, name: string, linkAttribs: string, flags: PdfOutlineFlags) => number;
 
     constructor(filename: string, widthInPoints: number, heightInPoints: number) {
-        super();
-        this.handle = call(
-            LIB,
-            "cairo_pdf_surface_create",
-            [
-                { type: { type: "string", ownership: "full" }, value: filename },
-                { type: DOUBLE_TYPE, value: widthInPoints },
-                { type: DOUBLE_TYPE, value: heightInPoints },
-            ],
-            SURFACE_T,
-        ) as NativeHandle;
+        super(
+            call(
+                LIB,
+                "cairo_pdf_surface_create",
+                [
+                    { type: { type: "string", ownership: "full" }, value: filename },
+                    { type: DOUBLE_TYPE, value: widthInPoints },
+                    { type: DOUBLE_TYPE, value: heightInPoints },
+                ],
+                SURFACE_T,
+            ) as NativeHandle,
+        );
     }
 
     setSize(widthInPoints: number, heightInPoints: number): void {

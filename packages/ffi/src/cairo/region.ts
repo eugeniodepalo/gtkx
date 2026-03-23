@@ -35,16 +35,17 @@ class RegionImpl extends Region {
     constructor();
     constructor(rect: RectangleInt);
     constructor(rect?: RectangleInt) {
-        super();
         if (rect) {
-            this.handle = call(
-                LIB,
-                "cairo_region_create_rectangle",
-                [{ type: RECT_INT_T, value: rect.handle }],
-                REGION_T,
-            ) as NativeHandle;
+            super(
+                call(
+                    LIB,
+                    "cairo_region_create_rectangle",
+                    [{ type: RECT_INT_T, value: rect.handle }],
+                    REGION_T,
+                ) as NativeHandle,
+            );
         } else {
-            this.handle = call(LIB, "cairo_region_create", [], REGION_T) as NativeHandle;
+            super(call(LIB, "cairo_region_create", [], REGION_T) as NativeHandle);
         }
     }
 

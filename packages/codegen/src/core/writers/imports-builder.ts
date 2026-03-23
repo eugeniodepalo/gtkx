@@ -270,23 +270,20 @@ export class ImportsBuilder {
         const imports: string[] = [];
         if (this.ctx.usesArg) imports.push("Arg");
         if (this.ctx.usesCreateRef) imports.push("createRef");
+        if (this.ctx.usesIsNativeHandle) imports.push("isNativeHandle");
         if (this.ctx.usesRef) imports.push("Ref");
         if (this.ctx.usesType) imports.push("Type");
         return imports;
     }
 
     private collectLifecycleImports(): string[] {
-        const imports: string[] = [];
-        if (this.ctx.usesInstantiating) {
-            imports.push("isInstantiating", "setInstantiating");
-        }
-        return imports;
+        return [];
     }
 
     private collectObjectModuleImports(): string[] {
         const imports: string[] = [];
         if (
-            this.ctx.usesInstantiating ||
+            this.ctx.usesIsNativeHandle ||
             this.ctx.usesNativeObject ||
             this.ctx.usesGetNativeObject ||
             this.ctx.usesNativeHandle

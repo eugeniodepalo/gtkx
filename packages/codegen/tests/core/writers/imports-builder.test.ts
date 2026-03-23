@@ -88,16 +88,15 @@ describe("ImportsBuilder", () => {
         });
 
         describe("base imports", () => {
-            it("collects instantiating helpers", () => {
+            it("collects isNativeHandle when usesIsNativeHandle is set", () => {
                 const { ctx, builder } = createTestSetup();
-                ctx.usesInstantiating = true;
+                ctx.usesIsNativeHandle = true;
 
                 const imports = builder.collectImports();
 
-                const baseImport = imports.find(
-                    (i) => i.namedImports?.includes("isInstantiating") && i.namedImports?.includes("setInstantiating"),
-                );
-                expect(baseImport).toBeDefined();
+                const nativeImport = imports.find((i) => i.namedImports?.includes("isNativeHandle"));
+                expect(nativeImport).toBeDefined();
+                expect(nativeImport?.moduleSpecifier).toBe("@gtkx/native");
             });
 
             it("collects NativeObject base class", () => {

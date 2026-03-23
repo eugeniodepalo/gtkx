@@ -41,22 +41,6 @@ type NativeEventMap = {
 export const events = new EventEmitter<NativeEventMap>();
 
 /**
- * Flag indicating if a native object is currently being instantiated.
- *
- * @internal
- */
-export let isInstantiating = false;
-
-/**
- * Sets the instantiation flag.
- *
- * @internal
- */
-export const setInstantiating = (value: boolean): void => {
-    isInstantiating = value;
-};
-
-/**
  * Whether the GTK application runtime is currently running.
  * `true` if {@link start} has been called and {@link stop} has not.
  */

@@ -48,8 +48,8 @@ export class GenerationContext {
     /** Whether the module uses the FFI call function */
     usesCall = false;
 
-    /** Whether the module uses the instantiating flag pattern */
-    usesInstantiating = false;
+    /** Whether the module uses the isNativeHandle type guard */
+    usesIsNativeHandle = false;
 
     /** Whether to add Gio namespace import */
     addGioImport = false;
@@ -138,7 +138,7 @@ export class GenerationContext {
     reset(): void {
         this.usesRef = false;
         this.usesCall = false;
-        this.usesInstantiating = false;
+        this.usesIsNativeHandle = false;
         this.addGioImport = false;
         this.usesType = false;
         this.usesRead = false;

@@ -1,12 +1,6 @@
-/**
- * Constructor Builder
- *
- * Builds constructor and factory method code for classes.
- */
-
 import type { DefaultValue, GirClass, GirConstructor, GirProperty, GirRepository } from "@gtkx/gir";
 import type { ClassDeclaration, CodeBlockWriter, MethodDeclarationStructure, WriterFunction } from "ts-morph";
-import { Scope, StructureKind } from "ts-morph";
+import { StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -25,9 +19,13 @@ type ConstructOnlyPropParam = {
     isNullable: boolean;
 };
 
-/**
- * Builds constructor code for a class.
- */
+type Param = {
+    name: string;
+    type: string;
+    hasQuestionToken?: boolean;
+    initializer?: string;
+};
+
 export class ConstructorBuilder {
     private readonly className: string;
     private readonly methodBody: MethodBodyWriter;
@@ -74,9 +72,7 @@ export class ConstructorBuilder {
         }
     }
 
-    private buildConstructorParameters(
-        ctor: GirConstructor,
-    ): Array<{ name: string; type: string; hasQuestionToken?: boolean; initializer?: string }> {
+    private buildConstructorParameters(ctor: GirConstructor): Param[] {
         const baseParams = this.methodBody.buildParameterList(ctor.parameters);
 
         return baseParams.map((param) => {
@@ -109,15 +105,6 @@ export class ConstructorBuilder {
         this.parentFactoryMethodNames = names;
     }
 
-    /**
-     * Adds constructor to the class and returns factory method structures.
-     * Constructors must be added directly (can't batch with methods).
-     * Factory method structures are returned for batch adding by ClassGenerator.
-     *
-     * @param classDecl - The ts-morph ClassDeclaration to add constructor to
-     * @param hasParent - Whether the class has a parent class
-     * @returns Array of method declaration structures for factory methods
-     */
     addConstructorAndBuildFactoryStructures(
         classDecl: ClassDeclaration,
         hasParent: boolean,
@@ -128,7 +115,7 @@ export class ConstructorBuilder {
         const methodStructures: MethodDeclarationStructure[] = [];
 
         if (mainConstructor && hasParent) {
-            this.addConstructorWithFlag(classDecl, mainConstructor);
+            this.addConstructorWithOverloads(classDecl, mainConstructor);
             for (const ctor of supportedConstructors) {
                 if (ctor !== mainConstructor && !this.conflictsWithParentFactoryMethod(ctor)) {
                     methodStructures.push(this.buildStaticFactoryMethodStructure(ctor));
@@ -142,71 +129,127 @@ export class ConstructorBuilder {
             }
 
             if (hasParent && this.cls.glibGetType && !this.cls.abstract) {
-                this.addGObjectNewConstructor(classDecl, this.cls.glibGetType);
-            } else if (hasParent) {
-                classDecl.addConstructor({
-                    statements: ["super();"],
-                });
-            } else {
-                classDecl.addConstructor({
-                    statements: ["super();", "this.create();"],
-                });
-                methodStructures.push({
-                    kind: StructureKind.Method,
-                    name: "create",
-                    scope: Scope.Protected,
-                    statements: [],
-                });
+                this.addGObjectNewConstructorWithOverloads(classDecl, this.cls.glibGetType);
             }
         }
 
         return methodStructures;
     }
 
-    private addConstructorWithFlag(classDecl: ClassDeclaration, ctor: GirConstructor): void {
-        this.ctx.usesInstantiating = true;
+    private buildOverloads(
+        params: Param[],
+        doc?: string,
+    ): Array<{
+        parameters: Array<{ name: string; type: string; hasQuestionToken?: boolean }>;
+        docs?: ReturnType<typeof buildJsDocStructure>;
+    }> {
+        const handleOverload = {
+            parameters: [{ name: "handle", type: "NativeHandle" }],
+        };
+
+        const typedOverloadParams = params.map((p) => ({
+            name: p.name,
+            type: p.type,
+            hasQuestionToken: p.hasQuestionToken || p.initializer !== undefined,
+        }));
+
+        let seenRequired = false;
+        for (let i = typedOverloadParams.length - 1; i >= 0; i--) {
+            if (!typedOverloadParams[i]!.hasQuestionToken) {
+                seenRequired = true;
+            } else if (seenRequired) {
+                typedOverloadParams[i]!.hasQuestionToken = false;
+            }
+        }
+
+        const typedOverload: { parameters: typeof typedOverloadParams; docs?: ReturnType<typeof buildJsDocStructure> } =
+            {
+                parameters: typedOverloadParams,
+            };
+
+        if (doc) {
+            typedOverload.docs = buildJsDocStructure(doc, this.options.namespace);
+        }
+
+        return [handleOverload, typedOverload];
+    }
+
+    private buildImplementationParams(params: Param[]): Param[] {
+        if (params.length === 0) {
+            return [{ name: "handle", type: "NativeHandle", hasQuestionToken: true }];
+        }
+
+        return params.map((p, i) => {
+            if (i === 0) {
+                const baseType = p.type.includes("=>") ? `(${p.type})` : p.type;
+                return {
+                    name: p.name,
+                    type: `${baseType} | NativeHandle`,
+                    hasQuestionToken: !p.initializer && p.hasQuestionToken,
+                    initializer: p.initializer,
+                };
+            }
+            return {
+                ...p,
+                hasQuestionToken: p.hasQuestionToken || !p.initializer,
+            };
+        });
+    }
+
+    private addConstructorWithOverloads(classDecl: ClassDeclaration, ctor: GirConstructor): void {
+        this.ctx.usesIsNativeHandle = true;
         this.ctx.usesRegisterNativeObject = true;
         const params = this.buildConstructorParameters(ctor);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
         classDecl.addConstructor({
-            parameters: params,
-            docs: buildJsDocStructure(ctor.doc, this.options.namespace),
-            statements: this.writeConstructorWithFlagBody(ctor, ownership),
+            overloads: this.buildOverloads(params, ctor.doc),
+            parameters: this.buildImplementationParams(params),
+            statements: this.writeConstructorBody(ctor, ownership, params),
         });
     }
 
-    private writeConstructorWithFlagBody(ctor: GirConstructor, ownership: string): WriterFunction {
+    private writeConstructorBody(ctor: GirConstructor, ownership: string, params: Param[]): WriterFunction {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
+        const firstParamName = params.length > 0 ? params[0]!.name : "handle";
+
+        const forceOptionalNames = new Set(
+            params
+                .slice(1)
+                .filter((p) => !p.hasQuestionToken && !p.initializer)
+                .map((p) => p.name),
+        );
+        for (const arg of args) {
+            for (const name of forceOptionalNames) {
+                if (arg.value.startsWith(`${name}.`)) {
+                    arg.value = arg.value.replace(`${name}.`, `${name}!.`);
+                }
+            }
+        }
 
         return (writer) => {
-            this.methodBody.writeCallbackWrapperDeclarations(writer, args);
-
-            writer.writeLine("if (!isInstantiating) {");
+            writer.writeLine(`if (isNativeHandle(${firstParamName})) {`);
             writer.indent(() => {
-                writer.writeLine("setInstantiating(true);");
-                writer.writeLine("// @ts-ignore");
-                writer.writeLine("super();");
-                writer.writeLine("setInstantiating(false);");
-                this.writeCConstructorCall(writer, ctor.cIdentifier, args, ownership);
-                writer.writeLine("registerNativeObject(this);");
+                writer.writeLine(`super(${firstParamName});`);
             });
             writer.writeLine("} else {");
             writer.indent(() => {
-                writer.writeLine("// @ts-ignore");
-                writer.writeLine("super();");
+                this.methodBody.writeCallbackWrapperDeclarations(writer, args);
+                this.writeCallToVariable(writer, ctor.cIdentifier, args, ownership);
+                writer.writeLine("super(__handle);");
+                writer.writeLine("registerNativeObject(this);");
             });
             writer.writeLine("}");
         };
     }
 
-    private writeCConstructorCall(
+    private writeCallToVariable(
         writer: CodeBlockWriter,
         cIdentifier: string,
         args: Array<{ type: FfiTypeDescriptor; value: string; optional?: boolean }>,
         ownership: string,
     ): void {
-        writer.write("this.handle = call(");
+        writer.write("const __handle = call(");
         writer.newLine();
         writer.indent(() => {
             writer.writeLine(`"${this.options.sharedLibrary}",`);
@@ -225,7 +268,7 @@ export class ConstructorBuilder {
         writer.writeLine(") as NativeHandle;");
     }
 
-    private writeGObjectNewCall(
+    private writeGObjectNewCallToVariable(
         writer: CodeBlockWriter,
         getTypeFunc: string,
         props: Array<{ girName: string; ffiType: FfiTypeDescriptor; valueExpr: string; guardExpr: string }>,
@@ -259,7 +302,7 @@ export class ConstructorBuilder {
                 writer.writeLine("}");
             }
             writer.writeLine('__args.push({ type: { type: "void" }, value: null, optional: false });');
-            writer.write("this.handle = call(");
+            writer.write("const __handle = call(");
             writer.newLine();
             writer.indent(() => {
                 writer.writeLine(`"${this.options.gobjectLibrary}",`);
@@ -269,7 +312,7 @@ export class ConstructorBuilder {
             });
             writer.writeLine(") as NativeHandle;");
         } else {
-            writer.write("this.handle = call(");
+            writer.write("const __handle = call(");
             writer.newLine();
             writer.indent(() => {
                 writer.writeLine(`"${this.options.gobjectLibrary}",`);
@@ -312,40 +355,43 @@ export class ConstructorBuilder {
         return result;
     }
 
-    private addGObjectNewConstructor(classDecl: ClassDeclaration, glibGetType: string): void {
-        this.ctx.usesInstantiating = true;
+    private addGObjectNewConstructorWithOverloads(classDecl: ClassDeclaration, glibGetType: string): void {
+        this.ctx.usesIsNativeHandle = true;
         this.ctx.usesRegisterNativeObject = true;
 
         const constructOnlyProps = this.collectConstructOnlyProps();
-        const parameters = constructOnlyProps.map((prop) => ({
+        const params: Param[] = constructOnlyProps.map((prop) => ({
             name: prop.paramName,
             type: prop.tsType,
             hasQuestionToken: true,
         }));
 
         classDecl.addConstructor({
-            parameters,
-            statements: this.writeGObjectNewConstructorBody(glibGetType, constructOnlyProps),
+            overloads: this.buildOverloads(params),
+            parameters: this.buildImplementationParams(params),
+            statements: this.writeGObjectNewConstructorBody(glibGetType, constructOnlyProps, params),
         });
     }
 
     private writeGObjectNewConstructorBody(
         getTypeFunc: string,
         constructOnlyProps: ConstructOnlyPropParam[],
+        params: Param[],
     ): WriterFunction {
         if (constructOnlyProps.length > 0) {
             this.ctx.usesArg = true;
         }
 
-        return (writer) => {
-            writer.writeLine("if (!isInstantiating) {");
-            writer.indent(() => {
-                writer.writeLine("setInstantiating(true);");
-                writer.writeLine("// @ts-ignore");
-                writer.writeLine("super();");
-                writer.writeLine("setInstantiating(false);");
+        const firstParamName = params.length > 0 ? params[0]!.name : "handle";
 
-                this.writeGObjectNewCall(
+        return (writer) => {
+            writer.writeLine(`if (isNativeHandle(${firstParamName})) {`);
+            writer.indent(() => {
+                writer.writeLine(`super(${firstParamName});`);
+            });
+            writer.writeLine("} else {");
+            writer.indent(() => {
+                this.writeGObjectNewCallToVariable(
                     writer,
                     getTypeFunc,
                     constructOnlyProps.map((p) => ({
@@ -356,12 +402,8 @@ export class ConstructorBuilder {
                     })),
                 );
 
+                writer.writeLine("super(__handle);");
                 writer.writeLine("registerNativeObject(this);");
-            });
-            writer.writeLine("} else {");
-            writer.indent(() => {
-                writer.writeLine("// @ts-ignore");
-                writer.writeLine("super();");
             });
             writer.writeLine("}");
         };

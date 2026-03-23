@@ -9,7 +9,7 @@ describe("GenerationContext", () => {
 
             expect(ctx.usesRef).toBe(false);
             expect(ctx.usesCall).toBe(false);
-            expect(ctx.usesInstantiating).toBe(false);
+            expect(ctx.usesIsNativeHandle).toBe(false);
             expect(ctx.addGioImport).toBe(false);
             expect(ctx.usesType).toBe(false);
             expect(ctx.usesRead).toBe(false);
@@ -42,11 +42,11 @@ describe("GenerationContext", () => {
 
             ctx.usesRef = true;
             ctx.usesCall = true;
-            ctx.usesInstantiating = true;
+            ctx.usesIsNativeHandle = true;
 
             expect(ctx.usesRef).toBe(true);
             expect(ctx.usesCall).toBe(true);
-            expect(ctx.usesInstantiating).toBe(true);
+            expect(ctx.usesIsNativeHandle).toBe(true);
         });
 
         it("allows setting import flags", () => {
@@ -323,7 +323,7 @@ describe("GenerationContext", () => {
 
             ctx.usesRef = true;
             ctx.usesCall = true;
-            ctx.usesInstantiating = true;
+            ctx.usesIsNativeHandle = true;
             ctx.addGioImport = true;
             ctx.usesType = true;
             ctx.usesRead = true;
@@ -340,7 +340,7 @@ describe("GenerationContext", () => {
 
             expect(ctx.usesRef).toBe(false);
             expect(ctx.usesCall).toBe(false);
-            expect(ctx.usesInstantiating).toBe(false);
+            expect(ctx.usesIsNativeHandle).toBe(false);
             expect(ctx.addGioImport).toBe(false);
             expect(ctx.usesType).toBe(false);
             expect(ctx.usesRead).toBe(false);

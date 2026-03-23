@@ -25,8 +25,7 @@ class FontOptionsImpl extends FontOptions {
     static override readonly glibTypeName: string = "CairoFontOptions";
 
     constructor() {
-        super();
-        this.handle = call(LIB, "cairo_font_options_create", [], FONT_OPTIONS_T_FULL) as NativeHandle;
+        super(call(LIB, "cairo_font_options_create", [], FONT_OPTIONS_T_FULL) as NativeHandle);
     }
 }
 

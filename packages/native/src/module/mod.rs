@@ -15,6 +15,6 @@ pub use alloc::alloc;
 pub use call::call;
 pub use field::{read, write};
 pub use freeze::{freeze, unfreeze};
-pub use object::get_native_id;
+pub use object::{get_native_id, is_native_handle};
 pub use start::start;
 pub use stop::stop;

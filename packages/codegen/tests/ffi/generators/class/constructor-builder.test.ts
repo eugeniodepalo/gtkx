@@ -64,27 +64,25 @@ describe("ConstructorBuilder", () => {
 
             const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, false);
 
-            expect(factoryMethods).toHaveLength(1);
-            expect(factoryMethods[0].name).toBe("create");
+            expect(factoryMethods).toHaveLength(0);
         });
 
-        it("adds simple constructor when no parent", () => {
+        it("generates no constructor when no parent (inherits NativeObject constructor)", () => {
             const { builder, classDecl, sourceFile } = createTestSetup({ constructors: [] });
 
             builder.addConstructorAndBuildFactoryStructures(classDecl, false);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("super()");
-            expect(code).toContain("this.create()");
+            expect(code).not.toContain("constructor");
         });
 
-        it("adds super-only constructor when has parent but no constructors", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup({ constructors: [] });
+        it("generates no constructor when has parent but no constructors and abstract (inherits parent constructor)", () => {
+            const { builder, classDecl, sourceFile } = createTestSetup({ constructors: [], abstract: true });
 
             builder.addConstructorAndBuildFactoryStructures(classDecl, true);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("super()");
+            expect(code).not.toContain("constructor");
         });
 
         it("builds factory methods for non-main constructors when has parent", () => {
@@ -252,7 +250,7 @@ describe("ConstructorBuilder", () => {
     });
 
     describe("context updates", () => {
-        it("sets usesInstantiating flag when main constructor with parent", () => {
+        it("sets usesIsNativeHandle flag when main constructor with parent", () => {
             const { builder, classDecl, ctx } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
@@ -266,7 +264,7 @@ describe("ConstructorBuilder", () => {
 
             builder.addConstructorAndBuildFactoryStructures(classDecl, true);
 
-            expect(ctx.usesInstantiating).toBe(true);
+            expect(ctx.usesIsNativeHandle).toBe(true);
         });
 
         it("sets usesGetNativeObject flag for factory methods", () => {
@@ -406,15 +404,13 @@ describe("ConstructorBuilder", () => {
         });
     });
 
-    describe("protected create method", () => {
-        it("creates protected create method when no parent", () => {
+    describe("root class (no parent)", () => {
+        it("generates no constructor or create method when no parent", () => {
             const { builder, classDecl } = createTestSetup({ constructors: [] });
 
             const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, false);
 
-            const createMethod = factoryMethods.find((m) => m.name === "create");
-            expect(createMethod).toBeDefined();
-            expect(createMethod?.scope).toBeDefined();
+            expect(factoryMethods).toHaveLength(0);
         });
     });
 });

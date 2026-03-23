@@ -7,13 +7,14 @@ export class TeeSurface extends Surface {
     static override readonly glibTypeName: string = "CairoSurface";
 
     constructor(primary: Surface) {
-        super();
-        this.handle = call(
-            LIB,
-            "cairo_tee_surface_create",
-            [{ type: SURFACE_T_NONE, value: primary.handle }],
-            SURFACE_T,
-        ) as NativeHandle;
+        super(
+            call(
+                LIB,
+                "cairo_tee_surface_create",
+                [{ type: SURFACE_T_NONE, value: primary.handle }],
+                SURFACE_T,
+            ) as NativeHandle,
+        );
     }
 
     add(target: Surface): void {

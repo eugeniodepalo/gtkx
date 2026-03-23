@@ -37,18 +37,19 @@ export class LinearPattern extends Pattern {
     static override readonly glibTypeName: string = "CairoPattern";
 
     constructor(x0: number, y0: number, x1: number, y1: number) {
-        super();
-        this.handle = call(
-            LIB,
-            "cairo_pattern_create_linear",
-            [
-                { type: DOUBLE_TYPE, value: x0 },
-                { type: DOUBLE_TYPE, value: y0 },
-                { type: DOUBLE_TYPE, value: x1 },
-                { type: DOUBLE_TYPE, value: y1 },
-            ],
-            PATTERN_T,
-        ) as NativeHandle;
+        super(
+            call(
+                LIB,
+                "cairo_pattern_create_linear",
+                [
+                    { type: DOUBLE_TYPE, value: x0 },
+                    { type: DOUBLE_TYPE, value: y0 },
+                    { type: DOUBLE_TYPE, value: x1 },
+                    { type: DOUBLE_TYPE, value: y1 },
+                ],
+                PATTERN_T,
+            ) as NativeHandle,
+        );
     }
 }
 
@@ -56,20 +57,21 @@ export class RadialPattern extends Pattern {
     static override readonly glibTypeName: string = "CairoPattern";
 
     constructor(cx0: number, cy0: number, radius0: number, cx1: number, cy1: number, radius1: number) {
-        super();
-        this.handle = call(
-            LIB,
-            "cairo_pattern_create_radial",
-            [
-                { type: DOUBLE_TYPE, value: cx0 },
-                { type: DOUBLE_TYPE, value: cy0 },
-                { type: DOUBLE_TYPE, value: radius0 },
-                { type: DOUBLE_TYPE, value: cx1 },
-                { type: DOUBLE_TYPE, value: cy1 },
-                { type: DOUBLE_TYPE, value: radius1 },
-            ],
-            PATTERN_T,
-        ) as NativeHandle;
+        super(
+            call(
+                LIB,
+                "cairo_pattern_create_radial",
+                [
+                    { type: DOUBLE_TYPE, value: cx0 },
+                    { type: DOUBLE_TYPE, value: cy0 },
+                    { type: DOUBLE_TYPE, value: radius0 },
+                    { type: DOUBLE_TYPE, value: cx1 },
+                    { type: DOUBLE_TYPE, value: cy1 },
+                    { type: DOUBLE_TYPE, value: radius1 },
+                ],
+                PATTERN_T,
+            ) as NativeHandle,
+        );
     }
 }
 
@@ -77,13 +79,14 @@ export class SurfacePattern extends Pattern {
     static override readonly glibTypeName: string = "CairoPattern";
 
     constructor(surface: Surface) {
-        super();
-        this.handle = call(
-            LIB,
-            "cairo_pattern_create_for_surface",
-            [{ type: SURFACE_T_NONE, value: surface.handle }],
-            PATTERN_T,
-        ) as NativeHandle;
+        super(
+            call(
+                LIB,
+                "cairo_pattern_create_for_surface",
+                [{ type: SURFACE_T_NONE, value: surface.handle }],
+                PATTERN_T,
+            ) as NativeHandle,
+        );
     }
 }
 
@@ -91,30 +94,33 @@ export class SolidPattern extends Pattern {
     static override readonly glibTypeName: string = "CairoPattern";
 
     constructor(r: number, g: number, b: number, a?: number) {
-        super();
         if (a === undefined) {
-            this.handle = call(
-                LIB,
-                "cairo_pattern_create_rgb",
-                [
-                    { type: DOUBLE_TYPE, value: r },
-                    { type: DOUBLE_TYPE, value: g },
-                    { type: DOUBLE_TYPE, value: b },
-                ],
-                PATTERN_T,
-            ) as NativeHandle;
+            super(
+                call(
+                    LIB,
+                    "cairo_pattern_create_rgb",
+                    [
+                        { type: DOUBLE_TYPE, value: r },
+                        { type: DOUBLE_TYPE, value: g },
+                        { type: DOUBLE_TYPE, value: b },
+                    ],
+                    PATTERN_T,
+                ) as NativeHandle,
+            );
         } else {
-            this.handle = call(
-                LIB,
-                "cairo_pattern_create_rgba",
-                [
-                    { type: DOUBLE_TYPE, value: r },
-                    { type: DOUBLE_TYPE, value: g },
-                    { type: DOUBLE_TYPE, value: b },
-                    { type: DOUBLE_TYPE, value: a },
-                ],
-                PATTERN_T,
-            ) as NativeHandle;
+            super(
+                call(
+                    LIB,
+                    "cairo_pattern_create_rgba",
+                    [
+                        { type: DOUBLE_TYPE, value: r },
+                        { type: DOUBLE_TYPE, value: g },
+                        { type: DOUBLE_TYPE, value: b },
+                        { type: DOUBLE_TYPE, value: a },
+                    ],
+                    PATTERN_T,
+                ) as NativeHandle,
+            );
         }
     }
 }
@@ -246,8 +252,7 @@ export class MeshPattern extends Pattern {
     static override readonly glibTypeName: string = "CairoPattern";
 
     constructor() {
-        super();
-        this.handle = call(LIB, "cairo_pattern_create_mesh", [], PATTERN_T) as NativeHandle;
+        super(call(LIB, "cairo_pattern_create_mesh", [], PATTERN_T) as NativeHandle);
     }
 }
 
