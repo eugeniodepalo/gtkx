@@ -464,6 +464,16 @@ export class RawGirParser {
             };
         }
 
+        if (typeName === "GLib.ByteArray") {
+            return {
+                name: typeName,
+                cType,
+                isArray: true,
+                containerType: "gbytearray" as ContainerType,
+                elementType: { name: "guint8", cType: "guint8" },
+            };
+        }
+
         if (typeName === "GLib.List" || typeName === "GLib.SList") {
             const innerType = (typeNode.type ?? typeNode.array) as Record<string, unknown> | undefined;
             const elementType = innerType ? this.parseType(innerType) : undefined;

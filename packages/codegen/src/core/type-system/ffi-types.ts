@@ -33,7 +33,16 @@ export type FfiTypeDescriptor = {
 
     itemType?: FfiTypeDescriptor;
 
-    kind?: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed" | CallbackType["kind"];
+    kind?:
+        | "array"
+        | "glist"
+        | "gslist"
+        | "gptrarray"
+        | "garray"
+        | "gbytearray"
+        | "sized"
+        | "fixed"
+        | CallbackType["kind"];
 
     sizeParamIndex?: number;
 
@@ -310,7 +319,7 @@ export const structType = (innerType: string, transferFull: boolean): FfiTypeDes
  */
 export const arrayType = (
     itemType: FfiTypeDescriptor,
-    containerKind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed" = "array",
+    containerKind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed" = "array",
     transferFull: boolean = true,
     sizeParamIndex?: number,
     fixedSize?: number,
@@ -358,6 +367,17 @@ export const gArrayType = (
     itemType,
     kind: "garray",
     elementSize,
+    ownership: toOwnership(transferFull),
+});
+
+/**
+ * Creates a GByteArray FFI type descriptor.
+ * @param transferFull - true for transfer full, false for transfer none
+ */
+export const byteArrayType = (transferFull: boolean): FfiTypeDescriptor => ({
+    type: "array",
+    itemType: FFI_UINT8,
+    kind: "gbytearray",
     ownership: toOwnership(transferFull),
 });
 

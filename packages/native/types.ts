@@ -52,7 +52,7 @@ type FundamentalType = {
 type ArrayType = {
     type: "array";
     itemType: Type;
-    kind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed";
+    kind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
     ownership: Ownership;
     elementSize?: number;
     sizeParamIndex?: number;

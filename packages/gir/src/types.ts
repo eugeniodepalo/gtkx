@@ -40,7 +40,7 @@ export type TypeKind = "class" | "interface" | "record" | "enum" | "flags" | "ca
 /**
  * Container type discriminator for generic GLib containers.
  */
-export type ContainerType = "ghashtable" | "gptrarray" | "garray" | "glist" | "gslist";
+export type ContainerType = "ghashtable" | "gptrarray" | "garray" | "gbytearray" | "glist" | "gslist";
 
 /**
  * Parsed default value from GIR property definitions.
@@ -1150,6 +1150,11 @@ export class GirType {
     /** True if this is a GArray container. */
     isGArray(): boolean {
         return this.containerType === "garray";
+    }
+
+    /** True if this is a GByteArray container. */
+    isByteArray(): boolean {
+        return this.containerType === "gbytearray";
     }
 
     /** True if this is a GList or GSList container. */

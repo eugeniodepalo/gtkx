@@ -12,6 +12,7 @@ import { normalizeClassName, toCamelCase, toPascalCase, toValidIdentifier } from
 import {
     arrayType,
     boxedType,
+    byteArrayType,
     enumType,
     FFI_INT32,
     FFI_POINTER,
@@ -100,7 +101,7 @@ export class FfiMapper {
             };
         }
 
-        if (type.isPtrArray() || type.isGArray()) {
+        if (type.isPtrArray() || type.isGArray() || type.isByteArray()) {
             return this.mapGLibArrayContainer(type, isReturn, parentTransferOwnership, imports);
         }
 
@@ -721,7 +722,12 @@ export class FfiMapper {
         imports: TypeImport[],
     ): MappedType {
         const isGArray = type.isGArray();
+        const isByteArray = type.isByteArray();
         const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
+
+        if (isByteArray) {
+            return { ts: "number[]", ffi: byteArrayType(transferFull), imports };
+        }
 
         if (type.elementType) {
             const elementTransferOwnership = this.deriveElementTransfer(

@@ -216,6 +216,16 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
         });
     }
 
+    if (raw.containerType === "gbytearray") {
+        const elementType = raw.elementType ? normalizeType(raw.elementType, currentNamespace, ctx) : null;
+        return new GirType({
+            ...buildContainerTypeBase(raw),
+            name: qualifiedName("GLib", "ByteArray"),
+            isArray: true,
+            elementType,
+        });
+    }
+
     if (raw.containerType === "glist" || raw.containerType === "gslist") {
         const elementType = raw.elementType ? normalizeType(raw.elementType, currentNamespace, ctx) : null;
         return new GirType({
