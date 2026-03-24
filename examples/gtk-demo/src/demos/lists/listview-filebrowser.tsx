@@ -11,8 +11,10 @@ import {
     GtkLabel,
     GtkListView,
     GtkScrolledWindow,
-    x,
 } from "@gtkx/react";
+
+const Slot = "Slot" as const;
+
 import { useCallback, useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-filebrowser.tsx?raw";
@@ -158,12 +160,12 @@ const ListViewFilebrowserDemo = () => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkButton iconName="go-up-symbolic" onClicked={navigateUp} />
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    </GtkHeaderBar.PackStart>
+                    <GtkHeaderBar.PackEnd>
                         <GtkListView
                             orientation={Gtk.Orientation.HORIZONTAL}
                             cssClasses={[
@@ -186,9 +188,9 @@ const ListViewFilebrowserDemo = () => {
                             )}
                             items={VIEW_MODES.map((mode) => ({ id: mode.id, value: mode }))}
                         />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
 
             <GtkScrolledWindow vexpand hexpand>
                 <GtkGridView

@@ -46,6 +46,7 @@ export const waitFor = async <T>(callback: () => T | Promise<T>, options?: WaitF
     throw timeoutError;
 };
 
+/** @internal */
 type ElementOrCallback = Gtk.Widget | (() => Gtk.Widget | null);
 
 const getElement = (elementOrCallback: ElementOrCallback): Gtk.Widget | null => {

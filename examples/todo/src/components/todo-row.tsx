@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AdwActionRow, GtkButton, GtkCheckButton, x } from "@gtkx/react";
+import { AdwActionRow, GtkButton, GtkCheckButton } from "@gtkx/react";
 import type { Todo } from "../types.js";
 
 interface TodoRowProps {
@@ -11,15 +11,15 @@ interface TodoRowProps {
 export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
     return (
         <AdwActionRow title={todo.text} name={`todo-${todo.id}`} cssClasses={todo.completed ? ["dim-label"] : []}>
-            <x.ContainerSlot for={AdwActionRow} id="addPrefix">
+            <AdwActionRow.AddPrefix>
                 <GtkCheckButton
                     active={todo.completed}
                     onToggled={() => onToggle(todo.id)}
                     name={`toggle-${todo.id}`}
                     valign={Gtk.Align.CENTER}
                 />
-            </x.ContainerSlot>
-            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
+            </AdwActionRow.AddPrefix>
+            <AdwActionRow.AddSuffix>
                 <GtkButton
                     iconName="edit-delete-symbolic"
                     tooltipText="Delete task"
@@ -28,7 +28,7 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
                     name={`delete-${todo.id}`}
                     valign={Gtk.Align.CENTER}
                 />
-            </x.ContainerSlot>
+            </AdwActionRow.AddSuffix>
         </AdwActionRow>
     );
 };

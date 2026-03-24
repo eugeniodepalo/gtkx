@@ -13,7 +13,6 @@ import {
     GtkMenuButton,
     GtkRevealer,
     GtkScrolledWindow,
-    x,
 } from "@gtkx/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import appleRedPath from "../css/apple-red.png";
@@ -107,7 +106,7 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
     return (
         <GtkListBoxRow onStateFlagsChanged={handleStateFlagsChanged}>
             <GtkGrid hexpand>
-                <x.GridChild column={0} row={0} rowSpan={5}>
+                <GtkGrid.Child column={0} row={0} rowSpan={5}>
                     <GtkImage
                         {...(message.senderNick === "GTKtoolkit"
                             ? { iconName: "org.gtk.Demo4" }
@@ -122,9 +121,9 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
                         marginStart={8}
                         marginEnd={8}
                     />
-                </x.GridChild>
+                </GtkGrid.Child>
 
-                <x.GridChild column={1} row={0}>
+                <GtkGrid.Child column={1} row={0}>
                     <GtkBox hexpand baselinePosition={Gtk.BaselinePosition.TOP}>
                         <GtkButton receivesDefault hasFrame={false} valign={Gtk.Align.BASELINE}>
                             <GtkLabel
@@ -142,9 +141,9 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
                             cssClasses={["dim-label"]}
                         />
                     </GtkBox>
-                </x.GridChild>
+                </GtkGrid.Child>
 
-                <x.GridChild column={1} row={1}>
+                <GtkGrid.Child column={1} row={1}>
                     <GtkLabel
                         label={message.message}
                         halign={Gtk.Align.START}
@@ -153,9 +152,9 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
                         yalign={0}
                         wrap
                     />
-                </x.GridChild>
+                </GtkGrid.Child>
 
-                <x.GridChild column={1} row={2}>
+                <GtkGrid.Child column={1} row={2}>
                     <GtkBox visible={message.resentBy !== null}>
                         <GtkImage iconName="media-playlist-repeat" />
                         <GtkLabel label="Resent by" />
@@ -166,9 +165,9 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
                             uri="http://www.gtk.org"
                         />
                     </GtkBox>
-                </x.GridChild>
+                </GtkGrid.Child>
 
-                <x.GridChild column={1} row={3}>
+                <GtkGrid.Child column={1} row={3}>
                     <GtkBox spacing={6}>
                         <GtkButton
                             label={expanded ? "Hide" : "Expand"}
@@ -191,16 +190,24 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
                                 onClicked={() => onFavorite(message.id)}
                             />
                             <GtkMenuButton receivesDefault hasFrame={false} label="More...">
-                                <x.MenuSection>
-                                    <x.MenuItem id="email-msg" label="Email message" onActivate={() => {}} />
-                                    <x.MenuItem id="embed-msg" label="Embed message" onActivate={() => {}} />
-                                </x.MenuSection>
+                                <GtkMenuButton.MenuSection>
+                                    <GtkMenuButton.MenuItem
+                                        id="email-msg"
+                                        label="Email message"
+                                        onActivate={() => {}}
+                                    />
+                                    <GtkMenuButton.MenuItem
+                                        id="embed-msg"
+                                        label="Embed message"
+                                        onActivate={() => {}}
+                                    />
+                                </GtkMenuButton.MenuSection>
                             </GtkMenuButton>
                         </GtkBox>
                     </GtkBox>
-                </x.GridChild>
+                </GtkGrid.Child>
 
-                <x.GridChild column={1} row={4}>
+                <GtkGrid.Child column={1} row={4}>
                     <GtkRevealer revealChild={expanded}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                             <GtkBox marginTop={2} marginBottom={2} spacing={8}>
@@ -226,7 +233,7 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
                             </GtkBox>
                         </GtkBox>
                     </GtkRevealer>
-                </x.GridChild>
+                </GtkGrid.Child>
             </GtkGrid>
         </GtkListBoxRow>
     );

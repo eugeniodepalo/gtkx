@@ -14,6 +14,11 @@ import type { JsxWidget } from "./generator.js";
 import { type PropInfo, PropsBuilderBase } from "./props-builder-base.js";
 
 export class WidgetPropsBuilder extends PropsBuilderBase {
+    private slotPropNames = new Set<string>();
+
+    setSlotPropNames(names: ReadonlySet<string>): void {
+        this.slotPropNames = new Set(names);
+    }
     buildWidgetPropsInterface(
         namespace: string,
         properties: readonly PropertyAnalysis[],
@@ -84,6 +89,17 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
 
         for (const prop of properties) {
             if (!prop.isWritable || (!prop.setter && !prop.isConstructOnly)) continue;
+
+            if (this.slotPropNames.has(prop.camelName)) {
+                allProps.push({
+                    name: prop.camelName,
+                    type: "ReactNode | null",
+                    optional: true,
+                    doc: prop.doc ? this.formatDocDescription(prop.doc, namespace) : undefined,
+                });
+                continue;
+            }
+
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
             const qualifiedType = qualifyType(prop.type, namespace);
             const isOptional = !prop.isRequired;
@@ -115,7 +131,7 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
         const iface = interfaceDecl(`${jsxName}Props`, {
             exported: true,
             extends: [parentPropsName],
-            doc: `Props for the {@link ${jsxName}} widget.`,
+            doc: `Props for the \`${jsxName}\` widget.`,
         });
 
         for (const prop of allProps) {

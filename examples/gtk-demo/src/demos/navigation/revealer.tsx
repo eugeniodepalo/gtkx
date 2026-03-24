@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkGrid, GtkImage, GtkRevealer, x } from "@gtkx/react";
+import { GtkGrid, GtkImage, GtkRevealer } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./revealer.tsx?raw";
@@ -62,7 +62,7 @@ const RevealerDemo = () => {
     return (
         <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
             {revealerConfigs.map((config, index) => (
-                <x.GridChild key={`${config.column}-${config.row}`} column={config.column} row={config.row}>
+                <GtkGrid.Child key={`${config.column}-${config.row}`} column={config.column} row={config.row}>
                     <GtkRevealer
                         transitionDuration={TRANSITION_DURATION}
                         transitionType={config.transition}
@@ -76,7 +76,7 @@ const RevealerDemo = () => {
                     >
                         <GtkImage iconName="face-cool-symbolic" iconSize={Gtk.IconSize.LARGE} />
                     </GtkRevealer>
-                </x.GridChild>
+                </GtkGrid.Child>
             ))}
         </GtkGrid>
     );

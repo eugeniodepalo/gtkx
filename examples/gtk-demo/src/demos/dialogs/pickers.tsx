@@ -10,7 +10,6 @@ import {
     GtkFontDialogButton,
     GtkGrid,
     GtkLabel,
-    x,
 } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
@@ -117,7 +116,7 @@ const PickersDemo = ({ window }: DemoProps) => {
 
     return (
         <GtkGrid rowSpacing={6} columnSpacing={6} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
-            <x.GridChild column={0} row={0}>
+            <GtkGrid.Child column={0} row={0}>
                 <GtkLabel
                     label="_Color:"
                     useUnderline
@@ -126,12 +125,12 @@ const PickersDemo = ({ window }: DemoProps) => {
                     hexpand
                     mnemonicWidget={colorWidget}
                 />
-            </x.GridChild>
-            <x.GridChild column={1} row={0}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={0}>
                 <GtkColorDialogButton ref={setColorWidget} />
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={1}>
+            <GtkGrid.Child column={0} row={1}>
                 <GtkLabel
                     label="_Font:"
                     useUnderline
@@ -140,12 +139,12 @@ const PickersDemo = ({ window }: DemoProps) => {
                     hexpand
                     mnemonicWidget={fontWidget}
                 />
-            </x.GridChild>
-            <x.GridChild column={1} row={1}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={1}>
                 <GtkFontDialogButton ref={setFontWidget} />
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={2}>
+            <GtkGrid.Child column={0} row={2}>
                 <GtkLabel
                     label="_File:"
                     useUnderline
@@ -154,8 +153,8 @@ const PickersDemo = ({ window }: DemoProps) => {
                     hexpand
                     mnemonicWidget={fileButtonWidget}
                 />
-            </x.GridChild>
-            <x.GridChild column={1} row={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={2}>
                 <GtkBox spacing={6}>
                     <GtkLabel label={fileName} xalign={0} ellipsize={2} hexpand />
                     <GtkButton
@@ -189,9 +188,9 @@ const PickersDemo = ({ window }: DemoProps) => {
                         onClicked={() => void handlePrintFile()}
                     />
                 </GtkBox>
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={3}>
+            <GtkGrid.Child column={0} row={3}>
                 <GtkLabel
                     label="_URI:"
                     useUnderline
@@ -200,8 +199,8 @@ const PickersDemo = ({ window }: DemoProps) => {
                     hexpand
                     mnemonicWidget={uriButtonWidget}
                 />
-            </x.GridChild>
-            <x.GridChild column={1} row={3}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={3}>
                 <GtkButton
                     ref={setUriButtonWidget}
                     label="www.gtk.org"
@@ -209,7 +208,7 @@ const PickersDemo = ({ window }: DemoProps) => {
                     accessibleHasPopup
                     onClicked={() => void handleLaunchUri()}
                 />
-            </x.GridChild>
+            </GtkGrid.Child>
         </GtkGrid>
     );
 };

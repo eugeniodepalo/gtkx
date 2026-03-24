@@ -12,7 +12,6 @@ import {
     GtkProgressBar,
     quit,
     WebKitWebView,
-    x,
 } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -106,32 +105,9 @@ export const App = () => {
     return (
         <AdwApplicationWindow title="GTKX Browser" defaultWidth={1024} defaultHeight={768} onClose={quit}>
             <AdwToolbarView>
-                <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
-                    <AdwHeaderBar>
-                        <x.ContainerSlot for={AdwHeaderBar} id="packStart">
-                            <GtkButton
-                                iconName="go-previous-symbolic"
-                                onClicked={handleBack}
-                                sensitive={canGoBack}
-                                tooltipText="Go back"
-                            />
-                        </x.ContainerSlot>
-                        <x.ContainerSlot for={AdwHeaderBar} id="packStart">
-                            <GtkButton
-                                iconName="go-next-symbolic"
-                                onClicked={handleForward}
-                                sensitive={canGoForward}
-                                tooltipText="Go forward"
-                            />
-                        </x.ContainerSlot>
-                        <x.ContainerSlot for={AdwHeaderBar} id="packStart">
-                            <GtkButton
-                                iconName={isLoading ? "process-stop-symbolic" : "view-refresh-symbolic"}
-                                onClicked={isLoading ? handleStop : handleReload}
-                                tooltipText={isLoading ? "Stop loading" : "Reload"}
-                            />
-                        </x.ContainerSlot>
-                        <x.Slot for="AdwHeaderBar" id="titleWidget">
+                <AdwToolbarView.AddTopBar>
+                    <AdwHeaderBar
+                        titleWidget={
                             <GtkEntry
                                 text={url}
                                 onChanged={(entry: Gtk.Entry) => setUrl(entry.getText())}
@@ -140,9 +116,33 @@ export const App = () => {
                                 cssClasses={[urlBarStyle]}
                                 placeholderText="Enter URL..."
                             />
-                        </x.Slot>
+                        }
+                    >
+                        <AdwHeaderBar.PackStart>
+                            <GtkButton
+                                iconName="go-previous-symbolic"
+                                onClicked={handleBack}
+                                sensitive={canGoBack}
+                                tooltipText="Go back"
+                            />
+                        </AdwHeaderBar.PackStart>
+                        <AdwHeaderBar.PackStart>
+                            <GtkButton
+                                iconName="go-next-symbolic"
+                                onClicked={handleForward}
+                                sensitive={canGoForward}
+                                tooltipText="Go forward"
+                            />
+                        </AdwHeaderBar.PackStart>
+                        <AdwHeaderBar.PackStart>
+                            <GtkButton
+                                iconName={isLoading ? "process-stop-symbolic" : "view-refresh-symbolic"}
+                                onClicked={isLoading ? handleStop : handleReload}
+                                tooltipText={isLoading ? "Stop loading" : "Reload"}
+                            />
+                        </AdwHeaderBar.PackStart>
                     </AdwHeaderBar>
-                </x.ContainerSlot>
+                </AdwToolbarView.AddTopBar>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
                     <GtkProgressBar fraction={progress} cssClasses={[progressStyle, isLoading ? "" : "hidden"]} />
                     <WebKitWebView

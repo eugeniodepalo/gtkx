@@ -18,7 +18,6 @@ import {
     GtkSeparator,
     GtkStack,
     GtkToggleButton,
-    x,
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import gtkLogoSvgPath from "../drawing/gtk-logo.svg";
@@ -325,7 +324,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                 />
 
                 <GtkStack page={sourceType} vexpand>
-                    <x.StackPage id="Text">
+                    <GtkStack.Page id="Text">
                         <GtkEntry
                             text={sourceText}
                             valign={Gtk.Align.CENTER}
@@ -334,8 +333,8 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                         >
                             <GtkDragSource onPrepare={createTextDragProvider} actions={Gdk.DragAction.COPY} />
                         </GtkEntry>
-                    </x.StackPage>
-                    <x.StackPage id="Color">
+                    </GtkStack.Page>
+                    <GtkStack.Page id="Color">
                         <GtkColorDialogButton
                             rgba={sourceColor}
                             valign={Gtk.Align.CENTER}
@@ -353,8 +352,8 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                         >
                             <GtkDragSource onPrepare={createColorDragProvider} actions={Gdk.DragAction.COPY} />
                         </GtkColorDialogButton>
-                    </x.StackPage>
-                    <x.StackPage id="Image">
+                    </GtkStack.Page>
+                    <GtkStack.Page id="Image">
                         <GtkBox valign={Gtk.Align.CENTER} cssClasses={["linked"]}>
                             <GtkToggleButton
                                 accessibleLabel="Portland Rose"
@@ -387,8 +386,8 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                                 <GtkDragSource onPrepare={createImageDragProvider} actions={Gdk.DragAction.COPY} />
                             </GtkToggleButton>
                         </GtkBox>
-                    </x.StackPage>
-                    <x.StackPage id="File">
+                    </GtkStack.Page>
+                    <GtkStack.Page id="File">
                         <GtkButton
                             valign={Gtk.Align.CENTER}
                             accessibleLabel="Select file"
@@ -405,8 +404,8 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                                 propagationPhase={Gtk.PropagationPhase.CAPTURE}
                             />
                         </GtkButton>
-                    </x.StackPage>
-                    <x.StackPage id="Folder">
+                    </GtkStack.Page>
+                    <GtkStack.Page id="Folder">
                         <GtkButton
                             valign={Gtk.Align.CENTER}
                             accessibleLabel="Select folder"
@@ -423,7 +422,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                                 propagationPhase={Gtk.PropagationPhase.CAPTURE}
                             />
                         </GtkButton>
-                    </x.StackPage>
+                    </GtkStack.Page>
                 </GtkStack>
 
                 <GtkButton
@@ -452,10 +451,10 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                 />
                 <GtkLabel label={pastedContent.type} xalign={0} />
                 <GtkStack page={pastedContent.type} halign={Gtk.Align.END} valign={Gtk.Align.CENTER}>
-                    <x.StackPage id="">
+                    <GtkStack.Page id="">
                         <GtkLabel label="" />
-                    </x.StackPage>
-                    <x.StackPage id="Text">
+                    </GtkStack.Page>
+                    <GtkStack.Page id="Text">
                         <GtkLabel
                             label={pastedContent.text ?? ""}
                             halign={Gtk.Align.END}
@@ -463,8 +462,8 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                             xalign={0}
                             ellipsize={3}
                         />
-                    </x.StackPage>
-                    <x.StackPage id="Image">
+                    </GtkStack.Page>
+                    <GtkStack.Page id="Image">
                         {pastedContent.paintable ? (
                             <GtkImage
                                 paintable={pastedContent.paintable}
@@ -475,8 +474,8 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                         ) : (
                             <GtkLabel label="" />
                         )}
-                    </x.StackPage>
-                    <x.StackPage id="Color">
+                    </GtkStack.Page>
+                    <GtkStack.Page id="Color">
                         <GtkDrawingArea
                             contentWidth={32}
                             contentHeight={32}
@@ -489,8 +488,8 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                                 }
                             }}
                         />
-                    </x.StackPage>
-                    <x.StackPage id="File">
+                    </GtkStack.Page>
+                    <GtkStack.Page id="File">
                         <GtkLabel
                             label={pastedContent.filePath ?? ""}
                             halign={Gtk.Align.END}
@@ -499,7 +498,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                             hexpand
                             ellipsize={1}
                         />
-                    </x.StackPage>
+                    </GtkStack.Page>
                 </GtkStack>
             </GtkBox>
         </GtkBox>

@@ -16,7 +16,6 @@ import {
     GtkScrolledWindow,
     GtkSeparator,
     GtkSpinButton,
-    x,
 } from "@gtkx/react";
 import { useCallback, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
@@ -153,8 +152,10 @@ const SuggestionEntry = ({ words, placeholder }: { words: string[]; placeholder:
                 placeholderText={placeholder}
                 onChanged={(entry) => setText(entry.getText())}
             />
-            <GtkMenuButton iconName="pan-down-symbolic" sensitive={hasSuggestions}>
-                <x.Slot for={GtkMenuButton} id="popover">
+            <GtkMenuButton
+                iconName="pan-down-symbolic"
+                sensitive={hasSuggestions}
+                popover={
                     <GtkPopover hasArrow={false} position={Gtk.PositionType.BOTTOM}>
                         <GtkScrolledWindow
                             maxContentHeight={400}
@@ -175,8 +176,8 @@ const SuggestionEntry = ({ words, placeholder }: { words: string[]; placeholder:
                             </GtkBox>
                         </GtkScrolledWindow>
                     </GtkPopover>
-                </x.Slot>
-            </GtkMenuButton>
+                }
+            />
         </GtkBox>
     );
 };
@@ -323,8 +324,10 @@ const DirectorySuggestionEntry = () => {
     return (
         <GtkBox cssClasses={["linked"]}>
             <GtkEntry text={text} hexpand onChanged={(entry) => setText(entry.getText())} />
-            <GtkMenuButton iconName="pan-down-symbolic" tooltipText="Show suggestions">
-                <x.Slot for={GtkMenuButton} id="popover">
+            <GtkMenuButton
+                iconName="pan-down-symbolic"
+                tooltipText="Show suggestions"
+                popover={
                     <GtkPopover hasArrow={false} position={Gtk.PositionType.BOTTOM}>
                         <GtkScrolledWindow
                             maxContentHeight={400}
@@ -347,8 +350,8 @@ const DirectorySuggestionEntry = () => {
                             </GtkBox>
                         </GtkScrolledWindow>
                     </GtkPopover>
-                </x.Slot>
-            </GtkMenuButton>
+                }
+            />
         </GtkBox>
     );
 };

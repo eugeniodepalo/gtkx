@@ -1,7 +1,10 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, x } from "@gtkx/react";
+import { GtkApplicationWindow } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
+
+const MenuSubmenu = "MenuSubmenu" as const;
+const MenuItem = "MenuItem" as const;
 
 describe("render - Application", () => {
     describe("ApplicationNode", () => {
@@ -9,13 +12,13 @@ describe("render - Application", () => {
             const { baseElement } = await render(
                 <>
                     <GtkApplicationWindow defaultWidth={800} defaultHeight={600} />
-                    <x.MenuSubmenu label="File">
-                        <x.MenuItem id="new" label="New" onActivate={() => {}} />
-                        <x.MenuItem id="open" label="Open" onActivate={() => {}} />
-                    </x.MenuSubmenu>
-                    <x.MenuSubmenu label="Edit">
-                        <x.MenuItem id="cut" label="Cut" onActivate={() => {}} />
-                    </x.MenuSubmenu>
+                    <MenuSubmenu label="File">
+                        <MenuItem id="new" label="New" onActivate={() => {}} />
+                        <MenuItem id="open" label="Open" onActivate={() => {}} />
+                    </MenuSubmenu>
+                    <MenuSubmenu label="Edit">
+                        <MenuItem id="cut" label="Cut" onActivate={() => {}} />
+                    </MenuSubmenu>
                 </>,
                 { wrapper: false },
             );
@@ -30,9 +33,9 @@ describe("render - Application", () => {
                     <>
                         <GtkApplicationWindow defaultWidth={800} defaultHeight={600} />
                         {showMenu ? (
-                            <x.MenuSubmenu label="File">
-                                <x.MenuItem id="new" label="New" onActivate={() => {}} />
-                            </x.MenuSubmenu>
+                            <MenuSubmenu label="File">
+                                <MenuItem id="new" label="New" onActivate={() => {}} />
+                            </MenuSubmenu>
                         ) : null}
                     </>
                 );
@@ -52,11 +55,11 @@ describe("render - Application", () => {
                 return (
                     <>
                         <GtkApplicationWindow defaultWidth={800} defaultHeight={600} />
-                        <x.MenuSubmenu label="File">
+                        <MenuSubmenu label="File">
                             {items.map((label) => (
-                                <x.MenuItem key={label} id={label} label={label} onActivate={() => {}} />
+                                <MenuItem key={label} id={label} label={label} onActivate={() => {}} />
                             ))}
-                        </x.MenuSubmenu>
+                        </MenuSubmenu>
                     </>
                 );
             }

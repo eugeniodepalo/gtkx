@@ -1,26 +1,28 @@
-import { GtkBox, GtkButton, GtkHeaderBar, GtkSwitch, GtkTextView, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkSwitch, GtkTextView } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./headerbar.tsx?raw";
+
+const Slot = "Slot" as const;
 
 const HeaderBarDemo = () => {
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkBox cssClasses={["linked"]}>
                             <GtkButton iconName="go-previous-symbolic" tooltipText="Back" />
                             <GtkButton iconName="go-next-symbolic" tooltipText="Forward" />
                         </GtkBox>
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    </GtkHeaderBar.PackStart>
+                    <GtkHeaderBar.PackStart>
                         <GtkSwitch accessibleLabel="Change something" />
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    </GtkHeaderBar.PackStart>
+                    <GtkHeaderBar.PackEnd>
                         <GtkButton iconName="mail-send-receive-symbolic" tooltipText="Check out" />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkTextView accessibleLabel="Content" />
         </>
     );

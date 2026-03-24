@@ -119,6 +119,7 @@ export function findNativeObject(handle: NativeHandle): NativeObject | null {
     return obj;
 }
 
+/** @internal */
 type GetNativeObjectResult<
     T extends NativeHandle | null | undefined,
     TClass extends NativeClass | undefined,

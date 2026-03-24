@@ -8,7 +8,6 @@ import {
     GtkGrid,
     GtkLabel,
     GtkSeparator,
-    x,
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
@@ -67,18 +66,18 @@ const DialogDemo = ({ window }: DemoProps) => {
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                 <GtkButton label="_Interactive Dialog" useUnderline onClicked={handleOpenInteractiveDialog} />
                 <GtkGrid rowSpacing={4} columnSpacing={4}>
-                    <x.GridChild column={0} row={0}>
+                    <GtkGrid.Child column={0} row={0}>
                         <GtkLabel label="_Entry 1" useUnderline mnemonicWidget={entry1Widget} />
-                    </x.GridChild>
-                    <x.GridChild column={1} row={0}>
+                    </GtkGrid.Child>
+                    <GtkGrid.Child column={1} row={0}>
                         <GtkEntry ref={setEntry1Widget} text={entry1} onChanged={(e) => setEntry1(e.getText())} />
-                    </x.GridChild>
-                    <x.GridChild column={0} row={1}>
+                    </GtkGrid.Child>
+                    <GtkGrid.Child column={0} row={1}>
                         <GtkLabel label="E_ntry 2" useUnderline mnemonicWidget={entry2Widget} />
-                    </x.GridChild>
-                    <x.GridChild column={1} row={1}>
+                    </GtkGrid.Child>
+                    <GtkGrid.Child column={1} row={1}>
                         <GtkEntry ref={setEntry2Widget} text={entry2} onChanged={(e) => setEntry2(e.getText())} />
-                    </x.GridChild>
+                    </GtkGrid.Child>
                 </GtkGrid>
             </GtkBox>
 
@@ -91,10 +90,11 @@ const DialogDemo = ({ window }: DemoProps) => {
                         defaultResponse="ok"
                         closeResponse="cancel"
                         onResponse={() => setShowMessageDialog(false)}
-                    >
-                        <x.AlertDialogResponse id="cancel" label="_Cancel" />
-                        <x.AlertDialogResponse id="ok" label="_OK" />
-                    </AdwAlertDialog>,
+                        responses={[
+                            { id: "cancel", label: "_Cancel" },
+                            { id: "ok", label: "_OK" },
+                        ]}
+                    />,
                     window.current,
                 )}
 
@@ -106,8 +106,7 @@ const DialogDemo = ({ window }: DemoProps) => {
                         defaultResponse="ok"
                         closeResponse="cancel"
                         onResponse={handleInteractiveDialogResponse}
-                    >
-                        <x.Slot for="AdwAlertDialog" id="extraChild">
+                        extraChild={
                             <GtkGrid
                                 rowSpacing={6}
                                 columnSpacing={6}
@@ -116,31 +115,33 @@ const DialogDemo = ({ window }: DemoProps) => {
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
                             >
-                                <x.GridChild column={0} row={0}>
+                                <GtkGrid.Child column={0} row={0}>
                                     <GtkLabel label="_Entry 1" useUnderline mnemonicWidget={dialogEntry1Widget} />
-                                </x.GridChild>
-                                <x.GridChild column={1} row={0}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={1} row={0}>
                                     <GtkEntry
                                         ref={setDialogEntry1Widget}
                                         text={dialogEntry1Text}
                                         onChanged={(e) => setDialogEntry1Text(e.getText())}
                                     />
-                                </x.GridChild>
-                                <x.GridChild column={0} row={1}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={0} row={1}>
                                     <GtkLabel label="E_ntry 2" useUnderline mnemonicWidget={dialogEntry2Widget} />
-                                </x.GridChild>
-                                <x.GridChild column={1} row={1}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={1} row={1}>
                                     <GtkEntry
                                         ref={setDialogEntry2Widget}
                                         text={dialogEntry2Text}
                                         onChanged={(e) => setDialogEntry2Text(e.getText())}
                                     />
-                                </x.GridChild>
+                                </GtkGrid.Child>
                             </GtkGrid>
-                        </x.Slot>
-                        <x.AlertDialogResponse id="cancel" label="_Cancel" />
-                        <x.AlertDialogResponse id="ok" label="_OK" />
-                    </AdwAlertDialog>,
+                        }
+                        responses={[
+                            { id: "cancel", label: "_Cancel" },
+                            { id: "ok", label: "_OK" },
+                        ]}
+                    />,
                     window.current,
                 )}
         </GtkBox>

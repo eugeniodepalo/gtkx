@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AdwToggleGroup, x } from "@gtkx/react";
+import { AdwToggleGroup } from "@gtkx/react";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -18,10 +18,12 @@ describe("render - ToggleGroup", () => {
 
         it("creates ToggleGroup widget with toggles", async () => {
             await render(
-                <AdwToggleGroup>
-                    <x.Toggle id="list" label="List View" iconName="view-list-symbolic" />
-                    <x.Toggle id="grid" label="Grid View" iconName="view-grid-symbolic" />
-                </AdwToggleGroup>,
+                <AdwToggleGroup
+                    toggles={[
+                        { id: "list", label: "List View", iconName: "view-list-symbolic" },
+                        { id: "grid", label: "Grid View", iconName: "view-grid-symbolic" },
+                    ]}
+                />,
             );
 
             const toggles = await screen.findAllByRole(Gtk.AccessibleRole.RADIO);
@@ -29,11 +31,7 @@ describe("render - ToggleGroup", () => {
         });
 
         it("sets toggle label", async () => {
-            await render(
-                <AdwToggleGroup>
-                    <x.Toggle id="test" label="Test Label" />
-                </AdwToggleGroup>,
-            );
+            await render(<AdwToggleGroup toggles={[{ id: "test", label: "Test Label" }]} />);
 
             const toggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Test Label" });
             expect(toggle).toBeDefined();
@@ -43,10 +41,13 @@ describe("render - ToggleGroup", () => {
             const ref = createRef<Adw.ToggleGroup>();
 
             await render(
-                <AdwToggleGroup ref={ref}>
-                    <x.Toggle id="enabled" label="Enabled" />
-                    <x.Toggle id="disabled" label="Disabled" enabled={false} />
-                </AdwToggleGroup>,
+                <AdwToggleGroup
+                    ref={ref}
+                    toggles={[
+                        { id: "enabled", label: "Enabled" },
+                        { id: "disabled", label: "Disabled", enabled: false },
+                    ]}
+                />,
             );
 
             expect(ref.current?.getToggleByName("enabled")?.getEnabled()).toBe(true);
@@ -57,11 +58,7 @@ describe("render - ToggleGroup", () => {
             const ref = createRef<Adw.ToggleGroup>();
 
             function App({ label }: { label: string }) {
-                return (
-                    <AdwToggleGroup ref={ref}>
-                        <x.Toggle id="test" label={label} />
-                    </AdwToggleGroup>
-                );
+                return <AdwToggleGroup ref={ref} toggles={[{ id: "test", label }]} />;
             }
 
             await render(<App label="Initial" />);
@@ -71,16 +68,13 @@ describe("render - ToggleGroup", () => {
             expect(ref.current?.getToggleByName("test")?.getLabel()).toBe("Updated");
         });
 
-        it("removes toggles when unmounted", async () => {
+        it("removes toggles when list shrinks", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
             function App({ showExtra }: { showExtra: boolean }) {
-                return (
-                    <AdwToggleGroup ref={ref}>
-                        <x.Toggle id="always" label="Always" />
-                        {showExtra && <x.Toggle id="extra" label="Extra" />}
-                    </AdwToggleGroup>
-                );
+                const toggles = [{ id: "always", label: "Always" }];
+                if (showExtra) toggles.push({ id: "extra", label: "Extra" });
+                return <AdwToggleGroup ref={ref} toggles={toggles} />;
             }
 
             await render(<App showExtra={true} />);
@@ -98,13 +92,10 @@ describe("render - ToggleGroup", () => {
             const ref = createRef<Adw.ToggleGroup>();
 
             function App({ showMid }: { showMid: boolean }) {
-                return (
-                    <AdwToggleGroup ref={ref}>
-                        <x.Toggle id="first" label="First" />
-                        {showMid && <x.Toggle id="middle" label="Middle" />}
-                        <x.Toggle id="last" label="Last" />
-                    </AdwToggleGroup>
-                );
+                const toggles = [{ id: "first", label: "First" }];
+                if (showMid) toggles.push({ id: "middle", label: "Middle" });
+                toggles.push({ id: "last", label: "Last" });
+                return <AdwToggleGroup ref={ref} toggles={toggles} />;
             }
 
             await render(<App showMid={false} />);
@@ -121,10 +112,13 @@ describe("render - ToggleGroup", () => {
             const ref = createRef<Adw.ToggleGroup>();
 
             await render(
-                <AdwToggleGroup ref={ref}>
-                    <x.Toggle id="list" label="List" />
-                    <x.Toggle id="grid" label="Grid" />
-                </AdwToggleGroup>,
+                <AdwToggleGroup
+                    ref={ref}
+                    toggles={[
+                        { id: "list", label: "List" },
+                        { id: "grid", label: "Grid" },
+                    ]}
+                />,
             );
 
             const listToggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "List" });
@@ -139,10 +133,13 @@ describe("render - ToggleGroup", () => {
             const ref = createRef<Adw.ToggleGroup>();
 
             await render(
-                <AdwToggleGroup ref={ref}>
-                    <x.Toggle id="list" label="List" />
-                    <x.Toggle id="grid" label="Grid" />
-                </AdwToggleGroup>,
+                <AdwToggleGroup
+                    ref={ref}
+                    toggles={[
+                        { id: "list", label: "List" },
+                        { id: "grid", label: "Grid" },
+                    ]}
+                />,
             );
 
             const gridToggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Grid" });
@@ -156,11 +153,13 @@ describe("render - ToggleGroup", () => {
 
         it("finds all toggles by role in a toggle group", async () => {
             await render(
-                <AdwToggleGroup>
-                    <x.Toggle id="list" label="List View" />
-                    <x.Toggle id="grid" label="Grid View" />
-                    <x.Toggle id="tiles" label="Tiles View" />
-                </AdwToggleGroup>,
+                <AdwToggleGroup
+                    toggles={[
+                        { id: "list", label: "List View" },
+                        { id: "grid", label: "Grid View" },
+                        { id: "tiles", label: "Tiles View" },
+                    ]}
+                />,
             );
 
             const toggles = await screen.findAllByRole(Gtk.AccessibleRole.RADIO);

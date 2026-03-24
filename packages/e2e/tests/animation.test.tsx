@@ -1,24 +1,19 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, x } from "@gtkx/react";
+import { AdwSpringAnimation, AdwTimedAnimation, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import React, { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-describe("x.Animation", () => {
+describe("AdwTimedAnimation / AdwSpringAnimation", () => {
     describe("mount animation", () => {
         it("applies initial values when animateOnMount is false", async () => {
             const buttonRef = createRef<Gtk.Button>();
 
             await render(
-                <x.Animation
-                    transition={{ mode: "timed" }}
-                    initial={{ opacity: 0.5 }}
-                    animate={{ opacity: 1 }}
-                    animateOnMount={false}
-                >
+                <AdwTimedAnimation initial={{ opacity: 0.5 }} animate={{ opacity: 1 }} animateOnMount={false}>
                     <GtkButton ref={buttonRef} label="Test" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Test");
@@ -29,9 +24,9 @@ describe("x.Animation", () => {
             const buttonRef = createRef<Gtk.Button>();
 
             await render(
-                <x.Animation transition={{ mode: "timed" }} initial={false} animate={{ opacity: 1, scale: 1 }}>
+                <AdwTimedAnimation initial={false} animate={{ opacity: 1, scale: 1 }}>
                     <GtkButton ref={buttonRef} label="Test" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Test");
@@ -44,16 +39,16 @@ describe("x.Animation", () => {
             const buttonRef = createRef<Gtk.Button>();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ mode: "timed", duration: 100 }}
+                    duration={100}
                     animateOnMount
                     onAnimationStart={onStart}
                     onAnimationComplete={onComplete}
                 >
                     <GtkButton ref={buttonRef} label="Test" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Test");
@@ -70,13 +65,13 @@ describe("x.Animation", () => {
 
             function TestComponent({ targetOpacity }: { targetOpacity: number }) {
                 return (
-                    <x.Animation
+                    <AdwTimedAnimation
                         animate={{ opacity: targetOpacity }}
-                        transition={{ mode: "timed", duration: 100 }}
+                        duration={100}
                         onAnimationComplete={onComplete}
                     >
                         <GtkLabel label="Test" />
-                    </x.Animation>
+                    </AdwTimedAnimation>
                 );
             }
 
@@ -98,14 +93,14 @@ describe("x.Animation", () => {
                 return (
                     <GtkBox>
                         {show && (
-                            <x.Animation
+                            <AdwTimedAnimation
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                transition={{ mode: "timed", duration: 100 }}
+                                duration={100}
                                 onAnimationComplete={onComplete}
                             >
                                 <GtkLabel label="Fading" />
-                            </x.Animation>
+                            </AdwTimedAnimation>
                         )}
                     </GtkBox>
                 );
@@ -129,15 +124,14 @@ describe("x.Animation", () => {
             const buttonRef = createRef<Gtk.Button>();
 
             await render(
-                <x.Animation
-                    transition={{ mode: "spring" }}
+                <AdwSpringAnimation
                     initial={{ scale: 0.5 }}
                     animate={{ scale: 1 }}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkButton ref={buttonRef} label="Spring" />
-                </x.Animation>,
+                </AdwSpringAnimation>,
             );
 
             await screen.findByText("Spring");
@@ -149,15 +143,17 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwSpringAnimation
                     initial={{ translateX: -100 }}
                     animate={{ translateX: 0 }}
-                    transition={{ mode: "spring", damping: 1, stiffness: 200, mass: 1 }}
+                    damping={1}
+                    stiffness={200}
+                    mass={1}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Bouncy" />
-                </x.Animation>,
+                </AdwSpringAnimation>,
             );
 
             await screen.findByText("Bouncy");
@@ -171,15 +167,16 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ rotate: 0 }}
                     animate={{ rotate: 360 }}
-                    transition={{ mode: "timed", duration: 100, easing: Adw.Easing.EASE_IN_OUT_CUBIC }}
+                    duration={100}
+                    easing={Adw.Easing.EASE_IN_OUT_CUBIC}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Rotating" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Rotating");
@@ -193,15 +190,15 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ opacity: 0, scale: 0.5, translateY: 50 }}
                     animate={{ opacity: 1, scale: 1, translateY: 0 }}
-                    transition={{ mode: "timed", duration: 100 }}
+                    duration={100}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Multi" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Multi");
@@ -215,15 +212,15 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ skewX: 0, skewY: 0 }}
                     animate={{ skewX: 10, skewY: 5 }}
-                    transition={{ mode: "timed", duration: 100 }}
+                    duration={100}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Skewed" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Skewed");
@@ -237,15 +234,16 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ scale: 0.8 }}
                     animate={{ scale: 1.2 }}
-                    transition={{ mode: "timed", duration: 50, repeat: 2 }}
+                    duration={50}
+                    repeat={2}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Repeating" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Repeating");
@@ -257,15 +255,17 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ translateY: 0 }}
                     animate={{ translateY: -20 }}
-                    transition={{ mode: "timed", duration: 50, repeat: 2, alternate: true }}
+                    duration={50}
+                    repeat={2}
+                    alternate
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Alternating" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Alternating");
@@ -279,15 +279,15 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ translateX: 0 }}
                     animate={{ translateX: 100 }}
-                    transition={{ mode: "timed", duration: 100 }}
+                    duration={100}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="TranslateX" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("TranslateX");
@@ -299,15 +299,15 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ translateY: 0 }}
                     animate={{ translateY: 50 }}
-                    transition={{ mode: "timed", duration: 100 }}
+                    duration={100}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="TranslateY" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("TranslateY");
@@ -319,15 +319,15 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ scale: 1 }}
                     animate={{ scale: 1.5 }}
-                    transition={{ mode: "timed", duration: 100 }}
+                    duration={100}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Scale" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Scale");
@@ -339,15 +339,15 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ rotate: 0 }}
                     animate={{ rotate: 180 }}
-                    transition={{ mode: "timed", duration: 100 }}
+                    duration={100}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Rotate" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Rotate");
@@ -366,14 +366,16 @@ describe("x.Animation", () => {
                 return (
                     <GtkBox>
                         <GtkButton label="Bounce" onClicked={() => setTrigger((t) => t + 1)} />
-                        <x.Animation
+                        <AdwSpringAnimation
                             initial={false}
                             animate={{ translateX: trigger % 2 === 0 ? 0 : 150 }}
-                            transition={{ mode: "spring", damping: 1, stiffness: 200, mass: 1 }}
+                            damping={1}
+                            stiffness={200}
+                            mass={1}
                             onAnimationComplete={onComplete}
                         >
                             <GtkLabel label="Target" />
-                        </x.Animation>
+                        </AdwSpringAnimation>
                     </GtkBox>
                 );
             }
@@ -391,15 +393,17 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwSpringAnimation
                     initial={{ translateX: 0 }}
                     animate={{ translateX: 100 }}
-                    transition={{ mode: "spring", damping: 0.5, stiffness: 100, mass: 1 }}
+                    damping={0.5}
+                    stiffness={100}
+                    mass={1}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Bouncy" />
-                </x.Animation>,
+                </AdwSpringAnimation>,
             );
 
             await screen.findByText("Bouncy");
@@ -413,15 +417,16 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ mode: "timed", duration: 50, delay: 50 }}
+                    duration={50}
+                    delay={50}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Delayed" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Delayed");
@@ -435,15 +440,16 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ translateX: 0 }}
                     animate={{ translateX: 60 }}
-                    transition={{ mode: "timed", duration: 100, easing: Adw.Easing.EASE_OUT_BOUNCE }}
+                    duration={100}
+                    easing={Adw.Easing.EASE_OUT_BOUNCE}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Bounce Easing" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Bounce Easing");
@@ -455,15 +461,16 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ translateX: 0 }}
                     animate={{ translateX: 60 }}
-                    transition={{ mode: "timed", duration: 100, easing: Adw.Easing.EASE_OUT_ELASTIC }}
+                    duration={100}
+                    easing={Adw.Easing.EASE_OUT_ELASTIC}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Elastic Easing" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Elastic Easing");
@@ -475,15 +482,16 @@ describe("x.Animation", () => {
             const onComplete = vi.fn();
 
             await render(
-                <x.Animation
+                <AdwTimedAnimation
                     initial={{ translateX: 0 }}
                     animate={{ translateX: 60 }}
-                    transition={{ mode: "timed", duration: 100, easing: Adw.Easing.LINEAR }}
+                    duration={100}
+                    easing={Adw.Easing.LINEAR}
                     animateOnMount
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Linear Easing" />
-                </x.Animation>,
+                </AdwTimedAnimation>,
             );
 
             await screen.findByText("Linear Easing");

@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkPicture, GtkStack, GtkStackSidebar, x } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkPicture, GtkStack, GtkStackSidebar } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import gtkLogoSvgPath from "../drawing/gtk-logo.svg";
 import type { Demo } from "../types.js";
@@ -31,7 +31,7 @@ const SidebarDemo = () => {
             {stack && <GtkStackSidebar stack={stack} />}
             <GtkStack ref={setStack} transitionType={Gtk.StackTransitionType.SLIDE_UP_DOWN} hexpand>
                 {pages.map((title, index) => (
-                    <x.StackPage key={title} id={title} title={title}>
+                    <GtkStack.Page key={title} id={title} title={title}>
                         {index === 0 ? (
                             <GtkPicture
                                 paintable={gtkLogo}
@@ -45,7 +45,7 @@ const SidebarDemo = () => {
                         ) : (
                             <GtkLabel label={title} />
                         )}
-                    </x.StackPage>
+                    </GtkStack.Page>
                 ))}
             </GtkStack>
         </GtkBox>

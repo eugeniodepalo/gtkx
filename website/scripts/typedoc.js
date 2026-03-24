@@ -12,21 +12,44 @@ const packages = [
         entryPoints: [resolve(root, "packages/react/src/index.ts")],
         tsconfig: resolve(root, "packages/react/tsconfig.lib.json"),
         excludeInternal: true,
+        intentionallyNotExported: [
+            "Reconciler",
+            "AnimationBaseProps",
+            "BaseListViewProps",
+            "GtkColumnViewBase",
+            "MenuChildren",
+            "TextChildren",
+            "Container",
+            "NavigationSplitViewPageProps",
+            "NavigationViewPageProps",
+        ],
     },
     {
         name: "css",
         entryPoints: [resolve(root, "packages/css/src/index.ts")],
         tsconfig: resolve(root, "packages/css/tsconfig.lib.json"),
+        excludeInternal: true,
+        intentionallyNotExported: ["CSSClassName"],
     },
     {
         name: "testing",
         entryPoints: [resolve(root, "packages/testing/src/index.ts")],
         tsconfig: resolve(root, "packages/testing/tsconfig.lib.json"),
+        excludeInternal: true,
+        intentionallyNotExported: ["ElementOrCallback"],
     },
     {
         name: "ffi",
         entryPoints: [resolve(root, "packages/ffi/src/index.ts")],
         tsconfig: resolve(root, "packages/ffi/tsconfig.lib.json"),
+        excludeInternal: true,
+        intentionallyNotExported: [
+            "GError",
+            "Application",
+            "ApplicationFlags",
+            "NativeEventMap",
+            "GetNativeObjectResult",
+        ],
     },
 ];
 
@@ -57,6 +80,9 @@ for (const pkg of packages) {
         "--groupOrder",
         "Functions,Variables,Interfaces,*",
         ...(pkg.excludeInternal ? ["--excludeInternal"] : []),
+        ...(pkg.intentionallyNotExported
+            ? pkg.intentionallyNotExported.flatMap((name) => ["--intentionallyNotExported", name])
+            : []),
     ];
 
     console.log(`Generating API docs for @gtkx/${pkg.name}...`);

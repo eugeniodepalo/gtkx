@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel, GtkOverlay, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel, GtkOverlay } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay.tsx?raw";
@@ -26,9 +26,9 @@ const OverlayDemo = () => {
         for (let i = 0; i < 5; i++) {
             const num = 5 * j + i;
             buttons.push(
-                <x.GridChild key={num} column={i} row={j}>
+                <GtkGrid.Child key={num} column={i} row={j}>
                     <GtkButton label={String(num)} hexpand vexpand onClicked={() => handleNumber(num)} />
-                </x.GridChild>,
+                </GtkGrid.Child>,
             );
         }
     }
@@ -36,7 +36,7 @@ const OverlayDemo = () => {
     return (
         <GtkOverlay>
             <GtkGrid>{buttons}</GtkGrid>
-            <x.OverlayChild>
+            <GtkOverlay.Child>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     halign={Gtk.Align.CENTER}
@@ -52,8 +52,8 @@ const OverlayDemo = () => {
                         marginBottom={8}
                     />
                 </GtkBox>
-            </x.OverlayChild>
-            <x.OverlayChild>
+            </GtkOverlay.Child>
+            <GtkOverlay.Child>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     halign={Gtk.Align.CENTER}
@@ -68,7 +68,7 @@ const OverlayDemo = () => {
                         onChanged={handleEntryChanged}
                     />
                 </GtkBox>
-            </x.OverlayChild>
+            </GtkOverlay.Child>
         </GtkOverlay>
     );
 };

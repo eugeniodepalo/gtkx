@@ -2,10 +2,12 @@ import type { Context } from "@gtkx/ffi/cairo";
 import type * as Gdk from "@gtkx/ffi/gdk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
-import { GtkBox, GtkDrawingArea, GtkHeaderBar, GtkLabel, x } from "@gtkx/react";
+import { GtkBox, GtkDrawingArea, GtkHeaderBar, GtkLabel } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./frames.tsx?raw";
+
+const Slot = "Slot" as const;
 
 interface Color {
     r: number;
@@ -100,13 +102,13 @@ const FramesDemo = ({ window }: DemoProps) => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    <GtkHeaderBar.PackEnd>
                         <GtkLabel label={`${fps.toFixed(2)} fps`} attributes={fpsAttrs} />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkBox>
                 <GtkDrawingArea ref={drawingRef} onDraw={draw} hexpand vexpand />
             </GtkBox>

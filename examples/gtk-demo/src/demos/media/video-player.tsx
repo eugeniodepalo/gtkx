@@ -2,13 +2,15 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcutController, GtkVideo, x } from "@gtkx/react";
+import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcutController, GtkVideo } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import bbbPngPath from "./bbb.png";
 import gtkLogoCursorPath from "./gtk_logo_cursor.png";
 import gtkLogoPath from "./gtk-logo.webm";
 import sourceCode from "./video-player.tsx?raw";
+
+const Slot = "Slot" as const;
 
 const VideoPlayerDemo = ({ window }: DemoProps) => {
     const [videoFile, setVideoFile] = useState<Gio.File | null>(null);
@@ -75,9 +77,9 @@ const VideoPlayerDemo = ({ window }: DemoProps) => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkButton label="_Open" useUnderline onClicked={() => void handleOpen()} />
                         <GtkButton accessibleLabel="GTK Logo" onClicked={handleLogo}>
                             <GtkImage paintable={logoPaintable} pixelSize={24} />
@@ -85,18 +87,18 @@ const VideoPlayerDemo = ({ window }: DemoProps) => {
                         <GtkButton accessibleLabel="Big Buck Bunny" onClicked={handleBBB}>
                             <GtkImage paintable={bbbPaintable} pixelSize={24} />
                         </GtkButton>
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    </GtkHeaderBar.PackStart>
+                    <GtkHeaderBar.PackEnd>
                         <GtkButton
                             iconName="view-fullscreen-symbolic"
                             accessibleLabel="Fullscreen"
                             onClicked={handleFullscreen}
                         />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                <x.Shortcut trigger="F11" onActivate={handleToggleFullscreen} />
+                <GtkShortcutController.Shortcut trigger="F11" onActivate={handleToggleFullscreen} />
             </GtkShortcutController>
             <GtkVideo file={videoFile} autoplay graphicsOffload={Gtk.GraphicsOffloadEnabled.ENABLED} />
         </>

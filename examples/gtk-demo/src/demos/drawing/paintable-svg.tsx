@@ -5,11 +5,12 @@ import * as Gio from "@gtkx/ffi/gio";
 import * as GLib from "@gtkx/ffi/glib";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkButton, GtkDrawingArea, GtkHeaderBar, GtkImage, x } from "@gtkx/react";
+import { GtkButton, GtkDrawingArea, GtkHeaderBar, GtkImage } from "@gtkx/react";
 import { useCallback, useLayoutEffect, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./paintable-svg.tsx?raw";
 
+const Slot = "Slot" as const;
 const DEFAULT_SVG_PATH = "/usr/share/icons/hicolor/scalable/apps/org.gtk.gtk4.NodeEditor.Devel.svg";
 let tmpPngPath: string | undefined;
 
@@ -90,13 +91,13 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkButton label="_Open" useUnderline onClicked={() => void handleOpen()} />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackStart>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
 
             {isSymbolic ? (
                 <GtkImage

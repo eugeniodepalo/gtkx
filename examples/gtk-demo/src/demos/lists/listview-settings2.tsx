@@ -12,8 +12,10 @@ import {
     GtkSearchBar,
     GtkSearchEntry,
     GtkToggleButton,
-    x,
 } from "@gtkx/react";
+
+const Slot = "Slot" as const;
+
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-settings2.tsx?raw";
@@ -172,9 +174,9 @@ const ListViewSettings2Demo = () => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    <GtkHeaderBar.PackEnd>
                         <GtkToggleButton
                             iconName="system-search-symbolic"
                             active={searchMode}
@@ -183,9 +185,9 @@ const ListViewSettings2Demo = () => {
                                 setSearchText("");
                             }}
                         />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkSearchBar searchModeEnabled={searchMode}>
                     <GtkSearchEntry onSearchChanged={handleSearchChanged} onStopSearch={handleStopSearch} />

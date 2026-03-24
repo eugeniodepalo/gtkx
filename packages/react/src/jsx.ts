@@ -5,8 +5,7 @@ import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type * as GtkSource from "@gtkx/ffi/gtksource";
 import type * as Pango from "@gtkx/ffi/pango";
-import type { ReactElement, ReactNode } from "react";
-import { createElement } from "react";
+import type { ReactNode } from "react";
 import type { WidgetSlotNames } from "./generated/jsx.js";
 
 /**
@@ -35,14 +34,41 @@ export type AnimatableProperties = {
     skewY?: number;
 };
 
+/** @internal */
+type AnimationBaseProps = {
+    /** Initial property values before animation starts, or `false` to skip initial state */
+    initial?: AnimatableProperties | false;
+    /** Target property values to animate towards */
+    animate?: AnimatableProperties;
+    /** Property values to animate to when the component unmounts */
+    exit?: AnimatableProperties;
+    /** Whether to animate from `initial` to `animate` when first mounted (default: false) */
+    animateOnMount?: boolean;
+    /** Callback fired when an animation begins */
+    onAnimationStart?: () => void;
+    /** Callback fired when an animation completes */
+    onAnimationComplete?: () => void;
+    /** The child widget to animate (must be a single GTK widget) */
+    children?: ReactNode;
+};
+
 /**
- * Transition configuration for timed (duration-based) animations.
+ * Props for a timed (duration-based) animation using Adw.TimedAnimation.
  *
- * @see {@link https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.TimedAnimation.html Adw.TimedAnimation}
+ * @example
+ * ```tsx
+ * <AdwTimedAnimation
+ *   initial={{ opacity: 0 }}
+ *   animate={{ opacity: 1 }}
+ *   duration={300}
+ *   easing={Adw.Easing.EASE_OUT_CUBIC}
+ *   animateOnMount
+ * >
+ *   <GtkLabel label="Fade in" />
+ * </AdwTimedAnimation>
+ * ```
  */
-export type TimedTransition = {
-    /** Discriminant: duration-based animation with easing curves */
-    mode: "timed";
+export type AdwTimedAnimationProps = AnimationBaseProps & {
     /** Animation duration in milliseconds (default: 300) */
     duration?: number;
     /** Easing function for the animation curve (default: EASE_OUT_CUBIC) */
@@ -58,16 +84,22 @@ export type TimedTransition = {
 };
 
 /**
- * Transition configuration for spring (physics-based) animations.
+ * Props for a spring (physics-based) animation using Adw.SpringAnimation.
  *
- * Spring animations simulate a mass attached to a spring, providing natural-feeling motion.
- * The animation settles when the spring reaches equilibrium.
- *
- * @see {@link https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.SpringAnimation.html Adw.SpringAnimation}
+ * @example
+ * ```tsx
+ * <AdwSpringAnimation
+ *   initial={{ scale: 0.9, opacity: 0 }}
+ *   animate={{ scale: 1, opacity: 1 }}
+ *   damping={0.8}
+ *   stiffness={200}
+ *   animateOnMount
+ * >
+ *   <GtkButton label="Spring in" />
+ * </AdwSpringAnimation>
+ * ```
  */
-export type SpringTransition = {
-    /** Discriminant: physics-based spring animation */
-    mode: "spring";
+export type AdwSpringAnimationProps = AnimationBaseProps & {
     /** Damping ratio controlling oscillation decay (default: 1, critically damped) */
     damping?: number;
     /** Spring stiffness in N/m affecting animation speed (default: 100) */
@@ -83,51 +115,9 @@ export type SpringTransition = {
 };
 
 /**
- * Discriminated union of all transition configurations.
- *
- * The `mode` field determines the animation type:
- * - `"timed"`: Duration-based animation with easing curves (uses {@link Adw.TimedAnimation})
- * - `"spring"`: Physics-based spring animation (uses {@link Adw.SpringAnimation})
+ * @internal Union type used by the AnimationNode internally.
  */
-export type AnimationTransition = TimedTransition | SpringTransition;
-
-/**
- * Props for the Animation component.
- *
- * Provides a declarative API for animating widget properties using either
- * timed (duration-based) or spring (physics-based) animations.
- *
- * @example
- * ```tsx
- * <x.Animation
- *   initial={{ opacity: 0, translateY: -20 }}
- *   animate={{ opacity: 1, translateY: 0 }}
- *   exit={{ opacity: 0, translateY: 20 }}
- *   transition={{ mode: "spring", damping: 0.8, stiffness: 200 }}
- *   animateOnMount
- * >
- *   <GtkLabel label="Animated content" />
- * </x.Animation>
- * ```
- */
-export type AnimationProps = {
-    /** Initial property values before animation starts, or `false` to skip initial state */
-    initial?: AnimatableProperties | false;
-    /** Target property values to animate towards */
-    animate?: AnimatableProperties;
-    /** Property values to animate to when the component unmounts */
-    exit?: AnimatableProperties;
-    /** Transition configuration including animation mode and parameters */
-    transition?: AnimationTransition;
-    /** Whether to animate from `initial` to `animate` when first mounted (default: false) */
-    animateOnMount?: boolean;
-    /** Callback fired when an animation begins */
-    onAnimationStart?: () => void;
-    /** Callback fired when an animation completes */
-    onAnimationComplete?: () => void;
-    /** The child widget to animate (must be a single GTK widget) */
-    children?: ReactNode;
-};
+export type AnimationProps = AdwTimedAnimationProps | AdwSpringAnimationProps;
 
 /**
  * Props for the Shortcut virtual element.
@@ -334,7 +324,7 @@ export type LevelBarOffset = {
 /**
  * Props for slot-based child positioning.
  *
- * @see {@link Slot} for type-safe slot usage
+ * Used internally by compound components with slot props (e.g. `titleWidget` on `AdwHeaderBar`).
  */
 export type SlotProps = {
     /** The slot identifier */
@@ -347,7 +337,7 @@ export type SlotProps = {
  * Type mapping widgets to their valid container slot method names.
  *
  * Each key is a JSX element name and each value is a union of method names
- * that can be used as the `id` prop on `x.ContainerSlot`.
+ * used by container slot compound components (e.g. `AdwHeaderBar.PackStart`).
  */
 export type ContainerSlotNames = {
     AdwActionRow: "addPrefix" | "addSuffix";
@@ -404,7 +394,7 @@ export type ListItem<T = unknown, S = unknown> =
 /**
  * Props for positioning children within a GtkGrid.
  *
- * @see {@link GridChild} for usage
+ * Used by `GtkGrid.Child` compound component.
  */
 export type GridChildProps = {
     /** Content to place in the grid cell */
@@ -422,7 +412,7 @@ export type GridChildProps = {
 /**
  * Props for positioning children within a GtkFixed.
  *
- * @see {@link FixedChild} for usage
+ * Used by `GtkFixed.Child` compound component.
  */
 export type FixedChildProps = {
     /** Content to place in the fixed container */
@@ -440,7 +430,7 @@ export type FixedChildProps = {
  *
  * @typeParam T - The type of data for each row
  *
- * @see {@link ColumnViewColumn} for usage
+ * Used by `GtkColumnView.Column` compound component.
  */
 export type ColumnViewColumnProps<T = unknown> = {
     /** Column header text */
@@ -488,7 +478,7 @@ export type NotebookPageTabProps = {
 /**
  * Props for pages within a Stack or ViewStack.
  *
- * @see {@link StackPage} for usage
+ * Used by `GtkStack.Page` and `AdwViewStack.Page` compound components.
  */
 export type StackPageProps = {
     /** Content to place in the stack page */
@@ -512,7 +502,7 @@ export type StackPageProps = {
 /**
  * Props for menu items.
  *
- * @see {@link Menu} for building menus
+ * Used by menu compound components like `GtkMenuButton.MenuItem`.
  */
 export type MenuItemProps = {
     /** Unique identifier for this menu item */
@@ -593,7 +583,7 @@ export type ToggleProps = {
  *
  * Each response represents a button the user can click to dismiss the dialog.
  *
- * @see {@link x.AlertDialogResponse} for usage
+ * Used by `AdwAlertDialog.Response` compound component.
  */
 export type AlertDialogResponseProps = {
     /** Unique response ID (used in response signal and for default/close response) */
@@ -606,7 +596,7 @@ export type AlertDialogResponseProps = {
     enabled?: boolean;
 };
 
-type NavigationPageBaseProps = {
+export type NavigationPageBaseProps = {
     /** Display title for the navigation page */
     title?: string;
     /** Whether the page can be popped from the navigation stack */
@@ -669,6 +659,7 @@ export type TextBufferProps = {
     onCanRedoChanged?: ((canRedo: boolean) => void) | null;
 };
 
+/** @internal */
 type BaseListViewProps = {
     /** Estimated item height in pixels for virtualization */
     estimatedItemHeight?: number;
@@ -751,361 +742,6 @@ export type AdjustableProps = {
     onValueChanged?: ((value: number, self: Gtk.Range | Gtk.ScaleButton | Gtk.SpinButton | Adw.SpinRow) => void) | null;
 };
 
-/**
- * GTKX-specific intrinsic elements and components.
- *
- * This namespace provides React components for GTK layout, lists, menus, and slots
- * that are specific to GTKX (not direct GTK widget bindings).
- *
- * @example
- * ```tsx
- * import { x, GtkHeaderBar } from "@gtkx/react";
- *
- * <GtkHeaderBar>
- *   <x.Slot for={GtkHeaderBar} id="titleWidget">
- *     <GtkLabel label="App Title" />
- *   </x.Slot>
- * </GtkHeaderBar>
- * ```
- */
-export const x = {
-    /**
-     * Type-safe slot component for placing children in named widget slots.
-     *
-     * GTK widgets often have named slots for specific child positions (e.g., titleWidget,
-     * startWidget). This component provides type-safe access to those slots.
-     *
-     * @example
-     * ```tsx
-     * <GtkHeaderBar>
-     *   <x.Slot for={GtkHeaderBar} id="titleWidget">
-     *     <GtkLabel label="App Title" />
-     *   </x.Slot>
-     * </GtkHeaderBar>
-     * ```
-     */
-    Slot<W extends keyof WidgetSlotNames>(props: {
-        for: W;
-        id: WidgetSlotNames[W];
-        children?: ReactNode;
-    }): ReactElement {
-        return createElement("Slot", { id: props.id }, props.children);
-    },
-
-    /**
-     * Element type for pages within a GtkStack or AdwViewStack.
-     *
-     * @example
-     * ```tsx
-     * <GtkStack page="page1">
-     *   <x.StackPage id="page1" title="First Page">
-     *     <GtkLabel label="Content 1" />
-     *   </x.StackPage>
-     * </GtkStack>
-     * ```
-     */
-    StackPage: "StackPage" as const,
-
-    /**
-     * Element type for positioning children within a GtkGrid.
-     *
-     * @example
-     * ```tsx
-     * <GtkGrid>
-     *   <x.GridChild column={0} row={0}>
-     *     <GtkLabel label="Top Left" />
-     *   </x.GridChild>
-     * </GtkGrid>
-     * ```
-     */
-    GridChild: "GridChild" as const,
-
-    /**
-     * Element type for positioning children within a GtkFixed.
-     *
-     * @example
-     * ```tsx
-     * <GtkFixed>
-     *   <x.FixedChild x={20} y={30}>
-     *     <GtkLabel label="Positioned at (20, 30)" />
-     *   </x.FixedChild>
-     * </GtkFixed>
-     * ```
-     */
-    FixedChild: "FixedChild" as const,
-
-    /**
-     * Element type for a page within a GtkNotebook (tabbed interface).
-     *
-     * @example
-     * ```tsx
-     * <GtkNotebook>
-     *   <x.NotebookPage label="Tab 1">
-     *     <GtkLabel label="Content 1" />
-     *   </x.NotebookPage>
-     * </GtkNotebook>
-     * ```
-     */
-    NotebookPage: "NotebookPage" as const,
-
-    /**
-     * Element type for a custom widget as the page tab label.
-     */
-    NotebookPageTab: "NotebookPageTab" as const,
-
-    /**
-     * Component for defining columns in a ColumnView (table widget).
-     *
-     * @example
-     * ```tsx
-     * <GtkColumnView>
-     *   <x.ColumnViewColumn
-     *     id="name"
-     *     title="Name"
-     *     expand
-     *     renderCell={(item) => <GtkLabel label={item?.name ?? ""} />}
-     *   />
-     * </GtkColumnView>
-     * ```
-     */
-    ColumnViewColumn<T = unknown>(props: ColumnViewColumnProps<T>): ReactElement {
-        return createElement("ColumnViewColumn", props, props.children);
-    },
-
-    /**
-     * Type-safe container slot for placing children via parent widget methods.
-     *
-     * Unlike `x.Slot` (which uses property setters for single-child slots),
-     * `x.ContainerSlot` calls attachment methods that support multiple children
-     * (e.g., `addPrefix()`, `packStart()`, `addTopBar()`).
-     *
-     * The `for` prop provides TypeScript type narrowing for the `id` prop
-     * and is not used at runtime.
-     *
-     * @example
-     * ```tsx
-     * <AdwToolbarView>
-     *   <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
-     *     <AdwHeaderBar />
-     *   </x.ContainerSlot>
-     * </AdwToolbarView>
-     *
-     * <GtkHeaderBar>
-     *   <x.ContainerSlot for={GtkHeaderBar} id="packStart">
-     *     <GtkButton label="Back" />
-     *   </x.ContainerSlot>
-     * </GtkHeaderBar>
-     *
-     * <AdwActionRow title="Setting">
-     *   <x.ContainerSlot for={AdwActionRow} id="addPrefix">
-     *     <GtkCheckButton />
-     *   </x.ContainerSlot>
-     * </AdwActionRow>
-     * ```
-     */
-    ContainerSlot<W extends keyof ContainerSlotNames>(props: {
-        for: W;
-        id: ContainerSlotNames[W];
-        children?: ReactNode;
-    }): ReactElement {
-        return createElement("ContainerSlot", { id: props.id }, props.children);
-    },
-
-    /**
-     * Element type for overlay children positioned above the main content.
-     *
-     * @example
-     * ```tsx
-     * <GtkOverlay>
-     *   <GtkImage file="background.png" />
-     *   <x.OverlayChild>
-     *     <GtkLabel label="Overlaid text" />
-     *   </x.OverlayChild>
-     * </GtkOverlay>
-     * ```
-     */
-    OverlayChild: "OverlayChild" as const,
-
-    /**
-     * A clickable menu item with action.
-     *
-     * @example
-     * ```tsx
-     * <GtkMenuButton>
-     *   <x.MenuItem id="open" label="Open" onActivate={handleOpen} />
-     * </GtkMenuButton>
-     * ```
-     */
-    MenuItem: "MenuItem" as const,
-
-    /**
-     * A section grouping related menu items.
-     *
-     * @example
-     * ```tsx
-     * <GtkMenuButton>
-     *   <x.MenuSection label="File">
-     *     <x.MenuItem id="open" label="Open" onActivate={handleOpen} />
-     *   </x.MenuSection>
-     * </GtkMenuButton>
-     * ```
-     */
-    MenuSection: "MenuSection" as const,
-
-    /**
-     * A submenu containing nested items.
-     *
-     * @example
-     * ```tsx
-     * <GtkMenuButton>
-     *   <x.MenuSubmenu label="Export">
-     *     <x.MenuItem id="pdf" label="As PDF" onActivate={exportPdf} />
-     *   </x.MenuSubmenu>
-     * </GtkMenuButton>
-     * ```
-     */
-    MenuSubmenu: "MenuSubmenu" as const,
-
-    /**
-     * Declarative text tag for styling text content.
-     *
-     * Wrap text content with a TextTag to apply styling. Tags can be nested.
-     *
-     * @example
-     * ```tsx
-     * <GtkTextView>
-     *     Normal <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
-     *       bold <x.TextTag id="red" foreground="red">and red</x.TextTag>
-     *     </x.TextTag> text.
-     * </GtkTextView>
-     * ```
-     */
-    TextTag: "TextTag" as const,
-
-    /**
-     * Declarative anchor for embedding widgets in text flow.
-     *
-     * The anchor is placed at the current position in the text.
-     *
-     * @example
-     * ```tsx
-     * <GtkTextView>
-     *     Click here: <x.TextAnchor>
-     *       <GtkButton label="Click me" />
-     *     </x.TextAnchor> to continue.
-     * </GtkTextView>
-     * ```
-     */
-    TextAnchor: "TextAnchor" as const,
-
-    /**
-     * Declarative inline paintable for embedding images/icons in text flow.
-     *
-     * The paintable is placed at the current position in the text.
-     *
-     * @example
-     * ```tsx
-     * <GtkTextView>
-     *     Click the icon <x.TextPaintable paintable={iconPaintable} /> to continue.
-     * </GtkTextView>
-     * ```
-     */
-    TextPaintable: "TextPaintable" as const,
-
-    /**
-     * A toggle button for an AdwToggleGroup.
-     *
-     * @example
-     * ```tsx
-     * <AdwToggleGroup>
-     *   <x.Toggle id="list" iconName="view-list-symbolic" />
-     *   <x.Toggle id="grid" iconName="view-grid-symbolic" />
-     * </AdwToggleGroup>
-     * ```
-     */
-    Toggle: "Toggle" as const,
-
-    /**
-     * A response button for an AdwAlertDialog.
-     *
-     * @example
-     * ```tsx
-     * <AdwAlertDialog
-     *   heading="Delete File?"
-     *   body="This cannot be undone."
-     *   defaultResponse="cancel"
-     *   closeResponse="cancel"
-     * >
-     *   <x.AlertDialogResponse id="cancel" label="Cancel" />
-     *   <x.AlertDialogResponse id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
-     * </AdwAlertDialog>
-     * ```
-     */
-    AlertDialogResponse: "AlertDialogResponse" as const,
-
-    /**
-     * Type-safe page component for AdwNavigationView or AdwNavigationSplitView.
-     *
-     * The `for` prop is required and determines valid `id` values:
-     * - `AdwNavigationView`: any string (page tags for navigation history)
-     * - `AdwNavigationSplitView`: `"content"` or `"sidebar"` (slot positions)
-     *
-     * @example
-     * ```tsx
-     * // In NavigationView - id can be any string
-     * <AdwNavigationView history={["home"]}>
-     *   <x.NavigationPage for={AdwNavigationView} id="home" title="Home">
-     *     <GtkLabel label="Welcome!" />
-     *   </x.NavigationPage>
-     * </AdwNavigationView>
-     *
-     * // In NavigationSplitView - id is narrowed to "content" | "sidebar"
-     * <AdwNavigationSplitView>
-     *   <x.NavigationPage for={AdwNavigationSplitView} id="sidebar" title="Sidebar">
-     *     <GtkLabel label="Sidebar" />
-     *   </x.NavigationPage>
-     *   <x.NavigationPage for={AdwNavigationSplitView} id="content" title="Content">
-     *     <GtkLabel label="Content" />
-     *   </x.NavigationPage>
-     * </AdwNavigationSplitView>
-     * ```
-     */
-    NavigationPage: "NavigationPage" as const,
-
-    /**
-     * A keyboard shortcut definition.
-     *
-     * Must be a child of `<GtkShortcutController>`.
-     *
-     * @example
-     * ```tsx
-     * <x.Shortcut trigger="<Control>s" onActivate={save} />
-     * <x.Shortcut trigger={["F5", "<Control>r"]} onActivate={refresh} />
-     * <x.Shortcut trigger="Escape" onActivate={cancel} disabled={!canCancel} />
-     * ```
-     */
-    Shortcut: "Shortcut" as const,
-
-    /**
-     * Declarative animation wrapper using Adw.TimedAnimation or Adw.SpringAnimation.
-     *
-     * Provides framer-motion-inspired API for animating child widgets.
-     *
-     * @example
-     * ```tsx
-     * <x.Animation
-     *   initial={{ opacity: 0, scale: 0.9 }}
-     *   animate={{ opacity: 1, scale: 1 }}
-     *   transition={{ mode: "spring", damping: 0.8, stiffness: 200 }}
-     *   animateOnMount
-     * >
-     *   <GtkButton label="Animated Button" />
-     * </x.Animation>
-     * ```
-     */
-    Animation: "Animation" as const,
-};
-
 interface StackProps {
     /** ID of the currently visible page */
     page?: string | null;
@@ -1115,8 +751,9 @@ declare global {
     namespace React {
         namespace JSX {
             interface IntrinsicElements {
-                AlertDialogResponse: AlertDialogResponseProps;
-                Animation: AnimationProps;
+                Slot: SlotProps;
+                AdwTimedAnimation: AdwTimedAnimationProps;
+                AdwSpringAnimation: AdwSpringAnimationProps;
                 ContainerSlot: ContainerSlotProps;
                 ColumnViewColumn: ColumnViewColumnProps;
                 FixedChild: FixedChildProps;
@@ -1132,7 +769,6 @@ declare global {
                 TextTag: TextTagProps;
 
                 StackPage: StackPageProps;
-                Toggle: ToggleProps;
                 NavigationPage: NavigationPageProps;
                 Shortcut: ShortcutProps;
             }
@@ -1334,6 +970,13 @@ declare module "./generated/jsx.js" {
     interface AdwToggleGroupProps {
         /** Callback fired when the active toggle changes */
         onActiveChanged?: ((active: number, activeName: string | null) => void) | null;
+        /** Declarative toggle definitions for the group */
+        toggles?: ToggleProps[];
+    }
+
+    interface AdwAlertDialogProps {
+        /** Declarative response button definitions for the dialog */
+        responses?: AlertDialogResponseProps[];
     }
 
     interface GtkDragSourceProps {
@@ -1351,5 +994,48 @@ declare module "./generated/jsx.js" {
     }
 }
 
+export {
+    AdwActionRow,
+    AdwAlertDialog,
+    AdwApplicationWindow,
+    AdwBottomSheet,
+    AdwEntryRow,
+    AdwExpanderRow,
+    AdwFlap,
+    AdwHeaderBar,
+    AdwMessageDialog,
+    AdwNavigationSplitView,
+    AdwNavigationView,
+    AdwOverlaySplitView,
+    AdwPreferencesGroup,
+    AdwPreferencesPage,
+    AdwSplitButton,
+    AdwTabBar,
+    AdwToolbarView,
+    AdwViewStack,
+    AdwWindow,
+    GtkActionBar,
+    GtkCenterBox,
+    GtkExpander,
+    GtkFixed,
+    GtkFrame,
+    GtkGrid,
+    GtkHeaderBar,
+    GtkMenuButton,
+    GtkNotebook,
+    GtkOverlay,
+    GtkPaned,
+    GtkPopoverMenu,
+    GtkPopoverMenuBar,
+    GtkShortcutController,
+    GtkSourceView,
+    GtkStack,
+    GtkTextView,
+    GtkWindow,
+} from "./components/compounds/index.js";
 export { AdwComboRow, GtkColumnView, GtkDropDown, GtkGridView, GtkListView } from "./components/list.js";
+
+export const AdwTimedAnimation = "AdwTimedAnimation" as const;
+export const AdwSpringAnimation = "AdwSpringAnimation" as const;
+
 export * from "./generated/jsx.js";

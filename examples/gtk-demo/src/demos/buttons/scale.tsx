@@ -1,15 +1,15 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkGrid, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { GtkGrid, GtkLabel, GtkScale } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./scale.tsx?raw";
 
 const ScaleDemo = () => {
     return (
         <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
-            <x.GridChild column={0} row={0}>
+            <GtkGrid.Child column={0} row={0}>
                 <GtkLabel label="Plain" xalign={0} />
-            </x.GridChild>
-            <x.GridChild column={1} row={0}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={0}>
                 <GtkScale
                     widthRequest={200}
                     drawValue={false}
@@ -19,12 +19,12 @@ const ScaleDemo = () => {
                     stepIncrement={0.1}
                     pageIncrement={1}
                 />
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={1}>
+            <GtkGrid.Child column={0} row={1}>
                 <GtkLabel label="Marks" xalign={0} />
-            </x.GridChild>
-            <x.GridChild column={1} row={1}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={1}>
                 <GtkScale
                     widthRequest={200}
                     drawValue={false}
@@ -41,12 +41,12 @@ const ScaleDemo = () => {
                         { value: 4, position: Gtk.PositionType.BOTTOM },
                     ]}
                 />
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={2}>
+            <GtkGrid.Child column={0} row={2}>
                 <GtkLabel label="Discrete" xalign={0} />
-            </x.GridChild>
-            <x.GridChild column={1} row={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={2}>
                 <GtkScale
                     widthRequest={200}
                     roundDigits={0}
@@ -64,7 +64,7 @@ const ScaleDemo = () => {
                         { value: 4, position: Gtk.PositionType.BOTTOM },
                     ]}
                 />
-            </x.GridChild>
+            </GtkGrid.Child>
         </GtkGrid>
     );
 };

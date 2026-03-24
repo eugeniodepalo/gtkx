@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkLabel, GtkPaned, x } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkLabel, GtkPaned } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./panes.tsx?raw";
 
@@ -18,10 +18,15 @@ const PanesDemo = () => {
             marginBottom={8}
         >
             <GtkFrame>
-                <GtkPaned orientation={Gtk.Orientation.VERTICAL} shrinkStartChild={false} shrinkEndChild={false}>
-                    <x.Slot for={GtkPaned} id="startChild">
-                        <GtkPaned shrinkStartChild={false} shrinkEndChild={false}>
-                            <x.Slot for={GtkPaned} id="startChild">
+                <GtkPaned
+                    orientation={Gtk.Orientation.VERTICAL}
+                    shrinkStartChild={false}
+                    shrinkEndChild={false}
+                    startChild={
+                        <GtkPaned
+                            shrinkStartChild={false}
+                            shrinkEndChild={false}
+                            startChild={
                                 <GtkLabel
                                     label="Hi there"
                                     marginStart={4}
@@ -31,8 +36,8 @@ const PanesDemo = () => {
                                     hexpand
                                     vexpand
                                 />
-                            </x.Slot>
-                            <x.Slot for={GtkPaned} id="endChild">
+                            }
+                            endChild={
                                 <GtkLabel
                                     label="Hello"
                                     marginStart={4}
@@ -42,10 +47,10 @@ const PanesDemo = () => {
                                     hexpand
                                     vexpand
                                 />
-                            </x.Slot>
-                        </GtkPaned>
-                    </x.Slot>
-                    <x.Slot for={GtkPaned} id="endChild">
+                            }
+                        />
+                    }
+                    endChild={
                         <GtkLabel
                             label="Goodbye"
                             marginStart={4}
@@ -55,8 +60,8 @@ const PanesDemo = () => {
                             hexpand
                             vexpand
                         />
-                    </x.Slot>
-                </GtkPaned>
+                    }
+                />
             </GtkFrame>
         </GtkBox>
     );

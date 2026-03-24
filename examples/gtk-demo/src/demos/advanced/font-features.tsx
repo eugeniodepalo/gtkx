@@ -23,8 +23,10 @@ import {
     GtkTextView,
     GtkToggleButton,
     GtkViewport,
-    x,
 } from "@gtkx/react";
+
+const Slot = "Slot" as const;
+
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./font-features.tsx?raw";
@@ -506,15 +508,15 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkButton iconName="view-refresh-symbolic" tooltipText="Reset" onClicked={resetAll} />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackStart>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
-                <x.Shortcut
+                <GtkShortcutController.Shortcut
                     trigger="Escape"
                     onActivate={() => {
                         const tv = editTextViewRef.current;
@@ -549,10 +551,10 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                 level={Gtk.FontLevel.FACE}
                             />
                             <GtkGrid columnSpacing={10} rowSpacing={10}>
-                                <x.GridChild column={0} row={0}>
+                                <GtkGrid.Child column={0} row={0}>
                                     <GtkLabel label="Size" xalign={0} valign={Gtk.Align.BASELINE} />
-                                </x.GridChild>
-                                <x.GridChild column={1} row={0}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={1} row={0}>
                                     <GtkScale
                                         hexpand
                                         widthRequest={100}
@@ -565,8 +567,8 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                         onValueChanged={setSize}
                                         sensitive={viewMode !== "waterfall"}
                                     />
-                                </x.GridChild>
-                                <x.GridChild column={2} row={0}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={2} row={0}>
                                     <GtkEntry
                                         widthChars={4}
                                         maxWidthChars={4}
@@ -575,12 +577,12 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                         onActivate={handleSizeEntry}
                                         sensitive={viewMode !== "waterfall"}
                                     />
-                                </x.GridChild>
+                                </GtkGrid.Child>
 
-                                <x.GridChild column={0} row={1}>
+                                <GtkGrid.Child column={0} row={1}>
                                     <GtkLabel label="Letterspacing" xalign={0} valign={Gtk.Align.BASELINE} />
-                                </x.GridChild>
-                                <x.GridChild column={1} row={1}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={1} row={1}>
                                     <GtkScale
                                         hexpand
                                         widthRequest={100}
@@ -592,8 +594,8 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                         pageIncrement={512}
                                         onValueChanged={setLetterSpacing}
                                     />
-                                </x.GridChild>
-                                <x.GridChild column={2} row={1}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={2} row={1}>
                                     <GtkEntry
                                         widthChars={4}
                                         maxWidthChars={4}
@@ -601,12 +603,12 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                         text={String(Math.round(letterSpacing))}
                                         onActivate={handleLetterspacingEntry}
                                     />
-                                </x.GridChild>
+                                </GtkGrid.Child>
 
-                                <x.GridChild column={0} row={2}>
+                                <GtkGrid.Child column={0} row={2}>
                                     <GtkLabel label="Line Height" xalign={0} valign={Gtk.Align.BASELINE} />
-                                </x.GridChild>
-                                <x.GridChild column={1} row={2}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={1} row={2}>
                                     <GtkScale
                                         hexpand
                                         widthRequest={100}
@@ -618,8 +620,8 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                         pageIncrement={1}
                                         onValueChanged={setLineHeight}
                                     />
-                                </x.GridChild>
-                                <x.GridChild column={2} row={2}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={2} row={2}>
                                     <GtkEntry
                                         widthChars={4}
                                         maxWidthChars={4}
@@ -627,31 +629,31 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                         text={String(Math.round(lineHeight * 100) / 100)}
                                         onActivate={handleLineHeightEntry}
                                     />
-                                </x.GridChild>
+                                </GtkGrid.Child>
 
-                                <x.GridChild column={0} row={3}>
+                                <GtkGrid.Child column={0} row={3}>
                                     <GtkLabel label="Foreground" xalign={0} valign={Gtk.Align.BASELINE} />
-                                </x.GridChild>
-                                <x.GridChild column={1} row={3}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={1} row={3}>
                                     <GtkColorDialogButton
                                         rgba={fgColor}
                                         onRgbaChanged={setFgColor}
                                         valign={Gtk.Align.BASELINE}
                                     />
-                                </x.GridChild>
+                                </GtkGrid.Child>
 
-                                <x.GridChild column={0} row={4}>
+                                <GtkGrid.Child column={0} row={4}>
                                     <GtkLabel label="Background" xalign={0} valign={Gtk.Align.BASELINE} />
-                                </x.GridChild>
-                                <x.GridChild column={1} row={4}>
+                                </GtkGrid.Child>
+                                <GtkGrid.Child column={1} row={4}>
                                     <GtkColorDialogButton
                                         rgba={bgColor}
                                         onRgbaChanged={setBgColor}
                                         valign={Gtk.Align.BASELINE}
                                     />
-                                </x.GridChild>
+                                </GtkGrid.Child>
 
-                                <x.GridChild column={2} row={3} rowSpan={2}>
+                                <GtkGrid.Child column={2} row={3} rowSpan={2}>
                                     <GtkButton
                                         iconName="object-flip-vertical-symbolic"
                                         halign={Gtk.Align.START}
@@ -660,11 +662,11 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                         tooltipText="Swap colors"
                                         onClicked={swapColors}
                                     />
-                                </x.GridChild>
+                                </GtkGrid.Child>
                             </GtkGrid>
 
-                            <GtkExpander>
-                                <x.Slot for={GtkExpander} id="labelWidget">
+                            <GtkExpander
+                                labelWidget={
                                     <GtkLabel
                                         label="OpenType Features"
                                         xalign={0}
@@ -672,7 +674,8 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                         marginBottom={10}
                                         cssClasses={["title-4"]}
                                     />
-                                </x.Slot>
+                                }
+                            >
                                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                                     {FEATURE_GROUPS.map((group) => (
                                         <GtkBox
@@ -731,7 +734,7 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                 >
                     <GtkScrolledWindow vexpand cssClasses={[bgStyle]}>
                         <GtkStack page={stackPage}>
-                            <x.StackPage id="label">
+                            <GtkStack.Page id="label">
                                 {viewMode === "waterfall" ? (
                                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                                         {WATERFALL_SIZES.map((wfSize) => (
@@ -759,15 +762,15 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                         selectable
                                     />
                                 )}
-                            </x.StackPage>
-                            <x.StackPage id="entry">
+                            </GtkStack.Page>
+                            <GtkStack.Page id="entry">
                                 <GtkTextView
                                     ref={editTextViewRef}
                                     cssClasses={[editStyle]}
                                     wrapMode={Gtk.WrapMode.WORD}
                                     valign={Gtk.Align.FILL}
                                 />
-                            </x.StackPage>
+                            </GtkStack.Page>
                         </GtkStack>
                     </GtkScrolledWindow>
 

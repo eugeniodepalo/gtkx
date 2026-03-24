@@ -45,9 +45,6 @@
             "path": "examples/deploying/tsconfig.json"
         },
         {
-            "path": "examples/x-showcase/tsconfig.json"
-        },
-        {
             "path": "examples/hello-world/tsconfig.json"
         }
     ]

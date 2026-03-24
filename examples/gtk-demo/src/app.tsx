@@ -18,7 +18,6 @@ import {
     GtkWindow,
     quit,
     useApplication,
-    x,
 } from "@gtkx/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
@@ -26,6 +25,8 @@ import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
 import logoPath from "./logo.svg";
+
+const Slot = "Slot" as const;
 
 const InfoTab = () => {
     const { currentDemo } = useDemo();
@@ -154,9 +155,9 @@ const AppContent = () => {
 
     return (
         <>
-            <x.Slot for={GtkWindow} id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkButton
                             label="Run"
                             onClicked={handleRun}
@@ -171,42 +172,45 @@ const AppContent = () => {
                             valign={Gtk.Align.CENTER}
                             focusOnClick={false}
                         />
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    </GtkHeaderBar.PackStart>
+                    <GtkHeaderBar.PackEnd>
                         <GtkMenuButton iconName="open-menu-symbolic" valign={Gtk.Align.CENTER} focusOnClick={false}>
-                            <x.MenuSection>
-                                <x.MenuItem
+                            <GtkMenuButton.MenuSection>
+                                <GtkMenuButton.MenuItem
                                     id="inspector"
                                     label="_Inspector"
                                     onActivate={handleInspector}
                                     accels="<Control><Shift>i"
                                 />
-                                <x.MenuItem
+                                <GtkMenuButton.MenuItem
                                     id="shortcuts"
                                     label="_Keyboard Shortcuts"
                                     onActivate={handleKeyboardShortcuts}
                                     accels="<Control>question"
                                 />
-                                <x.MenuItem id="about" label="_About GTK Demo" onActivate={handleAbout} />
-                            </x.MenuSection>
+                                <GtkMenuButton.MenuItem id="about" label="_About GTK Demo" onActivate={handleAbout} />
+                            </GtkMenuButton.MenuSection>
                         </GtkMenuButton>
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
 
             <GtkBox vexpand hexpand>
                 <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <x.Shortcut trigger="<Control>f" onActivate={() => setSearchMode((prev) => !prev)} />
-                    <x.Shortcut
+                    <GtkShortcutController.Shortcut
+                        trigger="<Control>f"
+                        onActivate={() => setSearchMode((prev) => !prev)}
+                    />
+                    <GtkShortcutController.Shortcut
                         trigger="<Control><Shift>i"
                         onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
                     />
-                    <x.Shortcut trigger="<Control>question" onActivate={handleKeyboardShortcuts} />
-                    <x.Shortcut
+                    <GtkShortcutController.Shortcut trigger="<Control>question" onActivate={handleKeyboardShortcuts} />
+                    <GtkShortcutController.Shortcut
                         trigger="<Control>Page_Down"
                         onActivate={() => setNotebookPage((prev) => Math.min(prev + 1, 1))}
                     />
-                    <x.Shortcut
+                    <GtkShortcutController.Shortcut
                         trigger="<Control>Page_Up"
                         onActivate={() => setNotebookPage((prev) => Math.max(prev - 1, 0))}
                     />
@@ -223,20 +227,20 @@ const AppContent = () => {
                     showBorder={false}
                     enablePopup
                 >
-                    <x.NotebookPage>
-                        <x.NotebookPageTab>
+                    <GtkNotebook.Page>
+                        <GtkNotebook.PageTab>
                             <GtkLabel label="_Info" useUnderline />
-                        </x.NotebookPageTab>
+                        </GtkNotebook.PageTab>
                         <GtkScrolledWindow vexpand hexpand>
                             <InfoTab />
                         </GtkScrolledWindow>
-                    </x.NotebookPage>
-                    <x.NotebookPage>
-                        <x.NotebookPageTab>
+                    </GtkNotebook.Page>
+                    <GtkNotebook.Page>
+                        <GtkNotebook.PageTab>
                             <GtkLabel label="Source" />
-                        </x.NotebookPageTab>
+                        </GtkNotebook.PageTab>
                         <SourceViewer />
-                    </x.NotebookPage>
+                    </GtkNotebook.Page>
                 </GtkNotebook>
             </GtkBox>
 

@@ -12,7 +12,6 @@ import {
     GtkLevelBar,
     GtkScrolledWindow,
     GtkTextView,
-    x,
 } from "@gtkx/react";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -68,14 +67,14 @@ const HypertextDemo = () => {
 
             trackLink("hypertext", "hypertext", 3);
             nodes.push(
-                <x.TextTag
+                <GtkTextView.Tag
                     key="link-hypertext"
                     id="link-hypertext"
                     foreground="blue"
                     underline={Pango.Underline.SINGLE}
                 >
                     hypertext
-                </x.TextTag>,
+                </GtkTextView.Tag>,
             );
 
             const part2 = " can easily be realized with ";
@@ -84,9 +83,9 @@ const HypertextDemo = () => {
 
             trackLink("tags", "tags", 2);
             nodes.push(
-                <x.TextTag key="link-tags" id="link-tags" foreground="blue" underline={Pango.Underline.SINGLE}>
+                <GtkTextView.Tag key="link-tags" id="link-tags" foreground="blue" underline={Pango.Underline.SINGLE}>
                     tags
-                </x.TextTag>,
+                </GtkTextView.Tag>,
             );
 
             const part3 = ".\n\nOf course you can also embed Emoji 😋, icons ";
@@ -95,7 +94,7 @@ const HypertextDemo = () => {
 
             trackPlaceholder();
             const iconPaintable = getIconPaintable("view-conceal-symbolic", 16);
-            nodes.push(iconPaintable ? <x.TextPaintable key="icon" paintable={iconPaintable} /> : null);
+            nodes.push(iconPaintable ? <GtkTextView.Paintable key="icon" paintable={iconPaintable} /> : null);
 
             const part4 = ", or even widgets ";
             trackText(part4);
@@ -103,9 +102,9 @@ const HypertextDemo = () => {
 
             trackPlaceholder();
             nodes.push(
-                <x.TextAnchor key="levelbar">
+                <GtkTextView.Anchor key="levelbar">
                     <GtkLevelBar value={50} minValue={0} maxValue={100} widthRequest={100} />
-                </x.TextAnchor>,
+                </GtkTextView.Anchor>,
             );
 
             const part5 = " and labels with ";
@@ -114,9 +113,9 @@ const HypertextDemo = () => {
 
             trackPlaceholder();
             nodes.push(
-                <x.TextAnchor key="ghost-anchor" replacementChar="👻">
+                <GtkTextView.Anchor key="ghost-anchor" replacementChar="👻">
                     <GtkLabel label="ghost" />
-                </x.TextAnchor>,
+                </GtkTextView.Anchor>,
             );
 
             const part6 = " text.";
@@ -135,21 +134,21 @@ const HypertextDemo = () => {
             trackText("/ ");
             trackPlaceholder();
             nodes.push(
-                <x.TextTag key="nobreaks" id="nobreaks" allowBreaks={false}>
-                    <x.TextTag key="title" id="title" weight={Pango.Weight.BOLD} scale={1.44}>
+                <GtkTextView.Tag key="nobreaks" id="nobreaks" allowBreaks={false}>
+                    <GtkTextView.Tag key="title" id="title" weight={Pango.Weight.BOLD} scale={1.44}>
                         tag
-                    </x.TextTag>
+                    </GtkTextView.Tag>
                     {" /"}
-                    <x.TextTag key="phonetic" id="phonetic" family="monospace">
+                    <GtkTextView.Tag key="phonetic" id="phonetic" family="monospace">
                         tag
-                    </x.TextTag>
+                    </GtkTextView.Tag>
                     {"/ "}
-                    <x.TextAnchor key="speaker">
+                    <GtkTextView.Anchor key="speaker">
                         <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer")}>
                             <GtkGestureClick onPressed={() => sayWord("tag")} />
                         </GtkImage>
-                    </x.TextAnchor>
-                </x.TextTag>,
+                    </GtkTextView.Anchor>
+                </GtkTextView.Tag>,
             );
 
             const definition =
@@ -159,9 +158,14 @@ const HypertextDemo = () => {
 
             trackLink("goback", "Go back", 1);
             nodes.push(
-                <x.TextTag key="link-goback" id="link-goback" foreground="blue" underline={Pango.Underline.SINGLE}>
+                <GtkTextView.Tag
+                    key="link-goback"
+                    id="link-goback"
+                    foreground="blue"
+                    underline={Pango.Underline.SINGLE}
+                >
                     Go back
-                </x.TextTag>,
+                </GtkTextView.Tag>,
             );
 
             return { content: nodes, linkInfos: links };
@@ -176,21 +180,21 @@ const HypertextDemo = () => {
             trackText("/ ");
             trackPlaceholder();
             nodes.push(
-                <x.TextTag key="nobreaks" id="nobreaks" allowBreaks={false}>
-                    <x.TextTag key="title" id="title" weight={Pango.Weight.BOLD} scale={1.44}>
+                <GtkTextView.Tag key="nobreaks" id="nobreaks" allowBreaks={false}>
+                    <GtkTextView.Tag key="title" id="title" weight={Pango.Weight.BOLD} scale={1.44}>
                         hypertext
-                    </x.TextTag>
+                    </GtkTextView.Tag>
                     {" /"}
-                    <x.TextTag key="phonetic" id="phonetic" family="monospace">
+                    <GtkTextView.Tag key="phonetic" id="phonetic" family="monospace">
                         ˈhaɪ pərˌtɛkst
-                    </x.TextTag>
+                    </GtkTextView.Tag>
                     {"/ "}
-                    <x.TextAnchor key="speaker">
+                    <GtkTextView.Anchor key="speaker">
                         <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer")}>
                             <GtkGestureClick onPressed={() => sayWord("hypertext")} />
                         </GtkImage>
-                    </x.TextAnchor>
-                </x.TextTag>,
+                    </GtkTextView.Anchor>
+                </GtkTextView.Tag>,
             );
 
             const definition =
@@ -200,9 +204,14 @@ const HypertextDemo = () => {
 
             trackLink("goback", "Go back", 1);
             nodes.push(
-                <x.TextTag key="link-goback" id="link-goback" foreground="blue" underline={Pango.Underline.SINGLE}>
+                <GtkTextView.Tag
+                    key="link-goback"
+                    id="link-goback"
+                    foreground="blue"
+                    underline={Pango.Underline.SINGLE}
+                >
                     Go back
-                </x.TextTag>,
+                </GtkTextView.Tag>,
             );
 
             return { content: nodes, linkInfos: links };

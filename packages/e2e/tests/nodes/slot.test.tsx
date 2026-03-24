@@ -1,20 +1,16 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPaned, GtkPopover, x } from "@gtkx/react";
+import { GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPaned, GtkPopover } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - Slot", () => {
-    it("sets slot child via Widget.SlotName pattern", async () => {
+    it("sets slot child via ReactNode prop", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
         const titleRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkHeaderBar ref={headerBarRef}>
-                <x.Slot for={GtkHeaderBar} id="titleWidget">
-                    <GtkLabel ref={titleRef} label="Custom Title" />
-                </x.Slot>
-            </GtkHeaderBar>,
+            <GtkHeaderBar ref={headerBarRef} titleWidget={<GtkLabel ref={titleRef} label="Custom Title" />} />,
         );
 
         expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(titleRef.current?.handle);
@@ -24,13 +20,7 @@ describe("render - Slot", () => {
         const panedRef = createRef<Gtk.Paned>();
         const labelRef = createRef<Gtk.Label>();
 
-        await render(
-            <GtkPaned ref={panedRef}>
-                <x.Slot for={GtkPaned} id="startChild">
-                    <GtkLabel ref={labelRef} label="Start Content" />
-                </x.Slot>
-            </GtkPaned>,
-        );
+        await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef} label="Start Content" />} />);
 
         expect(panedRef.current?.getStartChild()?.handle).toEqual(labelRef.current?.handle);
     });
@@ -39,15 +29,7 @@ describe("render - Slot", () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
 
         function App({ showTitle }: { showTitle: boolean }) {
-            return (
-                <GtkHeaderBar ref={headerBarRef}>
-                    {showTitle && (
-                        <x.Slot for={GtkHeaderBar} id="titleWidget">
-                            Title
-                        </x.Slot>
-                    )}
-                </GtkHeaderBar>
-            );
+            return <GtkHeaderBar ref={headerBarRef} titleWidget={showTitle ? "Title" : undefined} />;
         }
 
         await render(<App showTitle />);
@@ -66,15 +48,16 @@ describe("render - Slot", () => {
 
         function App({ first }: { first: boolean }) {
             return (
-                <GtkHeaderBar ref={headerBarRef}>
-                    <x.Slot for={GtkHeaderBar} id="titleWidget">
-                        {first ? (
+                <GtkHeaderBar
+                    ref={headerBarRef}
+                    titleWidget={
+                        first ? (
                             <GtkLabel ref={label1Ref} key="first" label="First Title" />
                         ) : (
                             <GtkLabel ref={label2Ref} key="second" label="Second Title" />
-                        )}
-                    </x.Slot>
-                </GtkHeaderBar>
+                        )
+                    }
+                />
             );
         }
 
@@ -91,13 +74,7 @@ describe("render - Slot", () => {
         const panedRef = createRef<Gtk.Paned>();
         const labelRef = createRef<Gtk.Label>();
 
-        await render(
-            <GtkPaned ref={panedRef}>
-                <x.Slot for={GtkPaned} id="startChild">
-                    <GtkLabel ref={labelRef} label="Start Child" />
-                </x.Slot>
-            </GtkPaned>,
-        );
+        await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef} label="Start Child" />} />);
 
         expect(panedRef.current?.getStartChild()?.handle).toEqual(labelRef.current?.handle);
     });
@@ -107,11 +84,7 @@ describe("render - Slot", () => {
         const popoverRef = createRef<Gtk.Popover>();
 
         await render(
-            <GtkMenuButton ref={menuButtonRef}>
-                <x.Slot for={GtkMenuButton} id="popover">
-                    <GtkPopover ref={popoverRef}>Popover Content</GtkPopover>
-                </x.Slot>
-            </GtkMenuButton>,
+            <GtkMenuButton ref={menuButtonRef} popover={<GtkPopover ref={popoverRef}>Popover Content</GtkPopover>} />,
         );
 
         expect(menuButtonRef.current?.getPopover()?.handle).toEqual(popoverRef.current?.handle);
@@ -123,14 +96,11 @@ describe("render - Slot", () => {
         const endRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkPaned ref={panedRef}>
-                <x.Slot for={GtkPaned} id="startChild">
-                    <GtkLabel ref={startRef} label="Start" />
-                </x.Slot>
-                <x.Slot for={GtkPaned} id="endChild">
-                    <GtkLabel ref={endRef} label="End" />
-                </x.Slot>
-            </GtkPaned>,
+            <GtkPaned
+                ref={panedRef}
+                startChild={<GtkLabel ref={startRef} label="Start" />}
+                endChild={<GtkLabel ref={endRef} label="End" />}
+            />,
         );
 
         expect(panedRef.current?.getStartChild()?.handle).toEqual(startRef.current?.handle);

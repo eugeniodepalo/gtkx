@@ -14,8 +14,10 @@ import {
     GtkSearchBar,
     GtkSearchEntry,
     GtkToggleButton,
-    x,
 } from "@gtkx/react";
+
+const Slot = "Slot" as const;
+
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-settings.tsx?raw";
@@ -263,9 +265,9 @@ const ListViewSettingsDemo = () => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    <GtkHeaderBar.PackEnd>
                         <GtkToggleButton
                             iconName="system-search-symbolic"
                             active={keySearchActive}
@@ -274,11 +276,14 @@ const ListViewSettingsDemo = () => {
                                 setKeySearchText("");
                             }}
                         />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
-            <GtkPaned position={300} hexpand vexpand>
-                <x.Slot for={GtkPaned} id="startChild">
+            </Slot>
+            <GtkPaned
+                position={300}
+                hexpand
+                vexpand
+                startChild={
                     <GtkScrolledWindow>
                         <GtkListView
                             tabBehavior={Gtk.ListTabBehavior.ITEM}
@@ -290,8 +295,8 @@ const ListViewSettingsDemo = () => {
                             items={getSchemaTree().map(schemaNodeToItem)}
                         />
                     </GtkScrolledWindow>
-                </x.Slot>
-                <x.Slot for={GtkPaned} id="endChild">
+                }
+                endChild={
                     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                         <GtkSearchBar searchModeEnabled={keySearchActive}>
                             <GtkSearchEntry onSearchChanged={handleKeySearchChanged} onStopSearch={handleStopSearch} />
@@ -303,13 +308,13 @@ const ListViewSettingsDemo = () => {
                                 cssClasses={["data-table"]}
                                 items={filteredKeyInfos.map((k) => ({ id: k.name, value: k }))}
                             >
-                                <x.ColumnViewColumn
+                                <GtkColumnView.Column
                                     id="name"
                                     title="Name"
                                     sortable
                                     renderCell={(item: KeyInfo) => <GtkLabel label={item.name} xalign={0} />}
                                 />
-                                <x.ColumnViewColumn
+                                <GtkColumnView.Column
                                     id="value"
                                     title="Value"
                                     resizable
@@ -322,21 +327,21 @@ const ListViewSettingsDemo = () => {
                                         />
                                     )}
                                 />
-                                <x.ColumnViewColumn
+                                <GtkColumnView.Column
                                     id="type"
                                     title="Type"
                                     resizable
                                     sortable
                                     renderCell={(item: KeyInfo) => <GtkLabel label={item.type} xalign={0} />}
                                 />
-                                <x.ColumnViewColumn
+                                <GtkColumnView.Column
                                     id="default"
                                     title="Default"
                                     resizable
                                     expand
                                     renderCell={(item: KeyInfo) => <GtkLabel label={item.defaultValue} xalign={0} />}
                                 />
-                                <x.ColumnViewColumn
+                                <GtkColumnView.Column
                                     id="summary"
                                     title="Summary"
                                     resizable
@@ -344,7 +349,7 @@ const ListViewSettingsDemo = () => {
                                     expand
                                     renderCell={(item: KeyInfo) => <GtkLabel label={item.summary} xalign={0} wrap />}
                                 />
-                                <x.ColumnViewColumn
+                                <GtkColumnView.Column
                                     id="description"
                                     title="Description"
                                     resizable
@@ -357,8 +362,8 @@ const ListViewSettingsDemo = () => {
                             </GtkColumnView>
                         </GtkScrolledWindow>
                     </GtkBox>
-                </x.Slot>
-            </GtkPaned>
+                }
+            />
         </>
     );
 };

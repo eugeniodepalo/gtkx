@@ -17,61 +17,83 @@ describe("sanitizeDoc", () => {
     });
 
     describe("GIR link conversion", () => {
-        it("converts class links", () => {
-            expect(sanitizeDoc("[class@Gtk.Button]")).toBe("{@link Gtk.Button}");
+        it("converts class links to GTK docs URLs", () => {
+            expect(sanitizeDoc("[class@Gtk.Button]")).toBe(
+                "[`Gtk.Button`](https://docs.gtk.org/gtk4/class.Button.html)",
+            );
         });
 
-        it("converts interface links", () => {
-            expect(sanitizeDoc("[iface@Gio.ListModel]")).toBe("{@link Gio.ListModel}");
+        it("converts interface links to GTK docs URLs", () => {
+            expect(sanitizeDoc("[iface@Gio.ListModel]")).toBe(
+                "[`Gio.ListModel`](https://docs.gtk.org/gio/iface.ListModel.html)",
+            );
         });
 
-        it("converts method links", () => {
-            expect(sanitizeDoc("[method@Gtk.Widget.show]")).toBe("{@link Gtk.Widget.show}");
+        it("converts method links to GTK docs URLs", () => {
+            expect(sanitizeDoc("[method@Gtk.Widget.show]")).toBe(
+                "[`Gtk.Widget.show`](https://docs.gtk.org/gtk4/method.Widget.show.html)",
+            );
         });
 
-        it("converts property links", () => {
-            expect(sanitizeDoc("[property@Gtk.Button:label]")).toBe("{@link Gtk.Button.label}");
+        it("converts property links to GTK docs URLs", () => {
+            expect(sanitizeDoc("[property@Gtk.Button:label]")).toBe(
+                "[`Gtk.Button.label`](https://docs.gtk.org/gtk4/property.Button.label.html)",
+            );
         });
 
-        it("converts signal links", () => {
-            expect(sanitizeDoc("[signal@Gtk.Button::clicked]")).toBe("{@link Gtk.Button.:clicked}");
+        it("converts signal links to GTK docs URLs", () => {
+            expect(sanitizeDoc("[signal@Gtk.Button::clicked]")).toBe(
+                "[`Gtk.Button.:clicked`](https://docs.gtk.org/gtk4/signal.Button.clicked.html)",
+            );
         });
 
-        it("converts func links", () => {
-            expect(sanitizeDoc("[func@Gtk.init]")).toBe("{@link Gtk.init}");
+        it("converts func links to GTK docs URLs", () => {
+            expect(sanitizeDoc("[func@Gtk.init]")).toBe("[`Gtk.init`](https://docs.gtk.org/gtk4/func.init.html)");
         });
 
-        it("converts const links", () => {
-            expect(sanitizeDoc("[const@Gtk.MAJOR_VERSION]")).toBe("{@link Gtk.MAJOR_VERSION}");
+        it("converts const links to GTK docs URLs", () => {
+            expect(sanitizeDoc("[const@Gtk.MAJOR_VERSION]")).toBe(
+                "[`Gtk.MAJOR_VERSION`](https://docs.gtk.org/gtk4/const.MAJOR_VERSION.html)",
+            );
         });
 
         it("converts id links to backticks", () => {
             expect(sanitizeDoc("[id@some_id]")).toBe("`some_id`");
         });
 
-        it("converts enum links", () => {
-            expect(sanitizeDoc("[enum@Gtk.Orientation]")).toBe("{@link Gtk.Orientation}");
+        it("converts enum links to GTK docs URLs", () => {
+            expect(sanitizeDoc("[enum@Gtk.Orientation]")).toBe(
+                "[`Gtk.Orientation`](https://docs.gtk.org/gtk4/enum.Orientation.html)",
+            );
         });
 
         it("handles invalid links gracefully", () => {
             expect(sanitizeDoc("[invalid@Foo]")).toBe("`Foo`");
+        });
+
+        it("links to Adw docs for Adw namespace", () => {
+            expect(sanitizeDoc("[class@Adw.HeaderBar]")).toBe(
+                "[`Adw.HeaderBar`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.HeaderBar.html)",
+            );
         });
     });
 
     describe("link style options", () => {
         it("uses namespaced style by default", () => {
             const result = sanitizeDoc("[class@Gtk.Button]", { linkStyle: "namespaced" });
-            expect(result).toBe("{@link Gtk.Button}");
+            expect(result).toBe("[`Gtk.Button`](https://docs.gtk.org/gtk4/class.Button.html)");
         });
 
         it("uses prefixed style when specified", () => {
             const result = sanitizeDoc("[class@Adw.HeaderBar]", { linkStyle: "prefixed" });
-            expect(result).toBe("{@link AdwHeaderBar}");
+            expect(result).toBe(
+                "[`AdwHeaderBar`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.HeaderBar.html)",
+            );
         });
 
         it("omits namespace prefix for Gtk in prefixed mode", () => {
             const result = sanitizeDoc("[class@Gtk.Button]", { linkStyle: "prefixed" });
-            expect(result).toBe("{@link Button}");
+            expect(result).toBe("[`Button`](https://docs.gtk.org/gtk4/class.Button.html)");
         });
     });
 
@@ -182,7 +204,9 @@ describe("buildJsDocStructure", () => {
 
     it("sanitizes doc before returning", () => {
         const result = buildJsDocStructure("[class@Gtk.Button] example", "Gtk");
-        expect(result).toEqual([{ description: "{@link Gtk.Button} example" }]);
+        expect(result).toEqual([
+            { description: "[`Gtk.Button`](https://docs.gtk.org/gtk4/class.Button.html) example" },
+        ]);
     });
 
     it("escapes XML-style tags in doc", () => {

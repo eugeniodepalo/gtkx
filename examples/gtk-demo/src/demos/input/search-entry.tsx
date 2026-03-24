@@ -1,8 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkHeaderBar, GtkLabel, GtkSearchBar, GtkSearchEntry, GtkToggleButton, x } from "@gtkx/react";
+import { GtkBox, GtkHeaderBar, GtkLabel, GtkSearchBar, GtkSearchEntry, GtkToggleButton } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./search-entry.tsx?raw";
+
+const Slot = "Slot" as const;
 
 const SearchEntryDemo = ({ window }: DemoProps) => {
     const [searchText, setSearchText] = useState("");
@@ -14,17 +16,17 @@ const SearchEntryDemo = ({ window }: DemoProps) => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    <GtkHeaderBar.PackEnd>
                         <GtkToggleButton
                             iconName="system-search-symbolic"
                             active={searchMode}
                             onToggled={handleToggleButtonClicked}
                         />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
                 <GtkSearchBar
                     searchModeEnabled={searchMode}

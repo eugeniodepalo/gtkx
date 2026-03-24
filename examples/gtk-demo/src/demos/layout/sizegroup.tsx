@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkCheckButton, GtkDropDown, GtkFrame, GtkGrid, GtkLabel, x } from "@gtkx/react";
+import { GtkBox, GtkCheckButton, GtkDropDown, GtkFrame, GtkGrid, GtkLabel } from "@gtkx/react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";
@@ -73,10 +73,10 @@ const SizeGroupDemo = () => {
         >
             <GtkFrame label="Color Options">
                 <GtkGrid rowSpacing={5} columnSpacing={10} marginStart={5} marginEnd={5} marginTop={5} marginBottom={5}>
-                    <x.GridChild column={0} row={0}>
+                    <GtkGrid.Child column={0} row={0}>
                         <GtkLabel ref={label1Ref} label="_Foreground" useUnderline halign={Gtk.Align.START} hexpand />
-                    </x.GridChild>
-                    <x.GridChild column={1} row={0}>
+                    </GtkGrid.Child>
+                    <GtkGrid.Child column={1} row={0}>
                         <GtkDropDown
                             ref={dropdown1Ref}
                             halign={Gtk.Align.END}
@@ -85,12 +85,12 @@ const SizeGroupDemo = () => {
                             onSelectionChanged={setForeground}
                             items={COLOR_OPTIONS.map((option) => ({ id: option, value: option }))}
                         />
-                    </x.GridChild>
+                    </GtkGrid.Child>
 
-                    <x.GridChild column={0} row={1}>
+                    <GtkGrid.Child column={0} row={1}>
                         <GtkLabel ref={label2Ref} label="_Background" useUnderline halign={Gtk.Align.START} hexpand />
-                    </x.GridChild>
-                    <x.GridChild column={1} row={1}>
+                    </GtkGrid.Child>
+                    <GtkGrid.Child column={1} row={1}>
                         <GtkDropDown
                             ref={dropdown2Ref}
                             halign={Gtk.Align.END}
@@ -99,16 +99,16 @@ const SizeGroupDemo = () => {
                             onSelectionChanged={setBackground}
                             items={COLOR_OPTIONS.map((option) => ({ id: option, value: option }))}
                         />
-                    </x.GridChild>
+                    </GtkGrid.Child>
                 </GtkGrid>
             </GtkFrame>
 
             <GtkFrame label="Line Options">
                 <GtkGrid rowSpacing={5} columnSpacing={10} marginStart={5} marginEnd={5} marginTop={5} marginBottom={5}>
-                    <x.GridChild column={0} row={0}>
+                    <GtkGrid.Child column={0} row={0}>
                         <GtkLabel ref={label3Ref} label="_Dashing" useUnderline halign={Gtk.Align.START} hexpand />
-                    </x.GridChild>
-                    <x.GridChild column={1} row={0}>
+                    </GtkGrid.Child>
+                    <GtkGrid.Child column={1} row={0}>
                         <GtkDropDown
                             ref={dropdown3Ref}
                             halign={Gtk.Align.END}
@@ -117,12 +117,12 @@ const SizeGroupDemo = () => {
                             onSelectionChanged={setDashing}
                             items={DASH_OPTIONS.map((option) => ({ id: option, value: option }))}
                         />
-                    </x.GridChild>
+                    </GtkGrid.Child>
 
-                    <x.GridChild column={0} row={1}>
+                    <GtkGrid.Child column={0} row={1}>
                         <GtkLabel ref={label4Ref} label="_Line ends" useUnderline halign={Gtk.Align.START} hexpand />
-                    </x.GridChild>
-                    <x.GridChild column={1} row={1}>
+                    </GtkGrid.Child>
+                    <GtkGrid.Child column={1} row={1}>
                         <GtkDropDown
                             ref={dropdown4Ref}
                             halign={Gtk.Align.END}
@@ -131,7 +131,7 @@ const SizeGroupDemo = () => {
                             onSelectionChanged={setLineEnd}
                             items={END_OPTIONS.map((option) => ({ id: option, value: option }))}
                         />
-                    </x.GridChild>
+                    </GtkGrid.Child>
                 </GtkGrid>
             </GtkFrame>
 

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { css } from "@gtkx/css";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkColumnView, GtkInscription, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkBox, GtkColumnView, GtkInscription, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-ucd.tsx?raw";
@@ -305,7 +305,7 @@ const ListViewUcdDemo = () => {
                         children: section.entries.map((entry) => ({ id: entry.codepointStr, value: entry })),
                     }))}
                 >
-                    <x.ColumnViewColumn
+                    <GtkColumnView.Column
                         id="codepoint"
                         title="Codepoint"
                         sortable
@@ -318,7 +318,7 @@ const ListViewUcdDemo = () => {
                             />
                         )}
                     />
-                    <x.ColumnViewColumn
+                    <GtkColumnView.Column
                         id="char"
                         title="Char"
                         renderCell={(item: UcdEntry) => (
@@ -329,7 +329,7 @@ const ListViewUcdDemo = () => {
                             />
                         )}
                     />
-                    <x.ColumnViewColumn
+                    <GtkColumnView.Column
                         id="name"
                         title="Name"
                         resizable
@@ -344,7 +344,7 @@ const ListViewUcdDemo = () => {
                             />
                         )}
                     />
-                    <x.ColumnViewColumn
+                    <GtkColumnView.Column
                         id="type"
                         title="Type"
                         resizable
@@ -359,7 +359,7 @@ const ListViewUcdDemo = () => {
                             />
                         )}
                     />
-                    <x.ColumnViewColumn
+                    <GtkColumnView.Column
                         id="break-type"
                         title="Break Type"
                         resizable
@@ -374,7 +374,7 @@ const ListViewUcdDemo = () => {
                             />
                         )}
                     />
-                    <x.ColumnViewColumn
+                    <GtkColumnView.Column
                         id="combining-class"
                         title="Combining Class"
                         resizable

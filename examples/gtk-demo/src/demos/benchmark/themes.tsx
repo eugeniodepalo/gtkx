@@ -2,16 +2,10 @@ import * as Adw from "@gtkx/ffi/adw";
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
-import {
-    AdwAlertDialog,
-    createPortal,
-    GtkBox,
-    GtkButton,
-    GtkHeaderBar,
-    GtkLabel,
-    GtkToggleButton,
-    x,
-} from "@gtkx/react";
+import { AdwAlertDialog, createPortal, GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/react";
+
+const Slot = "Slot" as const;
+
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./themes.tsx?raw";
@@ -148,20 +142,20 @@ const ThemesDemo = ({ window }: DemoProps) => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkToggleButton
                             label="Cycle"
                             active={isRunning}
                             onToggled={(btn) => handleToggle(btn.getActive())}
                         />
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    </GtkHeaderBar.PackStart>
+                    <GtkHeaderBar.PackEnd>
                         <GtkLabel label={fps} widthChars={12} attributes={fpsAttrs} />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkBox
                 ref={boxRef}
                 orientation={Gtk.Orientation.VERTICAL}
@@ -192,10 +186,11 @@ const ThemesDemo = ({ window }: DemoProps) => {
                         defaultResponse="ok"
                         closeResponse="cancel"
                         onResponse={handleWarningResponse}
-                    >
-                        <x.AlertDialogResponse id="cancel" label="_Cancel" />
-                        <x.AlertDialogResponse id="ok" label="_OK" />
-                    </AdwAlertDialog>,
+                        responses={[
+                            { id: "cancel", label: "_Cancel" },
+                            { id: "ok", label: "_OK" },
+                        ]}
+                    />,
                     window.current,
                 )}
         </>

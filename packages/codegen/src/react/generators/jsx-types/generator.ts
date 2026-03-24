@@ -8,6 +8,7 @@
 
 import type { FileBuilder } from "../../../builders/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
+import { getRenderableSlotNames } from "../../../core/config/index.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
 import { type MetadataReader, sortWidgetsByClassName } from "../../metadata-reader.js";
 import { ControllerPropsBuilder } from "./controller-props-builder.js";
@@ -134,11 +135,19 @@ export class JsxTypesGenerator {
             const filteredProperties = widget.meta.properties.filter((p) => !widget.hiddenProps.has(p.camelName));
             const filteredSignals = widget.meta.signals.filter((s) => !widget.hiddenProps.has(s.handlerName));
 
+            const renderableSlots = getRenderableSlotNames(widget.jsxName);
+            const slotPropNames = new Set(
+                widget.slots.map((slot) => toCamelCase(slot)).filter((name) => renderableSlots.has(name)),
+            );
+            this.propsBuilder.setSlotPropNames(slotPropNames);
+
             const iface = this.propsBuilder.buildWidgetSpecificPropsInterface(
                 widget,
                 filteredProperties,
                 filteredSignals,
             );
+
+            this.propsBuilder.setSlotPropNames(new Set());
 
             file.add(iface);
         }

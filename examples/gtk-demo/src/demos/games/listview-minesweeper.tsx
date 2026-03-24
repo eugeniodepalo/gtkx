@@ -1,9 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkGridView, GtkHeaderBar, GtkImage, GtkLabel, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkGridView, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
 
+const Slot = "Slot" as const;
 const GRID_SIZE = 8;
 const MINE_COUNT = 10;
 
@@ -122,23 +123,20 @@ const ListViewMinesweeperDemo = () => {
 
     const getCellDisplay = (cell: Cell): string => {
         if (!cell.isRevealed) return "?";
-        if (cell.isMine) return "💣";
+        if (cell.isMine) return "\u{1F4A3}";
         if (cell.adjacentMines === 0) return "";
         return String(cell.adjacentMines);
     };
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
-                <GtkHeaderBar>
-                    <x.Slot for={GtkHeaderBar} id="titleWidget">
-                        {gameState === "won" ? <GtkImage iconName="trophy-gold" /> : null}
-                    </x.Slot>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+            <Slot id="titlebar">
+                <GtkHeaderBar titleWidget={gameState === "won" ? <GtkImage iconName="trophy-gold" /> : null}>
+                    <GtkHeaderBar.PackStart>
                         <GtkButton label="New Game" onClicked={resetGame} />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackStart>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkBox halign={Gtk.Align.CENTER}>
                 <GtkGridView
                     estimatedItemHeight={32}

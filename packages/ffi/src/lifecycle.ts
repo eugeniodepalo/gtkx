@@ -11,6 +11,7 @@ let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Event map for application lifecycle events.
+ * @internal
  */
 type NativeEventMap = {
     /** Emitted when the GTK application starts */

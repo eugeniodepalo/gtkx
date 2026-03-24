@@ -16,8 +16,10 @@ import {
     GtkRevealer,
     GtkScrolledWindow,
     GtkToggleButton,
-    x,
 } from "@gtkx/react";
+
+const Slot = "Slot" as const;
+
 import type { RefObject } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
@@ -258,10 +260,10 @@ const SelectionInfoPanel = ({
 }) => {
     return (
         <GtkGrid marginStart={10} marginEnd={10} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
-            <x.GridChild column={0} row={0} columnSpan={5}>
+            <GtkGrid.Child column={0} row={0} columnSpan={5}>
                 <GtkLabel label="Selection" hexpand cssClasses={TITLE_CSS} />
-            </x.GridChild>
-            <x.GridChild column={0} row={1} columnSpan={5}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={0} row={1} columnSpan={5}>
                 <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
                     <GtkGridView
                         maxColumns={200}
@@ -271,26 +273,26 @@ const SelectionInfoPanel = ({
                         items={selectedColors.map((c) => ({ id: c.id, value: c }))}
                     />
                 </GtkScrolledWindow>
-            </x.GridChild>
-            <x.GridChild column={0} row={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={0} row={2}>
                 <GtkLabel label="Size:" />
-            </x.GridChild>
-            <x.GridChild column={1} row={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={2}>
                 <GtkLabel label={String(selectedColors.length)} />
-            </x.GridChild>
-            <x.GridChild column={2} row={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={2} row={2}>
                 <GtkLabel label="Average:" />
-            </x.GridChild>
-            <x.GridChild column={3} row={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={3} row={2}>
                 <GtkDrawingArea
                     contentWidth={32}
                     contentHeight={32}
                     onDraw={(cr, w, h) => drawColorSwatch(cr, w, h, averageColor.r, averageColor.g, averageColor.b)}
                 />
-            </x.GridChild>
-            <x.GridChild column={4} row={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={4} row={2}>
                 <GtkLabel label="" hexpand />
-            </x.GridChild>
+            </GtkGrid.Child>
         </GtkGrid>
     );
 };
@@ -570,9 +572,9 @@ const ListViewColorsDemo = () => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkToggleButton
                             iconName="emblem-important-symbolic"
                             tooltipText="Show selection info"
@@ -591,8 +593,8 @@ const ListViewColorsDemo = () => {
                             onSelectionChanged={handleLimitChange}
                             items={COLOR_LIMITS.map((l) => ({ id: l.id, value: l.label }))}
                         />
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    </GtkHeaderBar.PackStart>
+                    <GtkHeaderBar.PackEnd>
                         <GtkBox spacing={10}>
                             <GtkLabel label="Sort by:" />
                             <GtkDropDown
@@ -609,9 +611,9 @@ const ListViewColorsDemo = () => {
                                 items={DISPLAY_FACTORIES.map((f) => ({ id: f.id, value: f.label }))}
                             />
                         </GtkBox>
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkRevealer revealChild={showSelectionInfo}>
@@ -634,13 +636,13 @@ const ListViewColorsDemo = () => {
                         />
                     </GtkScrolledWindow>
                     {(isSorting || filling) && sortedColors.length > 0 && (
-                        <x.OverlayChild>
+                        <GtkOverlay.Child>
                             <GtkProgressBar
                                 fraction={filling ? baseColors.length / colorLimit : sortProgress}
                                 halign={Gtk.Align.FILL}
                                 valign={Gtk.Align.START}
                             />
-                        </x.OverlayChild>
+                        </GtkOverlay.Child>
                     )}
                 </GtkOverlay>
             </GtkBox>

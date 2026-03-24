@@ -1,14 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkDrawingArea,
-    GtkOverlay,
-    GtkPaned,
-    GtkScrolledWindow,
-    GtkTextView,
-    x,
-} from "@gtkx/react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkOverlay, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./css-multiplebgs.tsx?raw";
@@ -162,7 +153,7 @@ const CssMultiplebgsDemo = ({ window }: DemoProps) => {
     return (
         <GtkOverlay>
             <GtkDrawingArea name="canvas" hexpand vexpand />
-            <x.OverlayChild>
+            <GtkOverlay.Child>
                 <GtkButton
                     name="bricks-button"
                     halign={Gtk.Align.CENTER}
@@ -170,19 +161,18 @@ const CssMultiplebgsDemo = ({ window }: DemoProps) => {
                     widthRequest={250}
                     heightRequest={84}
                 />
-            </x.OverlayChild>
-            <x.OverlayChild>
-                <GtkPaned orientation={Gtk.Orientation.VERTICAL}>
-                    <x.Slot for={GtkPaned} id="startChild">
-                        <GtkBox />
-                    </x.Slot>
-                    <x.Slot for={GtkPaned} id="endChild">
+            </GtkOverlay.Child>
+            <GtkOverlay.Child>
+                <GtkPaned
+                    orientation={Gtk.Orientation.VERTICAL}
+                    startChild={<GtkBox />}
+                    endChild={
                         <GtkScrolledWindow>
                             <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
                         </GtkScrolledWindow>
-                    </x.Slot>
-                </GtkPaned>
-            </x.OverlayChild>
+                    }
+                />
+            </GtkOverlay.Child>
         </GtkOverlay>
     );
 };

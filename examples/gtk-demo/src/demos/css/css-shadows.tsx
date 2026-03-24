@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./css-shadows.tsx?raw";
@@ -53,20 +53,22 @@ const CssShadowsDemo = ({ window }: DemoProps) => {
     const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
 
     return (
-        <GtkPaned orientation={Gtk.Orientation.VERTICAL} resizeStartChild={false}>
-            <x.Slot for={GtkPaned} id="startChild">
+        <GtkPaned
+            orientation={Gtk.Orientation.VERTICAL}
+            resizeStartChild={false}
+            startChild={
                 <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
                     <GtkButton iconName="go-next" />
                     <GtkButton iconName="go-previous" />
                     <GtkButton label="Hello World" />
                 </GtkBox>
-            </x.Slot>
-            <x.Slot for={GtkPaned} id="endChild">
+            }
+            endChild={
                 <GtkScrolledWindow>
                     <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
                 </GtkScrolledWindow>
-            </x.Slot>
-        </GtkPaned>
+            }
+        />
     );
 };
 

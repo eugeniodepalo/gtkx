@@ -12,8 +12,10 @@ import {
     GtkProgressBar,
     GtkScrolledWindow,
     GtkSearchEntry,
-    x,
 } from "@gtkx/react";
+
+const Slot = "Slot" as const;
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./listview-words.tsx?raw";
@@ -122,16 +124,13 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
-                <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+            <Slot id="titlebar">
+                <GtkHeaderBar titleWidget={<GtkLabel label={`${filteredWords.length.toLocaleString()} lines`} />}>
+                    <GtkHeaderBar.PackStart>
                         <GtkButton label="_Open" useUnderline onClicked={() => void handleOpen()} />
-                    </x.ContainerSlot>
-                    <x.Slot for={GtkHeaderBar} id="titleWidget">
-                        <GtkLabel label={`${filteredWords.length.toLocaleString()} lines`} />
-                    </x.Slot>
+                    </GtkHeaderBar.PackStart>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
                 <GtkSearchEntry
                     text={searchText}
@@ -159,14 +158,14 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
                         />
                     </GtkScrolledWindow>
                     {filterProgress < 1 && (
-                        <x.OverlayChild>
+                        <GtkOverlay.Child>
                             <GtkProgressBar
                                 fraction={filterProgress}
                                 halign={Gtk.Align.FILL}
                                 valign={Gtk.Align.START}
                                 hexpand
                             />
-                        </x.OverlayChild>
+                        </GtkOverlay.Child>
                     )}
                 </GtkOverlay>
             </GtkBox>

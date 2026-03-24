@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 
+/** @internal */
 export type Container = Gtk.Widget | Gtk.Application | Gtk.EventController | Gtk.ListItem | Gtk.ListHeader;
 
 export type Props = Record<string, unknown>;

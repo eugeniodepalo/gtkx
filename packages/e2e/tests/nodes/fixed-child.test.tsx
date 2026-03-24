@@ -1,6 +1,6 @@
 import { createRef as createNativeRef } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkFixed, GtkLabel, x } from "@gtkx/react";
+import { GtkFixed, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -29,9 +29,9 @@ describe("render - FixedChild", () => {
 
             await render(
                 <GtkFixed ref={fixedRef}>
-                    <x.FixedChild x={100} y={50}>
+                    <GtkFixed.Child x={100} y={50}>
                         <GtkLabel ref={labelRef} label="Positioned" />
-                    </x.FixedChild>
+                    </GtkFixed.Child>
                 </GtkFixed>,
             );
 
@@ -50,9 +50,9 @@ describe("render - FixedChild", () => {
 
             await render(
                 <GtkFixed ref={fixedRef}>
-                    <x.FixedChild>
+                    <GtkFixed.Child>
                         <GtkLabel ref={labelRef} label="Default" />
-                    </x.FixedChild>
+                    </GtkFixed.Child>
                 </GtkFixed>,
             );
 
@@ -72,9 +72,9 @@ describe("render - FixedChild", () => {
             function App({ posX, posY }: { posX: number; posY: number }) {
                 return (
                     <GtkFixed ref={fixedRef}>
-                        <x.FixedChild x={posX} y={posY}>
+                        <GtkFixed.Child x={posX} y={posY}>
                             <GtkLabel ref={labelRef} label="Moving" />
-                        </x.FixedChild>
+                        </GtkFixed.Child>
                     </GtkFixed>
                 );
             }
@@ -103,12 +103,12 @@ describe("render - FixedChild", () => {
 
             await render(
                 <GtkFixed ref={fixedRef}>
-                    <x.FixedChild x={10} y={20}>
+                    <GtkFixed.Child x={10} y={20}>
                         <GtkLabel ref={label1Ref} label="First" />
-                    </x.FixedChild>
-                    <x.FixedChild x={100} y={80}>
+                    </GtkFixed.Child>
+                    <GtkFixed.Child x={100} y={80}>
                         <GtkLabel ref={label2Ref} label="Second" />
-                    </x.FixedChild>
+                    </GtkFixed.Child>
                 </GtkFixed>,
             );
 
@@ -133,9 +133,9 @@ describe("render - FixedChild", () => {
                 return (
                     <GtkFixed ref={fixedRef}>
                         {showChild && (
-                            <x.FixedChild x={0} y={0}>
+                            <GtkFixed.Child x={0} y={0}>
                                 <GtkLabel ref={labelRef} label="Removable" />
-                            </x.FixedChild>
+                            </GtkFixed.Child>
                         )}
                     </GtkFixed>
                 );

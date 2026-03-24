@@ -5,7 +5,7 @@ import * as WebKit from "@gtkx/ffi/webkit";
 import type { Node } from "./node.js";
 import { AdjustableNode } from "./nodes/adjustable.js";
 
-import { AlertDialogResponseNode } from "./nodes/alert-dialog-response.js";
+import { AlertDialogNode } from "./nodes/alert-dialog.js";
 import { AnimationNode } from "./nodes/animation.js";
 import { ApplicationNode } from "./nodes/application.js";
 import { CalendarNode } from "./nodes/calendar.js";
@@ -42,7 +42,6 @@ import { TextPaintableNode } from "./nodes/text-paintable.js";
 import { TextSegmentNode } from "./nodes/text-segment.js";
 import { TextTagNode } from "./nodes/text-tag.js";
 import { TextViewNode } from "./nodes/text-view.js";
-import { ToggleNode } from "./nodes/toggle.js";
 import { ToggleGroupNode } from "./nodes/toggle-group.js";
 import { WebViewNode } from "./nodes/web-view.js";
 import { WidgetNode } from "./nodes/widget.js";
@@ -72,8 +71,7 @@ type NodeRegistryEntry = [RegistryKey, NodeClass];
 
 export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["ContainerSlot", ContainerSlotNode],
-    ["AlertDialogResponse", AlertDialogResponseNode],
-    ["Animation", AnimationNode],
+    [["AdwTimedAnimation", "AdwSpringAnimation"], AnimationNode],
     ["ColumnViewColumn", ColumnViewColumnNode],
     ["FixedChild", FixedChildNode],
     ["GridChild", GridChildNode],
@@ -89,12 +87,12 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["TextPaintable", TextPaintableNode],
     ["TextSegment", TextSegmentNode],
     ["TextTag", TextTagNode],
-    ["Toggle", ToggleNode],
     [Gtk.Application, ApplicationNode],
     [Gtk.EventController, EventControllerNode],
     [GtkSource.View, SourceViewNode],
     [Gtk.TextView, TextViewNode],
     [WebKit.WebView, WebViewNode],
+    [Adw.AlertDialog, AlertDialogNode],
     [Adw.Dialog, DialogNode],
     [Gtk.Window, WindowNode],
     [Gtk.Scale, ScaleNode],

@@ -19,7 +19,6 @@ import {
     GtkScale,
     GtkScrolledWindow,
     GtkSeparator,
-    x,
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
@@ -442,7 +441,7 @@ const DndDemo = ({ window }: DemoProps) => {
                     }}
                 />
                 {items.map((item) => (
-                    <x.FixedChild
+                    <GtkFixed.Child
                         key={item.id}
                         x={item.x}
                         y={item.y}
@@ -494,10 +493,10 @@ const DndDemo = ({ window }: DemoProps) => {
                                 onEnd={() => handleRotateEnd(item.id)}
                             />
                         </GtkLabel>
-                    </x.FixedChild>
+                    </GtkFixed.Child>
                 ))}
 
-                <x.FixedChild x={0} y={0}>
+                <GtkFixed.Child x={0} y={0}>
                     <GtkPopover
                         ref={contextMenuRef}
                         hasArrow={false}
@@ -532,10 +531,10 @@ const DndDemo = ({ window }: DemoProps) => {
                             />
                         </GtkBox>
                     </GtkPopover>
-                </x.FixedChild>
+                </GtkFixed.Child>
 
                 {editingItem && (
-                    <x.FixedChild
+                    <GtkFixed.Child
                         x={editingItem.x}
                         y={editingItem.y + 2 * (itemHalves.current.get(editingItem.id)?.halfH ?? ITEM_SIZE / 2)}
                     >
@@ -556,11 +555,11 @@ const DndDemo = ({ window }: DemoProps) => {
                                 drawValue={false}
                             />
                         </GtkBox>
-                    </x.FixedChild>
+                    </GtkFixed.Child>
                 )}
 
                 {isDragging && (
-                    <x.FixedChild x={20} y={20}>
+                    <GtkFixed.Child x={20} y={20}>
                         <GtkBox
                             cssClasses={[
                                 css`padding: 12px;`,
@@ -581,7 +580,7 @@ const DndDemo = ({ window }: DemoProps) => {
                             />
                             <GtkImage iconName="user-trash-symbolic" pixelSize={64} cssClasses={["error"]} />
                         </GtkBox>
-                    </x.FixedChild>
+                    </GtkFixed.Child>
                 )}
             </GtkFixed>
 

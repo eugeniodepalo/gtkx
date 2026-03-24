@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkLabel, GtkNotebook, x } from "@gtkx/react";
+import { GtkLabel, GtkNotebook } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -36,7 +36,7 @@ describe("render - Notebook", () => {
 
             await render(
                 <GtkNotebook ref={notebookRef}>
-                    <x.NotebookPage label="Tab 1">Page 1 Content</x.NotebookPage>
+                    <GtkNotebook.Page label="Tab 1">Page 1 Content</GtkNotebook.Page>
                 </GtkNotebook>,
             );
 
@@ -54,9 +54,9 @@ describe("render - Notebook", () => {
                 return (
                     <GtkNotebook ref={notebookRef}>
                         {pages.map((label) => (
-                            <x.NotebookPage key={label} label={label}>
+                            <GtkNotebook.Page key={label} label={label}>
                                 <GtkLabel label={`Content: ${label}`} />
-                            </x.NotebookPage>
+                            </GtkNotebook.Page>
                         ))}
                     </GtkNotebook>
                 );
@@ -77,9 +77,9 @@ describe("render - Notebook", () => {
                 return (
                     <GtkNotebook ref={notebookRef}>
                         {pages.map((label) => (
-                            <x.NotebookPage key={label} label={label}>
+                            <GtkNotebook.Page key={label} label={label}>
                                 <GtkLabel label={`Content: ${label}`} />
-                            </x.NotebookPage>
+                            </GtkNotebook.Page>
                         ))}
                     </GtkNotebook>
                 );
@@ -99,7 +99,7 @@ describe("render - Notebook", () => {
             function App({ label }: { label: string }) {
                 return (
                     <GtkNotebook ref={notebookRef}>
-                        <x.NotebookPage label={label}>Content</x.NotebookPage>
+                        <GtkNotebook.Page label={label}>Content</GtkNotebook.Page>
                     </GtkNotebook>
                 );
             }

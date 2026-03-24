@@ -1,9 +1,11 @@
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkHeaderBar, GtkPasswordEntry, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkPasswordEntry } from "@gtkx/react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./password-entry.tsx?raw";
+
+const Slot = "Slot" as const;
 
 const PasswordEntryDemo = ({ onClose, window }: DemoProps) => {
     const [password, setPassword] = useState("");
@@ -38,9 +40,9 @@ const PasswordEntryDemo = ({ onClose, window }: DemoProps) => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar showTitleButtons={false}>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    <GtkHeaderBar.PackEnd>
                         <GtkButton
                             ref={buttonRef}
                             label="_Done"
@@ -49,9 +51,9 @@ const PasswordEntryDemo = ({ onClose, window }: DemoProps) => {
                             sensitive={passwordsMatch}
                             onClicked={onClose}
                         />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={6}

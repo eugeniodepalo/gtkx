@@ -138,6 +138,22 @@ interface LinkFormatOptions {
     currentNamespace: string | undefined;
 }
 
+function buildGtkDocsUrl(link: GirLink, options: LinkFormatOptions): string | undefined {
+    const namespace = link.namespace ?? options.currentNamespace;
+    if (!namespace) {
+        return undefined;
+    }
+
+    const baseUrl = getDocsBaseUrl(namespace);
+    const member = link.member?.replace(/^:/, "");
+
+    if (member) {
+        return `${baseUrl}/${link.type}.${link.target}.${member}.html`;
+    }
+
+    return `${baseUrl}/${link.type}.${link.target}.html`;
+}
+
 function formatGirLinkForTsDoc(link: GirLink, options: LinkFormatOptions): string {
     let displayText: string;
     if (link.member) {
@@ -146,23 +162,24 @@ function formatGirLinkForTsDoc(link: GirLink, options: LinkFormatOptions): strin
         displayText = link.target;
     }
 
-    let linkTarget: string;
+    let qualifiedName: string;
     if (options.linkStyle === "prefixed") {
         const effectiveNamespace = link.namespace ?? options.currentNamespace;
         if (effectiveNamespace && effectiveNamespace !== "Gtk") {
-            linkTarget = `${effectiveNamespace}${displayText}`;
+            qualifiedName = `${effectiveNamespace}${displayText}`;
         } else {
-            linkTarget = displayText;
+            qualifiedName = displayText;
         }
     } else {
-        linkTarget = link.namespace ? `${link.namespace}.${displayText}` : displayText;
+        qualifiedName = link.namespace ? `${link.namespace}.${displayText}` : displayText;
     }
 
-    if (link.type === "id") {
-        return `\`${link.target}\``;
+    const url = buildGtkDocsUrl(link, options);
+    if (url) {
+        return `[\`${qualifiedName}\`](${url})`;
     }
 
-    return `{@link ${linkTarget}}`;
+    return `\`${qualifiedName}\``;
 }
 
 function convertGirLinks(text: string, options: LinkFormatOptions): string {

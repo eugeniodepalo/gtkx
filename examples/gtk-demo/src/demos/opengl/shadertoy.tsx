@@ -13,7 +13,6 @@ import {
     GtkGraphicsOffload,
     GtkScrolledWindow,
     GtkSourceView,
-    x,
 } from "@gtkx/react";
 import { type RefCallback, useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
@@ -1625,8 +1624,8 @@ const ShadertoyDemo = () => {
                 />
             </GtkScrolledWindow>
 
-            <GtkCenterBox>
-                <x.Slot for={GtkCenterBox} id="startWidget">
+            <GtkCenterBox
+                startWidget={
                     <GtkBox spacing={6}>
                         <GtkButton
                             iconName="view-refresh-symbolic"
@@ -1641,8 +1640,8 @@ const ShadertoyDemo = () => {
                             onClicked={handleClear}
                         />
                     </GtkBox>
-                </x.Slot>
-                <x.Slot for={GtkCenterBox} id="endWidget">
+                }
+                endWidget={
                     <GtkBox spacing={6}>
                         {SHADER_PRESETS.map((preset) => (
                             <GtkButton
@@ -1654,8 +1653,8 @@ const ShadertoyDemo = () => {
                             </GtkButton>
                         ))}
                     </GtkBox>
-                </x.Slot>
-            </GtkCenterBox>
+                }
+            />
         </GtkBox>
     );
 };

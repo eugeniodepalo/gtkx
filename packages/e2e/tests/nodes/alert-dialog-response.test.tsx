@@ -1,5 +1,5 @@
 import * as Adw from "@gtkx/ffi/adw";
-import { AdwAlertDialog, x } from "@gtkx/react";
+import { AdwAlertDialog } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 const options = { wrapper: false } as const;
 
 describe("render - AlertDialogResponse", () => {
-    describe("AlertDialogResponseNode", () => {
+    describe("AlertDialogNode", () => {
         it("creates AlertDialog without responses", async () => {
             const ref = createRef<Adw.AlertDialog>();
 
@@ -21,10 +21,14 @@ describe("render - AlertDialogResponse", () => {
             const ref = createRef<Adw.AlertDialog>();
 
             await render(
-                <AdwAlertDialog ref={ref} heading="Test">
-                    <x.AlertDialogResponse id="cancel" label="Cancel" />
-                    <x.AlertDialogResponse id="confirm" label="Confirm" />
-                </AdwAlertDialog>,
+                <AdwAlertDialog
+                    ref={ref}
+                    heading="Test"
+                    responses={[
+                        { id: "cancel", label: "Cancel" },
+                        { id: "confirm", label: "Confirm" },
+                    ]}
+                />,
                 options,
             );
 
@@ -36,9 +40,7 @@ describe("render - AlertDialogResponse", () => {
             const ref = createRef<Adw.AlertDialog>();
 
             await render(
-                <AdwAlertDialog ref={ref} heading="Test">
-                    <x.AlertDialogResponse id="ok" label="OK Button" />
-                </AdwAlertDialog>,
+                <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "ok", label: "OK Button" }]} />,
                 options,
             );
 
@@ -49,19 +51,15 @@ describe("render - AlertDialogResponse", () => {
             const ref = createRef<Adw.AlertDialog>();
 
             await render(
-                <AdwAlertDialog ref={ref} heading="Test">
-                    <x.AlertDialogResponse id="default" label="Default" />
-                    <x.AlertDialogResponse
-                        id="suggested"
-                        label="Suggested"
-                        appearance={Adw.ResponseAppearance.SUGGESTED}
-                    />
-                    <x.AlertDialogResponse
-                        id="destructive"
-                        label="Delete"
-                        appearance={Adw.ResponseAppearance.DESTRUCTIVE}
-                    />
-                </AdwAlertDialog>,
+                <AdwAlertDialog
+                    ref={ref}
+                    heading="Test"
+                    responses={[
+                        { id: "default", label: "Default" },
+                        { id: "suggested", label: "Suggested", appearance: Adw.ResponseAppearance.SUGGESTED },
+                        { id: "destructive", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+                    ]}
+                />,
                 options,
             );
 
@@ -74,10 +72,14 @@ describe("render - AlertDialogResponse", () => {
             const ref = createRef<Adw.AlertDialog>();
 
             await render(
-                <AdwAlertDialog ref={ref} heading="Test">
-                    <x.AlertDialogResponse id="enabled" label="Enabled" />
-                    <x.AlertDialogResponse id="disabled" label="Disabled" enabled={false} />
-                </AdwAlertDialog>,
+                <AdwAlertDialog
+                    ref={ref}
+                    heading="Test"
+                    responses={[
+                        { id: "enabled", label: "Enabled" },
+                        { id: "disabled", label: "Disabled", enabled: false },
+                    ]}
+                />,
                 options,
             );
 
@@ -89,11 +91,7 @@ describe("render - AlertDialogResponse", () => {
             const ref = createRef<Adw.AlertDialog>();
 
             function App({ label }: { label: string }) {
-                return (
-                    <AdwAlertDialog ref={ref} heading="Test">
-                        <x.AlertDialogResponse id="test" label={label} />
-                    </AdwAlertDialog>
-                );
+                return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label }]} />;
             }
 
             await render(<App label="Initial" />, options);
@@ -108,9 +106,7 @@ describe("render - AlertDialogResponse", () => {
 
             function App({ appearance }: { appearance: Adw.ResponseAppearance }) {
                 return (
-                    <AdwAlertDialog ref={ref} heading="Test">
-                        <x.AlertDialogResponse id="test" label="Test" appearance={appearance} />
-                    </AdwAlertDialog>
+                    <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", appearance }]} />
                 );
             }
 
@@ -125,11 +121,7 @@ describe("render - AlertDialogResponse", () => {
             const ref = createRef<Adw.AlertDialog>();
 
             function App({ enabled }: { enabled: boolean }) {
-                return (
-                    <AdwAlertDialog ref={ref} heading="Test">
-                        <x.AlertDialogResponse id="test" label="Test" enabled={enabled} />
-                    </AdwAlertDialog>
-                );
+                return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", enabled }]} />;
             }
 
             await render(<App enabled={true} />, options);
@@ -139,16 +131,13 @@ describe("render - AlertDialogResponse", () => {
             expect(ref.current?.getResponseEnabled("test")).toBe(false);
         });
 
-        it("removes responses when unmounted", async () => {
+        it("removes responses when list shrinks", async () => {
             const ref = createRef<Adw.AlertDialog>();
 
             function App({ showExtra }: { showExtra: boolean }) {
-                return (
-                    <AdwAlertDialog ref={ref} heading="Test">
-                        <x.AlertDialogResponse id="always" label="Always" />
-                        {showExtra && <x.AlertDialogResponse id="extra" label="Extra" />}
-                    </AdwAlertDialog>
-                );
+                const responses = [{ id: "always", label: "Always" }];
+                if (showExtra) responses.push({ id: "extra", label: "Extra" });
+                return <AdwAlertDialog ref={ref} heading="Test" responses={responses} />;
             }
 
             await render(<App showExtra={true} />, options);
@@ -164,13 +153,10 @@ describe("render - AlertDialogResponse", () => {
             const ref = createRef<Adw.AlertDialog>();
 
             function App({ showMid }: { showMid: boolean }) {
-                return (
-                    <AdwAlertDialog ref={ref} heading="Test">
-                        <x.AlertDialogResponse id="first" label="First" />
-                        {showMid && <x.AlertDialogResponse id="middle" label="Middle" />}
-                        <x.AlertDialogResponse id="last" label="Last" />
-                    </AdwAlertDialog>
-                );
+                const responses = [{ id: "first", label: "First" }];
+                if (showMid) responses.push({ id: "middle", label: "Middle" });
+                responses.push({ id: "last", label: "Last" });
+                return <AdwAlertDialog ref={ref} heading="Test" responses={responses} />;
             }
 
             await render(<App showMid={false} />, options);
@@ -182,27 +168,6 @@ describe("render - AlertDialogResponse", () => {
             expect(ref.current?.hasResponse("first")).toBe(true);
             expect(ref.current?.hasResponse("middle")).toBe(true);
             expect(ref.current?.hasResponse("last")).toBe(true);
-        });
-
-        it("handles changing response id", async () => {
-            const ref = createRef<Adw.AlertDialog>();
-
-            function App({ id }: { id: string }) {
-                return (
-                    <AdwAlertDialog ref={ref} heading="Test">
-                        <x.AlertDialogResponse id={id} label="Test" appearance={Adw.ResponseAppearance.SUGGESTED} />
-                    </AdwAlertDialog>
-                );
-            }
-
-            await render(<App id="old-id" />, options);
-            expect(ref.current?.hasResponse("old-id")).toBe(true);
-            expect(ref.current?.getResponseAppearance("old-id")).toBe(Adw.ResponseAppearance.SUGGESTED);
-
-            await render(<App id="new-id" />, options);
-            expect(ref.current?.hasResponse("old-id")).toBe(false);
-            expect(ref.current?.hasResponse("new-id")).toBe(true);
-            expect(ref.current?.getResponseAppearance("new-id")).toBe(Adw.ResponseAppearance.SUGGESTED);
         });
     });
 });

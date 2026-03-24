@@ -394,7 +394,7 @@ export const userEvent = {
     /**
      * Activates a widget.
      *
-     * Uses GTK's native {@link Gtk.Widget.activate} to trigger the widget's
+     * Uses GTK's native `Gtk.Widget.activate()` to trigger the widget's
      * default action — clicking buttons, toggling checkboxes/switches, etc.
      */
     click,

@@ -1,7 +1,7 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { AnimatableProperties, AnimationProps, SpringTransition, TimedTransition } from "../jsx.js";
+import type { AdwSpringAnimationProps, AdwTimedAnimationProps, AnimatableProperties, AnimationProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { attachChild, detachChild, isAttachedTo } from "./internal/widget.js";
@@ -227,8 +227,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
 
         this.currentAnimation = animation;
 
-        const transition = this.props.transition;
-        const delay = transition?.delay ?? 0;
+        const delay = (this.props as AdwTimedAnimationProps | AdwSpringAnimationProps).delay ?? 0;
 
         if (delay > 0) {
             setTimeout(() => {
@@ -242,61 +241,53 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
     }
 
     private createAnimation(widget: Gtk.Widget, target: Adw.CallbackAnimationTarget): Adw.Animation {
-        const transition = this.props.transition;
-
-        if (transition?.mode === "spring") {
-            return this.createSpringAnimation(widget, target, transition);
+        if (this.typeName === "AdwSpringAnimation") {
+            return this.createSpringAnimation(widget, target);
         }
 
-        return this.createTimedAnimation(widget, target, transition);
+        return this.createTimedAnimation(widget, target);
     }
 
-    private createTimedAnimation(
-        widget: Gtk.Widget,
-        target: Adw.CallbackAnimationTarget,
-        transition: TimedTransition | undefined,
-    ): Adw.TimedAnimation {
-        const duration = transition?.duration ?? DEFAULT_TIMED_DURATION;
+    private createTimedAnimation(widget: Gtk.Widget, target: Adw.CallbackAnimationTarget): Adw.TimedAnimation {
+        const props = this.props as AdwTimedAnimationProps;
+        const duration = props.duration ?? DEFAULT_TIMED_DURATION;
 
         const animation = new Adw.TimedAnimation(widget, 0, 1, duration, target);
 
-        if (transition?.easing !== undefined) {
-            animation.setEasing(transition.easing);
+        if (props.easing !== undefined) {
+            animation.setEasing(props.easing);
         }
 
-        if (transition?.repeat !== undefined) {
-            animation.setRepeatCount(transition.repeat);
+        if (props.repeat !== undefined) {
+            animation.setRepeatCount(props.repeat);
         }
 
-        if (transition?.reverse !== undefined) {
-            animation.setReverse(transition.reverse);
+        if (props.reverse !== undefined) {
+            animation.setReverse(props.reverse);
         }
 
-        if (transition?.alternate !== undefined) {
-            animation.setAlternate(transition.alternate);
+        if (props.alternate !== undefined) {
+            animation.setAlternate(props.alternate);
         }
 
         return animation;
     }
 
-    private createSpringAnimation(
-        widget: Gtk.Widget,
-        target: Adw.CallbackAnimationTarget,
-        transition: SpringTransition,
-    ): Adw.SpringAnimation {
-        const damping = transition.damping ?? DEFAULT_SPRING_DAMPING;
-        const mass = transition.mass ?? DEFAULT_SPRING_MASS;
-        const stiffness = transition.stiffness ?? DEFAULT_SPRING_STIFFNESS;
+    private createSpringAnimation(widget: Gtk.Widget, target: Adw.CallbackAnimationTarget): Adw.SpringAnimation {
+        const props = this.props as AdwSpringAnimationProps;
+        const damping = props.damping ?? DEFAULT_SPRING_DAMPING;
+        const mass = props.mass ?? DEFAULT_SPRING_MASS;
+        const stiffness = props.stiffness ?? DEFAULT_SPRING_STIFFNESS;
 
         const springParams = new Adw.SpringParams(damping, mass, stiffness);
         const animation = new Adw.SpringAnimation(widget, 0, 1, springParams, target);
 
-        if (transition.initialVelocity !== undefined) {
-            animation.setInitialVelocity(transition.initialVelocity);
+        if (props.initialVelocity !== undefined) {
+            animation.setInitialVelocity(props.initialVelocity);
         }
 
-        if (transition.clamp !== undefined) {
-            animation.setClamp(transition.clamp);
+        if (props.clamp !== undefined) {
+            animation.setClamp(props.clamp);
         }
 
         return animation;

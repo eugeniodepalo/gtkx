@@ -107,7 +107,7 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
         const iface = interfaceDecl(`${jsxName}Props`, {
             exported: true,
             extends: [parentPropsName],
-            doc: `Props for the {@link ${jsxName}} controller element.`,
+            doc: `Props for the \`${jsxName}\` controller element.`,
         });
 
         for (const prop of allProps) {

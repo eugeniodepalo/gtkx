@@ -1,10 +1,11 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkCheckButton, GtkHeaderBar, GtkScrolledWindow, GtkStack, GtkTextView, x } from "@gtkx/react";
+import { GtkCheckButton, GtkHeaderBar, GtkScrolledWindow, GtkStack, GtkTextView } from "@gtkx/react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./markup.tsx?raw";
 import markupContent from "./markup.txt?raw";
 
+const Slot = "Slot" as const;
 const SAMPLE_MARKUP = markupContent;
 
 const MarkupDemo = () => {
@@ -69,25 +70,25 @@ const MarkupDemo = () => {
 
     return (
         <>
-            <x.Slot for="GtkWindow" id="titlebar">
+            <Slot id="titlebar">
                 <GtkHeaderBar>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkCheckButton
                             label="Source"
                             active={showSource}
                             valign={Gtk.Align.CENTER}
                             onToggled={(btn) => handleSourceToggle(btn.getActive())}
                         />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackStart>
                 </GtkHeaderBar>
-            </x.Slot>
+            </Slot>
             <GtkStack
                 page={showSource ? "source" : "formatted"}
                 vexpand
                 hexpand
                 transitionType={Gtk.StackTransitionType.NONE}
             >
-                <x.StackPage id="formatted" title="Formatted">
+                <GtkStack.Page id="formatted" title="Formatted">
                     <GtkScrolledWindow
                         vexpand
                         hexpand
@@ -102,8 +103,8 @@ const MarkupDemo = () => {
                             rightMargin={10}
                         />
                     </GtkScrolledWindow>
-                </x.StackPage>
-                <x.StackPage id="source" title="Source">
+                </GtkStack.Page>
+                <GtkStack.Page id="source" title="Source">
                     <GtkScrolledWindow
                         vexpand
                         hexpand
@@ -117,7 +118,7 @@ const MarkupDemo = () => {
                             rightMargin={10}
                         />
                     </GtkScrolledWindow>
-                </x.StackPage>
+                </GtkStack.Page>
             </GtkStack>
         </>
     );

@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkOverlay, GtkPicture, GtkScale, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { GtkOverlay, GtkPicture, GtkScale, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import decor1Path from "./decor1.png";
@@ -17,19 +17,19 @@ const OverlayDecorativeDemo = () => {
         <GtkOverlay>
             <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
                 <GtkTextView hexpand vexpand leftMargin={Math.round(margin)}>
-                    <x.TextTag id="top-margin" pixelsAboveLines={Math.round(margin)}>
+                    <GtkTextView.Tag id="top-margin" pixelsAboveLines={Math.round(margin)}>
                         {"Dear"}
-                    </x.TextTag>
+                    </GtkTextView.Tag>
                     {" diary..."}
                 </GtkTextView>
             </GtkScrolledWindow>
-            <x.OverlayChild>
+            <GtkOverlay.Child>
                 <GtkPicture paintable={decor1} halign={Gtk.Align.START} valign={Gtk.Align.START} canTarget={false} />
-            </x.OverlayChild>
-            <x.OverlayChild>
+            </GtkOverlay.Child>
+            <GtkOverlay.Child>
                 <GtkPicture paintable={decor2} halign={Gtk.Align.END} valign={Gtk.Align.END} canTarget={false} />
-            </x.OverlayChild>
-            <x.OverlayChild>
+            </GtkOverlay.Child>
+            <GtkOverlay.Child>
                 <GtkScale
                     orientation={Gtk.Orientation.HORIZONTAL}
                     drawValue={false}
@@ -47,7 +47,7 @@ const OverlayDecorativeDemo = () => {
                     pageIncrement={1}
                     onValueChanged={setMargin}
                 />
-            </x.OverlayChild>
+            </GtkOverlay.Child>
         </GtkOverlay>
     );
 };

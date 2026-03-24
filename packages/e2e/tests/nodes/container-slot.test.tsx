@@ -9,7 +9,6 @@ import {
     GtkHeaderBar,
     GtkLabel,
     GtkListBox,
-    x,
 } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -37,12 +36,12 @@ describe("render - ContainerSlot", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ContainerSlot for={AdwActionRow} id="addPrefix">
+                        <AdwActionRow.AddPrefix>
                             <GtkLabel ref={prefixRef} label="First" />
-                        </x.ContainerSlot>
-                        <x.ContainerSlot for={AdwActionRow} id="addSuffix">
+                        </AdwActionRow.AddPrefix>
+                        <AdwActionRow.AddSuffix>
                             <GtkLabel ref={suffixRef} label="Second" />
-                        </x.ContainerSlot>
+                        </AdwActionRow.AddSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -62,9 +61,9 @@ describe("render - ContainerSlot", () => {
                         <AdwActionRow ref={rowRef} title="Test Row">
                             {Array.from({ length: count }, (_, i) => (
                                 // biome-ignore lint/suspicious/noArrayIndexKey: Test fixture with stable items
-                                <x.ContainerSlot for={AdwActionRow} id="addSuffix" key={`suffix-label-${i}`}>
+                                <AdwActionRow.AddSuffix key={`suffix-label-${i}`}>
                                     <GtkLabel ref={labelRefs[i]} label={`Label ${i}`} />
-                                </x.ContainerSlot>
+                                </AdwActionRow.AddSuffix>
                             ))}
                         </AdwActionRow>
                     </GtkListBox>
@@ -91,9 +90,9 @@ describe("render - ContainerSlot", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ContainerSlot for={AdwActionRow} id="addPrefix">
+                        <AdwActionRow.AddPrefix>
                             <GtkLabel ref={prefixRef} label="Prefix" />
-                        </x.ContainerSlot>
+                        </AdwActionRow.AddPrefix>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -108,9 +107,9 @@ describe("render - ContainerSlot", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ContainerSlot for={AdwActionRow} id="addSuffix">
+                        <AdwActionRow.AddSuffix>
                             <GtkLabel ref={suffixRef} label="Suffix" />
-                        </x.ContainerSlot>
+                        </AdwActionRow.AddSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -126,12 +125,12 @@ describe("render - ContainerSlot", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ContainerSlot for={AdwActionRow} id="addPrefix">
+                        <AdwActionRow.AddPrefix>
                             <GtkLabel ref={prefixRef} label="Prefix" />
-                        </x.ContainerSlot>
-                        <x.ContainerSlot for={AdwActionRow} id="addSuffix">
+                        </AdwActionRow.AddPrefix>
+                        <AdwActionRow.AddSuffix>
                             <GtkLabel ref={suffixRef} label="Suffix" />
-                        </x.ContainerSlot>
+                        </AdwActionRow.AddSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -150,13 +149,13 @@ describe("render - ContainerSlot", () => {
                     <GtkListBox>
                         <AdwActionRow ref={rowRef} title="Test Row">
                             {showPrefix && (
-                                <x.ContainerSlot for={AdwActionRow} id="addPrefix">
+                                <AdwActionRow.AddPrefix>
                                     <GtkLabel ref={prefixRef} label="Prefix" />
-                                </x.ContainerSlot>
+                                </AdwActionRow.AddPrefix>
                             )}
-                            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
+                            <AdwActionRow.AddSuffix>
                                 <GtkLabel ref={alwaysRef} label="Always" />
-                            </x.ContainerSlot>
+                            </AdwActionRow.AddSuffix>
                         </AdwActionRow>
                     </GtkListBox>
                 );
@@ -181,10 +180,10 @@ describe("render - ContainerSlot", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ContainerSlot for={AdwActionRow} id="addPrefix">
+                        <AdwActionRow.AddPrefix>
                             <GtkLabel ref={firstRef} label="First" />
                             <GtkLabel ref={secondRef} label="Second" />
-                        </x.ContainerSlot>
+                        </AdwActionRow.AddPrefix>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -201,10 +200,10 @@ describe("render - ContainerSlot", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ContainerSlot for={AdwActionRow} id="addSuffix">
+                        <AdwActionRow.AddSuffix>
                             <GtkLabel ref={firstRef} label="First" />
                             <GtkLabel ref={secondRef} label="Second" />
-                        </x.ContainerSlot>
+                        </AdwActionRow.AddSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -222,10 +221,10 @@ describe("render - ContainerSlot", () => {
                 return (
                     <GtkListBox>
                         <AdwActionRow ref={rowRef} title="Test Row">
-                            <x.ContainerSlot for={AdwActionRow} id="addPrefix">
+                            <AdwActionRow.AddPrefix>
                                 <GtkLabel ref={firstRef} label="First" />
                                 {showSecond && <GtkLabel ref={secondRef} label="Second" />}
-                            </x.ContainerSlot>
+                            </AdwActionRow.AddPrefix>
                         </AdwActionRow>
                     </GtkListBox>
                 );
@@ -267,15 +266,15 @@ describe("render - ContainerSlot", () => {
             expect(ref.current?.getTitle()).toBe("Updated");
         });
 
-        it("adds prefix and suffix widgets via ContainerSlot", async () => {
+        it("adds prefix and suffix widgets via compound components", async () => {
             await render(
                 <AdwExpanderRow title="Row">
-                    <x.ContainerSlot for={AdwExpanderRow} id="addPrefix">
+                    <AdwExpanderRow.AddPrefix>
                         <GtkButton label="Prefix" />
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={AdwExpanderRow} id="addSuffix">
+                    </AdwExpanderRow.AddPrefix>
+                    <AdwExpanderRow.AddSuffix>
                         <GtkButton label="Suffix" />
-                    </x.ContainerSlot>
+                    </AdwExpanderRow.AddSuffix>
                 </AdwExpanderRow>,
             );
 
@@ -287,9 +286,9 @@ describe("render - ContainerSlot", () => {
 
             await render(
                 <AdwExpanderRow title="Settings">
-                    <x.ContainerSlot for={AdwExpanderRow} id="addRow">
+                    <AdwExpanderRow.AddRow>
                         <AdwActionRow ref={rowRef} title="Option 1" />
-                    </x.ContainerSlot>
+                    </AdwExpanderRow.AddRow>
                 </AdwExpanderRow>,
             );
 
@@ -303,10 +302,10 @@ describe("render - ContainerSlot", () => {
 
             await render(
                 <AdwExpanderRow title="Settings">
-                    <x.ContainerSlot for={AdwExpanderRow} id="addRow">
+                    <AdwExpanderRow.AddRow>
                         <AdwActionRow ref={row1Ref} title="Option 1" />
                         <AdwActionRow ref={row2Ref} title="Option 2" />
-                    </x.ContainerSlot>
+                    </AdwExpanderRow.AddRow>
                 </AdwExpanderRow>,
             );
 
@@ -320,10 +319,10 @@ describe("render - ContainerSlot", () => {
             function App({ showRow }: { showRow: boolean }) {
                 return (
                     <AdwExpanderRow ref={expanderRef} title="Settings">
-                        <x.ContainerSlot for={AdwExpanderRow} id="addRow">
+                        <AdwExpanderRow.AddRow>
                             <AdwActionRow title="Always" />
                             {showRow && <AdwActionRow title="Conditional" />}
-                        </x.ContainerSlot>
+                        </AdwExpanderRow.AddRow>
                     </AdwExpanderRow>
                 );
             }
@@ -338,9 +337,9 @@ describe("render - ContainerSlot", () => {
         it("adds action widgets to ExpanderRow", async () => {
             await render(
                 <AdwExpanderRow title="Group">
-                    <x.ContainerSlot for={AdwExpanderRow} id="addAction">
+                    <AdwExpanderRow.AddAction>
                         <GtkButton label="Action" />
-                    </x.ContainerSlot>
+                    </AdwExpanderRow.AddAction>
                 </AdwExpanderRow>,
             );
 
@@ -350,10 +349,10 @@ describe("render - ContainerSlot", () => {
         it("adds multiple action widgets", async () => {
             await render(
                 <AdwExpanderRow title="Group">
-                    <x.ContainerSlot for={AdwExpanderRow} id="addAction">
+                    <AdwExpanderRow.AddAction>
                         <GtkButton label="Action 1" />
                         <GtkButton label="Action 2" />
-                    </x.ContainerSlot>
+                    </AdwExpanderRow.AddAction>
                 </AdwExpanderRow>,
             );
 
@@ -365,15 +364,15 @@ describe("render - ContainerSlot", () => {
 
             await render(
                 <AdwExpanderRow ref={ref} title="Complex">
-                    <x.ContainerSlot for={AdwExpanderRow} id="addAction">
+                    <AdwExpanderRow.AddAction>
                         <GtkButton label="Action 1" />
                         <GtkButton label="Action 2" />
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={AdwExpanderRow} id="addRow">
+                    </AdwExpanderRow.AddAction>
+                    <AdwExpanderRow.AddRow>
                         <AdwActionRow title="Row 1" />
                         <AdwActionRow title="Row 2" />
                         <AdwActionRow title="Row 3" />
-                    </x.ContainerSlot>
+                    </AdwExpanderRow.AddRow>
                 </AdwExpanderRow>,
             );
 
@@ -388,9 +387,9 @@ describe("render - ContainerSlot", () => {
 
             await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkLabel ref={startRef} label="Start" />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackStart>
                 </GtkHeaderBar>,
             );
 
@@ -404,9 +403,9 @@ describe("render - ContainerSlot", () => {
 
             await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    <GtkHeaderBar.PackEnd>
                         <GtkLabel ref={endRef} label="End" />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>,
             );
 
@@ -421,12 +420,12 @@ describe("render - ContainerSlot", () => {
 
             await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkLabel ref={startRef} label="Start" />
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    </GtkHeaderBar.PackStart>
+                    <GtkHeaderBar.PackEnd>
                         <GtkLabel ref={endRef} label="End" />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>,
             );
 
@@ -441,15 +440,12 @@ describe("render - ContainerSlot", () => {
 
             function App({ showStart }: { showStart: boolean }) {
                 return (
-                    <GtkHeaderBar ref={headerBarRef}>
+                    <GtkHeaderBar ref={headerBarRef} titleWidget={<GtkLabel ref={alwaysRef} label="Always" />}>
                         {showStart && (
-                            <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                            <GtkHeaderBar.PackStart>
                                 <GtkLabel ref={startRef} label="Start" />
-                            </x.ContainerSlot>
+                            </GtkHeaderBar.PackStart>
                         )}
-                        <x.Slot for={GtkHeaderBar} id="titleWidget">
-                            <GtkLabel ref={alwaysRef} label="Always" />
-                        </x.Slot>
                     </GtkHeaderBar>
                 );
             }
@@ -472,10 +468,10 @@ describe("render - ContainerSlot", () => {
 
             await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                    <GtkHeaderBar.PackStart>
                         <GtkLabel ref={firstRef} label="First" />
                         <GtkLabel ref={secondRef} label="Second" />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackStart>
                 </GtkHeaderBar>,
             );
 
@@ -490,10 +486,10 @@ describe("render - ContainerSlot", () => {
 
             await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+                    <GtkHeaderBar.PackEnd>
                         <GtkLabel ref={firstRef} label="First" />
                         <GtkLabel ref={secondRef} label="Second" />
-                    </x.ContainerSlot>
+                    </GtkHeaderBar.PackEnd>
                 </GtkHeaderBar>,
             );
 
@@ -509,10 +505,10 @@ describe("render - ContainerSlot", () => {
             function App({ showSecond }: { showSecond: boolean }) {
                 return (
                     <GtkHeaderBar ref={headerBarRef}>
-                        <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                        <GtkHeaderBar.PackStart>
                             <GtkLabel ref={firstRef} label="First" />
                             {showSecond && <GtkLabel ref={secondRef} label="Second" />}
-                        </x.ContainerSlot>
+                        </GtkHeaderBar.PackStart>
                     </GtkHeaderBar>
                 );
             }
@@ -536,9 +532,9 @@ describe("render - ContainerSlot", () => {
 
             await render(
                 <AdwToolbarView ref={toolbarRef}>
-                    <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
+                    <AdwToolbarView.AddTopBar>
                         <AdwHeaderBar />
-                    </x.ContainerSlot>
+                    </AdwToolbarView.AddTopBar>
                     <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
             );
@@ -554,9 +550,9 @@ describe("render - ContainerSlot", () => {
             await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <GtkLabel ref={contentRef} label="Content" />
-                    <x.ContainerSlot for={AdwToolbarView} id="addBottomBar">
+                    <AdwToolbarView.AddBottomBar>
                         <AdwHeaderBar />
-                    </x.ContainerSlot>
+                    </AdwToolbarView.AddBottomBar>
                 </AdwToolbarView>,
             );
 
@@ -571,12 +567,12 @@ describe("render - ContainerSlot", () => {
 
             await render(
                 <AdwToolbarView ref={toolbarRef}>
-                    <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
+                    <AdwToolbarView.AddTopBar>
                         <AdwHeaderBar />
-                    </x.ContainerSlot>
-                    <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
+                    </AdwToolbarView.AddTopBar>
+                    <AdwToolbarView.AddTopBar>
                         <GtkLabel ref={secondTopRef} label="Second Top Bar" />
-                    </x.ContainerSlot>
+                    </AdwToolbarView.AddTopBar>
                     <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
             );
@@ -593,9 +589,9 @@ describe("render - ContainerSlot", () => {
                 return (
                     <AdwToolbarView ref={toolbarRef}>
                         {showTop && (
-                            <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
+                            <AdwToolbarView.AddTopBar>
                                 <AdwHeaderBar />
-                            </x.ContainerSlot>
+                            </AdwToolbarView.AddTopBar>
                         )}
                         <GtkLabel ref={contentRef} label="Content" />
                     </AdwToolbarView>

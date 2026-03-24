@@ -2,7 +2,7 @@ import { css } from "@gtkx/css";
 import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkFixed, GtkFrame, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkFixed, GtkFrame, GtkScrolledWindow } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed.tsx?raw";
@@ -113,19 +113,19 @@ const FixedDemo = () => {
     return (
         <GtkScrolledWindow>
             <GtkFixed halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} overflow={Gtk.Overflow.VISIBLE}>
-                <x.FixedChild x={0} y={0}>
+                <GtkFixed.Child x={0} y={0}>
                     <GtkFixed overflow={Gtk.Overflow.VISIBLE}>
                         {faceTransforms.map(({ face, transform }) => (
-                            <x.FixedChild key={face.name} x={0} y={0} transform={transform}>
+                            <GtkFixed.Child key={face.name} x={0} y={0} transform={transform}>
                                 <GtkFrame
                                     widthRequest={FACE_SIZE}
                                     heightRequest={FACE_SIZE}
                                     cssClasses={[face.style]}
                                 />
-                            </x.FixedChild>
+                            </GtkFixed.Child>
                         ))}
                     </GtkFixed>
-                </x.FixedChild>
+                </GtkFixed.Child>
             </GtkFixed>
         </GtkScrolledWindow>
     );

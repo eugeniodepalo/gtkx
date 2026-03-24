@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useCallback, useMemo, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
@@ -60,9 +60,9 @@ const ExpanderDemo = () => {
                         bottomMargin={10}
                     >
                         {DETAILS_TEXT}
-                        <x.TextTag id="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
-                            <x.TextPaintable paintable={texture} />
-                        </x.TextTag>
+                        <GtkTextView.Tag id="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
+                            <GtkTextView.Paintable paintable={texture} />
+                        </GtkTextView.Tag>
                     </GtkTextView>
                 </GtkScrolledWindow>
             </GtkExpander>

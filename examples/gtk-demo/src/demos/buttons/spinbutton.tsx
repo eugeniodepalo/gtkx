@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkGrid, GtkLabel, GtkSpinButton, x } from "@gtkx/react";
+import { GtkGrid, GtkLabel, GtkSpinButton } from "@gtkx/react";
 import { type Ref, useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinbutton.tsx?raw";
@@ -95,10 +95,10 @@ const SpinButtonDemo = () => {
 
     return (
         <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
-            <x.GridChild column={0} row={0}>
+            <GtkGrid.Child column={0} row={0}>
                 <GtkLabel label="_Numeric" useUnderline xalign={1} mnemonicWidget={numericSpinRef.current} />
-            </x.GridChild>
-            <x.GridChild column={1} row={0}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={0}>
                 <GtkSpinButton
                     ref={numericSpinRef}
                     halign={Gtk.Align.START}
@@ -113,15 +113,15 @@ const SpinButtonDemo = () => {
                     pageIncrement={100}
                     onValueChanged={setNumericValue}
                 />
-            </x.GridChild>
-            <x.GridChild column={2} row={0}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={2} row={0}>
                 <GtkLabel label={String(numericValue)} widthChars={10} xalign={1} />
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={1}>
+            <GtkGrid.Child column={0} row={1}>
                 <GtkLabel label="_Hexadecimal" useUnderline xalign={1} mnemonicWidget={hexSpinRef.current} />
-            </x.GridChild>
-            <x.GridChild column={1} row={1}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={1}>
                 <GtkSpinButton
                     ref={hexSpinRef}
                     halign={Gtk.Align.START}
@@ -136,15 +136,15 @@ const SpinButtonDemo = () => {
                     onInput={handleHexInput}
                     onOutput={handleHexOutput}
                 />
-            </x.GridChild>
-            <x.GridChild column={2} row={1}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={2} row={1}>
                 <GtkLabel label={String(hexValue)} widthChars={10} xalign={1} />
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={2}>
+            <GtkGrid.Child column={0} row={2}>
                 <GtkLabel label="_Time" useUnderline xalign={1} mnemonicWidget={timeSpinRef.current} />
-            </x.GridChild>
-            <x.GridChild column={1} row={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={2}>
                 <GtkSpinButton
                     ref={timeSpinRef}
                     halign={Gtk.Align.START}
@@ -159,15 +159,15 @@ const SpinButtonDemo = () => {
                     onInput={handleTimeInput}
                     onOutput={handleTimeOutput}
                 />
-            </x.GridChild>
-            <x.GridChild column={2} row={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={2} row={2}>
                 <GtkLabel label={String(timeValue)} widthChars={10} xalign={1} />
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={3}>
+            <GtkGrid.Child column={0} row={3}>
                 <GtkLabel label="_Month" useUnderline xalign={1} mnemonicWidget={monthSpinRef.current} />
-            </x.GridChild>
-            <x.GridChild column={1} row={3}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={3}>
                 <GtkSpinButton
                     ref={monthSpinRef}
                     halign={Gtk.Align.START}
@@ -183,10 +183,10 @@ const SpinButtonDemo = () => {
                     onInput={handleMonthInput}
                     onOutput={handleMonthOutput}
                 />
-            </x.GridChild>
-            <x.GridChild column={2} row={3}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={2} row={3}>
                 <GtkLabel label={String(monthValue)} widthChars={10} xalign={1} />
-            </x.GridChild>
+            </GtkGrid.Child>
         </GtkGrid>
     );
 };

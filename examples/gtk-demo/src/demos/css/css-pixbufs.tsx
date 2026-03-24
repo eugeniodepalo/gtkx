@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import appleRedPath from "./apple-red.png";
@@ -91,16 +91,15 @@ const CssPixbufsDemo = ({ window }: DemoProps) => {
     const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
 
     return (
-        <GtkPaned orientation={Gtk.Orientation.VERTICAL}>
-            <x.Slot for={GtkPaned} id="startChild">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} />
-            </x.Slot>
-            <x.Slot for={GtkPaned} id="endChild">
+        <GtkPaned
+            orientation={Gtk.Orientation.VERTICAL}
+            startChild={<GtkBox orientation={Gtk.Orientation.VERTICAL} />}
+            endChild={
                 <GtkScrolledWindow>
                     <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
                 </GtkScrolledWindow>
-            </x.Slot>
-        </GtkPaned>
+            }
+        />
     );
 };
 

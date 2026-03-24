@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkEntry, GtkGrid, GtkLabel, GtkScale, GtkShortcutController, GtkSwitch, x } from "@gtkx/react";
+import { GtkEntry, GtkGrid, GtkLabel, GtkScale, GtkShortcutController, GtkSwitch } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
@@ -61,7 +61,7 @@ const ErrorstatesDemo = () => {
 
     return (
         <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
-            <x.GridChild column={0} row={0}>
+            <GtkGrid.Child column={0} row={0}>
                 <GtkLabel
                     label="_Details"
                     useUnderline
@@ -70,12 +70,12 @@ const ErrorstatesDemo = () => {
                     cssClasses={["dim-label"]}
                     mnemonicWidget={detailsEntry}
                 />
-            </x.GridChild>
-            <x.GridChild column={1} row={0} columnSpan={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={0} columnSpan={2}>
                 <GtkEntry ref={setDetailsEntry} valign={Gtk.Align.BASELINE} onChanged={handleDetailsChange} />
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={1}>
+            <GtkGrid.Child column={0} row={1}>
                 <GtkLabel
                     label="More D_etails"
                     useUnderline
@@ -84,8 +84,8 @@ const ErrorstatesDemo = () => {
                     cssClasses={["dim-label"]}
                     mnemonicWidget={moreDetailsEntry}
                 />
-            </x.GridChild>
-            <x.GridChild column={1} row={1} columnSpan={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={1} columnSpan={2}>
                 <GtkEntry
                     ref={setMoreDetailsEntry}
                     valign={Gtk.Align.BASELINE}
@@ -96,9 +96,9 @@ const ErrorstatesDemo = () => {
                     }
                     onChanged={handleMoreDetailsChange}
                 />
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={2}>
+            <GtkGrid.Child column={0} row={2}>
                 <GtkLabel
                     label="_Level"
                     useUnderline
@@ -107,8 +107,8 @@ const ErrorstatesDemo = () => {
                     cssClasses={["dim-label"]}
                     mnemonicWidget={levelScale}
                 />
-            </x.GridChild>
-            <x.GridChild column={1} row={2} columnSpan={2}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={2} columnSpan={2}>
                 <GtkScale
                     ref={setLevelScale}
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -121,9 +121,9 @@ const ErrorstatesDemo = () => {
                     pageIncrement={10}
                     onValueChanged={handleLevelChange}
                 />
-            </x.GridChild>
+            </GtkGrid.Child>
 
-            <x.GridChild column={0} row={3}>
+            <GtkGrid.Child column={0} row={3}>
                 <GtkLabel
                     label="_Mode"
                     useUnderline
@@ -132,8 +132,8 @@ const ErrorstatesDemo = () => {
                     cssClasses={["dim-label"]}
                     mnemonicWidget={modeSwitch}
                 />
-            </x.GridChild>
-            <x.GridChild column={1} row={3}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={3}>
                 <GtkSwitch
                     ref={setModeSwitch}
                     halign={Gtk.Align.START}
@@ -144,11 +144,14 @@ const ErrorstatesDemo = () => {
                     onStateSet={handleModeStateSet}
                 >
                     <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
-                        <x.Shortcut trigger="<Control>m" onActivate={() => modeSwitch?.activate()} />
+                        <GtkShortcutController.Shortcut
+                            trigger="<Control>m"
+                            onActivate={() => modeSwitch?.activate()}
+                        />
                     </GtkShortcutController>
                 </GtkSwitch>
-            </x.GridChild>
-            <x.GridChild column={2} row={3}>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={2} row={3}>
                 {showError && (
                     <GtkLabel
                         ref={setErrorLabel}
@@ -158,7 +161,7 @@ const ErrorstatesDemo = () => {
                         cssClasses={["error"]}
                     />
                 )}
-            </x.GridChild>
+            </GtkGrid.Child>
         </GtkGrid>
     );
 };

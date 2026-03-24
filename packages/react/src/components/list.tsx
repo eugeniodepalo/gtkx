@@ -8,9 +8,19 @@ import type {
     GtkGridViewProps,
     GtkListViewProps,
 } from "../generated/jsx.js";
-import type { DropDownProps, GridViewProps, ListItem, ListViewProps } from "../jsx.js";
+import type {
+    ColumnViewColumnProps,
+    DropDownProps,
+    GridViewProps,
+    ListItem,
+    ListViewProps,
+    MenuItemProps,
+    MenuSectionProps,
+    MenuSubmenuProps,
+} from "../jsx.js";
 import type { BoundItem } from "../nodes/internal/bound-item.js";
 import { createPortal } from "../portal.js";
+import { columnViewChildren } from "./compounds/column-view.js";
 
 type GenericListViewProps<T, S> = Omit<GtkListViewProps, keyof ListViewProps> & ListViewProps<T, S>;
 type GenericGridViewProps<T> = Omit<GtkGridViewProps, keyof GridViewProps> & GridViewProps<T>;
@@ -64,11 +74,19 @@ export function GtkGridView<T = unknown>(
     return renderListElement("GtkGridView", useListHandle(), props);
 }
 
-export function GtkColumnView<T = unknown, S = unknown>(
+/** @internal */
+function GtkColumnViewBase<T = unknown, S = unknown>(
     props: GenericColumnViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ColumnView> },
 ): ReactNode {
     return renderListElement("GtkColumnView", useListHandle(), props);
 }
+
+export const GtkColumnView: typeof GtkColumnViewBase & {
+    Column: <T = unknown>(props: ColumnViewColumnProps<T>) => ReactNode;
+    MenuItem: (props: MenuItemProps) => ReactNode;
+    MenuSection: (props: MenuSectionProps) => ReactNode;
+    MenuSubmenu: (props: MenuSubmenuProps) => ReactNode;
+} = Object.assign(GtkColumnViewBase, columnViewChildren);
 
 export function GtkDropDown<T = unknown, S = unknown>(
     props: GenericDropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.DropDown> },

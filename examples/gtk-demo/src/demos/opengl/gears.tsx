@@ -1,7 +1,7 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkOverlay, GtkScale, x } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkOverlay, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
@@ -569,7 +569,7 @@ const GearsDemo = () => {
                 <AxisSlider axis="Y" value={viewRotY} onChange={setViewRotY} />
                 <AxisSlider axis="Z" value={viewRotZ} onChange={setViewRotZ} />
             </GtkBox>
-            <x.OverlayChild>
+            <GtkOverlay.Child>
                 <GtkLabel
                     label={fps >= 0 ? `FPS: ${fps.toFixed(1)}` : ""}
                     halign={Gtk.Align.START}
@@ -578,7 +578,7 @@ const GearsDemo = () => {
                     marginTop={12}
                     cssClasses={["app-notification"]}
                 />
-            </x.OverlayChild>
+            </GtkOverlay.Child>
         </GtkOverlay>
     );
 };
