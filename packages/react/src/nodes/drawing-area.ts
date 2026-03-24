@@ -35,6 +35,7 @@ function flushPendingDrawFuncs(): void {
 
     for (const { container, fn } of batch) {
         container.setDrawFunc(wrapDrawFunc(fn));
+        container.queueResize();
     }
 }
 

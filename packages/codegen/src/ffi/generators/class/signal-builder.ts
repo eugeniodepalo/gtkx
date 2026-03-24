@@ -210,6 +210,7 @@ export class SignalBuilder {
     private buildParamData(params: GirParameter[]): SignalParamData[] {
         return params.map((p) => {
             const mapped = this.ffiMapper.mapParameter(p);
+            mapped.ffi = this.ffiMapper.enrichStructWithSize(mapped.ffi, String(p.type.name));
             addTypeImports(this.imports, mapped.imports, this.selfNames);
             if (mapped.ffi.type === "ref") {
                 this.imports.addImport("@gtkx/native", ["Ref"]);
@@ -390,7 +391,7 @@ export class SignalBuilder {
                     writer.writeLine("value: wrappedHandler,");
                 });
                 writer.writeLine("},");
-                writer.writeLine('{ type: { type: "boolean" }, value: after },');
+                writer.writeLine('{ type: { type: "boolean" }, value: after ?? false },');
             });
             writer.writeLine("],");
             writer.writeLine('{ type: "uint64" }');

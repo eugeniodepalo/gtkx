@@ -71,6 +71,7 @@ export const build = async (options: BuildOptions): Promise<void> => {
             assetsInlineLimit: 0,
             outDir: viteConfig?.build?.outDir ?? "dist",
             minify: true,
+            cssMinify: false,
             rollupOptions: {
                 ...viteConfig?.build?.rollupOptions,
                 output: {

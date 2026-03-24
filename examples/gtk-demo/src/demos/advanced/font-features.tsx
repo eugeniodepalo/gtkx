@@ -3,15 +3,12 @@ import { createRef } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import * as HarfBuzz from "@gtkx/ffi/harfbuzz";
 import * as Pango from "@gtkx/ffi/pango";
-import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
     GtkColorDialogButton,
-    GtkDropDown,
     GtkEntry,
     GtkExpander,
     GtkFontDialogButton,
@@ -208,97 +205,14 @@ const FEATURE_GROUPS: FeatureGroup[] = [
 
 type FeatureState = "inconsistent" | "active" | "inactive";
 
-const HB_OT_NAME_ID_INVALID = 65535;
-
-const getFeatureDisplayName = (tag: string, fontFeatureNames?: Map<string, string>): string => {
+const getFeatureDisplayName = (tag: string): string => {
     if (tag === "xxxx") return "Default";
-    const fontName = fontFeatureNames?.get(tag);
-    if (fontName) return fontName;
     const ssMatch = tag.match(/^ss(\d{2})$/);
     if (ssMatch) return `Stylistic Set ${Number.parseInt(ssMatch[1] ?? "0", 10)}`;
     const cvMatch = tag.match(/^cv(\d{2})$/);
     if (cvMatch) return `Character Variant ${Number.parseInt(cvMatch[1] ?? "0", 10)}`;
     return FEATURE_DISPLAY_NAMES[tag] ?? tag;
 };
-
-const resolveFeatureNames = (
-    face: HarfBuzz.FaceT,
-    scriptIndex: number,
-    langIndex: number,
-    supportedFeatures: Set<string>,
-): Map<string, string> => {
-    const names = new Map<string, string>();
-
-    for (const tagStr of supportedFeatures) {
-        if (!tagStr.match(/^(ss|cv)\d{2}$/)) continue;
-
-        const tag = stringToTag(tagStr);
-
-        for (const tableTag of [TAG_GSUB, TAG_GPOS]) {
-            const featureIndexRef = createRef<number>(0);
-            const found = HarfBuzz.otLayoutLanguageFindFeature(
-                face,
-                tableTag,
-                scriptIndex,
-                langIndex,
-                tag,
-                featureIndexRef,
-            );
-            if (!found) continue;
-
-            const labelIdRef = createRef<number>(0);
-            const tooltipIdRef = createRef<number>(0);
-            const sampleIdRef = createRef<number>(0);
-            const numParamsRef = createRef<number>(0);
-            const firstParamIdRef = createRef<number>(0);
-
-            const hasNames = HarfBuzz.otLayoutFeatureGetNameIds(
-                face,
-                tableTag,
-                featureIndexRef.value,
-                labelIdRef,
-                tooltipIdRef,
-                sampleIdRef,
-                numParamsRef,
-                firstParamIdRef,
-            );
-
-            if (hasNames && labelIdRef.value !== HB_OT_NAME_ID_INVALID) {
-                const textRef = createRef<string[]>([""]);
-                const textSizeRef = createRef<number>(64);
-                HarfBuzz.otNameGetUtf8(face, labelIdRef.value, HarfBuzz.languageGetDefault(), textRef, textSizeRef);
-                const name = textRef.value[0];
-                if (name) {
-                    names.set(tagStr, name);
-                    break;
-                }
-            }
-        }
-    }
-
-    return names;
-};
-
-interface AxisInfo {
-    tag: string;
-    name: string;
-    minValue: number;
-    defaultValue: number;
-    maxValue: number;
-}
-
-interface NamedInstance {
-    name: string;
-    index: number;
-    coords: Map<string, number>;
-}
-
-interface ScriptLangItem {
-    label: string;
-    scriptIndex: number;
-    langIndex: number;
-    langTag: number;
-}
 
 const WATERFALL_SIZES = [7, 8, 9, 10, 12, 14, 16, 20, 24, 30, 40, 50, 60, 70, 90];
 
@@ -309,253 +223,6 @@ const PARAGRAPH_SAMPLES = [
     "\u0420\u0430\u0437\u044a\u044f\u0440\u0435\u043d\u043d\u044b\u0439 \u0447\u0442\u0435\u0446 \u044d\u0433\u043e\u0438\u0441\u0442\u0438\u0447\u043d\u043e \u0431\u044c\u0451\u0442 \u043f\u044f\u0442\u044c\u044e \u0436\u0435\u0440\u0434\u044f\u043c\u0438 \u0448\u0443\u0441\u0442\u0440\u043e\u0433\u043e \u0444\u0435\u0445\u0442\u043e\u0432\u0430\u043b\u044c\u0449\u0438\u043a\u0430. \u041d\u0430\u0448 \u0431\u0430\u043d\u043a \u0432\u0447\u0435\u0440\u0430 \u0436\u0435 \u0432\u044b\u043f\u043b\u0430\u0442\u0438\u043b \u0424.\u042f. \u042d\u0439\u0445\u0433\u043e\u043b\u044c\u0434\u0443 \u043a\u043e\u043c\u0438\u0441\u0441\u0438\u044e \u0437\u0430 \u0446\u0435\u043d\u043d\u044b\u0435 \u0432\u0435\u0449\u0438. \u042d\u0445, \u0447\u0443\u0436\u0430\u043a, \u043e\u0431\u0449\u0438\u0439 \u0441\u044a\u0451\u043c \u0446\u0435\u043d \u0448\u043b\u044f\u043f (\u044e\u0444\u0442\u044c) \u2013 \u0432\u0434\u0440\u044b\u0437\u0433! \u0412 \u0447\u0430\u0449\u0430\u0445 \u044e\u0433\u0430 \u0436\u0438\u043b \u0431\u044b \u0446\u0438\u0442\u0440\u0443\u0441? \u0414\u0430, \u043d\u043e \u0444\u0430\u043b\u044c\u0448\u0438\u0432\u044b\u0439 \u044d\u043a\u0437\u0435\u043c\u043f\u043b\u044f\u0440!",
     "\u03a4\u03ac\u03c7\u03b9\u03c3\u03c4\u03b7 \u03b1\u03bb\u03ce\u03c0\u03b7\u03be \u03b2\u03b1\u03c6\u03ae\u03c2 \u03c8\u03b7\u03bc\u03ad\u03bd\u03b7 \u03b3\u03b7, \u03b4\u03c1\u03b1\u03c3\u03ba\u03b5\u03bb\u03af\u03b6\u03b5\u03b9 \u03c5\u03c0\u03ad\u03c1 \u03bd\u03c9\u03b8\u03c1\u03bf\u03cd \u03ba\u03c5\u03bd\u03cc\u03c2",
 ];
-
-const AXIS_NAMES: Record<string, string> = {
-    wght: "Weight",
-    wdth: "Width",
-    slnt: "Slant",
-    ital: "Italic",
-    opsz: "Optical Size",
-    GRAD: "Grade",
-    XTRA: "X Transparent",
-    YTRA: "Y Transparent",
-    XOPQ: "X Opaque",
-    YOPQ: "Y Opaque",
-    YTLC: "Y Transparent LC",
-    YTUC: "Y Transparent UC",
-    YTAS: "Y Transparent AS",
-    YTDE: "Y Transparent DE",
-    YTFI: "Y Transparent FI",
-};
-
-const TAG_GSUB = ((71 << 24) | (83 << 16) | (85 << 8) | 66) >>> 0;
-const TAG_GPOS = ((71 << 24) | (80 << 16) | (79 << 8) | 83) >>> 0;
-const TAG_DEFAULT_LANGUAGE = ((100 << 24) | (102 << 16) | (108 << 8) | 116) >>> 0;
-
-const tagToString = (tag: number): string => {
-    return String.fromCharCode((tag >> 24) & 0xff, (tag >> 16) & 0xff, (tag >> 8) & 0xff, tag & 0xff);
-};
-
-const stringToTag = (s: string): number => {
-    return ((s.charCodeAt(0) << 24) | (s.charCodeAt(1) << 16) | (s.charCodeAt(2) << 8) | s.charCodeAt(3)) >>> 0;
-};
-
-const LANGUAGE_TAG_NAMES: Record<number, string> = (() => {
-    const names: Record<string, string> = {
-        AFK: "Afrikaans",
-        ARA: "Arabic",
-        ASM: "Assamese",
-        AZE: "Azerbaijani",
-        BEL: "Belarusian",
-        BEN: "Bengali",
-        BGR: "Bulgarian",
-        CAT: "Catalan",
-        CES: "Czech",
-        CHI: "Chinese",
-        DAN: "Danish",
-        DEU: "German",
-        ELL: "Greek",
-        ENG: "English",
-        ESP: "Spanish",
-        EST: "Estonian",
-        EUQ: "Basque",
-        FIN: "Finnish",
-        FRA: "French",
-        GAE: "Scottish Gaelic",
-        GUJ: "Gujarati",
-        HAU: "Hausa",
-        HIN: "Hindi",
-        HRV: "Croatian",
-        HUN: "Hungarian",
-        HYE: "Armenian",
-        IND: "Indonesian",
-        ITA: "Italian",
-        JPN: "Japanese",
-        KAN: "Kannada",
-        KAT: "Georgian",
-        KAZ: "Kazakh",
-        KHM: "Khmer",
-        KOR: "Korean",
-        KUR: "Kurdish",
-        LAO: "Lao",
-        LAV: "Latvian",
-        LIT: "Lithuanian",
-        MAL: "Malayalam",
-        MAR: "Marathi",
-        MKD: "Macedonian",
-        MLY: "Malay",
-        MNG: "Mongolian",
-        MOL: "Moldavian",
-        NEP: "Nepali",
-        NLD: "Dutch",
-        NOR: "Norwegian",
-        ORI: "Odia",
-        PAN: "Punjabi",
-        POL: "Polish",
-        POR: "Portuguese",
-        ROM: "Romanian",
-        RUS: "Russian",
-        SAN: "Sanskrit",
-        SIN: "Sinhala",
-        SKY: "Slovak",
-        SLV: "Slovenian",
-        SQI: "Albanian",
-        SRB: "Serbian",
-        SVE: "Swedish",
-        TAM: "Tamil",
-        TEL: "Telugu",
-        THA: "Thai",
-        TRK: "Turkish",
-        UKR: "Ukrainian",
-        URD: "Urdu",
-        UZB: "Uzbek",
-        VIT: "Vietnamese",
-        ZHS: "Chinese Simplified",
-        ZHT: "Chinese Traditional",
-    };
-    const result: Record<number, string> = {};
-    for (const [tag, name] of Object.entries(names)) {
-        const padded = tag.padEnd(4, " ");
-        result[stringToTag(padded)] = name;
-    }
-    return result;
-})();
-
-const discoverScriptLangs = (face: HarfBuzz.FaceT): ScriptLangItem[] => {
-    const seen = new Set<string>();
-    const items: ScriptLangItem[] = [{ label: "None", scriptIndex: 0, langIndex: 0, langTag: 0 }];
-    seen.add("0-0");
-
-    for (const tableTag of [TAG_GSUB, TAG_GPOS]) {
-        const scriptTagsRef = createRef<number[]>(new Array(80).fill(0));
-        const scriptCountRef = createRef<number>(80);
-
-        HarfBuzz.otLayoutTableGetScriptTags(face, tableTag, 0, scriptTagsRef, scriptCountRef);
-        const scriptCount = scriptCountRef.value;
-
-        for (let j = 0; j < scriptCount; j++) {
-            const langTagsRef = createRef<number[]>(new Array(80).fill(0));
-            const langCountRef = createRef<number>(80);
-
-            HarfBuzz.otLayoutScriptGetLanguageTags(face, tableTag, j, 0, langTagsRef, langCountRef);
-            const langCount = langCountRef.value;
-
-            for (let k = 0; k < langCount; k++) {
-                const langTag = langTagsRef.value[k] ?? 0;
-                const key = `${j}-${langTag}`;
-                if (seen.has(key)) continue;
-                seen.add(key);
-
-                let label: string;
-                if (langTag === TAG_DEFAULT_LANGUAGE) {
-                    label = "Default";
-                } else {
-                    label = LANGUAGE_TAG_NAMES[langTag] ?? tagToString(langTag).trim();
-                }
-
-                items.push({ label, scriptIndex: j, langIndex: k, langTag });
-            }
-        }
-    }
-
-    items.sort((a, b) => {
-        if (a.langTag === 0) return -1;
-        if (b.langTag === 0) return 1;
-        return a.label.localeCompare(b.label);
-    });
-
-    return items;
-};
-
-const discoverSupportedFeatures = (face: HarfBuzz.FaceT, scriptIndex: number, langIndex: number): Set<string> => {
-    const supported = new Set<string>();
-
-    for (const tableTag of [TAG_GSUB, TAG_GPOS]) {
-        const featureTagsRef = createRef<number[]>(new Array(80).fill(0));
-        const featureCountRef = createRef<number>(80);
-
-        HarfBuzz.otLayoutLanguageGetFeatureTags(
-            face,
-            tableTag,
-            scriptIndex,
-            langIndex,
-            0,
-            featureTagsRef,
-            featureCountRef,
-        );
-
-        const count = featureCountRef.value;
-        for (let i = 0; i < count; i++) {
-            const tag = featureTagsRef.value[i] ?? 0;
-            if (tag === 0) continue;
-            supported.add(tagToString(tag));
-        }
-    }
-
-    return supported;
-};
-
-const discoverVariableAxes = (face: HarfBuzz.FaceT): AxisInfo[] => {
-    if (!HarfBuzz.otVarHasData(face)) return [];
-
-    const axisCount = HarfBuzz.otVarGetAxisCount(face);
-    if (axisCount === 0) return [];
-
-    const axes: AxisInfo[] = [];
-    for (let i = 0; i < axisCount; i++) {
-        const info = new HarfBuzz.OtVarAxisInfoT();
-        const axisCountRef = createRef<number>(1);
-        const axisInfoRef = createRef<HarfBuzz.OtVarAxisInfoT[]>([info]);
-
-        HarfBuzz.otVarGetAxisInfos(face, i, axisInfoRef, axisCountRef);
-
-        if (axisCountRef.value > 0 && axisInfoRef.value[0]) {
-            const axis = axisInfoRef.value[0];
-            const tagStr = tagToString(axis.getTag());
-            axes.push({
-                tag: tagStr,
-                name: AXIS_NAMES[tagStr] ?? tagStr,
-                minValue: axis.getMinValue(),
-                defaultValue: axis.getDefaultValue(),
-                maxValue: axis.getMaxValue(),
-            });
-        }
-    }
-
-    return axes;
-};
-
-const discoverNamedInstances = (face: HarfBuzz.FaceT, axes: AxisInfo[]): NamedInstance[] => {
-    const instanceCount = HarfBuzz.otVarGetNamedInstanceCount(face);
-    if (instanceCount === 0) return [];
-
-    const instances: NamedInstance[] = [];
-    for (let i = 0; i < instanceCount; i++) {
-        const nameId = HarfBuzz.otVarNamedInstanceGetSubfamilyNameId(face, i);
-        const textRef = createRef<string[]>([""]);
-        const textSizeRef = createRef<number>(64);
-        HarfBuzz.otNameGetUtf8(face, nameId, HarfBuzz.languageGetDefault(), textRef, textSizeRef);
-        const name = textRef.value[0];
-        if (!name) continue;
-
-        const coordCount = axes.length;
-        const coordsRef = createRef<number[]>(new Array(coordCount).fill(0));
-        const coordCountRef = createRef<number>(coordCount);
-        HarfBuzz.otVarNamedInstanceGetDesignCoords(face, i, coordsRef, coordCountRef);
-
-        const coords = new Map<string, number>();
-        for (let j = 0; j < Math.min(coordCountRef.value, axes.length); j++) {
-            const axis = axes[j];
-            if (axis) {
-                coords.set(axis.tag, coordsRef.value[j] ?? axis.defaultValue);
-            }
-        }
-
-        instances.push({ name, index: i, coords });
-    }
-
-    return instances;
-};
 
 type ViewMode = "plain" | "waterfall" | "edit";
 
@@ -589,14 +256,6 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
     const [fontDesc, setFontDesc] = useState<Pango.FontDescription | null>(createDefaultFontDesc);
     const [checkStates, setCheckStates] = useState<Map<string, FeatureState>>(createInitialCheckStates);
     const [radioStates, setRadioStates] = useState<Map<string, string>>(createInitialRadioStates);
-    const [supportedFeatures, setSupportedFeatures] = useState<Set<string> | null>(null);
-    const [fontFeatureNames, setFontFeatureNames] = useState<Map<string, string>>(new Map());
-    const [scriptLangItems, setScriptLangItems] = useState<ScriptLangItem[]>([]);
-    const [selectedScriptLang, setSelectedScriptLang] = useState(0);
-    const [variableAxes, setVariableAxes] = useState<AxisInfo[]>([]);
-    const [axisValues, setAxisValues] = useState<Map<string, number>>(new Map());
-    const [namedInstances, setNamedInstances] = useState<NamedInstance[]>([]);
-    const [selectedInstance, setSelectedInstance] = useState(0);
     const [fgColor, setFgColor] = useState<Gdk.RGBA>(createDefaultFgColor);
     const [bgColor, setBgColor] = useState<Gdk.RGBA>(createDefaultBgColor);
     const [size, setSize] = useState(14);
@@ -604,16 +263,11 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
     const [lineHeight, setLineHeight] = useState(1.0);
     const [viewMode, setViewMode] = useState<ViewMode>("plain");
     const [previewText, setPreviewText] = useState(PARAGRAPH_SAMPLES[0] ?? "");
-    const [animatingAxes, setAnimatingAxes] = useState<Set<string>>(new Set());
     const sampleCounterRef = useRef(0);
     const savedTextRef = useRef("");
     const previewLabelRef = useRef<Gtk.Label | null>(null);
     const editTextViewRef = useRef<Gtk.TextView | null>(null);
     const containerRef = useRef<Gtk.Box | null>(null);
-    const currentFaceRef = useRef<HarfBuzz.FaceT | null>(null);
-    const animTickIds = useRef<Map<string, number>>(new Map());
-    const animStartTimes = useRef<Map<string, number>>(new Map());
-    const animIncreasing = useRef<Map<string, boolean>>(new Map());
 
     useLayoutEffect(() => {
         const win = window.current;
@@ -621,106 +275,6 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
             win.setDefaultSize(600, 500);
         }
     }, [window]);
-
-    const updateFontInfo = useCallback(() => {
-        if (!fontDesc || !containerRef.current) return;
-
-        try {
-            const fontMap = PangoCairo.fontMapGetDefault();
-            const context = containerRef.current.getPangoContext();
-            const font = fontMap.loadFont(context, fontDesc);
-            if (!font) return;
-
-            const hbFont = font.getHbFont();
-            if (!hbFont) return;
-
-            const face = HarfBuzz.fontGetFace(hbFont);
-            currentFaceRef.current = face;
-
-            const items = discoverScriptLangs(face);
-            setScriptLangItems(items);
-            setSelectedScriptLang(0);
-            setSupportedFeatures(null);
-            setFontFeatureNames(new Map());
-
-            const axes = discoverVariableAxes(face);
-            setVariableAxes(axes);
-            const defaultValues = new Map<string, number>();
-            for (const axis of axes) {
-                defaultValues.set(axis.tag, axis.defaultValue);
-            }
-            setAxisValues(defaultValues);
-
-            const instances = discoverNamedInstances(face, axes);
-            setNamedInstances(instances);
-            setSelectedInstance(0);
-
-            setCheckStates(createInitialCheckStates());
-            setRadioStates(createInitialRadioStates());
-        } catch {
-            currentFaceRef.current = null;
-            setScriptLangItems([]);
-            setSelectedScriptLang(0);
-            setSupportedFeatures(null);
-            setFontFeatureNames(new Map());
-            setVariableAxes([]);
-            setAxisValues(new Map());
-            setNamedInstances([]);
-            setSelectedInstance(0);
-        }
-    }, [fontDesc]);
-
-    useLayoutEffect(() => {
-        if (containerRef.current) {
-            updateFontInfo();
-        }
-    }, [updateFontInfo]);
-
-    const handleContainerRef = useCallback(
-        (widget: Gtk.Box | null) => {
-            containerRef.current = widget;
-            if (widget && fontDesc) {
-                updateFontInfo();
-            }
-        },
-        [fontDesc, updateFontInfo],
-    );
-
-    const handleScriptLangChange = useCallback(
-        (index: number) => {
-            setSelectedScriptLang(index);
-            const item = scriptLangItems[index];
-            if (!item || item.langTag === 0) {
-                setSupportedFeatures(null);
-                setFontFeatureNames(new Map());
-                setCheckStates(createInitialCheckStates());
-                setRadioStates(createInitialRadioStates());
-            } else if (currentFaceRef.current) {
-                const supported = discoverSupportedFeatures(currentFaceRef.current, item.scriptIndex, item.langIndex);
-                setSupportedFeatures(supported);
-                setFontFeatureNames(
-                    resolveFeatureNames(currentFaceRef.current, item.scriptIndex, item.langIndex, supported),
-                );
-                setCheckStates((prev) => {
-                    const next = new Map(prev);
-                    for (const [tag] of next) {
-                        next.set(tag, "inconsistent");
-                    }
-                    return next;
-                });
-                setRadioStates(createInitialRadioStates());
-            }
-        },
-        [scriptLangItems],
-    );
-
-    const isFeatureVisible = useCallback(
-        (tag: string) => {
-            if (tag === "xxxx") return true;
-            return !supportedFeatures || supportedFeatures.has(tag);
-        },
-        [supportedFeatures],
-    );
 
     const toggleCheck = useCallback((tag: string) => {
         setCheckStates((prev) => {
@@ -749,51 +303,6 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
         });
     }, []);
 
-    const updateAxisValue = useCallback(
-        (tag: string, value: number) => {
-            setAxisValues((prev) => {
-                const next = new Map(prev);
-                next.set(tag, value);
-
-                let matchedIndex = 0;
-                for (let i = 0; i < namedInstances.length; i++) {
-                    const inst = namedInstances[i];
-                    if (!inst) continue;
-                    let matches = true;
-                    for (const axis of variableAxes) {
-                        const instVal = inst.coords.get(axis.tag) ?? axis.defaultValue;
-                        const curVal = axis.tag === tag ? value : (next.get(axis.tag) ?? axis.defaultValue);
-                        if (Math.abs(instVal - curVal) > 0.01) {
-                            matches = false;
-                            break;
-                        }
-                    }
-                    if (matches) {
-                        matchedIndex = i + 1;
-                        break;
-                    }
-                }
-                setSelectedInstance(matchedIndex);
-
-                return next;
-            });
-        },
-        [namedInstances, variableAxes],
-    );
-
-    const handleInstanceChange = useCallback(
-        (index: number) => {
-            setSelectedInstance(index);
-            if (index > 0) {
-                const instance = namedInstances[index - 1];
-                if (instance) {
-                    setAxisValues(new Map(instance.coords));
-                }
-            }
-        },
-        [namedInstances],
-    );
-
     const swapColors = useCallback(() => {
         const oldFg = fgColor;
         const oldBg = bgColor;
@@ -814,100 +323,10 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
         setRadioStates(createInitialRadioStates());
     }, []);
 
-    const stopAllAnimations = useCallback(() => {
-        const widget = containerRef.current;
-        if (widget) {
-            for (const tickId of animTickIds.current.values()) {
-                widget.removeTickCallback(tickId);
-            }
-        }
-        animTickIds.current.clear();
-        animStartTimes.current.clear();
-        animIncreasing.current.clear();
-        setAnimatingAxes(new Set());
-    }, []);
-
-    useEffect(() => stopAllAnimations, [stopAllAnimations]);
-
-    const toggleAxisAnimation = useCallback(
-        (axis: AxisInfo) => {
-            const widget = containerRef.current;
-            if (!widget) return;
-
-            const existing = animTickIds.current.get(axis.tag);
-            if (existing !== undefined) {
-                widget.removeTickCallback(existing);
-                animTickIds.current.delete(axis.tag);
-                animStartTimes.current.delete(axis.tag);
-                animIncreasing.current.delete(axis.tag);
-                setAnimatingAxes((prev) => {
-                    const next = new Set(prev);
-                    next.delete(axis.tag);
-                    return next;
-                });
-                return;
-            }
-
-            const lower = axis.minValue;
-            const upper = axis.maxValue;
-            const range = upper - lower;
-            const currentValue = axisValues.get(axis.tag) ?? axis.defaultValue;
-            const normalizedPosition = range > 0 ? (currentValue - lower) / range : 0;
-
-            const now = performance.now();
-            animStartTimes.current.set(axis.tag, now - normalizedPosition * 1000);
-            animIncreasing.current.set(axis.tag, true);
-
-            const easeOutCubic = (t: number) => {
-                const p = t - 1;
-                return p * p * p + 1;
-            };
-
-            const tickId = widget.addTickCallback(() => {
-                const currentTime = performance.now();
-                let startTime = animStartTimes.current.get(axis.tag) ?? currentTime;
-                let increasing = animIncreasing.current.get(axis.tag) ?? true;
-
-                if (currentTime >= startTime + 1000) {
-                    startTime += 1000;
-                    increasing = !increasing;
-                    animStartTimes.current.set(axis.tag, startTime);
-                    animIncreasing.current.set(axis.tag, increasing);
-                }
-
-                const t = Math.min(1, (currentTime - startTime) / 1000);
-                const eased = easeOutCubic(t);
-
-                const val = increasing ? lower + range * eased : upper - range * eased;
-                updateAxisValue(axis.tag, val);
-                return true;
-            });
-
-            animTickIds.current.set(axis.tag, tickId);
-            setAnimatingAxes((prev) => {
-                const next = new Set(prev);
-                next.add(axis.tag);
-                return next;
-            });
-        },
-        [updateAxisValue, axisValues],
-    );
-
-    const resetVariations = useCallback(() => {
-        stopAllAnimations();
-        const defaultValues = new Map<string, number>();
-        for (const axis of variableAxes) {
-            defaultValues.set(axis.tag, axis.defaultValue);
-        }
-        setAxisValues(defaultValues);
-        setSelectedInstance(0);
-    }, [variableAxes, stopAllAnimations]);
-
     const resetAll = useCallback(() => {
         resetBasic();
         resetFeatures();
-        resetVariations();
-    }, [resetBasic, resetFeatures, resetVariations]);
+    }, [resetBasic, resetFeatures]);
 
     const handleAlphabet = useCallback(() => {
         sampleCounterRef.current += 1;
@@ -926,12 +345,11 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
         for (const group of FEATURE_GROUPS) {
             if (group.type === "radio") {
                 const selected = radioStates.get(group.title) ?? "xxxx";
-                if (selected !== "xxxx" && isFeatureVisible(selected)) {
+                if (selected !== "xxxx") {
                     parts.push(`"${selected}" 1`);
                 }
             } else {
                 for (const tag of group.tags) {
-                    if (!isFeatureVisible(tag)) continue;
                     const state = checkStates.get(tag) ?? "inconsistent";
                     if (state === "inconsistent") continue;
                     parts.push(`"${tag}" ${state === "active" ? "1" : "0"}`);
@@ -939,15 +357,7 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
             }
         }
         return parts.join(", ") || "normal";
-    }, [checkStates, radioStates, isFeatureVisible]);
-
-    const fontVariationsString = useMemo(() => {
-        if (axisValues.size === 0) return "normal";
-        const variations = Array.from(axisValues.entries())
-            .map(([tag, value]) => `"${tag}" ${value}`)
-            .join(", ");
-        return variations || "normal";
-    }, [axisValues]);
+    }, [checkStates, radioStates]);
 
     const bgStyle = useMemo(() => {
         const bgR = Math.round(bgColor.getRed() * 255);
@@ -987,12 +397,11 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                 font-family: "${fontFamily}";
                 font-size: ${size}pt;
                 font-feature-settings: ${fontFeaturesString};
-                font-variation-settings: ${fontVariationsString};
                 color: rgb(${fgR}, ${fgG}, ${fgB});
                 letter-spacing: ${letterSpacing / 1024}em;
             }
         `;
-    }, [fontDesc, size, fontFeaturesString, fontVariationsString, fgColor, letterSpacing]);
+    }, [fontDesc, size, fontFeaturesString, fgColor, letterSpacing]);
 
     const createWaterfallStyle = useCallback(
         (wfSize: number) => {
@@ -1005,43 +414,31 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                     font-family: "${fontFamily}";
                     font-size: ${wfSize}pt;
                     font-feature-settings: ${fontFeaturesString};
-                    font-variation-settings: ${fontVariationsString};
                     color: rgb(${fgR}, ${fgG}, ${fgB});
                     letter-spacing: ${letterSpacing / 1024}em;
                 }
             `;
         },
-        [fontDesc, fontFeaturesString, fontVariationsString, fgColor, letterSpacing],
+        [fontDesc, fontFeaturesString, fgColor, letterSpacing],
     );
 
     const settingsText = useMemo(() => {
-        const parts: string[] = [];
         if (fontFeaturesString !== "normal") {
-            parts.push(`font-feature-settings: ${fontFeaturesString};`);
+            return `font-feature-settings: ${fontFeaturesString};`;
         }
-        if (fontVariationsString !== "normal") {
-            parts.push(`font-variation-settings: ${fontVariationsString};`);
-        }
-        return parts.join("\n") || "No active settings";
-    }, [fontFeaturesString, fontVariationsString]);
+        return "No active settings";
+    }, [fontFeaturesString]);
 
     const pangoFontFeaturesString = useMemo(() => {
         if (fontFeaturesString === "normal") return null;
         return fontFeaturesString.replace(/"/g, "").replace(/ 1/g, "=1").replace(/ 0/g, "=0");
     }, [fontFeaturesString]);
 
-    const pangoFontVariationsString = useMemo(() => {
-        if (fontVariationsString === "normal" || axisValues.size === 0) return null;
-        return Array.from(axisValues.entries())
-            .map(([tag, value]) => `${tag}=${value}`)
-            .join(",");
-    }, [fontVariationsString, axisValues]);
-
     const applySelectionAttributes = useCallback(() => {
         const label = previewLabelRef.current;
         if (!label) return;
 
-        if (!pangoFontFeaturesString && !pangoFontVariationsString) {
+        if (!pangoFontFeaturesString) {
             label.setAttributes(null);
             return;
         }
@@ -1055,24 +452,13 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
         const startIndex = hasSelection ? startRef.value : 0;
         const endIndex = hasSelection ? endRef.value : 0xffffffff;
 
-        if (pangoFontFeaturesString) {
-            const attr = Pango.attrFontFeaturesNew(pangoFontFeaturesString);
-            attr.setStartIndex(startIndex);
-            attr.setEndIndex(endIndex);
-            attrList.insert(attr);
-        }
-
-        if (pangoFontVariationsString) {
-            const desc = new Pango.FontDescription();
-            desc.setVariations(pangoFontVariationsString);
-            const attr = Pango.attrFontDescNew(desc);
-            attr.setStartIndex(startIndex);
-            attr.setEndIndex(endIndex);
-            attrList.insert(attr);
-        }
+        const attr = Pango.attrFontFeaturesNew(pangoFontFeaturesString);
+        attr.setStartIndex(startIndex);
+        attr.setEndIndex(endIndex);
+        attrList.insert(attr);
 
         label.setAttributes(attrList);
-    }, [pangoFontFeaturesString, pangoFontVariationsString]);
+    }, [pangoFontFeaturesString]);
 
     useLayoutEffect(() => {
         applySelectionAttributes();
@@ -1139,7 +525,7 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                     }}
                 />
             </GtkShortcutController>
-            <GtkBox ref={handleContainerRef}>
+            <GtkBox ref={containerRef}>
                 <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                     <GtkViewport cssClasses={["view"]}>
                         <GtkBox
@@ -1288,174 +674,45 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
                                     />
                                 </x.Slot>
                                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                                    {scriptLangItems.length > 0 && (
-                                        <GtkDropDown
-                                            marginTop={10}
-                                            tooltipText="Language System"
-                                            selectedId={String(selectedScriptLang)}
-                                            onSelectionChanged={(id) => {
-                                                handleScriptLangChange(Number.parseInt(id, 10));
-                                            }}
-                                            items={scriptLangItems.map((item, i) => ({
-                                                id: String(i),
-                                                value: item.label,
-                                            }))}
-                                        />
-                                    )}
-
-                                    {FEATURE_GROUPS.map((group) => {
-                                        const visibleTags = group.tags.filter(
-                                            (t) => t === "xxxx" || isFeatureVisible(t),
-                                        );
-                                        if (visibleTags.length === 0) return null;
-                                        if (
-                                            group.type === "radio" &&
-                                            visibleTags.filter((t) => t !== "xxxx").length === 0
-                                        )
-                                            return null;
-
-                                        return (
-                                            <GtkBox
-                                                key={group.title}
-                                                orientation={Gtk.Orientation.VERTICAL}
+                                    {FEATURE_GROUPS.map((group) => (
+                                        <GtkBox
+                                            key={group.title}
+                                            orientation={Gtk.Orientation.VERTICAL}
+                                            halign={Gtk.Align.START}
+                                        >
+                                            <GtkLabel
+                                                label={group.title}
+                                                xalign={0}
                                                 halign={Gtk.Align.START}
-                                            >
-                                                <GtkLabel
-                                                    label={group.title}
-                                                    xalign={0}
-                                                    halign={Gtk.Align.START}
-                                                    marginTop={10}
-                                                    marginBottom={10}
-                                                    cssClasses={["heading"]}
-                                                />
-                                                {group.type === "radio"
-                                                    ? visibleTags.map((tag) => (
-                                                          <GtkCheckButton
-                                                              key={tag}
-                                                              label={getFeatureDisplayName(tag, fontFeatureNames)}
-                                                              active={(radioStates.get(group.title) ?? "xxxx") === tag}
-                                                              onToggled={() => selectRadio(group.title, tag)}
+                                                marginTop={10}
+                                                marginBottom={10}
+                                                cssClasses={["heading"]}
+                                            />
+                                            {group.type === "radio"
+                                                ? group.tags.map((tag) => (
+                                                      <GtkCheckButton
+                                                          key={tag}
+                                                          label={getFeatureDisplayName(tag)}
+                                                          active={(radioStates.get(group.title) ?? "xxxx") === tag}
+                                                          onToggled={() => selectRadio(group.title, tag)}
+                                                      />
+                                                  ))
+                                                : group.tags.map((tag) => (
+                                                      <GtkCheckButton
+                                                          key={tag}
+                                                          label={getFeatureDisplayName(tag)}
+                                                          active={checkStates.get(tag) === "active"}
+                                                          inconsistent={checkStates.get(tag) === "inconsistent"}
+                                                          onToggled={() => toggleCheck(tag)}
+                                                      >
+                                                          <GtkGestureClick
+                                                              button={3}
+                                                              onPressed={() => resetToInconsistent(tag)}
                                                           />
-                                                      ))
-                                                    : visibleTags.map((tag) => (
-                                                          <GtkCheckButton
-                                                              key={tag}
-                                                              label={getFeatureDisplayName(tag, fontFeatureNames)}
-                                                              active={checkStates.get(tag) === "active"}
-                                                              inconsistent={checkStates.get(tag) === "inconsistent"}
-                                                              onToggled={() => toggleCheck(tag)}
-                                                          >
-                                                              <GtkGestureClick
-                                                                  button={3}
-                                                                  onPressed={() => resetToInconsistent(tag)}
-                                                              />
-                                                          </GtkCheckButton>
-                                                      ))}
-                                            </GtkBox>
-                                        );
-                                    })}
-                                </GtkBox>
-                            </GtkExpander>
-
-                            <GtkExpander>
-                                <x.Slot for={GtkExpander} id="labelWidget">
-                                    <GtkLabel
-                                        label="Variation Axes"
-                                        xalign={0}
-                                        marginTop={10}
-                                        marginBottom={10}
-                                        cssClasses={["title-4"]}
-                                    />
-                                </x.Slot>
-                                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={10}>
-                                    <GtkGrid columnSpacing={10} rowSpacing={10}>
-                                        {namedInstances.length > 0 && [
-                                            <x.GridChild key="instance-label" column={0} row={-1}>
-                                                <GtkLabel
-                                                    label="Instance"
-                                                    xalign={0}
-                                                    halign={Gtk.Align.START}
-                                                    valign={Gtk.Align.BASELINE}
-                                                />
-                                            </x.GridChild>,
-                                            <x.GridChild key="instance-combo" column={1} row={-1} columnSpan={4}>
-                                                <GtkDropDown
-                                                    halign={Gtk.Align.START}
-                                                    valign={Gtk.Align.BASELINE}
-                                                    selectedId={String(selectedInstance)}
-                                                    onSelectionChanged={(id) =>
-                                                        handleInstanceChange(Number.parseInt(id, 10))
-                                                    }
-                                                    items={[
-                                                        { id: "0", value: "" },
-                                                        ...namedInstances.map((inst, i) => ({
-                                                            id: String(i + 1),
-                                                            value: inst.name,
-                                                        })),
-                                                    ]}
-                                                />
-                                            </x.GridChild>,
-                                        ]}
-                                        {variableAxes.map((axis, i) => [
-                                            <x.GridChild key={`${axis.tag}-label`} column={0} row={i}>
-                                                <GtkLabel label={axis.name} xalign={0} valign={Gtk.Align.BASELINE} />
-                                            </x.GridChild>,
-                                            <x.GridChild key={`${axis.tag}-scale`} column={1} row={i}>
-                                                <GtkScale
-                                                    ref={(scale: Gtk.Scale | null) => {
-                                                        if (scale) {
-                                                            scale.clearMarks();
-                                                            scale.addMark(
-                                                                axis.defaultValue,
-                                                                Gtk.PositionType.TOP,
-                                                                null,
-                                                            );
-                                                        }
-                                                    }}
-                                                    hexpand
-                                                    widthRequest={100}
-                                                    valign={Gtk.Align.BASELINE}
-                                                    value={axisValues.get(axis.tag) ?? axis.defaultValue}
-                                                    lower={axis.minValue}
-                                                    upper={axis.maxValue}
-                                                    onValueChanged={(val) => updateAxisValue(axis.tag, val)}
-                                                />
-                                            </x.GridChild>,
-                                            <x.GridChild key={`${axis.tag}-entry`} column={2} row={i}>
-                                                <GtkEntry
-                                                    widthChars={4}
-                                                    maxWidthChars={4}
-                                                    valign={Gtk.Align.BASELINE}
-                                                    text={String(
-                                                        Math.round(
-                                                            (axisValues.get(axis.tag) ?? axis.defaultValue) * 10,
-                                                        ) / 10,
-                                                    )}
-                                                    onActivate={(entry: Gtk.Entry) => {
-                                                        const val = Number.parseFloat(entry.getText());
-                                                        if (Number.isFinite(val)) {
-                                                            updateAxisValue(
-                                                                axis.tag,
-                                                                Math.max(axis.minValue, Math.min(axis.maxValue, val)),
-                                                            );
-                                                        }
-                                                    }}
-                                                />
-                                            </x.GridChild>,
-                                            <x.GridChild key={`${axis.tag}-anim`} column={3} row={i}>
-                                                <GtkToggleButton
-                                                    iconName={
-                                                        animatingAxes.has(axis.tag)
-                                                            ? "media-playback-stop"
-                                                            : "media-playback-start"
-                                                    }
-                                                    active={animatingAxes.has(axis.tag)}
-                                                    valign={Gtk.Align.BASELINE}
-                                                    onToggled={() => toggleAxisAnimation(axis)}
-                                                />
-                                            </x.GridChild>,
-                                        ])}
-                                    </GtkGrid>
+                                                      </GtkCheckButton>
+                                                  ))}
+                                        </GtkBox>
+                                    ))}
                                 </GtkBox>
                             </GtkExpander>
                         </GtkBox>
@@ -1591,10 +848,7 @@ export const fontFeaturesDemo: Demo = {
         "small caps",
         "figures",
         "pango",
-        "harfbuzz",
-        "variable fonts",
         "font-feature-settings",
-        "font-variation-settings",
         "css",
     ],
     component: FontFeaturesDemo,

@@ -73,6 +73,8 @@ export type FfiTypeDescriptor = {
     signed?: boolean;
 
     typeName?: string;
+
+    size?: number;
 };
 
 /**
@@ -309,11 +311,17 @@ export const boxedType = (
  * Creates a struct FFI type descriptor.
  * @param transferFull - true for transfer full, false for transfer none
  */
-export const structType = (innerType: string, transferFull: boolean): FfiTypeDescriptor => ({
-    type: "struct",
-    innerType,
-    ownership: toOwnership(transferFull),
-});
+export const structType = (innerType: string, transferFull: boolean, size?: number): FfiTypeDescriptor => {
+    const desc: FfiTypeDescriptor = {
+        type: "struct",
+        innerType,
+        ownership: toOwnership(transferFull),
+    };
+    if (size !== undefined) {
+        desc.size = size;
+    }
+    return desc;
+};
 
 /**
  * Creates an array FFI type descriptor.

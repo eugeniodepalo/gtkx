@@ -10,8 +10,8 @@ export abstract class NativeObject {
     }
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Required for contravariant constructor type compatibility
 export type NativeClass<T extends NativeObject = NativeObject> = (new (
+    // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant constructor type compatibility
     ...args: any[]
 ) => T) & {
     readonly glibTypeName: string;

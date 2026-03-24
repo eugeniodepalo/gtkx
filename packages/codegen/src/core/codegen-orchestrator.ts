@@ -86,7 +86,7 @@ export class CodegenOrchestrator {
             this.ffiGeneratedFiles.push(...result.files);
 
             for (const meta of result.metadata.getAllWidgetMeta()) {
-                this.metadata.setWidgetMeta(meta.modulePath, meta);
+                this.metadata.setWidgetMeta(meta.jsxName, meta);
             }
             for (const meta of result.metadata.getAllControllerMeta()) {
                 this.metadata.setControllerMeta(meta.jsxName, meta);

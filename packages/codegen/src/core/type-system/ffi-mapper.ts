@@ -6,7 +6,7 @@
  * instead of using callbacks.
  */
 
-import type { GirCallback, GirNamespace, GirParameter, GirRepository, GirType } from "@gtkx/gir";
+import type { GirCallback, GirField, GirNamespace, GirParameter, GirRepository, GirType } from "@gtkx/gir";
 import { isIntrinsicType, isStringType } from "@gtkx/gir";
 import { normalizeClassName, toCamelCase, toPascalCase, toValidIdentifier } from "../utils/naming.js";
 import { splitQualifiedName } from "../utils/qualified-name.js";
@@ -24,9 +24,11 @@ import {
     fundamentalType,
     gArrayType,
     getFfiTypeByteSize,
+    getPrimitiveTypeSize,
     gobjectType,
     hashTableType,
     type ImportType,
+    isPrimitiveFieldType,
     type MappedType,
     PRIMITIVE_TYPE_MAP,
     ptrArrayType,
@@ -59,11 +61,31 @@ import {
  */
 export class FfiMapper {
     private skippedClasses = new Set<string>();
+    private structSizeCache = new Map<string, number>();
 
     constructor(
         private repo: GirRepository,
         private currentNamespace: string,
     ) {}
+
+    /**
+     * Enriches a struct FFI descriptor with its computed size.
+     * Used for trampoline callback arguments where the native module needs
+     * the size to copy struct data from raw pointers.
+     */
+    enrichStructWithSize(ffi: FfiTypeDescriptor, typeName: string): FfiTypeDescriptor {
+        if (ffi.type !== "struct" || typeof ffi.innerType !== "string" || ffi.size !== undefined) {
+            return ffi;
+        }
+        const resolved = typeName.includes(".")
+            ? splitQualifiedName(typeName)
+            : { namespace: this.currentNamespace, name: typeName };
+        const size = this.calculateRecordSize(resolved.name, resolved.namespace);
+        if (size !== undefined) {
+            return { ...ffi, size };
+        }
+        return ffi;
+    }
 
     /**
      * Maps a normalized type to TypeScript and FFI representations.
@@ -717,7 +739,8 @@ export class FfiMapper {
             if (p.name === "user_data" || p.name === "data") {
                 userDataIndex = i;
             }
-            argTypes.push(this.mapType(p.type, false, p.transferOwnership).ffi);
+            const mapped = this.mapType(p.type, false, p.transferOwnership);
+            argTypes.push(this.enrichStructWithSize(mapped.ffi, String(p.type.name)));
         }
 
         const hasReturn = callback.returnType.name !== "none" && callback.returnType.name !== "void";
@@ -761,6 +784,124 @@ export class FfiMapper {
             : ptrArrayType(FFI_POINTER, transferFull);
 
         return { ts: "unknown[]", ffi: fallbackFfi, imports };
+    }
+
+    private calculateRecordSize(name: string, namespace: string): number | undefined {
+        const cacheKey = `${namespace}.${name}`;
+        const cached = this.structSizeCache.get(cacheKey);
+        if (cached !== undefined) return cached;
+
+        const ns = this.repo.getNamespace(namespace);
+        const record = ns?.records.get(name);
+        if (!record || record.opaque || record.disguised || record.fields.length === 0) {
+            return undefined;
+        }
+
+        this.structSizeCache.set(cacheKey, 0);
+        const size = this.computeStructSize(record.fields, namespace);
+        if (size > 0) {
+            this.structSizeCache.set(cacheKey, size);
+            return size;
+        }
+        this.structSizeCache.delete(cacheKey);
+        return undefined;
+    }
+
+    private computeStructSize(fields: readonly GirField[], namespace: string): number {
+        let currentOffset = 0;
+        let maxAlignment = 1;
+
+        for (const field of fields) {
+            const size = this.getFieldByteSize(field, namespace);
+            const alignment = this.getFieldAlignment(field, namespace);
+
+            currentOffset = Math.ceil(currentOffset / alignment) * alignment;
+            currentOffset += size;
+            maxAlignment = Math.max(maxAlignment, alignment);
+        }
+
+        return Math.ceil(currentOffset / maxAlignment) * maxAlignment;
+    }
+
+    private getFieldByteSize(field: GirField, namespace: string): number {
+        const type = field.type;
+        if (type.cType?.includes("*")) return 8;
+        if (this.isCallbackType(type.name as string, namespace)) return 8;
+
+        if (type.isArray && type.fixedSize !== undefined && type.elementType) {
+            const elemSize = this.getTypePrimitiveSize(type.elementType.name as string, namespace);
+            return elemSize * type.fixedSize;
+        }
+
+        return this.getTypePrimitiveSize(type.name as string, namespace);
+    }
+
+    private getFieldAlignment(field: GirField, namespace: string): number {
+        const type = field.type;
+        if (type.cType?.includes("*")) return 8;
+        if (this.isCallbackType(type.name as string, namespace)) return 8;
+
+        if (type.isArray && type.fixedSize !== undefined && type.elementType) {
+            return this.getTypeAlignment(type.elementType.name as string, namespace);
+        }
+
+        return this.getTypeAlignment(type.name as string, namespace);
+    }
+
+    private getTypeAlignment(typeName: string, namespace: string): number {
+        if (isPrimitiveFieldType(typeName)) {
+            return getPrimitiveTypeSize(typeName);
+        }
+
+        const resolvedName = typeName.includes(".") ? typeName : `${namespace}.${typeName}`;
+        const parts = splitQualifiedName(resolvedName);
+        const ns = this.repo.getNamespace(parts.namespace);
+        const record = ns?.records.get(parts.name);
+        if (record && !record.opaque && !record.disguised && record.fields.length > 0) {
+            let maxAlign = 1;
+            for (const f of record.fields) {
+                maxAlign = Math.max(maxAlign, this.getFieldAlignment(f, parts.namespace));
+            }
+            return maxAlign;
+        }
+
+        return 8;
+    }
+
+    private isCallbackType(typeName: string, namespace: string): boolean {
+        if (typeName.includes(".")) {
+            const parts = splitQualifiedName(typeName);
+            const ns = this.repo.getNamespace(parts.namespace);
+            return ns?.callbacks.has(parts.name) ?? false;
+        }
+        const ns = this.repo.getNamespace(namespace);
+        return ns?.callbacks.has(typeName) ?? false;
+    }
+
+    private getTypePrimitiveSize(typeName: string, namespace: string): number {
+        if (isPrimitiveFieldType(typeName)) {
+            return getPrimitiveTypeSize(typeName);
+        }
+
+        const resolvedName = typeName.includes(".") ? typeName : `${namespace}.${typeName}`;
+        const parts = splitQualifiedName(resolvedName);
+        const ns = this.repo.getNamespace(parts.namespace);
+        const record = ns?.records.get(parts.name);
+        if (record && !record.opaque && !record.disguised && record.fields.length > 0) {
+            const cacheKey = `${parts.namespace}.${parts.name}`;
+            const cached = this.structSizeCache.get(cacheKey);
+            if (cached !== undefined) return cached || 8;
+
+            this.structSizeCache.set(cacheKey, 0);
+            const size = this.computeStructSize(record.fields, parts.namespace);
+            if (size > 0) {
+                this.structSizeCache.set(cacheKey, size);
+                return size;
+            }
+            this.structSizeCache.delete(cacheKey);
+        }
+
+        return 8;
     }
 
     private getElementSize(type: GirType): number {
