@@ -43,9 +43,7 @@ export class GirLoader {
         return result;
     }
 
-    private async discoverDependencies(
-        roots: string[],
-    ): Promise<Map<string, { filePath: string; dependencies: string[] }>> {
+    async discoverDependencies(roots: string[]): Promise<Map<string, { filePath: string; dependencies: string[] }>> {
         const graph = new Map<string, { filePath: string; dependencies: string[] }>();
         const queue = [...roots];
 

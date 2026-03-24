@@ -24,6 +24,12 @@ export type RepositoryOptions = {
 };
 
 /**
+ * A dependency graph entry mapping namespace keys to their file paths
+ * and direct dependencies.
+ */
+export type DependencyGraph = Map<string, { filePath: string; dependencies: string[] }>;
+
+/**
  * Central registry for GIR data.
  *
  * Loads, resolves, and provides query access to GIR namespaces.
@@ -46,6 +52,18 @@ export class GirRepository implements RepositoryLike {
 
     private constructor(namespaces: Map<string, GirNamespace>) {
         this.namespaces = namespaces;
+    }
+
+    /**
+     * Discovers all transitive dependencies for the given roots without
+     * performing a full parse. Returns namespace keys and their file paths.
+     *
+     * @param roots - Namespace keys to start from (e.g., `["Gtk-4.0", "Adw-1"]`)
+     * @param options - Search paths for GIR files
+     */
+    static async discoverDependencies(roots: string[], options: RepositoryOptions): Promise<DependencyGraph> {
+        const loader = new GirLoader(options.girPath);
+        return loader.discoverDependencies(roots);
     }
 
     /**

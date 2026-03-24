@@ -1,40 +1,12 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { GirRepository } from "@gtkx/gir";
 import { defineCommand } from "citty";
 import { intro, log, outro } from "../core/utils/progress.js";
 import { GIRS_DIR, SYSTEM_GIRS_DIR } from "./constants.js";
 
-const GIRS_TO_SYNC = new Set([
-    "Adw-1.gir",
-    "cairo-1.0.gir",
-    "freetype2-2.0.gir",
-    "Gdk-4.0.gir",
-    "GdkWayland-4.0.gir",
-    "GdkPixbuf-2.0.gir",
-    "Gio-2.0.gir",
-    "GioUnix-2.0.gir",
-    "GLib-2.0.gir",
-    "GLibUnix-2.0.gir",
-    "GModule-2.0.gir",
-    "GObject-2.0.gir",
-    "Graphene-1.0.gir",
-    "Gsk-4.0.gir",
-    "Gst-1.0.gir",
-    "GstBase-1.0.gir",
-    "Gtk-4.0.gir",
-    "Gtk4LayerShell-1.0.gir",
-    "Gtk4SessionLock-1.0.gir",
-    "GtkSource-5.gir",
-    "HarfBuzz-0.0.gir",
-    "JavaScriptCore-6.0.gir",
-    "Pango-1.0.gir",
-    "PangoCairo-1.0.gir",
-    "Soup-3.0.gir",
-    "Vte-3.91.gir",
-    "WebKit-6.0.gir",
-]);
-
-export { GIRS_TO_SYNC };
+/** Root namespace keys whose transitive dependencies form the full GIR set. */
+const ROOTS = ["Gtk-4.0", "Adw-1"];
 
 export const sync = defineCommand({
     meta: {
@@ -49,16 +21,16 @@ export const sync = defineCommand({
             log.info(`Created directory: ${GIRS_DIR}`);
         }
 
-        const files = readdirSync(SYSTEM_GIRS_DIR).filter((f) => f.endsWith(".gir"));
-        log.info(`Found ${files.length} GIR files in ${SYSTEM_GIRS_DIR}`);
+        const graph = await GirRepository.discoverDependencies(ROOTS, {
+            girPath: [SYSTEM_GIRS_DIR],
+        });
 
-        let syncedCount = 0;
-        for (const file of files) {
-            if (!GIRS_TO_SYNC.has(file)) continue;
-            copyFileSync(join(SYSTEM_GIRS_DIR, file), join(GIRS_DIR, file));
-            syncedCount++;
+        log.info(`Discovered ${graph.size} GIR files from roots: ${ROOTS.join(", ")}`);
+
+        for (const [key, { filePath }] of graph) {
+            copyFileSync(filePath, join(GIRS_DIR, `${key}.gir`));
         }
 
-        outro(`Synced ${syncedCount} GIR files to ${GIRS_DIR}`);
+        outro(`Synced ${graph.size} GIR files to ${GIRS_DIR}`);
     },
 });

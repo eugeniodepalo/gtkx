@@ -46,5 +46,5 @@ export type { RepositoryLike, TypeKind } from "./model/repository-like.js";
 export { GirSignal } from "./model/signal.js";
 export type { ContainerType } from "./model/type.js";
 export { GirType } from "./model/type.js";
-export { GirRepository, type RepositoryOptions } from "./repository.js";
+export { type DependencyGraph, GirRepository, type RepositoryOptions } from "./repository.js";
 export { toCamelCase, toPascalCase } from "./utils.js";
