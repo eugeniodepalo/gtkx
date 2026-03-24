@@ -297,7 +297,19 @@ interface SanitizeDocOptions {
 }
 
 /**
- * Builds a JSDoc structure array for ts-morph from documentation text.
+ * Formats GIR documentation into a sanitized string suitable for JSDoc comments.
+ *
+ * @param doc - The raw documentation text from GIR
+ * @param namespace - The namespace for link resolution
+ * @returns The sanitized string, or undefined if no doc was provided
+ */
+export function formatJsDoc(doc: string | undefined, namespace: string): string | undefined {
+    if (!doc) return undefined;
+    return sanitizeDoc(doc, { namespace, escapeXmlTags: true });
+}
+
+/**
+ * Builds a JSDoc structure array from documentation text.
  * Automatically escapes XML-style tags to prevent MDX compilation errors.
  *
  * @param doc - The documentation text

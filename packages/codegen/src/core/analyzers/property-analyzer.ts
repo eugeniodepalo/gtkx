@@ -1,5 +1,4 @@
 import type { GirClass, GirProperty, GirRepository } from "@gtkx/gir";
-import { parseQualifiedName } from "@gtkx/gir";
 import { APPLICATION_PARAM_NAME } from "../constants/index.js";
 import type { PropertyAnalysis } from "../generator-types.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
@@ -7,6 +6,7 @@ import { collectExternalNamespaces, isSyntheticSetterSupportedPrimitive } from "
 import { collectDirectMembers, collectParentPropertyNames } from "../utils/class-traversal.js";
 import { collectPropertiesWithDefaults } from "../utils/default-value.js";
 import { createSetterName, kebabToSnake, snakeToKebab, toCamelCase } from "../utils/naming.js";
+import { splitQualifiedName } from "../utils/qualified-name.js";
 import { qualifyType } from "../utils/type-qualification.js";
 
 /**
@@ -40,7 +40,7 @@ export class PropertyAnalyzer {
     }
 
     private analyzeProperty(prop: GirProperty, cls: GirClass, requiredParams: Set<string>): PropertyAnalysis {
-        const { namespace } = parseQualifiedName(cls.qualifiedName);
+        const { namespace } = splitQualifiedName(cls.qualifiedName);
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
 
         const getter = this.resolveAccessorName(prop.getter, cls);

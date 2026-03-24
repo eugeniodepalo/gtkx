@@ -226,29 +226,49 @@ describe("ClassMetaBuilder", () => {
 
         it("extracts parent info for widget with intermediate parent", () => {
             const gtkNs = createNormalizedNamespace({ name: "Gtk" });
-            const widgetClass = createNormalizedClass({
-                name: "Widget",
-                qualifiedName: qualifiedName("Gtk", "Widget"),
-                parent: null,
-            });
+
+            const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
+            const widgetClass = createNormalizedClass(
+                {
+                    name: "Widget",
+                    qualifiedName: qualifiedName("Gtk", "Widget"),
+                    parent: null,
+                },
+                nullRepo,
+            );
             gtkNs.classes.set("Widget", widgetClass);
 
-            const windowClass = createNormalizedClass({
-                name: "Window",
-                qualifiedName: qualifiedName("Gtk", "Window"),
-                parent: qualifiedName("Gtk", "Widget"),
-            });
+            const windowRepo = { resolveClass: () => widgetClass, resolveInterface: () => null, findClasses: () => [] };
+            const windowClass = createNormalizedClass(
+                {
+                    name: "Window",
+                    qualifiedName: qualifiedName("Gtk", "Window"),
+                    parent: qualifiedName("Gtk", "Widget"),
+                },
+                windowRepo,
+            );
             gtkNs.classes.set("Window", windowClass);
 
-            const namespaces = new Map([["Gtk", gtkNs]]);
-
-            const { builder } = createTestSetup(
+            const appWindowRepo = {
+                resolveClass: () => windowClass,
+                resolveInterface: () => null,
+                findClasses: () => [],
+            };
+            const appWindowClass = createNormalizedClass(
                 {
                     name: "ApplicationWindow",
+                    qualifiedName: qualifiedName("Gtk", "ApplicationWindow"),
                     parent: qualifiedName("Gtk", "Window"),
                 },
-                namespaces,
+                appWindowRepo,
             );
+            gtkNs.classes.set("ApplicationWindow", appWindowClass);
+
+            const namespaces = new Map([["Gtk", gtkNs]]);
+            const repo = createMockRepository(namespaces);
+            const analyzers = createMockAnalyzers();
+
+            const builder = new ClassMetaBuilder(appWindowClass, repo as unknown as GirRepository, "Gtk", analyzers);
 
             const result = builder.buildCodegenWidgetMeta();
 

@@ -1,13 +1,13 @@
 /**
- * Interface Generator (ts-morph)
+ * Interface Generator
  *
- * Generates interface classes using ts-morph AST.
+ * Generates interface classes using the builder library.
  * Interfaces in GObject are like mixins/traits that classes can implement.
  */
 
-import type { GirInterface, GirMethod, GirRepository, QualifiedName } from "@gtkx/gir";
-import type { MethodDeclarationStructure, SourceFile } from "ts-morph";
-import type { GenerationContext } from "../../core/generation-context.js";
+import type { GirInterface, GirMethod, GirRepository } from "@gtkx/gir";
+import type { FileBuilder } from "../../builders/file-builder.js";
+import { classDecl, method, param, property } from "../../builders/index.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
@@ -15,44 +15,35 @@ import { collectGObjectMethodNames } from "../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
 import { filterSupportedMethods } from "../../core/utils/filtering.js";
 import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
-import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../core/writers/index.js";
+import { createMethodBodyWriter, type MethodBodyWriter, type MethodStructure } from "../../core/writers/index.js";
 
 /**
  * Generates interface classes.
- *
- * @example
- * ```typescript
- * const generator = new InterfaceGenerator(ffiMapper, ctx, builders, repository, options);
- * generator.generateToSourceFile(iface, sourceFile);
- * ```
  */
 export class InterfaceGenerator {
     private readonly methodBody: MethodBodyWriter;
+    private readonly methodRenames = new Map<string, string>();
 
     constructor(
         ffiMapper: FfiMapper,
-        private readonly ctx: GenerationContext,
-        writers: Writers,
+        private readonly file: FileBuilder,
         private readonly repository: GirRepository,
         private readonly options: FfiGeneratorOptions,
     ) {
-        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
+        this.methodBody = createMethodBodyWriter(ffiMapper, file, {
+            sharedLibrary: options.sharedLibrary,
+            glibLibrary: options.glibLibrary,
+        });
     }
 
     /**
-     * Generates into a ts-morph SourceFile.
+     * Generates an interface class into the FileBuilder.
      *
      * @param iface - The interface to generate
-     * @param sourceFile - The ts-morph SourceFile to generate into
      * @returns true if the interface was generated successfully
-     *
-     * @example
-     * ```typescript
-     * const generator = new InterfaceGenerator(ffiMapper, ctx, builders, repository, options);
-     * generator.generateToSourceFile(iface, sourceFile);
-     * ```
      */
-    generateToSourceFile(iface: GirInterface, sourceFile: SourceFile): boolean {
+    generate(iface: GirInterface): boolean {
+        this.methodRenames.clear();
         const interfaceName = toPascalCase(iface.name);
 
         const interfaceMethodNames = new Set(iface.methods.map((m) => m.name));
@@ -60,52 +51,66 @@ export class InterfaceGenerator {
 
         const allMethods = [...iface.methods, ...prerequisiteMethods];
 
-        this.ctx.usesCall = allMethods.length > 0;
-        this.ctx.usesRef = allMethods.some((m) => this.methodBody.hasRefParameter(m.parameters));
+        if (allMethods.length > 0) {
+            this.file.addImport("../../native.js", ["call"]);
+        }
 
         const isGObjectNamespace = this.options.namespace === "GObject";
         const extendsExpr = isGObjectNamespace ? "Object" : "GObject.Object";
         if (isGObjectNamespace) {
-            this.ctx.usedSameNamespaceClasses.set("Object", "Object");
+            this.file.addImport("./object.js", ["Object"]);
         } else {
-            this.ctx.usesGObjectNamespace = true;
+            this.file.addImport("../gobject/index.js", ["GObject"]);
         }
 
-        const classDecl = sourceFile.addClass({
-            name: interfaceName,
-            isExported: true,
+        const doc = buildJsDocStructure(iface.doc, this.options.namespace);
+        const cls = classDecl(interfaceName, {
+            exported: true,
             extends: extendsExpr,
-            docs: buildJsDocStructure(iface.doc, this.options.namespace),
+            doc: doc?.[0]?.description,
         });
 
         if (iface.glibTypeName) {
-            classDecl.addProperty({
-                name: "glibTypeName",
-                isStatic: true,
-                isReadonly: true,
-                type: "string",
-                initializer: `"${iface.glibTypeName}"`,
-                hasOverrideKeyword: true,
-            });
-            classDecl.addProperty({
-                name: "objectType",
-                isStatic: true,
-                isReadonly: true,
-                initializer: '"interface" as const',
-                hasOverrideKeyword: true,
-            });
+            cls.addProperty(
+                property("glibTypeName", {
+                    isStatic: true,
+                    readonly: true,
+                    type: "string",
+                    initializer: `"${iface.glibTypeName}"`,
+                    override: true,
+                }),
+            );
+            cls.addProperty(
+                property("objectType", {
+                    isStatic: true,
+                    readonly: true,
+                    initializer: '"interface" as const',
+                    override: true,
+                }),
+            );
         }
 
         const gobjectMethodNames = collectGObjectMethodNames(this.repository);
-        const methodStructures: MethodDeclarationStructure[] = [];
+        const methodStructures: MethodStructure[] = [];
 
         methodStructures.push(...this.buildMethodStructures(iface.methods, iface.name, gobjectMethodNames));
-
         methodStructures.push(...this.buildMethodStructures(prerequisiteMethods, iface.name, gobjectMethodNames));
 
-        if (methodStructures.length > 0) {
-            classDecl.addMethods(methodStructures);
+        for (const struct of methodStructures) {
+            cls.addMethod(
+                method(struct.name, {
+                    params: struct.parameters.map((p) =>
+                        param(p.name, p.type, { optional: p.optional, rest: p.isRestParameter }),
+                    ),
+                    returnType: struct.returnType,
+                    body: struct.statements,
+                    isStatic: struct.isStatic,
+                    doc: struct.docs?.[0]?.description,
+                }),
+            );
         }
+
+        this.file.add(cls);
 
         return true;
     }
@@ -114,23 +119,23 @@ export class InterfaceGenerator {
         methods: readonly GirMethod[],
         ifaceName: string,
         gobjectMethodNames: Set<string>,
-    ): MethodDeclarationStructure[] {
+    ): MethodStructure[] {
         const supportedMethods = filterSupportedMethods(methods, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
         );
-        return supportedMethods.map((method) => {
-            const methodName = toCamelCase(method.name);
+        return supportedMethods.map((m) => {
+            const methodName = toCamelCase(m.name);
             if (gobjectMethodNames.has(methodName)) {
-                const renamedMethod = generateConflictingMethodName(ifaceName, method.name);
-                this.ctx.methodRenames.set(method.cIdentifier, renamedMethod);
+                const renamedMethod = generateConflictingMethodName(ifaceName, m.name);
+                this.methodRenames.set(m.cIdentifier, renamedMethod);
             }
-            return this.buildMethodStructure(method);
+            return this.buildMethodStructure(m);
         });
     }
 
-    private buildMethodStructure(method: GirMethod): MethodDeclarationStructure {
-        return this.methodBody.buildMethodStructure(method, {
-            methodName: this.methodBody.resolveMethodName(method),
+    private buildMethodStructure(m: GirMethod): MethodStructure {
+        return this.methodBody.buildMethodStructure(m, {
+            methodName: this.methodBody.resolveMethodName(m, this.methodRenames),
             selfTypeDescriptor: SELF_TYPE_GOBJECT,
             sharedLibrary: this.options.sharedLibrary,
             namespace: this.options.namespace,
@@ -146,21 +151,21 @@ export class InterfaceGenerator {
             if (visitedInterfaces.has(prereqName)) return;
             visitedInterfaces.add(prereqName);
 
-            const prereq = this.repository.resolveInterface(prereqName as QualifiedName);
+            const prereq = this.repository.resolveInterface(prereqName);
             if (!prereq) return;
 
             for (const prereqPrereq of prereq.prerequisites) {
                 collectFromPrerequisite(prereqPrereq);
             }
 
-            for (const method of prereq.methods) {
-                if (seenMethodNames.has(method.name)) {
-                    const renamedMethod = generateConflictingMethodName(prereq.name, method.name);
-                    this.ctx.methodRenames.set(method.cIdentifier, renamedMethod);
-                    methods.push(method);
+            for (const m of prereq.methods) {
+                if (seenMethodNames.has(m.name)) {
+                    const renamedMethod = generateConflictingMethodName(prereq.name, m.name);
+                    this.methodRenames.set(m.cIdentifier, renamedMethod);
+                    methods.push(m);
                 } else {
-                    seenMethodNames.add(method.name);
-                    methods.push(method);
+                    seenMethodNames.add(m.name);
+                    methods.push(m);
                 }
             }
         };

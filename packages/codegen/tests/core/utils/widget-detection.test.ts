@@ -23,19 +23,21 @@ describe("isWidgetType", () => {
     });
 
     it("returns true for widget subclass", () => {
-        const widgetClass = createWidgetClass();
-        widgetClass._setRepository({
-            resolveClass: () => undefined,
-            resolveInterface: () => undefined,
+        const nullRepo = {
+            resolveClass: () => null,
+            resolveInterface: () => null,
             findClasses: () => [],
-        } as Parameters<typeof widgetClass._setRepository>[0]);
+        };
 
-        const buttonClass = createButtonClass();
-        buttonClass._setRepository({
+        const widgetClass = createWidgetClass({}, nullRepo);
+
+        const buttonRepo = {
             resolveClass: () => widgetClass,
-            resolveInterface: () => undefined,
+            resolveInterface: () => null,
             findClasses: () => [],
-        } as Parameters<typeof buttonClass._setRepository>[0]);
+        };
+
+        const buttonClass = createButtonClass({}, buttonRepo);
 
         const ns = createNormalizedNamespace({
             name: "Gtk",

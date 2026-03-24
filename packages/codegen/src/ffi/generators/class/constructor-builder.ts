@@ -1,14 +1,24 @@
+/**
+ * Constructor Builder
+ *
+ * Builds constructor and static factory method code for classes.
+ */
+
 import type { DefaultValue, GirClass, GirConstructor, GirProperty, GirRepository } from "@gtkx/gir";
-import type { ClassDeclaration, CodeBlockWriter, MethodDeclarationStructure, WriterFunction } from "ts-morph";
-import { StructureKind } from "ts-morph";
-import type { GenerationContext } from "../../../core/generation-context.js";
+import { type OverloadSignature, param as paramBuilder } from "../../../builders/index.js";
+import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType } from "../../../core/type-system/ffi-types.js";
 import { collectPropertiesWithDefaults, convertDefaultValue } from "../../../core/utils/default-value.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { normalizeClassName, toCamelCase, toKebabCase, toValidIdentifier } from "../../../core/utils/naming.js";
-import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
+import {
+    createMethodBodyWriter,
+    type ImportCollector,
+    type MethodBodyWriter,
+    type MethodStructure,
+} from "../../../core/writers/index.js";
 
 type ConstructOnlyPropParam = {
     paramName: string;
@@ -22,8 +32,18 @@ type ConstructOnlyPropParam = {
 type Param = {
     name: string;
     type: string;
-    hasQuestionToken?: boolean;
+    optional?: boolean;
     initializer?: string;
+};
+
+/**
+ * Constructor overload signature data for the builder API.
+ */
+type ConstructorOverloads = {
+    overloads: OverloadSignature[];
+    implParams: Param[];
+    bodyWriter: (writer: Writer) => void;
+    doc?: string;
 };
 
 export class ConstructorBuilder {
@@ -35,13 +55,15 @@ export class ConstructorBuilder {
     constructor(
         private readonly cls: GirClass,
         private readonly ffiMapper: FfiMapper,
-        private readonly ctx: GenerationContext,
+        private readonly imports: ImportCollector,
         private readonly repository: GirRepository,
-        writers: Writers,
         private readonly options: FfiGeneratorOptions,
     ) {
         this.className = normalizeClassName(cls.name);
-        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
+        this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
+            sharedLibrary: options.sharedLibrary,
+            glibLibrary: options.glibLibrary,
+        });
         this.propertyDefaults = collectPropertiesWithDefaults(cls, repository);
     }
 
@@ -52,13 +74,10 @@ export class ConstructorBuilder {
         return prop?.defaultValue ?? null;
     }
 
-    private isDefaultCompatible(
-        defaultValue: DefaultValue,
-        param: { type: string; hasQuestionToken?: boolean },
-    ): boolean {
+    private isDefaultCompatible(defaultValue: DefaultValue, param: { type: string; optional?: boolean }): boolean {
         switch (defaultValue.kind) {
             case "null":
-                return param.hasQuestionToken === true || param.type.includes("| null");
+                return param.optional === true || param.type.includes("| null");
             case "boolean":
                 return param.type === "boolean";
             case "number":
@@ -66,7 +85,7 @@ export class ConstructorBuilder {
             case "string":
                 return param.type === "string";
             case "enum":
-                return !param.hasQuestionToken && !param.type.includes("| null");
+                return !param.optional && !param.type.includes("| null");
             default:
                 return false;
         }
@@ -85,17 +104,12 @@ export class ConstructorBuilder {
             if (!conversion) return param;
 
             for (const imp of conversion.imports) {
-                this.ctx.usedExternalTypes.set(`${imp.namespace}.${imp.name}`, {
-                    namespace: imp.namespace,
-                    name: imp.name,
-                    transformedName: imp.name,
-                    kind: "enum",
-                });
+                this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
             }
 
             return {
                 ...param,
-                hasQuestionToken: false,
+                optional: false,
                 initializer: conversion.initializer,
             };
         });
@@ -105,17 +119,24 @@ export class ConstructorBuilder {
         this.parentFactoryMethodNames = names;
     }
 
-    addConstructorAndBuildFactoryStructures(
-        classDecl: ClassDeclaration,
-        hasParent: boolean,
-    ): MethodDeclarationStructure[] {
+    /**
+     * Builds constructor data and factory method structures.
+     *
+     * @returns An object with constructor data (to be set on the class builder)
+     *          and method structures (to be added as static methods).
+     */
+    buildConstructorAndFactoryMethods(hasParent: boolean): {
+        constructorData: ConstructorOverloads | null;
+        factoryMethods: MethodStructure[];
+    } {
         const { supported: supportedConstructors, main: mainConstructor } = this.methodBody.selectConstructors(
             this.cls.constructors,
         );
-        const methodStructures: MethodDeclarationStructure[] = [];
+        const methodStructures: MethodStructure[] = [];
+        let constructorData: ConstructorOverloads | null = null;
 
         if (mainConstructor && hasParent) {
-            this.addConstructorWithOverloads(classDecl, mainConstructor);
+            constructorData = this.buildConstructorWithOverloads(mainConstructor);
             for (const ctor of supportedConstructors) {
                 if (ctor !== mainConstructor && !this.conflictsWithParentFactoryMethod(ctor)) {
                     methodStructures.push(this.buildStaticFactoryMethodStructure(ctor));
@@ -129,54 +150,39 @@ export class ConstructorBuilder {
             }
 
             if (hasParent && this.cls.glibGetType && !this.cls.abstract) {
-                this.addGObjectNewConstructorWithOverloads(classDecl, this.cls.glibGetType);
+                constructorData = this.buildGObjectNewConstructorWithOverloads(this.cls.glibGetType);
             }
         }
 
-        return methodStructures;
+        return { constructorData, factoryMethods: methodStructures };
     }
 
-    private buildOverloads(
-        params: Param[],
-        doc?: string,
-    ): Array<{
-        parameters: Array<{ name: string; type: string; hasQuestionToken?: boolean }>;
-        docs?: ReturnType<typeof buildJsDocStructure>;
-    }> {
-        const handleOverload = {
-            parameters: [{ name: "handle", type: "NativeHandle" }],
+    private buildOverloads(params: Param[]): OverloadSignature[] {
+        const handleOverload: OverloadSignature = {
+            params: [paramBuilder("handle", "NativeHandle")],
         };
 
-        const typedOverloadParams = params.map((p) => ({
-            name: p.name,
-            type: p.type,
-            hasQuestionToken: p.hasQuestionToken || p.initializer !== undefined,
-        }));
+        const optionalFlags = params.map((p) => p.optional || p.initializer !== undefined);
 
         let seenRequired = false;
-        for (let i = typedOverloadParams.length - 1; i >= 0; i--) {
-            if (!typedOverloadParams[i]!.hasQuestionToken) {
+        for (let i = optionalFlags.length - 1; i >= 0; i--) {
+            if (!optionalFlags[i]) {
                 seenRequired = true;
             } else if (seenRequired) {
-                typedOverloadParams[i]!.hasQuestionToken = false;
+                optionalFlags[i] = false;
             }
         }
 
-        const typedOverload: { parameters: typeof typedOverloadParams; docs?: ReturnType<typeof buildJsDocStructure> } =
-            {
-                parameters: typedOverloadParams,
-            };
-
-        if (doc) {
-            typedOverload.docs = buildJsDocStructure(doc, this.options.namespace);
-        }
+        const typedOverload: OverloadSignature = {
+            params: params.map((p, i) => paramBuilder(p.name, p.type, { optional: optionalFlags[i] })),
+        };
 
         return [handleOverload, typedOverload];
     }
 
     private buildImplementationParams(params: Param[]): Param[] {
         if (params.length === 0) {
-            return [{ name: "handle", type: "NativeHandle", hasQuestionToken: true }];
+            return [{ name: "handle", type: "NativeHandle", optional: true }];
         }
 
         return params.map((p, i) => {
@@ -185,38 +191,39 @@ export class ConstructorBuilder {
                 return {
                     name: p.name,
                     type: `${baseType} | NativeHandle`,
-                    hasQuestionToken: !p.initializer && p.hasQuestionToken,
+                    optional: !p.initializer && p.optional,
                     initializer: p.initializer,
                 };
             }
             return {
                 ...p,
-                hasQuestionToken: p.hasQuestionToken || !p.initializer,
+                optional: p.optional || !p.initializer,
             };
         });
     }
 
-    private addConstructorWithOverloads(classDecl: ClassDeclaration, ctor: GirConstructor): void {
-        this.ctx.usesIsNativeHandle = true;
-        this.ctx.usesRegisterNativeObject = true;
+    private buildConstructorWithOverloads(ctor: GirConstructor): ConstructorOverloads {
+        this.imports.addImport("@gtkx/native", ["isNativeHandle"]);
+        this.imports.addImport("../../registry.js", ["registerNativeObject"]);
         const params = this.buildConstructorParameters(ctor);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
-        classDecl.addConstructor({
-            overloads: this.buildOverloads(params, ctor.doc),
-            parameters: this.buildImplementationParams(params),
-            statements: this.writeConstructorBody(ctor, ownership, params),
-        });
+        return {
+            overloads: this.buildOverloads(params),
+            implParams: this.buildImplementationParams(params),
+            bodyWriter: this.writeConstructorBody(ctor, ownership, params),
+            doc: ctor.doc,
+        };
     }
 
-    private writeConstructorBody(ctor: GirConstructor, ownership: string, params: Param[]): WriterFunction {
+    private writeConstructorBody(ctor: GirConstructor, ownership: string, params: Param[]): (writer: Writer) => void {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
-        const firstParamName = params.length > 0 ? params[0]!.name : "handle";
+        const firstParamName = params.length > 0 ? (params[0]?.name ?? "handle") : "handle";
 
         const forceOptionalNames = new Set(
             params
                 .slice(1)
-                .filter((p) => !p.hasQuestionToken && !p.initializer)
+                .filter((p) => !p.optional && !p.initializer)
                 .map((p) => p.name),
         );
         for (const arg of args) {
@@ -229,11 +236,11 @@ export class ConstructorBuilder {
 
         return (writer) => {
             writer.writeLine(`if (isNativeHandle(${firstParamName})) {`);
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine(`super(${firstParamName});`);
             });
             writer.writeLine("} else {");
-            writer.indent(() => {
+            writer.withIndent(() => {
                 this.methodBody.writeCallbackWrapperDeclarations(writer, args);
                 this.writeCallToVariable(writer, ctor.cIdentifier, args, ownership);
                 writer.writeLine("super(__handle);");
@@ -244,21 +251,21 @@ export class ConstructorBuilder {
     }
 
     private writeCallToVariable(
-        writer: CodeBlockWriter,
+        writer: Writer,
         cIdentifier: string,
         args: Array<{ type: FfiTypeDescriptor; value: string; optional?: boolean }>,
         ownership: string,
     ): void {
         writer.write("const __handle = call(");
         writer.newLine();
-        writer.indent(() => {
+        writer.withIndent(() => {
             writer.writeLine(`"${this.options.sharedLibrary}",`);
             writer.writeLine(`"${cIdentifier}",`);
             writer.writeLine("[");
-            writer.indent(() => {
+            writer.withIndent(() => {
                 for (const arg of args) {
                     writer.write("{ type: ");
-                    this.methodBody.getFfiTypeWriter().toWriter(arg.type)(writer);
+                    writer.write(JSON.stringify(arg.type));
                     writer.writeLine(`, value: ${arg.value}, optional: ${arg.optional ?? false} },`);
                 }
             });
@@ -269,13 +276,13 @@ export class ConstructorBuilder {
     }
 
     private writeGObjectNewCallToVariable(
-        writer: CodeBlockWriter,
+        writer: Writer,
         getTypeFunc: string,
         props: Array<{ girName: string; ffiType: FfiTypeDescriptor; valueExpr: string; guardExpr: string }>,
     ): void {
         writer.write("const gtype = call(");
         writer.newLine();
-        writer.indent(() => {
+        writer.withIndent(() => {
             writer.writeLine(`"${this.options.sharedLibrary}",`);
             writer.writeLine(`"${getTypeFunc}",`);
             writer.writeLine("[],");
@@ -287,14 +294,14 @@ export class ConstructorBuilder {
             writer.writeLine('const __args: Arg[] = [{ type: { type: "uint64" }, value: gtype, optional: false }];');
             for (const prop of props) {
                 writer.writeLine(`if (${prop.guardExpr} !== undefined) {`);
-                writer.indent(() => {
+                writer.withIndent(() => {
                     writer.writeLine("__args.push(");
-                    writer.indent(() => {
+                    writer.withIndent(() => {
                         writer.writeLine(
                             `{ type: { type: "string", ownership: "borrowed" }, value: "${prop.girName}", optional: false },`,
                         );
                         writer.write("{ type: ");
-                        this.methodBody.getFfiTypeWriter().toWriter(prop.ffiType)(writer);
+                        writer.write(JSON.stringify(prop.ffiType));
                         writer.writeLine(`, value: ${prop.valueExpr}, optional: false },`);
                     });
                     writer.writeLine(");");
@@ -304,7 +311,7 @@ export class ConstructorBuilder {
             writer.writeLine('__args.push({ type: { type: "void" }, value: null, optional: false });');
             writer.write("const __handle = call(");
             writer.newLine();
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine(`"${this.options.gobjectLibrary}",`);
                 writer.writeLine('"g_object_new",');
                 writer.writeLine("__args,");
@@ -314,11 +321,11 @@ export class ConstructorBuilder {
         } else {
             writer.write("const __handle = call(");
             writer.newLine();
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine(`"${this.options.gobjectLibrary}",`);
                 writer.writeLine('"g_object_new",');
                 writer.writeLine("[");
-                writer.indent(() => {
+                writer.withIndent(() => {
                     writer.writeLine('{ type: { type: "uint64" }, value: gtype, optional: false },');
                     writer.writeLine('{ type: { type: "void" }, value: null, optional: false },');
                 });
@@ -336,11 +343,31 @@ export class ConstructorBuilder {
             if (!prop.constructOnly) continue;
 
             const mapped: MappedType = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
-            this.ctx.addTypeImports(mapped.imports);
+            for (const imp of mapped.imports) {
+                if (imp.isExternal) {
+                    this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
+                } else {
+                    this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+                }
+            }
 
             const paramName = toValidIdentifier(toCamelCase(prop.name));
             const isNullable = mapped.nullable === true;
-            const valueExpr = this.methodBody.buildValueExpression(paramName, mapped, isNullable);
+
+            const callExpr = this.methodBody as unknown as {
+                callExpression?: { buildValueExpression(name: string, mapped: MappedType, nullable: boolean): string };
+            };
+            let valueExpr: string;
+            if (callExpr.callExpression) {
+                valueExpr = callExpr.callExpression.buildValueExpression(paramName, mapped, isNullable);
+            } else {
+                valueExpr = isNullable ? `${paramName} ?? null` : paramName;
+                if (mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed" || mapped.ffi.type === "fundamental") {
+                    valueExpr = isNullable ? `${paramName}?.handle ?? null` : `${paramName}.handle`;
+                } else if (mapped.ffi.type === "enum" || mapped.ffi.type === "flags") {
+                    valueExpr = isNullable ? `${paramName} ?? null` : `${paramName} as number`;
+                }
+            }
 
             result.push({
                 paramName,
@@ -355,42 +382,42 @@ export class ConstructorBuilder {
         return result;
     }
 
-    private addGObjectNewConstructorWithOverloads(classDecl: ClassDeclaration, glibGetType: string): void {
-        this.ctx.usesIsNativeHandle = true;
-        this.ctx.usesRegisterNativeObject = true;
+    private buildGObjectNewConstructorWithOverloads(glibGetType: string): ConstructorOverloads {
+        this.imports.addImport("@gtkx/native", ["isNativeHandle"]);
+        this.imports.addImport("../../registry.js", ["registerNativeObject"]);
 
         const constructOnlyProps = this.collectConstructOnlyProps();
         const params: Param[] = constructOnlyProps.map((prop) => ({
             name: prop.paramName,
             type: prop.tsType,
-            hasQuestionToken: true,
+            optional: true,
         }));
 
-        classDecl.addConstructor({
+        if (constructOnlyProps.length > 0) {
+            this.imports.addTypeImport("@gtkx/native", ["Arg"]);
+        }
+
+        return {
             overloads: this.buildOverloads(params),
-            parameters: this.buildImplementationParams(params),
-            statements: this.writeGObjectNewConstructorBody(glibGetType, constructOnlyProps, params),
-        });
+            implParams: this.buildImplementationParams(params),
+            bodyWriter: this.writeGObjectNewConstructorBody(glibGetType, constructOnlyProps, params),
+        };
     }
 
     private writeGObjectNewConstructorBody(
         getTypeFunc: string,
         constructOnlyProps: ConstructOnlyPropParam[],
         params: Param[],
-    ): WriterFunction {
-        if (constructOnlyProps.length > 0) {
-            this.ctx.usesArg = true;
-        }
-
-        const firstParamName = params.length > 0 ? params[0]!.name : "handle";
+    ): (writer: Writer) => void {
+        const firstParamName = params.length > 0 ? (params[0]?.name ?? "handle") : "handle";
 
         return (writer) => {
             writer.writeLine(`if (isNativeHandle(${firstParamName})) {`);
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine(`super(${firstParamName});`);
             });
             writer.writeLine("} else {");
-            writer.indent(() => {
+            writer.withIndent(() => {
                 this.writeGObjectNewCallToVariable(
                     writer,
                     getTypeFunc,
@@ -414,13 +441,12 @@ export class ConstructorBuilder {
         return this.parentFactoryMethodNames.has(methodName);
     }
 
-    private buildStaticFactoryMethodStructure(ctor: GirConstructor): MethodDeclarationStructure {
+    private buildStaticFactoryMethodStructure(ctor: GirConstructor): MethodStructure {
         const methodName = toCamelCase(ctor.name);
         const params = this.methodBody.buildParameterList(ctor.parameters);
-        this.ctx.usesGetNativeObject = true;
+        this.imports.addImport("../../registry.js", ["getNativeObject"]);
 
         return {
-            kind: StructureKind.Method,
             name: methodName,
             isStatic: true,
             parameters: params,
@@ -430,7 +456,7 @@ export class ConstructorBuilder {
         };
     }
 
-    private writeStaticFactoryMethodBody(ctor: GirConstructor): WriterFunction {
+    private writeStaticFactoryMethodBody(ctor: GirConstructor): (writer: Writer) => void {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 

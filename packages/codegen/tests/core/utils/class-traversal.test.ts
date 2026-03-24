@@ -27,19 +27,10 @@ describe("collectParentPropertyNames", () => {
     });
 
     it("collects property names from parent class", () => {
-        const widgetClass = createWidgetClass();
-        const buttonClass = createButtonClass();
-        buttonClass._setRepository({
-            resolveClass: () => widgetClass,
-            resolveInterface: () => undefined,
-            findClasses: () => [],
-        } as Parameters<typeof buttonClass._setRepository>[0]);
-
-        widgetClass._setRepository({
-            resolveClass: () => undefined,
-            resolveInterface: () => undefined,
-            findClasses: () => [],
-        } as Parameters<typeof widgetClass._setRepository>[0]);
+        const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
+        const widgetClass = createWidgetClass({}, nullRepo);
+        const buttonRepo = { resolveClass: () => widgetClass, resolveInterface: () => null, findClasses: () => [] };
+        const buttonClass = createButtonClass({}, buttonRepo);
 
         const repo = createMockRepository();
         const result = collectParentPropertyNames(buttonClass, repo);
@@ -49,31 +40,27 @@ describe("collectParentPropertyNames", () => {
     });
 
     it("converts property names to camelCase", () => {
-        const parent = createNormalizedClass({
-            name: "Widget",
-            parent: null,
-            properties: [
-                createNormalizedProperty({ name: "can-focus" }),
-                createNormalizedProperty({ name: "has-default" }),
-            ],
-        });
+        const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
+        const parent = createNormalizedClass(
+            {
+                name: "Widget",
+                parent: null,
+                properties: [
+                    createNormalizedProperty({ name: "can-focus" }),
+                    createNormalizedProperty({ name: "has-default" }),
+                ],
+            },
+            nullRepo,
+        );
 
-        const child = createNormalizedClass({
-            name: "Button",
-            parent: qualifiedName("Gtk", "Widget"),
-        });
-
-        child._setRepository({
-            resolveClass: () => parent,
-            resolveInterface: () => undefined,
-            findClasses: () => [],
-        } as Parameters<typeof child._setRepository>[0]);
-
-        parent._setRepository({
-            resolveClass: () => undefined,
-            resolveInterface: () => undefined,
-            findClasses: () => [],
-        } as Parameters<typeof parent._setRepository>[0]);
+        const childRepo = { resolveClass: () => parent, resolveInterface: () => null, findClasses: () => [] };
+        const child = createNormalizedClass(
+            {
+                name: "Button",
+                parent: qualifiedName("Gtk", "Widget"),
+            },
+            childRepo,
+        );
 
         const repo = createMockRepository();
         const result = collectParentPropertyNames(child, repo);
@@ -91,28 +78,24 @@ describe("collectParentSignalNames", () => {
     });
 
     it("collects signal names from parent class", () => {
-        const parent = createNormalizedClass({
-            name: "Widget",
-            parent: null,
-            signals: [createNormalizedSignal({ name: "destroy" }), createNormalizedSignal({ name: "show" })],
-        });
+        const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
+        const parent = createNormalizedClass(
+            {
+                name: "Widget",
+                parent: null,
+                signals: [createNormalizedSignal({ name: "destroy" }), createNormalizedSignal({ name: "show" })],
+            },
+            nullRepo,
+        );
 
-        const child = createNormalizedClass({
-            name: "Button",
-            parent: qualifiedName("Gtk", "Widget"),
-        });
-
-        child._setRepository({
-            resolveClass: () => parent,
-            resolveInterface: () => undefined,
-            findClasses: () => [],
-        } as Parameters<typeof child._setRepository>[0]);
-
-        parent._setRepository({
-            resolveClass: () => undefined,
-            resolveInterface: () => undefined,
-            findClasses: () => [],
-        } as Parameters<typeof parent._setRepository>[0]);
+        const childRepo = { resolveClass: () => parent, resolveInterface: () => null, findClasses: () => [] };
+        const child = createNormalizedClass(
+            {
+                name: "Button",
+                parent: qualifiedName("Gtk", "Widget"),
+            },
+            childRepo,
+        );
 
         const repo = createMockRepository();
         const result = collectParentSignalNames(child, repo);
@@ -130,28 +113,24 @@ describe("collectParentMethodNames", () => {
     });
 
     it("collects method names from parent class", () => {
-        const parent = createNormalizedClass({
-            name: "Widget",
-            parent: null,
-            methods: [createNormalizedMethod({ name: "show" }), createNormalizedMethod({ name: "hide" })],
-        });
+        const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
+        const parent = createNormalizedClass(
+            {
+                name: "Widget",
+                parent: null,
+                methods: [createNormalizedMethod({ name: "show" }), createNormalizedMethod({ name: "hide" })],
+            },
+            nullRepo,
+        );
 
-        const child = createNormalizedClass({
-            name: "Button",
-            parent: qualifiedName("Gtk", "Widget"),
-        });
-
-        child._setRepository({
-            resolveClass: () => parent,
-            resolveInterface: () => undefined,
-            findClasses: () => [],
-        } as Parameters<typeof child._setRepository>[0]);
-
-        parent._setRepository({
-            resolveClass: () => undefined,
-            resolveInterface: () => undefined,
-            findClasses: () => [],
-        } as Parameters<typeof parent._setRepository>[0]);
+        const childRepo = { resolveClass: () => parent, resolveInterface: () => null, findClasses: () => [] };
+        const child = createNormalizedClass(
+            {
+                name: "Button",
+                parent: qualifiedName("Gtk", "Widget"),
+            },
+            childRepo,
+        );
 
         const repo = createMockRepository();
         const result = collectParentMethodNames(child, repo);
@@ -165,17 +144,6 @@ describe("collectParentMethodNames", () => {
             methods: [createNormalizedMethod({ name: "get_orientation" })],
         });
 
-        const parent = createNormalizedClass({
-            name: "Widget",
-            parent: null,
-            implements: [qualifiedName("Gtk", "Orientable")],
-        });
-
-        const child = createNormalizedClass({
-            name: "Box",
-            parent: qualifiedName("Gtk", "Widget"),
-        });
-
         const ns = createNormalizedNamespace({
             name: "Gtk",
             interfaces: new Map([["Orientable", iface]]),
@@ -183,17 +151,32 @@ describe("collectParentMethodNames", () => {
 
         const repo = createMockRepository(new Map([["Gtk", ns]]));
 
-        child._setRepository({
-            resolveClass: () => parent,
-            resolveInterface: (qn) => repo.resolveInterface(qn),
-            findClasses: () => [],
-        } as Parameters<typeof child._setRepository>[0]);
+        const parentRepo = {
+            resolveClass: () => null,
+            resolveInterface: (qn: string) => repo.resolveInterface(qn),
+            findClasses: () => [] as never[],
+        };
+        const parent = createNormalizedClass(
+            {
+                name: "Widget",
+                parent: null,
+                implements: [qualifiedName("Gtk", "Orientable")],
+            },
+            parentRepo,
+        );
 
-        parent._setRepository({
-            resolveClass: () => undefined,
-            resolveInterface: (qn) => repo.resolveInterface(qn),
-            findClasses: () => [],
-        } as Parameters<typeof parent._setRepository>[0]);
+        const childRepo = {
+            resolveClass: () => parent,
+            resolveInterface: (qn: string) => repo.resolveInterface(qn),
+            findClasses: () => [] as never[],
+        };
+        const child = createNormalizedClass(
+            {
+                name: "Box",
+                parent: qualifiedName("Gtk", "Widget"),
+            },
+            childRepo,
+        );
 
         const result = collectParentMethodNames(child, repo);
         expect(result.has("get_orientation")).toBe(true);
@@ -202,29 +185,28 @@ describe("collectParentMethodNames", () => {
 
 describe("collectDirectMembers", () => {
     it("returns direct properties only", () => {
-        const parent = createNormalizedClass({
-            name: "Widget",
-            parent: null,
-            properties: [createNormalizedProperty({ name: "visible" })],
-        });
+        const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
+        const parent = createNormalizedClass(
+            {
+                name: "Widget",
+                parent: null,
+                properties: [createNormalizedProperty({ name: "visible" })],
+            },
+            nullRepo,
+        );
 
-        const child = createNormalizedClass({
-            name: "Button",
-            parent: qualifiedName("Gtk", "Widget"),
-            properties: [createNormalizedProperty({ name: "label" }), createNormalizedProperty({ name: "icon-name" })],
-        });
-
-        child._setRepository({
-            resolveClass: () => parent,
-            resolveInterface: () => undefined,
-            findClasses: () => [],
-        } as Parameters<typeof child._setRepository>[0]);
-
-        parent._setRepository({
-            resolveClass: () => undefined,
-            resolveInterface: () => undefined,
-            findClasses: () => [],
-        } as Parameters<typeof parent._setRepository>[0]);
+        const childRepo = { resolveClass: () => parent, resolveInterface: () => null, findClasses: () => [] };
+        const child = createNormalizedClass(
+            {
+                name: "Button",
+                parent: qualifiedName("Gtk", "Widget"),
+                properties: [
+                    createNormalizedProperty({ name: "label" }),
+                    createNormalizedProperty({ name: "icon-name" }),
+                ],
+            },
+            childRepo,
+        );
 
         const repo = createMockRepository();
 
@@ -317,18 +299,34 @@ describe("collectDirectMembers", () => {
             properties: [createNormalizedProperty({ name: "orientation" })],
         });
 
-        const parent = createNormalizedClass({
-            name: "Widget",
-            parent: null,
-            implements: [qualifiedName("Gtk", "Orientable")],
-        });
+        const parentRepo = {
+            resolveClass: () => null,
+            resolveInterface: () => iface,
+            findClasses: () => [] as never[],
+        };
+        const parent = createNormalizedClass(
+            {
+                name: "Widget",
+                parent: null,
+                implements: [qualifiedName("Gtk", "Orientable")],
+            },
+            parentRepo,
+        );
 
-        const child = createNormalizedClass({
-            name: "Box",
-            parent: qualifiedName("Gtk", "Widget"),
-            implements: [qualifiedName("Gtk", "Orientable")],
-            properties: [createNormalizedProperty({ name: "spacing" })],
-        });
+        const childRepo = {
+            resolveClass: () => parent,
+            resolveInterface: () => iface,
+            findClasses: () => [] as never[],
+        };
+        const child = createNormalizedClass(
+            {
+                name: "Box",
+                parent: qualifiedName("Gtk", "Widget"),
+                implements: [qualifiedName("Gtk", "Orientable")],
+                properties: [createNormalizedProperty({ name: "spacing" })],
+            },
+            childRepo,
+        );
 
         const ns = createNormalizedNamespace({
             name: "Gtk",
@@ -340,18 +338,6 @@ describe("collectDirectMembers", () => {
         });
 
         const repo = createMockRepository(new Map([["Gtk", ns]]));
-
-        child._setRepository({
-            resolveClass: () => parent,
-            resolveInterface: (qn) => repo.resolveInterface(qn),
-            findClasses: () => [],
-        } as Parameters<typeof child._setRepository>[0]);
-
-        parent._setRepository({
-            resolveClass: () => undefined,
-            resolveInterface: (qn) => repo.resolveInterface(qn),
-            findClasses: () => [],
-        } as Parameters<typeof parent._setRepository>[0]);
 
         const result = collectDirectMembers({
             cls: child,

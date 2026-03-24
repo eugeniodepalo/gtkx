@@ -7,30 +7,33 @@ import type {
     GirInterface,
     GirNamespace,
     GirRecord,
-    QualifiedName,
     TypeKind,
 } from "@gtkx/gir";
-import { parseQualifiedName } from "@gtkx/gir";
+
+function splitQualifiedName(qn: string): { namespace: string; name: string } {
+    const dot = qn.indexOf(".");
+    return { namespace: qn.slice(0, dot), name: qn.slice(dot + 1) };
+}
 
 export interface MockGirRepository {
     getNamespace(name: string): GirNamespace | null;
     getNamespaceNames(): string[];
     getAllNamespaces(): Map<string, GirNamespace>;
-    resolveClass(qualifiedName: QualifiedName): GirClass | null;
-    resolveInterface(qualifiedName: QualifiedName): GirInterface | null;
-    resolveRecord(qualifiedName: QualifiedName): GirRecord | null;
-    resolveEnum(qualifiedName: QualifiedName): GirEnumeration | null;
-    resolveFlags(qualifiedName: QualifiedName): GirEnumeration | null;
-    resolveCallback(qualifiedName: QualifiedName): GirCallback | null;
-    resolveConstant(qualifiedName: QualifiedName): GirConstant | null;
-    resolveFunction(qualifiedName: QualifiedName): GirFunction | null;
-    getTypeKind(qualifiedName: QualifiedName): TypeKind | null;
-    getInheritanceChain(qualifiedName: QualifiedName): QualifiedName[];
-    getImplementedInterfaces(qualifiedName: QualifiedName): QualifiedName[];
-    getDerivedClasses(qualifiedName: QualifiedName): QualifiedName[];
-    getImplementors(interfaceName: QualifiedName): QualifiedName[];
-    isGObject(qualifiedName: QualifiedName): boolean;
-    isBoxed(qualifiedName: QualifiedName): boolean;
+    resolveClass(qualifiedName: string): GirClass | null;
+    resolveInterface(qualifiedName: string): GirInterface | null;
+    resolveRecord(qualifiedName: string): GirRecord | null;
+    resolveEnum(qualifiedName: string): GirEnumeration | null;
+    resolveFlags(qualifiedName: string): GirEnumeration | null;
+    resolveCallback(qualifiedName: string): GirCallback | null;
+    resolveConstant(qualifiedName: string): GirConstant | null;
+    resolveFunction(qualifiedName: string): GirFunction | null;
+    getTypeKind(qualifiedName: string): TypeKind | null;
+    getInheritanceChain(qualifiedName: string): string[];
+    getImplementedInterfaces(qualifiedName: string): string[];
+    getDerivedClasses(qualifiedName: string): string[];
+    getImplementors(interfaceName: string): string[];
+    isGObject(qualifiedName: string): boolean;
+    isBoxed(qualifiedName: string): boolean;
     isPrimitive(typeName: string): boolean;
     findClasses(predicate: (cls: GirClass) => boolean): GirClass[];
 }
@@ -49,48 +52,48 @@ export function createMockRepository(namespaces: Map<string, GirNamespace> = new
             return namespaces;
         },
 
-        resolveClass(qn: QualifiedName): GirClass | null {
-            const { namespace, name } = parseQualifiedName(qn);
+        resolveClass(qn: string): GirClass | null {
+            const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.classes.get(name) ?? null;
         },
 
-        resolveInterface(qn: QualifiedName): GirInterface | null {
-            const { namespace, name } = parseQualifiedName(qn);
+        resolveInterface(qn: string): GirInterface | null {
+            const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.interfaces.get(name) ?? null;
         },
 
-        resolveRecord(qn: QualifiedName): GirRecord | null {
-            const { namespace, name } = parseQualifiedName(qn);
+        resolveRecord(qn: string): GirRecord | null {
+            const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.records.get(name) ?? null;
         },
 
-        resolveEnum(qn: QualifiedName): GirEnumeration | null {
-            const { namespace, name } = parseQualifiedName(qn);
+        resolveEnum(qn: string): GirEnumeration | null {
+            const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.enumerations.get(name) ?? null;
         },
 
-        resolveFlags(qn: QualifiedName): GirEnumeration | null {
-            const { namespace, name } = parseQualifiedName(qn);
+        resolveFlags(qn: string): GirEnumeration | null {
+            const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.bitfields.get(name) ?? null;
         },
 
-        resolveCallback(qn: QualifiedName): GirCallback | null {
-            const { namespace, name } = parseQualifiedName(qn);
+        resolveCallback(qn: string): GirCallback | null {
+            const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.callbacks.get(name) ?? null;
         },
 
-        resolveConstant(qn: QualifiedName): GirConstant | null {
-            const { namespace, name } = parseQualifiedName(qn);
+        resolveConstant(qn: string): GirConstant | null {
+            const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.constants.get(name) ?? null;
         },
 
-        resolveFunction(qn: QualifiedName): GirFunction | null {
-            const { namespace, name } = parseQualifiedName(qn);
+        resolveFunction(qn: string): GirFunction | null {
+            const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.functions.get(name) ?? null;
         },
 
-        getTypeKind(qn: QualifiedName): TypeKind | null {
-            const { namespace, name } = parseQualifiedName(qn);
+        getTypeKind(qn: string): TypeKind | null {
+            const { namespace, name } = splitQualifiedName(qn);
             const ns = namespaces.get(namespace);
             if (!ns) return null;
 
@@ -104,18 +107,18 @@ export function createMockRepository(namespaces: Map<string, GirNamespace> = new
             return null;
         },
 
-        getInheritanceChain(qn: QualifiedName): QualifiedName[] {
+        getInheritanceChain(qn: string): string[] {
             const cls = repo.resolveClass(qn);
             return cls?.getInheritanceChain() ?? [];
         },
 
-        getImplementedInterfaces(qn: QualifiedName): QualifiedName[] {
+        getImplementedInterfaces(qn: string): string[] {
             const cls = repo.resolveClass(qn);
             return cls?.getAllImplementedInterfaces() ?? [];
         },
 
-        getDerivedClasses(qn: QualifiedName): QualifiedName[] {
-            const derived: QualifiedName[] = [];
+        getDerivedClasses(qn: string): string[] {
+            const derived: string[] = [];
             for (const ns of namespaces.values()) {
                 for (const cls of ns.classes.values()) {
                     if (cls.qualifiedName !== qn && cls.isSubclassOf(qn)) {
@@ -126,8 +129,8 @@ export function createMockRepository(namespaces: Map<string, GirNamespace> = new
             return derived;
         },
 
-        getImplementors(interfaceName: QualifiedName): QualifiedName[] {
-            const implementors: QualifiedName[] = [];
+        getImplementors(interfaceName: string): string[] {
+            const implementors: string[] = [];
             for (const ns of namespaces.values()) {
                 for (const cls of ns.classes.values()) {
                     if (cls.implementsInterface(interfaceName)) {
@@ -138,12 +141,12 @@ export function createMockRepository(namespaces: Map<string, GirNamespace> = new
             return implementors;
         },
 
-        isGObject(qn: QualifiedName): boolean {
+        isGObject(qn: string): boolean {
             const cls = repo.resolveClass(qn);
             return cls?.hasGType() ?? false;
         },
 
-        isBoxed(qn: QualifiedName): boolean {
+        isBoxed(qn: string): boolean {
             const record = repo.resolveRecord(qn);
             return record?.isBoxed() ?? false;
         },
@@ -192,15 +195,6 @@ export function createMockRepository(namespaces: Map<string, GirNamespace> = new
             return results;
         },
     };
-
-    for (const ns of namespaces.values()) {
-        for (const cls of ns.classes.values()) {
-            cls._setRepository(repo as unknown as Parameters<typeof cls._setRepository>[0]);
-        }
-        for (const iface of ns.interfaces.values()) {
-            iface._setRepository(repo as unknown as Parameters<typeof iface._setRepository>[0]);
-        }
-    }
 
     return repo;
 }

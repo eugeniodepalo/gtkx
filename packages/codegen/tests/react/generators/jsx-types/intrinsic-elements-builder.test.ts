@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { fileBuilder, stringify } from "../../../../src/builders/index.js";
 import type { JsxWidget } from "../../../../src/react/generators/jsx-types/generator.js";
 import { IntrinsicElementsBuilder } from "../../../../src/react/generators/jsx-types/intrinsic-elements-builder.js";
 import { createButtonMeta, createWidgetMeta } from "../../../fixtures/metadata-fixtures.js";
-import { createTestProject, createTestSourceFile, getGeneratedCode } from "../../../fixtures/ts-morph-helpers.js";
 
 function createJsxWidget(overrides: Partial<JsxWidget> = {}): JsxWidget {
     const meta = createButtonMeta();
@@ -18,10 +18,9 @@ function createJsxWidget(overrides: Partial<JsxWidget> = {}): JsxWidget {
 }
 
 function createTestSetup() {
-    const project = createTestProject();
-    const sourceFile = createTestSourceFile(project, "jsx.ts");
+    const file = fileBuilder();
     const builder = new IntrinsicElementsBuilder();
-    return { project, sourceFile, builder };
+    return { file, builder };
 }
 
 describe("IntrinsicElementsBuilder", () => {
@@ -34,96 +33,95 @@ describe("IntrinsicElementsBuilder", () => {
 
     describe("buildWidgetExports", () => {
         it("creates const exports for each widget", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkButton" }), createJsxWidget({ jsxName: "GtkLabel" })];
 
-            builder.buildWidgetExports(sourceFile, widgets);
+            builder.buildWidgetExports(file, widgets);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain('export const GtkButton = "GtkButton" as const');
             expect(code).toContain('export const GtkLabel = "GtkLabel" as const');
         });
 
         it("creates exported const declarations", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkButton" })];
 
-            builder.buildWidgetExports(sourceFile, widgets);
+            builder.buildWidgetExports(file, widgets);
 
-            const varStatements = sourceFile.getVariableStatements();
-            expect(varStatements).toHaveLength(1);
-            expect(varStatements[0].isExported()).toBe(true);
+            const code = stringify(file);
+            expect(code).toContain("export const GtkButton");
         });
 
         it("handles empty widget list", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
 
-            builder.buildWidgetExports(sourceFile, []);
+            builder.buildWidgetExports(file, []);
 
-            const varStatements = sourceFile.getVariableStatements();
-            expect(varStatements).toHaveLength(0);
+            const code = stringify(file);
+            expect(code).toBe("");
         });
     });
 
     describe("buildJsxNamespace", () => {
         it("creates global declare module", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget()];
 
-            builder.buildJsxNamespace(sourceFile, widgets, []);
+            builder.buildJsxNamespace(file, widgets, []);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("declare global");
         });
 
         it("creates React.JSX namespace", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget()];
 
-            builder.buildJsxNamespace(sourceFile, widgets, []);
+            builder.buildJsxNamespace(file, widgets, []);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("namespace React");
             expect(code).toContain("namespace JSX");
         });
 
         it("creates IntrinsicElements interface", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget()];
 
-            builder.buildJsxNamespace(sourceFile, widgets, []);
+            builder.buildJsxNamespace(file, widgets, []);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("interface IntrinsicElements");
         });
 
         it("maps widget jsxName to props type", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkButton" })];
 
-            builder.buildJsxNamespace(sourceFile, widgets, []);
+            builder.buildJsxNamespace(file, widgets, []);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("GtkButton: GtkButtonProps");
         });
 
         it("includes multiple widgets in IntrinsicElements", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [
                 createJsxWidget({ className: "Button", jsxName: "GtkButton" }),
                 createJsxWidget({ className: "Label", jsxName: "GtkLabel" }),
             ];
 
-            builder.buildJsxNamespace(sourceFile, widgets, []);
+            builder.buildJsxNamespace(file, widgets, []);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("GtkButton: GtkButtonProps");
             expect(code).toContain("GtkLabel: GtkLabelProps");
         });
 
         it("excludes Widget class from IntrinsicElements", () => {
             const widgetMeta = createWidgetMeta();
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [
                 {
                     className: "Widget",
@@ -136,9 +134,9 @@ describe("IntrinsicElementsBuilder", () => {
                 createJsxWidget({ className: "Button", jsxName: "GtkButton" }),
             ];
 
-            builder.buildJsxNamespace(sourceFile, widgets, []);
+            builder.buildJsxNamespace(file, widgets, []);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).not.toContain("GtkWidget: GtkWidgetProps");
             expect(code).toContain("GtkButton: GtkButtonProps");
         });
@@ -146,110 +144,108 @@ describe("IntrinsicElementsBuilder", () => {
 
     describe("buildWidgetSlotNamesType", () => {
         it("creates WidgetSlotNames type alias when no widgets have slots", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget({ slots: [] })];
 
-            builder.buildWidgetSlotNamesType(sourceFile, widgets);
+            builder.buildWidgetSlotNamesType(file, widgets);
 
-            const typeAlias = sourceFile.getTypeAlias("WidgetSlotNames");
-            expect(typeAlias).toBeDefined();
-            expect(typeAlias?.getTypeNode()?.getText()).toBe("Record<string, never>");
+            const code = stringify(file);
+            expect(code).toContain("WidgetSlotNames");
+            expect(code).toContain("Record<string, never>");
         });
 
         it("creates WidgetSlotNames type alias when widgets have slots", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkBox", slots: ["start", "end"] })];
 
-            builder.buildWidgetSlotNamesType(sourceFile, widgets);
+            builder.buildWidgetSlotNamesType(file, widgets);
 
-            const typeAlias = sourceFile.getTypeAlias("WidgetSlotNames");
-            expect(typeAlias).toBeDefined();
+            const code = stringify(file);
+            expect(code).toContain("WidgetSlotNames");
         });
 
         it("maps widget to slot names union", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkBox", slots: ["start", "end"] })];
 
-            builder.buildWidgetSlotNamesType(sourceFile, widgets);
+            builder.buildWidgetSlotNamesType(file, widgets);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain('GtkBox: "start" | "end"');
         });
 
         it("converts slot names to camelCase", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkWindow", slots: ["title-widget", "default-widget"] })];
 
-            builder.buildWidgetSlotNamesType(sourceFile, widgets);
+            builder.buildWidgetSlotNamesType(file, widgets);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain('"titleWidget"');
             expect(code).toContain('"defaultWidget"');
         });
 
         it("excludes widgets with no slots from interface", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [
                 createJsxWidget({ jsxName: "GtkBox", slots: ["start"] }),
                 createJsxWidget({ jsxName: "GtkLabel", slots: [] }),
             ];
 
-            builder.buildWidgetSlotNamesType(sourceFile, widgets);
+            builder.buildWidgetSlotNamesType(file, widgets);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("GtkBox");
             expect(code).not.toContain("GtkLabel");
         });
 
         it("exports WidgetSlotNames", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget({ slots: [] })];
 
-            builder.buildWidgetSlotNamesType(sourceFile, widgets);
+            builder.buildWidgetSlotNamesType(file, widgets);
 
-            const typeAlias = sourceFile.getTypeAlias("WidgetSlotNames");
-            expect(typeAlias?.isExported()).toBe(true);
+            const code = stringify(file);
+            expect(code).toContain("export type WidgetSlotNames");
         });
 
         it("includes documentation for WidgetSlotNames", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkBox", slots: ["start"] })];
 
-            builder.buildWidgetSlotNamesType(sourceFile, widgets);
+            builder.buildWidgetSlotNamesType(file, widgets);
 
-            const typeAlias = sourceFile.getTypeAlias("WidgetSlotNames");
-            const jsDocs = typeAlias?.getJsDocs() ?? [];
-            expect(jsDocs.length).toBeGreaterThan(0);
-            expect(jsDocs[0].getDescription()).toContain("slot names");
+            const code = stringify(file);
+            expect(code).toContain("slot names");
         });
 
         it("exports WidgetSlotNames type alias when widgets have slots", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkBox", slots: ["start"] })];
 
-            builder.buildWidgetSlotNamesType(sourceFile, widgets);
+            builder.buildWidgetSlotNamesType(file, widgets);
 
-            const typeAlias = sourceFile.getTypeAlias("WidgetSlotNames");
-            expect(typeAlias?.isExported()).toBe(true);
+            const code = stringify(file);
+            expect(code).toContain("export type WidgetSlotNames");
         });
     });
 
     describe("addModuleExport", () => {
         it("adds empty export declaration", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
 
-            builder.addModuleExport(sourceFile);
+            builder.addModuleExport(file);
 
-            const exports = sourceFile.getExportDeclarations();
-            expect(exports).toHaveLength(1);
+            const code = stringify(file);
+            expect(code).toContain("export {}");
         });
 
         it("ensures file is treated as module", () => {
-            const { sourceFile, builder } = createTestSetup();
+            const { file, builder } = createTestSetup();
 
-            builder.addModuleExport(sourceFile);
+            builder.addModuleExport(file);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toMatch(/export\s*\{\s*\}/);
         });
     });

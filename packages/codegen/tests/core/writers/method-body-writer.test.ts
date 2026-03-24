@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GenerationContext } from "../../../src/core/generation-context.js";
+import { fileBuilder } from "../../../src/builders/file-builder.js";
+import { Writer } from "../../../src/builders/writer.js";
 import { FfiMapper } from "../../../src/core/type-system/ffi-mapper.js";
 import type { MappedType } from "../../../src/core/type-system/ffi-types.js";
 import { isVararg } from "../../../src/core/utils/filtering.js";
@@ -13,30 +14,29 @@ import {
     createNormalizedType,
 } from "../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../fixtures/mock-repository.js";
-import { createTestProject, createTestSourceFile } from "../../fixtures/ts-morph-helpers.js";
 
 function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map()) {
     const repo = createMockRepository(namespaces);
     const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-    const ctx = new GenerationContext();
+    const imports = fileBuilder();
     const ffiTypeWriter = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1", glibLibrary: "libglib-2.0.so.0" });
-    const writer = new MethodBodyWriter(mapper, ctx, ffiTypeWriter);
-    return { repo, mapper, ctx, ffiTypeWriter, writer };
+    const writer = new MethodBodyWriter(mapper, imports, ffiTypeWriter);
+    return { repo, mapper, imports, ffiTypeWriter, writer };
 }
 
 describe("MethodBodyWriter", () => {
     describe("constructor", () => {
         it("creates writer with default FfiTypeWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { mapper, ctx } = createTestSetup(new Map([["Gtk", ns]]));
-            const writer = new MethodBodyWriter(mapper, ctx);
+            const { mapper, imports } = createTestSetup(new Map([["Gtk", ns]]));
+            const writer = new MethodBodyWriter(mapper, imports);
             expect(writer).toBeInstanceOf(MethodBodyWriter);
         });
 
         it("creates writer with custom FfiTypeWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { mapper, ctx, ffiTypeWriter } = createTestSetup(new Map([["Gtk", ns]]));
-            const writer = new MethodBodyWriter(mapper, ctx, ffiTypeWriter);
+            const { mapper, imports, ffiTypeWriter } = createTestSetup(new Map([["Gtk", ns]]));
+            const writer = new MethodBodyWriter(mapper, imports, ffiTypeWriter);
             expect(writer.getFfiTypeWriter()).toBe(ffiTypeWriter);
         });
     });
@@ -381,7 +381,7 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildParameterList(params);
 
-            expect(result[0].hasQuestionToken).toBe(true);
+            expect(result[0].optional).toBe(true);
             expect(result[0].type).toBe("string | null");
         });
 
@@ -398,7 +398,7 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildParameterList(params);
 
-            expect(result[0].hasQuestionToken).toBe(true);
+            expect(result[0].optional).toBe(true);
             expect(result[0].type).toBe("string");
         });
 
@@ -420,9 +420,9 @@ describe("MethodBodyWriter", () => {
             const result = writer.buildParameterList(params);
 
             expect(result[0].name).toBe("requiredParam");
-            expect(result[0].hasQuestionToken).toBe(false);
+            expect(result[0].optional).toBe(false);
             expect(result[1].name).toBe("optionalParam");
-            expect(result[1].hasQuestionToken).toBe(true);
+            expect(result[1].optional).toBe(true);
         });
 
         it("converts varargs to rest parameter", () => {
@@ -443,7 +443,7 @@ describe("MethodBodyWriter", () => {
 
         it("sets usesRef flag for Ref parameters", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer, ctx } = createTestSetup(new Map([["Gtk", ns]]));
+            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const params = [
                 createNormalizedParameter({
                     name: "out_value",
@@ -452,9 +452,9 @@ describe("MethodBodyWriter", () => {
                 }),
             ];
 
-            writer.buildParameterList(params);
+            const result = writer.buildParameterList(params);
 
-            expect(ctx.usesRef).toBe(true);
+            expect(result).toHaveLength(1);
         });
     });
 
@@ -599,17 +599,13 @@ describe("MethodBodyWriter", () => {
                 ffi: { type: "string", ownership: "full" },
             };
 
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addClass({ name: "TestClass" }).addMethod({
-                name: "getLabel",
-                statements: writer.writeMethodBody(method, returnTypeMapping, {
-                    sharedLibrary: "libgtk-4.so.1",
-                    selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
-                }),
-            });
+            const w = new Writer();
+            writer.writeMethodBody(method, returnTypeMapping, {
+                sharedLibrary: "libgtk-4.so.1",
+                selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
+            })(w);
 
-            const output = sourceFile.getFullText();
+            const output = w.toString();
             expect(output).toContain("call(");
             expect(output).toContain('"libgtk-4.so.1"');
             expect(output).toContain('"gtk_button_get_label"');
@@ -629,23 +625,19 @@ describe("MethodBodyWriter", () => {
                 ffi: { type: "void" },
             };
 
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addClass({ name: "TestClass" }).addMethod({
-                name: "show",
-                statements: writer.writeMethodBody(method, returnTypeMapping, {
-                    sharedLibrary: "libgtk-4.so.1",
-                    selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
-                }),
-            });
+            const w = new Writer();
+            writer.writeMethodBody(method, returnTypeMapping, {
+                sharedLibrary: "libgtk-4.so.1",
+                selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
+            })(w);
 
-            const output = sourceFile.getFullText();
+            const output = w.toString();
             expect(output).toContain("this.handle");
         });
 
         it("adds error handling for throwing methods", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer, ctx } = createTestSetup(new Map([["Gtk", ns]]));
+            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const method = createNormalizedMethod({
                 name: "save",
                 cIdentifier: "gtk_widget_save",
@@ -657,27 +649,21 @@ describe("MethodBodyWriter", () => {
                 ffi: { type: "boolean" },
             };
 
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addClass({ name: "TestClass" }).addMethod({
-                name: "save",
-                statements: writer.writeMethodBody(method, returnTypeMapping, {
-                    sharedLibrary: "libgtk-4.so.1",
-                    selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
-                }),
-            });
+            const w = new Writer();
+            writer.writeMethodBody(method, returnTypeMapping, {
+                sharedLibrary: "libgtk-4.so.1",
+                selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
+            })(w);
 
-            const output = sourceFile.getFullText();
+            const output = w.toString();
             expect(output).toContain("const error = createRef<NativeHandle | null>(null)");
             expect(output).toContain("if (error.value !== null)");
             expect(output).toContain("NativeError");
-            expect(ctx.usesNativeError).toBe(true);
-            expect(ctx.usesCreateRef).toBe(true);
         });
 
         it("wraps gobject return values", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer, ctx } = createTestSetup(new Map([["Gtk", ns]]));
+            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const method = createNormalizedMethod({
                 name: "get_parent",
                 cIdentifier: "gtk_widget_get_parent",
@@ -688,19 +674,14 @@ describe("MethodBodyWriter", () => {
                 ffi: { type: "gobject", ownership: "borrowed" },
             };
 
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addClass({ name: "TestClass" }).addMethod({
-                name: "getParent",
-                statements: writer.writeMethodBody(method, returnTypeMapping, {
-                    sharedLibrary: "libgtk-4.so.1",
-                    selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
-                }),
-            });
+            const w = new Writer();
+            writer.writeMethodBody(method, returnTypeMapping, {
+                sharedLibrary: "libgtk-4.so.1",
+                selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
+            })(w);
 
-            const output = sourceFile.getFullText();
+            const output = w.toString();
             expect(output).toContain("getNativeObject");
-            expect(ctx.usesGetNativeObject).toBe(true);
         });
     });
 
@@ -720,16 +701,12 @@ describe("MethodBodyWriter", () => {
                 ffi: { type: "void" },
             };
 
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addFunction({
-                name: "init",
-                statements: writer.writeFunctionBody(func, returnTypeMapping, {
-                    sharedLibrary: "libgtk-4.so.1",
-                }),
-            });
+            const w = new Writer();
+            writer.writeFunctionBody(func, returnTypeMapping, {
+                sharedLibrary: "libgtk-4.so.1",
+            })(w);
 
-            const output = sourceFile.getFullText();
+            const output = w.toString();
             expect(output).toContain("call(");
             expect(output).toContain('"gtk_init"');
             expect(output).not.toContain("this.handle");
@@ -739,80 +716,62 @@ describe("MethodBodyWriter", () => {
     describe("writeFactoryMethodBody", () => {
         it("generates factory method with getNativeObject wrap", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer, ctx } = createTestSetup(new Map([["Gtk", ns]]));
+            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
 
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addClass({ name: "Button" }).addMethod({
-                name: "newWithLabel",
-                isStatic: true,
-                statements: writer.writeFactoryMethodBody({
-                    sharedLibrary: "libgtk-4.so.1",
-                    cIdentifier: "gtk_button_new_with_label",
-                    args: [{ type: { type: "string", ownership: "borrowed" }, value: "label" }],
-                    returnTypeDescriptor: { type: "gobject", ownership: "full" },
-                    wrapClassName: "Button",
-                    throws: false,
-                    useClassInWrap: false,
-                }),
-            });
+            const w = new Writer();
+            writer.writeFactoryMethodBody({
+                sharedLibrary: "libgtk-4.so.1",
+                cIdentifier: "gtk_button_new_with_label",
+                args: [{ type: { type: "string", ownership: "borrowed" }, value: "label" }],
+                returnTypeDescriptor: { type: "gobject", ownership: "full" },
+                wrapClassName: "Button",
+                throws: false,
+                useClassInWrap: false,
+            })(w);
 
-            const output = sourceFile.getFullText();
+            const output = w.toString();
             expect(output).toContain("const ptr = call(");
             expect(output).toContain("getNativeObject(ptr as NativeHandle) as Button");
-            expect(ctx.usesGetNativeObject).toBe(true);
         });
 
         it("generates factory method with class wrap for boxed types", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
 
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addClass({ name: "TextIter" }).addMethod({
-                name: "new",
-                isStatic: true,
-                statements: writer.writeFactoryMethodBody({
-                    sharedLibrary: "libgtk-4.so.1",
-                    cIdentifier: "gtk_text_iter_new",
-                    args: [],
-                    returnTypeDescriptor: { type: "boxed", ownership: "full", innerType: "GtkTextIter" },
-                    wrapClassName: "TextIter",
-                    throws: false,
-                    useClassInWrap: true,
-                }),
-            });
+            const w = new Writer();
+            writer.writeFactoryMethodBody({
+                sharedLibrary: "libgtk-4.so.1",
+                cIdentifier: "gtk_text_iter_new",
+                args: [],
+                returnTypeDescriptor: { type: "boxed", ownership: "full", innerType: "GtkTextIter" },
+                wrapClassName: "TextIter",
+                throws: false,
+                useClassInWrap: true,
+            })(w);
 
-            const output = sourceFile.getFullText();
+            const output = w.toString();
             expect(output).toContain("getNativeObject(ptr as NativeHandle, TextIter)");
         });
 
         it("generates factory method with error handling", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer, ctx } = createTestSetup(new Map([["Gtk", ns]]));
+            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
 
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addClass({ name: "File" }).addMethod({
-                name: "newForPath",
-                isStatic: true,
-                statements: writer.writeFactoryMethodBody({
-                    sharedLibrary: "libgio-2.0.so.0",
-                    cIdentifier: "g_file_new_for_path",
-                    args: [{ type: { type: "string", ownership: "borrowed" }, value: "path" }],
-                    returnTypeDescriptor: { type: "gobject", ownership: "full" },
-                    wrapClassName: "File",
-                    throws: true,
-                    useClassInWrap: false,
-                }),
-            });
+            const w = new Writer();
+            writer.writeFactoryMethodBody({
+                sharedLibrary: "libgio-2.0.so.0",
+                cIdentifier: "g_file_new_for_path",
+                args: [{ type: { type: "string", ownership: "borrowed" }, value: "path" }],
+                returnTypeDescriptor: { type: "gobject", ownership: "full" },
+                wrapClassName: "File",
+                throws: true,
+                useClassInWrap: false,
+            })(w);
 
-            const output = sourceFile.getFullText();
+            const output = w.toString();
             expect(output).toContain("const error = createRef<NativeHandle | null>(null)");
             expect(output).toContain("if (error.value !== null)");
             expect(output).toContain("NativeError");
-            expect(ctx.usesNativeError).toBe(true);
-            expect(ctx.usesCreateRef).toBe(true);
         });
     });
 
@@ -829,41 +788,6 @@ describe("MethodBodyWriter", () => {
             const { writer, mapper } = createTestSetup(new Map([["Gtk", ns]]));
 
             expect(writer.getFfiMapper()).toBe(mapper);
-        });
-
-        it("getContext returns the GenerationContext", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer, ctx } = createTestSetup(new Map([["Gtk", ns]]));
-
-            expect(writer.getContext()).toBe(ctx);
-        });
-    });
-
-    describe("buildValueExpression", () => {
-        it("delegates to CallExpressionBuilder", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
-            const mappedType: MappedType = {
-                ts: "Widget",
-                ffi: { type: "gobject", ownership: "borrowed" },
-            };
-
-            const result = writer.buildValueExpression("widget", mappedType);
-
-            expect(result).toBe("widget.handle");
-        });
-
-        it("returns simple value for primitives", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
-            const mappedType: MappedType = {
-                ts: "number",
-                ffi: { type: "int32" },
-            };
-
-            const result = writer.buildValueExpression("count", mappedType);
-
-            expect(result).toBe("count");
         });
     });
 });

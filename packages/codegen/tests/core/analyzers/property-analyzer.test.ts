@@ -211,28 +211,21 @@ describe("PropertyAnalyzer", () => {
         });
 
         it("excludes properties inherited from parent class", () => {
-            const widgetClass = createWidgetClass();
-            const buttonClass = createNormalizedClass({
-                name: "Button",
-                qualifiedName: qualifiedName("Gtk", "Button"),
-                parent: qualifiedName("Gtk", "Widget"),
-                properties: [
-                    createNormalizedProperty({ name: "label" }),
-                    createNormalizedProperty({ name: "icon-name" }),
-                ],
-            });
-
-            widgetClass._setRepository({
-                resolveClass: () => undefined,
-                resolveInterface: () => undefined,
-                findClasses: () => [],
-            } as Parameters<typeof widgetClass._setRepository>[0]);
-
-            buttonClass._setRepository({
-                resolveClass: () => widgetClass,
-                resolveInterface: () => undefined,
-                findClasses: () => [],
-            } as Parameters<typeof buttonClass._setRepository>[0]);
+            const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
+            const widgetClass = createWidgetClass({}, nullRepo);
+            const buttonRepo = { resolveClass: () => widgetClass, resolveInterface: () => null, findClasses: () => [] };
+            const buttonClass = createNormalizedClass(
+                {
+                    name: "Button",
+                    qualifiedName: qualifiedName("Gtk", "Button"),
+                    parent: qualifiedName("Gtk", "Widget"),
+                    properties: [
+                        createNormalizedProperty({ name: "label" }),
+                        createNormalizedProperty({ name: "icon-name" }),
+                    ],
+                },
+                buttonRepo,
+            );
 
             const ns = createNormalizedNamespace({
                 name: "Gtk",

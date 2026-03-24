@@ -1,21 +1,20 @@
 /**
- * Constant Generator (ts-morph)
+ * Constant Generator
  *
- * Generates constant definitions using ts-morph AST.
+ * Generates constant definitions using the builder library.
  */
 
 import type { GirConstant } from "@gtkx/gir";
-import type { SourceFile, VariableStatementStructure } from "ts-morph";
+import { type FileBuilder, variableStatement } from "../../builders/index.js";
 import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
-import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
-import { createConstExport } from "../../core/utils/structure-helpers.js";
+import { formatJsDoc } from "../../core/utils/doc-formatter.js";
 
 /**
- * Generates constant definitions into a ts-morph SourceFile.
+ * Generates constant declarations into a FileBuilder.
  *
  * @example
  * ```typescript
- * const generator = new ConstantGenerator(sourceFile, { namespace: "Gtk" });
+ * const generator = new ConstantGenerator(file, { namespace: "Gtk" });
  * generator.addConstants(constants);
  * ```
  */
@@ -23,41 +22,34 @@ export class ConstantGenerator {
     private readonly seen = new Set<string>();
 
     constructor(
-        private readonly sourceFile: SourceFile,
+        private readonly file: FileBuilder,
         private readonly options: SimpleGeneratorOptions,
     ) {}
 
     /**
-     * Adds multiple constants to the source file using batched insertion for performance.
+     * Adds multiple constant declarations to the file.
      */
     addConstants(constants: readonly GirConstant[]): void {
-        const structures: VariableStatementStructure[] = [];
-
         for (const constant of constants) {
-            const structure = this.buildConstantStructure(constant);
-            if (structure) {
-                structures.push(structure);
-            }
-        }
-
-        if (structures.length > 0) {
-            this.sourceFile.addVariableStatements(structures);
+            this.addConstant(constant);
         }
     }
 
-    private buildConstantStructure(constant: GirConstant): VariableStatementStructure | null {
+    private addConstant(constant: GirConstant): void {
         const constName = constant.name;
 
-        if (this.seen.has(constName)) {
-            return null;
-        }
+        if (this.seen.has(constName)) return;
         this.seen.add(constName);
 
         const isStringType = constant.type.name === "utf8" || constant.type.name === "filename";
         const constValue = isStringType ? `"${constant.value}"` : constant.value;
 
-        return createConstExport(constName, constValue, {
-            docs: buildJsDocStructure(constant.doc, this.options.namespace),
-        });
+        this.file.add(
+            variableStatement(constName, {
+                exported: true,
+                initializer: constValue,
+                doc: formatJsDoc(constant.doc, this.options.namespace),
+            }),
+        );
     }
 }

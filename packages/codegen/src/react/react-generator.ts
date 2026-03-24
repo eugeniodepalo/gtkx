@@ -1,35 +1,49 @@
-import type { CodegenWidgetMeta } from "../core/codegen-metadata.js";
-import type { CodegenProject } from "../core/project.js";
-import { InternalGenerator } from "./generators/internal.js";
-import { JsxTypesGenerator } from "./generators/jsx-types/index.js";
-import { RegistryGenerator } from "./generators/registry.js";
-import { MetadataReader } from "./metadata-reader.js";
-
 /**
+ * React Generator
+ *
  * Generates React/JSX bindings from widget metadata.
  *
  * Creates JSX intrinsic elements, internal implementations, and
  * component registry for `@gtkx/react`.
  */
+
+import { fileBuilder, stringify } from "../builders/index.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../core/codegen-metadata.js";
+import type { GeneratedFile } from "../core/generated-file-set.js";
+import { InternalGenerator } from "./generators/internal.js";
+import { JsxTypesGenerator } from "./generators/jsx-types/index.js";
+import { RegistryGenerator } from "./generators/registry.js";
+import { MetadataReader } from "./metadata-reader.js";
+
 export class ReactGenerator {
     private readonly reader: MetadataReader;
 
     constructor(
         widgetMeta: readonly CodegenWidgetMeta[],
-        private readonly project: CodegenProject,
+        private readonly controllers: readonly CodegenControllerMeta[],
         private readonly namespaceNames: string[],
     ) {
         this.reader = new MetadataReader(widgetMeta);
     }
 
-    generate(): void {
-        const internalGenerator = new InternalGenerator(this.reader, this.project);
-        internalGenerator.generate();
+    generate(): GeneratedFile[] {
+        const files: GeneratedFile[] = [];
 
-        const jsxTypesGenerator = new JsxTypesGenerator(this.reader, this.project, this.namespaceNames);
-        jsxTypesGenerator.generate();
+        const internalFile = fileBuilder();
+        const internalGenerator = new InternalGenerator(this.reader, this.controllers);
+        internalGenerator.generate(internalFile);
+        files.push({ path: "internal.ts", content: stringify(internalFile) });
 
-        const registryGenerator = new RegistryGenerator(this.project, this.namespaceNames);
-        registryGenerator.generate();
+        const jsxFile = fileBuilder();
+        const jsxTypesGenerator = new JsxTypesGenerator(this.reader, this.controllers, this.namespaceNames);
+        jsxTypesGenerator.generate(jsxFile);
+        files.push({ path: "jsx.ts", content: stringify(jsxFile) });
+
+        const registryFile = fileBuilder();
+        const registryGenerator = new RegistryGenerator(this.namespaceNames);
+        registryGenerator.generate(registryFile);
+        files.push({ path: "registry.ts", content: stringify(registryFile) });
+
+        return files;
     }
 }

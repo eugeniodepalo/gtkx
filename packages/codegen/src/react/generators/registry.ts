@@ -2,64 +2,51 @@
  * Registry Generator
  *
  * Generates the registry.ts file containing namespace registry.
- * Uses ts-morph WriterFunction for proper code generation.
  */
 
-import type { CodeBlockWriter, SourceFile, WriterFunction } from "ts-morph";
-import type { CodegenProject } from "../../core/project.js";
-import { addNamespaceImports, createConstExport } from "../../core/utils/structure-helpers.js";
+import type { FileBuilder } from "../../builders/index.js";
+import { typeAlias, variableStatement } from "../../builders/index.js";
+import type { Writer } from "../../builders/writer.js";
 
-/**
- * Generates the registry.ts file containing namespace registry using ts-morph.
- */
 export class RegistryGenerator {
-    constructor(
-        private readonly project: CodegenProject,
-        private readonly namespaceNames: string[],
-    ) {}
+    constructor(private readonly namespaceNames: string[]) {}
 
-    /**
-     * Generates the registry.ts file into the shared project.
-     */
-    generate(): void {
-        const sourceFile = this.project.createReactSourceFile("registry.ts");
+    generate(file: FileBuilder): void {
+        file.addStatement("/** Generated namespace registry for widget class resolution. */\n");
 
-        sourceFile.addStatements("/** Generated namespace registry for widget class resolution. */\n");
-
-        this.addImports(sourceFile, this.namespaceNames);
-        this.addNamespaceType(sourceFile);
-        this.addNamespaceRegistry(sourceFile, this.namespaceNames);
+        this.addImports(file, this.namespaceNames);
+        this.addNamespaceType(file);
+        this.addNamespaceRegistry(file, this.namespaceNames);
     }
 
-    private addImports(sourceFile: SourceFile, namespaces: string[]): void {
-        addNamespaceImports(sourceFile, namespaces);
+    private addImports(file: FileBuilder, namespaces: string[]): void {
+        const sorted = [...namespaces].sort();
+        for (const ns of sorted) {
+            file.addNamespaceImport(`@gtkx/ffi/${ns.toLowerCase()}`, ns);
+        }
     }
 
-    private addNamespaceType(sourceFile: SourceFile): void {
-        sourceFile.addTypeAlias({
-            name: "Namespace",
-            type: "Record<string, unknown>",
-        });
+    private addNamespaceType(file: FileBuilder): void {
+        file.add(typeAlias("Namespace", "Record<string, unknown>"));
     }
 
-    private writeRegistryArray(namespaces: string[]): WriterFunction {
+    private addNamespaceRegistry(file: FileBuilder, namespaces: string[]): void {
         const sortedByLength = [...namespaces].sort((a, b) => b.length - a.length || a.localeCompare(b));
 
-        return (writer: CodeBlockWriter) => {
-            writer.writeLine("[");
-            writer.indent(() => {
-                for (const ns of sortedByLength) {
-                    writer.writeLine(`["${ns}", ${ns}],`);
-                }
-            });
-            writer.write("]");
-        };
-    }
-
-    private addNamespaceRegistry(sourceFile: SourceFile, namespaces: string[]): void {
-        sourceFile.addVariableStatement(
-            createConstExport("NAMESPACE_REGISTRY", this.writeRegistryArray(namespaces), {
+        file.add(
+            variableStatement("NAMESPACE_REGISTRY", {
+                exported: true,
+                kind: "const",
                 type: "[string, Namespace][]",
+                initializer: (writer: Writer) => {
+                    writer.writeLine("[");
+                    writer.withIndent(() => {
+                        for (const ns of sortedByLength) {
+                            writer.writeLine(`["${ns}", ${ns}],`);
+                        }
+                    });
+                    writer.write("]");
+                },
             }),
         );
     }

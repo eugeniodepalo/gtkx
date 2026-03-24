@@ -6,11 +6,9 @@
  * - CodegenControllerMeta: properties, signals for event controllers
  */
 
-import type { SourceFile } from "ts-morph";
+import type { FileBuilder } from "../../../builders/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
-import type { CodegenProject } from "../../../core/project.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
-import { addNamespaceImports } from "../../../core/utils/structure-helpers.js";
 import { type MetadataReader, sortWidgetsByClassName } from "../../metadata-reader.js";
 import { ControllerPropsBuilder } from "./controller-props-builder.js";
 import { IntrinsicElementsBuilder } from "./intrinsic-elements-builder.js";
@@ -32,29 +30,27 @@ export class JsxTypesGenerator {
 
     constructor(
         private readonly reader: MetadataReader,
-        private readonly project: CodegenProject,
+        private readonly controllers: readonly CodegenControllerMeta[],
         private readonly namespaceNames: string[],
     ) {}
 
-    generate(): void {
-        const sourceFile = this.project.createReactSourceFile("jsx.ts");
-
+    generate(file: FileBuilder): void {
         const widgets = this.getWidgets();
         const controllers = this.getControllers();
         this.propsBuilder.clearUsedNamespaces();
         this.controllerPropsBuilder.clearUsedNamespaces();
 
-        this.generateBaseWidgetProps(sourceFile, widgets);
-        this.generateWidgetPropsInterfaces(sourceFile, widgets);
-        this.generateBaseControllerProps(sourceFile, controllers);
-        this.generateControllerPropsInterfaces(sourceFile, controllers);
-        this.addImports(sourceFile, widgets, controllers);
+        this.generateBaseWidgetProps(file, widgets);
+        this.generateWidgetPropsInterfaces(file, widgets);
+        this.generateBaseControllerProps(file, controllers);
+        this.generateControllerPropsInterfaces(file, controllers);
+        this.addImports(file, widgets, controllers);
 
-        this.intrinsicBuilder.buildWidgetSlotNamesType(sourceFile, widgets);
-        this.intrinsicBuilder.buildWidgetExports(sourceFile, widgets);
-        this.intrinsicBuilder.buildControllerExports(sourceFile, controllers);
-        this.intrinsicBuilder.buildJsxNamespace(sourceFile, widgets, controllers);
-        this.intrinsicBuilder.addModuleExport(sourceFile);
+        this.intrinsicBuilder.buildWidgetSlotNamesType(file, widgets);
+        this.intrinsicBuilder.buildWidgetExports(file, widgets);
+        this.intrinsicBuilder.buildControllerExports(file, controllers);
+        this.intrinsicBuilder.buildJsxNamespace(file, widgets, controllers);
+        this.intrinsicBuilder.addModuleExport(file);
     }
 
     private getWidgets(): JsxWidget[] {
@@ -67,8 +63,7 @@ export class JsxTypesGenerator {
     }
 
     private getControllers(): CodegenControllerMeta[] {
-        return this.project.metadata
-            .getAllControllerMeta()
+        return this.controllers
             .filter((m) => this.namespaceNames.includes(m.namespace))
             .sort((a, b) => a.jsxName.localeCompare(b.jsxName));
     }
@@ -87,12 +82,8 @@ export class JsxTypesGenerator {
         };
     }
 
-    private addImports(sourceFile: SourceFile, widgets: JsxWidget[], controllers: CodegenControllerMeta[]): void {
-        sourceFile.addImportDeclaration({
-            moduleSpecifier: "react",
-            namedImports: ["ReactNode", "Ref"],
-            isTypeOnly: true,
-        });
+    private addImports(file: FileBuilder, widgets: JsxWidget[], controllers: CodegenControllerMeta[]): void {
+        file.addTypeImport("react", ["ReactNode", "Ref"]);
 
         const usedNamespaces = new Set<string>(["Gtk"]);
         for (const widget of widgets) {
@@ -111,48 +102,55 @@ export class JsxTypesGenerator {
             usedNamespaces.add(ns);
         }
 
-        addNamespaceImports(sourceFile, usedNamespaces, { isTypeOnly: true });
+        const sorted = [...usedNamespaces].sort();
+        for (const ns of sorted) {
+            file.addTypeNamespaceImport(`@gtkx/ffi/${ns.toLowerCase()}`, ns);
+        }
     }
 
-    private generateBaseWidgetProps(sourceFile: SourceFile, widgets: JsxWidget[]): void {
+    private generateBaseWidgetProps(file: FileBuilder, widgets: JsxWidget[]): void {
         const widgetMeta = widgets.find((w) => w.className === "Widget");
         if (!widgetMeta) return;
 
-        this.propsBuilder.buildWidgetPropsInterface(
-            sourceFile,
+        const iface = this.propsBuilder.buildWidgetPropsInterface(
             "Gtk",
             widgetMeta.meta.properties,
             widgetMeta.meta.signals,
             undefined,
         );
+
+        file.add(iface);
     }
 
-    private generateWidgetPropsInterfaces(sourceFile: SourceFile, widgets: JsxWidget[]): void {
+    private generateWidgetPropsInterfaces(file: FileBuilder, widgets: JsxWidget[]): void {
         for (const widget of widgets) {
             if (widget.className === "Widget") continue;
 
             const filteredProperties = widget.meta.properties.filter((p) => !widget.hiddenProps.has(p.camelName));
             const filteredSignals = widget.meta.signals.filter((s) => !widget.hiddenProps.has(s.handlerName));
 
-            this.propsBuilder.buildWidgetSpecificPropsInterface(
-                sourceFile,
+            const iface = this.propsBuilder.buildWidgetSpecificPropsInterface(
                 widget,
                 filteredProperties,
                 filteredSignals,
             );
+
+            file.add(iface);
         }
     }
 
-    private generateBaseControllerProps(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
+    private generateBaseControllerProps(file: FileBuilder, controllers: CodegenControllerMeta[]): void {
         const eventControllerMeta = controllers.find((c) => c.className === "EventController");
         if (!eventControllerMeta) return;
 
-        this.controllerPropsBuilder.buildBaseControllerPropsInterface(sourceFile, eventControllerMeta);
+        const iface = this.controllerPropsBuilder.buildBaseControllerPropsInterface(eventControllerMeta);
+        file.add(iface);
     }
 
-    private generateControllerPropsInterfaces(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
+    private generateControllerPropsInterfaces(file: FileBuilder, controllers: CodegenControllerMeta[]): void {
         for (const controller of controllers) {
-            this.controllerPropsBuilder.buildControllerPropsInterface(sourceFile, controller);
+            const iface = this.controllerPropsBuilder.buildControllerPropsInterface(controller);
+            if (iface) file.add(iface);
         }
     }
 }

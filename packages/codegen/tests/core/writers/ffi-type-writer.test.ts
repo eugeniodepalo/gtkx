@@ -1,16 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FfiTypeDescriptor } from "../../../src/core/type-system/ffi-types.js";
 import { FfiTypeWriter } from "../../../src/core/writers/ffi-type-writer.js";
-import { createTestProject, createTestSourceFile } from "../../fixtures/ts-morph-helpers.js";
-
-function getWriterOutput(writer: FfiTypeWriter, type: FfiTypeDescriptor): string {
-    const project = createTestProject();
-    const sourceFile = createTestSourceFile(project, "test.ts");
-    sourceFile.addVariableStatement({
-        declarations: [{ name: "TYPE", initializer: writer.toWriter(type) }],
-    });
-    return sourceFile.getFullText().replace("const TYPE = ", "").replace(";", "").trim();
-}
 
 describe("FfiTypeWriter", () => {
     describe("constructor", () => {
@@ -27,35 +16,6 @@ describe("FfiTypeWriter", () => {
         it("creates writer with glibLibrary option", () => {
             const writer = new FfiTypeWriter({ glibLibrary: "libglib-2.0.so.0" });
             expect(writer).toBeInstanceOf(FfiTypeWriter);
-        });
-    });
-
-    describe("setSharedLibrary", () => {
-        it("sets the current shared library", () => {
-            const writer = new FfiTypeWriter();
-            writer.setSharedLibrary("libgtk-4.so.1");
-
-            const output = getWriterOutput(writer, {
-                type: "boxed",
-                ownership: "full",
-                innerType: "GdkRGBA",
-            });
-
-            expect(output).toContain('"libgtk-4.so.1"');
-        });
-
-        it("overrides previously set library", () => {
-            const writer = new FfiTypeWriter({ currentSharedLibrary: "libold.so" });
-            writer.setSharedLibrary("libnew.so");
-
-            const output = getWriterOutput(writer, {
-                type: "boxed",
-                ownership: "full",
-                innerType: "SomeType",
-            });
-
-            expect(output).toContain('"libnew.so"');
-            expect(output).not.toContain('"libold.so"');
         });
     });
 
@@ -84,522 +44,116 @@ describe("FfiTypeWriter", () => {
         });
     });
 
-    describe("toWriter", () => {
-        describe("int types", () => {
-            it("writes int32 type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "int32" });
-
-                expect(output).toContain('"int32"');
-            });
-
-            it("writes uint32 type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "uint32" });
-
-                expect(output).toContain('"uint32"');
-            });
-
-            it("writes int64 type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "int64" });
-
-                expect(output).toContain('"int64"');
-            });
-
-            it("writes uint8 type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "uint8" });
-
-                expect(output).toContain('"uint8"');
-            });
-
-            it("writes int8 type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "int8" });
-
-                expect(output).toContain('"int8"');
-            });
-        });
-
-        describe("float types", () => {
-            it("writes float64 type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "float64" });
-
-                expect(output).toContain('"float64"');
-            });
-
-            it("writes float32 type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "float32" });
-
-                expect(output).toContain('"float32"');
-            });
-        });
-
-        describe("string type", () => {
-            it("writes string with full ownership", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "string", ownership: "full" });
-
-                expect(output).toContain('"string"');
-                expect(output).toContain('"full"');
-            });
-
-            it("writes string with no ownership", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "string", ownership: "borrowed" });
-
-                expect(output).toContain('"borrowed"');
-            });
-
-            it("defaults to full ownership", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "string" } as FfiTypeDescriptor);
-
-                expect(output).toContain('"full"');
-            });
-        });
-
-        describe("gobject type", () => {
-            it("writes gobject with full ownership", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "gobject", ownership: "full" });
-
-                expect(output).toContain('"gobject"');
-                expect(output).toContain('"full"');
-            });
-
-            it("writes gobject with no ownership", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "gobject", ownership: "borrowed" });
-
-                expect(output).toContain('"gobject"');
-                expect(output).toContain('"borrowed"');
-            });
-        });
-
-        describe("boxed type", () => {
-            it("writes boxed type with all properties", () => {
-                const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-                const output = getWriterOutput(writer, {
-                    type: "boxed",
-                    ownership: "full",
-                    innerType: "GdkRGBA",
-                });
-
-                expect(output).toContain('"boxed"');
-                expect(output).toContain('"full"');
-                expect(output).toContain('"GdkRGBA"');
-                expect(output).toContain('"libgtk-4.so.1"');
-            });
-
-            it("writes boxed type with explicit lib", () => {
-                const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-                const output = getWriterOutput(writer, {
-                    type: "boxed",
-                    ownership: "full",
-                    innerType: "PangoAttrList",
-                    library: "libpango-1.0.so.0",
-                });
-
-                expect(output).toContain('"libpango-1.0.so.0"');
-                expect(output).not.toContain('"libgtk-4.so.1"');
-            });
-
-            it("writes boxed type with getTypeFn", () => {
-                const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-                const output = getWriterOutput(writer, {
-                    type: "boxed",
-                    ownership: "full",
-                    innerType: "GdkRGBA",
-                    getTypeFn: "gdk_rgba_get_type",
-                });
-
-                expect(output).toContain('"gdk_rgba_get_type"');
-            });
-
-            it("uses empty lib when none available", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "boxed",
-                    ownership: "full",
-                    innerType: "SomeType",
-                });
-
-                expect(output).toContain('library: ""');
-            });
-        });
-
-        describe("struct type", () => {
-            it("writes struct type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "struct",
-                    ownership: "full",
-                    innerType: "GtkAllocation",
-                });
-
-                expect(output).toContain('"struct"');
-                expect(output).toContain('"full"');
-                expect(output).toContain('"GtkAllocation"');
-            });
-
-            it("writes struct with no ownership", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "struct",
-                    ownership: "borrowed",
-                    innerType: "SomeStruct",
-                });
-
-                expect(output).toContain('"borrowed"');
-            });
-        });
-
-        describe("ref type", () => {
-            it("writes ref type with nested inner type", () => {
-                const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-                const output = getWriterOutput(writer, {
-                    type: "ref",
-                    innerType: {
-                        type: "boxed",
-                        ownership: "full",
-                        innerType: "GdkRGBA",
-                    },
-                });
-
-                expect(output).toContain('"ref"');
-                expect(output).toContain("innerType:");
-                expect(output).toContain('"boxed"');
-            });
-
-            it("writes ref type for primitive", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "ref",
-                    innerType: { type: "int32" },
-                });
-
-                expect(output).toContain('"ref"');
-                expect(output).toContain('"int32"');
-            });
-        });
-
-        describe("array type", () => {
-            it("writes array type with item type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "array",
-                    itemType: { type: "string", ownership: "full" },
-                    ownership: "full",
-                });
-
-                expect(output).toContain('"array"');
-                expect(output).toContain("itemType:");
-                expect(output).toContain('"string"');
-            });
-
-            it("writes array type with kind", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "array",
-                    kind: "glist",
-                    ownership: "full",
-                });
-
-                expect(output).toContain('"glist"');
-            });
-
-            it("defaults kind to array", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "array",
-                    ownership: "full",
-                });
-
-                expect(output).toContain('kind: "array"');
-            });
-
-            it("writes array of gobjects", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "array",
-                    itemType: { type: "gobject", ownership: "borrowed" },
-                    ownership: "borrowed",
-                });
-
-                expect(output).toContain('"gobject"');
-            });
-        });
-
-        describe("callback type", () => {
-            it("writes callback type with kind", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "callback",
-                    kind: "closure",
-                });
-
-                expect(output).toContain('"callback"');
-                expect(output).toContain('"closure"');
-            });
-
-            it("writes callback with argTypes", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "callback",
-                    kind: "closure",
-                    argTypes: [
-                        { type: "gobject", ownership: "borrowed" },
-                        { type: "string", ownership: "borrowed" },
-                    ],
-                });
-
-                expect(output).toContain("argTypes:");
-                expect(output).toContain('"gobject"');
-                expect(output).toContain('"string"');
-            });
-
-            it("writes callback with sourceType", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "callback",
-                    kind: "closure",
-                    sourceType: { type: "gobject", ownership: "borrowed" },
-                });
-
-                expect(output).toContain("sourceType:");
-            });
-
-            it("writes callback with resultType", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "callback",
-                    kind: "closure",
-                    resultType: { type: "boolean" },
-                });
-
-                expect(output).toContain("resultType:");
-            });
-
-            it("writes callback with returnType", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "callback",
-                    kind: "closure",
-                    returnType: { type: "int32" },
-                });
-
-                expect(output).toContain("returnType:");
-            });
-
-            it("defaults kind to closure", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "callback" } as FfiTypeDescriptor);
-
-                expect(output).toContain('"closure"');
-            });
-        });
-
-        describe("simple types", () => {
-            it("writes boolean type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "boolean" });
-
-                expect(output).toContain('"boolean"');
-            });
-
-            it("writes void type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "void" });
-
-                expect(output).toContain('"void"');
-            });
-        });
-
-        describe("unknown types", () => {
-            it("writes unknown type as string", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "custom" } as FfiTypeDescriptor);
-
-                expect(output).toContain('"custom"');
-            });
-        });
-    });
-
-    describe("errorArgumentWriter", () => {
-        it("writes error argument descriptor", () => {
-            const writer = new FfiTypeWriter({ glibLibrary: "libglib-2.0.so.0" });
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addVariableStatement({
-                declarations: [{ name: "ERROR", initializer: writer.errorArgumentWriter() }],
-            });
-            const output = sourceFile.getFullText();
-
-            expect(output).toContain('"ref"');
-            expect(output).toContain('"boxed"');
-            expect(output).toContain('"GError"');
-            expect(output).toContain('"libglib-2.0.so.0"');
-        });
-
-        it("throws when glibLibrary is not set", () => {
+    describe("createSelfTypeDescriptor", () => {
+        it("returns gobject self descriptor by default", () => {
             const writer = new FfiTypeWriter();
-            expect(() => writer.errorArgumentWriter()).toThrow(
-                "glibLibrary must be set in FfiTypeWriterOptions for GError types",
-            );
-        });
-    });
+            const descriptor = writer.createSelfTypeDescriptor({});
 
-    describe("selfArgumentWriter", () => {
-        it("writes gobject self argument by default", () => {
+            expect(descriptor).toEqual({ type: "gobject", ownership: "borrowed" });
+        });
+
+        it("returns fundamental self descriptor when isFundamental is true", () => {
             const writer = new FfiTypeWriter();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addVariableStatement({
-                declarations: [{ name: "SELF", initializer: writer.selfArgumentWriter({}) }],
+            const descriptor = writer.createSelfTypeDescriptor({
+                isFundamental: true,
+                fundamentalLib: "libgobject-2.0.so.0",
+                fundamentalRefFunc: "g_param_spec_ref_sink",
+                fundamentalUnrefFunc: "g_param_spec_unref",
             });
-            const output = sourceFile.getFullText();
 
-            expect(output).toContain('"gobject"');
-            expect(output).toContain('"borrowed"');
+            expect(descriptor).toEqual({
+                type: "fundamental",
+                ownership: "borrowed",
+                library: "libgobject-2.0.so.0",
+                refFn: "g_param_spec_ref_sink",
+                unrefFn: "g_param_spec_unref",
+            });
         });
 
-        it("writes fundamental self argument when isFundamental is true", () => {
+        it("includes typeName for fundamental when provided", () => {
             const writer = new FfiTypeWriter();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addVariableStatement({
-                declarations: [
-                    {
-                        name: "SELF",
-                        initializer: writer.selfArgumentWriter({
-                            isFundamental: true,
-                            fundamentalLib: "libgobject-2.0.so.0",
-                            fundamentalRefFunc: "g_param_spec_ref_sink",
-                            fundamentalUnrefFunc: "g_param_spec_unref",
-                        }),
-                    },
-                ],
+            const descriptor = writer.createSelfTypeDescriptor({
+                isFundamental: true,
+                fundamentalLib: "libgobject-2.0.so.0",
+                fundamentalRefFunc: "g_param_spec_ref_sink",
+                fundamentalUnrefFunc: "g_param_spec_unref",
+                fundamentalTypeName: "GParamSpec",
             });
-            const output = sourceFile.getFullText();
 
-            expect(output).toContain('"fundamental"');
-            expect(output).toContain('"borrowed"');
-            expect(output).toContain('"libgobject-2.0.so.0"');
-            expect(output).toContain('"g_param_spec_ref_sink"');
-            expect(output).toContain('"g_param_spec_unref"');
+            expect(descriptor.typeName).toBe("GParamSpec");
         });
 
-        it("writes boxed self argument for records", () => {
+        it("returns boxed self descriptor for records", () => {
             const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addVariableStatement({
-                declarations: [
-                    {
-                        name: "SELF",
-                        initializer: writer.selfArgumentWriter({
-                            isRecord: true,
-                            recordName: "GdkRGBA",
-                        }),
-                    },
-                ],
+            const descriptor = writer.createSelfTypeDescriptor({
+                isRecord: true,
+                recordName: "GdkRGBA",
             });
-            const output = sourceFile.getFullText();
 
-            expect(output).toContain('"boxed"');
-            expect(output).toContain('"borrowed"');
-            expect(output).toContain('"GdkRGBA"');
-            expect(output).toContain('"libgtk-4.so.1"');
+            expect(descriptor).toEqual({
+                type: "boxed",
+                ownership: "borrowed",
+                innerType: "GdkRGBA",
+                library: "libgtk-4.so.1",
+            });
         });
 
         it("uses explicit sharedLibrary for records when provided", () => {
             const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addVariableStatement({
-                declarations: [
-                    {
-                        name: "SELF",
-                        initializer: writer.selfArgumentWriter({
-                            isRecord: true,
-                            recordName: "PangoAttrList",
-                            sharedLibrary: "libpango-1.0.so.0",
-                        }),
-                    },
-                ],
+            const descriptor = writer.createSelfTypeDescriptor({
+                isRecord: true,
+                recordName: "PangoAttrList",
+                sharedLibrary: "libpango-1.0.so.0",
             });
-            const output = sourceFile.getFullText();
 
-            expect(output).toContain('"libpango-1.0.so.0"');
+            expect(descriptor.library).toBe("libpango-1.0.so.0");
         });
 
         it("uses empty lib when no library available for records", () => {
             const writer = new FfiTypeWriter();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addVariableStatement({
-                declarations: [
-                    {
-                        name: "SELF",
-                        initializer: writer.selfArgumentWriter({
-                            isRecord: true,
-                            recordName: "SomeRecord",
-                        }),
-                    },
-                ],
+            const descriptor = writer.createSelfTypeDescriptor({
+                isRecord: true,
+                recordName: "SomeRecord",
             });
-            const output = sourceFile.getFullText();
 
-            expect(output).toContain('library: ""');
+            expect(descriptor.library).toBe("");
+        });
+
+        it("includes getTypeFn for records when provided", () => {
+            const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
+            const descriptor = writer.createSelfTypeDescriptor({
+                isRecord: true,
+                recordName: "GdkRGBA",
+                getTypeFn: "gdk_rgba_get_type",
+            });
+
+            expect(descriptor.getTypeFn).toBe("gdk_rgba_get_type");
         });
     });
 
-    describe("complex nested types", () => {
-        it("writes deeply nested ref of array of boxed", () => {
-            const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-            const output = getWriterOutput(writer, {
-                type: "ref",
-                innerType: {
-                    type: "array",
-                    itemType: {
-                        type: "boxed",
-                        ownership: "full",
-                        innerType: "GdkRGBA",
-                    },
-                    ownership: "full",
-                },
+    describe("setSharedLibrary", () => {
+        it("sets the current shared library", () => {
+            const writer = new FfiTypeWriter();
+            writer.setSharedLibrary("libgtk-4.so.1");
+
+            const descriptor = writer.createSelfTypeDescriptor({
+                isRecord: true,
+                recordName: "GdkRGBA",
             });
 
-            expect(output).toContain('"ref"');
-            expect(output).toContain('"array"');
-            expect(output).toContain('"boxed"');
-            expect(output).toContain('"GdkRGBA"');
+            expect(descriptor.library).toBe("libgtk-4.so.1");
         });
 
-        it("writes callback with complex argument types", () => {
-            const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-            const output = getWriterOutput(writer, {
-                type: "callback",
-                kind: "closure",
-                argTypes: [
-                    { type: "gobject", ownership: "borrowed" },
-                    {
-                        type: "array",
-                        itemType: { type: "string", ownership: "borrowed" },
-                        ownership: "borrowed",
-                    },
-                ],
-                returnType: { type: "boolean" },
+        it("overrides previously set library", () => {
+            const writer = new FfiTypeWriter({ currentSharedLibrary: "libold.so" });
+            writer.setSharedLibrary("libnew.so");
+
+            const descriptor = writer.createSelfTypeDescriptor({
+                isRecord: true,
+                recordName: "SomeType",
             });
 
-            expect(output).toContain('"callback"');
-            expect(output).toContain('"gobject"');
-            expect(output).toContain('"array"');
-            expect(output).toContain('"boolean"');
+            expect(descriptor.library).toBe("libnew.so");
         });
     });
 });

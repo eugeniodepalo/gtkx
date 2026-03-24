@@ -1,8 +1,8 @@
 import type { GirRepository } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
-import { GenerationContext } from "../../../../src/core/generation-context.js";
+import { fileBuilder } from "../../../../src/builders/file-builder.js";
+import { stringify } from "../../../../src/builders/stringify.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
-import { createWriters } from "../../../../src/core/writers/index.js";
 import { ClassGenerator } from "../../../../src/ffi/generators/class/index.js";
 import {
     createNormalizedClass,
@@ -15,7 +15,6 @@ import {
     qualifiedName,
 } from "../../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../../fixtures/mock-repository.js";
-import { createTestProject, createTestSourceFile, getGeneratedCode } from "../../../fixtures/ts-morph-helpers.js";
 
 function createTestSetup(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
@@ -41,11 +40,7 @@ function createTestSetup(
 
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-    const ctx = new GenerationContext();
-    const writers = createWriters({
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-    });
+    const file = fileBuilder();
     const options = {
         namespace: "Gtk",
         sharedLibrary: "libgtk-4.so.1",
@@ -53,12 +48,9 @@ function createTestSetup(
         gobjectLibrary: "libgobject-2.0.so.0",
     };
 
-    const project = createTestProject();
-    const sourceFile = createTestSourceFile(project, "button.ts");
+    const generator = new ClassGenerator(cls, ffiMapper, file, repo as unknown as GirRepository, options);
 
-    const generator = new ClassGenerator(cls, ffiMapper, ctx, repo as unknown as GirRepository, writers, options);
-
-    return { cls, generator, ctx, sourceFile, repo };
+    return { cls, generator, file, repo };
 }
 
 describe("ClassGenerator", () => {
@@ -71,30 +63,30 @@ describe("ClassGenerator", () => {
 
     describe("generateToSourceFile", () => {
         it("returns success for valid class", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator } = createTestSetup();
 
-            const result = generator.generateToSourceFile(sourceFile);
+            const result = generator.generate();
 
             expect(result.success).toBe(true);
         });
 
         it("generates class with correct name", () => {
-            const { generator, sourceFile } = createTestSetup({ name: "Button" });
+            const { generator, file } = createTestSetup({ name: "Button" });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("export class Button");
         });
 
         it("generates class extending parent", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 parent: qualifiedName("Gtk", "Widget"),
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("extends Widget");
         });
 
@@ -108,40 +100,40 @@ describe("ClassGenerator", () => {
             gtkNs.classes.set("Widget", widgetClass);
             const namespaces = new Map([["Gtk", gtkNs]]);
 
-            const { generator, sourceFile } = createTestSetup({ parent: null }, namespaces);
+            const { generator, file } = createTestSetup({ parent: null }, namespaces);
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("extends NativeObject");
         });
 
         it("includes glibTypeName property when present", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 glibTypeName: "GtkButton",
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("glibTypeName");
             expect(code).toContain('"GtkButton"');
         });
 
         it("includes objectType property when glibTypeName present", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 glibTypeName: "GtkButton",
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("objectType");
             expect(code).toContain('"gobject"');
         });
 
         it("generates methods for class", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 methods: [
                     createNormalizedMethod({
                         name: "get_label",
@@ -151,14 +143,14 @@ describe("ClassGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("getLabel");
         });
 
         it("generates static functions", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 staticFunctions: [
                     {
                         name: "get_default_direction",
@@ -170,55 +162,55 @@ describe("ClassGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("getDefaultDirection");
         });
 
         it("adds registerNativeClass call when glibTypeName present", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 name: "Button",
                 glibTypeName: "GtkButton",
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("registerNativeClass(Button)");
         });
     });
 
     describe("widget metadata", () => {
         it("returns widget meta for widget class", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator } = createTestSetup({
                 name: "Button",
                 parent: qualifiedName("Gtk", "Widget"),
             });
 
-            const result = generator.generateToSourceFile(sourceFile);
+            const result = generator.generate();
 
             expect(result.widgetMeta).not.toBeNull();
         });
 
         it("includes className in widget meta", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator } = createTestSetup({
                 name: "Button",
                 parent: qualifiedName("Gtk", "Widget"),
             });
 
-            const result = generator.generateToSourceFile(sourceFile);
+            const result = generator.generate();
 
             expect(result.widgetMeta?.className).toBe("Button");
         });
 
         it("includes namespace in widget meta", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator } = createTestSetup({
                 name: "Button",
                 parent: qualifiedName("Gtk", "Widget"),
             });
 
-            const result = generator.generateToSourceFile(sourceFile);
+            const result = generator.generate();
 
             expect(result.widgetMeta?.namespace).toBe("Gtk");
         });
@@ -226,7 +218,7 @@ describe("ClassGenerator", () => {
 
     describe("context updates", () => {
         it("sets usesCall when class has methods", () => {
-            const { generator, sourceFile, ctx } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 methods: [
                     createNormalizedMethod({
                         name: "get_value",
@@ -236,19 +228,19 @@ describe("ClassGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            expect(ctx.usesCall).toBe(true);
+            expect(stringify(file)).toContain("call");
         });
 
         it("sets usesRegisterNativeClass when class has glibTypeName", () => {
-            const { generator, sourceFile, ctx } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 glibTypeName: "GtkButton",
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            expect(ctx.usesRegisterNativeClass).toBe(true);
+            expect(stringify(file)).toContain("registerNativeClass");
         });
 
         it("sets usesNativeObject when class has no parent", () => {
@@ -261,17 +253,17 @@ describe("ClassGenerator", () => {
             gtkNs.classes.set("Widget", widgetClass);
             const namespaces = new Map([["Gtk", gtkNs]]);
 
-            const { generator, sourceFile, ctx } = createTestSetup({ parent: null }, namespaces);
+            const { generator, file } = createTestSetup({ parent: null }, namespaces);
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            expect(ctx.usesNativeObject).toBe(true);
+            expect(stringify(file)).toContain("NativeObject");
         });
     });
 
     describe("constructor generation", () => {
         it("generates constructor for class with constructors", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -282,14 +274,14 @@ describe("ClassGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("constructor");
         });
 
         it("generates factory methods for non-main constructors", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -311,54 +303,54 @@ describe("ClassGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("newWithLabel");
         });
     });
 
     describe("signal generation", () => {
         it("generates connect method when class has signals", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 signals: [createNormalizedSignal({ name: "clicked" })],
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("connect");
         });
 
         it("includes signal in WIDGET_META", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 signals: [createNormalizedSignal({ name: "clicked" })],
                 parent: qualifiedName("Gtk", "Widget"),
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("clicked");
         });
     });
 
     describe("JSDoc generation", () => {
         it("includes class documentation", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator, file } = createTestSetup({
                 doc: "A button widget for triggering actions",
             });
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("A button widget for triggering actions");
         });
     });
 
     describe("failure cases", () => {
         it("returns success true for class with GLib.Closure constructor", () => {
-            const { generator, sourceFile } = createTestSetup({
+            const { generator } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new_with_callback",
@@ -374,7 +366,7 @@ describe("ClassGenerator", () => {
                 ],
             });
 
-            const result = generator.generateToSourceFile(sourceFile);
+            const result = generator.generate();
 
             expect(result.success).toBe(true);
         });
@@ -400,11 +392,7 @@ describe("ClassGenerator", () => {
 
             const repo = createMockRepository(namespaces);
             const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GObject");
-            const ctx = new GenerationContext();
-            const writers = createWriters({
-                sharedLibrary: "libgobject-2.0.so.0",
-                glibLibrary: "libglib-2.0.so.0",
-            });
+            const psFile = fileBuilder();
             const options = {
                 namespace: "GObject",
                 sharedLibrary: "libgobject-2.0.so.0",
@@ -412,21 +400,17 @@ describe("ClassGenerator", () => {
                 gobjectLibrary: "libgobject-2.0.so.0",
             };
 
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "param-spec.ts");
-
             const generator = new ClassGenerator(
                 paramSpecClass,
                 ffiMapper,
-                ctx,
+                psFile,
                 repo as unknown as GirRepository,
-                writers,
                 options,
             );
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(psFile);
             expect(code).toContain('"fundamental"');
         });
     });
@@ -464,11 +448,7 @@ describe("ClassGenerator", () => {
 
             const repo = createMockRepository(namespaces);
             const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Adw");
-            const ctx = new GenerationContext();
-            const writers = createWriters({
-                sharedLibrary: "libadwaita-1.so.0",
-                glibLibrary: "libglib-2.0.so.0",
-            });
+            const adwFile = fileBuilder();
             const options = {
                 namespace: "Adw",
                 sharedLibrary: "libadwaita-1.so.0",
@@ -476,21 +456,17 @@ describe("ClassGenerator", () => {
                 gobjectLibrary: "libgobject-2.0.so.0",
             };
 
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "application-window.ts");
-
             const generator = new ClassGenerator(
                 adwWindowClass,
                 ffiMapper,
-                ctx,
+                adwFile,
                 repo as unknown as GirRepository,
-                writers,
                 options,
             );
 
-            generator.generateToSourceFile(sourceFile);
+            generator.generate();
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(adwFile);
             expect(code).toContain("extends Gtk.Window");
         });
     });

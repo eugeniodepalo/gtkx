@@ -6,9 +6,10 @@
  * instead of using callbacks.
  */
 
-import type { GirCallback, GirNamespace, GirParameter, GirRepository, GirType, QualifiedName } from "@gtkx/gir";
-import { isIntrinsicType, isStringType, parseQualifiedName } from "@gtkx/gir";
+import type { GirCallback, GirNamespace, GirParameter, GirRepository, GirType } from "@gtkx/gir";
+import { isIntrinsicType, isStringType } from "@gtkx/gir";
 import { normalizeClassName, toCamelCase, toPascalCase, toValidIdentifier } from "../utils/naming.js";
+import { splitQualifiedName } from "../utils/qualified-name.js";
 import {
     arrayType,
     boxedType,
@@ -317,7 +318,7 @@ export class FfiMapper {
 
         const qualifiedName = this.qualifyTypeName(param.type.name);
 
-        const callback = this.repo.resolveCallback(qualifiedName as QualifiedName);
+        const callback = this.repo.resolveCallback(qualifiedName);
         if (!callback) {
             return null;
         }
@@ -337,7 +338,7 @@ export class FfiMapper {
 
         const qualifiedName = this.qualifyTypeName(param.type.name);
 
-        const callback = this.repo.resolveCallback(qualifiedName as QualifiedName);
+        const callback = this.repo.resolveCallback(qualifiedName);
         if (!callback) {
             return null;
         }
@@ -364,7 +365,7 @@ export class FfiMapper {
      */
     isCallback(typeName: string): boolean {
         if (typeName.includes(".")) {
-            const { namespace, name } = parseQualifiedName(typeName as QualifiedName);
+            const { namespace, name } = splitQualifiedName(typeName);
             const ns = this.repo.getNamespace(namespace);
             return ns?.callbacks.has(name) ?? false;
         }
@@ -476,7 +477,7 @@ export class FfiMapper {
                 return this.resolveFromNamespace(ns, targetTypeName, namespace, isExternal);
             }
             if (typeof targetTypeName === "string" && targetTypeName.includes(".")) {
-                return this.resolveQualifiedType(targetTypeName as QualifiedName);
+                return this.resolveQualifiedType(targetTypeName);
             }
         }
 
@@ -489,7 +490,7 @@ export class FfiMapper {
         }
 
         if (typeName.includes(".")) {
-            return this.resolveQualifiedType(typeName as QualifiedName);
+            return this.resolveQualifiedType(typeName);
         }
 
         const ns = this.repo.getNamespace(this.currentNamespace);
@@ -508,8 +509,8 @@ export class FfiMapper {
         return null;
     }
 
-    private resolveQualifiedType(qualifiedName: QualifiedName): ResolvedType | null {
-        const { namespace, name } = parseQualifiedName(qualifiedName);
+    private resolveQualifiedType(qualifiedName: string): ResolvedType | null {
+        const { namespace, name } = splitQualifiedName(qualifiedName);
         const ns = this.repo.getNamespace(namespace);
         if (!ns) return null;
 
@@ -668,7 +669,7 @@ export class FfiMapper {
     }
 
     private mapCallback(qualifiedName: string, imports: TypeImport[]): MappedType | null {
-        const callback = this.repo.resolveCallback(qualifiedName as QualifiedName);
+        const callback = this.repo.resolveCallback(qualifiedName);
         if (!callback) {
             return null;
         }

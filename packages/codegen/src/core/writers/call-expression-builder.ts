@@ -2,12 +2,11 @@
  * Call Expression Builder
  *
  * Builds FFI call() expressions for code generation.
- * Uses ts-morph WriterFunction for optimal AST construction.
+ * Uses our Writer for streaming code output.
  */
 
-import { type WriterFunction, Writers } from "ts-morph";
+import type { Writer } from "../../builders/writer.js";
 import type { FfiTypeDescriptor, MappedType } from "../type-system/ffi-types.js";
-import { FfiTypeWriter } from "./ffi-type-writer.js";
 
 /**
  * Callback wrapper info for generating wrapped callback arguments.
@@ -15,7 +14,7 @@ import { FfiTypeWriter } from "./ffi-type-writer.js";
 export type CallbackWrapperInfo = {
     paramName: string;
     wrappedName: string;
-    wrapExpression: WriterFunction;
+    wrapExpression: (writer: Writer) => void;
     isOptional: boolean;
 };
 
@@ -57,40 +56,34 @@ export type CallExpressionOptions = {
 /**
  * Builds FFI call() expressions.
  *
- * Uses ts-morph WriterFunction for optimal AST construction.
+ * Uses our Writer for streaming code output.
  *
  * @example
  * ```typescript
  * const builder = new CallExpressionBuilder();
  *
- * // ts-morph WriterFunction
- * const writer = builder.toWriter({
+ * const writerFn = builder.toWriter({
  *   sharedLibrary: "libgtk-4.so.1",
  *   cIdentifier: "gtk_button_set_label",
  *   args: [{ type: { type: "string" }, value: "label" }],
  *   returnType: { type: "void" },
  *   selfArg: { type: { type: "gobject" }, value: "this.handle" },
  * });
+ * writerFn(writer);
  * ```
  */
 export class CallExpressionBuilder {
-    private ffiTypeWriter: FfiTypeWriter;
-
-    constructor(ffiTypeWriter?: FfiTypeWriter) {
-        this.ffiTypeWriter = ffiTypeWriter ?? new FfiTypeWriter();
-    }
-
     /**
-     * Builds a call expression as a ts-morph WriterFunction.
+     * Builds a call expression as a writer function.
      *
      * @param options - Call expression options
-     * @returns WriterFunction that writes the call expression
+     * @returns Function that writes the call expression to a Writer
      */
-    toWriter(options: CallExpressionOptions): WriterFunction {
+    toWriter(options: CallExpressionOptions): (writer: Writer) => void {
         return (writer) => {
             writer.write("call(");
             writer.newLine();
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine(`"${options.sharedLibrary}",`);
                 writer.writeLine(`"${options.cIdentifier}",`);
                 writer.write("[");
@@ -98,7 +91,7 @@ export class CallExpressionBuilder {
                 const hasContent = allArgs.length > 0 || options.hasVarargs;
                 if (hasContent) {
                     writer.newLine();
-                    writer.indent(() => {
+                    writer.withIndent(() => {
                         allArgs.forEach((arg, index) => {
                             this.writeArgument(writer, arg);
                             if (index < allArgs.length - 1 || options.hasVarargs) {
@@ -112,7 +105,7 @@ export class CallExpressionBuilder {
                     });
                 }
                 writer.writeLine("],");
-                this.ffiTypeWriter.toWriter(options.returnType)(writer);
+                writer.write(JSON.stringify(options.returnType));
                 writer.newLine();
             });
             writer.write(")");
@@ -172,24 +165,14 @@ export class CallExpressionBuilder {
     }
 
     /**
-     * Builds an error argument as WriterFunction.
-     */
-    errorArgumentWriter(): WriterFunction {
-        return Writers.object({
-            type: this.ffiTypeWriter.errorArgumentWriter(),
-            value: "error",
-        });
-    }
-
-    /**
-     * Builds error checking code as WriterFunction.
+     * Builds error checking code as a writer function.
      *
      * @param gerrorRef - The GError class reference (e.g., "GLib.GError" or "GError")
      */
-    errorCheckWriter(gerrorRef = "GLib.GError"): WriterFunction {
+    errorCheckWriter(gerrorRef = "GLib.GError"): (writer: Writer) => void {
         return (writer) => {
             writer.writeLine("if (error.value !== null) {");
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine(`throw new NativeError(getNativeObject(error.value as NativeHandle, ${gerrorRef}));`);
             });
             writer.writeLine("}");
@@ -215,16 +198,11 @@ export class CallExpressionBuilder {
         return allArgs;
     }
 
-    private writeArgument(
-        writer: ReturnType<typeof Writers.object> extends (w: infer W) => void ? W : never,
-        arg: { type: FfiTypeDescriptor; value: string; optional?: boolean },
-    ): void {
+    private writeArgument(writer: Writer, arg: { type: FfiTypeDescriptor; value: string; optional?: boolean }): void {
         writer.write("{");
         writer.newLine();
-        writer.indent(() => {
-            writer.write("type: ");
-            this.ffiTypeWriter.toWriter(arg.type)(writer as never);
-            writer.writeLine(",");
+        writer.withIndent(() => {
+            writer.writeLine(`type: ${JSON.stringify(arg.type)},`);
             writer.write(`value: ${arg.value}`);
             if (arg.optional) {
                 writer.writeLine(",");

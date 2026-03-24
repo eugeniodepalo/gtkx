@@ -1,14 +1,13 @@
 /**
  * Codegen Metadata
  *
- * WeakMap-based metadata storage for attaching codegen-only data to SourceFiles.
+ * Map-based metadata storage for attaching codegen-only data to file paths.
  * This data is used during generation but NOT written to generated files.
  *
  * The FFI generator populates metadata during generation, and React generators
  * consume it without needing to access @gtkx/gir or re-parse generated code.
  */
 
-import type { SourceFile } from "ts-morph";
 import type { PropertyAnalysis, SignalAnalysis } from "./generator-types.js";
 
 /**
@@ -60,27 +59,26 @@ export type CodegenWidgetMeta = CodegenClassMeta & {
 };
 
 /**
- * Manages codegen-only metadata attached to SourceFiles.
+ * Manages codegen-only metadata keyed by file path strings.
  *
  * Metadata is populated by FfiGenerator and consumed by React generators.
- * Since codegen is a short-lived process, we use a simple Map for storage.
  */
 export class CodegenMetadata {
-    private readonly widgetMeta = new Map<SourceFile, CodegenWidgetMeta>();
-    private readonly controllerMeta = new Map<SourceFile, CodegenControllerMeta>();
+    private readonly widgetMeta = new Map<string, CodegenWidgetMeta>();
+    private readonly controllerMeta = new Map<string, CodegenControllerMeta>();
 
     /**
-     * Attaches widget metadata to a SourceFile.
+     * Attaches widget metadata to a file path.
      */
-    setWidgetMeta(sourceFile: SourceFile, meta: CodegenWidgetMeta): void {
-        this.widgetMeta.set(sourceFile, meta);
+    setWidgetMeta(path: string, meta: CodegenWidgetMeta): void {
+        this.widgetMeta.set(path, meta);
     }
 
     /**
-     * Gets widget metadata for a SourceFile.
+     * Gets widget metadata for a file path.
      */
-    getWidgetMeta(sourceFile: SourceFile): CodegenWidgetMeta | null {
-        return this.widgetMeta.get(sourceFile) ?? null;
+    getWidgetMeta(path: string): CodegenWidgetMeta | null {
+        return this.widgetMeta.get(path) ?? null;
     }
 
     /**
@@ -91,17 +89,17 @@ export class CodegenMetadata {
     }
 
     /**
-     * Attaches controller metadata to a SourceFile.
+     * Attaches controller metadata to a file path.
      */
-    setControllerMeta(sourceFile: SourceFile, meta: CodegenControllerMeta): void {
-        this.controllerMeta.set(sourceFile, meta);
+    setControllerMeta(path: string, meta: CodegenControllerMeta): void {
+        this.controllerMeta.set(path, meta);
     }
 
     /**
-     * Gets controller metadata for a SourceFile.
+     * Gets controller metadata for a file path.
      */
-    getControllerMeta(sourceFile: SourceFile): CodegenControllerMeta | null {
-        return this.controllerMeta.get(sourceFile) ?? null;
+    getControllerMeta(path: string): CodegenControllerMeta | null {
+        return this.controllerMeta.get(path) ?? null;
     }
 
     /**

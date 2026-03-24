@@ -1,7 +1,14 @@
-import type { GirClass, GirProperty, GirRepository, QualifiedName } from "@gtkx/gir";
-import type { MethodDeclarationStructure, WriterFunction } from "ts-morph";
-import { StructureKind } from "ts-morph";
-import type { GenerationContext } from "../../../core/generation-context.js";
+/**
+ * Property Getter Builder
+ *
+ * Generates synthetic getter methods for readable GObject properties
+ * that don't have explicit getter methods defined in the GIR.
+ *
+ * These getters use g_object_get_property with properly typed GValues.
+ */
+
+import type { GirClass, GirProperty, GirRepository } from "@gtkx/gir";
+import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { getSyntheticGetterPrimitiveInfo, type MappedType } from "../../../core/type-system/ffi-types.js";
@@ -13,6 +20,7 @@ import {
 } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { createGetterName, toCamelCase } from "../../../core/utils/naming.js";
+import type { ImportCollector, MethodStructure } from "../../../core/writers/index.js";
 
 export class PropertyGetterBuilder {
     private readonly existingMethodNames: Set<string>;
@@ -20,7 +28,7 @@ export class PropertyGetterBuilder {
     constructor(
         private readonly cls: GirClass,
         private readonly ffiMapper: FfiMapper,
-        private readonly ctx: GenerationContext,
+        private readonly imports: ImportCollector,
         private readonly repository: GirRepository,
         private readonly options: FfiGeneratorOptions,
     ) {
@@ -30,11 +38,11 @@ export class PropertyGetterBuilder {
         }
     }
 
-    buildStructures(): MethodDeclarationStructure[] {
+    buildStructures(): MethodStructure[] {
         const propertiesNeedingSyntheticGetters = this.collectPropertiesNeedingSyntheticGetters();
         return propertiesNeedingSyntheticGetters
             .map((prop) => this.buildGetterStructure(prop))
-            .filter((s): s is MethodDeclarationStructure => s !== null);
+            .filter((s): s is MethodStructure => s !== null);
     }
 
     private collectPropertiesNeedingSyntheticGetters(): GirProperty[] {
@@ -58,7 +66,7 @@ export class PropertyGetterBuilder {
         });
     }
 
-    private buildGetterStructure(prop: GirProperty): MethodDeclarationStructure | null {
+    private buildGetterStructure(prop: GirProperty): MethodStructure | null {
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
         const gvalueGetterInfo = this.getGValueGetterInfo(prop, typeMapping);
 
@@ -77,10 +85,15 @@ export class PropertyGetterBuilder {
             returnType = `${returnType} | null`;
         }
 
-        this.ctx.addTypeImports(typeMapping.imports);
+        for (const imp of typeMapping.imports) {
+            if (imp.isExternal) {
+                this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
+            } else {
+                this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+            }
+        }
 
         return {
-            kind: StructureKind.Method,
             name: methodName,
             parameters: [],
             returnType,
@@ -128,7 +141,7 @@ export class PropertyGetterBuilder {
 
     private getFundamentalClassGetterInfo(typeName: string, typeMapping: MappedType): GValueGetterInfo | null {
         const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
-        const cls = this.repository.resolveClass(qualifiedName as QualifiedName);
+        const cls = this.repository.resolveClass(qualifiedName);
         if (!cls?.fundamental) return null;
 
         if (cls.refFunc === "g_variant_ref_sink") {
@@ -158,7 +171,7 @@ export class PropertyGetterBuilder {
 
         if (typeMapping.ffi.type === "fundamental") {
             const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
-            const record = this.repository.resolveRecord(qualifiedName as QualifiedName);
+            const record = this.repository.resolveRecord(qualifiedName);
             if (record?.glibTypeName) {
                 return {
                     gtypeName: record.glibTypeName,
@@ -172,12 +185,22 @@ export class PropertyGetterBuilder {
         return null;
     }
 
-    private writeGetterBody(propertyName: string, getterInfo: GValueGetterInfo, returnType: string): WriterFunction {
-        this.ctx.usesCall = true;
-        this.ctx.usesSyntheticPropertyGetter = true;
+    private writeGetterBody(
+        propertyName: string,
+        getterInfo: GValueGetterInfo,
+        returnType: string,
+    ): (writer: Writer) => void {
+        this.imports.addImport("../../native.js", ["call"]);
 
         const isGObjectNamespace = this.options.namespace === "GObject";
         const gobjectPrefix = isGObjectNamespace ? "" : "GObject.";
+
+        if (isGObjectNamespace) {
+            this.imports.addImport("./value.js", ["Value"]);
+            this.imports.addImport("./functions.js", ["typeFromName"]);
+        } else {
+            this.imports.addImport("../gobject/index.js", ["GObject"]);
+        }
 
         return (writer) => {
             writer.writeLine(`const gvalue = new ${gobjectPrefix}Value();`);
@@ -189,11 +212,11 @@ export class PropertyGetterBuilder {
             }
 
             writer.writeLine("call(");
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine(`"libgobject-2.0.so.0",`);
                 writer.writeLine(`"g_object_get_property",`);
                 writer.writeLine("[");
-                writer.indent(() => {
+                writer.withIndent(() => {
                     writer.writeLine(`{ type: { type: "gobject", ownership: "borrowed" }, value: this.handle },`);
                     writer.writeLine(`{ type: { type: "string", ownership: "borrowed" }, value: "${propertyName}" },`);
                     writer.writeLine(

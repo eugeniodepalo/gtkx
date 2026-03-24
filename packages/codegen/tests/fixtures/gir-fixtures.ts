@@ -15,8 +15,20 @@ import {
     GirRecord,
     GirSignal,
     GirType,
-    qualifiedName,
+    type RepositoryLike,
 } from "@gtkx/gir";
+
+function qualifiedName(ns: string, name: string): string {
+    return `${ns}.${name}`;
+}
+
+export type { RepositoryLike };
+
+export const NULL_REPO: RepositoryLike = {
+    resolveClass: () => null,
+    resolveInterface: () => null,
+    findClasses: () => [],
+};
 
 type NormalizedTypeData = ConstructorParameters<typeof GirType>[0];
 type NormalizedParameterData = ConstructorParameters<typeof GirParameter>[0];
@@ -116,42 +128,54 @@ export function createNormalizedFunction(overrides: Partial<NormalizedFunctionDa
     });
 }
 
-export function createNormalizedClass(overrides: Partial<NormalizedClassData> = {}): GirClass {
+export function createNormalizedClass(
+    overrides: Partial<NormalizedClassData> = {},
+    repo: RepositoryLike = NULL_REPO,
+): GirClass {
     const name = overrides.name ?? "Button";
     const namespace = overrides.qualifiedName?.split(".")[0] ?? "Gtk";
 
-    return new GirClass({
-        name,
-        qualifiedName: qualifiedName(namespace, name),
-        cType: `${namespace}${name}`,
-        parent: qualifiedName("Gtk", "Widget"),
-        abstract: false,
-        glibTypeName: `${namespace}${name}`,
-        glibGetType: `${namespace.toLowerCase()}_${name.toLowerCase()}_get_type`,
-        implements: [],
-        methods: [],
-        constructors: [],
-        staticFunctions: [],
-        properties: [],
-        signals: [],
-        ...overrides,
-    });
+    return new GirClass(
+        {
+            name,
+            qualifiedName: qualifiedName(namespace, name),
+            cType: `${namespace}${name}`,
+            parent: qualifiedName("Gtk", "Widget"),
+            abstract: false,
+            glibTypeName: `${namespace}${name}`,
+            glibGetType: `${namespace.toLowerCase()}_${name.toLowerCase()}_get_type`,
+            implements: [],
+            methods: [],
+            constructors: [],
+            staticFunctions: [],
+            properties: [],
+            signals: [],
+            ...overrides,
+        },
+        repo,
+    );
 }
 
-export function createNormalizedInterface(overrides: Partial<NormalizedInterfaceData> = {}): GirInterface {
+export function createNormalizedInterface(
+    overrides: Partial<NormalizedInterfaceData> = {},
+    repo: RepositoryLike = NULL_REPO,
+): GirInterface {
     const name = overrides.name ?? "Orientable";
     const namespace = overrides.qualifiedName?.split(".")[0] ?? "Gtk";
 
-    return new GirInterface({
-        name,
-        qualifiedName: qualifiedName(namespace, name),
-        cType: `${namespace}${name}`,
-        prerequisites: [],
-        methods: [],
-        properties: [],
-        signals: [],
-        ...overrides,
-    });
+    return new GirInterface(
+        {
+            name,
+            qualifiedName: qualifiedName(namespace, name),
+            cType: `${namespace}${name}`,
+            prerequisites: [],
+            methods: [],
+            properties: [],
+            signals: [],
+            ...overrides,
+        },
+        repo,
+    );
 }
 
 export function createNormalizedField(overrides: Partial<NormalizedFieldData> = {}): GirField {
@@ -258,67 +282,79 @@ export function createNormalizedNamespace(overrides: Partial<NormalizedNamespace
     });
 }
 
-export function createWidgetClass(overrides: Partial<NormalizedClassData> = {}): GirClass {
-    return createNormalizedClass({
-        name: "Widget",
-        qualifiedName: qualifiedName("Gtk", "Widget"),
-        cType: "GtkWidget",
-        parent: qualifiedName("GObject", "InitiallyUnowned"),
-        glibTypeName: "GtkWidget",
-        glibGetType: "gtk_widget_get_type",
-        properties: [
-            createNormalizedProperty({ name: "visible", type: createNormalizedType({ name: "gboolean" }) }),
-            createNormalizedProperty({ name: "sensitive", type: createNormalizedType({ name: "gboolean" }) }),
-            createNormalizedProperty({ name: "can-focus", type: createNormalizedType({ name: "gboolean" }) }),
-        ],
-        signals: [createNormalizedSignal({ name: "destroy" }), createNormalizedSignal({ name: "show" })],
-        ...overrides,
-    });
+export function createWidgetClass(
+    overrides: Partial<NormalizedClassData> = {},
+    repo: RepositoryLike = NULL_REPO,
+): GirClass {
+    return createNormalizedClass(
+        {
+            name: "Widget",
+            qualifiedName: qualifiedName("Gtk", "Widget"),
+            cType: "GtkWidget",
+            parent: qualifiedName("GObject", "InitiallyUnowned"),
+            glibTypeName: "GtkWidget",
+            glibGetType: "gtk_widget_get_type",
+            properties: [
+                createNormalizedProperty({ name: "visible", type: createNormalizedType({ name: "gboolean" }) }),
+                createNormalizedProperty({ name: "sensitive", type: createNormalizedType({ name: "gboolean" }) }),
+                createNormalizedProperty({ name: "can-focus", type: createNormalizedType({ name: "gboolean" }) }),
+            ],
+            signals: [createNormalizedSignal({ name: "destroy" }), createNormalizedSignal({ name: "show" })],
+            ...overrides,
+        },
+        repo,
+    );
 }
 
-export function createButtonClass(overrides: Partial<NormalizedClassData> = {}): GirClass {
-    return createNormalizedClass({
-        name: "Button",
-        qualifiedName: qualifiedName("Gtk", "Button"),
-        cType: "GtkButton",
-        parent: qualifiedName("Gtk", "Widget"),
-        glibTypeName: "GtkButton",
-        glibGetType: "gtk_button_get_type",
-        properties: [
-            createNormalizedProperty({ name: "label", type: createNormalizedType({ name: "utf8" }) }),
-            createNormalizedProperty({
-                name: "icon-name",
-                type: createNormalizedType({ name: "utf8", nullable: true }),
-            }),
-        ],
-        signals: [createNormalizedSignal({ name: "clicked" }), createNormalizedSignal({ name: "activate" })],
-        constructors: [
-            createNormalizedConstructor({ name: "new", cIdentifier: "gtk_button_new" }),
-            createNormalizedConstructor({
-                name: "new_with_label",
-                cIdentifier: "gtk_button_new_with_label",
-                parameters: [
-                    createNormalizedParameter({ name: "label", type: createNormalizedType({ name: "utf8" }) }),
-                ],
-            }),
-        ],
-        methods: [
-            createNormalizedMethod({
-                name: "get_label",
-                cIdentifier: "gtk_button_get_label",
-                returnType: createNormalizedType({ name: "utf8", nullable: true }),
-            }),
-            createNormalizedMethod({
-                name: "set_label",
-                cIdentifier: "gtk_button_set_label",
-                parameters: [
-                    createNormalizedParameter({
-                        name: "label",
-                        type: createNormalizedType({ name: "utf8", nullable: true }),
-                    }),
-                ],
-            }),
-        ],
-        ...overrides,
-    });
+export function createButtonClass(
+    overrides: Partial<NormalizedClassData> = {},
+    repo: RepositoryLike = NULL_REPO,
+): GirClass {
+    return createNormalizedClass(
+        {
+            name: "Button",
+            qualifiedName: qualifiedName("Gtk", "Button"),
+            cType: "GtkButton",
+            parent: qualifiedName("Gtk", "Widget"),
+            glibTypeName: "GtkButton",
+            glibGetType: "gtk_button_get_type",
+            properties: [
+                createNormalizedProperty({ name: "label", type: createNormalizedType({ name: "utf8" }) }),
+                createNormalizedProperty({
+                    name: "icon-name",
+                    type: createNormalizedType({ name: "utf8", nullable: true }),
+                }),
+            ],
+            signals: [createNormalizedSignal({ name: "clicked" }), createNormalizedSignal({ name: "activate" })],
+            constructors: [
+                createNormalizedConstructor({ name: "new", cIdentifier: "gtk_button_new" }),
+                createNormalizedConstructor({
+                    name: "new_with_label",
+                    cIdentifier: "gtk_button_new_with_label",
+                    parameters: [
+                        createNormalizedParameter({ name: "label", type: createNormalizedType({ name: "utf8" }) }),
+                    ],
+                }),
+            ],
+            methods: [
+                createNormalizedMethod({
+                    name: "get_label",
+                    cIdentifier: "gtk_button_get_label",
+                    returnType: createNormalizedType({ name: "utf8", nullable: true }),
+                }),
+                createNormalizedMethod({
+                    name: "set_label",
+                    cIdentifier: "gtk_button_set_label",
+                    parameters: [
+                        createNormalizedParameter({
+                            name: "label",
+                            type: createNormalizedType({ name: "utf8", nullable: true }),
+                        }),
+                    ],
+                }),
+            ],
+            ...overrides,
+        },
+        repo,
+    );
 }

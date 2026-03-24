@@ -4,14 +4,14 @@
  * Shared utilities for traversing class hierarchies.
  */
 
-import type { GirClass, GirInterface, GirRepository, QualifiedName } from "@gtkx/gir";
+import type { GirClass, GirInterface, GirRepository } from "@gtkx/gir";
 import { toCamelCase } from "./naming.js";
 
 /**
  * Collects interfaces implemented by all parent classes.
  */
-function collectParentInterfaces(cls: GirClass): Set<QualifiedName> {
-    const interfaces = new Set<QualifiedName>();
+function collectParentInterfaces(cls: GirClass): Set<string> {
+    const interfaces = new Set<string>();
 
     let current = cls.getParent();
     while (current) {
@@ -181,7 +181,7 @@ type CollectDirectMembersOptions<T extends { name: string }> = {
  */
 export function collectGObjectMethodNames(repo: GirRepository): Set<string> {
     const names = new Set<string>();
-    const gobjectClass = repo.resolveClass("GObject.Object" as QualifiedName);
+    const gobjectClass = repo.resolveClass("GObject.Object");
     if (gobjectClass) {
         for (const method of gobjectClass.methods) {
             names.add(toCamelCase(method.name));

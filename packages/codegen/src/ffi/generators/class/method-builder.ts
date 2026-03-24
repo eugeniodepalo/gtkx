@@ -1,13 +1,11 @@
 /**
  * Method Builder
  *
- * Builds instance method code for classes using ts-morph AST.
+ * Builds instance method code for classes.
  */
 
 import type { GirConstructor, GirMethod, GirParameter } from "@gtkx/gir";
-import type { MethodDeclarationStructure, WriterFunction } from "ts-morph";
-import { StructureKind } from "ts-morph";
-import type { GenerationContext } from "../../../core/generation-context.js";
+import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import type { MappedType, SelfTypeDescriptor } from "../../../core/type-system/ffi-types.js";
@@ -16,7 +14,12 @@ import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { isMethodDuplicate } from "../../../core/utils/filtering.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
 import { formatNullableReturn } from "../../../core/utils/type-qualification.js";
-import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
+import {
+    createMethodBodyWriter,
+    type ImportCollector,
+    type MethodBodyWriter,
+    type MethodStructure,
+} from "../../../core/writers/index.js";
 import type { ConstructorSelection } from "../../../core/writers/method-body-writer.js";
 
 /**
@@ -27,11 +30,14 @@ export class MethodBuilder {
 
     constructor(
         private readonly ffiMapper: FfiMapper,
-        private readonly ctx: GenerationContext,
-        writers: Writers,
+        private readonly imports: ImportCollector,
+        private readonly methodRenames: Map<string, string>,
         private readonly options: FfiGeneratorOptions,
     ) {
-        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
+        this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
+            sharedLibrary: options.sharedLibrary,
+            glibLibrary: options.glibLibrary,
+        });
     }
 
     /**
@@ -41,23 +47,16 @@ export class MethodBuilder {
      * @param methods - The methods to build structures for
      * @param selfTypeDescriptor - The self type descriptor for instance methods
      * @param asyncAnalysis - Pre-computed async analysis (optional, computed if not provided)
-     * @returns Array of method declaration structures
-     *
-     * @example
-     * ```typescript
-     * const builder = new MethodBuilder(ffiMapper, ctx, builders, options);
-     * const structures = builder.buildStructures(cls.methods, SELF_TYPE_GOBJECT);
-     * classDecl.addMethods(structures);
-     * ```
+     * @returns Array of method structures
      */
     buildStructures(
         methods: readonly GirMethod[],
         selfTypeDescriptor: SelfTypeDescriptor,
         asyncAnalysis?: AsyncMethodAnalysis,
-    ): MethodDeclarationStructure[] {
+    ): MethodStructure[] {
         const seen = new Set<string>();
         const { asyncMethods, finishMethods, asyncPairs } = asyncAnalysis ?? analyzeAsyncMethods(methods);
-        const methodStructures: MethodDeclarationStructure[] = [];
+        const methodStructures: MethodStructure[] = [];
 
         for (const method of methods) {
             if (isMethodDuplicate(method.name, method.cIdentifier, seen)) continue;
@@ -86,12 +85,9 @@ export class MethodBuilder {
         return methodStructures;
     }
 
-    private buildMethodStructure(
-        method: GirMethod,
-        selfTypeDescriptor: SelfTypeDescriptor,
-    ): MethodDeclarationStructure {
+    private buildMethodStructure(method: GirMethod, selfTypeDescriptor: SelfTypeDescriptor): MethodStructure {
         return this.methodBody.buildMethodStructure(method, {
-            methodName: this.methodBody.resolveMethodName(method),
+            methodName: this.methodBody.resolveMethodName(method, this.methodRenames),
             selfTypeDescriptor,
             sharedLibrary: this.options.sharedLibrary,
             namespace: this.options.namespace,
@@ -130,7 +126,7 @@ export class MethodBuilder {
         asyncMethod: GirMethod,
         finishMethod: GirMethod,
         selfTypeDescriptor: SelfTypeDescriptor,
-    ): MethodDeclarationStructure {
+    ): MethodStructure {
         const baseName = asyncMethod.name.replace(/_async$/, "");
         const methodName = `${toCamelCase(baseName)}Async`;
 
@@ -142,13 +138,12 @@ export class MethodBuilder {
             true,
             finishMethod.returnType.transferOwnership,
         );
-        this.ctx.addTypeImports(returnTypeMapping.imports);
+        this.imports.addImport("../../native-object.js", ["getNativeObject"]);
 
         const innerReturnType = formatNullableReturn(returnTypeMapping.ts, finishMethod.returnType.nullable === true);
         const promiseReturnType = `Promise<${innerReturnType}>`;
 
         return {
-            kind: StructureKind.Method,
             name: methodName,
             parameters: params,
             returnType: promiseReturnType,
@@ -194,7 +189,7 @@ export class MethodBuilder {
     }
 
     /**
-     * Writes the async wrapper method body using ts-morph WriterFunction.
+     * Writes the async wrapper method body.
      */
     private writeAsyncWrapperBody(
         asyncMethod: GirMethod,
@@ -202,8 +197,8 @@ export class MethodBuilder {
         asyncParams: readonly GirParameter[],
         returnTypeMapping: MappedType,
         selfTypeDescriptor: SelfTypeDescriptor,
-    ): WriterFunction {
-        this.ctx.usesCall = true;
+    ): (writer: Writer) => void {
+        this.imports.addImport("../../native.js", ["call"]);
 
         const hasReturnValue = returnTypeMapping.ts !== "void";
         const wrapInfo = this.methodBody.needsObjectWrap(returnTypeMapping);
@@ -213,30 +208,30 @@ export class MethodBuilder {
         return (writer) => {
             const rejectParam = finishMethod.throws ? "reject" : "_reject";
             writer.writeLine(`return new Promise((resolve, ${rejectParam}) => {`);
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine("call(");
-                writer.indent(() => {
+                writer.withIndent(() => {
                     writer.writeLine(`"${this.options.sharedLibrary}",`);
                     writer.writeLine(`"${asyncMethod.cIdentifier}",`);
                     writer.writeLine("[");
-                    writer.indent(() => {
+                    writer.withIndent(() => {
                         writer.write("{ type: ");
-                        this.methodBody.getFfiTypeWriter().toWriter(selfTypeDescriptor)(writer);
+                        writer.write(JSON.stringify(selfTypeDescriptor));
                         writer.writeLine(", value: this.handle },");
 
                         const asyncArgs = this.methodBody.buildCallArgumentsArray(asyncParams, 1);
                         this.methodBody.writeArgumentsToWriter(writer, asyncArgs);
 
                         writer.writeLine("{");
-                        writer.indent(() => {
+                        writer.withIndent(() => {
                             writer.writeLine(
                                 'type: { type: "trampoline", argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "gobject", ownership: "borrowed" }, { type: "uint64" }], returnType: { type: "void" }, userDataIndex: 2, scope: "async" },',
                             );
                             writer.writeLine("value: (_source: unknown, result: unknown) => {");
-                            writer.indent(() => {
+                            writer.withIndent(() => {
                                 if (finishMethod.throws) {
-                                    this.ctx.usesCreateRef = true;
-                                    this.ctx.usesNativeHandle = true;
+                                    this.imports.addImport("@gtkx/native", ["createRef"]);
+                                    this.imports.addTypeImport("@gtkx/native", ["NativeHandle"]);
                                     writer.writeLine("const error = createRef<NativeHandle | null>(null);");
                                 }
 
@@ -246,25 +241,29 @@ export class MethodBuilder {
                                     writer.write("call(");
                                 }
                                 writer.newLine();
-                                writer.indent(() => {
+                                writer.withIndent(() => {
                                     writer.writeLine(`"${this.options.sharedLibrary}",`);
                                     writer.writeLine(`"${finishMethod.cIdentifier}",`);
                                     writer.writeLine("[");
-                                    writer.indent(() => {
+                                    writer.withIndent(() => {
                                         writer.write("{ type: ");
-                                        this.methodBody.getFfiTypeWriter().toWriter(selfTypeDescriptor)(writer);
+                                        writer.write(JSON.stringify(selfTypeDescriptor));
                                         writer.writeLine(", value: this.handle },");
                                         writer.writeLine(
                                             '{ type: { type: "gobject", ownership: "borrowed" }, value: result },',
                                         );
                                         if (finishMethod.throws) {
                                             writer.write("{ type: ");
-                                            this.methodBody.getFfiTypeWriter().errorArgumentWriter()(writer);
+                                            writer.write(
+                                                JSON.stringify(
+                                                    this.methodBody.getFfiTypeWriter().createGErrorRefTypeDescriptor(),
+                                                ),
+                                            );
                                             writer.writeLine(", value: error },");
                                         }
                                     });
                                     writer.writeLine("],");
-                                    this.methodBody.getFfiTypeWriter().toWriter(returnTypeMapping.ffi)(writer);
+                                    writer.write(JSON.stringify(returnTypeMapping.ffi));
                                     writer.newLine();
                                 });
 
@@ -281,7 +280,7 @@ export class MethodBuilder {
                                 if (finishMethod.throws) {
                                     const gerrorRef = this.methodBody.setupGErrorImports();
                                     writer.writeLine("if (error.value !== null) {");
-                                    writer.indent(() => {
+                                    writer.withIndent(() => {
                                         writer.writeLine(
                                             `reject(new NativeError(getNativeObject(error.value, ${gerrorRef})));`,
                                         );
@@ -294,13 +293,13 @@ export class MethodBuilder {
                                     if (wrapInfo.needsWrap) {
                                         if (isNullable) {
                                             writer.writeLine("if (ptr === null) {");
-                                            writer.indent(() => {
+                                            writer.withIndent(() => {
                                                 writer.writeLine("resolve(null);");
                                                 writer.writeLine("return;");
                                             });
                                             writer.writeLine("}");
                                         }
-                                        this.ctx.usesGetNativeObject = true;
+                                        this.imports.addImport("../../native-object.js", ["getNativeObject"]);
                                         if (
                                             wrapInfo.needsBoxedWrap ||
                                             wrapInfo.needsFundamentalWrap ||

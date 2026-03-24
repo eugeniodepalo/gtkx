@@ -1,6 +1,6 @@
-import { type QualifiedName, qualifiedName } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
 import { parseParentReference } from "../../../src/core/utils/parent-reference.js";
+import { qualifiedName } from "../../fixtures/gir-fixtures.js";
 
 describe("parseParentReference", () => {
     describe("with no parent", () => {
@@ -94,7 +94,7 @@ describe("parseParentReference", () => {
 
     describe("with string parent", () => {
         it("parses string parent as qualified name", () => {
-            const result = parseParentReference("Gtk.Widget" as QualifiedName, "Gtk");
+            const result = parseParentReference("Gtk.Widget", "Gtk");
             expect(result.hasParent).toBe(true);
             expect(result.className).toBe("Widget");
         });

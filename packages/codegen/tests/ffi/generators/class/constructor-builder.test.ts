@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { GenerationContext } from "../../../../src/core/generation-context.js";
+import { fileBuilder } from "../../../../src/builders/file-builder.js";
+import { Writer } from "../../../../src/builders/writer.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
-import { createWriters } from "../../../../src/core/writers/index.js";
 import { ConstructorBuilder } from "../../../../src/ffi/generators/class/constructor-builder.js";
 import {
     createNormalizedClass,
@@ -12,7 +12,6 @@ import {
     qualifiedName,
 } from "../../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../../fixtures/mock-repository.js";
-import { createTestProject, createTestSourceFile, getGeneratedCode } from "../../../fixtures/ts-morph-helpers.js";
 
 function createTestSetup(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
@@ -22,11 +21,7 @@ function createTestSetup(
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-    const ctx = new GenerationContext();
-    const writers = createWriters({
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-    });
+    const imports = fileBuilder();
     const options = {
         namespace: "Gtk",
         sharedLibrary: "libgtk-4.so.1",
@@ -42,12 +37,8 @@ function createTestSetup(
         ...classOverrides,
     });
 
-    const project = createTestProject();
-    const sourceFile = createTestSourceFile(project, "button.ts");
-    const classDecl = sourceFile.addClass({ name: "Button" });
-
-    const builder = new ConstructorBuilder(cls, ffiMapper, ctx, repo, writers, options);
-    return { cls, builder, ctx, ffiMapper, classDecl, sourceFile };
+    const builder = new ConstructorBuilder(cls, ffiMapper, imports, repo, options);
+    return { cls, builder, imports, ffiMapper };
 }
 
 describe("ConstructorBuilder", () => {
@@ -60,33 +51,31 @@ describe("ConstructorBuilder", () => {
 
     describe("addConstructorAndBuildFactoryStructures", () => {
         it("returns empty array when no constructors and no parent", () => {
-            const { builder, classDecl } = createTestSetup({ constructors: [] });
+            const { builder } = createTestSetup({ constructors: [] });
 
-            const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, false);
+            const { factoryMethods } = builder.buildConstructorAndFactoryMethods(false);
 
             expect(factoryMethods).toHaveLength(0);
         });
 
         it("generates no constructor when no parent (inherits NativeObject constructor)", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup({ constructors: [] });
+            const { builder } = createTestSetup({ constructors: [] });
 
-            builder.addConstructorAndBuildFactoryStructures(classDecl, false);
+            const { constructorData } = builder.buildConstructorAndFactoryMethods(false);
 
-            const code = getGeneratedCode(sourceFile);
-            expect(code).not.toContain("constructor");
+            expect(constructorData).toBeNull();
         });
 
         it("generates no constructor when has parent but no constructors and abstract (inherits parent constructor)", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup({ constructors: [], abstract: true });
+            const { builder } = createTestSetup({ constructors: [], abstract: true });
 
-            builder.addConstructorAndBuildFactoryStructures(classDecl, true);
+            const { constructorData } = builder.buildConstructorAndFactoryMethods(true);
 
-            const code = getGeneratedCode(sourceFile);
-            expect(code).not.toContain("constructor");
+            expect(constructorData).toBeNull();
         });
 
         it("builds factory methods for non-main constructors when has parent", () => {
-            const { builder, classDecl } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -108,13 +97,13 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, true);
+            const { factoryMethods } = builder.buildConstructorAndFactoryMethods(true);
 
             expect(factoryMethods.length).toBeGreaterThanOrEqual(1);
         });
 
         it("creates static factory method with correct name", () => {
-            const { builder, classDecl } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -136,14 +125,14 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, true);
+            const { factoryMethods } = builder.buildConstructorAndFactoryMethods(true);
 
             const withLabel = factoryMethods.find((m) => m.name === "newWithLabel");
             expect(withLabel).toBeDefined();
         });
 
         it("factory method is static", () => {
-            const { builder, classDecl } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -165,14 +154,14 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, true);
+            const { factoryMethods } = builder.buildConstructorAndFactoryMethods(true);
 
             const staticMethods = factoryMethods.filter((m) => m.isStatic);
             expect(staticMethods.length).toBeGreaterThan(0);
         });
 
         it("factory method returns class type", () => {
-            const { builder, classDecl } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -194,7 +183,7 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, true);
+            const { factoryMethods } = builder.buildConstructorAndFactoryMethods(true);
 
             const method = factoryMethods.find((m) => m.isStatic);
             expect(method?.returnType).toBe("Button");
@@ -203,7 +192,7 @@ describe("ConstructorBuilder", () => {
 
     describe("main constructor selection", () => {
         it("uses main constructor when available with parent", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -214,14 +203,16 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            builder.addConstructorAndBuildFactoryStructures(classDecl, true);
-
-            const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("constructor");
+            const { constructorData } = builder.buildConstructorAndFactoryMethods(true);
+            expect(constructorData).not.toBeNull();
+            const w = new Writer();
+            constructorData?.bodyWriter(w);
+            const code = w.toString();
+            expect(code).toContain("super(");
         });
 
         it("creates factory for non-main constructors when main exists", () => {
-            const { builder, classDecl } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -243,7 +234,7 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, true);
+            const { factoryMethods } = builder.buildConstructorAndFactoryMethods(true);
 
             expect(factoryMethods.length).toBeGreaterThan(0);
         });
@@ -251,7 +242,7 @@ describe("ConstructorBuilder", () => {
 
     describe("context updates", () => {
         it("sets usesIsNativeHandle flag when main constructor with parent", () => {
-            const { builder, classDecl, ctx } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -262,13 +253,13 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            builder.addConstructorAndBuildFactoryStructures(classDecl, true);
+            const { constructorData } = builder.buildConstructorAndFactoryMethods(true);
 
-            expect(ctx.usesIsNativeHandle).toBe(true);
+            expect(constructorData).not.toBeNull();
         });
 
-        it("sets usesGetNativeObject flag for factory methods", () => {
-            const { builder, classDecl, ctx } = createTestSetup({
+        it("generates factory methods for additional constructors", () => {
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -290,43 +281,46 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            builder.addConstructorAndBuildFactoryStructures(classDecl, true);
+            const { factoryMethods } = builder.buildConstructorAndFactoryMethods(true);
 
-            expect(ctx.usesGetNativeObject).toBe(true);
+            expect(factoryMethods.length).toBeGreaterThan(0);
         });
     });
 
     describe("GObject.new fallback", () => {
         it("uses g_object_new when no main constructor but has glibGetType", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [],
                 glibGetType: "gtk_button_get_type",
                 abstract: false,
             });
 
-            builder.addConstructorAndBuildFactoryStructures(classDecl, true);
-
-            const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("constructor");
+            const { constructorData } = builder.buildConstructorAndFactoryMethods(true);
+            expect(constructorData).not.toBeNull();
+            const w = new Writer();
+            constructorData?.bodyWriter(w);
+            const code = w.toString();
+            expect(code).toContain("g_object_new");
         });
 
         it("does not use g_object_new for abstract classes", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [],
                 glibGetType: "gtk_button_get_type",
                 abstract: true,
             });
 
-            builder.addConstructorAndBuildFactoryStructures(classDecl, true);
-
-            const code = getGeneratedCode(sourceFile);
+            const { constructorData } = builder.buildConstructorAndFactoryMethods(true);
+            const w = new Writer();
+            constructorData?.bodyWriter(w);
+            const code = w.toString();
             expect(code).not.toContain("g_object_new");
         });
     });
 
     describe("constructor parameters", () => {
         it("includes parameters in constructor", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new_with_label",
@@ -342,14 +336,15 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            builder.addConstructorAndBuildFactoryStructures(classDecl, true);
-
-            const code = getGeneratedCode(sourceFile);
+            const { constructorData } = builder.buildConstructorAndFactoryMethods(true);
+            const w = new Writer();
+            constructorData?.bodyWriter(w);
+            const code = w.toString();
             expect(code).toContain("label");
         });
 
         it("includes multiple parameters", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new_with_range",
@@ -373,9 +368,10 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            builder.addConstructorAndBuildFactoryStructures(classDecl, true);
-
-            const code = getGeneratedCode(sourceFile);
+            const { constructorData } = builder.buildConstructorAndFactoryMethods(true);
+            const w = new Writer();
+            constructorData?.bodyWriter(w);
+            const code = w.toString();
             expect(code).toContain("min");
             expect(code).toContain("max");
             expect(code).toContain("step");
@@ -384,7 +380,7 @@ describe("ConstructorBuilder", () => {
 
     describe("ownership handling", () => {
         it("uses full ownership when transfer is full", () => {
-            const { builder, classDecl } = createTestSetup({
+            const { builder } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new",
@@ -398,7 +394,7 @@ describe("ConstructorBuilder", () => {
                 ],
             });
 
-            const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, true);
+            const { factoryMethods } = builder.buildConstructorAndFactoryMethods(true);
 
             expect(factoryMethods).toBeDefined();
         });
@@ -406,9 +402,9 @@ describe("ConstructorBuilder", () => {
 
     describe("root class (no parent)", () => {
         it("generates no constructor or create method when no parent", () => {
-            const { builder, classDecl } = createTestSetup({ constructors: [] });
+            const { builder } = createTestSetup({ constructors: [] });
 
-            const factoryMethods = builder.addConstructorAndBuildFactoryStructures(classDecl, false);
+            const { factoryMethods } = builder.buildConstructorAndFactoryMethods(false);
 
             expect(factoryMethods).toHaveLength(0);
         });

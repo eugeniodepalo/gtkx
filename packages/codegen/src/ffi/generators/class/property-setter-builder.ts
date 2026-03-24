@@ -7,10 +7,8 @@
  * These setters use g_object_set_property with properly typed GValues.
  */
 
-import type { GirClass, GirProperty, GirRepository, QualifiedName } from "@gtkx/gir";
-import type { MethodDeclarationStructure, WriterFunction } from "ts-morph";
-import { StructureKind } from "ts-morph";
-import type { GenerationContext } from "../../../core/generation-context.js";
+import type { GirClass, GirProperty, GirRepository } from "@gtkx/gir";
+import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { getSyntheticSetterPrimitiveInfo, type MappedType } from "../../../core/type-system/ffi-types.js";
@@ -22,6 +20,7 @@ import {
 } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { createSetterName, toCamelCase } from "../../../core/utils/naming.js";
+import type { ImportCollector, MethodStructure } from "../../../core/writers/index.js";
 
 export class PropertySetterBuilder {
     private readonly existingMethodNames: Set<string>;
@@ -29,7 +28,7 @@ export class PropertySetterBuilder {
     constructor(
         private readonly cls: GirClass,
         private readonly ffiMapper: FfiMapper,
-        private readonly ctx: GenerationContext,
+        private readonly imports: ImportCollector,
         private readonly repository: GirRepository,
         private readonly options: FfiGeneratorOptions,
     ) {
@@ -39,11 +38,11 @@ export class PropertySetterBuilder {
         }
     }
 
-    buildStructures(): MethodDeclarationStructure[] {
+    buildStructures(): MethodStructure[] {
         const propertiesNeedingSyntheticSetters = this.collectPropertiesNeedingSyntheticSetters();
         return propertiesNeedingSyntheticSetters
             .map((prop) => this.buildSetterStructure(prop))
-            .filter((s): s is MethodDeclarationStructure => s !== null);
+            .filter((s): s is MethodStructure => s !== null);
     }
 
     private collectPropertiesNeedingSyntheticSetters(): GirProperty[] {
@@ -67,7 +66,7 @@ export class PropertySetterBuilder {
         });
     }
 
-    private buildSetterStructure(prop: GirProperty): MethodDeclarationStructure | null {
+    private buildSetterStructure(prop: GirProperty): MethodStructure | null {
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
         const gvalueSetterInfo = this.getGValueSetterInfo(prop, typeMapping);
 
@@ -78,18 +77,18 @@ export class PropertySetterBuilder {
         const methodName = createSetterName(toCamelCase(prop.name));
         const paramType = typeMapping.ts;
 
-        this.ctx.addTypeImports(typeMapping.imports);
+        for (const imp of typeMapping.imports) {
+            if (imp.isExternal) {
+                this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
+            } else {
+                this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+            }
+        }
 
         return {
-            kind: StructureKind.Method,
             name: methodName,
-            parameters: [
-                {
-                    name: "value",
-                    type: paramType,
-                },
-            ],
-            returnType: "void",
+            parameters: [{ name: "value", type: paramType }],
+            returnType: undefined,
             docs: buildJsDocStructure(
                 prop.doc ? `Sets ${prop.doc}` : `Sets the ${prop.name} property.`,
                 this.options.namespace,
@@ -134,7 +133,7 @@ export class PropertySetterBuilder {
 
     private getFundamentalClassSetterInfo(typeName: string): GValueSetterInfo | null {
         const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
-        const cls = this.repository.resolveClass(qualifiedName as QualifiedName);
+        const cls = this.repository.resolveClass(qualifiedName);
         if (!cls?.fundamental) return null;
 
         if (cls.refFunc === "g_variant_ref_sink") {
@@ -159,7 +158,7 @@ export class PropertySetterBuilder {
 
         if (typeMapping.ffi.type === "fundamental") {
             const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
-            const record = this.repository.resolveRecord(qualifiedName as QualifiedName);
+            const record = this.repository.resolveRecord(qualifiedName);
             if (record?.glibTypeName) {
                 return { staticConstructor: "newFromBoxed" };
             }
@@ -168,9 +167,15 @@ export class PropertySetterBuilder {
         return null;
     }
 
-    private writeSetterBody(propertyName: string, setterInfo: GValueSetterInfo): WriterFunction {
-        this.ctx.usesCall = true;
-        this.ctx.usesSyntheticPropertySetter = true;
+    private writeSetterBody(propertyName: string, setterInfo: GValueSetterInfo): (writer: Writer) => void {
+        this.imports.addImport("../../native.js", ["call"]);
+
+        if (this.options.namespace === "GObject") {
+            this.imports.addImport("./value.js", ["Value"]);
+            this.imports.addImport("./functions.js", ["typeFromName"]);
+        } else {
+            this.imports.addImport("../gobject/index.js", ["GObject"]);
+        }
 
         return (writer) => {
             if (setterInfo.staticConstructor) {
@@ -186,11 +191,11 @@ export class PropertySetterBuilder {
             }
 
             writer.writeLine("call(");
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine(`"libgobject-2.0.so.0",`);
                 writer.writeLine(`"g_object_set_property",`);
                 writer.writeLine("[");
-                writer.indent(() => {
+                writer.withIndent(() => {
                     writer.writeLine(`{ type: { type: "gobject", ownership: "borrowed" }, value: this.handle },`);
                     writer.writeLine(`{ type: { type: "string", ownership: "borrowed" }, value: "${propertyName}" },`);
                     writer.writeLine(

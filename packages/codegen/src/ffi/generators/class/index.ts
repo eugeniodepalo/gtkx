@@ -5,12 +5,19 @@
  * Delegates to specialized builders for each component.
  */
 
-import type { GirClass, GirMethod, GirRepository, QualifiedName } from "@gtkx/gir";
-import type { ClassDeclaration, MethodDeclarationStructure, SourceFile } from "ts-morph";
-import { StructureKind } from "ts-morph";
+import type { GirClass, GirMethod, GirRepository } from "@gtkx/gir";
+import type { FileBuilder } from "../../../builders/file-builder.js";
+import {
+    type ClassDeclarationBuilder,
+    classDecl,
+    constructorDecl,
+    method,
+    param,
+    property,
+} from "../../../builders/index.js";
+import type { Writer } from "../../../builders/writer.js";
 import { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
-import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import {
@@ -21,9 +28,9 @@ import {
 import { analyzeAsyncMethods } from "../../../core/utils/async-analysis.js";
 import { collectParentFactoryMethodNames, collectParentMethodNames } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { generateConflictingMethodName, normalizeClassName } from "../../../core/utils/naming.js";
+import { generateConflictingMethodName, normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
 import { type ParentInfo, parseParentReference } from "../../../core/utils/parent-reference.js";
-import type { Writers } from "../../../core/writers/index.js";
+import type { MethodStructure } from "../../../core/writers/index.js";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
 import { ConstructorBuilder } from "./constructor-builder.js";
 import { MethodBuilder } from "./method-builder.js";
@@ -36,13 +43,28 @@ import { StaticFunctionBuilder } from "./static-function-builder.js";
  * Result of class generation.
  */
 type ClassGenerationResult = {
-    /** Whether generation was successful */
     success: boolean;
-    /** Widget metadata for codegen (if this is a widget class) */
     widgetMeta?: CodegenWidgetMeta | null;
-    /** Controller metadata for codegen (if this is a controller class) */
     controllerMeta?: CodegenControllerMeta | null;
 };
+
+/**
+ * Converts a MethodStructure to a builder-API MethodBuilder and adds it to a class.
+ */
+function addMethodStructure(cls: ClassDeclarationBuilder, struct: MethodStructure): void {
+    const m = method(struct.name, {
+        params: struct.parameters.map((p) => param(p.name, p.type, { optional: p.optional, rest: p.isRestParameter })),
+        returnType: struct.returnType,
+        body: struct.statements,
+        isStatic: struct.isStatic,
+        doc: struct.docs?.[0]?.description,
+        overloads: struct.overloads?.map((o) => ({
+            params: o.params.map((p) => param(p.name, p.type, { optional: p.optional, rest: p.isRestParameter })),
+            returnType: o.returnType,
+        })),
+    });
+    cls.addMethod(m);
+}
 
 /**
  * Generates a complete class module file.
@@ -53,21 +75,8 @@ type ClassGenerationResult = {
  * - Methods
  * - Static functions
  * - Signals
+ * - Property getters/setters
  * - Widget metadata
- *
- * @example
- * ```typescript
- * const generator = new ClassGenerator(
- *   cls,
- *   ffiMapper,
- *   ctx,
- *   repository,
- *   builders,
- *   { namespace: "Gtk", sharedLibrary: "libgtk-4.so.1" }
- * );
- *
- * generator.generateToSourceFile(sourceFile);
- * ```
  */
 export class ClassGenerator {
     private readonly className: string;
@@ -78,23 +87,23 @@ export class ClassGenerator {
     private readonly propertyGetterBuilder: PropertyGetterBuilder;
     private readonly propertySetterBuilder: PropertySetterBuilder;
     private readonly classMetaBuilder: ClassMetaBuilder;
+    private readonly methodRenames = new Map<string, string>();
 
     constructor(
         private readonly cls: GirClass,
         ffiMapper: FfiMapper,
-        private readonly ctx: GenerationContext,
+        private readonly file: FileBuilder,
         private readonly repository: GirRepository,
-        writers: Writers,
         private readonly options: FfiGeneratorOptions,
     ) {
         this.className = normalizeClassName(cls.name);
 
-        this.constructorBuilder = new ConstructorBuilder(cls, ffiMapper, ctx, repository, writers, options);
-        this.methodBuilder = new MethodBuilder(ffiMapper, ctx, writers, options);
-        this.staticBuilder = new StaticFunctionBuilder(cls, ffiMapper, ctx, writers, options);
-        this.signalBuilder = new SignalBuilder(cls, ffiMapper, ctx, repository, writers, options);
-        this.propertyGetterBuilder = new PropertyGetterBuilder(cls, ffiMapper, ctx, repository, options);
-        this.propertySetterBuilder = new PropertySetterBuilder(cls, ffiMapper, ctx, repository, options);
+        this.constructorBuilder = new ConstructorBuilder(cls, ffiMapper, file, repository, options);
+        this.methodBuilder = new MethodBuilder(ffiMapper, file, this.methodRenames, options);
+        this.staticBuilder = new StaticFunctionBuilder(cls, ffiMapper, file, options);
+        this.signalBuilder = new SignalBuilder(cls, ffiMapper, file, repository, options);
+        this.propertyGetterBuilder = new PropertyGetterBuilder(cls, ffiMapper, file, repository, options);
+        this.propertySetterBuilder = new PropertySetterBuilder(cls, ffiMapper, file, repository, options);
 
         const analyzers: ClassMetaAnalyzers = {
             property: new PropertyAnalyzer(repository, ffiMapper),
@@ -104,54 +113,52 @@ export class ClassGenerator {
     }
 
     /**
-     * Builds to a ts-morph SourceFile.
+     * Generates the class into the FileBuilder.
      *
-     * @param sourceFile - The ts-morph SourceFile to generate into
-     * @returns Result containing success flag and optional widget metadata
-     *
-     * @example
-     * ```typescript
-     * const generator = new ClassGenerator(cls, ffiMapper, ctx, repository, builders, options);
-     * const sourceFile = project.createSourceFile("button.ts");
-     * const result = generator.generateToSourceFile(sourceFile);
-     * if (result.success) {
-     *   // Generation successful
-     *   if (result.widgetMeta) {
-     *     project.metadata.setWidgetMeta(sourceFile, result.widgetMeta);
-     *   }
-     * }
-     * ```
+     * @returns Result containing success flag and optional widget/controller metadata
      */
-    generateToSourceFile(sourceFile: SourceFile): ClassGenerationResult {
+    generate(): ClassGenerationResult {
         if (!this.canGenerate()) {
             return { success: false };
         }
 
         const asyncAnalysis = this.analyzeAsyncMethods();
-        const { asyncMethods, finishMethods } = asyncAnalysis;
 
         const parentMethodNames = this.collectParentMethodNames();
-        const { interfaceMethods, interfaceMethodsByNamespace } = this.collectInterfaceMethods(parentMethodNames);
+        const { interfaceMethodsByNamespace } = this.collectInterfaceMethods(parentMethodNames);
 
         const filteredClassMethods = this.filterClassMethods(parentMethodNames);
-        const syncMethods = filteredClassMethods.filter((m) => !asyncMethods.has(m.name) && !finishMethods.has(m.name));
-        const syncInterfaceMethods = interfaceMethods.filter(
-            (m) => !asyncMethods.has(m.name) && !finishMethods.has(m.name),
-        );
-
-        this.updateContextFlags(syncMethods, syncInterfaceMethods, interfaceMethods);
 
         const parentInfo = this.parseParentReferenceInfo();
         const isFundamental = this.isFundamentalType();
         const selfTypeDescriptor = this.getSelfTypeDescriptor();
 
-        const classDecl = this.addClassDeclaration(sourceFile, parentInfo, isFundamental);
+        const cls = this.buildClassDeclaration(parentInfo, isFundamental);
 
         const parentFactoryMethodNames = collectParentFactoryMethodNames(this.cls);
         this.constructorBuilder.setParentFactoryMethodNames(parentFactoryMethodNames);
 
-        const allMethodStructures: MethodDeclarationStructure[] = [
-            ...this.constructorBuilder.addConstructorAndBuildFactoryStructures(classDecl, parentInfo.hasParent),
+        const { constructorData, factoryMethods } = this.constructorBuilder.buildConstructorAndFactoryMethods(
+            parentInfo.hasParent,
+        );
+
+        if (constructorData) {
+            cls.setConstructor(
+                constructorDecl({
+                    overloads: constructorData.overloads,
+                    params: constructorData.implParams.map((p) =>
+                        param(p.name, p.type, {
+                            optional: p.optional,
+                            defaultValue: p.initializer,
+                        }),
+                    ),
+                    body: constructorData.bodyWriter,
+                }),
+            );
+        }
+
+        const allMethodStructures: MethodStructure[] = [
+            ...factoryMethods,
             ...this.staticBuilder.buildStructures(),
             ...this.methodBuilder.buildStructures(filteredClassMethods, selfTypeDescriptor, asyncAnalysis),
             ...Array.from(interfaceMethodsByNamespace.values()).flatMap((methods) =>
@@ -163,17 +170,19 @@ export class ClassGenerator {
         ];
 
         if (this.cls.glibGetType) {
-            this.ctx.usesCall = true;
+            this.file.addImport("../../native.js", ["call"]);
             allMethodStructures.push(this.buildGetGTypeMethod());
         }
 
-        if (allMethodStructures.length > 0) {
-            classDecl.addMethods(allMethodStructures);
+        for (const struct of allMethodStructures) {
+            addMethodStructure(cls, struct);
         }
 
+        this.file.add(cls);
+
         if (this.cls.glibTypeName) {
-            this.ctx.usesRegisterNativeClass = true;
-            sourceFile.addStatements(`registerNativeClass(${this.className});`);
+            this.file.addImport("../../registry.js", ["registerNativeClass"]);
+            this.file.addStatement(`\nregisterNativeClass(${this.className});`);
         }
 
         const widgetMeta = this.classMetaBuilder.buildCodegenWidgetMeta();
@@ -182,21 +191,21 @@ export class ClassGenerator {
         return { success: true, widgetMeta, controllerMeta };
     }
 
-    private addClassDeclaration(
-        sourceFile: SourceFile,
-        parentInfo: ParentInfo,
-        isFundamental: boolean,
-    ): ClassDeclaration {
+    private buildClassDeclaration(parentInfo: ParentInfo, isFundamental: boolean): ClassDeclarationBuilder {
         let extendsExpr: string | undefined;
         if (parentInfo.hasParent) {
             if (parentInfo.isCrossNamespace && parentInfo.namespace) {
                 extendsExpr = `${parentInfo.namespace}.${parentInfo.className}`;
+                this.file.addImport(`../${parentInfo.namespace.toLowerCase()}/index.js`, [parentInfo.namespace]);
             } else {
                 extendsExpr = parentInfo.className;
+                if (parentInfo.originalName) {
+                    this.file.addImport(`./${toKebabCase(parentInfo.originalName)}.js`, [parentInfo.className]);
+                }
             }
         } else {
             extendsExpr = "NativeObject";
-            this.ctx.usesNativeObject = true;
+            this.file.addImport("../../object.js", ["NativeObject"]);
         }
 
         const objectType = isFundamental ? "fundamental" : "gobject";
@@ -204,33 +213,35 @@ export class ClassGenerator {
         const objectTypeInitializer = isRootGObject
             ? `"gobject" as "gobject" | "interface"`
             : `"${objectType}" as const`;
-        const staticProperties = this.cls.glibTypeName
-            ? [
-                  {
-                      name: "glibTypeName",
-                      isStatic: true,
-                      isReadonly: true,
-                      type: "string",
-                      initializer: `"${this.cls.glibTypeName}"`,
-                      hasOverrideKeyword: parentInfo.hasParent,
-                  },
-                  {
-                      name: "objectType",
-                      isStatic: true,
-                      isReadonly: true,
-                      initializer: objectTypeInitializer,
-                      hasOverrideKeyword: parentInfo.hasParent,
-                  },
-              ]
-            : [];
 
-        return sourceFile.addClass({
-            name: this.className,
-            isExported: true,
+        const doc = buildJsDocStructure(this.cls.doc, this.options.namespace);
+        const cls = classDecl(this.className, {
+            exported: true,
             extends: extendsExpr,
-            docs: buildJsDocStructure(this.cls.doc, this.options.namespace),
-            properties: staticProperties,
+            doc: doc?.[0]?.description,
         });
+
+        if (this.cls.glibTypeName) {
+            cls.addProperty(
+                property("glibTypeName", {
+                    isStatic: true,
+                    readonly: true,
+                    type: "string",
+                    initializer: `"${this.cls.glibTypeName}"`,
+                    override: parentInfo.hasParent,
+                }),
+            );
+            cls.addProperty(
+                property("objectType", {
+                    isStatic: true,
+                    readonly: true,
+                    initializer: objectTypeInitializer,
+                    override: parentInfo.hasParent,
+                }),
+            );
+        }
+
+        return cls;
     }
 
     private canGenerate(): boolean {
@@ -249,7 +260,7 @@ export class ClassGenerator {
         }
         let currentClass = this.cls;
         while (currentClass.parent) {
-            const parent = this.repository.resolveClass(currentClass.parent as QualifiedName);
+            const parent = this.repository.resolveClass(currentClass.parent);
             if (!parent) break;
             if (parent.isFundamental()) {
                 return true;
@@ -276,7 +287,7 @@ export class ClassGenerator {
         const interfaceMethodsByNamespace = new Map<string, GirMethod[]>();
 
         for (const ifaceQualifiedName of this.cls.implements) {
-            const iface = this.repository.resolveInterface(ifaceQualifiedName as QualifiedName);
+            const iface = this.repository.resolveInterface(ifaceQualifiedName);
             if (!iface) continue;
 
             const sourceNamespace = ifaceQualifiedName.includes(".")
@@ -307,7 +318,7 @@ export class ClassGenerator {
 
     private handleInterfaceMethodRename(method: GirMethod, ifaceName: string): void {
         const renamedMethod = generateConflictingMethodName(ifaceName, method.name);
-        this.ctx.methodRenames.set(method.cIdentifier, renamedMethod);
+        this.methodRenames.set(method.cIdentifier, renamedMethod);
     }
 
     private filterClassMethods(parentMethodNames: Set<string>): GirMethod[] {
@@ -315,40 +326,10 @@ export class ClassGenerator {
             const needsRename = parentMethodNames.has(m.name) || (m.name === "connect" && this.cls.parent);
             if (needsRename) {
                 const renamedMethod = generateConflictingMethodName(this.cls.name, m.name);
-                this.ctx.methodRenames.set(m.cIdentifier, renamedMethod);
+                this.methodRenames.set(m.cIdentifier, renamedMethod);
             }
             return true;
         });
-    }
-
-    private updateContextFlags(
-        syncMethods: GirMethod[],
-        syncInterfaceMethods: GirMethod[],
-        interfaceMethods: GirMethod[],
-    ): void {
-        this.ctx.usesRef =
-            syncMethods.some((m) => this.methodBuilder.hasRefParameter(m.parameters)) ||
-            this.cls.constructors.some((c) => this.methodBuilder.hasRefParameter(c.parameters)) ||
-            this.cls.staticFunctions.some((f) => this.methodBuilder.hasRefParameter(f.parameters)) ||
-            syncInterfaceMethods.some((m) => this.methodBuilder.hasRefParameter(m.parameters));
-
-        const { main: mainConstructor } = this.methodBuilder.selectConstructors(this.cls.constructors);
-        const hasParent = !!this.cls.parent;
-        const hasMainConstructorWithParent = mainConstructor && hasParent;
-        const hasGObjectNewConstructor = !mainConstructor && hasParent && !!this.cls.glibGetType && !this.cls.abstract;
-        const hasStaticFactoryMethods =
-            this.cls.constructors.some((c) => c !== mainConstructor) ||
-            (this.cls.constructors.length > 0 && !hasParent);
-        const hasSignalConnect = this.signalBuilder.collectOwnSignals().length > 0;
-
-        this.ctx.usesCall =
-            this.cls.methods.length > 0 ||
-            this.cls.staticFunctions.length > 0 ||
-            interfaceMethods.length > 0 ||
-            hasMainConstructorWithParent ||
-            hasGObjectNewConstructor ||
-            hasStaticFactoryMethods ||
-            hasSignalConnect;
     }
 
     private parseParentReferenceInfo(): ParentInfo {
@@ -369,13 +350,18 @@ export class ClassGenerator {
         return SELF_TYPE_GOBJECT;
     }
 
-    private buildGetGTypeMethod(): MethodDeclarationStructure {
+    private buildGetGTypeMethod(): MethodStructure {
         return {
-            kind: StructureKind.Method,
             name: "getGType",
             isStatic: true,
+            parameters: [],
             returnType: "number",
-            statements: `return call("${this.options.sharedLibrary}", "${this.cls.glibGetType}", [], { type: "uint64" }) as number;`,
+            docs: undefined,
+            statements: (writer: Writer) => {
+                writer.writeLine(
+                    `return call("${this.options.sharedLibrary}", "${this.cls.glibGetType}", [], { type: "uint64" }) as number;`,
+                );
+            },
         };
     }
 

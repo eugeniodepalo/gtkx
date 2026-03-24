@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { GenerationContext } from "../../../src/core/generation-context.js";
+import { fileBuilder } from "../../../src/builders/file-builder.js";
+import { stringify } from "../../../src/builders/stringify.js";
 import { FfiMapper } from "../../../src/core/type-system/ffi-mapper.js";
-import { createWriters } from "../../../src/core/writers/index.js";
 import { InterfaceGenerator } from "../../../src/ffi/generators/interface.js";
 import {
     createNormalizedInterface,
@@ -11,28 +11,21 @@ import {
     createNormalizedType,
 } from "../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../fixtures/mock-repository.js";
-import { createTestProject, createTestSourceFile, getGeneratedCode } from "../../fixtures/ts-morph-helpers.js";
 
 function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map()) {
     const ns = createNormalizedNamespace({ name: "Gtk" });
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-    const ctx = new GenerationContext();
-    const writers = createWriters({
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-    });
+    const file = fileBuilder();
     const options = {
         namespace: "Gtk",
         sharedLibrary: "libgtk-4.so.1",
         glibLibrary: "libglib-2.0.so.0",
         gobjectLibrary: "libgobject-2.0.so.0",
     };
-    const project = createTestProject();
-    const sourceFile = createTestSourceFile(project, "interface.ts");
-    const generator = new InterfaceGenerator(ffiMapper, ctx, writers, repo as Parameters<typeof FfiMapper>[0], options);
-    return { generator, ctx, sourceFile, project, repo };
+    const generator = new InterfaceGenerator(ffiMapper, file, repo as Parameters<typeof FfiMapper>[0], options);
+    return { generator, file, repo };
 }
 
 describe("InterfaceGenerator", () => {
@@ -45,75 +38,75 @@ describe("InterfaceGenerator", () => {
 
     describe("generateToSourceFile", () => {
         it("returns true when generating interface", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 methods: [],
             });
 
-            const result = generator.generateToSourceFile(iface, sourceFile);
+            const result = generator.generate(iface);
 
             expect(result).toBe(true);
         });
 
         it("generates class with PascalCase name", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 methods: [],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("export class Buildable");
         });
 
         it("extends NativeObject", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 methods: [],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("extends GObject.Object");
         });
 
         it("adds glibTypeName property when present", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 glibTypeName: "GtkBuildable",
                 methods: [],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("glibTypeName");
             expect(code).toContain('"GtkBuildable"');
         });
 
         it("adds objectType property as interface when glibTypeName present", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 glibTypeName: "GtkBuildable",
                 methods: [],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("objectType");
             expect(code).toContain('"interface"');
         });
 
         it("generates methods for interface", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Orientable",
                 methods: [
@@ -125,14 +118,14 @@ describe("InterfaceGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("getOrientation");
         });
 
         it("generates multiple methods", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Orientable",
                 methods: [
@@ -155,43 +148,44 @@ describe("InterfaceGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("getOrientation");
             expect(code).toContain("setOrientation");
         });
 
         it("preserves documentation", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 doc: "Interface for buildable widgets",
                 methods: [],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("Interface for buildable widgets");
         });
     });
 
     describe("context updates", () => {
         it("sets usesGObjectNamespace flag for non-GObject namespace", () => {
-            const { generator, sourceFile, ctx } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 methods: [],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
+            const code = stringify(file);
 
-            expect(ctx.usesGObjectNamespace).toBe(true);
+            expect(code).toContain("GObject");
         });
 
-        it("sets usesCall flag when interface has methods", () => {
-            const { generator, sourceFile, ctx } = createTestSetup();
+        it("adds call import when interface has methods", () => {
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Orientable",
                 methods: [
@@ -203,13 +197,14 @@ describe("InterfaceGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
+            const code = stringify(file);
 
-            expect(ctx.usesCall).toBe(true);
+            expect(code).toContain("call");
         });
 
-        it("sets usesRef flag when method has out parameter", () => {
-            const { generator, sourceFile, ctx } = createTestSetup();
+        it("adds Ref import when method has out parameter", () => {
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 methods: [
@@ -228,15 +223,16 @@ describe("InterfaceGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
+            const code = stringify(file);
 
-            expect(ctx.usesRef).toBe(true);
+            expect(code).toContain("Ref");
         });
     });
 
     describe("method filtering", () => {
         it("includes methods with GLib.Closure callbacks", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 methods: [
@@ -259,15 +255,15 @@ describe("InterfaceGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("normal");
             expect(code).toContain("withClosure");
         });
 
         it("filters out duplicate methods with same cIdentifier", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 methods: [
@@ -284,9 +280,9 @@ describe("InterfaceGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             const matches = code.match(/getName\(/g) ?? [];
             expect(matches.length).toBe(1);
         });
@@ -294,7 +290,7 @@ describe("InterfaceGenerator", () => {
 
     describe("method structure", () => {
         it("converts method names to camelCase", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 methods: [
@@ -306,14 +302,14 @@ describe("InterfaceGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("getBuildName");
         });
 
         it("includes parameters in method signature", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 methods: [
@@ -331,14 +327,14 @@ describe("InterfaceGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("name: string");
         });
 
         it("includes return type for non-void methods", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 methods: [
@@ -350,16 +346,16 @@ describe("InterfaceGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain(": number");
         });
     });
 
     describe("integration", () => {
         it("generates complete interface class", () => {
-            const { generator, sourceFile } = createTestSetup();
+            const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Orientable",
                 glibTypeName: "GtkOrientable",
@@ -385,9 +381,9 @@ describe("InterfaceGenerator", () => {
                 ],
             });
 
-            generator.generateToSourceFile(iface, sourceFile);
+            generator.generate(iface);
 
-            const code = getGeneratedCode(sourceFile);
+            const code = stringify(file);
             expect(code).toContain("export class Orientable extends GObject.Object");
             expect(code).toContain("glibTypeName");
             expect(code).toContain("getOrientation");

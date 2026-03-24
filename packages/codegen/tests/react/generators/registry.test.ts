@@ -1,135 +1,80 @@
 import { describe, expect, it } from "vitest";
-import { CodegenProject } from "../../../src/core/project.js";
+import { fileBuilder, stringify } from "../../../src/builders/index.js";
 import { RegistryGenerator } from "../../../src/react/generators/registry.js";
 
-function createTestSetup(namespaceNames: string[] = ["Gtk"]) {
-    const project = new CodegenProject();
-    const generator = new RegistryGenerator(project, namespaceNames);
-    return { project, generator };
+function generateCode(namespaceNames: string[] = ["Gtk"]): string {
+    const file = fileBuilder();
+    const generator = new RegistryGenerator(namespaceNames);
+    generator.generate(file);
+    return stringify(file);
 }
 
 describe("RegistryGenerator", () => {
     describe("constructor", () => {
-        it("creates generator with project and namespace names", () => {
-            const { generator } = createTestSetup();
+        it("creates generator with namespace names", () => {
+            const generator = new RegistryGenerator(["Gtk"]);
             expect(generator).toBeInstanceOf(RegistryGenerator);
         });
     });
 
     describe("generate", () => {
-        it("creates registry.ts file in react directory", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            expect(sourceFile).not.toBeNull();
+        it("produces non-empty output", () => {
+            const code = generateCode();
+            expect(code.length).toBeGreaterThan(0);
         });
 
         it("adds file comment", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("Generated namespace registry");
         });
 
         it("adds Namespace type alias", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const typeAlias = sourceFile?.getTypeAlias("Namespace");
-            expect(typeAlias).toBeDefined();
-            expect(typeAlias?.getTypeNode()?.getText()).toBe("Record<string, unknown>");
+            const code = generateCode();
+            expect(code).toContain("type Namespace = Record<string, unknown>");
         });
 
         it("adds NAMESPACE_REGISTRY constant", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("NAMESPACE_REGISTRY");
         });
 
         it("exports NAMESPACE_REGISTRY", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("export const NAMESPACE_REGISTRY");
         });
 
         it("types NAMESPACE_REGISTRY as [string, Namespace][]", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("[string, Namespace][]");
         });
 
         it("includes namespace import for single namespace", () => {
-            const { project, generator } = createTestSetup(["Gtk"]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const imports = sourceFile?.getImportDeclarations() ?? [];
-            const gtkImport = imports.find((i) => i.getNamespaceImport()?.getText() === "Gtk");
-            expect(gtkImport).toBeDefined();
+            const code = generateCode(["Gtk"]);
+            expect(code).toContain("* as Gtk");
+            expect(code).toContain("@gtkx/ffi/gtk");
         });
 
         it("includes namespace imports for multiple namespaces", () => {
-            const { project, generator } = createTestSetup(["Gtk", "Gdk", "Gio"]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const imports = sourceFile?.getImportDeclarations() ?? [];
-            const namespaces = imports.map((i) => i.getNamespaceImport()?.getText()).filter(Boolean);
-            expect(namespaces).toContain("Gtk");
-            expect(namespaces).toContain("Gdk");
-            expect(namespaces).toContain("Gio");
+            const code = generateCode(["Gtk", "Gdk", "Gio"]);
+            expect(code).toContain("* as Gtk");
+            expect(code).toContain("* as Gdk");
+            expect(code).toContain("* as Gio");
         });
 
         it("includes namespace entries in registry array", () => {
-            const { project, generator } = createTestSetup(["Gtk"]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode(["Gtk"]);
             expect(code).toContain('["Gtk", Gtk]');
         });
 
         it("includes all namespace entries in registry array", () => {
-            const { project, generator } = createTestSetup(["Gtk", "Adw", "Gio"]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode(["Gtk", "Adw", "Gio"]);
             expect(code).toContain('["Gtk", Gtk]');
             expect(code).toContain('["Adw", Adw]');
             expect(code).toContain('["Gio", Gio]');
         });
 
         it("sorts namespaces by length descending then alphabetically", () => {
-            const { project, generator } = createTestSetup(["Gtk", "GObject", "Gio"]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode(["Gtk", "GObject", "Gio"]);
 
             const gobjectIndex = code.indexOf('["GObject"');
             const gtkIndex = code.indexOf('["Gtk"');
@@ -140,51 +85,29 @@ describe("RegistryGenerator", () => {
         });
 
         it("handles empty namespace list", () => {
-            const { project, generator } = createTestSetup([]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([]);
             expect(code).toContain("NAMESPACE_REGISTRY");
             expect(code).toContain("[]");
         });
 
         it("handles single namespace", () => {
-            const { project, generator } = createTestSetup(["Adw"]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode(["Adw"]);
             expect(code).toContain('["Adw", Adw]');
         });
     });
 
     describe("namespace import paths", () => {
         it("imports namespaces from generated FFI modules", () => {
-            const { project, generator } = createTestSetup(["Gtk"]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            const imports = sourceFile?.getImportDeclarations() ?? [];
-            const gtkImport = imports.find((i) => i.getNamespaceImport()?.getText() === "Gtk");
-            const moduleSpecifier = gtkImport?.getModuleSpecifierValue();
-            expect(moduleSpecifier).toContain("gtk");
+            const code = generateCode(["Gtk"]);
+            expect(code).toContain("@gtkx/ffi/gtk");
         });
     });
 
     describe("integration", () => {
         it("generates valid TypeScript structure", () => {
-            const { project, generator } = createTestSetup(["Gtk", "Gdk", "Gio", "GObject", "Pango"]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/registry.ts");
-            expect(sourceFile?.getStatements().length).toBeGreaterThan(0);
-            expect(sourceFile?.getTypeAliases()).toHaveLength(1);
-            expect(sourceFile?.getVariableStatements()).toHaveLength(1);
+            const code = generateCode(["Gtk", "Gdk", "Gio", "GObject", "Pango"]);
+            expect(code).toContain("type Namespace");
+            expect(code).toContain("export const NAMESPACE_REGISTRY");
         });
     });
 });

@@ -1,4 +1,4 @@
-import type { CodeBlockWriter, WriterFunction } from "ts-morph";
+import type { Writer } from "../../builders/writer.js";
 import type { MappedType } from "../type-system/ffi-types.js";
 
 export type ParamWrapInfo = {
@@ -69,7 +69,9 @@ export class ParamWrapWriter {
         return `getNativeObject(${argName} as NativeHandle) as ${wrapInfo.tsType}`;
     }
 
-    buildWrapParamsFunction(params: Array<{ mappedType: MappedType; paramName: string }>): WriterFunction | null {
+    buildWrapParamsFunction(
+        params: Array<{ mappedType: MappedType; paramName: string }>,
+    ): ((writer: Writer) => void) | null {
         const wrapInfos = params.map((p) => ({
             ...p,
             wrapInfo: this.needsParamWrap(p.mappedType),
@@ -83,7 +85,7 @@ export class ParamWrapWriter {
         return (writer) => {
             writer.write("(args: unknown[]) => [");
             writer.newLine();
-            writer.indent(() => this.writeWrapExpressionsList(wrapInfos, writer));
+            writer.withIndent(() => this.writeWrapExpressionsList(wrapInfos, writer));
             writer.write("]");
         };
     }
@@ -92,19 +94,19 @@ export class ParamWrapWriter {
         jsParamName: string,
         wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>,
         returnUnwrapInfo?: ReturnUnwrapInfo,
-    ): WriterFunction {
+    ): (writer: Writer) => void {
         return (writer) => {
             writer.write(`${jsParamName}`);
             writer.newLine();
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.write("? (...args: unknown[]) => ");
                 if (returnUnwrapInfo?.needsUnwrap) {
                     writer.write("{");
                     writer.newLine();
-                    writer.indent(() => {
+                    writer.withIndent(() => {
                         writer.write(`const _result = ${jsParamName}(`);
                         writer.newLine();
-                        writer.indent(() => this.writeWrapExpressionsList(wrapInfos, writer));
+                        writer.withIndent(() => this.writeWrapExpressionsList(wrapInfos, writer));
                         writer.writeLine(");");
                         writer.writeLine("return _result?.handle ?? null;");
                     });
@@ -112,7 +114,7 @@ export class ParamWrapWriter {
                 } else {
                     writer.write(`${jsParamName}(`);
                     writer.newLine();
-                    writer.indent(() => this.writeWrapExpressionsList(wrapInfos, writer));
+                    writer.withIndent(() => this.writeWrapExpressionsList(wrapInfos, writer));
                     writer.write(")");
                 }
                 writer.newLine();
@@ -121,7 +123,7 @@ export class ParamWrapWriter {
         };
     }
 
-    private writeWrapExpressionsList(wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>, writer: CodeBlockWriter): void {
+    private writeWrapExpressionsList(wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>, writer: Writer): void {
         wrapInfos.forEach((w, index) => {
             const argAccess = `args[${index}]`;
             const expression = this.writeWrapExpression(argAccess, w.wrapInfo);

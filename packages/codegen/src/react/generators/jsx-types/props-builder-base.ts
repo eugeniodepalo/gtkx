@@ -5,8 +5,6 @@
  * Extended by WidgetPropsBuilder and ControllerPropsBuilder.
  */
 
-import type { PropertySignatureStructure } from "ts-morph";
-import { StructureKind } from "ts-morph";
 import type { SignalAnalysis, SignalParam } from "../../../core/generator-types.js";
 import { sanitizeDoc } from "../../../core/utils/doc-formatter.js";
 import { toPascalCase } from "../../../core/utils/naming.js";
@@ -48,15 +46,5 @@ export abstract class PropsBuilderBase {
             escapeXmlTags: true,
             linkStyle: "prefixed",
         });
-    }
-
-    protected buildInterfaceProperties(props: PropInfo[]): PropertySignatureStructure[] {
-        return props.map((prop) => ({
-            kind: StructureKind.PropertySignature as const,
-            name: prop.name,
-            type: prop.type,
-            hasQuestionToken: prop.optional,
-            docs: prop.doc ? [{ description: prop.doc }] : undefined,
-        }));
     }
 }

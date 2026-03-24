@@ -3,27 +3,16 @@
  *
  * Builds JSX intrinsic elements using pre-computed metadata.
  * Uses slots from CodegenWidgetMeta (SINGLE SOURCE OF TRUTH).
- *
- * Optimized to use ts-morph structures API for batched operations.
  */
 
-import type { SourceFile } from "ts-morph";
-import { ModuleDeclarationKind, StructureKind } from "ts-morph";
+import type { FileBuilder } from "../../../builders/index.js";
+import { raw, typeAlias, variableStatement } from "../../../builders/index.js";
 import type { CodegenControllerMeta } from "../../../core/codegen-metadata.js";
-import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
+import { formatJsDoc } from "../../../core/utils/doc-formatter.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
-import { createConstExport } from "../../../core/utils/structure-helpers.js";
 import type { JsxWidget } from "./generator.js";
 
-/**
- * Builds JSX intrinsic elements using pre-computed metadata.
- * Gets slots from CodegenWidgetMeta (SINGLE SOURCE OF TRUTH).
- */
 export class IntrinsicElementsBuilder {
-    /**
-     * Builds widget export constants.
-     * Uses ts-morph structures API for batched operations.
-     */
     private static readonly LIST_WIDGET_NAMES = new Set([
         "GtkListView",
         "GtkGridView",
@@ -32,84 +21,72 @@ export class IntrinsicElementsBuilder {
         "AdwComboRow",
     ]);
 
-    buildWidgetExports(sourceFile: SourceFile, widgets: JsxWidget[]): void {
-        const statements = widgets
-            .filter((widget) => !IntrinsicElementsBuilder.LIST_WIDGET_NAMES.has(widget.jsxName))
-            .map((widget) =>
-                createConstExport(widget.jsxName, `"${widget.jsxName}" as const`, {
-                    docs: buildJsDocStructure(widget.meta.doc, widget.namespace) ?? [
-                        { description: `A ${widget.namespace}.${widget.className} widget element.` },
-                    ],
+    buildWidgetExports(file: FileBuilder, widgets: JsxWidget[]): void {
+        for (const widget of widgets) {
+            if (IntrinsicElementsBuilder.LIST_WIDGET_NAMES.has(widget.jsxName)) continue;
+
+            const doc =
+                formatJsDoc(widget.meta.doc, widget.namespace) ??
+                `A ${widget.namespace}.${widget.className} widget element.`;
+
+            file.add(
+                variableStatement(widget.jsxName, {
+                    exported: true,
+                    kind: "const",
+                    initializer: `"${widget.jsxName}" as const`,
+                    doc,
                 }),
             );
-
-        sourceFile.addVariableStatements(statements);
+        }
     }
 
-    buildControllerExports(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
-        const statements = controllers
-            .filter((c) => c.className !== "EventController" && !c.abstract)
-            .map((controller) =>
-                createConstExport(controller.jsxName, `"${controller.jsxName}" as const`, {
-                    docs: buildJsDocStructure(controller.doc, controller.namespace) ?? [
-                        { description: `A ${controller.namespace}.${controller.className} event controller element.` },
-                    ],
+    buildControllerExports(file: FileBuilder, controllers: CodegenControllerMeta[]): void {
+        for (const controller of controllers) {
+            if (controller.className === "EventController" || controller.abstract) continue;
+
+            const doc =
+                formatJsDoc(controller.doc, controller.namespace) ??
+                `A ${controller.namespace}.${controller.className} event controller element.`;
+
+            file.add(
+                variableStatement(controller.jsxName, {
+                    exported: true,
+                    kind: "const",
+                    initializer: `"${controller.jsxName}" as const`,
+                    doc,
                 }),
             );
-
-        sourceFile.addVariableStatements(statements);
+        }
     }
 
-    buildJsxNamespace(sourceFile: SourceFile, widgets: JsxWidget[], controllers: CodegenControllerMeta[]): void {
+    buildJsxNamespace(file: FileBuilder, widgets: JsxWidget[], controllers: CodegenControllerMeta[]): void {
         const widgetProperties = widgets
             .filter((w) => w.className !== "Widget")
-            .map((w) => ({
-                name: w.jsxName,
-                type: `${w.jsxName}Props`,
-            }));
+            .map((w) => `${w.jsxName}: ${w.jsxName}Props;`);
 
         const controllerProperties = controllers
             .filter((c) => c.className !== "EventController" && !c.abstract)
-            .map((c) => ({
-                name: c.jsxName,
-                type: `${c.jsxName}Props`,
-            }));
+            .map((c) => `${c.jsxName}: ${c.jsxName}Props;`);
 
-        const intrinsicProperties = [...widgetProperties, ...controllerProperties];
+        const allProperties = [...widgetProperties, ...controllerProperties];
+        const propsBlock = allProperties.map((p) => `        ${p}`).join("\n");
 
-        sourceFile.addModule({
-            name: "global",
-            declarationKind: ModuleDeclarationKind.Global,
-            hasDeclareKeyword: true,
-            statements: [
-                {
-                    kind: StructureKind.Module,
-                    name: "React",
-                    declarationKind: ModuleDeclarationKind.Namespace,
-                    statements: [
-                        {
-                            kind: StructureKind.Module,
-                            name: "JSX",
-                            declarationKind: ModuleDeclarationKind.Namespace,
-                            statements: [
-                                {
-                                    kind: StructureKind.Interface,
-                                    name: "IntrinsicElements",
-                                    properties: intrinsicProperties,
-                                },
-                            ],
-                        },
-                    ],
-                },
-            ],
-        });
+        file.add(
+            raw(
+                `declare global {\n` +
+                    `    namespace React {\n` +
+                    `        namespace JSX {\n` +
+                    `            interface IntrinsicElements {\n` +
+                    `${propsBlock}\n` +
+                    `            }\n` +
+                    `        }\n` +
+                    `    }\n` +
+                    `}\n`,
+            ),
+        );
     }
 
-    /**
-     * Builds the WidgetSlotNames type mapping widgets to their valid slot property names.
-     * Uses pre-filtered slots from JsxWidget (already filtered for hidden props).
-     */
-    buildWidgetSlotNamesType(sourceFile: SourceFile, widgets: JsxWidget[]): void {
+    buildWidgetSlotNamesType(file: FileBuilder, widgets: JsxWidget[]): void {
         const properties: string[] = [];
 
         for (const widget of widgets) {
@@ -122,36 +99,23 @@ export class IntrinsicElementsBuilder {
         }
 
         if (properties.length === 0) {
-            sourceFile.addTypeAlias({
-                kind: StructureKind.TypeAlias,
-                name: "WidgetSlotNames",
-                type: "Record<string, never>",
-                isExported: true,
-                docs: [{ description: "Type mapping widgets to their valid slot names." }],
-            });
+            file.add(
+                typeAlias("WidgetSlotNames", "Record<string, never>", {
+                    exported: true,
+                    doc: "Type mapping widgets to their valid slot names.",
+                }),
+            );
         } else {
-            sourceFile.addTypeAlias({
-                kind: StructureKind.TypeAlias,
-                name: "WidgetSlotNames",
-                isExported: true,
-                docs: [
-                    {
-                        description:
-                            "Type mapping widgets to their valid slot names. Used for type-safe Slot components.\nDerived from CodegenWidgetMeta (single source of truth).",
-                    },
-                ],
-                type: `{ ${properties.join("; ")} }`,
-            });
+            file.add(
+                typeAlias("WidgetSlotNames", `{ ${properties.join("; ")} }`, {
+                    exported: true,
+                    doc: "Type mapping widgets to their valid slot names. Used for type-safe Slot components.\nDerived from CodegenWidgetMeta (single source of truth).",
+                }),
+            );
         }
     }
 
-    /**
-     * Adds the export {} statement to ensure the file is a module.
-     */
-    addModuleExport(sourceFile: SourceFile): void {
-        sourceFile.addExportDeclaration({
-            kind: StructureKind.ExportDeclaration,
-            namedExports: [],
-        });
+    addModuleExport(file: FileBuilder): void {
+        file.add(raw("export {};\n"));
     }
 }

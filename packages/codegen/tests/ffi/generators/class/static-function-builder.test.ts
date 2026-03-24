@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GenerationContext } from "../../../../src/core/generation-context.js";
+import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
-import { createWriters } from "../../../../src/core/writers/index.js";
 import { StaticFunctionBuilder } from "../../../../src/ffi/generators/class/static-function-builder.js";
 import {
     createNormalizedClass,
@@ -21,11 +20,7 @@ function createTestSetup(
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-    const ctx = new GenerationContext();
-    const writers = createWriters({
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-    });
+    const file = fileBuilder();
     const options = {
         namespace: "Gtk",
         sharedLibrary: "libgtk-4.so.1",
@@ -41,8 +36,8 @@ function createTestSetup(
         ...classOverrides,
     });
 
-    const builder = new StaticFunctionBuilder(cls, ffiMapper, ctx, writers, options);
-    return { cls, builder, ctx, ffiMapper };
+    const builder = new StaticFunctionBuilder(cls, ffiMapper, file, options);
+    return { cls, builder, ffiMapper };
 }
 
 describe("StaticFunctionBuilder", () => {
@@ -227,7 +222,7 @@ describe("StaticFunctionBuilder", () => {
 
     describe("context integration", () => {
         it("creates context and writers correctly during setup", () => {
-            const { builder, ctx, ffiMapper } = createTestSetup({
+            const { builder, ffiMapper } = createTestSetup({
                 staticFunctions: [
                     createNormalizedFunction({
                         name: "get_value",
@@ -238,7 +233,6 @@ describe("StaticFunctionBuilder", () => {
             });
 
             expect(builder).toBeDefined();
-            expect(ctx).toBeInstanceOf(GenerationContext);
             expect(ffiMapper).toBeInstanceOf(FfiMapper);
         });
     });

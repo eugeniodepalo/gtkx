@@ -1,12 +1,9 @@
 import { readdir } from "node:fs/promises";
-import { join } from "node:path";
-import { GirRepository, type RepositoryOptions } from "@gtkx/gir";
+import { GirRepository } from "@gtkx/gir";
 import { FfiGenerator } from "../ffi/ffi-generator.js";
 import { ReactGenerator } from "../react/react-generator.js";
-import type { CodegenWidgetMeta } from "./codegen-metadata.js";
-import { CodegenProject } from "./project.js";
-
-const NON_INTROSPECTABLE_NAMESPACES = new Set(["Pango"]);
+import { CodegenMetadata, type CodegenWidgetMeta } from "./codegen-metadata.js";
+import type { GeneratedFile } from "./generated-file-set.js";
 
 type CodegenOrchestratorOptions = {
     girsDir: string;
@@ -29,27 +26,31 @@ type CodegenStats = {
 
 export class CodegenOrchestrator {
     private readonly options: CodegenOrchestratorOptions;
-    private readonly project: CodegenProject;
-    private readonly repository: GirRepository;
+    private readonly metadata = new CodegenMetadata();
+    private readonly ffiGeneratedFiles: GeneratedFile[] = [];
+    private readonly reactGeneratedFiles: GeneratedFile[] = [];
+    private repository!: GirRepository;
 
     constructor(options: CodegenOrchestratorOptions) {
         this.options = options;
-        this.project = new CodegenProject();
-        const repositoryOptions: RepositoryOptions = {
-            includeNonIntrospectableNamespaces: NON_INTROSPECTABLE_NAMESPACES,
-        };
-        this.repository = new GirRepository(repositoryOptions);
     }
 
     async generate(): Promise<CodegenResult> {
         const startTime = performance.now();
 
-        await this.loadGirFiles();
-        await this.generateFfi();
+        await this.loadRepository();
+        this.generateFfi();
         this.generateReact();
 
-        const { ffi: ffiFiles, react: reactFiles } = await this.project.emitGrouped();
-        this.releaseAstNodes();
+        const ffiFiles = new Map<string, string>();
+        for (const file of this.ffiGeneratedFiles) {
+            ffiFiles.set(`ffi/${file.path}`, file.content);
+        }
+
+        const reactFiles = new Map<string, string>();
+        for (const file of this.reactGeneratedFiles) {
+            reactFiles.set(`react/${file.path}`, file.content);
+        }
 
         const duration = performance.now() - startTime;
         const stats = this.computeStats(ffiFiles, reactFiles, duration);
@@ -57,31 +58,21 @@ export class CodegenOrchestrator {
         return { ffiFiles, reactFiles, stats };
     }
 
-    getProject(): CodegenProject {
-        return this.project;
-    }
-
     getRepository(): GirRepository {
         return this.repository;
     }
 
     getAllWidgetMeta(): CodegenWidgetMeta[] {
-        return this.project.metadata.getAllWidgetMeta();
+        return this.metadata.getAllWidgetMeta();
     }
 
-    private async loadGirFiles(): Promise<void> {
+    private async loadRepository(): Promise<void> {
         const { girsDir } = this.options;
-        const girFiles = await getAvailableGirFiles(girsDir);
-
-        for (const filename of girFiles) {
-            const filePath = join(girsDir, filename);
-            await this.repository.loadFromFile(filePath);
-        }
-
-        this.repository.resolve();
+        const roots = await getNamespaceRoots(girsDir);
+        this.repository = await GirRepository.load(roots, { girPath: [girsDir] });
     }
 
-    private async generateFfi(): Promise<void> {
+    private generateFfi(): void {
         const allNamespaces = this.repository.getNamespaceNames();
 
         for (const namespace of allNamespaces) {
@@ -89,23 +80,30 @@ export class CodegenOrchestrator {
                 outputDir: this.options.ffiOutputDir,
                 namespace,
                 repository: this.repository,
-                project: this.project,
-                skipEmit: true,
             });
 
-            await generator.generateNamespace(namespace);
+            const result = generator.generateNamespace(namespace);
+            this.ffiGeneratedFiles.push(...result.files);
+
+            for (const meta of result.metadata.getAllWidgetMeta()) {
+                this.metadata.setWidgetMeta(meta.modulePath, meta);
+            }
+            for (const meta of result.metadata.getAllControllerMeta()) {
+                this.metadata.setControllerMeta(meta.jsxName, meta);
+            }
         }
     }
 
     private generateReact(): void {
-        const widgetMeta = this.project.metadata.getAllWidgetMeta();
+        const widgetMeta = this.metadata.getAllWidgetMeta();
         if (widgetMeta.length === 0) {
             return;
         }
 
+        const controllerMeta = this.metadata.getAllControllerMeta();
         const namespaceNames = [...new Set(widgetMeta.map((m) => m.namespace))];
-        const generator = new ReactGenerator(widgetMeta, this.project, namespaceNames);
-        generator.generate();
+        const generator = new ReactGenerator(widgetMeta, controllerMeta, namespaceNames);
+        this.reactGeneratedFiles.push(...generator.generate());
     }
 
     private computeStats(
@@ -113,7 +111,7 @@ export class CodegenOrchestrator {
         reactFiles: Map<string, string>,
         duration: number,
     ): CodegenStats {
-        const widgetMeta = this.project.metadata.getAllWidgetMeta();
+        const widgetMeta = this.metadata.getAllWidgetMeta();
 
         return {
             namespaces: this.repository.getNamespaceNames().length,
@@ -122,15 +120,9 @@ export class CodegenOrchestrator {
             duration: Math.round(duration),
         };
     }
-
-    private releaseAstNodes(): void {
-        for (const sourceFile of this.project.getSourceFiles()) {
-            sourceFile.forgetDescendants();
-        }
-    }
 }
 
-async function getAvailableGirFiles(girsDir: string): Promise<string[]> {
+async function getNamespaceRoots(girsDir: string): Promise<string[]> {
     const files = await readdir(girsDir);
-    return files.filter((f) => f.endsWith(".gir"));
+    return files.filter((f) => f.endsWith(".gir")).map((f) => f.replace(/\.gir$/, ""));
 }

@@ -6,9 +6,7 @@
  */
 
 import type { GirConstructor, GirFunction, GirMethod, GirParameter } from "@gtkx/gir";
-import type { MethodDeclarationStructure, WriterFunction } from "ts-morph";
-import { StructureKind } from "ts-morph";
-import type { GenerationContext } from "../generation-context.js";
+import type { Writer } from "../../builders/writer.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType, SelfTypeDescriptor } from "../type-system/ffi-types.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
@@ -18,6 +16,15 @@ import { formatNullableReturn } from "../utils/type-qualification.js";
 import { type CallArgument, type CallbackWrapperInfo, CallExpressionBuilder } from "./call-expression-builder.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
 import { ParamWrapWriter } from "./param-wrap-writer.js";
+
+/**
+ * Collects imports during method body generation.
+ * The FileBuilder naturally satisfies this interface.
+ */
+export type ImportCollector = {
+    addImport(specifier: string, names: string[]): void;
+    addTypeImport(specifier: string, names: string[]): void;
+};
 
 /**
  * Information about a Ref parameter that GTK allocates.
@@ -112,6 +119,24 @@ type StaticFunctionStructureOptions = {
 };
 
 /**
+ * Shape returned by buildMethodStructure and buildStaticFunctionStructure.
+ * Generators consume this to emit method declarations.
+ */
+export type MethodStructure = {
+    name: string;
+    isStatic?: boolean;
+    override?: boolean;
+    parameters: Array<{ name: string; type: string; optional?: boolean; isRestParameter?: boolean }>;
+    returnType: string | undefined;
+    docs: Array<{ description: string }> | undefined;
+    statements: (writer: Writer) => void;
+    overloads?: Array<{
+        params: Array<{ name: string; type: string; optional?: boolean; isRestParameter?: boolean }>;
+        returnType?: string;
+    }>;
+};
+
+/**
  * Result of constructor selection analysis.
  */
 export type ConstructorSelection = {
@@ -132,17 +157,11 @@ export type ConstructorSelection = {
  *
  * @example
  * ```typescript
- * const writer = new MethodBodyWriter(ffiMapper, ctx);
+ * const writer = new MethodBodyWriter(ffiMapper, imports);
  *
- * // Check parameter requirements
  * if (writer.hasUnsupportedCallbacks(params)) return;
  *
- * // Generate method body using ts-morph WriterFunction
- * classDecl.addMethod({
- *   name: "myMethod",
- *   parameters: writer.buildParameterList(method.parameters),
- *   statements: writer.writeMethodBody(method, returnTypeMapping, options),
- * });
+ * const structure = writer.buildMethodStructure(method, options);
  * ```
  */
 export class MethodBodyWriter {
@@ -152,11 +171,11 @@ export class MethodBodyWriter {
 
     constructor(
         private readonly ffiMapper: FfiMapper,
-        private readonly ctx: GenerationContext,
+        private readonly imports: ImportCollector,
         ffiTypeWriter?: FfiTypeWriter,
     ) {
         this.ffiTypeWriter = ffiTypeWriter ?? new FfiTypeWriter();
-        this.callExpression = new CallExpressionBuilder(this.ffiTypeWriter);
+        this.callExpression = new CallExpressionBuilder();
         this.paramWrapWriter = new ParamWrapWriter();
     }
 
@@ -217,8 +236,11 @@ export class MethodBodyWriter {
         return toValidIdentifier(toCamelCase(param.name));
     }
 
-    resolveMethodName(method: GirMethod): string {
-        const dynamicRename = this.ctx.methodRenames.get(method.cIdentifier);
+    /**
+     * Resolves the method name, applying any dynamic renames.
+     */
+    resolveMethodName(method: GirMethod, methodRenames: Map<string, string>): string {
+        const dynamicRename = methodRenames.get(method.cIdentifier);
         const camelName = toCamelCase(method.name);
         return dynamicRename ?? camelName;
     }
@@ -364,35 +386,31 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Builds a parameter list for ts-morph method declarations.
+     * Builds a parameter list for method declarations.
      *
      * @param parameters - The normalized parameters
-     * @returns Array of parameter structures for ts-morph
+     * @returns Array of parameter structures
      *
      * @example
      * ```typescript
      * const params = builder.buildParameterList(method.parameters);
-     * classDecl.addMethod({
-     *   name: "myMethod",
-     *   parameters: params,
-     * });
      * ```
      */
     buildParameterList(
         parameters: readonly GirParameter[],
-    ): Array<{ name: string; type: string; hasQuestionToken?: boolean; isRestParameter?: boolean }> {
+    ): Array<{ name: string; type: string; optional?: boolean; isRestParameter?: boolean }> {
         const filteredParams = this.filterParameters(parameters);
 
         const required = filteredParams.filter((p) => !p.optional && !p.nullable);
         const omittable = filteredParams.filter((p) => p.optional || p.nullable);
         const reordered = [...required, ...omittable];
 
-        const result: Array<{ name: string; type: string; hasQuestionToken?: boolean; isRestParameter?: boolean }> =
+        const result: Array<{ name: string; type: string; optional?: boolean; isRestParameter?: boolean }> =
             reordered.map((param) => {
                 const mapped = this.ffiMapper.mapParameter(param);
-                this.ctx.addTypeImports(mapped.imports);
+                this.addTypeImportsFromMapping(mapped);
                 if (mapped.ffi.type === "ref") {
-                    this.ctx.usesRef = true;
+                    this.imports.addImport("@gtkx/native", ["Ref"]);
                 }
 
                 const paramName = this.toJsParamName(param);
@@ -404,12 +422,12 @@ export class MethodBodyWriter {
                 return {
                     name: paramName,
                     type: param.nullable ? nullableType : mapped.ts,
-                    hasQuestionToken: isOmittable,
+                    optional: isOmittable,
                 };
             });
 
         if (hasVarargs(parameters)) {
-            this.ctx.usesArg = true;
+            this.imports.addTypeImport("@gtkx/native", ["Arg"]);
             result.push({
                 name: "args",
                 type: "Arg[]",
@@ -421,27 +439,26 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Builds a complete MethodDeclarationStructure for ts-morph.
+     * Builds a complete MethodStructure for method declarations.
      *
      * Consolidates the common pattern used across RecordGenerator, InterfaceGenerator,
      * and MethodBuilder for building method structures.
      *
      * @param method - The normalized method definition
      * @param options - Configuration options
-     * @returns MethodDeclarationStructure for ts-morph
+     * @returns MethodStructure for generators
      *
      * @example
      * ```typescript
      * const structure = builder.buildMethodStructure(method, {
      *   methodName: "onClick",
-     *   selfTypeDescriptor: '{ type: "gobject", ownership: "borrowed" }',
+     *   selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
      *   sharedLibrary: "libgtk-4.so.1",
      *   namespace: "Gtk",
      * });
-     * classDecl.addMethod(structure);
      * ```
      */
-    buildMethodStructure(method: GirMethod, options: MethodStructureOptions): MethodDeclarationStructure {
+    buildMethodStructure(method: GirMethod, options: MethodStructureOptions): MethodStructure {
         const params = this.buildParameterList(method.parameters);
         const returnTypeMapping = this.ffiMapper.mapType(
             method.returnType,
@@ -449,12 +466,11 @@ export class MethodBodyWriter {
             method.returnType.transferOwnership,
             1,
         );
-        this.ctx.addTypeImports(returnTypeMapping.imports);
+        this.addTypeImportsFromMapping(returnTypeMapping);
 
         const tsReturnType = formatNullableReturn(returnTypeMapping.ts, method.returnType.nullable === true);
 
         return {
-            kind: StructureKind.Method,
             name: options.methodName,
             parameters: params,
             returnType: tsReturnType === "void" ? undefined : tsReturnType,
@@ -467,14 +483,11 @@ export class MethodBodyWriter {
         };
     }
 
-    buildStaticFunctionStructure(
-        func: GirFunction,
-        options: StaticFunctionStructureOptions,
-    ): MethodDeclarationStructure {
+    buildStaticFunctionStructure(func: GirFunction, options: StaticFunctionStructureOptions): MethodStructure {
         const funcName = toValidMemberName(toCamelCase(func.name));
         const params = this.buildParameterList(func.parameters);
         const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true, func.returnType.transferOwnership);
-        this.ctx.addTypeImports(returnTypeMapping.imports);
+        this.addTypeImportsFromMapping(returnTypeMapping);
 
         const returnTypeName = func.returnType.name as string | undefined;
         const returnsOwnClass =
@@ -483,7 +496,6 @@ export class MethodBodyWriter {
         const tsReturnType = formatNullableReturn(baseReturnType, func.returnType.nullable === true);
 
         return {
-            kind: StructureKind.Method,
             name: funcName,
             isStatic: true,
             parameters: params,
@@ -497,7 +509,7 @@ export class MethodBodyWriter {
         };
     }
 
-    writeCallbackWrapperDeclarations(writer: Parameters<WriterFunction>[0], args: readonly CallArgument[]): void {
+    writeCallbackWrapperDeclarations(writer: Writer, args: readonly CallArgument[]): void {
         for (const arg of args) {
             if (arg.callbackWrapper) {
                 writer.write(`const ${arg.callbackWrapper.wrappedName} = `);
@@ -508,17 +520,16 @@ export class MethodBodyWriter {
         }
     }
 
-    writeArgumentsToWriter(writer: Parameters<WriterFunction>[0], args: readonly CallArgument[]): void {
+    writeArgumentsToWriter(writer: Writer, args: readonly CallArgument[]): void {
         for (const arg of args) {
-            writer.write("{ type: ");
-            this.ffiTypeWriter.toWriter(arg.type)(writer);
+            writer.write(`{ type: ${JSON.stringify(arg.type)}`);
             writer.writeLine(`, value: ${arg.value}, optional: ${arg.optional ?? false} },`);
         }
     }
 
     /**
      * Builds call arguments as an array of CallArgument objects.
-     * Used with CallExpressionBuilder.toWriter() for ts-morph generation.
+     * Used with CallExpressionBuilder.toWriter() for code generation.
      *
      * @param parameters - The parameters to build arguments for
      * @param sizeParamOffset - Offset to add to sizeParamIndex for sized arrays (1 for instance methods, 0 for static)
@@ -568,9 +579,9 @@ export class MethodBodyWriter {
 
         for (const w of wrapInfos) {
             if (w.wrapInfo.needsWrap) {
-                this.ctx.usesGetNativeObject = true;
+                this.imports.addImport("../../native-object.js", ["getNativeObject"]);
             }
-            this.ctx.addTypeImports(w.mapped.imports);
+            this.addTypeImportsFromMapping(w.mapped);
         }
 
         const wrappedName = createWrappedName(jsParamName);
@@ -589,26 +600,24 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Writes method body using ts-morph WriterFunction.
+     * Writes method body using our Writer.
      *
      * @param method - The normalized method definition
      * @param returnTypeMapping - The mapped return type
      * @param options - Configuration options
-     * @returns WriterFunction for ts-morph
+     * @returns Function that writes the method body
      *
      * @example
      * ```typescript
-     * classDecl.addMethod({
-     *   name: "click",
-     *   statements: builder.writeMethodBody(method, returnTypeMapping, options),
-     * });
+     * const bodyFn = builder.writeMethodBody(method, returnTypeMapping, options);
+     * bodyFn(writer);
      * ```
      */
     writeMethodBody(
         method: GirMethod,
         returnTypeMapping: MappedType,
         options: MethodBodyStatementsOptions,
-    ): WriterFunction {
+    ): (writer: Writer) => void {
         return this.writeCallableBody({
             sharedLibrary: options.sharedLibrary,
             cIdentifier: method.cIdentifier,
@@ -622,26 +631,24 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Writes function body using ts-morph WriterFunction.
+     * Writes function body using our Writer.
      *
      * @param func - The normalized function definition
      * @param returnTypeMapping - The mapped return type
      * @param options - Configuration options
-     * @returns WriterFunction for ts-morph
+     * @returns Function that writes the function body
      *
      * @example
      * ```typescript
-     * sourceFile.addFunction({
-     *   name: "myFunction",
-     *   statements: builder.writeFunctionBody(func, returnTypeMapping, options),
-     * });
+     * const bodyFn = builder.writeFunctionBody(func, returnTypeMapping, options);
+     * bodyFn(writer);
      * ```
      */
     writeFunctionBody(
         func: GirFunction,
         returnTypeMapping: MappedType,
         options: FunctionBodyStatementsOptions,
-    ): WriterFunction {
+    ): (writer: Writer) => void {
         return this.writeCallableBody({
             sharedLibrary: options.sharedLibrary,
             cIdentifier: func.cIdentifier,
@@ -654,7 +661,7 @@ export class MethodBodyWriter {
         });
     }
 
-    private writeCallableBody(options: CallableBodyOptions): WriterFunction {
+    private writeCallableBody(options: CallableBodyOptions): (writer: Writer) => void {
         return (writer) => {
             const isNullable = options.returnType.nullable === true;
             const rawReturnType = options.returnTypeMapping.ts;
@@ -667,8 +674,8 @@ export class MethodBodyWriter {
             const resultVarName = this.getResultVarName(options.parameters);
 
             if (options.throws) {
-                this.ctx.usesCreateRef = true;
-                this.ctx.usesNativeHandle = true;
+                this.imports.addImport("@gtkx/native", ["createRef"]);
+                this.imports.addTypeImport("@gtkx/native", ["NativeHandle"]);
                 writer.writeLine("const error = createRef<NativeHandle | null>(null);");
             }
 
@@ -688,7 +695,7 @@ export class MethodBodyWriter {
             const hasObjectWrapReturn = wrapInfo.needsWrap && hasReturnValue;
 
             if (hasOwnClassReturn || hasObjectWrapReturn) {
-                this.ctx.usesGetNativeObject = true;
+                this.imports.addImport("../../native-object.js", ["getNativeObject"]);
                 writer.write("const ptr = ");
                 this.callExpression.toWriter({
                     sharedLibrary: options.sharedLibrary,
@@ -724,7 +731,7 @@ export class MethodBodyWriter {
                     }
                 }
             } else if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
-                this.ctx.usesGetNativeObject = true;
+                this.imports.addImport("../../native-object.js", ["getNativeObject"]);
 
                 writer.write("const arr = ");
                 this.callExpression.toWriter({
@@ -816,43 +823,38 @@ export class MethodBodyWriter {
      * Sets up GError import tracking and returns the appropriate GError reference.
      * Call this when generating error handling code that uses getNativeObject with GError.
      *
+     * @param currentNamespace - The current namespace being generated
      * @returns The GError class reference to use (e.g., "GLib.GError" or "GError")
      */
-    setupGErrorImports(): string {
-        this.ctx.usesNativeError = true;
-        this.ctx.usesGetNativeObject = true;
+    setupGErrorImports(currentNamespace?: string): string {
+        this.imports.addImport("../../native-error.js", ["NativeError"]);
+        this.imports.addImport("../../native-object.js", ["getNativeObject"]);
 
-        const isGLibNamespace = this.ctx.currentNamespace === "GLib";
+        const isGLibNamespace = currentNamespace === "GLib";
         const gerrorRef = isGLibNamespace ? "GError" : "GLib.GError";
 
         if (isGLibNamespace) {
-            this.ctx.usedRecords.add("GError");
-            this.ctx.recordNameToFile.set("GError", "Error");
+            this.imports.addImport("./Error.js", ["GError"]);
         } else {
-            this.ctx.usedExternalTypes.set("GLib.GError", {
-                namespace: "GLib",
-                name: "Error",
-                transformedName: "GError",
-                kind: "record",
-            });
+            this.imports.addImport("../GLib/index.js", ["GLib"]);
         }
 
         return gerrorRef;
     }
 
-    private writeErrorCheck(writer: Parameters<WriterFunction>[0]): void {
+    private writeErrorCheck(writer: Writer): void {
         const gerrorRef = this.setupGErrorImports();
 
         writer.writeLine("if (error.value !== null) {");
-        writer.indent(() => {
+        writer.withIndent(() => {
             writer.writeLine(`throw new NativeError(getNativeObject(error.value, ${gerrorRef}));`);
         });
         writer.writeLine("}");
     }
 
-    private writeRefRewrap(writer: Parameters<WriterFunction>[0], refs: GtkAllocatedRef[]): void {
+    private writeRefRewrap(writer: Writer, refs: GtkAllocatedRef[]): void {
         for (const ref of refs) {
-            this.ctx.usesGetNativeObject = true;
+            this.imports.addImport("../../native-object.js", ["getNativeObject"]);
             if (ref.isArray && ref.arrayItemType) {
                 if (ref.arrayItemIsBoxed || ref.arrayItemIsInterface) {
                     writer.writeLine(
@@ -882,11 +884,10 @@ export class MethodBodyWriter {
      * RecordGenerator (boxed) for generating static factory methods.
      *
      * @param options - Configuration for the factory method body
-     * @returns WriterFunction for ts-morph
+     * @returns Function that writes the factory method body
      *
      * @example
      * ```typescript
-     * // For GObject constructors
      * const body = builder.writeFactoryMethodBody({
      *   sharedLibrary: "libgtk-4.so.1",
      *   cIdentifier: "gtk_button_new_with_label",
@@ -895,17 +896,6 @@ export class MethodBodyWriter {
      *   wrapClassName: "Button",
      *   throws: false,
      *   useClassInWrap: false,
-     * });
-     *
-     * // For boxed constructors
-     * const body = builder.writeFactoryMethodBody({
-     *   sharedLibrary: "libgtk-4.so.1",
-     *   cIdentifier: "gtk_text_iter_new",
-     *   args: callArgs,
-     *   returnTypeDescriptor: { type: "boxed", ownership: "borrowed", innerType: "GtkTextIter", library: "libgtk-4.so.1" },
-     *   wrapClassName: "TextIter",
-     *   throws: false,
-     *   useClassInWrap: true,
      * });
      * ```
      */
@@ -918,7 +908,7 @@ export class MethodBodyWriter {
         throws: boolean;
         /** If true, pass the class to getNativeObject. Used for boxed types. */
         useClassInWrap: boolean;
-    }): WriterFunction {
+    }): (writer: Writer) => void {
         const { sharedLibrary, cIdentifier, args, returnTypeDescriptor, wrapClassName, throws, useClassInWrap } =
             options;
 
@@ -926,8 +916,8 @@ export class MethodBodyWriter {
             this.writeCallbackWrapperDeclarations(writer, args);
 
             if (throws) {
-                this.ctx.usesCreateRef = true;
-                this.ctx.usesNativeHandle = true;
+                this.imports.addImport("@gtkx/native", ["createRef"]);
+                this.imports.addTypeImport("@gtkx/native", ["NativeHandle"]);
                 writer.writeLine("const error = createRef<NativeHandle | null>(null);");
                 args.push({
                     type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(),
@@ -937,15 +927,15 @@ export class MethodBodyWriter {
 
             writer.write("const ptr = call(");
             writer.newLine();
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine(`"${sharedLibrary}",`);
                 writer.writeLine(`"${cIdentifier}",`);
                 writer.writeLine("[");
-                writer.indent(() => {
+                writer.withIndent(() => {
                     this.writeArgumentsToWriter(writer, args);
                 });
                 writer.writeLine("],");
-                this.ffiTypeWriter.toWriter(returnTypeDescriptor)(writer);
+                writer.write(JSON.stringify(returnTypeDescriptor));
                 writer.newLine();
             });
             writer.writeLine(");");
@@ -954,7 +944,7 @@ export class MethodBodyWriter {
                 this.writeErrorCheck(writer);
             }
 
-            this.ctx.usesGetNativeObject = true;
+            this.imports.addImport("../../native-object.js", ["getNativeObject"]);
             if (useClassInWrap) {
                 writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${wrapClassName});`);
             } else {
@@ -978,17 +968,31 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Gets the GenerationContext instance.
+     * Processes type imports from a MappedType, adding them via the ImportCollector.
      */
-    getContext(): GenerationContext {
-        return this.ctx;
-    }
-
-    /**
-     * Builds a value expression that handles object ID extraction.
-     * Delegates to CallExpressionBuilder.buildValueExpression.
-     */
-    buildValueExpression(valueName: string, mappedType: MappedType, nullable = false): string {
-        return this.callExpression.buildValueExpression(valueName, mappedType, nullable);
+    private addTypeImportsFromMapping(mapped: MappedType): void {
+        for (const imp of mapped.imports) {
+            if (imp.isExternal) {
+                this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
+            } else {
+                switch (imp.kind) {
+                    case "enum":
+                    case "flags":
+                        this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+                        break;
+                    case "record":
+                        this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+                        break;
+                    case "class":
+                        this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+                        break;
+                    case "interface":
+                        this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+                        break;
+                    case "callback":
+                        break;
+                }
+            }
+        }
     }
 }

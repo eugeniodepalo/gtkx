@@ -1,28 +1,26 @@
 /**
- * Function Generator (ts-morph)
+ * Function Generator
  *
- * Generates standalone exported functions using ts-morph AST.
+ * Generates standalone exported functions using the builder library.
  */
 
 import type { GirFunction } from "@gtkx/gir";
-import type { SourceFile, VariableStatementStructure, WriterFunction } from "ts-morph";
-import { StructureKind, VariableDeclarationKind } from "ts-morph";
-import type { GenerationContext } from "../../core/generation-context.js";
+import { type FileBuilder, variableStatement, type Writer } from "../../builders/index.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
-import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
+import { formatJsDoc } from "../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions } from "../../core/utils/filtering.js";
 import { toCamelCase, toValidIdentifier } from "../../core/utils/naming.js";
 import { formatNullableReturn } from "../../core/utils/type-qualification.js";
-import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../core/writers/index.js";
+import { createMethodBodyWriter, type MethodBodyWriter } from "../../core/writers/index.js";
 
 /**
- * Generates standalone exported functions.
+ * Generates standalone exported functions into a FileBuilder.
  *
  * @example
  * ```typescript
- * const generator = new FunctionGenerator(ffiMapper, ctx, builders, options);
- * generator.generateToSourceFile(functions, sourceFile);
+ * const generator = new FunctionGenerator(ffiMapper, file, options);
+ * generator.generate(functions);
  * ```
  */
 export class FunctionGenerator {
@@ -30,66 +28,50 @@ export class FunctionGenerator {
 
     constructor(
         private readonly ffiMapper: FfiMapper,
-        private readonly ctx: GenerationContext,
-        writers: Writers,
+        private readonly file: FileBuilder,
         private readonly options: FfiGeneratorOptions,
     ) {
-        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
+        this.methodBody = createMethodBodyWriter(ffiMapper, file, {
+            sharedLibrary: options.sharedLibrary,
+            glibLibrary: options.glibLibrary,
+        });
     }
 
     /**
-     * Generates into a ts-morph SourceFile.
+     * Generates function declarations and adds them to the file.
      *
      * @param functions - The functions to generate
-     * @param sourceFile - The ts-morph SourceFile to generate into
      * @returns true if any functions were generated
-     *
-     * @example
-     * ```typescript
-     * const generator = new FunctionGenerator(ffiMapper, ctx, builders, options);
-     * generator.generateToSourceFile(functions, sourceFile);
-     * ```
      */
-    generateToSourceFile(functions: GirFunction[], sourceFile: SourceFile): boolean {
-        const supportedFunctions = this.filterAndTrackFeatures(functions);
-
-        const structures: VariableStatementStructure[] = [];
-        for (const func of supportedFunctions) {
-            structures.push(this.buildFunctionStructure(func));
-        }
-
-        if (structures.length > 0) {
-            sourceFile.addVariableStatements(structures);
-        }
-
-        return supportedFunctions.length > 0;
-    }
-
-    private filterAndTrackFeatures(functions: GirFunction[]): GirFunction[] {
-        const supportedFunctions = filterSupportedFunctions(functions, (params) =>
+    generate(functions: GirFunction[]): boolean {
+        const supported = filterSupportedFunctions(functions, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
         );
-        this.ctx.usesRef = supportedFunctions.some((f) => this.methodBody.hasRefParameter(f.parameters));
-        this.ctx.usesCall = supportedFunctions.length > 0;
-        return supportedFunctions;
+
+        for (const func of supported) {
+            this.addFunction(func);
+        }
+
+        return supported.length > 0;
     }
 
-    private buildFunctionStructure(func: GirFunction): VariableStatementStructure {
+    private addFunction(func: GirFunction): void {
         const funcName = toValidIdentifier(toCamelCase(func.name));
         const params = this.methodBody.buildParameterList(func.parameters);
         const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true, func.returnType.transferOwnership);
-        this.ctx.addTypeImports(returnTypeMapping.imports);
-
         const fullReturnType = formatNullableReturn(returnTypeMapping.ts, func.returnType.nullable === true);
 
-        const arrowFunc: WriterFunction = (writer) => {
+        const initializer = (writer: Writer) => {
             writer.write("(");
-            params.forEach((p, i) => {
+            for (let i = 0; i < params.length; i++) {
+                const p = params[i];
+                if (!p) continue;
                 if (i > 0) writer.write(", ");
-                const restPrefix = p.isRestParameter ? "..." : "";
-                const questionMark = p.hasQuestionToken ? "?" : "";
-                writer.write(`${restPrefix}${p.name}${questionMark}: ${p.type}`);
-            });
+                if (p.isRestParameter) writer.write("...");
+                writer.write(p.name);
+                if (p.optional) writer.write("?");
+                writer.write(`: ${p.type}`);
+            }
             writer.write(")");
 
             if (fullReturnType !== "void") {
@@ -97,25 +79,19 @@ export class FunctionGenerator {
             }
 
             writer.write(" => ");
-            writer.block(() => {
+            writer.writeBlock(() => {
                 this.methodBody.writeFunctionBody(func, returnTypeMapping, {
                     sharedLibrary: this.options.sharedLibrary,
                 })(writer);
             });
         };
 
-        return {
-            kind: StructureKind.VariableStatement,
-            isExported: true,
-            declarationKind: VariableDeclarationKind.Const,
-            docs: buildJsDocStructure(func.doc, this.options.namespace),
-            declarations: [
-                {
-                    kind: StructureKind.VariableDeclaration,
-                    name: funcName,
-                    initializer: arrowFunc,
-                },
-            ],
-        };
+        this.file.add(
+            variableStatement(funcName, {
+                exported: true,
+                initializer,
+                doc: formatJsDoc(func.doc, this.options.namespace),
+            }),
+        );
     }
 }

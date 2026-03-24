@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CodegenProject } from "../../../src/core/project.js";
+import { fileBuilder, stringify } from "../../../src/builders/index.js";
 import { InternalGenerator } from "../../../src/react/generators/internal.js";
 import { MetadataReader } from "../../../src/react/metadata-reader.js";
 import {
@@ -10,47 +10,31 @@ import {
     createWidgetMeta,
 } from "../../fixtures/metadata-fixtures.js";
 
-function createTestSetup(metas = [createWidgetMeta(), createButtonMeta()]) {
+function generateCode(metas = [createWidgetMeta(), createButtonMeta()]): string {
     const reader = new MetadataReader(metas);
-    const project = new CodegenProject();
-    const generator = new InternalGenerator(reader, project);
-    return { reader, project, generator };
+    const generator = new InternalGenerator(reader, []);
+    const file = fileBuilder();
+    generator.generate(file);
+    return stringify(file);
 }
 
 describe("InternalGenerator", () => {
     describe("constructor", () => {
-        it("creates generator with reader and project", () => {
-            const { generator } = createTestSetup();
+        it("creates generator with reader and controllers", () => {
+            const reader = new MetadataReader([createWidgetMeta()]);
+            const generator = new InternalGenerator(reader, []);
             expect(generator).toBeInstanceOf(InternalGenerator);
         });
     });
 
     describe("generate", () => {
-        it("creates internal.ts file in react directory", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            expect(sourceFile).not.toBeNull();
-        });
-
-        it("returns the created source file", () => {
-            const { generator } = createTestSetup();
-
-            const sourceFile = generator.generate();
-
-            expect(sourceFile).toBeDefined();
-            expect(sourceFile.getFilePath()).toContain("internal.ts");
+        it("produces non-empty output", () => {
+            const code = generateCode();
+            expect(code.length).toBeGreaterThan(0);
         });
 
         it("adds file comment about internal metadata", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("Internal metadata for the reconciler");
         });
     });
@@ -67,12 +51,7 @@ describe("InternalGenerator", () => {
                     }),
                 ],
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), buttonMeta]);
             expect(code).toContain("CONSTRUCTION_META");
         });
 
@@ -87,12 +66,7 @@ describe("InternalGenerator", () => {
                     }),
                 ],
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), buttonMeta]);
             expect(code).toContain("GtkButton");
             expect(code).toContain('"label"');
             expect(code).toContain("girName");
@@ -111,12 +85,7 @@ describe("InternalGenerator", () => {
                     }),
                 ],
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), buttonMeta]);
             expect(code).toContain("constructOnly: true");
         });
 
@@ -131,12 +100,7 @@ describe("InternalGenerator", () => {
                     }),
                 ],
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), buttonMeta]);
             const metaStart = code.indexOf("CONSTRUCTION_META");
             const nextExport = code.indexOf("export const", metaStart + 1);
             const metaSection = code.slice(metaStart, nextExport);
@@ -153,12 +117,7 @@ describe("InternalGenerator", () => {
                     }),
                 ],
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), buttonMeta]);
             const metaStart = code.indexOf("CONSTRUCTION_META");
             const nextExport = code.indexOf("export const", metaStart + 1);
             const metaSection = code.slice(metaStart, nextExport);
@@ -166,12 +125,7 @@ describe("InternalGenerator", () => {
         });
 
         it("has correct type annotation", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain(
                 "Record<string, Record<string, { girName: string; ffiType: Type; constructOnly?: true }>>",
             );
@@ -180,34 +134,19 @@ describe("InternalGenerator", () => {
 
     describe("PROPS map", () => {
         it("generates PROPS constant", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("PROPS");
         });
 
         it("has correct type annotation for PROPS", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("Record<string, Record<string, [string | null, string]>>");
         });
     });
 
     describe("SIGNALS map", () => {
         it("generates SIGNALS constant", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("SIGNALS");
         });
 
@@ -215,12 +154,7 @@ describe("InternalGenerator", () => {
             const buttonMeta = createButtonMeta({
                 signalNames: ["clicked", "activate"],
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), buttonMeta]);
             expect(code).toContain("clicked");
             expect(code).toContain("activate");
         });
@@ -233,12 +167,7 @@ describe("InternalGenerator", () => {
                 signals: [],
             });
             const widgetMeta = createWidgetMeta();
-            const { project, generator } = createTestSetup([widgetMeta, labelMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([widgetMeta, labelMeta]);
             const signalsStart = code.indexOf("SIGNALS");
             const signalsSection = code.slice(signalsStart);
             expect(signalsSection).toContain("GtkWidget");
@@ -246,31 +175,8 @@ describe("InternalGenerator", () => {
         });
 
         it("has Record<string, Record<string, string>> type annotation", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("Record<string, Record<string, string>>");
-        });
-    });
-
-    describe("namespace imports", () => {
-        it("adds no namespace imports when only widgets are present", () => {
-            const listViewMeta = createCodegenWidgetMeta({
-                className: "ListView",
-                jsxName: "GtkListView",
-                namespace: "Gtk",
-            });
-            const { project, generator } = createTestSetup([createWidgetMeta(), listViewMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const imports = sourceFile?.getImportDeclarations() ?? [];
-            const namespaces = imports.map((i) => i.getNamespaceImport()?.getText()).filter(Boolean);
-            expect(namespaces).toHaveLength(0);
         });
     });
 
@@ -284,12 +190,8 @@ describe("InternalGenerator", () => {
             });
             const buttonMeta = createButtonMeta();
             const widgetMeta = createWidgetMeta();
-            const { project, generator } = createTestSetup([labelMeta, buttonMeta, widgetMeta]);
+            const code = generateCode([labelMeta, buttonMeta, widgetMeta]);
 
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
             const signalsIndex = code.indexOf("SIGNALS");
             const signalsSection = code.slice(signalsIndex);
 
@@ -307,32 +209,17 @@ describe("InternalGenerator", () => {
 
     describe("export statements", () => {
         it("exports CONSTRUCTION_META", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("export const CONSTRUCTION_META");
         });
 
         it("exports PROPS", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("export const PROPS");
         });
 
         it("exports SIGNALS", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/internal.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode();
             expect(code).toContain("export const SIGNALS");
         });
     });

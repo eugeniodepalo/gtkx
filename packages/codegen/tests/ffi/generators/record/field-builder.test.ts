@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GenerationContext } from "../../../../src/core/generation-context.js";
+import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
-import { createWriters } from "../../../../src/core/writers/index.js";
 import { FieldBuilder } from "../../../../src/ffi/generators/record/field-builder.js";
 import {
     createNormalizedField,
@@ -15,13 +14,9 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-    const ctx = new GenerationContext();
-    const writers = createWriters({
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-    });
-    const builder = new FieldBuilder(ffiMapper, ctx, writers);
-    return { builder, ctx, ffiMapper };
+    const imports = fileBuilder();
+    const builder = new FieldBuilder(ffiMapper, imports, "libgtk-4.so.1", "libglib-2.0.so.0");
+    return { builder, imports, ffiMapper };
 }
 
 describe("FieldBuilder", () => {

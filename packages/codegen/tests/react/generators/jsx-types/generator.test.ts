@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CodegenProject } from "../../../../src/core/project.js";
+import { fileBuilder, stringify } from "../../../../src/builders/index.js";
 import { JsxTypesGenerator } from "../../../../src/react/generators/jsx-types/generator.js";
 import { MetadataReader } from "../../../../src/react/metadata-reader.js";
 import {
@@ -12,9 +12,15 @@ import {
 
 function createTestSetup(metas = [createWidgetMeta(), createButtonMeta()], namespaceNames = ["Gtk"]) {
     const reader = new MetadataReader(metas);
-    const project = new CodegenProject();
-    const generator = new JsxTypesGenerator(reader, project, namespaceNames);
-    return { reader, project, generator };
+    const generator = new JsxTypesGenerator(reader, [], namespaceNames);
+    return { reader, generator };
+}
+
+function generateCode(metas = [createWidgetMeta(), createButtonMeta()], namespaceNames = ["Gtk"]): string {
+    const { generator } = createTestSetup(metas, namespaceNames);
+    const file = fileBuilder();
+    generator.generate(file);
+    return stringify(file);
 }
 
 describe("JsxTypesGenerator", () => {
@@ -26,50 +32,30 @@ describe("JsxTypesGenerator", () => {
     });
 
     describe("generate", () => {
-        it("creates jsx.ts file in react directory", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            expect(sourceFile).not.toBeNull();
+        it("produces non-empty output", () => {
+            const code = generateCode();
+            expect(code.length).toBeGreaterThan(0);
         });
     });
 
     describe("imports", () => {
         it("imports ReactNode and Ref from react", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const imports = sourceFile?.getImportDeclarations() ?? [];
-            const reactImport = imports.find((i) => i.getModuleSpecifierValue() === "react");
-            expect(reactImport).toBeDefined();
-            expect(reactImport?.isTypeOnly()).toBe(true);
+            const code = generateCode();
+            expect(code).toContain("ReactNode");
+            expect(code).toContain("Ref");
+            expect(code).toContain("react");
         });
 
         it("adds namespace imports for used namespaces", () => {
-            const { project, generator } = createTestSetup();
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const imports = sourceFile?.getImportDeclarations() ?? [];
-            const namespaces = imports.map((i) => i.getNamespaceImport()?.getText()).filter(Boolean);
-            expect(namespaces).toContain("Gtk");
+            const code = generateCode();
+            expect(code).toContain("* as Gtk");
         });
     });
 
     describe("WidgetProps interface", () => {
         it("generates WidgetProps interface", () => {
-            const { project, generator } = createTestSetup([createWidgetMeta()]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const iface = sourceFile?.getInterface("WidgetProps");
-            expect(iface).toBeDefined();
+            const code = generateCode([createWidgetMeta()]);
+            expect(code).toContain("interface WidgetProps");
         });
 
         it("includes properties from Widget metadata", () => {
@@ -83,12 +69,7 @@ describe("JsxTypesGenerator", () => {
                     }),
                 ],
             });
-            const { project, generator } = createTestSetup([widgetMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([widgetMeta]);
             expect(code).toContain("visible");
         });
 
@@ -101,36 +82,20 @@ describe("JsxTypesGenerator", () => {
                     }),
                 ],
             });
-            const { project, generator } = createTestSetup([widgetMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([widgetMeta]);
             expect(code).toContain("onDestroy");
         });
 
         it("exports WidgetProps", () => {
-            const { project, generator } = createTestSetup([createWidgetMeta()]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const iface = sourceFile?.getInterface("WidgetProps");
-            expect(iface?.isExported()).toBe(true);
+            const code = generateCode([createWidgetMeta()]);
+            expect(code).toContain("export interface WidgetProps");
         });
     });
 
     describe("widget-specific props interfaces", () => {
         it("generates props interface for each widget", () => {
-            const buttonMeta = createButtonMeta();
-            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const iface = sourceFile?.getInterface("GtkButtonProps");
-            expect(iface).toBeDefined();
+            const code = generateCode([createWidgetMeta(), createButtonMeta()]);
+            expect(code).toContain("GtkButtonProps");
         });
 
         it("includes widget-specific properties", () => {
@@ -144,12 +109,7 @@ describe("JsxTypesGenerator", () => {
                     }),
                 ],
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), buttonMeta]);
             expect(code).toContain("label");
         });
 
@@ -162,32 +122,17 @@ describe("JsxTypesGenerator", () => {
                     }),
                 ],
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), buttonMeta]);
             expect(code).toContain("onClicked");
         });
 
         it("includes onNotify callback", () => {
-            const { project, generator } = createTestSetup([createWidgetMeta(), createButtonMeta()]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), createButtonMeta()]);
             expect(code).toContain("onNotify");
         });
 
         it("includes ref property", () => {
-            const { project, generator } = createTestSetup([createWidgetMeta(), createButtonMeta()]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), createButtonMeta()]);
             expect(code).toContain("ref");
             expect(code).toContain("Ref<");
         });
@@ -200,13 +145,8 @@ describe("JsxTypesGenerator", () => {
                 jsxName: "AdwHeaderBar",
                 namespace: "Adw",
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), adwHeaderBarMeta], ["Gtk", "Adw"]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const iface = sourceFile?.getInterface("AdwHeaderBarProps");
-            expect(iface).toBeDefined();
+            const code = generateCode([createWidgetMeta(), adwHeaderBarMeta], ["Gtk", "Adw"]);
+            expect(code).toContain("AdwHeaderBarProps");
         });
 
         it("filters out widgets from namespaces not in list", () => {
@@ -215,13 +155,8 @@ describe("JsxTypesGenerator", () => {
                 jsxName: "AdwHeaderBar",
                 namespace: "Adw",
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), adwHeaderBarMeta], ["Gtk"]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const iface = sourceFile?.getInterface("AdwHeaderBarProps");
-            expect(iface).toBeUndefined();
+            const code = generateCode([createWidgetMeta(), adwHeaderBarMeta], ["Gtk"]);
+            expect(code).not.toContain("AdwHeaderBarProps");
         });
     });
 
@@ -232,12 +167,8 @@ describe("JsxTypesGenerator", () => {
                 jsxName: "GtkLabel",
             });
             const buttonMeta = createButtonMeta();
-            const { project, generator } = createTestSetup([labelMeta, buttonMeta, createWidgetMeta()]);
+            const code = generateCode([labelMeta, buttonMeta, createWidgetMeta()]);
 
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
             const widgetPropsIndex = code.indexOf("WidgetProps");
             const buttonPropsIndex = code.indexOf("GtkButtonProps");
 
@@ -247,32 +178,17 @@ describe("JsxTypesGenerator", () => {
 
     describe("JSX namespace and module", () => {
         it("generates JSX namespace", () => {
-            const { project, generator } = createTestSetup([createWidgetMeta()]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta()]);
             expect(code).toContain("namespace JSX");
         });
 
         it("generates IntrinsicElements interface", () => {
-            const { project, generator } = createTestSetup([createWidgetMeta()]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta()]);
             expect(code).toContain("IntrinsicElements");
         });
 
         it("includes widget entries in IntrinsicElements", () => {
-            const { project, generator } = createTestSetup([createWidgetMeta(), createButtonMeta()]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), createButtonMeta()]);
             expect(code).toContain("GtkButton");
         });
     });
@@ -284,12 +200,7 @@ describe("JsxTypesGenerator", () => {
                 jsxName: "GtkBox",
                 slots: ["start", "end"],
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), boxMeta]);
-
-            generator.generate();
-
-            const sourceFile = project.getSourceFile("react/jsx.ts");
-            const code = sourceFile?.getFullText() ?? "";
+            const code = generateCode([createWidgetMeta(), boxMeta]);
             expect(code).toContain("WidgetSlotNames");
         });
     });

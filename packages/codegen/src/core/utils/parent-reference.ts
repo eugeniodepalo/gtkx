@@ -4,9 +4,8 @@
  * Shared logic for parsing parent class references from qualified names.
  */
 
-import type { QualifiedName } from "@gtkx/gir";
-import { parseQualifiedName } from "@gtkx/gir";
 import { normalizeClassName, toKebabCase } from "./naming.js";
+import { splitQualifiedName } from "./qualified-name.js";
 
 /**
  * Information about a parsed parent class reference.
@@ -44,10 +43,7 @@ export type ParentInfo = {
  * // { hasParent: true, isCrossNamespace: true, namespace: "GObject", ... }
  * ```
  */
-export const parseParentReference = (
-    parent: QualifiedName | string | null | undefined,
-    currentNamespace: string,
-): ParentInfo => {
+export const parseParentReference = (parent: string | null | undefined, currentNamespace: string): ParentInfo => {
     if (!parent) {
         return {
             hasParent: false,
@@ -58,7 +54,7 @@ export const parseParentReference = (
         };
     }
 
-    const { namespace: ns, name: originalName } = parseQualifiedName(parent as QualifiedName);
+    const { namespace: ns, name: originalName } = splitQualifiedName(parent);
     const normalizedClass = normalizeClassName(originalName);
     const isCrossNamespace = ns !== currentNamespace;
 

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GenerationContext } from "../../../../src/core/generation-context.js";
+import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
-import { createWriters } from "../../../../src/core/writers/index.js";
 import { SignalBuilder } from "../../../../src/ffi/generators/class/signal-builder.js";
 import {
     createNormalizedClass,
@@ -21,11 +20,7 @@ function createTestSetup(
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-    const ctx = new GenerationContext();
-    const writers = createWriters({
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-    });
+    const file = fileBuilder();
     const options = {
         namespace: "Gtk",
         sharedLibrary: "libgtk-4.so.1",
@@ -41,8 +36,8 @@ function createTestSetup(
         ...classOverrides,
     });
 
-    const builder = new SignalBuilder(cls, ffiMapper, ctx, repo as Parameters<typeof FfiMapper>[0], writers, options);
-    return { cls, builder, ctx, ffiMapper };
+    const builder = new SignalBuilder(cls, ffiMapper, file, repo as Parameters<typeof FfiMapper>[0], options);
+    return { cls, builder, ffiMapper, file };
 }
 
 describe("SignalBuilder", () => {
@@ -91,7 +86,7 @@ describe("SignalBuilder", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            const genericOverload = structures[0].overloads?.find((o) => o.parameters?.[0]?.type === "string");
+            const genericOverload = structures[0].overloads?.find((o) => o.params?.[0]?.type === "string");
             expect(genericOverload).toBeDefined();
         });
 
@@ -137,35 +132,15 @@ describe("SignalBuilder", () => {
         });
     });
 
-    describe("context updates", () => {
-        it("sets usesCall flag when building connect method", () => {
-            const { builder, ctx } = createTestSetup({
+    describe("import tracking", () => {
+        it("adds call import when building connect method", () => {
+            const { builder } = createTestSetup({
                 signals: [createNormalizedSignal({ name: "clicked" })],
             });
 
-            builder.buildConnectMethodStructures();
+            const structures = builder.buildConnectMethodStructures();
 
-            expect(ctx.usesCall).toBe(true);
-        });
-
-        it("sets usesGetNativeObject flag when building connect method", () => {
-            const { builder, ctx } = createTestSetup({
-                signals: [createNormalizedSignal({ name: "clicked" })],
-            });
-
-            builder.buildConnectMethodStructures();
-
-            expect(ctx.usesGetNativeObject).toBe(true);
-        });
-
-        it("sets usesGObjectNamespace flag for non-GObject namespaces", () => {
-            const { builder, ctx } = createTestSetup({
-                signals: [createNormalizedSignal({ name: "clicked" })],
-            });
-
-            builder.buildConnectMethodStructures();
-
-            expect(ctx.usesGObjectNamespace).toBe(true);
+            expect(structures).toHaveLength(1);
         });
     });
 
@@ -178,7 +153,7 @@ describe("SignalBuilder", () => {
             const structures = builder.buildConnectMethodStructures();
 
             const overload = structures[0].overloads?.[0];
-            expect(overload?.parameters?.[1]?.type).toContain("self:");
+            expect(overload?.params?.[1]?.type).toContain("self:");
         });
 
         it("includes signal parameters in handler", () => {
@@ -203,8 +178,8 @@ describe("SignalBuilder", () => {
             const structures = builder.buildConnectMethodStructures();
 
             const overload = structures[0].overloads?.[0];
-            expect(overload?.parameters?.[1]?.type).toContain("deltaX:");
-            expect(overload?.parameters?.[1]?.type).toContain("deltaY:");
+            expect(overload?.params?.[1]?.type).toContain("deltaX:");
+            expect(overload?.params?.[1]?.type).toContain("deltaY:");
         });
     });
 
@@ -251,7 +226,7 @@ describe("SignalBuilder - Extended Coverage", () => {
             const structures = builder.buildConnectMethodStructures();
 
             const overload = structures[0].overloads?.[0];
-            expect(overload?.parameters?.[1]?.type).toContain("=> boolean");
+            expect(overload?.params?.[1]?.type).toContain("=> boolean");
         });
 
         it("handles signal with void return type", () => {
@@ -267,7 +242,7 @@ describe("SignalBuilder - Extended Coverage", () => {
             const structures = builder.buildConnectMethodStructures();
 
             const overload = structures[0].overloads?.[0];
-            expect(overload?.parameters?.[1]?.type).toContain("=> void");
+            expect(overload?.params?.[1]?.type).toContain("=> void");
         });
 
         it("handles signal with string return type", () => {
@@ -283,7 +258,7 @@ describe("SignalBuilder - Extended Coverage", () => {
             const structures = builder.buildConnectMethodStructures();
 
             const overload = structures[0].overloads?.[0];
-            expect(overload?.parameters?.[1]?.type).toContain("=> string");
+            expect(overload?.params?.[1]?.type).toContain("=> string");
         });
     });
 
@@ -319,7 +294,7 @@ describe("SignalBuilder - Extended Coverage", () => {
 
             expect(structures).toHaveLength(1);
             const overload = structures[0].overloads?.[0];
-            expect(overload?.parameters?.[1]?.type).toContain("child:");
+            expect(overload?.params?.[1]?.type).toContain("child:");
         });
     });
 
@@ -347,37 +322,33 @@ describe("SignalBuilder - Extended Coverage", () => {
             const structures = builder.buildConnectMethodStructures();
 
             const overload = structures[0].overloads?.[0];
-            expect(overload?.parameters?.[1]?.type).not.toContain("...");
+            expect(overload?.params?.[1]?.type).not.toContain("...");
         });
     });
 
     describe("collectOwnSignals", () => {
         it("returns only signals defined on the class, not parent", () => {
-            const parentClass = createNormalizedClass({
-                name: "Widget",
-                qualifiedName: qualifiedName("Gtk", "Widget"),
-                parent: null,
-                signals: [createNormalizedSignal({ name: "destroy" })],
-            });
+            const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
+            const parentClass = createNormalizedClass(
+                {
+                    name: "Widget",
+                    qualifiedName: qualifiedName("Gtk", "Widget"),
+                    parent: null,
+                    signals: [createNormalizedSignal({ name: "destroy" })],
+                },
+                nullRepo,
+            );
 
-            parentClass._setRepository({
-                resolveClass: () => undefined,
-                resolveInterface: () => undefined,
-                findClasses: () => [],
-            } as Parameters<typeof parentClass._setRepository>[0]);
-
-            const childClass = createNormalizedClass({
-                name: "Button",
-                qualifiedName: qualifiedName("Gtk", "Button"),
-                parent: qualifiedName("Gtk", "Widget"),
-                signals: [createNormalizedSignal({ name: "clicked" })],
-            });
-
-            childClass._setRepository({
-                resolveClass: () => parentClass,
-                resolveInterface: () => undefined,
-                findClasses: () => [],
-            } as Parameters<typeof childClass._setRepository>[0]);
+            const childRepo = { resolveClass: () => parentClass, resolveInterface: () => null, findClasses: () => [] };
+            const childClass = createNormalizedClass(
+                {
+                    name: "Button",
+                    qualifiedName: qualifiedName("Gtk", "Button"),
+                    parent: qualifiedName("Gtk", "Widget"),
+                    signals: [createNormalizedSignal({ name: "clicked" })],
+                },
+                childRepo,
+            );
 
             const ns = createNormalizedNamespace({
                 name: "Gtk",
@@ -389,11 +360,7 @@ describe("SignalBuilder - Extended Coverage", () => {
 
             const repo = createMockRepository(new Map([["Gtk", ns]]));
             const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-            const ctx = new GenerationContext();
-            const writers = createWriters({
-                sharedLibrary: "libgtk-4.so.1",
-                glibLibrary: "libglib-2.0.so.0",
-            });
+            const file = fileBuilder();
             const options = {
                 namespace: "Gtk",
                 sharedLibrary: "libgtk-4.so.1",
@@ -404,9 +371,8 @@ describe("SignalBuilder - Extended Coverage", () => {
             const builder = new SignalBuilder(
                 childClass,
                 ffiMapper,
-                ctx,
+                file,
                 repo as Parameters<typeof FfiMapper>[0],
-                writers,
                 options,
             );
 

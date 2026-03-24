@@ -5,9 +5,8 @@
  * Handles struct memory layout calculations, including nested structs.
  */
 
-import type { GirField, GirRecord, GirRepository, QualifiedName } from "@gtkx/gir";
-import type { WriterFunction } from "ts-morph";
-import type { GenerationContext } from "../../../core/generation-context.js";
+import type { GirField, GirRecord, GirRepository } from "@gtkx/gir";
+import type { Writer } from "../../../builders/writer.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import {
     getPrimitiveTypeSize,
@@ -15,7 +14,8 @@ import {
     isPrimitiveFieldType,
 } from "../../../core/type-system/ffi-types.js";
 import { toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
-import type { Writers } from "../../../core/writers/index.js";
+import { FfiTypeWriter } from "../../../core/writers/ffi-type-writer.js";
+import type { ImportCollector } from "../../../core/writers/index.js";
 
 /**
  * Field layout information.
@@ -32,14 +32,21 @@ type FieldLayout = {
  */
 export class FieldBuilder {
     private readonly sizeCache = new Map<string, number>();
+    private readonly ffiTypeWriter: FfiTypeWriter;
 
     constructor(
         private readonly ffiMapper: FfiMapper,
-        private readonly ctx: GenerationContext,
-        private readonly writers: Writers,
+        private readonly imports: ImportCollector,
+        sharedLibrary: string,
+        glibLibrary?: string,
         private readonly repo?: GirRepository,
         private readonly currentNamespace?: string,
-    ) {}
+    ) {
+        this.ffiTypeWriter = new FfiTypeWriter({
+            currentSharedLibrary: sharedLibrary,
+            glibLibrary,
+        });
+    }
 
     /**
      * Calculates struct memory layout for fields.
@@ -73,8 +80,7 @@ export class FieldBuilder {
 
     /**
      * Calculates total struct size with final alignment padding.
-     * Includes private fields since they're needed for memory allocation
-     * (e.g., GtkTextIter has only private/dummy fields for internal use).
+     * Includes private fields since they're needed for memory allocation.
      */
     calculateStructSize(fields: readonly GirField[]): number {
         const layout = this.calculateLayout(fields, true);
@@ -88,9 +94,9 @@ export class FieldBuilder {
     }
 
     /**
-     * Writes field initialization statements using ts-morph WriterFunction.
+     * Writes field initialization statements.
      */
-    writeFieldWrites(fields: readonly GirField[]): WriterFunction {
+    writeFieldWrites(fields: readonly GirField[]): (writer: Writer) => void {
         const layout = this.calculateLayout(fields);
         const initializableFields = layout.filter(
             ({ field }) =>
@@ -111,10 +117,10 @@ export class FieldBuilder {
                     if (!nestedLayout) continue;
 
                     const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                    this.ctx.addTypeImports(typeMapping.imports);
+                    this.addTypeImports(typeMapping.imports);
 
                     writer.writeLine(`if (init.${fieldName} !== undefined) {`);
-                    writer.indent(() => {
+                    writer.withIndent(() => {
                         for (const nestedItem of nestedLayout) {
                             if (!this.isWritableType(nestedItem.field.type)) continue;
                             const nestedFieldName = toValidMemberName(toCamelCase(nestedItem.field.name));
@@ -128,7 +134,7 @@ export class FieldBuilder {
                             );
 
                             writer.write(`write(this.handle, `);
-                            this.writers.ffiTypeWriter.toWriter(nestedTypeMapping.ffi)(writer);
+                            writer.write(JSON.stringify(nestedTypeMapping.ffi));
                             writer.writeLine(
                                 `, ${nestedOffset}, init.${fieldName}.get${capitalizedNestedFieldName}());`,
                             );
@@ -137,10 +143,10 @@ export class FieldBuilder {
                     writer.writeLine("}");
                 } else {
                     const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                    this.ctx.addTypeImports(typeMapping.imports);
+                    this.addTypeImports(typeMapping.imports);
 
                     writer.write(`if (init.${fieldName} !== undefined) write(this.handle, `);
-                    this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
+                    writer.write(JSON.stringify(typeMapping.ffi));
                     writer.writeLine(`, ${offset}, init.${fieldName});`);
                 }
             }
@@ -169,7 +175,6 @@ export class FieldBuilder {
 
     /**
      * Checks if a type can be written to memory.
-     * Uses MEMORY_WRITABLE_TYPES from type-system/ffi-types.ts.
      */
     isWritableType(type: { name: string | unknown; cType?: string }): boolean {
         return isMemoryWritableType(String(type.name));
@@ -233,11 +238,27 @@ export class FieldBuilder {
         return publicFields.every((field) => this.isGeneratableFieldType(field.type.name as string, visited));
     }
 
+    getFfiTypeWriter(): FfiTypeWriter {
+        return this.ffiTypeWriter;
+    }
+
+    private addTypeImports(
+        imports: Array<{ isExternal: boolean; namespace: string; name: string; transformedName: string }>,
+    ): void {
+        for (const imp of imports) {
+            if (imp.isExternal) {
+                this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
+            } else {
+                this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+            }
+        }
+    }
+
     private resolveRecord(typeName: string): GirRecord | null {
         if (!this.repo) return null;
 
         if (typeName.includes(".")) {
-            return this.repo.resolveRecord(typeName as QualifiedName);
+            return this.repo.resolveRecord(typeName);
         }
 
         if (!this.currentNamespace) return null;

@@ -1,15 +1,15 @@
-import type { GirClass, GirRepository, GirSignal, QualifiedName } from "@gtkx/gir";
-import { parseQualifiedName, qualifiedName } from "@gtkx/gir";
+import type { GirClass, GirRepository, GirSignal } from "@gtkx/gir";
 import type { SignalAnalysis, SignalParam } from "../generator-types.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { TypeImport } from "../type-system/ffi-types.js";
 import { collectExternalNamespaces } from "../type-system/ffi-types.js";
 import { collectDirectMembers, collectParentSignalNames } from "../utils/class-traversal.js";
 import { createHandlerName, toCamelCase } from "../utils/naming.js";
+import { splitQualifiedName } from "../utils/qualified-name.js";
 import { qualifyType } from "../utils/type-qualification.js";
 
-const GOBJECT_OBJECT = qualifiedName("GObject", "Object");
-const CLASSES_WITH_NOTIFY: QualifiedName[] = [qualifiedName("Gtk", "Widget"), qualifiedName("Gtk", "EventController")];
+const GOBJECT_OBJECT = "GObject.Object";
+const CLASSES_WITH_NOTIFY: string[] = ["Gtk.Widget", "Gtk.EventController"];
 
 /**
  * Analyzes signals for JSX component generation.
@@ -27,7 +27,7 @@ export class SignalAnalyzer {
      * For Gtk.Widget and Gtk.EventController, also includes the notify signal from GObject.Object.
      */
     analyzeWidgetSignals(cls: GirClass): SignalAnalysis[] {
-        const { namespace } = parseQualifiedName(cls.qualifiedName);
+        const { namespace } = splitQualifiedName(cls.qualifiedName);
 
         const directSignals = collectDirectMembers({
             cls,

@@ -7,61 +7,51 @@ import {
     createWidgetMeta,
     createWindowMeta,
 } from "../fixtures/metadata-fixtures.js";
-import { createTestProject, createTestSourceFile } from "../fixtures/ts-morph-helpers.js";
 
 describe("CodegenMetadata", () => {
     describe("setWidgetMeta / getWidgetMeta", () => {
         it("stores and retrieves widget metadata", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "button.ts");
             const widgetMeta = createButtonMeta();
 
-            metadata.setWidgetMeta(sourceFile, widgetMeta);
-            const result = metadata.getWidgetMeta(sourceFile);
+            metadata.setWidgetMeta("button.ts", widgetMeta);
+            const result = metadata.getWidgetMeta("button.ts");
 
             expect(result).toEqual(widgetMeta);
         });
 
-        it("returns null for unknown source file", () => {
+        it("returns null for unknown key", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "unknown.ts");
 
-            const result = metadata.getWidgetMeta(sourceFile);
+            const result = metadata.getWidgetMeta("unknown.ts");
 
             expect(result).toBeNull();
         });
 
-        it("overwrites existing metadata for same source file", () => {
+        it("overwrites existing metadata for same key", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "button.ts");
 
             const firstMeta = createButtonMeta({ className: "OldButton" });
             const secondMeta = createButtonMeta({ className: "NewButton" });
 
-            metadata.setWidgetMeta(sourceFile, firstMeta);
-            metadata.setWidgetMeta(sourceFile, secondMeta);
+            metadata.setWidgetMeta("button.ts", firstMeta);
+            metadata.setWidgetMeta("button.ts", secondMeta);
 
-            const result = metadata.getWidgetMeta(sourceFile);
+            const result = metadata.getWidgetMeta("button.ts");
             expect(result?.className).toBe("NewButton");
         });
 
-        it("stores metadata for different source files independently", () => {
+        it("stores metadata for different keys independently", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const buttonFile = createTestSourceFile(project, "button.ts");
-            const windowFile = createTestSourceFile(project, "window.ts");
 
             const buttonMeta = createButtonMeta();
             const windowMeta = createWindowMeta();
 
-            metadata.setWidgetMeta(buttonFile, buttonMeta);
-            metadata.setWidgetMeta(windowFile, windowMeta);
+            metadata.setWidgetMeta("button.ts", buttonMeta);
+            metadata.setWidgetMeta("window.ts", windowMeta);
 
-            expect(metadata.getWidgetMeta(buttonFile)?.className).toBe("Button");
-            expect(metadata.getWidgetMeta(windowFile)?.className).toBe("Window");
+            expect(metadata.getWidgetMeta("button.ts")?.className).toBe("Button");
+            expect(metadata.getWidgetMeta("window.ts")?.className).toBe("Window");
         });
     });
 
@@ -76,15 +66,10 @@ describe("CodegenMetadata", () => {
 
         it("returns all stored widget metadata", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
 
-            const buttonFile = createTestSourceFile(project, "button.ts");
-            const windowFile = createTestSourceFile(project, "window.ts");
-            const labelFile = createTestSourceFile(project, "label.ts");
-
-            metadata.setWidgetMeta(buttonFile, createButtonMeta());
-            metadata.setWidgetMeta(windowFile, createWindowMeta());
-            metadata.setWidgetMeta(labelFile, createLabelMeta());
+            metadata.setWidgetMeta("button.ts", createButtonMeta());
+            metadata.setWidgetMeta("window.ts", createWindowMeta());
+            metadata.setWidgetMeta("label.ts", createLabelMeta());
 
             const result = metadata.getAllWidgetMeta();
 
@@ -96,14 +81,12 @@ describe("CodegenMetadata", () => {
 
         it("returns metadata in insertion order", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
 
             const files = ["first.ts", "second.ts", "third.ts"];
             const classNames = ["First", "Second", "Third"];
 
             files.forEach((file, i) => {
-                const sourceFile = createTestSourceFile(project, file);
-                metadata.setWidgetMeta(sourceFile, createCodegenWidgetMeta({ className: classNames[i] }));
+                metadata.setWidgetMeta(file, createCodegenWidgetMeta({ className: classNames[i] }));
             });
 
             const result = metadata.getAllWidgetMeta();
@@ -113,11 +96,9 @@ describe("CodegenMetadata", () => {
 
         it("does not return overwritten metadata", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "button.ts");
 
-            metadata.setWidgetMeta(sourceFile, createButtonMeta({ className: "OldButton" }));
-            metadata.setWidgetMeta(sourceFile, createButtonMeta({ className: "NewButton" }));
+            metadata.setWidgetMeta("button.ts", createButtonMeta({ className: "OldButton" }));
+            metadata.setWidgetMeta("button.ts", createButtonMeta({ className: "NewButton" }));
 
             const result = metadata.getAllWidgetMeta();
 
@@ -129,31 +110,25 @@ describe("CodegenMetadata", () => {
     describe("clear", () => {
         it("removes all stored metadata", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
 
-            const buttonFile = createTestSourceFile(project, "button.ts");
-            const windowFile = createTestSourceFile(project, "window.ts");
-
-            metadata.setWidgetMeta(buttonFile, createButtonMeta());
-            metadata.setWidgetMeta(windowFile, createWindowMeta());
+            metadata.setWidgetMeta("button.ts", createButtonMeta());
+            metadata.setWidgetMeta("window.ts", createWindowMeta());
 
             metadata.clear();
 
             expect(metadata.getAllWidgetMeta()).toHaveLength(0);
-            expect(metadata.getWidgetMeta(buttonFile)).toBeNull();
-            expect(metadata.getWidgetMeta(windowFile)).toBeNull();
+            expect(metadata.getWidgetMeta("button.ts")).toBeNull();
+            expect(metadata.getWidgetMeta("window.ts")).toBeNull();
         });
 
         it("allows adding metadata after clear", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "button.ts");
 
-            metadata.setWidgetMeta(sourceFile, createButtonMeta());
+            metadata.setWidgetMeta("button.ts", createButtonMeta());
             metadata.clear();
-            metadata.setWidgetMeta(sourceFile, createWindowMeta());
+            metadata.setWidgetMeta("button.ts", createWindowMeta());
 
-            expect(metadata.getWidgetMeta(sourceFile)?.className).toBe("Window");
+            expect(metadata.getWidgetMeta("button.ts")?.className).toBe("Window");
         });
 
         it("handles clear on empty metadata", () => {
@@ -167,13 +142,11 @@ describe("CodegenMetadata", () => {
     describe("metadata structure", () => {
         it("stores all widget metadata properties", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "widget.ts");
 
             const widgetMeta = createWidgetMeta();
-            metadata.setWidgetMeta(sourceFile, widgetMeta);
+            metadata.setWidgetMeta("widget.ts", widgetMeta);
 
-            const result = metadata.getWidgetMeta(sourceFile);
+            const result = metadata.getWidgetMeta("widget.ts");
 
             expect(result).toMatchObject({
                 className: "Widget",
@@ -188,8 +161,6 @@ describe("CodegenMetadata", () => {
 
         it("stores cross-namespace inheritance info", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "header-bar.ts");
 
             const adwMeta = createCodegenWidgetMeta({
                 className: "HeaderBar",
@@ -199,8 +170,8 @@ describe("CodegenMetadata", () => {
                 parentNamespace: "Gtk",
             });
 
-            metadata.setWidgetMeta(sourceFile, adwMeta);
-            const result = metadata.getWidgetMeta(sourceFile);
+            metadata.setWidgetMeta("header-bar.ts", adwMeta);
+            const result = metadata.getWidgetMeta("header-bar.ts");
 
             expect(result?.namespace).toBe("Adw");
             expect(result?.parentClassName).toBe("Widget");
@@ -209,13 +180,11 @@ describe("CodegenMetadata", () => {
 
         it("stores property analysis results", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "button.ts");
 
             const buttonMeta = createButtonMeta();
-            metadata.setWidgetMeta(sourceFile, buttonMeta);
+            metadata.setWidgetMeta("button.ts", buttonMeta);
 
-            const result = metadata.getWidgetMeta(sourceFile);
+            const result = metadata.getWidgetMeta("button.ts");
 
             expect(result?.properties).toHaveLength(2);
             expect(result?.properties.map((p) => p.name)).toContain("label");
@@ -224,13 +193,11 @@ describe("CodegenMetadata", () => {
 
         it("stores signal analysis results", () => {
             const metadata = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "button.ts");
 
             const buttonMeta = createButtonMeta();
-            metadata.setWidgetMeta(sourceFile, buttonMeta);
+            metadata.setWidgetMeta("button.ts", buttonMeta);
 
-            const result = metadata.getWidgetMeta(sourceFile);
+            const result = metadata.getWidgetMeta("button.ts");
 
             expect(result?.signals).toHaveLength(2);
             expect(result?.signals.map((s) => s.name)).toContain("clicked");
@@ -242,13 +209,11 @@ describe("CodegenMetadata", () => {
         it("different CodegenMetadata instances are independent", () => {
             const metadata1 = new CodegenMetadata();
             const metadata2 = new CodegenMetadata();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "button.ts");
 
-            metadata1.setWidgetMeta(sourceFile, createButtonMeta());
+            metadata1.setWidgetMeta("button.ts", createButtonMeta());
 
-            expect(metadata1.getWidgetMeta(sourceFile)).toBeDefined();
-            expect(metadata2.getWidgetMeta(sourceFile)).toBeNull();
+            expect(metadata1.getWidgetMeta("button.ts")).toBeDefined();
+            expect(metadata2.getWidgetMeta("button.ts")).toBeNull();
         });
     });
 });

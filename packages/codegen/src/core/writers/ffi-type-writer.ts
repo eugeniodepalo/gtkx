@@ -1,11 +1,10 @@
 /**
  * FFI Type Writer
  *
- * Writes FFI type descriptor object literals for code generation.
- * Uses ts-morph WriterFunction for optimal AST construction.
+ * Builds FFI type descriptor POJOs for code generation.
+ * Callers serialize descriptors with JSON.stringify().
  */
 
-import { type WriterFunction, Writers } from "ts-morph";
 import type { FfiTypeDescriptor } from "../type-system/ffi-types.js";
 
 /**
@@ -19,26 +18,16 @@ type FfiTypeWriterOptions = {
 };
 
 /**
- * Represents a property for an object literal.
- */
-type ObjectProperty = {
-    name: string;
-    value: string | number | boolean | WriterFunction;
-};
-
-/**
- * Writes FFI type descriptor object literals.
+ * Builds FFI type descriptor POJOs.
  *
- * This is the single source of truth for generating type descriptor code.
- * Uses ts-morph WriterFunction for optimal AST construction.
+ * This is the single source of truth for generating type descriptor objects.
+ * Callers use `JSON.stringify()` to serialize the descriptors into generated code.
  *
  * @example
  * ```typescript
  * const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
- *
- * // ts-morph WriterFunction
- * const writerFn = writer.toWriter({ type: "gobject", ownership: "borrowed" });
- * classDecl.addProperty({ name: "TYPE", initializer: writerFn });
+ * const descriptor = writer.createSelfTypeDescriptor({ isRecord: true, recordName: "GtkTextIter" });
+ * console.log(JSON.stringify(descriptor)); // { type: "boxed", ownership: "borrowed", ... }
  * ```
  */
 export class FfiTypeWriter {
@@ -76,40 +65,9 @@ export class FfiTypeWriter {
     }
 
     /**
-     * Builds a type descriptor as a ts-morph WriterFunction.
-     *
-     * @param type - The FFI type descriptor
-     * @returns WriterFunction that writes the object literal
+     * Builds a self argument type descriptor as a POJO.
      */
-    toWriter(type: FfiTypeDescriptor): WriterFunction {
-        const properties = this.buildProperties(type);
-        return Writers.object(this.propertiesToWriterObject(properties));
-    }
-
-    /**
-     * Builds an error argument descriptor as WriterFunction.
-     * Requires glibLibrary to be set in options.
-     */
-    errorArgumentWriter(): WriterFunction {
-        if (!this.options.glibLibrary) {
-            throw new Error("glibLibrary must be set in FfiTypeWriterOptions for GError types");
-        }
-        return Writers.object({
-            type: '"ref"',
-            innerType: Writers.object({
-                type: '"boxed"',
-                ownership: '"full"',
-                innerType: '"GError"',
-                library: `"${this.options.glibLibrary}"`,
-                getTypeFn: '"g_error_get_type"',
-            }),
-        });
-    }
-
-    /**
-     * Builds a self argument descriptor as WriterFunction.
-     */
-    selfArgumentWriter(options: {
+    createSelfTypeDescriptor(options: {
         isRecord?: boolean;
         recordName?: string;
         sharedLibrary?: string;
@@ -119,19 +77,19 @@ export class FfiTypeWriter {
         fundamentalRefFunc?: string;
         fundamentalUnrefFunc?: string;
         fundamentalTypeName?: string;
-    }): WriterFunction {
+    }): FfiTypeDescriptor {
         if (options.isRecord && options.recordName) {
             const lib = options.sharedLibrary ?? this.options.currentSharedLibrary ?? "";
-            const obj: Record<string, string> = {
-                type: '"boxed"',
-                ownership: '"borrowed"',
-                innerType: `"${options.recordName}"`,
-                library: `"${lib}"`,
+            const obj: FfiTypeDescriptor = {
+                type: "boxed",
+                ownership: "borrowed",
+                innerType: options.recordName,
+                library: lib,
             };
             if (options.getTypeFn) {
-                obj.getTypeFn = `"${options.getTypeFn}"`;
+                obj.getTypeFn = options.getTypeFn;
             }
-            return Writers.object(obj);
+            return obj;
         }
         if (
             options.isFundamental &&
@@ -139,249 +97,18 @@ export class FfiTypeWriter {
             options.fundamentalRefFunc &&
             options.fundamentalUnrefFunc
         ) {
-            const obj: Record<string, string> = {
-                type: '"fundamental"',
-                ownership: '"borrowed"',
-                library: `"${options.fundamentalLib}"`,
-                refFn: `"${options.fundamentalRefFunc}"`,
-                unrefFn: `"${options.fundamentalUnrefFunc}"`,
+            const obj: FfiTypeDescriptor = {
+                type: "fundamental",
+                ownership: "borrowed",
+                library: options.fundamentalLib,
+                refFn: options.fundamentalRefFunc,
+                unrefFn: options.fundamentalUnrefFunc,
             };
             if (options.fundamentalTypeName) {
-                obj.typeName = `"${options.fundamentalTypeName}"`;
+                obj.typeName = options.fundamentalTypeName;
             }
-            return Writers.object(obj);
+            return obj;
         }
-        return Writers.object({ type: '"gobject"', ownership: '"borrowed"' });
-    }
-
-    private buildProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        switch (type.type) {
-            case "int8":
-            case "uint8":
-            case "int16":
-            case "uint16":
-            case "int32":
-            case "uint32":
-            case "int64":
-            case "uint64":
-            case "float32":
-            case "float64":
-            case "boolean":
-            case "unichar":
-            case "void":
-                return [{ name: "type", value: `"${type.type}"` }];
-            case "enum":
-            case "flags":
-                return this.buildTaggedProperties(type);
-            case "string":
-                return this.buildOwnershipProperties("string", type.ownership);
-            case "gobject":
-                return this.buildOwnershipProperties("gobject", type.ownership);
-            case "fundamental":
-                return this.buildFundamentalProperties(type);
-            case "boxed":
-                return this.buildBoxedProperties(type);
-            case "struct":
-                return this.buildStructProperties(type);
-            case "ref":
-                return this.buildRefProperties(type);
-            case "array":
-                return this.buildArrayProperties(type);
-            case "hashtable":
-                return this.buildHashTableProperties(type);
-            case "callback":
-                return this.buildCallbackProperties(type);
-            case "trampoline":
-                return this.buildTrampolineProperties(type);
-            default:
-                return [{ name: "type", value: `"${type.type}"` }];
-        }
-    }
-
-    private buildTaggedProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        const props: ObjectProperty[] = [{ name: "type", value: `"${type.type}"` }];
-        if (type.library) {
-            props.push({ name: "library", value: `"${type.library}"` });
-        }
-        if (type.getTypeFn) {
-            props.push({ name: "getTypeFn", value: `"${type.getTypeFn}"` });
-        }
-        props.push({ name: "signed", value: type.signed ? "true" : "false" });
-        return props;
-    }
-
-    private buildOwnershipProperties(typeName: string, ownership?: "full" | "borrowed"): ObjectProperty[] {
-        const props: ObjectProperty[] = [{ name: "type", value: `"${typeName}"` }];
-        props.push({ name: "ownership", value: `"${ownership ?? "full"}"` });
-        return props;
-    }
-
-    private buildFundamentalProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        const props: ObjectProperty[] = [{ name: "type", value: '"fundamental"' }];
-        props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
-        props.push({ name: "library", value: `"${type.library ?? ""}"` });
-        props.push({ name: "refFn", value: `"${type.refFn ?? ""}"` });
-        props.push({ name: "unrefFn", value: `"${type.unrefFn ?? ""}"` });
-        if (type.typeName) {
-            props.push({ name: "typeName", value: `"${type.typeName}"` });
-        }
-        return props;
-    }
-
-    private buildBoxedProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        const innerType = typeof type.innerType === "string" ? type.innerType : "";
-
-        const lib = type.library ?? this.options.currentSharedLibrary ?? "";
-        const props: ObjectProperty[] = [{ name: "type", value: '"boxed"' }];
-
-        props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
-
-        props.push({ name: "innerType", value: `"${innerType}"` });
-        props.push({ name: "library", value: `"${lib}"` });
-
-        if (type.getTypeFn) {
-            props.push({ name: "getTypeFn", value: `"${type.getTypeFn}"` });
-        }
-
-        return props;
-    }
-
-    private buildStructProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        const innerType = typeof type.innerType === "string" ? type.innerType : "";
-        const props: ObjectProperty[] = [{ name: "type", value: '"struct"' }];
-
-        props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
-
-        props.push({ name: "innerType", value: `"${innerType}"` });
-
-        return props;
-    }
-
-    private buildRefProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        const props: ObjectProperty[] = [{ name: "type", value: '"ref"' }];
-
-        if (type.innerType && typeof type.innerType !== "string") {
-            props.push({ name: "innerType", value: this.toWriter(type.innerType) });
-        }
-
-        return props;
-    }
-
-    private buildArrayProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        const props: ObjectProperty[] = [{ name: "type", value: '"array"' }];
-
-        if (type.itemType) {
-            props.push({ name: "itemType", value: this.toWriter(type.itemType) });
-        }
-
-        props.push({ name: "kind", value: `"${type.kind ?? "array"}"` });
-
-        if (type.sizeParamIndex !== undefined) {
-            props.push({ name: "sizeParamIndex", value: type.sizeParamIndex });
-        }
-
-        if (type.fixedSize !== undefined) {
-            props.push({ name: "fixedSize", value: type.fixedSize });
-        }
-
-        props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
-
-        if (type.elementSize !== undefined) {
-            props.push({ name: "elementSize", value: type.elementSize });
-        }
-
-        return props;
-    }
-
-    private buildHashTableProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        const props: ObjectProperty[] = [{ name: "type", value: '"hashtable"' }];
-
-        if (type.keyType) {
-            props.push({ name: "keyType", value: this.toWriter(type.keyType) });
-        }
-
-        if (type.valueType) {
-            props.push({ name: "valueType", value: this.toWriter(type.valueType) });
-        }
-
-        props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
-
-        return props;
-    }
-
-    private buildCallbackProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        const props: ObjectProperty[] = [{ name: "type", value: '"callback"' }];
-
-        props.push({ name: "kind", value: `"${type.kind ?? "closure"}"` });
-
-        props.push({
-            name: "argTypes",
-            value: (writer) => {
-                writer.write("[");
-                type.argTypes?.forEach((argType: FfiTypeDescriptor, index: number) => {
-                    if (index > 0) writer.write(", ");
-                    this.toWriter(argType)(writer);
-                });
-                writer.write("]");
-            },
-        });
-
-        props.push({ name: "returnType", value: this.toWriter(type.returnType ?? { type: "void" }) });
-
-        if (type.sourceType) {
-            props.push({ name: "sourceType", value: this.toWriter(type.sourceType) });
-        }
-
-        if (type.resultType) {
-            props.push({ name: "resultType", value: this.toWriter(type.resultType) });
-        }
-
-        return props;
-    }
-
-    private buildTrampolineProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        const props: ObjectProperty[] = [{ name: "type", value: '"trampoline"' }];
-
-        props.push({
-            name: "argTypes",
-            value: (writer) => {
-                writer.write("[");
-                type.argTypes?.forEach((argType: FfiTypeDescriptor, index: number) => {
-                    if (index > 0) writer.write(", ");
-                    this.toWriter(argType)(writer);
-                });
-                writer.write("]");
-            },
-        });
-
-        props.push({ name: "returnType", value: this.toWriter(type.returnType ?? { type: "void" }) });
-
-        if (type.hasDestroy) {
-            props.push({ name: "hasDestroy", value: true });
-        }
-
-        if (type.userDataIndex !== undefined) {
-            props.push({ name: "userDataIndex", value: type.userDataIndex });
-        }
-
-        if (type.scope) {
-            props.push({ name: "scope", value: `"${type.scope}"` });
-        }
-
-        return props;
-    }
-
-    private propertiesToWriterObject(properties: ObjectProperty[]): Record<string, string | WriterFunction> {
-        const result: Record<string, string | WriterFunction> = {};
-        for (const prop of properties) {
-            if (typeof prop.value === "function") {
-                result[prop.name] = prop.value;
-            } else if (typeof prop.value === "boolean" || typeof prop.value === "number") {
-                result[prop.name] = String(prop.value);
-            } else {
-                result[prop.name] = prop.value;
-            }
-        }
-        return result;
+        return { type: "gobject", ownership: "borrowed" };
     }
 }

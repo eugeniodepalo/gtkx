@@ -2,10 +2,11 @@
  * Widget Props Builder
  *
  * Builds widget props interfaces from GIR-derived metadata.
- * Generates pure GIR translations — no reconciler-specific knowledge.
+ * Generates pure GIR translations -- no reconciler-specific knowledge.
  */
 
-import type { SourceFile } from "ts-morph";
+import type { InterfaceDeclarationBuilder } from "../../../builders/index.js";
+import { interfaceDecl } from "../../../builders/index.js";
 import type { PropertyAnalysis, SignalAnalysis } from "../../../core/generator-types.js";
 import { toPascalCase } from "../../../core/utils/naming.js";
 import { qualifyType } from "../../../core/utils/type-qualification.js";
@@ -14,12 +15,11 @@ import { type PropInfo, PropsBuilderBase } from "./props-builder-base.js";
 
 export class WidgetPropsBuilder extends PropsBuilderBase {
     buildWidgetPropsInterface(
-        sourceFile: SourceFile,
         namespace: string,
         properties: readonly PropertyAnalysis[],
         signals: readonly SignalAnalysis[],
         widgetDoc?: string,
-    ): void {
+    ): InterfaceDeclarationBuilder {
         const allProps: PropInfo[] = [];
 
         for (const prop of properties) {
@@ -52,26 +52,30 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
             doc: "Children elements (child widgets or event controllers).",
         });
 
-        sourceFile.addInterface({
-            name: "WidgetProps",
-            isExported: true,
-            docs: [
-                {
-                    description: widgetDoc
-                        ? this.formatDocDescription(widgetDoc, namespace)
-                        : "Base props shared by all GTK widget elements.",
-                },
-            ],
-            properties: this.buildInterfaceProperties(allProps),
+        const iface = interfaceDecl("WidgetProps", {
+            exported: true,
+            doc: widgetDoc
+                ? this.formatDocDescription(widgetDoc, namespace)
+                : "Base props shared by all GTK widget elements.",
         });
+
+        for (const prop of allProps) {
+            iface.addProperty({
+                name: prop.name,
+                type: prop.type,
+                optional: prop.optional,
+                doc: prop.doc,
+            });
+        }
+
+        return iface;
     }
 
     buildWidgetSpecificPropsInterface(
-        sourceFile: SourceFile,
         widget: JsxWidget,
         properties: readonly PropertyAnalysis[],
         signals: readonly SignalAnalysis[],
-    ): void {
+    ): InterfaceDeclarationBuilder {
         const { namespace, jsxName, className } = widget;
         const widgetName = toPascalCase(className);
         const parentPropsName = this.getParentPropsName(widget);
@@ -108,13 +112,22 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
             optional: true,
         });
 
-        sourceFile.addInterface({
-            name: `${jsxName}Props`,
-            isExported: true,
+        const iface = interfaceDecl(`${jsxName}Props`, {
+            exported: true,
             extends: [parentPropsName],
-            docs: [{ description: `Props for the {@link ${jsxName}} widget.` }],
-            properties: this.buildInterfaceProperties(allProps),
+            doc: `Props for the {@link ${jsxName}} widget.`,
         });
+
+        for (const prop of allProps) {
+            iface.addProperty({
+                name: prop.name,
+                type: prop.type,
+                optional: prop.optional,
+                doc: prop.doc,
+            });
+        }
+
+        return iface;
     }
 
     private getParentPropsName(widget: JsxWidget): string {

@@ -5,12 +5,12 @@
  * This metadata is consumed by React generators - nothing is written to output files.
  */
 
-import type { GirClass, GirRepository, QualifiedName } from "@gtkx/gir";
-import { parseQualifiedName, qualifiedName } from "@gtkx/gir";
+import type { GirClass, GirRepository } from "@gtkx/gir";
 import type { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import { getHiddenPropNames } from "../../../core/config/index.js";
 import { normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
+import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
 import { isWidgetType } from "../../../core/utils/widget-detection.js";
 
 export type ClassMetaAnalyzers = {
@@ -21,18 +21,15 @@ export type ClassMetaAnalyzers = {
 const SKIP_CONTROLLERS = new Set<string>();
 
 export class ClassMetaBuilder {
-    private readonly widgetQualifiedName: QualifiedName;
-    private readonly eventControllerQualifiedName: QualifiedName;
+    private readonly widgetQualifiedName = "Gtk.Widget";
+    private readonly eventControllerQualifiedName = "Gtk.EventController";
 
     constructor(
         private readonly cls: GirClass,
         private readonly repository: GirRepository,
         private readonly namespace: string,
         private readonly analyzers: ClassMetaAnalyzers,
-    ) {
-        this.widgetQualifiedName = qualifiedName("Gtk", "Widget");
-        this.eventControllerQualifiedName = qualifiedName("Gtk", "EventController");
-    }
+    ) {}
 
     isWidget(): boolean {
         return this.cls.isSubclassOf(this.widgetQualifiedName);
@@ -123,7 +120,7 @@ export class ClassMetaBuilder {
         if (!parent) return null;
 
         if (parent.includes(".")) {
-            const { namespace: parentNs, name } = parseQualifiedName(parent as QualifiedName);
+            const { namespace: parentNs, name } = splitQualifiedName(parent);
             return {
                 className: normalizeClassName(name),
                 namespace: parentNs,

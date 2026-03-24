@@ -5,13 +5,16 @@
  */
 
 import type { GirClass, GirFunction } from "@gtkx/gir";
-import type { MethodDeclarationStructure } from "ts-morph";
-import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { filterSupportedFunctions } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
-import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
+import {
+    createMethodBodyWriter,
+    type ImportCollector,
+    type MethodBodyWriter,
+    type MethodStructure,
+} from "../../../core/writers/index.js";
 
 function collectParentStaticFunctionNames(cls: GirClass): Set<string> {
     const names = new Set<string>();
@@ -36,16 +39,18 @@ export class StaticFunctionBuilder {
     constructor(
         private readonly cls: GirClass,
         ffiMapper: FfiMapper,
-        ctx: GenerationContext,
-        writers: Writers,
+        imports: ImportCollector,
         private readonly options: FfiGeneratorOptions,
     ) {
         this.className = normalizeClassName(cls.name);
-        this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
+        this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
+            sharedLibrary: options.sharedLibrary,
+            glibLibrary: options.glibLibrary,
+        });
         this.parentStaticFunctionNames = collectParentStaticFunctionNames(cls);
     }
 
-    buildStructures(): MethodDeclarationStructure[] {
+    buildStructures(): MethodStructure[] {
         const supportedFunctions = filterSupportedFunctions(this.cls.staticFunctions, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
         );
@@ -55,7 +60,7 @@ export class StaticFunctionBuilder {
             .map((func) => this.buildStaticFunctionStructure(func));
     }
 
-    private buildStaticFunctionStructure(func: GirFunction): MethodDeclarationStructure {
+    private buildStaticFunctionStructure(func: GirFunction): MethodStructure {
         return this.methodBody.buildStaticFunctionStructure(func, {
             className: this.className,
             originalClassName: this.cls.name,

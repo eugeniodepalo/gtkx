@@ -6,24 +6,16 @@
  * delegating inherited signals to super.connect().
  */
 
-import {
-    type GirClass,
-    type GirParameter,
-    type GirRepository,
-    type GirSignal,
-    parseQualifiedName,
-    type QualifiedName,
-} from "@gtkx/gir";
-import type { CodeBlockWriter, MethodDeclarationStructure, WriterFunction } from "ts-morph";
-import { StructureKind } from "ts-morph";
-import type { GenerationContext } from "../../../core/generation-context.js";
+import type { GirClass, GirParameter, GirRepository, GirSignal } from "@gtkx/gir";
+import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import type { MappedType } from "../../../core/type-system/ffi-types.js";
 import { collectDirectMembers, collectParentSignalNames } from "../../../core/utils/class-traversal.js";
 import { filterVarargs } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
-import type { Writers } from "../../../core/writers/index.js";
+import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
+import type { ImportCollector, MethodStructure } from "../../../core/writers/index.js";
 import { type ParamWrapInfo, ParamWrapWriter } from "../../../core/writers/param-wrap-writer.js";
 
 type SignalParamData = {
@@ -42,15 +34,14 @@ export class SignalBuilder {
     constructor(
         private readonly cls: GirClass,
         private readonly ffiMapper: FfiMapper,
-        private readonly ctx: GenerationContext,
+        private readonly imports: ImportCollector,
         private readonly repository: GirRepository,
-        private readonly writers: Writers,
         private readonly options: FfiGeneratorOptions,
     ) {
         this.className = normalizeClassName(cls.name);
     }
 
-    buildConnectMethodStructures(): MethodDeclarationStructure[] {
+    buildConnectMethodStructures(): MethodStructure[] {
         const ownSignals = this.collectOwnSignals();
         const hasSignalConnect = ownSignals.length > 0;
 
@@ -58,25 +49,23 @@ export class SignalBuilder {
             return [];
         }
 
-        this.ctx.usesCall = true;
-        this.ctx.usesGetNativeObject = true;
+        this.imports.addImport("../../native.js", ["call"]);
+        this.imports.addImport("../../registry.js", ["getNativeObject"]);
         if (this.options.namespace !== "GObject") {
-            this.ctx.usesGObjectNamespace = true;
+            this.imports.addImport("../gobject/index.js", ["GObject"]);
         } else {
-            this.ctx.usedSameNamespaceClasses.set("ParamSpec", "ParamSpec");
+            this.imports.addImport("./param-spec.js", ["ParamSpec"]);
         }
 
         const overloads = this.buildOverloads(ownSignals);
 
         return [
             {
-                kind: StructureKind.Method,
                 name: "connect",
-                overloads,
                 parameters: [
                     { name: "signal", type: "string" },
                     { name: "handler", type: "(...args: any[]) => any" },
-                    { name: "after", initializer: "false" },
+                    { name: "after", type: "boolean", optional: true },
                 ],
                 returnType: "number",
                 docs: [
@@ -85,6 +74,7 @@ export class SignalBuilder {
                     },
                 ],
                 statements: this.writeConnectMethodBody(ownSignals),
+                overloads,
             },
         ];
     }
@@ -111,7 +101,7 @@ export class SignalBuilder {
         }
 
         for (const ifaceQualifiedName of this.cls.implements) {
-            const iface = this.repository.resolveInterface(ifaceQualifiedName as QualifiedName);
+            const iface = this.repository.resolveInterface(ifaceQualifiedName);
             if (!iface) continue;
 
             for (const signal of iface.signals) {
@@ -125,7 +115,7 @@ export class SignalBuilder {
         let parent = this.cls.getParent();
         while (parent) {
             if (this.cls.parent?.includes(".")) {
-                const { namespace: parentNs } = parseQualifiedName(this.cls.parent as QualifiedName);
+                const { namespace: parentNs } = splitQualifiedName(this.cls.parent);
                 if (parentNs !== this.options.namespace) {
                     hasCrossNamespaceParent = true;
                     break;
@@ -144,38 +134,39 @@ export class SignalBuilder {
         return { allSignals, hasCrossNamespaceParent };
     }
 
-    private buildOverloads(
-        allSignals: GirSignal[],
-    ): Array<{ parameters: Array<{ name: string; type?: string; hasQuestionToken?: boolean }>; returnType: string }> {
-        const overloads: Array<{
-            parameters: Array<{ name: string; type?: string; hasQuestionToken?: boolean }>;
-            returnType: string;
-        }> = [];
+    private buildOverloads(allSignals: GirSignal[]): MethodStructure["overloads"] {
+        const overloads: NonNullable<MethodStructure["overloads"]> = [];
 
         for (const signal of allSignals) {
             const params = this.buildHandlerParams(signal);
             let returnType = "void";
             if (signal.returnType) {
                 const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
-                this.ctx.addTypeImports(mapped.imports);
+                for (const imp of mapped.imports) {
+                    if (imp.isExternal) {
+                        this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
+                    } else {
+                        this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+                    }
+                }
                 returnType = mapped.ts;
             }
 
             overloads.push({
-                parameters: [
+                params: [
                     { name: "signal", type: `"${signal.name}"` },
                     { name: "handler", type: `(${params}) => ${returnType}` },
-                    { name: "after", type: "boolean", hasQuestionToken: true },
+                    { name: "after", type: "boolean", optional: true },
                 ],
                 returnType: "number",
             });
         }
 
         overloads.push({
-            parameters: [
+            params: [
                 { name: "signal", type: "string" },
                 { name: "handler", type: "(...args: any[]) => any" },
-                { name: "after", type: "boolean", hasQuestionToken: true },
+                { name: "after", type: "boolean", optional: true },
             ],
             returnType: "number",
         });
@@ -183,7 +174,7 @@ export class SignalBuilder {
         return overloads;
     }
 
-    private writeConnectMethodBody(ownSignals: GirSignal[]): WriterFunction {
+    private writeConnectMethodBody(ownSignals: GirSignal[]): (writer: Writer) => void {
         const isRootGObject = this.options.namespace === "GObject" && this.cls.name === "Object";
 
         return (writer) => {
@@ -193,7 +184,7 @@ export class SignalBuilder {
             }
 
             writer.writeLine("switch (signal) {");
-            writer.indent(() => {
+            writer.withIndent(() => {
                 for (const signal of ownSignals) {
                     this.writeSignalCase(writer, signal);
                 }
@@ -203,7 +194,7 @@ export class SignalBuilder {
         };
     }
 
-    private writeSignalCase(writer: CodeBlockWriter, signal: GirSignal): void {
+    private writeSignalCase(writer: Writer, signal: GirSignal): void {
         const filteredParams = filterVarargs(signal.parameters);
         const paramData = this.buildParamData(filteredParams);
 
@@ -213,7 +204,7 @@ export class SignalBuilder {
         const returnUnwrapInfo = this.paramWrapWriter.needsReturnUnwrap(returnMapped);
 
         writer.writeLine(`case "${signal.name}": {`);
-        writer.indent(() => {
+        writer.withIndent(() => {
             this.writeWrappedHandler(writer, paramData, returnUnwrapInfo.needsUnwrap);
             this.writeCallExpression(writer, signal, paramData);
         });
@@ -223,9 +214,15 @@ export class SignalBuilder {
     private buildParamData(params: GirParameter[]): SignalParamData[] {
         return params.map((p) => {
             const mapped = this.ffiMapper.mapParameter(p);
-            this.ctx.addTypeImports(mapped.imports);
+            for (const imp of mapped.imports) {
+                if (imp.isExternal) {
+                    this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
+                } else {
+                    this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+                }
+            }
             if (mapped.ffi.type === "ref") {
-                this.ctx.usesRef = true;
+                this.imports.addImport("@gtkx/native", ["Ref"]);
             }
             return {
                 mapped,
@@ -235,15 +232,11 @@ export class SignalBuilder {
         });
     }
 
-    private writeWrappedHandler(
-        writer: CodeBlockWriter,
-        paramData: SignalParamData[],
-        needsReturnUnwrap: boolean,
-    ): void {
+    private writeWrappedHandler(writer: Writer, paramData: SignalParamData[], needsReturnUnwrap: boolean): void {
         const hasRefParams = paramData.some((p) => p.mapped.ffi.type === "ref");
 
         writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
-        writer.indent(() => {
+        writer.withIndent(() => {
             if (hasRefParams) {
                 for (const [i, p] of paramData.entries()) {
                     if (p.mapped.ffi.type === "ref") {
@@ -254,7 +247,7 @@ export class SignalBuilder {
 
                 writer.write("const _result = handler(");
                 writer.newLine();
-                writer.indent(() => {
+                writer.withIndent(() => {
                     writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
                     paramData.forEach((p, index) => {
                         if (p.mapped.ffi.type === "ref") {
@@ -286,7 +279,7 @@ export class SignalBuilder {
                     writer.write("return handler(");
                 }
                 writer.newLine();
-                writer.indent(() => {
+                writer.withIndent(() => {
                     writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
                     paramData.forEach((p, index) => {
                         const argAccess = `args[${index + 1}]`;
@@ -307,7 +300,7 @@ export class SignalBuilder {
         writer.writeLine("};");
     }
 
-    private writeCallExpression(writer: CodeBlockWriter, signal: GirSignal, paramData: SignalParamData[]): void {
+    private writeCallExpression(writer: Writer, signal: GirSignal, paramData: SignalParamData[]): void {
         const userDataIndex = 1 + paramData.length;
         this.writeTrampolineSignalConnectCall(writer, (w) => {
             w.write('type: "trampoline", ');
@@ -318,30 +311,30 @@ export class SignalBuilder {
         });
     }
 
-    private writeTrampolineArgTypes(writer: CodeBlockWriter, paramData: SignalParamData[]): void {
+    private writeTrampolineArgTypes(writer: Writer, paramData: SignalParamData[]): void {
         writer.write("argTypes: [");
         writer.write('{ type: "gobject", ownership: "borrowed" }');
         for (const p of paramData) {
             writer.write(", ");
-            this.writers.ffiTypeWriter.toWriter(p.mapped.ffi)(writer);
+            writer.write(JSON.stringify(p.mapped.ffi));
         }
         writer.write(', { type: "void" }');
         writer.write("]");
     }
 
-    private writeReturnType(writer: CodeBlockWriter, signal: GirSignal): void {
+    private writeReturnType(writer: Writer, signal: GirSignal): void {
         writer.write("returnType: ");
         if (signal.returnType) {
             const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
-            this.writers.ffiTypeWriter.toWriter(mapped.ffi)(writer);
+            writer.write(JSON.stringify(mapped.ffi));
         } else {
             writer.write('{ type: "void" }');
         }
     }
 
-    private writeDefaultCase(writer: CodeBlockWriter, isRootGObject: boolean): void {
+    private writeDefaultCase(writer: Writer, isRootGObject: boolean): void {
         writer.writeLine("default:");
-        writer.indent(() => {
+        writer.withIndent(() => {
             if (isRootGObject) {
                 this.writeFallbackImplementation(writer);
             } else {
@@ -350,9 +343,9 @@ export class SignalBuilder {
         });
     }
 
-    private writeFallbackImplementation(writer: CodeBlockWriter): void {
+    private writeFallbackImplementation(writer: Writer): void {
         writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
-        writer.indent(() => {
+        writer.withIndent(() => {
             writer.writeLine(
                 `return handler(getNativeObject(args[0] as NativeHandle) as ${this.className}, ...args.slice(1));`,
             );
@@ -365,20 +358,17 @@ export class SignalBuilder {
         });
     }
 
-    private writeTrampolineSignalConnectCall(
-        writer: CodeBlockWriter,
-        trampolineTypeWriter: (w: CodeBlockWriter) => void,
-    ): void {
+    private writeTrampolineSignalConnectCall(writer: Writer, trampolineTypeWriter: (w: Writer) => void): void {
         writer.writeLine("return call(");
-        writer.indent(() => {
+        writer.withIndent(() => {
             writer.writeLine(`"${this.options.sharedLibrary}",`);
             writer.writeLine('"g_signal_connect_data",');
             writer.writeLine("[");
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine('{ type: { type: "gobject", ownership: "borrowed" }, value: this.handle },');
                 writer.writeLine('{ type: { type: "string", ownership: "borrowed" }, value: signal },');
                 writer.writeLine("{");
-                writer.indent(() => {
+                writer.withIndent(() => {
                     writer.write("type: { ");
                     trampolineTypeWriter(writer);
                     writer.writeLine(" },");
@@ -393,20 +383,17 @@ export class SignalBuilder {
         writer.writeLine(") as number;");
     }
 
-    private writeClosureSignalConnectCall(
-        writer: CodeBlockWriter,
-        callbackTypeWriter: (w: CodeBlockWriter) => void,
-    ): void {
+    private writeClosureSignalConnectCall(writer: Writer, callbackTypeWriter: (w: Writer) => void): void {
         writer.writeLine("return call(");
-        writer.indent(() => {
+        writer.withIndent(() => {
             writer.writeLine(`"${this.options.sharedLibrary}",`);
             writer.writeLine('"g_signal_connect_closure",');
             writer.writeLine("[");
-            writer.indent(() => {
+            writer.withIndent(() => {
                 writer.writeLine('{ type: { type: "gobject", ownership: "borrowed" }, value: this.handle },');
                 writer.writeLine('{ type: { type: "string", ownership: "borrowed" }, value: signal },');
                 writer.writeLine("{");
-                writer.indent(() => {
+                writer.withIndent(() => {
                     writer.write("type: { ");
                     callbackTypeWriter(writer);
                     writer.writeLine(" },");
@@ -426,9 +413,15 @@ export class SignalBuilder {
 
         for (const param of filterVarargs(signal.parameters)) {
             const mapped = this.ffiMapper.mapParameter(param);
-            this.ctx.addTypeImports(mapped.imports);
+            for (const imp of mapped.imports) {
+                if (imp.isExternal) {
+                    this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
+                } else {
+                    this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+                }
+            }
             if (mapped.ffi.type === "ref") {
-                this.ctx.usesRef = true;
+                this.imports.addImport("@gtkx/native", ["Ref"]);
             }
             const paramName = toValidIdentifier(toCamelCase(param.name));
             params.push(`${paramName}: ${mapped.ts}`);

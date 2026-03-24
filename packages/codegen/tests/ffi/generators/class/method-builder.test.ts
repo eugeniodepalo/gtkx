@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { GenerationContext } from "../../../../src/core/generation-context.js";
+import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
-import { createWriters } from "../../../../src/core/writers/index.js";
+import { SELF_TYPE_GOBJECT } from "../../../../src/core/type-system/ffi-types.js";
 import { MethodBuilder } from "../../../../src/ffi/generators/class/method-builder.js";
 import {
     createNormalizedConstructor,
@@ -17,11 +17,8 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-    const ctx = new GenerationContext();
-    const writers = createWriters({
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-    });
+    const file = fileBuilder();
+    const methodRenames = new Map<string, string>();
     const options = {
         namespace: "Gtk",
         sharedLibrary: "libgtk-4.so.1",
@@ -29,8 +26,8 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
         gobjectLibrary: "libgobject-2.0.so.0",
     };
 
-    const builder = new MethodBuilder(ffiMapper, ctx, writers, options);
-    return { builder, ctx, ffiMapper };
+    const builder = new MethodBuilder(ffiMapper, file, methodRenames, options);
+    return { builder, ffiMapper, methodRenames };
 }
 
 describe("MethodBuilder", () => {
@@ -45,7 +42,7 @@ describe("MethodBuilder", () => {
         it("returns empty array when no methods", () => {
             const { builder } = createTestSetup();
 
-            const structures = builder.buildStructures([], false);
+            const structures = builder.buildStructures([], SELF_TYPE_GOBJECT);
 
             expect(structures).toHaveLength(0);
         });
@@ -60,7 +57,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures).toHaveLength(1);
             expect(structures[0].name).toBe("getLabel");
@@ -87,7 +84,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures).toHaveLength(2);
             expect(structures[0].name).toBe("getLabel");
@@ -104,7 +101,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures[0].name).toBe("getSomeLongProperty");
         });
@@ -129,7 +126,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures[0].parameters).toHaveLength(2);
         });
@@ -144,7 +141,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures[0].returnType).toBe("number");
         });
@@ -159,7 +156,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures[0].returnType).toBeUndefined();
         });
@@ -181,7 +178,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures).toHaveLength(1);
         });
@@ -207,7 +204,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures).toHaveLength(2);
         });
@@ -235,7 +232,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             const names = structures.map((s) => s.name);
             expect(names).toContain("loadAsync");
@@ -259,7 +256,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures.some((s) => s.name === "loadAsync")).toBe(true);
         });
@@ -280,7 +277,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             const asyncMethod = structures.find((s) => s.name === "saveAsync");
             expect(asyncMethod?.returnType).toContain("Promise");
@@ -445,7 +442,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures).toHaveLength(1);
         });
@@ -460,7 +457,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, true);
+            const structures = builder.buildStructures(methods, { type: "gparam", ownership: "borrowed" });
 
             expect(structures).toHaveLength(1);
         });
@@ -468,8 +465,8 @@ describe("MethodBuilder", () => {
 
     describe("method renames", () => {
         it("uses dynamic rename from context when available", () => {
-            const { builder, ctx } = createTestSetup();
-            ctx.methodRenames.set("gtk_button_get_name", "getBuildableName");
+            const { builder, methodRenames } = createTestSetup();
+            methodRenames.set("gtk_button_get_name", "getBuildableName");
             const methods = [
                 createNormalizedMethod({
                     name: "get_name",
@@ -478,7 +475,7 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, false);
+            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures[0].name).toBe("getBuildableName");
         });

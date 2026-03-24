@@ -2,17 +2,18 @@
  * Controller Props Builder
  *
  * Builds controller props interfaces from GIR-derived metadata.
- * Generates pure GIR translations — no reconciler-specific knowledge.
+ * Generates pure GIR translations -- no reconciler-specific knowledge.
  */
 
-import type { SourceFile } from "ts-morph";
+import type { InterfaceDeclarationBuilder } from "../../../builders/index.js";
+import { interfaceDecl } from "../../../builders/index.js";
 import type { CodegenControllerMeta } from "../../../core/codegen-metadata.js";
 import { toPascalCase } from "../../../core/utils/naming.js";
 import { qualifyType } from "../../../core/utils/type-qualification.js";
 import { type PropInfo, PropsBuilderBase } from "./props-builder-base.js";
 
 export class ControllerPropsBuilder extends PropsBuilderBase {
-    buildBaseControllerPropsInterface(sourceFile: SourceFile, eventControllerMeta: CodegenControllerMeta): void {
+    buildBaseControllerPropsInterface(eventControllerMeta: CodegenControllerMeta): InterfaceDeclarationBuilder {
         const { namespace } = eventControllerMeta;
         const allProps: PropInfo[] = [];
 
@@ -45,22 +46,27 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
             optional: true,
         });
 
-        sourceFile.addInterface({
-            name: "EventControllerBaseProps",
-            isExported: true,
-            docs: [
-                {
-                    description: eventControllerMeta.doc
-                        ? this.formatDocDescription(eventControllerMeta.doc, namespace)
-                        : "Base props for all event controller elements.",
-                },
-            ],
-            properties: this.buildInterfaceProperties(allProps),
+        const iface = interfaceDecl("EventControllerBaseProps", {
+            exported: true,
+            doc: eventControllerMeta.doc
+                ? this.formatDocDescription(eventControllerMeta.doc, namespace)
+                : "Base props for all event controller elements.",
         });
+
+        for (const prop of allProps) {
+            iface.addProperty({
+                name: prop.name,
+                type: prop.type,
+                optional: prop.optional,
+                doc: prop.doc,
+            });
+        }
+
+        return iface;
     }
 
-    buildControllerPropsInterface(sourceFile: SourceFile, controller: CodegenControllerMeta): void {
-        if (controller.className === "EventController") return;
+    buildControllerPropsInterface(controller: CodegenControllerMeta): InterfaceDeclarationBuilder | null {
+        if (controller.className === "EventController") return null;
 
         const { namespace, jsxName, className } = controller;
         const allProps: PropInfo[] = [];
@@ -98,13 +104,22 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
 
         const parentPropsName = this.getParentPropsName(controller);
 
-        sourceFile.addInterface({
-            name: `${jsxName}Props`,
-            isExported: true,
+        const iface = interfaceDecl(`${jsxName}Props`, {
+            exported: true,
             extends: [parentPropsName],
-            docs: [{ description: `Props for the {@link ${jsxName}} controller element.` }],
-            properties: this.buildInterfaceProperties(allProps),
+            doc: `Props for the {@link ${jsxName}} controller element.`,
         });
+
+        for (const prop of allProps) {
+            iface.addProperty({
+                name: prop.name,
+                type: prop.type,
+                optional: prop.optional,
+                doc: prop.doc,
+            });
+        }
+
+        return iface;
     }
 
     private getParentPropsName(controller: CodegenControllerMeta): string {

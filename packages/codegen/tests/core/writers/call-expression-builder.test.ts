@@ -1,19 +1,22 @@
 import { describe, expect, it } from "vitest";
+import { Writer } from "../../../src/builders/writer.js";
 import type { MappedType } from "../../../src/core/type-system/ffi-types.js";
 import {
     CallExpressionBuilder,
     type CallExpressionOptions,
 } from "../../../src/core/writers/call-expression-builder.js";
 import { FfiTypeWriter } from "../../../src/core/writers/ffi-type-writer.js";
-import { createTestProject, createTestSourceFile } from "../../fixtures/ts-morph-helpers.js";
 
 function getCallExpressionOutput(builder: CallExpressionBuilder, options: CallExpressionOptions): string {
-    const project = createTestProject();
-    const sourceFile = createTestSourceFile(project, "test.ts");
-    sourceFile.addVariableStatement({
-        declarations: [{ name: "result", initializer: builder.toWriter(options) }],
-    });
-    return sourceFile.getFullText();
+    const writer = new Writer();
+    builder.toWriter(options)(writer);
+    return writer.toString();
+}
+
+function getWriterOutput(fn: (writer: Writer) => void): string {
+    const writer = new Writer();
+    fn(writer);
+    return writer.toString();
 }
 
 describe("CallExpressionBuilder", () => {
@@ -306,45 +309,10 @@ describe("CallExpressionBuilder", () => {
         });
     });
 
-    describe("errorArgumentWriter", () => {
-        it("builds error argument writer", () => {
-            const ffiTypeWriter = new FfiTypeWriter({ glibLibrary: "libglib-2.0.so.0" });
-            const builder = new CallExpressionBuilder(ffiTypeWriter);
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addVariableStatement({
-                declarations: [{ name: "errorArg", initializer: builder.errorArgumentWriter() }],
-            });
-            const output = sourceFile.getFullText();
-
-            expect(output).toContain("type:");
-            expect(output).toContain('"ref"');
-            expect(output).toContain("value: error");
-        });
-
-        it("throws when ffiTypeWriter has no glibLibrary", () => {
-            const builder = new CallExpressionBuilder();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-
-            expect(() => {
-                sourceFile.addVariableStatement({
-                    declarations: [{ name: "errorArg", initializer: builder.errorArgumentWriter() }],
-                });
-            }).toThrow("glibLibrary must be set");
-        });
-    });
-
     describe("errorCheckWriter", () => {
         it("builds error check code with default GLib.GError reference", () => {
             const builder = new CallExpressionBuilder();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addFunction({
-                name: "test",
-                statements: builder.errorCheckWriter(),
-            });
-            const output = sourceFile.getFullText();
+            const output = getWriterOutput(builder.errorCheckWriter());
 
             expect(output).toContain("if (error.value !== null)");
             expect(output).toContain(
@@ -354,13 +322,7 @@ describe("CallExpressionBuilder", () => {
 
         it("builds error check code with custom GError reference", () => {
             const builder = new CallExpressionBuilder();
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-            sourceFile.addFunction({
-                name: "test",
-                statements: builder.errorCheckWriter("GError"),
-            });
-            const output = sourceFile.getFullText();
+            const output = getWriterOutput(builder.errorCheckWriter("GError"));
 
             expect(output).toContain("if (error.value !== null)");
             expect(output).toContain("throw new NativeError(getNativeObject(error.value as NativeHandle, GError))");
@@ -368,11 +330,9 @@ describe("CallExpressionBuilder", () => {
     });
 
     describe("integration with FfiTypeWriter", () => {
-        it("shares library context between builders", () => {
+        it("renders boxed type descriptor with library info from the descriptor", () => {
             const ffiTypeWriter = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
             const builder = new CallExpressionBuilder(ffiTypeWriter);
-
-            ffiTypeWriter.setSharedLibrary("libgdk-4.so.1");
 
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",
@@ -386,7 +346,8 @@ describe("CallExpressionBuilder", () => {
                 returnType: { type: "void" },
             });
 
-            expect(output).toContain('"libgdk-4.so.1"');
+            expect(output).toContain('"GdkRGBA"');
+            expect(output).toContain('"boxed"');
         });
     });
 
@@ -471,7 +432,7 @@ describe("CallExpressionBuilder", () => {
             });
 
             expect(output).toContain('"array"');
-            expect(output).toContain("itemType:");
+            expect(output).toContain('"itemType"');
         });
     });
 });
