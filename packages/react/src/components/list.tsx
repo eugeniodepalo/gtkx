@@ -20,7 +20,7 @@ import type {
 } from "../jsx.js";
 import type { BoundItem } from "../nodes/internal/bound-item.js";
 import { createPortal } from "../portal.js";
-import { columnViewChildren } from "./compounds/column-view.js";
+import { createMenuChild } from "./compound.js";
 
 type GenericListViewProps<T, S> = Omit<GtkListViewProps, keyof ListViewProps> & ListViewProps<T, S>;
 type GenericGridViewProps<T> = Omit<GtkGridViewProps, keyof GridViewProps> & GridViewProps<T>;
@@ -106,7 +106,13 @@ export const GtkColumnView: typeof GtkColumnViewBase & {
     MenuItem: (props: MenuItemProps) => ReactNode;
     MenuSection: (props: MenuSectionProps) => ReactNode;
     MenuSubmenu: (props: MenuSubmenuProps) => ReactNode;
-} = Object.assign(GtkColumnViewBase, columnViewChildren);
+} = Object.assign(GtkColumnViewBase, {
+    Column: <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode =>
+        createElement("ColumnViewColumn", props, props.children),
+    MenuItem: createMenuChild<MenuItemProps>("MenuItem"),
+    MenuSection: createMenuChild<MenuSectionProps>("MenuSection"),
+    MenuSubmenu: createMenuChild<MenuSubmenuProps>("MenuSubmenu"),
+});
 
 /**
  * Single-selection dropdown widget with React-managed item rendering.

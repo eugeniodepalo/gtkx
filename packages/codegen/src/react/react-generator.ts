@@ -10,6 +10,7 @@
 import { fileBuilder, stringify } from "../builders/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../core/codegen-metadata.js";
 import type { GeneratedFile } from "../core/generated-file-set.js";
+import { CompoundsGenerator } from "./generators/compounds-generator.js";
 import { InternalGenerator } from "./generators/internal.js";
 import { JsxTypesGenerator } from "./generators/jsx-types/index.js";
 import { RegistryGenerator } from "./generators/registry.js";
@@ -34,10 +35,21 @@ export class ReactGenerator {
         internalGenerator.generate(internalFile);
         files.push({ path: "internal.ts", content: stringify(internalFile) });
 
+        const compoundsGenerator = new CompoundsGenerator(this.reader, this.controllers, this.namespaceNames);
+
         const jsxFile = fileBuilder();
-        const jsxTypesGenerator = new JsxTypesGenerator(this.reader, this.controllers, this.namespaceNames);
+        const jsxTypesGenerator = new JsxTypesGenerator(
+            this.reader,
+            this.controllers,
+            this.namespaceNames,
+            compoundsGenerator.getCompoundJsxNames(),
+        );
         jsxTypesGenerator.generate(jsxFile);
         files.push({ path: "jsx.ts", content: stringify(jsxFile) });
+
+        const compoundsFile = fileBuilder();
+        compoundsGenerator.generate(compoundsFile);
+        files.push({ path: "compounds.ts", content: stringify(compoundsFile) });
 
         const registryFile = fileBuilder();
         const registryGenerator = new RegistryGenerator(this.namespaceNames);

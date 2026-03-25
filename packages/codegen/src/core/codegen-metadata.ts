@@ -52,6 +52,8 @@ export type CodegenControllerMeta = CodegenClassMeta & {
 export type CodegenWidgetMeta = CodegenClassMeta & {
     /** Named slots for child widgets (kebab-case) */
     readonly slots: readonly string[];
+    /** Container methods that accept a single widget child (kebab-case GIR names) */
+    readonly containerMethods: readonly string[];
     /** Module path for imports (e.g., "./gtk/button.js") */
     readonly modulePath: string;
     /** Hidden prop names for this widget (camelCase) */

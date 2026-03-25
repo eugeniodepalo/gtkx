@@ -33,6 +33,7 @@ export class JsxTypesGenerator {
         private readonly reader: MetadataReader,
         private readonly controllers: readonly CodegenControllerMeta[],
         private readonly namespaceNames: string[],
+        private readonly compoundJsxNames: ReadonlySet<string> = new Set(),
     ) {}
 
     generate(file: FileBuilder): void {
@@ -53,8 +54,8 @@ export class JsxTypesGenerator {
         this.addImports(file, widgets, controllers);
 
         this.intrinsicBuilder.buildWidgetSlotNamesType(file, widgets);
-        this.intrinsicBuilder.buildWidgetExports(file, widgets);
-        this.intrinsicBuilder.buildControllerExports(file, controllers);
+        this.intrinsicBuilder.buildWidgetExports(file, widgets, this.compoundJsxNames);
+        this.intrinsicBuilder.buildControllerExports(file, controllers, this.compoundJsxNames);
         this.intrinsicBuilder.buildJsxNamespace(file, widgets, controllers);
         this.intrinsicBuilder.addModuleExport(file);
     }

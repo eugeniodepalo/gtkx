@@ -334,22 +334,6 @@ export type SlotProps = {
 };
 
 /**
- * Type mapping widgets to their valid container slot method names.
- *
- * Each key is a JSX element name and each value is a union of method names
- * used by container slot compound components (e.g. `AdwHeaderBar.PackStart`).
- */
-export type ContainerSlotNames = {
-    AdwActionRow: "addPrefix" | "addSuffix";
-    AdwEntryRow: "addPrefix" | "addSuffix";
-    AdwExpanderRow: "addPrefix" | "addSuffix" | "addRow" | "addAction";
-    AdwHeaderBar: "packStart" | "packEnd";
-    AdwToolbarView: "addTopBar" | "addBottomBar";
-    GtkActionBar: "packStart" | "packEnd";
-    GtkHeaderBar: "packStart" | "packEnd";
-};
-
-/**
  * Props for method-based container slot child positioning.
  */
 export type ContainerSlotProps = {
@@ -607,6 +591,22 @@ export type NavigationPageBaseProps = {
     canPop?: boolean;
     /** Page content */
     children?: ReactNode;
+};
+
+/**
+ * Props for a navigation page inside an `AdwNavigationView`.
+ *
+ * The `id` serves as the page tag for navigation history.
+ */
+export type NavigationViewPageProps = NavigationPageBaseProps & { id: string };
+
+/**
+ * Props for a navigation page inside an `AdwNavigationSplitView`.
+ *
+ * The `id` is narrowed to the valid slot positions of the split view.
+ */
+export type NavigationSplitViewPageProps = NavigationPageBaseProps & {
+    id: WidgetSlotNames["AdwNavigationSplitView"];
 };
 
 /**
@@ -1017,46 +1017,8 @@ declare module "./generated/jsx.js" {
     }
 }
 
-export {
-    AdwActionRow,
-    AdwAlertDialog,
-    AdwApplicationWindow,
-    AdwBottomSheet,
-    AdwEntryRow,
-    AdwExpanderRow,
-    AdwFlap,
-    AdwHeaderBar,
-    AdwMessageDialog,
-    AdwNavigationSplitView,
-    AdwNavigationView,
-    AdwOverlaySplitView,
-    AdwPreferencesGroup,
-    AdwPreferencesPage,
-    AdwSplitButton,
-    AdwTabBar,
-    AdwToolbarView,
-    AdwViewStack,
-    AdwWindow,
-    GtkActionBar,
-    GtkCenterBox,
-    GtkExpander,
-    GtkFixed,
-    GtkFrame,
-    GtkGrid,
-    GtkHeaderBar,
-    GtkMenuButton,
-    GtkNotebook,
-    GtkOverlay,
-    GtkPaned,
-    GtkPopoverMenu,
-    GtkPopoverMenuBar,
-    GtkShortcutController,
-    GtkSourceView,
-    GtkStack,
-    GtkTextView,
-    GtkWindow,
-} from "./components/compounds/index.js";
 export { AdwComboRow, GtkColumnView, GtkDropDown, GtkGridView, GtkListView } from "./components/list.js";
+export * from "./generated/compounds.js";
 
 /** JSX intrinsic element name for timed (duration-based) Adwaita animations. */
 export const AdwTimedAnimation = "AdwTimedAnimation" as const;

@@ -8,7 +8,7 @@
 import type { GirClass, GirRepository } from "@gtkx/gir";
 import type { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
-import { getHiddenPropNames } from "../../../core/config/index.js";
+import { getContainerMethodNames, getHiddenPropNames } from "../../../core/config/index.js";
 import { normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
 import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
 import { isWidgetType } from "../../../core/utils/widget-detection.js";
@@ -88,6 +88,7 @@ export class ClassMetaBuilder {
             namespace: this.namespace,
             jsxName: `${this.namespace}${className}`,
             slots: this.detectSlots(),
+            containerMethods: this.detectContainerMethods(className),
             propNames,
             signalNames: signals.map((s) => s.name),
             parentClassName: parentInfo?.className ?? null,
@@ -98,6 +99,22 @@ export class ClassMetaBuilder {
             doc: this.cls.doc,
             hiddenPropNames,
         };
+    }
+
+    private detectContainerMethods(className: string): string[] {
+        const jsxName = `${this.namespace}${className}`;
+        const allowedNames = getContainerMethodNames(jsxName);
+        if (allowedNames.length === 0) return [];
+
+        const allowedSet = new Set(allowedNames);
+        const found: string[] = [];
+
+        for (const method of this.cls.methods) {
+            if (!allowedSet.has(method.name.replaceAll("_", "-"))) continue;
+            found.push(method.name.replaceAll("_", "-"));
+        }
+
+        return found;
     }
 
     private detectSlots(): string[] {

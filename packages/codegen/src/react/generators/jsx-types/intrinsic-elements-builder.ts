@@ -21,9 +21,14 @@ export class IntrinsicElementsBuilder {
         "AdwComboRow",
     ]);
 
-    buildWidgetExports(file: FileBuilder, widgets: JsxWidget[]): void {
+    buildWidgetExports(
+        file: FileBuilder,
+        widgets: JsxWidget[],
+        compoundJsxNames: ReadonlySet<string> = new Set(),
+    ): void {
         for (const widget of widgets) {
             if (IntrinsicElementsBuilder.LIST_WIDGET_NAMES.has(widget.jsxName)) continue;
+            if (compoundJsxNames.has(widget.jsxName)) continue;
 
             const doc =
                 formatJsDoc(widget.meta.doc, widget.namespace) ??
@@ -40,9 +45,14 @@ export class IntrinsicElementsBuilder {
         }
     }
 
-    buildControllerExports(file: FileBuilder, controllers: CodegenControllerMeta[]): void {
+    buildControllerExports(
+        file: FileBuilder,
+        controllers: CodegenControllerMeta[],
+        compoundJsxNames: ReadonlySet<string> = new Set(),
+    ): void {
         for (const controller of controllers) {
             if (controller.className === "EventController" || controller.abstract) continue;
+            if (compoundJsxNames.has(controller.jsxName)) continue;
 
             const doc =
                 formatJsDoc(controller.doc, controller.namespace) ??
