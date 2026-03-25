@@ -10,3 +10,5 @@ export {
     update,
     useApplication,
 } from "./render.js";
+export { useProperty } from "./use-property.js";
+export { useSetting } from "./use-setting.js";

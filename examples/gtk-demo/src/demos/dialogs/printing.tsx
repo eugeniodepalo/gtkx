@@ -50,15 +50,15 @@ const PrintingDemo = ({ window, onClose }: DemoProps) => {
 
             const logicalRect = new Pango.Rectangle();
             headerLayout.getPixelExtents(undefined, logicalRect);
-            let textWidth = logicalRect.getWidth();
-            let textHeight = logicalRect.getHeight();
+            let textWidth = logicalRect.width;
+            let textHeight = logicalRect.height;
 
             if (textWidth > width) {
                 headerLayout.setWidth(Math.floor(width));
                 headerLayout.setEllipsize(Pango.EllipsizeMode.START);
                 headerLayout.getPixelExtents(undefined, logicalRect);
-                textWidth = logicalRect.getWidth();
-                textHeight = logicalRect.getHeight();
+                textWidth = logicalRect.width;
+                textHeight = logicalRect.height;
             }
 
             cr.moveTo((width - textWidth) / 2, (HEADER_HEIGHT - textHeight) / 2);
@@ -68,7 +68,7 @@ const PrintingDemo = ({ window, onClose }: DemoProps) => {
             headerLayout.setText(pageStr, -1);
             headerLayout.setWidth(-1);
             headerLayout.getPixelExtents(undefined, logicalRect);
-            cr.moveTo(width - logicalRect.getWidth() - 4, (HEADER_HEIGHT - logicalRect.getHeight()) / 2);
+            cr.moveTo(width - logicalRect.width - 4, (HEADER_HEIGHT - logicalRect.height) / 2);
             PangoCairo.showLayout(cr, headerLayout);
 
             const bodyLayout = context.createPangoLayout();

@@ -6,31 +6,31 @@ import sourceCode from "./shortcuts.tsx?raw";
 
 function shortcut(title: string, accelerator: string): Gtk.ShortcutsShortcut {
     const s = new Gtk.ShortcutsShortcut();
-    s.setTitle(title);
-    s.setAccelerator(accelerator);
+    s.title = title;
+    s.accelerator = accelerator;
     return s;
 }
 
 function gesture(title: string, type: Gtk.ShortcutType): Gtk.ShortcutsShortcut {
     const s = new Gtk.ShortcutsShortcut();
-    s.setTitle(title);
-    s.setShortcutType(type);
+    s.title = title;
+    s.shortcutType = type;
     return s;
 }
 
 function dirShortcut(title: string, accelerator: string, direction: Gtk.TextDirection): Gtk.ShortcutsShortcut {
     const s = new Gtk.ShortcutsShortcut();
-    s.setTitle(title);
-    s.setAccelerator(accelerator);
+    s.title = title;
+    s.accelerator = accelerator;
     s.setDirection(direction);
     return s;
 }
 
 function group(title: string, shortcuts: Gtk.ShortcutsShortcut[], view?: string): Gtk.ShortcutsGroup {
     const g = new Gtk.ShortcutsGroup();
-    g.setTitle(title);
+    g.title = title;
     if (view) {
-        g.setView(view);
+        g.view = view;
     }
     for (const s of shortcuts) {
         g.addShortcut(s);
@@ -42,8 +42,8 @@ function createGeditWindow(): Gtk.ShortcutsWindow {
     const win = new Gtk.ShortcutsWindow();
 
     const section = new Gtk.ShortcutsSection();
-    section.setSectionName("shortcuts");
-    section.setMaxHeight(12);
+    section.sectionName = "shortcuts";
+    section.maxHeight = 12;
 
     section.addGroup(
         group("Touchpad gestures", [
@@ -92,8 +92,8 @@ function createClocksWindow(): Gtk.ShortcutsWindow {
     const win = new Gtk.ShortcutsWindow();
 
     const section = new Gtk.ShortcutsSection();
-    section.setSectionName("shortcuts");
-    section.setMaxHeight(10);
+    section.sectionName = "shortcuts";
+    section.maxHeight = 10;
 
     section.addGroup(
         group("General", [
@@ -139,8 +139,8 @@ function createBoxesWindow(): Gtk.ShortcutsWindow {
     const win = new Gtk.ShortcutsWindow();
 
     const section = new Gtk.ShortcutsSection();
-    section.setSectionName("shortcuts");
-    section.setMaxHeight(12);
+    section.sectionName = "shortcuts";
+    section.maxHeight = 12;
 
     section.addGroup(
         group(
@@ -191,8 +191,8 @@ function createBuilderWindow(): Gtk.ShortcutsWindow {
     const win = new Gtk.ShortcutsWindow();
 
     const editorSection = new Gtk.ShortcutsSection();
-    editorSection.setSectionName("editor");
-    editorSection.setTitle("Editor Shortcuts");
+    editorSection.sectionName = "editor";
+    editorSection.title = "Editor Shortcuts";
 
     editorSection.addGroup(
         group("General", [
@@ -288,9 +288,9 @@ function createBuilderWindow(): Gtk.ShortcutsWindow {
     win.addSection(editorSection);
 
     const terminalSection = new Gtk.ShortcutsSection();
-    terminalSection.setSectionName("terminal");
-    terminalSection.setTitle("Terminal Shortcuts");
-    terminalSection.setMaxHeight(16);
+    terminalSection.sectionName = "terminal";
+    terminalSection.title = "Terminal Shortcuts";
+    terminalSection.maxHeight = 16;
 
     terminalSection.addGroup(
         group("General", [
@@ -341,7 +341,7 @@ function showShortcutsWindow(parent: Gtk.Window, builder: () => Gtk.ShortcutsWin
     const win = builder();
     win.setTransientFor(parent);
     if (viewName) {
-        win.setViewName(viewName);
+        win.viewName = viewName;
     }
     win.present();
 }

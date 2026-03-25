@@ -37,10 +37,10 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
             const startIter = new Gtk.TextIter();
             const endIter = new Gtk.TextIter();
 
-            buffer.getIterAtLineIndex(startIter, startLocation.getLines(), startLocation.getLineBytes());
-            buffer.getIterAtLineIndex(endIter, endLocation.getLines(), endLocation.getLineBytes());
+            buffer.getIterAtLineIndex(startIter, startLocation.lines, startLocation.lineBytes);
+            buffer.getIterAtLineIndex(endIter, endLocation.lines, endLocation.lineBytes);
 
-            const isWarning = error.getDomain() === cssParserWarningQuark();
+            const isWarning = error.domain === cssParserWarningQuark();
             const tag = isWarning ? warningTagRef.current : errorTagRef.current;
 
             if (tag) {
@@ -77,12 +77,12 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
         const tagTable = buffer.getTagTable();
 
         const errorTag = new Gtk.TextTag("error");
-        errorTag.setUnderline(Pango.Underline.ERROR);
+        errorTag.underline = Pango.Underline.ERROR;
         tagTable.add(errorTag);
         errorTagRef.current = errorTag;
 
         const warningTag = new Gtk.TextTag("warning");
-        warningTag.setUnderline(Pango.Underline.SINGLE);
+        warningTag.underline = Pango.Underline.SINGLE;
         tagTable.add(warningTag);
         warningTagRef.current = warningTag;
 

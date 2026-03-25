@@ -64,7 +64,7 @@ const getGFileType = () => {
 const SOURCE_TYPES: SourceType[] = ["Text", "Color", "Image", "File", "Folder"];
 
 function drawColorSwatch(cr: Context, width: number, height: number, rgba: Gdk.RGBA): void {
-    cr.setSourceRgba(rgba.getRed(), rgba.getGreen(), rgba.getBlue(), rgba.getAlpha());
+    cr.setSourceRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha);
     cr.rectangle(0, 0, width, height);
     cr.fill();
 }
@@ -219,10 +219,10 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                     setPastedContent({
                         type: "Color",
                         color: new Gdk.RGBA({
-                            red: rgba.getRed(),
-                            green: rgba.getGreen(),
-                            blue: rgba.getBlue(),
-                            alpha: rgba.getAlpha(),
+                            red: rgba.red,
+                            green: rgba.green,
+                            blue: rgba.blue,
+                            alpha: rgba.alpha,
                         }),
                     });
                     return;
@@ -283,10 +283,10 @@ const ClipboardDemo = ({ window }: DemoProps) => {
             setPastedContent({
                 type: "Color",
                 color: new Gdk.RGBA({
-                    red: rgba.getRed(),
-                    green: rgba.getGreen(),
-                    blue: rgba.getBlue(),
-                    alpha: rgba.getAlpha(),
+                    red: rgba.red,
+                    green: rgba.green,
+                    blue: rgba.blue,
+                    alpha: rgba.alpha,
                 }),
             });
             return true;
@@ -342,10 +342,10 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                             onRgbaChanged={(rgba) =>
                                 setSourceColor(
                                     new Gdk.RGBA({
-                                        red: rgba.getRed(),
-                                        green: rgba.getGreen(),
-                                        blue: rgba.getBlue(),
-                                        alpha: rgba.getAlpha(),
+                                        red: rgba.red,
+                                        green: rgba.green,
+                                        blue: rgba.blue,
+                                        alpha: rgba.alpha,
                                     }),
                                 )
                             }

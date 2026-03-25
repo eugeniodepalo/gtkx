@@ -1,4 +1,4 @@
-# 7. Deploying
+# 8. Deploying
 
 Your Notes app is complete. Let's package it for distribution as a native Linux application.
 

@@ -222,4 +222,4 @@ Monitor animation lifecycle:
 
 ## Next
 
-In the [final chapter](./7-deploying.md), you'll package the Notes app for distribution.
+In the [next chapter](./7-settings-and-preferences.md), you'll add a preferences dialog that reads and writes system settings.

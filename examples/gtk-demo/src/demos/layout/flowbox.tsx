@@ -689,7 +689,7 @@ function getParsedColors() {
 }
 
 function drawColor(cr: Context, _width: number, _height: number, rgba: Gdk.RGBA): void {
-    cr.setSourceRgba(rgba.getRed(), rgba.getGreen(), rgba.getBlue(), rgba.getAlpha());
+    cr.setSourceRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha);
     cr.paint();
 }
 

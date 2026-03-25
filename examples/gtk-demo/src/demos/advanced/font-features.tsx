@@ -308,8 +308,8 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
     const swapColors = useCallback(() => {
         const oldFg = fgColor;
         const oldBg = bgColor;
-        setFgColor(new Gdk.RGBA({ red: oldBg.getRed(), green: oldBg.getGreen(), blue: oldBg.getBlue(), alpha: 1 }));
-        setBgColor(new Gdk.RGBA({ red: oldFg.getRed(), green: oldFg.getGreen(), blue: oldFg.getBlue(), alpha: 1 }));
+        setFgColor(new Gdk.RGBA({ red: oldBg.red, green: oldBg.green, blue: oldBg.blue, alpha: 1 }));
+        setBgColor(new Gdk.RGBA({ red: oldFg.red, green: oldFg.green, blue: oldFg.blue, alpha: 1 }));
     }, [fgColor, bgColor]);
 
     const resetBasic = useCallback(() => {
@@ -362,9 +362,9 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
     }, [checkStates, radioStates]);
 
     const bgStyle = useMemo(() => {
-        const bgR = Math.round(bgColor.getRed() * 255);
-        const bgG = Math.round(bgColor.getGreen() * 255);
-        const bgB = Math.round(bgColor.getBlue() * 255);
+        const bgR = Math.round(bgColor.red * 255);
+        const bgG = Math.round(bgColor.green * 255);
+        const bgB = Math.round(bgColor.blue * 255);
         return css`
             scrolledwindow& {
                 background-color: rgb(${bgR}, ${bgG}, ${bgB});
@@ -374,9 +374,9 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
 
     const previewStyle = useMemo(() => {
         const fontFamily = fontDesc?.getFamily() ?? "Sans";
-        const fgR = Math.round(fgColor.getRed() * 255);
-        const fgG = Math.round(fgColor.getGreen() * 255);
-        const fgB = Math.round(fgColor.getBlue() * 255);
+        const fgR = Math.round(fgColor.red * 255);
+        const fgG = Math.round(fgColor.green * 255);
+        const fgB = Math.round(fgColor.blue * 255);
         return css`
             label& {
                 font-family: "${fontFamily}";
@@ -391,9 +391,9 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
 
     const editStyle = useMemo(() => {
         const fontFamily = fontDesc?.getFamily() ?? "Sans";
-        const fgR = Math.round(fgColor.getRed() * 255);
-        const fgG = Math.round(fgColor.getGreen() * 255);
-        const fgB = Math.round(fgColor.getBlue() * 255);
+        const fgR = Math.round(fgColor.red * 255);
+        const fgG = Math.round(fgColor.green * 255);
+        const fgB = Math.round(fgColor.blue * 255);
         return css`
             textview& {
                 font-family: "${fontFamily}";
@@ -408,9 +408,9 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
     const createWaterfallStyle = useCallback(
         (wfSize: number) => {
             const fontFamily = fontDesc?.getFamily() ?? "Sans";
-            const fgR = Math.round(fgColor.getRed() * 255);
-            const fgG = Math.round(fgColor.getGreen() * 255);
-            const fgB = Math.round(fgColor.getBlue() * 255);
+            const fgR = Math.round(fgColor.red * 255);
+            const fgG = Math.round(fgColor.green * 255);
+            const fgB = Math.round(fgColor.blue * 255);
             return css`
                 label& {
                     font-family: "${fontFamily}";
@@ -455,8 +455,8 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
         const endIndex = hasSelection ? endRef.value : 0xffffffff;
 
         const attr = Pango.attrFontFeaturesNew(pangoFontFeaturesString);
-        attr.setStartIndex(startIndex);
-        attr.setEndIndex(endIndex);
+        attr.startIndex = startIndex;
+        attr.endIndex = endIndex;
         attrList.insert(attr);
 
         label.setAttributes(attrList);

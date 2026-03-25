@@ -50,7 +50,8 @@ export default defineConfig({
                         { text: "4. Menus & Shortcuts", link: "/docs/tutorial/4-menus-and-shortcuts" },
                         { text: "5. Navigation & Split Views", link: "/docs/tutorial/5-navigation" },
                         { text: "6. Dialogs & Animations", link: "/docs/tutorial/6-dialogs-and-animations" },
-                        { text: "7. Deploying", link: "/docs/tutorial/7-deploying" },
+                        { text: "7. Settings & Preferences", link: "/docs/tutorial/7-settings-and-preferences" },
+                        { text: "8. Deploying", link: "/docs/tutorial/8-deploying" },
                     ],
                 },
                 {

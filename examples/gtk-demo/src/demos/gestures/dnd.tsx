@@ -203,7 +203,7 @@ function themeIsDark(): boolean {
     }
     const settings = Gtk.Settings.getDefault();
     if (!settings) return false;
-    const themeName = settings.getGtkThemeName() ?? "";
+    const themeName = settings.gtkThemeName ?? "";
     return themeName.endsWith("-dark") || themeName.endsWith(":dark");
 }
 

@@ -38,7 +38,7 @@ const GLYPHS_STRUCT = (numGlyphs: number) =>
 type GlyphData = { glyph: number; width: number; xOffset: number; yOffset: number; attr: number };
 
 const readGlyphsArray = (glyphString: Pango.GlyphString): NativeHandle =>
-    read(glyphString.handle, GLYPHS_STRUCT(glyphString.getNumGlyphs()), 8) as NativeHandle;
+    read(glyphString.handle, GLYPHS_STRUCT(glyphString.numGlyphs), 8) as NativeHandle;
 
 const readGlyph = (glyphsArray: NativeHandle, index: number): GlyphData => {
     const base = index * GLYPH_INFO_SIZE;
@@ -61,7 +61,7 @@ const writeGlyph = (glyphsArray: NativeHandle, index: number, g: GlyphData): voi
 };
 
 const commitGlyphs = (glyphString: Pango.GlyphString, glyphsArray: NativeHandle): void => {
-    write(glyphString.handle, GLYPHS_STRUCT(glyphString.getNumGlyphs()), 8, glyphsArray);
+    write(glyphString.handle, GLYPHS_STRUCT(glyphString.numGlyphs), 8, glyphsArray);
 };
 
 type Mode = "text" | "grid";
@@ -173,10 +173,10 @@ const FontRenderingDemo = () => {
             const baseline = layout.getBaseline();
 
             const inkPixel = {
-                x: Math.floor(inkRect.getX() / PANGO_SCALE),
-                y: Math.floor(inkRect.getY() / PANGO_SCALE),
-                width: Math.ceil(inkRect.getWidth() / PANGO_SCALE),
-                height: Math.ceil(inkRect.getHeight() / PANGO_SCALE),
+                x: Math.floor(inkRect.x / PANGO_SCALE),
+                y: Math.floor(inkRect.y / PANGO_SCALE),
+                width: Math.ceil(inkRect.width / PANGO_SCALE),
+                height: Math.ceil(inkRect.height / PANGO_SCALE),
             };
 
             const surfaceWidth = inkPixel.width + 20;
@@ -239,10 +239,10 @@ const FontRenderingDemo = () => {
             }
 
             if (overlays.showExtents) {
-                const logX = logicalRect.getX() / PANGO_SCALE;
-                const logY = logicalRect.getY() / PANGO_SCALE;
-                const logW = logicalRect.getWidth() / PANGO_SCALE;
-                const logH = logicalRect.getHeight() / PANGO_SCALE;
+                const logX = logicalRect.x / PANGO_SCALE;
+                const logY = logicalRect.y / PANGO_SCALE;
+                const logW = logicalRect.width / PANGO_SCALE;
+                const logH = logicalRect.height / PANGO_SCALE;
                 const bl = baseline / PANGO_SCALE;
 
                 cr.setSourceRgb(0, 0, 1);
@@ -334,10 +334,10 @@ const FontRenderingDemo = () => {
             const glyphItem = iter.getRun();
             if (!glyphItem) return;
 
-            const glyphString = glyphItem.getGlyphs();
+            const glyphString = glyphItem.glyphs;
             if (!glyphString) return;
 
-            if (glyphString.getNumGlyphs() < 8) {
+            if (glyphString.numGlyphs < 8) {
                 ch = "a";
                 layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
                 layout.getPixelExtents(undefined, logicalRect);
@@ -350,8 +350,8 @@ const FontRenderingDemo = () => {
             }
             commitGlyphs(glyphString, glyphs);
 
-            const surfaceWidth = Math.round((logicalRect.getWidth() * 3) / 2);
-            const surfaceHeight = logicalRect.getHeight() * 4;
+            const surfaceWidth = Math.round((logicalRect.width * 3) / 2);
+            const surfaceHeight = logicalRect.height * 4;
 
             const small = target.createSimilar("COLOR_ALPHA", surfaceWidth, surfaceHeight);
             const smallCr = new Context(small);
@@ -375,10 +375,10 @@ const FontRenderingDemo = () => {
             const smallGlyphItem = smallIter.getRun();
             if (!smallGlyphItem) return;
 
-            const smallGlyphString = smallGlyphItem.getGlyphs();
+            const smallGlyphString = smallGlyphItem.glyphs;
             if (!smallGlyphString) return;
 
-            if (smallGlyphString.getNumGlyphs() < 8) {
+            if (smallGlyphString.numGlyphs < 8) {
                 smallLayout.setText(`a${ZWNJ}a${ZWNJ}a${ZWNJ}a`, -1);
                 smallLayout.getPixelExtents(undefined, smallLogical);
             }
@@ -406,7 +406,7 @@ const FontRenderingDemo = () => {
                 }
                 commitGlyphs(smallGlyphString, offsetGlyphs);
 
-                smallCr.moveTo(0, j * smallLogical.getHeight());
+                smallCr.moveTo(0, j * smallLogical.height);
                 PangoCairo.showLayout(smallCr, smallLayout);
             }
 

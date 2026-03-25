@@ -41,7 +41,7 @@ const ThemesDemo = ({ window }: DemoProps) => {
         const styleManager = Adw.StyleManager.getDefault();
         if (settings && styleManager) {
             originalSettingsRef.current = {
-                themeName: settings.getGtkThemeName(),
+                themeName: settings.gtkThemeName,
                 colorScheme: styleManager.getColorScheme(),
             };
         }
@@ -58,7 +58,7 @@ const ThemesDemo = ({ window }: DemoProps) => {
             }
             const original = originalSettingsRef.current;
             if (original && settings && styleManager) {
-                settings.setGtkThemeName(original.themeName);
+                settings.gtkThemeName = original.themeName;
                 styleManager.setColorScheme(original.colorScheme);
             }
         };
@@ -72,7 +72,7 @@ const ThemesDemo = ({ window }: DemoProps) => {
 
             const theme = THEMES[themeIndexRef.current % THEMES.length];
             if (theme) {
-                settings.setGtkThemeName(theme.name);
+                settings.gtkThemeName = theme.name;
                 styleManager.setColorScheme(theme.dark ? Adw.ColorScheme.FORCE_DARK : Adw.ColorScheme.FORCE_LIGHT);
 
                 const win = window.current;
@@ -110,7 +110,7 @@ const ThemesDemo = ({ window }: DemoProps) => {
         const settings = Gtk.Settings.getDefault();
         const styleManager = Adw.StyleManager.getDefault();
         if (original && settings && styleManager) {
-            settings.setGtkThemeName(original.themeName);
+            settings.gtkThemeName = original.themeName;
             styleManager.setColorScheme(original.colorScheme);
         }
         setIsRunning(false);

@@ -9,6 +9,11 @@ import {
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwNavigationSplitView,
+    AdwPreferencesGroup,
+    AdwPreferencesPage,
+    AdwPreferencesWindow,
+    AdwSpinRow,
+    AdwSwitchRow,
     AdwToggleGroup,
     AdwToolbarView,
     GtkBox,
@@ -19,10 +24,8 @@ import {
     GtkListView,
     GtkMenuButton,
     GtkScrolledWindow,
-    quit,
 } from "@gtkx/react";
-import { cleanup, render, screen, userEvent } from "@gtkx/testing";
-import { useState } from "react";
+import { cleanup, render, screen } from "@gtkx/testing";
 import { afterEach, describe, it } from "vitest";
 
 const noop = () => {};
@@ -349,6 +352,27 @@ const Chapter6 = () => (
     </AdwApplicationWindow>
 );
 
+const Chapter7 = () => (
+    <AdwPreferencesWindow title="Preferences" defaultWidth={500} defaultHeight={400} onClose={() => {}}>
+        <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
+            <AdwPreferencesGroup title="Appearance">
+                <AdwSwitchRow title="Compact Mode" subtitle="Use smaller spacing in the note list" />
+            </AdwPreferencesGroup>
+            <AdwPreferencesGroup title="Editor">
+                <AdwSwitchRow title="Spell Check" subtitle="Highlight spelling errors while typing" active />
+                <AdwSpinRow
+                    title="Font Size"
+                    subtitle="Base font size for the editor"
+                    value={14}
+                    lower={8}
+                    upper={32}
+                    stepIncrement={1}
+                />
+            </AdwPreferencesGroup>
+        </AdwPreferencesPage>
+    </AdwPreferencesWindow>
+);
+
 describe("Tutorial Screenshots", () => {
     afterEach(async () => {
         await cleanup();
@@ -384,5 +408,10 @@ describe("Tutorial Screenshots", () => {
     it("captures chapter 6: dialogs and animations", async () => {
         await render(<Chapter6 />, { wrapper: false });
         await saveScreenshot("6-dialogs-and-animations.png");
+    });
+
+    it("captures chapter 7: settings and preferences", async () => {
+        await render(<Chapter7 />, { wrapper: false });
+        await saveDisplayScreenshot("7-settings-and-preferences.png");
     });
 });
