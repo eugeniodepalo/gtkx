@@ -1,5 +1,5 @@
 import type { NativeClass, Type } from "@gtkx/ffi";
-import { Object as GObject, toValue, type Value } from "@gtkx/ffi/gobject";
+import { Object as GObject, Value } from "@gtkx/ffi/gobject";
 import { CONSTRUCTION_META } from "../../generated/internal.js";
 import type { Container, ContainerClass, Props } from "../../types.js";
 
@@ -53,7 +53,7 @@ export function createContainerWithProperties(containerClass: ContainerClass, pr
 
     for (const { girName, ffiType, value } of constructionProps) {
         names.push(girName);
-        values.push(toValue(ffiType, value));
+        values.push(Value.newFrom(ffiType, value));
     }
 
     return GObject.newWithProperties(gtype, names, values) as unknown as Container;

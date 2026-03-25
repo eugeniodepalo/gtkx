@@ -132,6 +132,13 @@ declare module "../generated/gobject/value.js" {
          * @param value - The flags value (can be combined with bitwise OR)
          */
         function newFromFlags(gtype: number, value: number): Value;
+        /**
+         * Creates a GValue from an FFI type descriptor and a JS value.
+         * Dispatches to the appropriate `newFrom*` constructor based on the type.
+         * @param ffiType - The FFI type descriptor
+         * @param value - The JS value to convert
+         */
+        function newFrom(ffiType: FfiType, value: unknown): Value;
     }
 }
 
@@ -195,6 +202,7 @@ type ValueStatic = {
     newFromVariant(value: NativeObject): Value;
     newFromEnum(gtype: number, value: number): Value;
     newFromFlags(gtype: number, value: number): Value;
+    newFrom(ffiType: FfiType, value: unknown): Value;
 };
 
 const ValueWithStatics = Value as typeof Value & ValueStatic;
@@ -394,7 +402,7 @@ ValueWithStatics.newFromFlags = (gtype: number, value: number): Value => {
     return v;
 };
 
-export function toValue(ffiType: FfiType, value: unknown): Value {
+ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
     switch (ffiType.type) {
         case "boolean":
             return Value.newFromBoolean(value as boolean);
@@ -466,4 +474,4 @@ export function toValue(ffiType: FfiType, value: unknown): Value {
         default:
             throw new Error(`Unsupported FFI type for GValue conversion: ${(ffiType as { type: string }).type}`);
     }
-}
+};
