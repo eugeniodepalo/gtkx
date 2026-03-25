@@ -208,10 +208,10 @@ importers:
     devDependencies:
       '@biomejs/js-api':
         specifier: ^4.0.0
-        version: 4.0.0(@biomejs/wasm-nodejs@2.4.8)
+        version: 4.0.0(@biomejs/wasm-nodejs@2.4.9)
       '@biomejs/wasm-nodejs':
-        specifier: ^2.4.8
-        version: 2.4.8
+        specifier: ^2.4.9
+        version: 2.4.9
       '@clack/prompts':
         specifier: ^1.1.0
         version: 1.1.0
@@ -552,8 +552,8 @@ packages:
       '@biomejs/wasm-web':
         optional: true
 
-  '@biomejs/wasm-nodejs@2.4.8':
-    resolution: {integrity: sha512-pTfObtbrSfifZqdEE75EQc6R6ZZ3K3dtuS4KqOsmOYz9on8b5RXpXEYRp/VR0MQ5NzRBk4UteKL8PMT4GKHHnw==}
+  '@biomejs/wasm-nodejs@2.4.9':
+    resolution: {integrity: sha512-KrzMpx4pbZcgV+LzyJU+Yiz8YbxoCzNtjQTQ8d/wrrut8Wm+GzgrfKR+Cab/k00GDYKMG6bIxU0ymrdzVaYNMA==}
 
   '@clack/core@1.1.0':
     resolution: {integrity: sha512-SVcm4Dqm2ukn64/8Gub2wnlA5nS2iWJyCkdNHcvNHPIeBTGojpdJ+9cZKwLfmqy7irD4N5qLteSilJlE0WLAtA==}
@@ -2824,11 +2824,11 @@ snapshots:
   '@biomejs/cli-win32-x64@2.4.8':
     optional: true
 
-  '@biomejs/js-api@4.0.0(@biomejs/wasm-nodejs@2.4.8)':
+  '@biomejs/js-api@4.0.0(@biomejs/wasm-nodejs@2.4.9)':
     optionalDependencies:
-      '@biomejs/wasm-nodejs': 2.4.8
+      '@biomejs/wasm-nodejs': 2.4.9
 
-  '@biomejs/wasm-nodejs@2.4.8': {}
+  '@biomejs/wasm-nodejs@2.4.9': {}
 
   '@clack/core@1.1.0':
     dependencies:
