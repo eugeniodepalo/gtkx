@@ -16,7 +16,7 @@ describe("within", () => {
             </GtkBox>,
         );
 
-        const sectionA = await screen.findByTestId("section-a");
+        const sectionA = await screen.findByName("section-a");
         const { findByRole } = within(sectionA);
 
         const submitButton = await findByRole(Gtk.AccessibleRole.BUTTON);
@@ -33,7 +33,7 @@ describe("within", () => {
             </GtkBox>,
         );
 
-        const frame = await screen.findByTestId("inner-frame");
+        const frame = await screen.findByName("inner-frame");
         const { findByText } = within(frame);
 
         await expect(findByText("Outside", { timeout: 100 })).rejects.toThrow("Unable to find");
@@ -46,7 +46,7 @@ describe("within", () => {
             </GtkFrame>,
         );
 
-        const frame = await screen.findByTestId("container");
+        const frame = await screen.findByName("container");
         const { findByRole } = within(frame);
         const button = await findByRole(Gtk.AccessibleRole.BUTTON);
         expect(button).toBeDefined();
@@ -55,7 +55,7 @@ describe("within", () => {
     it("provides findByText query", async () => {
         await render(<GtkFrame name="container">Hello World</GtkFrame>);
 
-        const frame = await screen.findByTestId("container");
+        const frame = await screen.findByName("container");
         const { findByText } = within(frame);
         const label = await findByText("Hello World");
         expect(label).toBeDefined();
@@ -79,22 +79,22 @@ describe("within", () => {
         const { rerender } = await render(<LabelledEntry />);
         await rerender(<LabelledEntry />);
 
-        const frame = await screen.findByTestId("container");
+        const frame = await screen.findByName("container");
         const { findByLabelText } = within(frame);
         const entry = await findByLabelText("Action");
         expect(entry).toBeDefined();
     });
 
-    it("provides findByTestId query", async () => {
+    it("provides findByName query", async () => {
         await render(
             <GtkFrame name="container">
                 <GtkEntry name="my-input" />
             </GtkFrame>,
         );
 
-        const frame = await screen.findByTestId("container");
-        const { findByTestId } = within(frame);
-        const entry = await findByTestId("my-input");
+        const frame = await screen.findByName("container");
+        const { findByName } = within(frame);
+        const entry = await findByName("my-input");
         expect(entry).toBeDefined();
     });
 
@@ -108,7 +108,7 @@ describe("within", () => {
             </GtkFrame>,
         );
 
-        const frame = await screen.findByTestId("container");
+        const frame = await screen.findByName("container");
         const { findAllByRole } = within(frame);
         const buttons = await findAllByRole(Gtk.AccessibleRole.BUTTON);
         expect(buttons.length).toBe(2);
@@ -124,7 +124,7 @@ describe("within", () => {
             </GtkFrame>,
         );
 
-        const frame = await screen.findByTestId("container");
+        const frame = await screen.findByName("container");
         const { findAllByText } = within(frame);
         const buttons = await findAllByText("Item");
         expect(buttons.length).toBe(2);
@@ -155,13 +155,13 @@ describe("within", () => {
         const { rerender } = await render(<LabelledEntries />);
         await rerender(<LabelledEntries />);
 
-        const frame = await screen.findByTestId("container");
+        const frame = await screen.findByName("container");
         const { findAllByLabelText } = within(frame);
         const entries = await findAllByLabelText("Action");
         expect(entries.length).toBe(2);
     });
 
-    it("provides findAllByTestId query", async () => {
+    it("provides findAllByName query", async () => {
         await render(
             <GtkFrame name="container">
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -171,9 +171,9 @@ describe("within", () => {
             </GtkFrame>,
         );
 
-        const frame = await screen.findByTestId("container");
-        const { findAllByTestId } = within(frame);
-        const entries = await findAllByTestId("field");
+        const frame = await screen.findByName("container");
+        const { findAllByName } = within(frame);
+        const entries = await findAllByName("field");
         expect(entries.length).toBe(2);
     });
 
@@ -186,8 +186,8 @@ describe("within", () => {
             </GtkFrame>,
         );
 
-        const outer = await screen.findByTestId("outer-frame");
-        const { findByTestId: findInOuter } = within(outer);
+        const outer = await screen.findByName("outer-frame");
+        const { findByName: findInOuter } = within(outer);
         const inner = await findInOuter("inner-frame");
         const { findByRole } = within(inner);
         const button = await findByRole(Gtk.AccessibleRole.BUTTON);

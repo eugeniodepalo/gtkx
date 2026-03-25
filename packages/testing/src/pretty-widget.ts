@@ -83,7 +83,7 @@ const formatAttributes = (widget: Gtk.Widget, colors: HighlightColors, includeId
 
     const name = widget.getName();
     if (name) {
-        attrs.push(["data-testid", name]);
+        attrs.push(["name", name]);
     }
 
     const role = widget.getAccessibleRole();
@@ -165,7 +165,7 @@ const printContainer = (container: Container, colors: HighlightColors, includeId
  * Formats a widget tree as a readable string for debugging.
  *
  * Renders the widget hierarchy in an HTML-like format with accessibility
- * attributes like role, data-testid, and text content.
+ * attributes like role, name, and text content.
  *
  * @param container - The container widget or application to format
  * @param options - Formatting options for length and highlighting

@@ -5,7 +5,7 @@ import { formatRole, prettyRoles } from "./role-helpers.js";
 import type { Container } from "./traversal.js";
 import type { ByRoleOptions, TextMatch } from "./types.js";
 
-type QueryType = "role" | "text" | "labelText" | "testId";
+type QueryType = "role" | "text" | "labelText" | "name";
 
 const formatTextMatcher = (text: TextMatch): string => {
     if (typeof text === "function") {
@@ -30,7 +30,7 @@ const formatByRoleDescription = (role: Gtk.AccessibleRole, options?: ByRoleOptio
 
 const formatQueryDescription = (
     queryType: QueryType,
-    args: { role?: Gtk.AccessibleRole; text?: TextMatch; testId?: TextMatch; options?: ByRoleOptions },
+    args: { role?: Gtk.AccessibleRole; text?: TextMatch; name?: TextMatch; options?: ByRoleOptions },
 ): string => {
     switch (queryType) {
         case "role":
@@ -39,8 +39,8 @@ const formatQueryDescription = (
             return `text ${formatTextMatcher(args.text as TextMatch)}`;
         case "labelText":
             return `label text ${formatTextMatcher(args.text as TextMatch)}`;
-        case "testId":
-            return `test id ${formatTextMatcher(args.testId as TextMatch)}`;
+        case "name":
+            return `name ${formatTextMatcher(args.name as TextMatch)}`;
     }
 };
 
@@ -50,7 +50,7 @@ const formatQueryDescription = (
 export const buildNotFoundError = (
     container: Container,
     queryType: QueryType,
-    args: { role?: Gtk.AccessibleRole; text?: TextMatch; testId?: TextMatch; options?: ByRoleOptions },
+    args: { role?: Gtk.AccessibleRole; text?: TextMatch; name?: TextMatch; options?: ByRoleOptions },
 ): Error => {
     const config = getConfig();
     const description = formatQueryDescription(queryType, args);
@@ -76,7 +76,7 @@ export const buildNotFoundError = (
 export const buildMultipleFoundError = (
     container: Container,
     queryType: QueryType,
-    args: { role?: Gtk.AccessibleRole; text?: TextMatch; testId?: TextMatch; options?: ByRoleOptions },
+    args: { role?: Gtk.AccessibleRole; text?: TextMatch; name?: TextMatch; options?: ByRoleOptions },
     count: number,
 ): Error => {
     const config = getConfig();

@@ -5,20 +5,20 @@ export type { PrettyWidgetOptions } from "./pretty-widget.js";
 export { prettyWidget } from "./pretty-widget.js";
 export {
     findAllByLabelText,
+    findAllByName,
     findAllByRole,
-    findAllByTestId,
     findAllByText,
     findByLabelText,
+    findByName,
     findByRole,
-    findByTestId,
     findByText,
     queryAllByLabelText,
+    queryAllByName,
     queryAllByRole,
-    queryAllByTestId,
     queryAllByText,
     queryByLabelText,
+    queryByName,
     queryByRole,
-    queryByTestId,
     queryByText,
 } from "./queries.js";
 export { cleanup, render } from "./render.js";

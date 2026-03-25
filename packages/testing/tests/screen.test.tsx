@@ -38,9 +38,9 @@ describe("screen", () => {
         expect(entry.getAccessibleRole()).toBe(Gtk.AccessibleRole.TEXT_BOX);
     });
 
-    it("finds element by test id", async () => {
+    it("finds element by widget name", async () => {
         await render(<GtkEntry name="my-input" />);
-        const entry = await screen.findByTestId("my-input");
+        const entry = await screen.findByName("my-input");
         expect(entry).toBeDefined();
     });
 
@@ -96,7 +96,7 @@ describe("screen", () => {
         expect(entries.length).toBe(2);
     });
 
-    it("finds all elements by test id", async () => {
+    it("finds all elements by widget name", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkEntry name="field" />
@@ -104,7 +104,7 @@ describe("screen", () => {
             </GtkBox>,
         );
 
-        const entries = await screen.findAllByTestId("field");
+        const entries = await screen.findAllByName("field");
         expect(entries.length).toBe(2);
     });
 

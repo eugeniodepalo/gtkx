@@ -7,9 +7,9 @@ import {
     getWidgetAccessibleName,
     getWidgetCheckedState,
     getWidgetExpandedState,
+    getWidgetName,
     getWidgetPressedState,
     getWidgetSelectedState,
-    getWidgetTestId,
     getWidgetText,
 } from "./widget-text.js";
 
@@ -231,38 +231,34 @@ export const queryByText = (container: Container, text: TextMatch, options?: Tex
 };
 
 /**
- * Finds all elements matching a test ID without throwing.
+ * Finds all elements matching a widget name without throwing.
  *
  * @param container - The container to search within
- * @param testId - Test ID to match (string, RegExp, or custom matcher)
+ * @param name - Widget name to match (string, RegExp, or custom matcher)
  * @param options - Query options including normalization
  * @returns Array of matching widgets (empty if none found)
  */
-export const queryAllByTestId = (container: Container, testId: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
+export const queryAllByName = (container: Container, name: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
     return findAll(container, (node) => {
-        const widgetTestId = getWidgetTestId(node);
-        return matchText(widgetTestId, testId, node, options);
+        const widgetName = getWidgetName(node);
+        return matchText(widgetName, name, node, options);
     });
 };
 
 /**
- * Finds a single element matching a test ID without throwing.
+ * Finds a single element matching a widget name without throwing.
  *
  * @param container - The container to search within
- * @param testId - Test ID to match (string, RegExp, or custom matcher)
+ * @param name - Widget name to match (string, RegExp, or custom matcher)
  * @param options - Query options including normalization
  * @returns The matching widget or null if not found
  * @throws Error if multiple elements match
  */
-export const queryByTestId = (
-    container: Container,
-    testId: TextMatch,
-    options?: TextMatchOptions,
-): Gtk.Widget | null => {
-    const matches = queryAllByTestId(container, testId, options);
+export const queryByName = (container: Container, name: TextMatch, options?: TextMatchOptions): Gtk.Widget | null => {
+    const matches = queryAllByName(container, name, options);
 
     if (matches.length > 1) {
-        throw buildMultipleFoundError(container, "testId", { testId, options }, matches.length);
+        throw buildMultipleFoundError(container, "name", { name, options }, matches.length);
     }
 
     return matches[0] ?? null;
@@ -328,21 +324,21 @@ const getByText = (container: Container, text: TextMatch, options?: TextMatchOpt
     return matches[0] as Gtk.Widget;
 };
 
-const getAllByTestId = (container: Container, testId: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
-    const matches = queryAllByTestId(container, testId, options);
+const getAllByName = (container: Container, name: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
+    const matches = queryAllByName(container, name, options);
 
     if (matches.length === 0) {
-        throw buildNotFoundError(container, "testId", { testId, options });
+        throw buildNotFoundError(container, "name", { name, options });
     }
 
     return matches;
 };
 
-const getByTestId = (container: Container, testId: TextMatch, options?: TextMatchOptions): Gtk.Widget => {
-    const matches = getAllByTestId(container, testId, options);
+const getByName = (container: Container, name: TextMatch, options?: TextMatchOptions): Gtk.Widget => {
+    const matches = getAllByName(container, name, options);
 
     if (matches.length > 1) {
-        throw buildMultipleFoundError(container, "testId", { testId, options }, matches.length);
+        throw buildMultipleFoundError(container, "name", { name, options }, matches.length);
     }
 
     return matches[0] as Gtk.Widget;
@@ -468,44 +464,44 @@ export const findAllByText = async (
     });
 
 /**
- * Finds a single element by test ID (widget name).
+ * Finds a single element by widget name.
  *
- * Uses the widget's `name` property as a test identifier.
+ * Uses the widget's `name` property (gtk_widget_get_name).
  * Set via the `name` prop on GTKX components.
  *
  * @param container - The container to search within
- * @param testId - Test ID to match (string, RegExp, or custom matcher)
+ * @param name - Widget name to match (string, RegExp, or custom matcher)
  * @param options - Query options including normalization and timeout
  * @returns Promise resolving to the matching widget
  *
  * @example
  * ```tsx
  * // In component: <GtkButton name="submit-btn" />
- * const button = await findByTestId(container, "submit-btn");
+ * const button = await findByName(container, "submit-btn");
  * ```
  */
-export const findByTestId = async (
+export const findByName = async (
     container: Container,
-    testId: TextMatch,
+    name: TextMatch,
     options?: TextMatchOptions,
 ): Promise<Gtk.Widget> =>
-    waitFor(() => getByTestId(container, testId, options), {
+    waitFor(() => getByName(container, name, options), {
         timeout: options?.timeout,
     });
 
 /**
- * Finds all elements matching a test ID pattern.
+ * Finds all elements matching a widget name pattern.
  *
  * @param container - The container to search within
- * @param testId - Test ID to match (string, RegExp, or custom matcher)
+ * @param name - Widget name to match (string, RegExp, or custom matcher)
  * @param options - Query options including normalization and timeout
  * @returns Promise resolving to array of matching widgets
  */
-export const findAllByTestId = async (
+export const findAllByName = async (
     container: Container,
-    testId: TextMatch,
+    name: TextMatch,
     options?: TextMatchOptions,
 ): Promise<Gtk.Widget[]> =>
-    waitFor(() => getAllByTestId(container, testId, options), {
+    waitFor(() => getAllByName(container, name, options), {
         timeout: options?.timeout,
     });

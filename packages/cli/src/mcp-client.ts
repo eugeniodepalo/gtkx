@@ -377,8 +377,8 @@ class McpClient {
                     case "text":
                         widgets = await testing.findAllByText(app, String(p.value), p.options);
                         break;
-                    case "testId":
-                        widgets = await testing.findAllByTestId(app, String(p.value), p.options);
+                    case "name":
+                        widgets = await testing.findAllByName(app, String(p.value), p.options);
                         break;
                     case "labelText":
                         widgets = await testing.findAllByLabelText(app, String(p.value), p.options);

@@ -118,32 +118,32 @@ export type BoundQueries = {
     queryByLabelText: (text: TextMatch, options?: TextMatchOptions) => Gtk.Widget | null;
     /** Query single element by visible text (returns null if not found) */
     queryByText: (text: TextMatch, options?: TextMatchOptions) => Gtk.Widget | null;
-    /** Query single element by test ID (returns null if not found) */
-    queryByTestId: (testId: TextMatch, options?: TextMatchOptions) => Gtk.Widget | null;
+    /** Query single element by widget name (returns null if not found) */
+    queryByName: (name: TextMatch, options?: TextMatchOptions) => Gtk.Widget | null;
     /** Query all elements by accessible role (returns empty array if none found) */
     queryAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget[];
     /** Query all elements by label/text content (returns empty array if none found) */
     queryAllByLabelText: (text: TextMatch, options?: TextMatchOptions) => Gtk.Widget[];
     /** Query all elements by visible text (returns empty array if none found) */
     queryAllByText: (text: TextMatch, options?: TextMatchOptions) => Gtk.Widget[];
-    /** Query all elements by test ID (returns empty array if none found) */
-    queryAllByTestId: (testId: TextMatch, options?: TextMatchOptions) => Gtk.Widget[];
+    /** Query all elements by widget name (returns empty array if none found) */
+    queryAllByName: (name: TextMatch, options?: TextMatchOptions) => Gtk.Widget[];
     /** Find single element by accessible role (waits and throws if not found) */
     findByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget>;
     /** Find single element by label/text content (waits and throws if not found) */
     findByLabelText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
     /** Find single element by visible text (waits and throws if not found) */
     findByText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
-    /** Find single element by test ID (waits and throws if not found) */
-    findByTestId: (testId: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
+    /** Find single element by widget name (waits and throws if not found) */
+    findByName: (name: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
     /** Find all elements by accessible role (waits and throws if none found) */
     findAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget[]>;
     /** Find all elements by label/text content (waits and throws if none found) */
     findAllByLabelText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
     /** Find all elements by visible text (waits and throws if none found) */
     findAllByText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
-    /** Find all elements by test ID (waits and throws if none found) */
-    findAllByTestId: (testId: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
+    /** Find all elements by widget name (waits and throws if none found) */
+    findAllByName: (name: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
 };
 
 /**

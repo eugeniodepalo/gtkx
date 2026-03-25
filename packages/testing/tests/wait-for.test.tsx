@@ -133,7 +133,7 @@ describe("waitForElementToBeRemoved", () => {
 
         const removeButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
 
-        const element = await screen.findByTestId("removable");
+        const element = await screen.findByName("removable");
 
         const removalPromise = waitForElementToBeRemoved(() => {
             try {

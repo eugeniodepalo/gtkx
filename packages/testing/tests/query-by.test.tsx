@@ -2,11 +2,11 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/react";
 import { describe, expect, it } from "vitest";
 import {
+    queryAllByName,
     queryAllByRole,
-    queryAllByTestId,
     queryAllByText,
+    queryByName,
     queryByRole,
-    queryByTestId,
     queryByText,
     render,
 } from "../src/index.js";
@@ -87,21 +87,21 @@ describe("queryAllByText", () => {
     });
 });
 
-describe("queryByTestId", () => {
+describe("queryByName", () => {
     it("returns element when found", async () => {
         const { container } = await render(<GtkEntry name="email-input" />);
-        const entry = queryByTestId(container, "email-input");
+        const entry = queryByName(container, "email-input");
         expect(entry).not.toBeNull();
     });
 
     it("returns null when not found", async () => {
         const { container } = await render(<GtkEntry name="email-input" />);
-        const entry = queryByTestId(container, "password-input");
+        const entry = queryByName(container, "password-input");
         expect(entry).toBeNull();
     });
 });
 
-describe("queryAllByTestId", () => {
+describe("queryAllByName", () => {
     it("returns all matching elements", async () => {
         const { container } = await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -109,13 +109,13 @@ describe("queryAllByTestId", () => {
                 <GtkEntry name="field" />
             </GtkBox>,
         );
-        const entries = queryAllByTestId(container, "field");
+        const entries = queryAllByName(container, "field");
         expect(entries.length).toBe(2);
     });
 
     it("returns empty array when none found", async () => {
         const { container } = await render(<GtkEntry name="email" />);
-        const entries = queryAllByTestId(container, "nonexistent");
+        const entries = queryAllByName(container, "nonexistent");
         expect(entries).toEqual([]);
     });
 });

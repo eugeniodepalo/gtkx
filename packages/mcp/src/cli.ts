@@ -29,7 +29,7 @@ const ListAppsInputSchema = z.object({
 const GetWidgetTreeInputSchema = AppIdSchema;
 
 const QueryWidgetsInputSchema = AppIdSchema.extend({
-    by: z.enum(["role", "text", "testId", "labelText"]).describe("Query type"),
+    by: z.enum(["role", "text", "name", "labelText"]).describe("Query type"),
     value: z.union([z.string(), z.number()]).describe("Value to search for"),
     options: z
         .object({
@@ -101,7 +101,7 @@ const tools = [
     {
         name: "gtkx_query_widgets",
         description:
-            "Find widgets by role, text, testId, or label. Returns matching widgets with their IDs and properties.",
+            "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
         inputSchema: {
             type: "object" as const,
             properties: {
@@ -111,7 +111,7 @@ const tools = [
                 },
                 by: {
                     type: "string",
-                    enum: ["role", "text", "testId", "labelText"],
+                    enum: ["role", "text", "name", "labelText"],
                     description: "Query type",
                 },
                 value: {

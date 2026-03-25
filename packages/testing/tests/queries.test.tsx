@@ -12,12 +12,12 @@ import {
 import { describe, expect, it } from "vitest";
 import {
     findAllByLabelText,
+    findAllByName,
     findAllByRole,
-    findAllByTestId,
     findAllByText,
     findByLabelText,
+    findByName,
     findByRole,
-    findByTestId,
     findByText,
     render,
 } from "../src/index.js";
@@ -262,22 +262,22 @@ describe("findAllByLabelText", () => {
     });
 });
 
-describe("findByTestId", () => {
-    it("finds element by widget name as test id", async () => {
+describe("findByName", () => {
+    it("finds element by widget name", async () => {
         const { container } = await render(<GtkEntry name="email-input" />);
-        const entry = await findByTestId(container, "email-input");
+        const entry = await findByName(container, "email-input");
         expect(entry).toBeDefined();
     });
 
     it("supports regex matching", async () => {
         const { container } = await render(<GtkEntry name="form-field-email" />);
-        const entry = await findByTestId(container, /form-field/);
+        const entry = await findByName(container, /form-field/);
         expect(entry).toBeDefined();
     });
 });
 
-describe("findAllByTestId", () => {
-    it("finds all elements with matching test id", async () => {
+describe("findAllByName", () => {
+    it("finds all elements with matching widget name", async () => {
         const { container } = await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkEntry name="field" />
@@ -285,7 +285,7 @@ describe("findAllByTestId", () => {
             </GtkBox>,
         );
 
-        const entries = await findAllByTestId(container, "field");
+        const entries = await findAllByName(container, "field");
         expect(entries.length).toBe(2);
     });
 });

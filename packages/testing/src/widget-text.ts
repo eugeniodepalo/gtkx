@@ -120,12 +120,12 @@ export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
 };
 
 /**
- * Gets the test ID from a widget (uses the widget's name property).
+ * Gets the widget name (gtk_widget_get_name).
  *
- * @param widget - The widget to get the test ID from
- * @returns The test ID or null if not set
+ * @param widget - The widget to get the name from
+ * @returns The widget name or null if not set
  */
-export const getWidgetTestId = (widget: Gtk.Widget): string | null => {
+export const getWidgetName = (widget: Gtk.Widget): string | null => {
     return widget.getName();
 };
 
