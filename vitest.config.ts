@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-    esbuild: {
+    oxc: {
         jsx: "automatic",
     },
     test: {
