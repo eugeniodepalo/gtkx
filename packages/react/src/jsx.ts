@@ -596,6 +596,10 @@ export type AlertDialogResponseProps = {
     enabled?: boolean;
 };
 
+/**
+ * Base props shared by all navigation page declarations, regardless
+ * of the parent container (NavigationView or NavigationSplitView).
+ */
 export type NavigationPageBaseProps = {
     /** Display title for the navigation page */
     title?: string;
@@ -673,6 +677,12 @@ type BaseListViewProps = {
     selectionMode?: Gtk.SelectionMode | null;
 };
 
+/**
+ * Props for the {@link GtkListView} compound component.
+ *
+ * Extends the shared list-view base props with item data, a render
+ * callback, optional tree expansion, and section header rendering.
+ */
 export type ListViewProps<T = unknown, S = unknown> = BaseListViewProps & {
     /** Data items to display in the list */
     items?: ListItem<T, S>[];
@@ -684,6 +694,12 @@ export type ListViewProps<T = unknown, S = unknown> = BaseListViewProps & {
     renderHeader?: ((item: S) => ReactNode) | null;
 };
 
+/**
+ * Props for the {@link GtkGridView} compound component.
+ *
+ * Extends the shared list-view base props with item data and a
+ * render callback for each grid cell.
+ */
 export type GridViewProps<T = unknown> = BaseListViewProps & {
     /** Data items to display in the grid */
     items?: ListItem<T>[];
@@ -776,6 +792,13 @@ declare global {
     }
 }
 
+/**
+ * Accessibility attribute props mixed into every widget.
+ *
+ * Maps to the GTK `GtkAccessible` interface properties, states,
+ * and relations, allowing assistive technologies to query widget
+ * semantics.
+ */
 export type AccessibleProps = {
     accessibleAutocomplete?: Gtk.AccessibleAutocomplete;
     accessibleDescription?: string;
@@ -1035,7 +1058,9 @@ export {
 } from "./components/compounds/index.js";
 export { AdwComboRow, GtkColumnView, GtkDropDown, GtkGridView, GtkListView } from "./components/list.js";
 
+/** JSX intrinsic element name for timed (duration-based) Adwaita animations. */
 export const AdwTimedAnimation = "AdwTimedAnimation" as const;
+/** JSX intrinsic element name for spring-physics-based Adwaita animations. */
 export const AdwSpringAnimation = "AdwSpringAnimation" as const;
 
 export * from "./generated/jsx.js";

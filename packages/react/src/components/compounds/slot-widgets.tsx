@@ -19,22 +19,27 @@ import type {
 } from "../../generated/jsx.js";
 import { createSlotWidget } from "../slot-widget.js";
 
+/** Top-level GTK window with a `titlebar` slot for custom title bars. */
 export const GtkWindow: (props: GtkWindowProps) => ReactNode = createSlotWidget<GtkWindowProps>("GtkWindow", [
     "titlebar",
 ]);
 
+/** Libadwaita application window with a `content` slot. */
 export const AdwWindow: (props: AdwWindowProps) => ReactNode = createSlotWidget<AdwWindowProps>("AdwWindow", [
     "content",
 ]);
 
+/** Libadwaita top-level application window with a `content` slot. */
 export const AdwApplicationWindow: (props: AdwApplicationWindowProps) => ReactNode =
     createSlotWidget<AdwApplicationWindowProps>("AdwApplicationWindow", ["content"]);
 
+/** Resizable split pane with `startChild` and `endChild` slots. */
 export const GtkPaned: (props: GtkPanedProps) => ReactNode = createSlotWidget<GtkPanedProps>("GtkPaned", [
     "startChild",
     "endChild",
 ]);
 
+/** Three-slot horizontal layout with `startWidget`, `centerWidget`, and `endWidget` slots. */
 export const GtkCenterBox: (props: GtkCenterBoxProps) => ReactNode = createSlotWidget<GtkCenterBoxProps>(
     "GtkCenterBox",
     ["centerWidget", "endWidget", "startWidget"],

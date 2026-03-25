@@ -32,11 +32,11 @@ export function gtkxNative(root: string): Plugin {
             const packageName = `@gtkx/native-linux-${currentArch}`;
 
             if (currentPlatform !== "linux") {
-                throw new Error(`Unsupported build platform: ${currentPlatform}. Only Linux is supported.`);
+                throw new Error(`Unsupported build platform: ${currentPlatform}, only Linux is supported`);
             }
 
             if (currentArch !== "x64" && currentArch !== "arm64") {
-                throw new Error(`Unsupported build architecture: ${currentArch}. Only x64 and arm64 are supported.`);
+                throw new Error(`Unsupported build architecture: ${currentArch}, only x64 and arm64 are supported`);
             }
 
             nativeIndexPath = projectRequire.resolve("@gtkx/native");

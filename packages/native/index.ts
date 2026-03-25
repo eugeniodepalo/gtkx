@@ -9,11 +9,11 @@ function loadNativeBinding() {
     const currentArch = arch();
 
     if (currentPlatform !== "linux") {
-        throw new Error(`Unsupported platform: ${currentPlatform}. Only Linux is supported.`);
+        throw new Error(`Unsupported platform: ${currentPlatform}, only Linux is supported`);
     }
 
     if (currentArch !== "x64" && currentArch !== "arm64") {
-        throw new Error(`Unsupported architecture: ${currentArch}. Only x64 and arm64 are supported.`);
+        throw new Error(`Unsupported architecture: ${currentArch}, only x64 and arm64 are supported`);
     }
 
     const packageName = `@gtkx/native-linux-${currentArch}`;

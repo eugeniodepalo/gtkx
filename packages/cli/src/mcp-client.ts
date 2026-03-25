@@ -43,7 +43,7 @@ const loadTestingModule = async (): Promise<TestingModule> => {
         return testingModule;
     } catch (cause) {
         testingLoadError = new Error(
-            "@gtkx/testing is not installed. Install it to enable MCP widget interactions: pnpm add -D @gtkx/testing",
+            "@gtkx/testing is not installed, install it to enable MCP widget interactions: pnpm add -D @gtkx/testing",
             { cause },
         );
         throw testingLoadError;

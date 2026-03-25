@@ -62,12 +62,24 @@ function renderListElement(intrinsicName: string, handle: ReturnType<typeof useL
     );
 }
 
+/**
+ * Virtualized scrollable list that renders items from a flat or tree data model.
+ *
+ * Wraps `GtkListView` with React-managed item rendering via portals,
+ * supporting single/multi selection, section headers, and tree expansion.
+ */
 export function GtkListView<T = unknown, S = unknown>(
     props: GenericListViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ListView> },
 ): ReactNode {
     return renderListElement("GtkListView", useListHandle(), props);
 }
 
+/**
+ * Virtualized scrollable grid that renders items in a multi-column layout.
+ *
+ * Wraps `GtkGridView` with React-managed item rendering via portals,
+ * supporting single/multi selection.
+ */
 export function GtkGridView<T = unknown>(
     props: GenericGridViewProps<T> & { children?: ReactNode; ref?: Ref<Gtk.GridView> },
 ): ReactNode {
@@ -81,6 +93,14 @@ function GtkColumnViewBase<T = unknown, S = unknown>(
     return renderListElement("GtkColumnView", useListHandle(), props);
 }
 
+/**
+ * Multi-column sortable list with React-managed cell rendering.
+ *
+ * Wraps `GtkColumnView` with portal-based factories. Use the
+ * `GtkColumnView.Column` compound component to define columns,
+ * and the `MenuItem` / `MenuSection` / `MenuSubmenu` compounds
+ * for the column header context menu.
+ */
 export const GtkColumnView: typeof GtkColumnViewBase & {
     Column: <T = unknown>(props: ColumnViewColumnProps<T>) => ReactNode;
     MenuItem: (props: MenuItemProps) => ReactNode;
@@ -88,12 +108,25 @@ export const GtkColumnView: typeof GtkColumnViewBase & {
     MenuSubmenu: (props: MenuSubmenuProps) => ReactNode;
 } = Object.assign(GtkColumnViewBase, columnViewChildren);
 
+/**
+ * Single-selection dropdown widget with React-managed item rendering.
+ *
+ * Wraps `GtkDropDown` with portal-based factories, supporting custom
+ * item templates, separate list-item templates, and section headers.
+ */
 export function GtkDropDown<T = unknown, S = unknown>(
     props: GenericDropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.DropDown> },
 ): ReactNode {
     return renderListElement("GtkDropDown", useListHandle(), props);
 }
 
+/**
+ * Libadwaita combo row with React-managed item rendering.
+ *
+ * Wraps `AdwComboRow` with portal-based factories, providing a
+ * preferences-style dropdown row with custom item templates and
+ * section headers.
+ */
 export function AdwComboRow<T = unknown, S = unknown>(
     props: GenericComboRowProps<T, S> & { children?: ReactNode; ref?: Ref<Adw.ComboRow> },
 ): ReactNode {

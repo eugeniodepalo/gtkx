@@ -18,7 +18,7 @@ const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
     const height = paintable.getIntrinsicHeight();
 
     if (width <= 0 || height <= 0) {
-        throw new Error("Widget has no size - ensure it is realized and visible");
+        throw new Error("Widget has no size: ensure it is realized and visible");
     }
 
     const snapshot = new Gtk.Snapshot();
@@ -31,7 +31,7 @@ const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
 
     const display = widget.getDisplay();
     if (!display) {
-        throw new Error("Widget has no display - ensure it is realized");
+        throw new Error("Widget has no display: ensure it is realized");
     }
 
     const renderer = new Gsk.CairoRenderer();
@@ -97,9 +97,9 @@ export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions
             const height = paintable.getIntrinsicHeight();
 
             if (width <= 0 || height <= 0) {
-                return new Error("Widget has no size - ensure it is realized and visible");
+                return new Error("Widget has no size: ensure it is realized and visible");
             }
-            return new Error(`Widget produced no render content after waiting for paint cycle. ${error.message}`);
+            return new Error(`Widget produced no render content after waiting for paint cycle: ${error.message}`);
         },
     });
 };

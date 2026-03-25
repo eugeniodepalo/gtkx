@@ -1,3 +1,9 @@
+/**
+ * Error subclass thrown by the GTKX reconciler and rendering pipeline.
+ *
+ * Carries optional context about the widget type that failed and the
+ * React component stack at the point of failure.
+ */
 export class GtkxError extends Error {
     constructor(
         message: string,
@@ -32,14 +38,9 @@ export function formatRenderError(error: unknown, widgetType?: string): GtkxErro
         return error;
     }
 
-    if (error instanceof Error) {
-        console.error("[formatRenderError] Original error stack:", error.stack);
-    }
-
     const message = error instanceof Error ? error.message : String(error);
-    const formattedMessage = widgetType ? `Failed to render ${widgetType}: ${message}` : `Render error: ${message}`;
 
-    return new GtkxError(formattedMessage, widgetType);
+    return new GtkxError(message, widgetType);
 }
 
 export function formatBoundaryError(error: unknown): GtkxError {
@@ -48,5 +49,5 @@ export function formatBoundaryError(error: unknown): GtkxError {
     }
 
     const message = error instanceof Error ? error.message : String(error);
-    return new GtkxError(`Error caught by boundary: ${message}`);
+    return new GtkxError(message);
 }

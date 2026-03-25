@@ -93,7 +93,7 @@ const resolveContainer = (
     }
     const firstWidget = findFirstWidget(baseElement);
     if (!firstWidget) {
-        throw new Error("render() produced no widgets. Ensure the element renders visible content.");
+        throw new Error("render() produced no widgets: ensure the element renders visible content");
     }
     return firstWidget;
 };

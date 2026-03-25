@@ -156,10 +156,25 @@ export const write = (handle: NativeHandle, type: Type, offset: number, value: u
     nativeWrite(handle, type, offset, value);
 };
 
+/**
+ * Freezes the GLib main loop, preventing it from processing events.
+ *
+ * While frozen, GTK property changes and signal emissions are batched
+ * and deferred until {@link unfreeze} is called. This is used internally
+ * by the reconciler to group multiple mutations into a single
+ * main-loop iteration, avoiding intermediate redraws.
+ */
 export const freeze = (): void => {
     nativeFreeze();
 };
 
+/**
+ * Unfreezes the GLib main loop, flushing all batched mutations.
+ *
+ * Must be paired with a preceding {@link freeze} call. Once unfrozen,
+ * all deferred property changes and signal emissions are dispatched
+ * in a single main-loop iteration.
+ */
 export const unfreeze = (): void => {
     nativeUnfreeze();
 };

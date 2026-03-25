@@ -108,7 +108,7 @@ export const waitForElementToBeRemoved = async (
         await new Promise((resolve) => setTimeout(resolve, interval));
     }
 
-    const timeoutError = new Error(`Timed out after ${timeout}ms waiting for element to be removed.`);
+    const timeoutError = new Error(`Timed out after ${timeout}ms waiting for element to be removed`);
     if (onTimeout) {
         throw onTimeout(timeoutError);
     }
