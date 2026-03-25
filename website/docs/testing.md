@@ -98,6 +98,7 @@ Role queries can filter by widget state like `pressed`, `expanded`, and `selecte
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkExpander, GtkToggleButton } from "@gtkx/react";
 import { cleanup, render, screen } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -131,8 +132,16 @@ describe("role state queries", () => {
 Use `waitFor` to poll until an assertion passes, useful for testing async data loading or delayed UI updates:
 
 ```tsx
+import { GtkLabel } from "@gtkx/react";
 import { cleanup, render, screen, waitFor } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { useEffect, useState } from "react";
+
+const AsyncComponent = () => {
+    const [loaded, setLoaded] = useState(false);
+    useEffect(() => { setTimeout(() => setLoaded(true), 100); }, []);
+    return <GtkLabel label={loaded ? "Loaded" : "Loading..."} />;
+};
 
 describe("async", () => {
     afterEach(async () => {
@@ -166,8 +175,8 @@ describe("TodoApp", () => {
     it("adds a new todo", async () => {
         await render(<TodoApp />, { wrapper: false });
 
-        const input = await screen.findByTestId("todo-input");
-        const addButton = await screen.findByTestId("add-button");
+        const input = await screen.findByName("todo-input");
+        const addButton = await screen.findByName("add-button");
 
         await userEvent.type(input, "Buy groceries");
         await userEvent.click(addButton);
@@ -179,9 +188,9 @@ describe("TodoApp", () => {
     it("toggles todo completion", async () => {
         await render(<TodoApp />, { wrapper: false });
 
-        const input = await screen.findByTestId("todo-input");
+        const input = await screen.findByName("todo-input");
         await userEvent.type(input, "Test todo");
-        await userEvent.click(await screen.findByTestId("add-button"));
+        await userEvent.click(await screen.findByName("add-button"));
 
         const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             checked: false,
@@ -197,11 +206,11 @@ describe("TodoApp", () => {
     it("deletes a todo", async () => {
         await render(<TodoApp />, { wrapper: false });
 
-        const input = await screen.findByTestId("todo-input");
+        const input = await screen.findByName("todo-input");
         await userEvent.type(input, "Todo to delete");
-        await userEvent.click(await screen.findByTestId("add-button"));
+        await userEvent.click(await screen.findByName("add-button"));
 
-        const deleteButton = await screen.findByTestId(/^delete-/);
+        const deleteButton = await screen.findByName(/^delete-/);
         await userEvent.click(deleteButton);
 
         const emptyMessage = await screen.findByText("No tasks yet");
@@ -211,21 +220,21 @@ describe("TodoApp", () => {
     it("updates the remaining count", async () => {
         await render(<TodoApp />, { wrapper: false });
 
-        const input = await screen.findByTestId("todo-input");
-        const addButton = await screen.findByTestId("add-button");
+        const input = await screen.findByName("todo-input");
+        const addButton = await screen.findByName("add-button");
 
         await userEvent.type(input, "Todo 1");
         await userEvent.click(addButton);
         await userEvent.type(input, "Todo 2");
         await userEvent.click(addButton);
 
-        let counter = await screen.findByTestId("items-left");
+        let counter = await screen.findByName("items-left");
         expect((counter as Gtk.Label).getLabel()).toContain("2");
 
         const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
         await userEvent.click(checkboxes[0] as Gtk.Widget);
 
-        counter = await screen.findByTestId("items-left");
+        counter = await screen.findByName("items-left");
         expect((counter as Gtk.Label).getLabel()).toContain("1");
     });
 });

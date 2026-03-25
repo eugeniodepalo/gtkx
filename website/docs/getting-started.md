@@ -164,8 +164,6 @@ const InteractiveBox = () => {
 ## What's Next?
 
 - [FFI Bindings](./ffi-bindings.md) — Using GTK and GLib bindings
-- [x.\* Elements](./x-elements.md) — Comprehensive list of available x.\* elements
-- [CLI Reference](./cli.md) — All CLI commands and options
 - [Styling](./styling.md) — CSS-in-JS for GTK
 - [Testing](./testing.md) — Testing your components
-- [Deploying](./deploying.md) — Packaging and distributing your app
+- [Tutorial](./tutorial/1-window-and-header-bar.md) — Build a complete Notes app step by step

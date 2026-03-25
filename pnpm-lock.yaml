@@ -350,7 +350,26 @@ importers:
         version: 4.1.1(@types/node@25.5.0)(vite@8.0.2(@types/node@25.5.0)(esbuild@0.27.4)(tsx@4.21.0)(yaml@2.8.3))
 
   website:
+    dependencies:
+      '@gtkx/css':
+        specifier: workspace:*
+        version: link:../packages/css
+      '@gtkx/ffi':
+        specifier: workspace:*
+        version: link:../packages/ffi
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../packages/react
+      react:
+        specifier: ^19.2.4
+        version: 19.2.4
     devDependencies:
+      '@gtkx/testing':
+        specifier: workspace:*
+        version: link:../packages/testing
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../packages/vitest
       typedoc:
         specifier: ^0.28.18
         version: 0.28.18(typescript@6.0.2)
@@ -360,6 +379,9 @@ importers:
       typedoc-vitepress-theme:
         specifier: ^1.1.2
         version: 1.1.2(typedoc-plugin-markdown@4.11.0(typedoc@0.28.18(typescript@6.0.2)))
+      vite:
+        specifier: ^8.0.2
+        version: 8.0.2(@types/node@25.5.0)(esbuild@0.27.4)(tsx@4.21.0)(yaml@2.8.3)
       vitepress:
         specifier: ^1.6.4
         version: 1.6.4(@algolia/client-search@5.49.2)(@types/node@25.5.0)(@types/react@19.2.14)(lightningcss@1.32.0)(postcss@8.5.8)(react@19.2.4)(search-insights@2.17.3)(typescript@6.0.2)
