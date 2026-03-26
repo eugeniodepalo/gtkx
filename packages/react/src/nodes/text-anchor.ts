@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { TextAnchorProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { isRemovable } from "./internal/predicates.js";
 import { TEXT_OBJECT_REPLACEMENT, type TextContentParent } from "./text-content.js";
 import { isTextContentParent } from "./text-segment.js";
 import { VirtualNode } from "./virtual.js";
@@ -66,6 +67,14 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node & TextCont
         super.appendChild(child);
 
         if (this.textView && this.anchor && child.container) {
+            const currentParent = child.container.getParent();
+            if (currentParent !== null) {
+                if (isRemovable(currentParent)) {
+                    currentParent.remove(child.container);
+                } else {
+                    child.container.unparent();
+                }
+            }
             this.textView.addChildAtAnchor(child.container, this.anchor);
         }
     }

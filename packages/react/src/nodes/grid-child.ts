@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GridChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { isRemovable } from "./internal/predicates.js";
 import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
@@ -30,6 +31,7 @@ export class GridChildNode extends VirtualNode<GridChildProps, WidgetNode<Gtk.Gr
         super.appendChild(child);
 
         if (this.parent) {
+            this.detachFromGtkParent(child.container);
             this.attachToParent(this.parent.container, child.container);
         }
     }
@@ -81,6 +83,17 @@ export class GridChildNode extends VirtualNode<GridChildProps, WidgetNode<Gtk.Gr
         const childParent = child.getParent();
         if (childParent && childParent === parent) {
             parent.remove(child);
+        }
+    }
+
+    private detachFromGtkParent(child: Gtk.Widget): void {
+        const currentParent = child.getParent();
+        if (currentParent !== null) {
+            if (isRemovable(currentParent)) {
+                currentParent.remove(child);
+            } else {
+                child.unparent();
+            }
         }
     }
 

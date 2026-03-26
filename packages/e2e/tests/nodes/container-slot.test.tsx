@@ -497,6 +497,83 @@ describe("render - ContainerSlot", () => {
             expect(secondRef.current).not.toBeNull();
         });
 
+        it("swaps keyed children in packStart without duplication", async () => {
+            const headerBarRef = createRef<Gtk.HeaderBar>();
+
+            function App({ showBack }: { showBack: boolean }) {
+                return (
+                    <GtkHeaderBar ref={headerBarRef}>
+                        <GtkHeaderBar.PackStart>
+                            {showBack ? (
+                                <GtkButton key="back" label="Back" />
+                            ) : (
+                                <GtkButton key="search" label="Search" />
+                            )}
+                            <GtkButton label="Delete" />
+                        </GtkHeaderBar.PackStart>
+                    </GtkHeaderBar>
+                );
+            }
+
+            const { rerender } = await render(<App showBack={false} />);
+
+            const countStartChildren = () => {
+                let count = 0;
+                let child = headerBarRef.current?.getFirstChild();
+                while (child) {
+                    count++;
+                    child = child.getNextSibling();
+                }
+                return count;
+            };
+
+            const initialCount = countStartChildren();
+
+            await rerender(<App showBack={true} />);
+
+            expect(countStartChildren()).toBe(initialCount);
+
+            await rerender(<App showBack={false} />);
+
+            expect(countStartChildren()).toBe(initialCount);
+        });
+
+        it("reorders children in packStart via insertBefore", async () => {
+            const headerBarRef = createRef<Gtk.HeaderBar>();
+            const firstRef = createRef<Gtk.Button>();
+            const secondRef = createRef<Gtk.Button>();
+
+            function App({ order }: { order: "ab" | "ba" }) {
+                return (
+                    <GtkHeaderBar ref={headerBarRef}>
+                        <GtkHeaderBar.PackStart>
+                            {order === "ab" ? (
+                                <>
+                                    <GtkButton key="a" ref={firstRef} label="A" />
+                                    <GtkButton key="b" ref={secondRef} label="B" />
+                                </>
+                            ) : (
+                                <>
+                                    <GtkButton key="b" ref={secondRef} label="B" />
+                                    <GtkButton key="a" ref={firstRef} label="A" />
+                                </>
+                            )}
+                        </GtkHeaderBar.PackStart>
+                    </GtkHeaderBar>
+                );
+            }
+
+            const { rerender } = await render(<App order="ab" />);
+
+            expect(firstRef.current?.getLabel()).toBe("A");
+            expect(secondRef.current?.getLabel()).toBe("B");
+
+            await rerender(<App order="ba" />);
+
+            expect(firstRef.current?.getLabel()).toBe("A");
+            expect(secondRef.current?.getLabel()).toBe("B");
+        });
+
         it("removes individual children from packStart", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const firstRef = createRef<Gtk.Label>();

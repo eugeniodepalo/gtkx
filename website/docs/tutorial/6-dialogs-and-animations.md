@@ -99,6 +99,42 @@ import { AdwToggleGroup } from "@gtkx/react";
 
 The `toggles` prop accepts an array of toggle definitions with `id`, `label` or `iconName`, and optional `tooltip`.
 
+## Grid View
+
+Use `GtkGridView` to render items in a multi-column grid. It shares the same data API as `GtkListView` — `items`, `renderItem`, `selected`, and `onSelectionChanged` all work identically:
+
+```tsx
+import { GtkGridView, GtkListView, GtkScrolledWindow } from "@gtkx/react";
+
+<GtkScrolledWindow vexpand>
+    {viewMode === "list" ? (
+        <GtkListView
+            estimatedItemHeight={80}
+            selectionMode={Gtk.SelectionMode.SINGLE}
+            selected={selectedId ? [selectedId] : []}
+            onSelectionChanged={(ids) => setSelectedId(ids[0] ?? null)}
+            items={filteredNotes.map((note) => ({ id: note.id, value: note }))}
+            renderItem={(note) => <NoteCard note={note} />}
+        />
+    ) : (
+        <GtkGridView
+            minColumns={2}
+            maxColumns={4}
+            selectionMode={Gtk.SelectionMode.SINGLE}
+            selected={selectedId ? [selectedId] : []}
+            onSelectionChanged={(ids) => setSelectedId(ids[0] ?? null)}
+            items={filteredNotes.map((note) => ({ id: note.id, value: note }))}
+            renderItem={(note) => <NoteCard note={note} />}
+        />
+    )}
+</GtkScrolledWindow>
+```
+
+`GtkGridView` adds two layout props:
+
+- **`minColumns`** — Minimum number of columns (items wrap to the next row)
+- **`maxColumns`** — Maximum number of columns (prevents overly wide layouts)
+
 ## Timed Animations
 
 Wrap a widget with `AdwTimedAnimation` to animate its properties over a fixed duration:

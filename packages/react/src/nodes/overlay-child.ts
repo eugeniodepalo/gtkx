@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { isRemovable } from "./internal/predicates.js";
 import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
@@ -32,6 +33,7 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
         super.appendChild(child);
 
         if (this.parent) {
+            this.detachFromGtkParent(child);
             this.attachToParent(this.parent.container, child.container);
         }
     }
@@ -40,19 +42,12 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
         super.insertBefore(child, before);
 
         if (this.parent) {
-            this.attachToParent(this.parent.container, child.container);
+            this.reinsertAllChildren();
         }
     }
 
     public override removeChild(child: WidgetNode): void {
-        if (this.parent) {
-            const widget = child.container;
-            const currentParent = widget.getParent();
-            if (currentParent && currentParent === this.parent.container) {
-                this.parent.container.removeOverlay(widget);
-            }
-        }
-
+        this.detachFromGtkParent(child);
         super.removeChild(child);
     }
 
@@ -95,6 +90,32 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
 
         if (this.props.clipOverlay !== undefined) {
             parent.setClipOverlay(child, this.props.clipOverlay);
+        }
+    }
+
+    private detachFromGtkParent(child: WidgetNode): void {
+        const currentParent = child.container.getParent();
+        if (currentParent !== null) {
+            if (currentParent instanceof Gtk.Overlay) {
+                currentParent.removeOverlay(child.container);
+            } else if (isRemovable(currentParent)) {
+                currentParent.remove(child.container);
+            } else {
+                child.container.unparent();
+            }
+        }
+    }
+
+    private reinsertAllChildren(): void {
+        if (!this.parent) return;
+        const parent = this.parent.container;
+
+        for (const child of this.children) {
+            this.detachFromGtkParent(child);
+        }
+
+        for (const child of this.children) {
+            this.attachToParent(parent, child.container);
         }
     }
 

@@ -3,6 +3,8 @@ export interface Note {
     title: string;
     body: string;
     createdAt: Date;
+    favorite?: boolean;
+    deleted?: boolean;
 }
 
 export interface Category {
