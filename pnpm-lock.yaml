@@ -158,6 +158,28 @@ importers:
         specifier: ^8.0.2
         version: 8.0.2(@types/node@25.5.0)(esbuild@0.27.4)(tsx@4.21.0)(yaml@2.8.3)
 
+  examples/tutorial:
+    dependencies:
+      '@gtkx/css':
+        specifier: workspace:*
+        version: link:../../packages/css
+      '@gtkx/ffi':
+        specifier: workspace:*
+        version: link:../../packages/ffi
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      react:
+        specifier: ^19.2.4
+        version: 19.2.4
+    devDependencies:
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      vite:
+        specifier: ^8.0.2
+        version: 8.0.2(@types/node@25.5.0)(esbuild@0.27.4)(tsx@4.21.0)(yaml@2.8.3)
+
   packages/cli:
     dependencies:
       '@clack/prompts':

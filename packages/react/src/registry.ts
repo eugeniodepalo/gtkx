@@ -34,10 +34,11 @@ import { ScrolledWindowNode } from "./nodes/scrolled-window.js";
 import { SearchBarNode } from "./nodes/search-bar.js";
 import { ShortcutNode } from "./nodes/shortcut.js";
 import { SlotNode } from "./nodes/slot.js";
-import { SpinRowNode } from "./nodes/spin-row.js";
 import { SourceViewNode } from "./nodes/source-view.js";
+import { SpinRowNode } from "./nodes/spin-row.js";
 import { StackNode } from "./nodes/stack.js";
 import { StackPageNode } from "./nodes/stack-page.js";
+import { SwitchRowNode } from "./nodes/switch-row.js";
 import { TextAnchorNode } from "./nodes/text-anchor.js";
 import { TextPaintableNode } from "./nodes/text-paintable.js";
 import { TextSegmentNode } from "./nodes/text-segment.js";
@@ -97,6 +98,7 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     [Adw.Dialog, DialogNode],
     [Gtk.Window, WindowNode],
     [Adw.SpinRow, SpinRowNode],
+    [Adw.SwitchRow, SwitchRowNode],
     [Gtk.Scale, ScaleNode],
     [Gtk.LevelBar, LevelBarNode],
     [Gtk.ScrolledWindow, ScrolledWindowNode],

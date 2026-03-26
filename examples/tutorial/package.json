@@ -1,0 +1,26 @@
+{
+    "name": "tutorial",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Notes app from the GTKX tutorial",
+    "type": "module",
+    "gtkx": {
+        "appId": "com.gtkx.tutorial"
+    },
+    "scripts": {
+        "build": "gtkx build",
+        "typecheck": "tsc -b --noEmit",
+        "dev": "gtkx dev src/dev.tsx",
+        "start": "node dist/bundle.js"
+    },
+    "dependencies": {
+        "@gtkx/css": "workspace:*",
+        "@gtkx/ffi": "workspace:*",
+        "@gtkx/react": "workspace:*",
+        "react": "^19.2.4"
+    },
+    "devDependencies": {
+        "@gtkx/cli": "workspace:*",
+        "vite": "^8.0.2"
+    }
+}
