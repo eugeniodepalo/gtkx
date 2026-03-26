@@ -12,15 +12,11 @@ const OWN_PROPS = ["render"] as const;
 type DrawFunc = (cr: import("@gtkx/ffi/cairo").Context, width: number, height: number, self: Gtk.DrawingArea) => void;
 type DrawingAreaProps = Pick<GtkDrawingAreaProps, (typeof OWN_PROPS)[number]>;
 
-function wrapDrawFunc(
-    fn: DrawFunc,
-): (self: Gtk.DrawingArea, cr: import("@gtkx/ffi/cairo").Context, width: number, height: number) => void {
-    return (self, cr, width, height) => fn(cr, width, height, self);
-}
-
 type DrawingAreaChild = EventControllerNode | SlotNode | ContainerSlotNode;
 
 export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps, DrawingAreaChild> {
+    private currentDrawFunc: DrawFunc | null = null;
+
     public override isValidChild(child: Node): boolean {
         return child instanceof EventControllerNode || child instanceof SlotNode || child instanceof ContainerSlotNode;
     }
@@ -31,14 +27,25 @@ export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProp
     }
 
     public override detachDeletedInstance(): void {
+        this.currentDrawFunc = null;
         this.container.setDrawFunc(undefined);
         super.detachDeletedInstance();
     }
 
     private applyOwnProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
         if (hasChanged(oldProps, newProps, "render")) {
-            this.container.setDrawFunc(newProps.render ? wrapDrawFunc(newProps.render) : undefined);
-            if (newProps.render) {
+            const hadDraw = !!oldProps?.render;
+            const hasDraw = !!newProps.render;
+
+            this.currentDrawFunc = newProps.render ?? null;
+
+            if (hasDraw && !hadDraw) {
+                this.container.setDrawFunc((self, cr, width, height) => {
+                    this.currentDrawFunc?.(cr, width, height, self);
+                });
+            } else if (!hasDraw && hadDraw) {
+                this.container.setDrawFunc(undefined);
+            } else if (hasDraw) {
                 this.container.queueDraw();
             }
         }
