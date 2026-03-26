@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="com.gtkx.tutorial" path="/com/gtkx/tutorial/">
+    <key name="compact-mode" type="b">
+      <default>false</default>
+      <summary>Compact mode</summary>
+      <description>Use smaller spacing in the note list</description>
+    </key>
+    <key name="spell-check" type="b">
+      <default>true</default>
+      <summary>Spell check</summary>
+      <description>Highlight spelling errors while typing</description>
+    </key>
+    <key name="font-size" type="i">
+      <default>14</default>
+      <summary>Font size</summary>
+      <description>Base font size for the editor</description>
+    </key>
+  </schema>
+</schemalist>

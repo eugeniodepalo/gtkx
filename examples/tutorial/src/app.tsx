@@ -1,3 +1,5 @@
+import SCHEMA_ID from "../com.gtkx.tutorial.gschema.xml";
+
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
@@ -14,6 +16,7 @@ import {
     GtkScrolledWindow,
     GtkShortcutController,
     quit,
+    useSetting,
 } from "@gtkx/react";
 import { useState } from "react";
 import { DeleteConfirmation } from "./components/delete-confirmation.js";
@@ -27,6 +30,9 @@ const emptyState = css`
 `;
 
 export function App() {
+    const [compactMode] = useSetting(SCHEMA_ID, "compact-mode", "boolean");
+    const [fontSize] = useSetting(SCHEMA_ID, "font-size", "int");
+
     const [notes, setNotes] = useState<Note[]>([
         { id: "1", title: "Welcome", body: "Your first note!", createdAt: new Date() },
         { id: "2", title: "Shopping List", body: "Milk, eggs, bread", createdAt: new Date() },
@@ -158,7 +164,7 @@ export function App() {
                             viewMode === "list" ? (
                                 <GtkScrolledWindow vexpand>
                                     <GtkListView
-                                        estimatedItemHeight={80}
+                                        estimatedItemHeight={compactMode ? 50 : 80}
                                         selectionMode={Gtk.SelectionMode.SINGLE}
                                         selected={selectedId ? [selectedId] : []}
                                         onSelectionChanged={(ids) => setSelectedId(ids[0] ?? null)}
@@ -166,7 +172,9 @@ export function App() {
                                             id: note.id,
                                             value: note,
                                         }))}
-                                        renderItem={(note) => <NoteCard note={note} />}
+                                        renderItem={(note) => (
+                                            <NoteCard note={note} compact={compactMode} fontSize={fontSize} />
+                                        )}
                                     />
                                 </GtkScrolledWindow>
                             ) : (
@@ -180,7 +188,12 @@ export function App() {
                                         marginEnd={12}
                                     >
                                         {notes.map((note) => (
-                                            <NoteCard key={note.id} note={note} />
+                                            <NoteCard
+                                                key={note.id}
+                                                note={note}
+                                                compact={compactMode}
+                                                fontSize={fontSize}
+                                            />
                                         ))}
                                     </GtkBox>
                                 </GtkScrolledWindow>

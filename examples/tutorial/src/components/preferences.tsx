@@ -1,3 +1,5 @@
+import SCHEMA_ID from "../../com.gtkx.tutorial.gschema.xml";
+
 import {
     AdwPreferencesGroup,
     AdwPreferencesPage,
@@ -7,16 +9,16 @@ import {
     createPortal,
     useApplication,
     useProperty,
+    useSetting,
 } from "@gtkx/react";
-import { useState } from "react";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
-    const [compactMode, setCompactMode] = useState(false);
-    const [spellCheck, setSpellCheck] = useState(true);
-    const [fontSize, setFontSize] = useState(14);
+    const [compactMode, setCompactMode] = useSetting(SCHEMA_ID, "compact-mode", "boolean");
+    const [spellCheck, setSpellCheck] = useSetting(SCHEMA_ID, "spell-check", "boolean");
+    const [fontSize, setFontSize] = useSetting(SCHEMA_ID, "font-size", "int");
 
     if (!activeWindow) return null;
 
