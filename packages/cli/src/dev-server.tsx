@@ -3,6 +3,7 @@ import { setHotReloading, update } from "@gtkx/react";
 import { createServer, type InlineConfig, type ViteDevServer } from "vite";
 import { isReactRefreshBoundary, performRefresh } from "./refresh-runtime.js";
 import { gtkxAssets } from "./vite-plugin-gtkx-assets.js";
+import { gtkxGSettings } from "./vite-plugin-gtkx-gsettings.js";
 import { gtkxRefresh } from "./vite-plugin-gtkx-refresh.js";
 import { swcSsrRefresh } from "./vite-plugin-swc-ssr-refresh.js";
 
@@ -54,6 +55,7 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
         ...viteConfig,
         appType: "custom",
         plugins: [
+            gtkxGSettings(),
             gtkxAssets(),
             swcSsrRefresh(),
             gtkxRefresh(),

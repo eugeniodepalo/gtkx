@@ -1,6 +1,7 @@
 import { type InlineConfig, build as viteBuild } from "vite";
 import { gtkxAssets } from "./vite-plugin-gtkx-assets.js";
 import { gtkxBuiltUrl } from "./vite-plugin-gtkx-built-url.js";
+import { gtkxGSettings } from "./vite-plugin-gtkx-gsettings.js";
 import { gtkxNative } from "./vite-plugin-gtkx-native.js";
 
 /**
@@ -63,7 +64,7 @@ export const build = async (options: BuildOptions): Promise<void> => {
 
     await viteBuild({
         ...viteConfig,
-        plugins: [...(viteConfig?.plugins ?? []), gtkxAssets(), gtkxBuiltUrl(assetBase), gtkxNative(root)],
+        plugins: [...(viteConfig?.plugins ?? []), gtkxGSettings(), gtkxAssets(), gtkxBuiltUrl(assetBase), gtkxNative(root)],
         build: {
             ...viteConfig?.build,
             ssr: entry,
