@@ -71,7 +71,7 @@
         "@gtkx/react": "workspace:*",
         "@swc/core": "^1.15.24",
         "citty": "^0.2.2",
-        "ejs": "^5.0.1",
+        "ejs": "^5.0.2",
         "react-refresh": "^0.18.0",
         "vite": "^8.0.8"
     },
