@@ -1301,11 +1301,9 @@ impl ArrayType {
                     let size = int_type.read_ptr(storage.ptr() as *const u8);
                     return Self::validated_size(size, size_index);
                 }
-                ffi::FfiValue::Ptr(ptr) => {
-                    if !ptr.is_null() {
-                        let size = int_type.read_ptr(*ptr as *const u8);
-                        return Self::validated_size(size, size_index);
-                    }
+                ffi::FfiValue::Ptr(ptr) if !ptr.is_null() => {
+                    let size = int_type.read_ptr(*ptr as *const u8);
+                    return Self::validated_size(size, size_index);
                 }
                 _ => {}
             }
