@@ -1,12 +1,24 @@
 /**
  * Call Expression Builder
  *
- * Builds FFI call() expressions for code generation.
- * Uses our Writer for streaming code output.
+ * Builds FFI call expressions for code generation. When a per-file
+ * {@link FfiDescriptorRegistry} is supplied, hoists each call's descriptor
+ * into a single `fn(...)` declaration and emits a curried call site;
+ * otherwise (or for variadic callables) falls back to an inline `call(...)`
+ * expression. Uses our Writer for streaming code output.
  */
 
 import type { Writer } from "../../builders/writer.js";
 import type { FfiTypeDescriptor, MappedType } from "../type-system/ffi-types.js";
+import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
+
+/**
+ * Minimal interface satisfied by {@link FileBuilder}-style import collectors.
+ * Re-declared here to avoid pulling in a heavier dependency just for the type.
+ */
+type ImportSink = {
+    addImport(specifier: string, names: string[]): void;
+};
 
 /**
  * Callback wrapper info for generating wrapped callback arguments.
@@ -73,13 +85,48 @@ export type CallExpressionOptions = {
  * ```
  */
 export class CallExpressionBuilder {
+    constructor(
+        private readonly registry?: FfiDescriptorRegistry,
+        private readonly imports?: ImportSink,
+    ) {}
+
     /**
      * Builds a call expression as a writer function.
+     *
+     * If a registry was supplied and the call is non-variadic, the descriptor
+     * is hoisted to a `fn(...)` const and the emitted expression is a curried
+     * invocation `<binding>(value1, value2, ...)`. Otherwise (no registry, or
+     * a variadic callable that cannot be curried) emits the inline
+     * `call("lib", "sym", [...], returnType)` form.
      *
      * @param options - Call expression options
      * @returns Function that writes the call expression to a Writer
      */
     toWriter(options: CallExpressionOptions): (writer: Writer) => void {
+        const binding = this.registry?.register(options);
+
+        if (binding && binding.varargs === false) {
+            this.imports?.addImport("../../native.js", ["fn"]);
+            return this.curriedWriter(options, binding.name);
+        }
+
+        this.imports?.addImport("../../native.js", ["call"]);
+        return this.inlineWriter(options);
+    }
+
+    private curriedWriter(options: CallExpressionOptions, bindingName: string): (writer: Writer) => void {
+        const allArgs = this.collectArguments(options);
+        return (writer) => {
+            writer.write(`${bindingName}(`);
+            for (let i = 0; i < allArgs.length; i++) {
+                if (i > 0) writer.write(", ");
+                writer.write(allArgs[i]?.value ?? "undefined");
+            }
+            writer.write(")");
+        };
+    }
+
+    private inlineWriter(options: CallExpressionOptions): (writer: Writer) => void {
         return (writer) => {
             writer.write("call(");
             writer.newLine();

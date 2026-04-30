@@ -173,7 +173,6 @@ export class ClassGenerator {
         ];
 
         if (this.cls.glibGetType) {
-            this.file.addImport("../../native.js", ["call"]);
             allMethodStructures.push(this.buildGetGTypeMethod());
         }
 
@@ -358,6 +357,13 @@ export class ClassGenerator {
     }
 
     private buildGetGTypeMethod(): MethodStructure {
+        const binding = this.file.descriptors.register({
+            sharedLibrary: this.options.sharedLibrary,
+            cIdentifier: this.cls.glibGetType ?? "",
+            args: [],
+            returnType: { type: "uint64" },
+        });
+
         return {
             name: "getGType",
             isStatic: true,
@@ -365,9 +371,15 @@ export class ClassGenerator {
             returnType: "number",
             docs: undefined,
             statements: (writer: Writer) => {
-                writer.writeLine(
-                    `return call("${this.options.sharedLibrary}", "${this.cls.glibGetType}", [], { type: "uint64" }) as number;`,
-                );
+                if (binding.varargs === false) {
+                    this.file.addImport("../../native.js", ["fn"]);
+                    writer.writeLine(`return ${binding.name}() as number;`);
+                } else {
+                    this.file.addImport("../../native.js", ["call"]);
+                    writer.writeLine(
+                        `return call("${this.options.sharedLibrary}", "${this.cls.glibGetType}", [], { type: "uint64" }) as number;`,
+                    );
+                }
             },
         };
     }

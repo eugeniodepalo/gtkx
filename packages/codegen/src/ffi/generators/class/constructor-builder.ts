@@ -208,7 +208,6 @@ export class ConstructorBuilder {
     private buildConstructorWithOverloads(ctor: GirConstructor): ConstructorOverloads {
         this.imports.addImport("@gtkx/native", ["isNativeHandle"]);
         this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
-        this.imports.addImport("../../native.js", ["call"]);
         this.imports.addImport("../../registry.js", ["registerNativeObject"]);
         const params = this.buildConstructorParameters(ctor);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
@@ -261,23 +260,15 @@ export class ConstructorBuilder {
         args: Array<{ type: FfiTypeDescriptor; value: string; optional?: boolean }>,
         ownership: string,
     ): void {
-        writer.write("const __handle = call(");
-        writer.newLine();
-        writer.withIndent(() => {
-            writer.writeLine(`"${this.options.sharedLibrary}",`);
-            writer.writeLine(`"${cIdentifier}",`);
-            writer.writeLine("[");
-            writer.withIndent(() => {
-                for (const arg of args) {
-                    writer.write("{ type: ");
-                    writer.write(JSON.stringify(arg.type));
-                    writer.writeLine(`, value: ${arg.value}, optional: ${arg.optional ?? false} },`);
-                }
-            });
-            writer.writeLine("],");
-            writer.writeLine(`{ type: "gobject", ownership: "${ownership}" }`);
+        const callWriter = this.methodBody.buildCallWriter({
+            sharedLibrary: this.options.sharedLibrary,
+            cIdentifier,
+            args,
+            returnType: { type: "gobject", ownership: ownership as "full" | "borrowed" },
         });
-        writer.writeLine(") as NativeHandle;");
+        writer.write("const __handle = ");
+        callWriter(writer);
+        writer.writeLine(" as NativeHandle;");
     }
 
     private writeGObjectNewCallToVariable(
@@ -285,17 +276,18 @@ export class ConstructorBuilder {
         getTypeFunc: string,
         props: Array<{ girName: string; ffiType: FfiTypeDescriptor; valueExpr: string; guardExpr: string }>,
     ): void {
-        writer.write("const gtype = call(");
-        writer.newLine();
-        writer.withIndent(() => {
-            writer.writeLine(`"${this.options.sharedLibrary}",`);
-            writer.writeLine(`"${getTypeFunc}",`);
-            writer.writeLine("[],");
-            writer.writeLine('{ type: "uint64" }');
+        const getTypeWriter = this.methodBody.buildCallWriter({
+            sharedLibrary: this.options.sharedLibrary,
+            cIdentifier: getTypeFunc,
+            args: [],
+            returnType: { type: "uint64" },
         });
-        writer.writeLine(");");
+        writer.write("const gtype = ");
+        getTypeWriter(writer);
+        writer.writeLine(";");
 
         if (props.length > 0) {
+            this.imports.addImport("../../native.js", ["call"]);
             writer.writeLine('const __args: Arg[] = [{ type: { type: "uint64" }, value: gtype, optional: false }];');
             for (const prop of props) {
                 writer.writeLine(`if (${prop.guardExpr} !== undefined) {`);
@@ -324,20 +316,18 @@ export class ConstructorBuilder {
             });
             writer.writeLine(") as NativeHandle;");
         } else {
-            writer.write("const __handle = call(");
-            writer.newLine();
-            writer.withIndent(() => {
-                writer.writeLine(`"${this.options.gobjectLibrary}",`);
-                writer.writeLine('"g_object_new",');
-                writer.writeLine("[");
-                writer.withIndent(() => {
-                    writer.writeLine('{ type: { type: "uint64" }, value: gtype, optional: false },');
-                    writer.writeLine('{ type: { type: "void" }, value: null, optional: false },');
-                });
-                writer.writeLine("],");
-                writer.writeLine('{ type: "gobject", ownership: "full" }');
+            const objectNewWriter = this.methodBody.buildCallWriter({
+                sharedLibrary: this.options.gobjectLibrary,
+                cIdentifier: "g_object_new",
+                args: [
+                    { type: { type: "uint64" }, value: "gtype" },
+                    { type: { type: "void" }, value: "null" },
+                ],
+                returnType: { type: "gobject", ownership: "full" },
             });
-            writer.writeLine(") as NativeHandle;");
+            writer.write("const __handle = ");
+            objectNewWriter(writer);
+            writer.writeLine(" as NativeHandle;");
         }
     }
 

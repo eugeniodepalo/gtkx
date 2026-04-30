@@ -50,12 +50,6 @@ export class InterfaceGenerator {
         const interfaceMethodNames = new Set(iface.methods.map((m) => m.name));
         const prerequisiteMethods = this.collectPrerequisiteMethods(iface, interfaceMethodNames);
 
-        const allMethods = [...iface.methods, ...prerequisiteMethods];
-
-        if (allMethods.length > 0) {
-            this.file.addImport("../../native.js", ["call"]);
-        }
-
         const isGObjectNamespace = this.options.namespace === "GObject";
         const extendsExpr = isGObjectNamespace ? "Object" : "GObject.Object";
         if (isGObjectNamespace) {

@@ -247,7 +247,6 @@ export class FfiGenerator {
             );
 
             if (supportedMethods.length > 0) {
-                file.addImport("../../native.js", ["call"]);
                 file.addImport("../../object.js", ["NativeHandle"]);
                 file.addImport("../../registry.js", ["getNativeObject"]);
 

@@ -1,9 +1,11 @@
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { TypeImport } from "../type-system/ffi-types.js";
 import { toKebabCase } from "../utils/naming.js";
+import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
 import { type ImportCollector, MethodBodyWriter } from "./method-body-writer.js";
 
+export { FfiDescriptorRegistry } from "./descriptor-registry.js";
 export type { MethodStructure } from "./method-body-writer.js";
 export type { ImportCollector, MethodBodyWriter };
 
@@ -44,6 +46,12 @@ type CreateMethodBodyWriterOptions = {
     sharedLibrary?: string;
     glibLibrary?: string;
     selfNames?: ReadonlySet<string>;
+    /**
+     * Per-file FFI descriptor registry. When supplied, non-variadic call
+     * expressions are hoisted to `fn(...)` declarations and emitted as
+     * curried invocations at the call site.
+     */
+    descriptors?: FfiDescriptorRegistry;
 };
 
 export const createMethodBodyWriter = (
@@ -56,7 +64,8 @@ export const createMethodBodyWriter = (
         glibLibrary: options.glibLibrary,
     });
 
-    const writer = new MethodBodyWriter(ffiMapper, imports, ffiTypeWriter);
+    const descriptors = options.descriptors ?? (imports as { descriptors?: FfiDescriptorRegistry }).descriptors;
+    const writer = new MethodBodyWriter(ffiMapper, imports, ffiTypeWriter, descriptors);
     if (options.selfNames) {
         writer.setSelfNames(options.selfNames);
     }

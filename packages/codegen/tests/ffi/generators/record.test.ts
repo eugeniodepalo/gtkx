@@ -481,7 +481,7 @@ describe("RecordGenerator", () => {
             expect(stringify(file)).toContain("NativeObject");
         });
 
-        it("sets usesCall flag when record has methods", () => {
+        it("imports fn when record has methods", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -496,8 +496,10 @@ describe("RecordGenerator", () => {
             });
 
             generator.generate(record);
+            const out = stringify(file);
 
-            expect(stringify(file)).toContain("call");
+            expect(out).toContain("import { fn }");
+            expect(out).toContain("const gdk_rectangle_get_value = fn(");
         });
 
         it("sets usesRead flag when record has readable fields", () => {

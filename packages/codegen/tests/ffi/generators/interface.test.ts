@@ -184,7 +184,7 @@ describe("InterfaceGenerator", () => {
             expect(code).toContain("GObject");
         });
 
-        it("adds call import when interface has methods", () => {
+        it("adds fn import when interface has methods", () => {
             const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Orientable",
@@ -200,7 +200,8 @@ describe("InterfaceGenerator", () => {
             generator.generate(iface);
             const code = stringify(file);
 
-            expect(code).toContain("call");
+            expect(code).toContain("import { fn }");
+            expect(code).toContain("const gtk_orientable_get_value = fn(");
         });
 
         it("adds Ref import when method has out parameter", () => {

@@ -198,7 +198,6 @@ export class RecordGenerator {
         if (mainConstructor) {
             this.file.addImport("@gtkx/native", ["isNativeHandle"]);
             this.file.addTypeImport("../../object.js", ["NativeHandle"]);
-            this.file.addImport("../../native.js", ["call"]);
             const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
             const args = this.methodBody.buildCallArgumentsArray(mainConstructor.parameters);
             const glibTypeName = record.glibTypeName ?? record.cType;
@@ -321,34 +320,35 @@ export class RecordGenerator {
         copyFunction?: string,
         freeFunction?: string,
     ): void {
-        const ownership = mainConstructor.returnType.transferOwnership === "full" ? "full" : "borrowed";
+        const ownership: "full" | "borrowed" =
+            mainConstructor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
-        writer.write("const __handle = call(");
-        writer.newLine();
-        writer.withIndent(() => {
-            writer.writeLine(`"${this.options.sharedLibrary}",`);
-            writer.writeLine(`"${mainConstructor.cIdentifier}",`);
-            writer.writeLine("[");
-            writer.withIndent(() => {
-                for (const arg of args) {
-                    writer.write("{ type: ");
-                    writer.write(JSON.stringify(arg.type));
-                    writer.writeLine(`, value: ${arg.value}, optional: ${arg.optional ?? false} },`);
-                }
-            });
-            writer.writeLine("],");
-            if (copyFunction && freeFunction) {
-                writer.writeLine(
-                    `{ type: "fundamental", ownership: "${ownership}", library: "${this.options.sharedLibrary}", refFn: "${copyFunction}", unrefFn: "${freeFunction}" }`,
-                );
-            } else {
-                const getTypeFnPart = glibGetType ? `, getTypeFn: "${glibGetType}"` : "";
-                writer.writeLine(
-                    `{ type: "boxed", ownership: "${ownership}", innerType: "${glibTypeName}", library: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
-                );
-            }
+        const returnType: FfiTypeDescriptor =
+            copyFunction && freeFunction
+                ? {
+                      type: "fundamental",
+                      ownership,
+                      library: this.options.sharedLibrary,
+                      refFn: copyFunction,
+                      unrefFn: freeFunction,
+                  }
+                : {
+                      type: "boxed",
+                      ownership,
+                      innerType: glibTypeName,
+                      library: this.options.sharedLibrary,
+                      ...(glibGetType ? { getTypeFn: glibGetType } : {}),
+                  };
+
+        const callWriter = this.methodBody.buildCallWriter({
+            sharedLibrary: this.options.sharedLibrary,
+            cIdentifier: mainConstructor.cIdentifier,
+            args,
+            returnType,
         });
-        writer.writeLine(") as NativeHandle;");
+        writer.write("const __handle = ");
+        callWriter(writer);
+        writer.writeLine(" as NativeHandle;");
     }
 
     private writeConstructorWithCallOverloaded(

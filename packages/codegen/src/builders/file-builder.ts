@@ -1,15 +1,26 @@
+import { FfiDescriptorRegistry } from "../core/writers/descriptor-registry.js";
 import { raw } from "./declarations/raw.js";
 import { ImportRegistry } from "./import-registry.js";
 import type { Builder } from "./types.js";
-import type { Writer } from "./writer.js";
+import { Writer } from "./writer.js";
 
 /**
- * Builds a complete TypeScript source file with an import section
- * followed by top-level declarations.
+ * Builds a complete TypeScript source file with an import section, an
+ * optional FFI-descriptor preamble (hoisted `fn(...)` consts), and top-level
+ * declarations.
+ *
+ * The descriptor preamble is populated as a side effect of writing
+ * declarations: each call expression that registers with the
+ * {@link FfiDescriptorRegistry} contributes one hoisted const. Because that
+ * registration only happens during declaration write, this builder writes
+ * declarations to a temporary buffer first, then emits imports, descriptors,
+ * and finally the buffered declarations to the real writer.
  */
 export class FileBuilder implements Builder {
     private readonly imports = new ImportRegistry();
     private readonly declarations: Builder[] = [];
+    /** Per-file FFI descriptor registry; emitted between imports and declarations. */
+    readonly descriptors = new FfiDescriptorRegistry();
 
     /** Add value imports from a module specifier. */
     addImport(specifier: string, names: string[]): this {
@@ -47,17 +58,32 @@ export class FileBuilder implements Builder {
         return this;
     }
 
-    /** Write the complete file: imports followed by declarations separated by blank lines. */
+    /**
+     * Write the complete file: imports, then any registered FFI descriptor
+     * preamble, then declarations separated by blank lines.
+     *
+     * Declarations are rendered to a temporary writer first so that any
+     * descriptors and imports they contribute as side effects are fully
+     * collected before the imports/preamble sections are emitted.
+     */
     write(writer: Writer): void {
+        const declarationsBuffer = new Writer();
+        for (let i = 0; i < this.declarations.length; i++) {
+            if (i > 0) declarationsBuffer.newLine();
+            this.declarations[i]?.write(declarationsBuffer);
+        }
+
         if (!this.imports.isEmpty) {
             this.imports.write(writer);
             writer.newLine();
         }
 
-        for (let i = 0; i < this.declarations.length; i++) {
-            if (i > 0) writer.newLine();
-            this.declarations[i]?.write(writer);
+        if (!this.descriptors.isEmpty) {
+            this.descriptors.write(writer);
+            writer.newLine();
         }
+
+        writer.write(declarationsBuffer.toString());
     }
 }
 

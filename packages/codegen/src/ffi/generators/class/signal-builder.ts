@@ -10,11 +10,13 @@ import type { GirClass, GirParameter, GirRepository, GirSignal } from "@gtkx/gir
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import type { MappedType } from "../../../core/type-system/ffi-types.js";
+import type { FfiTypeDescriptor, MappedType } from "../../../core/type-system/ffi-types.js";
 import { collectDirectMembers, collectParentSignalNames } from "../../../core/utils/class-traversal.js";
 import { filterVarargs } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
+import { CallExpressionBuilder } from "../../../core/writers/call-expression-builder.js";
+import type { FfiDescriptorRegistry } from "../../../core/writers/descriptor-registry.js";
 import { addTypeImports, type ImportCollector, type MethodStructure } from "../../../core/writers/index.js";
 import { type ParamWrapInfo, ParamWrapWriter } from "../../../core/writers/param-wrap-writer.js";
 
@@ -30,6 +32,7 @@ type SignalParamData = {
 export class SignalBuilder {
     private readonly className: string;
     private readonly paramWrapWriter = new ParamWrapWriter();
+    private readonly callExpression: CallExpressionBuilder;
 
     constructor(
         private readonly cls: GirClass,
@@ -40,6 +43,8 @@ export class SignalBuilder {
         private readonly selfNames: ReadonlySet<string> = new Set(),
     ) {
         this.className = normalizeClassName(cls.name);
+        const descriptors = (imports as { descriptors?: FfiDescriptorRegistry }).descriptors;
+        this.callExpression = new CallExpressionBuilder(descriptors, imports);
     }
 
     buildConnectMethodStructures(): MethodStructure[] {
@@ -50,7 +55,6 @@ export class SignalBuilder {
             return [];
         }
 
-        this.imports.addImport("../../native.js", ["call"]);
         this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
         if (this.options.namespace !== "GObject") {
@@ -293,34 +297,22 @@ export class SignalBuilder {
 
     private writeCallExpression(writer: Writer, signal: GirSignal, paramData: SignalParamData[]): void {
         const userDataIndex = 1 + paramData.length;
-        this.writeTrampolineSignalConnectCall(writer, (w) => {
-            w.write('type: "trampoline", ');
-            this.writeTrampolineArgTypes(w, paramData);
-            w.write(", ");
-            this.writeReturnType(w, signal);
-            w.write(`, hasDestroy: true, userDataIndex: ${userDataIndex}`);
-        });
-    }
-
-    private writeTrampolineArgTypes(writer: Writer, paramData: SignalParamData[]): void {
-        writer.write("argTypes: [");
-        writer.write('{ type: "gobject", ownership: "borrowed" }');
-        for (const p of paramData) {
-            writer.write(", ");
-            writer.write(JSON.stringify(p.mapped.ffi));
-        }
-        writer.write(', { type: "void" }');
-        writer.write("]");
-    }
-
-    private writeReturnType(writer: Writer, signal: GirSignal): void {
-        writer.write("returnType: ");
-        if (signal.returnType) {
-            const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
-            writer.write(JSON.stringify(mapped.ffi));
-        } else {
-            writer.write('{ type: "void" }');
-        }
+        const argTypes: FfiTypeDescriptor[] = [
+            { type: "gobject", ownership: "borrowed" },
+            ...paramData.map((p) => p.mapped.ffi),
+            { type: "void" },
+        ];
+        const returnType: FfiTypeDescriptor = signal.returnType
+            ? this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership).ffi
+            : { type: "void" };
+        const trampolineType: FfiTypeDescriptor = {
+            type: "trampoline",
+            argTypes,
+            returnType,
+            hasDestroy: true,
+            userDataIndex,
+        };
+        this.writeTrampolineSignalConnectCall(writer, trampolineType);
     }
 
     private writeDefaultCase(writer: Writer, isRootGObject: boolean): void {
@@ -342,61 +334,47 @@ export class SignalBuilder {
             );
         });
         writer.writeLine("};");
-        this.writeClosureSignalConnectCall(writer, (w) => {
-            w.write(
-                'type: "callback", argTypes: [{ type: "gobject", ownership: "borrowed" }], returnType: { type: "void" }, kind: "closure"',
-            );
-        });
+        const callbackType: FfiTypeDescriptor = {
+            type: "callback",
+            kind: "closure",
+            argTypes: [{ type: "gobject", ownership: "borrowed" }],
+            returnType: { type: "void" },
+        };
+        this.writeClosureSignalConnectCall(writer, callbackType);
     }
 
-    private writeTrampolineSignalConnectCall(writer: Writer, trampolineTypeWriter: (w: Writer) => void): void {
-        writer.writeLine("return call(");
-        writer.withIndent(() => {
-            writer.writeLine(`"${this.options.sharedLibrary}",`);
-            writer.writeLine('"g_signal_connect_data",');
-            writer.writeLine("[");
-            writer.withIndent(() => {
-                writer.writeLine('{ type: { type: "gobject", ownership: "borrowed" }, value: this.handle },');
-                writer.writeLine('{ type: { type: "string", ownership: "borrowed" }, value: signal },');
-                writer.writeLine("{");
-                writer.withIndent(() => {
-                    writer.write("type: { ");
-                    trampolineTypeWriter(writer);
-                    writer.writeLine(" },");
-                    writer.writeLine("value: wrappedHandler,");
-                });
-                writer.writeLine("},");
-                writer.writeLine('{ type: { type: "uint32" }, value: after ? 1 : 0 },');
-            });
-            writer.writeLine("],");
-            writer.writeLine('{ type: "uint64" }');
+    private writeTrampolineSignalConnectCall(writer: Writer, trampolineType: FfiTypeDescriptor): void {
+        const callWriter = this.callExpression.toWriter({
+            sharedLibrary: this.options.sharedLibrary,
+            cIdentifier: "g_signal_connect_data",
+            args: [
+                { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
+                { type: { type: "string", ownership: "borrowed" }, value: "signal" },
+                { type: trampolineType, value: "wrappedHandler" },
+                { type: { type: "uint32" }, value: "after ? 1 : 0" },
+            ],
+            returnType: { type: "uint64" },
         });
-        writer.writeLine(") as number;");
+        writer.write("return ");
+        callWriter(writer);
+        writer.writeLine(" as number;");
     }
 
-    private writeClosureSignalConnectCall(writer: Writer, callbackTypeWriter: (w: Writer) => void): void {
-        writer.writeLine("return call(");
-        writer.withIndent(() => {
-            writer.writeLine(`"${this.options.sharedLibrary}",`);
-            writer.writeLine('"g_signal_connect_closure",');
-            writer.writeLine("[");
-            writer.withIndent(() => {
-                writer.writeLine('{ type: { type: "gobject", ownership: "borrowed" }, value: this.handle },');
-                writer.writeLine('{ type: { type: "string", ownership: "borrowed" }, value: signal },');
-                writer.writeLine("{");
-                writer.withIndent(() => {
-                    writer.write("type: { ");
-                    callbackTypeWriter(writer);
-                    writer.writeLine(" },");
-                    writer.writeLine("value: wrappedHandler,");
-                });
-                writer.writeLine("},");
-                writer.writeLine('{ type: { type: "boolean" }, value: after ?? false },');
-            });
-            writer.writeLine("],");
-            writer.writeLine('{ type: "uint64" }');
+    private writeClosureSignalConnectCall(writer: Writer, callbackType: FfiTypeDescriptor): void {
+        const callWriter = this.callExpression.toWriter({
+            sharedLibrary: this.options.sharedLibrary,
+            cIdentifier: "g_signal_connect_closure",
+            args: [
+                { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
+                { type: { type: "string", ownership: "borrowed" }, value: "signal" },
+                { type: callbackType, value: "wrappedHandler" },
+                { type: { type: "boolean" }, value: "after ?? false" },
+            ],
+            returnType: { type: "uint64" },
         });
-        writer.writeLine(") as number;");
+        writer.write("return ");
+        callWriter(writer);
+        writer.writeLine(" as number;");
     }
 
     private buildHandlerParams(signal: GirSignal): string {

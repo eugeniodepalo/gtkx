@@ -5,7 +5,7 @@ import {
     CallExpressionBuilder,
     type CallExpressionOptions,
 } from "../../../src/core/writers/call-expression-builder.js";
-import { FfiTypeWriter } from "../../../src/core/writers/ffi-type-writer.js";
+import { FfiDescriptorRegistry } from "../../../src/core/writers/descriptor-registry.js";
 
 function getCallExpressionOutput(builder: CallExpressionBuilder, options: CallExpressionOptions): string {
     const writer = new Writer();
@@ -19,16 +19,28 @@ function getWriterOutput(fn: (writer: Writer) => void): string {
     return writer.toString();
 }
 
+type RecordedImport = { specifier: string; names: readonly string[] };
+function makeImports(): { calls: RecordedImport[]; sink: { addImport(s: string, n: string[]): void } } {
+    const calls: RecordedImport[] = [];
+    return {
+        calls,
+        sink: {
+            addImport(specifier, names) {
+                calls.push({ specifier, names: [...names] });
+            },
+        },
+    };
+}
+
 describe("CallExpressionBuilder", () => {
     describe("constructor", () => {
-        it("creates builder with no ffiTypeWriter", () => {
+        it("creates builder with no arguments", () => {
             const builder = new CallExpressionBuilder();
             expect(builder).toBeInstanceOf(CallExpressionBuilder);
         });
 
-        it("creates builder with custom ffiTypeWriter", () => {
-            const ffiTypeWriter = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-            const builder = new CallExpressionBuilder(ffiTypeWriter);
+        it("accepts registry and imports", () => {
+            const builder = new CallExpressionBuilder(new FfiDescriptorRegistry(), makeImports().sink);
             expect(builder).toBeInstanceOf(CallExpressionBuilder);
         });
     });
@@ -146,8 +158,7 @@ describe("CallExpressionBuilder", () => {
         });
 
         it("builds call expression with boxed return type", () => {
-            const ffiTypeWriter = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-            const builder = new CallExpressionBuilder(ffiTypeWriter);
+            const builder = new CallExpressionBuilder();
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "gdk_rgba_parse",
@@ -192,8 +203,7 @@ describe("CallExpressionBuilder", () => {
         });
 
         it("uses custom ffiTypeWriter for argument types", () => {
-            const ffiTypeWriter = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-            const builder = new CallExpressionBuilder(ffiTypeWriter);
+            const builder = new CallExpressionBuilder();
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "some_function",
@@ -329,10 +339,9 @@ describe("CallExpressionBuilder", () => {
         });
     });
 
-    describe("integration with FfiTypeWriter", () => {
+    describe("descriptor type rendering", () => {
         it("renders boxed type descriptor with library info from the descriptor", () => {
-            const ffiTypeWriter = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-            const builder = new CallExpressionBuilder(ffiTypeWriter);
+            const builder = new CallExpressionBuilder();
 
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",
@@ -351,10 +360,136 @@ describe("CallExpressionBuilder", () => {
         });
     });
 
+    describe("registry-driven hoisting", () => {
+        it("emits a curried call site referencing the binding name", () => {
+            const registry = new FfiDescriptorRegistry();
+            const { sink } = makeImports();
+            const builder = new CallExpressionBuilder(registry, sink);
+            const output = getCallExpressionOutput(builder, {
+                sharedLibrary: "libgtk-4.so.1",
+                cIdentifier: "gtk_label_get_label",
+                args: [],
+                returnType: { type: "string", ownership: "borrowed" },
+                selfArg: { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
+            });
+
+            expect(output).toBe("gtk_label_get_label(this.handle)");
+            expect(registry.isEmpty).toBe(false);
+        });
+
+        it("imports fn (not call) for hoisted bindings", () => {
+            const registry = new FfiDescriptorRegistry();
+            const { calls, sink } = makeImports();
+            const builder = new CallExpressionBuilder(registry, sink);
+            getCallExpressionOutput(builder, {
+                sharedLibrary: "libgtk-4.so.1",
+                cIdentifier: "gtk_widget_show",
+                args: [],
+                returnType: { type: "void" },
+                selfArg: { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
+            });
+
+            expect(calls).toEqual([{ specifier: "../../native.js", names: ["fn"] }]);
+        });
+
+        it("falls back to inline call() for variadic callables", () => {
+            const registry = new FfiDescriptorRegistry();
+            const { calls, sink } = makeImports();
+            const builder = new CallExpressionBuilder(registry, sink);
+            const output = getCallExpressionOutput(builder, {
+                sharedLibrary: "libgtk-4.so.1",
+                cIdentifier: "g_object_new",
+                args: [{ type: { type: "uint64" }, value: "gtype" }],
+                returnType: { type: "gobject", ownership: "full" },
+                hasVarargs: true,
+            });
+
+            expect(output).toContain("call(");
+            expect(output).toContain('"g_object_new"');
+            expect(output).toContain("...args");
+            expect(registry.isEmpty).toBe(true);
+            expect(calls).toEqual([{ specifier: "../../native.js", names: ["call"] }]);
+        });
+
+        it("dedupes identical descriptors to one binding", () => {
+            const registry = new FfiDescriptorRegistry();
+            const { sink } = makeImports();
+            const builder = new CallExpressionBuilder(registry, sink);
+            const opts: CallExpressionOptions = {
+                sharedLibrary: "libgobject-2.0.so.0",
+                cIdentifier: "g_object_get_property",
+                args: [
+                    { type: { type: "string", ownership: "borrowed" }, value: '"height-request"' },
+                    { type: { type: "uint64" }, value: "gvalue.handle" },
+                ],
+                returnType: { type: "void" },
+                selfArg: { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
+            };
+            const out1 = getCallExpressionOutput(builder, opts);
+            const out2 = getCallExpressionOutput(builder, {
+                ...opts,
+                args: [
+                    { type: { type: "string", ownership: "borrowed" }, value: '"width-request"' },
+                    { type: { type: "uint64" }, value: "gvalue.handle" },
+                ],
+            });
+
+            expect(out1).toContain("g_object_get_property(");
+            expect(out2).toContain("g_object_get_property(");
+            expect(out1).not.toContain("g_object_get_property_2");
+            expect(out2).not.toContain("g_object_get_property_2");
+        });
+
+        it("disambiguates same cIdentifier with different descriptors via numeric suffix", () => {
+            const registry = new FfiDescriptorRegistry();
+            const builder = new CallExpressionBuilder(registry, makeImports().sink);
+            const out1 = getCallExpressionOutput(builder, {
+                sharedLibrary: "libgobject-2.0.so.0",
+                cIdentifier: "g_signal_connect_data",
+                args: [
+                    {
+                        type: {
+                            type: "trampoline",
+                            argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "void" }],
+                            returnType: { type: "void" },
+                            hasDestroy: true,
+                            userDataIndex: 1,
+                        },
+                        value: "wrappedHandler",
+                    },
+                ],
+                returnType: { type: "uint64" },
+            });
+            const out2 = getCallExpressionOutput(builder, {
+                sharedLibrary: "libgobject-2.0.so.0",
+                cIdentifier: "g_signal_connect_data",
+                args: [
+                    {
+                        type: {
+                            type: "trampoline",
+                            argTypes: [
+                                { type: "gobject", ownership: "borrowed" },
+                                { type: "string", ownership: "borrowed" },
+                                { type: "void" },
+                            ],
+                            returnType: { type: "void" },
+                            hasDestroy: true,
+                            userDataIndex: 2,
+                        },
+                        value: "wrappedHandler",
+                    },
+                ],
+                returnType: { type: "uint64" },
+            });
+
+            expect(out1).toContain("g_signal_connect_data(");
+            expect(out2).toContain("g_signal_connect_data_2(");
+        });
+    });
+
     describe("complex call expressions", () => {
         it("builds call with mixed argument types", () => {
-            const ffiTypeWriter = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-            const builder = new CallExpressionBuilder(ffiTypeWriter);
+            const builder = new CallExpressionBuilder();
 
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",
@@ -408,8 +543,7 @@ describe("CallExpressionBuilder", () => {
         });
 
         it("builds call with nested type descriptors", () => {
-            const ffiTypeWriter = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
-            const builder = new CallExpressionBuilder(ffiTypeWriter);
+            const builder = new CallExpressionBuilder();
 
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",

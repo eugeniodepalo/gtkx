@@ -13,7 +13,13 @@ import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { hasVarargs, isVararg } from "../utils/filtering.js";
 import { createWrappedName, toCamelCase, toKebabCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
 import { formatNullableReturn } from "../utils/type-qualification.js";
-import { type CallArgument, type CallbackWrapperInfo, CallExpressionBuilder } from "./call-expression-builder.js";
+import {
+    type CallArgument,
+    type CallbackWrapperInfo,
+    CallExpressionBuilder,
+    type CallExpressionOptions,
+} from "./call-expression-builder.js";
+import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
 import { ParamWrapWriter } from "./param-wrap-writer.js";
 
@@ -175,9 +181,10 @@ export class MethodBodyWriter {
         private readonly ffiMapper: FfiMapper,
         private readonly imports: ImportCollector,
         ffiTypeWriter?: FfiTypeWriter,
+        descriptors?: FfiDescriptorRegistry,
     ) {
         this.ffiTypeWriter = ffiTypeWriter ?? new FfiTypeWriter();
-        this.callExpression = new CallExpressionBuilder();
+        this.callExpression = new CallExpressionBuilder(descriptors, imports);
         this.paramWrapWriter = new ParamWrapWriter();
     }
 
@@ -519,6 +526,16 @@ export class MethodBodyWriter {
         };
     }
 
+    /**
+     * Builds a writer that emits one FFI call expression. Routes through the
+     * shared {@link CallExpressionBuilder} so the descriptor participates in
+     * per-file hoisting (when a registry is configured) or falls back to an
+     * inline `call(...)` for variadic callables.
+     */
+    buildCallWriter(options: CallExpressionOptions): (writer: Writer) => void {
+        return this.callExpression.toWriter(options);
+    }
+
     writeCallbackWrapperDeclarations(writer: Writer, args: readonly CallArgument[]): void {
         for (const arg of args) {
             if (arg.callbackWrapper) {
@@ -672,7 +689,6 @@ export class MethodBodyWriter {
     }
 
     private writeCallableBody(options: CallableBodyOptions): (writer: Writer) => void {
-        this.imports.addImport("../../native.js", ["call"]);
         this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
 
@@ -823,7 +839,7 @@ export class MethodBodyWriter {
                 })(writer);
 
                 if (needsCast) {
-                    writer.write(` as unknown as ${tsReturnType}`);
+                    writer.write(` as ${tsReturnType}`);
                 }
                 writer.write(";");
                 writer.newLine();
@@ -929,7 +945,6 @@ export class MethodBodyWriter {
         /** If true, pass the class to getNativeObject. Used for boxed types. */
         useClassInWrap: boolean;
     }): (writer: Writer) => void {
-        this.imports.addImport("../../native.js", ["call"]);
         this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
         const { sharedLibrary, cIdentifier, args, returnTypeDescriptor, wrapClassName, throws, useClassInWrap } =
@@ -940,31 +955,27 @@ export class MethodBodyWriter {
             this.setupGErrorImports();
         }
 
+        const allArgs = throws
+            ? [...args, { type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(), value: "error" }]
+            : args;
+
+        const callWriter = this.callExpression.toWriter({
+            sharedLibrary,
+            cIdentifier,
+            args: allArgs,
+            returnType: returnTypeDescriptor,
+        });
+
         return (writer) => {
             this.writeCallbackWrapperDeclarations(writer, args);
 
             if (throws) {
                 writer.writeLine("const error = createRef<NativeHandle | null>(null);");
-                args.push({
-                    type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(),
-                    value: "error",
-                });
             }
 
-            writer.write("const ptr = call(");
-            writer.newLine();
-            writer.withIndent(() => {
-                writer.writeLine(`"${sharedLibrary}",`);
-                writer.writeLine(`"${cIdentifier}",`);
-                writer.writeLine("[");
-                writer.withIndent(() => {
-                    this.writeArgumentsToWriter(writer, args);
-                });
-                writer.writeLine("],");
-                writer.write(JSON.stringify(returnTypeDescriptor));
-                writer.newLine();
-            });
-            writer.writeLine(");");
+            writer.write("const ptr = ");
+            callWriter(writer);
+            writer.writeLine(";");
 
             if (throws) {
                 this.writeErrorCheck(writer);
