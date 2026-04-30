@@ -10,9 +10,9 @@ use libffi::middle as libffi;
 use neon::prelude::*;
 
 use crate::callback::ClosureGuard;
+use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
 use crate::ffi::{self, FfiStorage};
-use crate::js_dispatch;
 use crate::managed::{Boxed, NativeValue};
 use crate::types::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, Type};
 use crate::value;
@@ -70,38 +70,39 @@ impl ClosureContext {
                 })
                 .collect();
 
-            js_dispatch::JsDispatcher::global().invoke_and_wait(
+            let result = Mailbox::global().invoke_node_and_wait(
                 &self.channel,
                 &self.js_func,
                 args_values,
                 true,
-                |result| match result {
-                    Ok(value::Value::Array(arr)) if !ref_pointers.is_empty() => {
-                        for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
-                            if let Some(val) = arr.get(i + 1)
-                                && !(*ptr).is_null()
-                                && !matches!(val, value::Value::Null | value::Value::Undefined)
-                                && let Err(e) = inner_type.write_value_to_raw_ptr(*ptr, val)
-                            {
-                                NativeErrorReporter::global()
-                                    .report(&e.context("closure: failed to write ref value"));
-                            }
+            );
+
+            match result {
+                Ok(value::Value::Array(arr)) if !ref_pointers.is_empty() => {
+                    for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
+                        if let Some(val) = arr.get(i + 1)
+                            && !(*ptr).is_null()
+                            && !matches!(val, value::Value::Null | value::Value::Undefined)
+                            && let Err(e) = inner_type.write_value_to_raw_ptr(*ptr, val)
+                        {
+                            NativeErrorReporter::global()
+                                .report(&e.context("closure: failed to write ref value"));
                         }
-                        let return_val = arr.into_iter().next().unwrap_or(value::Value::Undefined);
-                        value::Value::into_glib_value_with_default(return_val, return_type_ref)
                     }
-                    Ok(value) => value::Value::into_glib_value_with_default(value, return_type_ref),
-                    Err(ref e) => {
-                        NativeErrorReporter::global().report(&anyhow::anyhow!(
-                            "closure callback: JS callback error: {e:#}"
-                        ));
-                        value::Value::into_glib_value_with_default(
-                            value::Value::Undefined,
-                            return_type_ref,
-                        )
-                    }
-                },
-            )
+                    let return_val = arr.into_iter().next().unwrap_or(value::Value::Undefined);
+                    value::Value::into_glib_value_with_default(return_val, return_type_ref)
+                }
+                Ok(value) => value::Value::into_glib_value_with_default(value, return_type_ref),
+                Err(ref e) => {
+                    NativeErrorReporter::global().report(&anyhow::anyhow!(
+                        "closure callback: JS callback error: {e:#}"
+                    ));
+                    value::Value::into_glib_value_with_default(
+                        value::Value::Undefined,
+                        return_type_ref,
+                    )
+                }
+            }
         });
 
         let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();

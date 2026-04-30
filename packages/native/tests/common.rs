@@ -33,6 +33,7 @@ pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
 }
 
 #[allow(dead_code)]
+#[must_use]
 pub fn allocate_test_boxed(gtype: glib::Type) -> *mut std::ffi::c_void {
     unsafe {
         let rgba = gdk::RGBA::new(1.0, 0.5, 0.25, 1.0);

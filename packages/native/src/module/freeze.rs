@@ -3,8 +3,8 @@ use std::sync::mpsc;
 use neon::prelude::*;
 
 use super::handler::{JsThreadCommand, execute_js_command};
+use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
-use crate::gtk_dispatch;
 
 struct FreezeCommand;
 
@@ -14,30 +14,29 @@ impl JsThreadCommand for FreezeCommand {
     }
 
     fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
-        let dispatcher = gtk_dispatch::GtkDispatcher::global();
+        let mailbox = Mailbox::global();
 
-        if !dispatcher.is_started() {
+        if !mailbox.is_started() {
             return cx.throw_error("GTK application has not been started. Call start() first.");
         }
 
-        let is_outermost = dispatcher.freeze();
+        let is_outermost = mailbox.freeze();
 
         if is_outermost {
             let (tx, rx) = mpsc::channel::<()>();
 
-            dispatcher.enter_js_wait();
-            dispatcher.schedule(move || {
+            mailbox.schedule_glib(move || {
                 if tx.send(()).is_err() {
                     NativeErrorReporter::global()
                         .report_str("Freeze ready signal channel was closed");
                 }
-                let d = gtk_dispatch::GtkDispatcher::global();
-                d.wake.notify();
-                d.run_freeze_loop();
+                let m = Mailbox::global();
+                m.notify_js();
+                m.run_freeze_loop();
             });
 
-            dispatcher
-                .wait_for_gtk_result(cx, &rx)
+            mailbox
+                .wait_for_glib_result(cx, &rx)
                 .or_else(|err| cx.throw_error(err.to_string()))?;
         }
 
@@ -53,7 +52,7 @@ impl JsThreadCommand for UnfreezeCommand {
     }
 
     fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
-        gtk_dispatch::GtkDispatcher::global().unfreeze();
+        Mailbox::global().unfreeze();
         Ok(cx.undefined().upcast())
     }
 }

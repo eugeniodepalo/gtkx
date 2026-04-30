@@ -1,15 +1,15 @@
 //! GTK application initialization and thread spawning.
 //!
 //! The [`start`] function creates a GTK `Application`, spawns a dedicated
-//! GTK thread, and waits for the application to activate before returning.
+//! GLib thread, and waits for the application to activate before returning.
 //!
 //! ## Startup Sequence
 //!
 //! 1. Parse application ID and optional flags from JavaScript
-//! 2. Spawn a new OS thread for the GTK main loop
+//! 2. Spawn a new OS thread that runs the GLib main loop
 //! 3. Create the `GtkApplication` and connect the activate signal
 //! 4. Acquire an application hold guard to prevent auto-shutdown
-//! 5. Start the GTK main loop with `app.run_with_args`
+//! 5. Start the main loop with `app.run_with_args`
 //! 6. When activate fires, send the application's `NativeHandle` back to JS
 //! 7. Return the `NativeHandle` to JavaScript
 
@@ -20,9 +20,9 @@ use neon::prelude::*;
 
 use super::handler::{JsThreadCommand, execute_js_command};
 use crate::{
+    dispatch::Mailbox,
     error_reporter::NativeErrorReporter,
     glib_log_handler::GlibLogHandler,
-    gtk_dispatch::GtkDispatcher,
     managed::{NativeHandle, NativeValue},
     state::{GtkThread, GtkThreadState},
 };
@@ -87,7 +87,7 @@ impl JsThreadCommand for StartCommand {
             .recv()
             .or_else(|err| cx.throw_error(format!("Error starting GTK thread: {err}")))?;
 
-        GtkDispatcher::global().mark_started();
+        Mailbox::global().mark_started();
 
         Ok(cx.boxed(app_handle).upcast())
     }

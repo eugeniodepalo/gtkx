@@ -32,7 +32,7 @@ use std::ffi::c_void;
 use gtk4::glib;
 use neon::prelude::*;
 
-use crate::{gtk_dispatch, state::GtkThreadState};
+use crate::{dispatch::Mailbox, state::GtkThreadState};
 
 #[derive(Debug, Clone, Copy)]
 pub struct NativeHandle(pub(crate) usize);
@@ -79,7 +79,7 @@ impl NativeHandle {
 
 impl Finalize for NativeHandle {
     fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {
-        if gtk_dispatch::GtkDispatcher::global().is_stopped() {
+        if Mailbox::global().is_stopped() {
             return;
         }
         glib::idle_add_once(move || {

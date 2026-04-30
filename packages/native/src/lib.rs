@@ -24,9 +24,11 @@
 //! - **Neon/JS thread**: Handles JavaScript calls, argument conversion, callback dispatch
 //! - **GLib thread**: Runs the GLib main loop, executes all native operations
 //!
-//! Communication flows through:
-//! - `gtk_dispatch`: Schedules tasks from JS thread to GLib thread
-//! - `js_dispatch`: Queues callbacks from GLib thread back to JS
+//! Communication flows through `dispatch::Mailbox`, a single bidirectional bridge
+//! that exposes a GLib-bound inbox and a JS-bound inbox. Cross-boundary calls
+//! park on a wake signal while their wait loop continues to service incoming
+//! requests, so re-entrance `JS → GLib → JS → GLib` falls out of the call stack
+//! to arbitrary depth without explicit driver state or depth tracking.
 //!
 //! ## Core Types
 //!
@@ -40,11 +42,10 @@ mod macros;
 
 pub mod arg;
 pub mod callback;
+pub mod dispatch;
 pub mod error_reporter;
 pub mod ffi;
 pub mod glib_log_handler;
-pub mod gtk_dispatch;
-mod js_dispatch;
 pub mod managed;
 pub mod module;
 pub mod state;

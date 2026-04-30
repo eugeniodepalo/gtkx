@@ -4,7 +4,7 @@ use neon::handle::Root;
 use neon::prelude::*;
 use neon::types::JsObject;
 
-use crate::gtk_dispatch;
+use crate::dispatch;
 use crate::managed::NativeHandle;
 use crate::value::Value;
 
@@ -27,15 +27,15 @@ pub(crate) trait JsThreadCommand: Sized {
 pub(crate) fn dispatch_request<'a, R: ModuleRequest>(
     cx: &mut FunctionContext<'a>,
 ) -> JsResult<'a, JsValue> {
-    let dispatcher = gtk_dispatch::GtkDispatcher::global();
+    let mailbox = dispatch::Mailbox::global();
 
-    if !dispatcher.is_started() {
+    if !mailbox.is_started() {
         return cx.throw_error("GTK application has not been started. Call start() first.");
     }
 
     let request = R::from_js(cx)?;
-    let result = dispatcher
-        .dispatch_and_wait(cx, || request.execute())
+    let result = mailbox
+        .dispatch_to_glib_and_wait(cx, || request.execute())
         .or_else(|err| cx.throw_error(err.to_string()))?
         .or_else(|err| cx.throw_error(format!("Error during {}: {err}", R::error_context())))?;
     result.to_js_response(cx)

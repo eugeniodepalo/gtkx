@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkGridView, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
@@ -81,9 +82,11 @@ const ListViewMinesweeperDemo = () => {
 
     const playSound = useCallback((win: boolean) => {
         const dataDirs = (process.env.XDG_DATA_DIRS ?? "/usr/local/share:/usr/share").split(":");
-        const dataDir = dataDirs[0] ?? "/usr/share";
         const sound = win ? "complete.oga" : "suspend-error.oga";
-        const path = `${dataDir}/sounds/freedesktop/stereo/${sound}`;
+        const path = dataDirs
+            .map((dir) => `${dir}/sounds/freedesktop/stereo/${sound}`)
+            .find((candidate) => existsSync(candidate));
+        if (!path) return;
         const stream = Gtk.MediaFile.newForFilename(path);
         stream.setVolume(1.0);
         stream.play();

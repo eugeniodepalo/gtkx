@@ -9,8 +9,8 @@ use neon::event::Channel;
 use neon::handle::Root;
 use neon::types::JsFunction;
 
+use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
-use crate::js_dispatch::JsDispatcher;
 use crate::types::{FfiEncoder as _, RawPtrCodec as _, Type};
 use crate::value::Value;
 
@@ -137,12 +137,11 @@ impl TrampolineData {
             None
         };
 
-        let js_result = JsDispatcher::global().invoke_and_wait(
+        let js_result = Mailbox::global().invoke_node_and_wait(
             &self.channel,
             &self.js_func,
             values,
             capture_result,
-            |result| result,
         );
 
         if let Err(ref e) = js_result {
