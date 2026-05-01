@@ -68,6 +68,15 @@ const getOrCreateContainerNode = (container: Container): Node => {
     return node;
 };
 
+const withSignalsBlocked = <T>(node: Node, fn: () => T): T => {
+    node.signalStore.blockAll();
+    try {
+        return fn();
+    } finally {
+        node.signalStore.unblockAll();
+    }
+};
+
 export function createHostConfig(): HostConfig {
     return {
         supportsMutation: true,
@@ -93,46 +102,19 @@ export function createHostConfig(): HostConfig {
             return createNode(type, props, undefined, rootContainer);
         },
         createTextInstance: (text, rootContainer, hostContext) => {
-            if (hostContext.insideTextBuffer) {
-                const props = { text };
-                const node = createNode("TextSegment", props, undefined, rootContainer);
-                node.signalStore.blockAll();
-                try {
-                    node.commitUpdate(null, props);
-                } finally {
-                    node.signalStore.unblockAll();
-                }
-                return node;
-            }
-            const props = { label: text };
-            const node = createNode("GtkLabel", props, undefined, rootContainer);
-            node.signalStore.blockAll();
-            try {
-                node.commitUpdate(null, props);
-            } finally {
-                node.signalStore.unblockAll();
-            }
+            const props = hostContext.insideTextBuffer ? { text } : { label: text };
+            const type = hostContext.insideTextBuffer ? "TextSegment" : "GtkLabel";
+            const node = createNode(type, props, undefined, rootContainer);
+            withSignalsBlocked(node, () => node.commitUpdate(null, props));
             return node;
         },
         appendInitialChild: (parent, child) => {
             parent.appendInitialChild(child);
         },
-        finalizeInitialChildren: (instance, _type, props) => {
-            instance.signalStore.blockAll();
-            try {
-                return instance.finalizeInitialChildren(props);
-            } finally {
-                instance.signalStore.unblockAll();
-            }
-        },
-        commitUpdate: (instance, _type, oldProps, newProps) => {
-            instance.signalStore.blockAll();
-            try {
-                instance.commitUpdate(oldProps, newProps);
-            } finally {
-                instance.signalStore.unblockAll();
-            }
-        },
+        finalizeInitialChildren: (instance, _type, props) =>
+            withSignalsBlocked(instance, () => instance.finalizeInitialChildren(props)),
+        commitUpdate: (instance, _type, oldProps, newProps) =>
+            withSignalsBlocked(instance, () => instance.commitUpdate(oldProps, newProps)),
         commitMount: (instance) => {
             instance.commitMount();
         },
@@ -165,16 +147,8 @@ export function createHostConfig(): HostConfig {
             unfreeze();
         },
         commitTextUpdate: (textInstance, oldText, newText) => {
-            textInstance.signalStore.blockAll();
-            try {
-                if (textInstance.typeName === "TextSegment") {
-                    textInstance.commitUpdate({ text: oldText }, { text: newText });
-                } else {
-                    textInstance.commitUpdate({ label: oldText }, { label: newText });
-                }
-            } finally {
-                textInstance.signalStore.unblockAll();
-            }
+            const key = textInstance.typeName === "TextSegment" ? "text" : "label";
+            withSignalsBlocked(textInstance, () => textInstance.commitUpdate({ [key]: oldText }, { [key]: newText }));
         },
         clearContainer: () => {},
         preparePortalMount: () => {},

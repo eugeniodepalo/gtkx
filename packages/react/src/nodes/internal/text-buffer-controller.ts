@@ -139,46 +139,13 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
     appendChild(child: TextContentChild): void {
         const buffer = this.ensureBuffer();
+        this.beginIrreversibleIfMounting(buffer);
 
-        if (this.initialMount && !this.irreversibleStarted) {
-            buffer.beginIrreversibleAction();
-            this.irreversibleStarted = true;
-        }
-
-        const wasMoved = this.textChildren.indexOf(child) !== -1;
-        if (wasMoved) {
-            const existingIndex = this.textChildren.indexOf(child);
-            const oldOffset = child.getBufferOffset();
-            const oldLength = child.getLength();
-
-            this.textChildren.splice(existingIndex, 1);
-
-            if (oldLength > 0) {
-                this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
-            }
-
-            this.updateChildOffsets(existingIndex);
-        }
+        const wasMoved = this.removeIfPresent(child);
 
         const offset = this.getTotalLength();
-
         this.textChildren.push(child);
-        child.setBufferOffset(offset);
-
-        if (child instanceof TextSegmentNode) {
-            this.insertTextAtOffset(child.getText(), offset);
-        } else if (child instanceof TextTagNode) {
-            const text = child.getText();
-            this.insertTextAtOffset(text, offset);
-            if (!child.hasBuffer()) {
-                child.setBuffer(buffer);
-            }
-            this.setupEmbeddedObjects(child);
-        } else if (child instanceof TextAnchorNode) {
-            child.setTextViewAndBuffer(this.container, buffer);
-        } else if (child instanceof TextPaintableNode) {
-            child.setTextViewAndBuffer(this.container, buffer);
-        }
+        this.placeChildAtOffset(child, offset, buffer);
 
         if (wasMoved) {
             this.updateChildOffsets(0);
@@ -188,25 +155,9 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
     insertBefore(child: TextContentChild, before: TextContentChild): void {
         const buffer = this.ensureBuffer();
+        this.beginIrreversibleIfMounting(buffer);
 
-        if (this.initialMount && !this.irreversibleStarted) {
-            buffer.beginIrreversibleAction();
-            this.irreversibleStarted = true;
-        }
-
-        const existingIndex = this.textChildren.indexOf(child);
-        if (existingIndex !== -1) {
-            const oldOffset = child.getBufferOffset();
-            const oldLength = child.getLength();
-
-            this.textChildren.splice(existingIndex, 1);
-
-            if (oldLength > 0) {
-                this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
-            }
-
-            this.updateChildOffsets(existingIndex);
-        }
+        this.removeIfPresent(child);
 
         const beforeIndex = this.textChildren.indexOf(before);
         const insertIndex = beforeIndex !== -1 ? beforeIndex : this.textChildren.length;
@@ -218,25 +169,50 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         }
 
         this.textChildren.splice(insertIndex, 0, child);
+        this.placeChildAtOffset(child, offset, buffer);
+
+        this.updateChildOffsets(0);
+        this.reapplyTagsFromOffset(0);
+    }
+
+    private beginIrreversibleIfMounting(buffer: Gtk.TextBuffer): void {
+        if (this.initialMount && !this.irreversibleStarted) {
+            buffer.beginIrreversibleAction();
+            this.irreversibleStarted = true;
+        }
+    }
+
+    private removeIfPresent(child: TextContentChild): boolean {
+        const existingIndex = this.textChildren.indexOf(child);
+        if (existingIndex === -1) return false;
+
+        const oldOffset = child.getBufferOffset();
+        const oldLength = child.getLength();
+
+        this.textChildren.splice(existingIndex, 1);
+
+        if (oldLength > 0) {
+            this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
+        }
+
+        this.updateChildOffsets(existingIndex);
+        return true;
+    }
+
+    private placeChildAtOffset(child: TextContentChild, offset: number, buffer: Gtk.TextBuffer): void {
         child.setBufferOffset(offset);
 
         if (child instanceof TextSegmentNode) {
             this.insertTextAtOffset(child.getText(), offset);
         } else if (child instanceof TextTagNode) {
-            const text = child.getText();
-            this.insertTextAtOffset(text, offset);
+            this.insertTextAtOffset(child.getText(), offset);
             if (!child.hasBuffer()) {
                 child.setBuffer(buffer);
             }
             this.setupEmbeddedObjects(child);
-        } else if (child instanceof TextAnchorNode) {
-            child.setTextViewAndBuffer(this.container, buffer);
-        } else if (child instanceof TextPaintableNode) {
+        } else if (child instanceof TextAnchorNode || child instanceof TextPaintableNode) {
             child.setTextViewAndBuffer(this.container, buffer);
         }
-
-        this.updateChildOffsets(0);
-        this.reapplyTagsFromOffset(0);
     }
 
     removeChild(child: TextContentChild): void {

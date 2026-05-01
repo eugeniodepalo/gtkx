@@ -9,7 +9,6 @@ import type { InterfaceDeclarationBuilder } from "../../../builders/index.js";
 import { interfaceDecl } from "../../../builders/index.js";
 import type { PropertyAnalysis, SignalAnalysis } from "../../../core/generator-types.js";
 import { toPascalCase } from "../../../core/utils/naming.js";
-import { qualifyType } from "../../../core/utils/type-qualification.js";
 import type { JsxWidget } from "./generator.js";
 import { type PropInfo, PropsBuilderBase } from "./props-builder-base.js";
 
@@ -19,43 +18,23 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
     setSlotPropNames(names: ReadonlySet<string>): void {
         this.slotPropNames = new Set(names);
     }
+
     buildWidgetPropsInterface(
         namespace: string,
         properties: readonly PropertyAnalysis[],
         signals: readonly SignalAnalysis[],
         widgetDoc?: string,
     ): InterfaceDeclarationBuilder {
-        const allProps: PropInfo[] = [];
-
-        for (const prop of properties) {
-            if (!prop.isWritable || (!prop.setter && !prop.isConstructOnly)) continue;
-            this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
-            const qualifiedType = qualifyType(prop.type, namespace);
-            const typeWithNull = prop.isNullable ? `${qualifiedType} | null` : qualifiedType;
-            allProps.push({
-                name: prop.camelName,
-                type: typeWithNull,
+        const allProps: PropInfo[] = [
+            ...this.collectPropInfos(properties, namespace).map((p) => ({ ...p, optional: true })),
+            ...this.collectSignalInfos(signals, "Widget", namespace, (h) => `(${h}) | null`),
+            {
+                name: "children",
+                type: "ReactNode",
                 optional: true,
-                doc: prop.doc ? this.formatDocDescription(prop.doc, namespace) : undefined,
-            });
-        }
-
-        for (const signal of signals) {
-            this.trackNamespacesFromAnalysis(signal.referencedNamespaces);
-            allProps.push({
-                name: signal.handlerName,
-                type: `(${this.buildHandlerType(signal, "Widget", namespace)}) | null`,
-                optional: true,
-                doc: signal.doc ? this.formatDocDescription(signal.doc, namespace) : undefined,
-            });
-        }
-
-        allProps.push({
-            name: "children",
-            type: "ReactNode",
-            optional: true,
-            doc: "Children elements (child widgets or event controllers).",
-        });
+                doc: "Children elements (child widgets or event controllers).",
+            },
+        ];
 
         const iface = interfaceDecl("WidgetProps", {
             exported: true,
@@ -64,15 +43,7 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
                 : "Base props shared by all GTK widget elements.",
         });
 
-        for (const prop of allProps) {
-            iface.addProperty({
-                name: prop.name,
-                type: prop.type,
-                optional: prop.optional,
-                doc: prop.doc,
-            });
-        }
-
+        this.applyProps(iface, allProps);
         return iface;
     }
 
@@ -83,50 +54,20 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
     ): InterfaceDeclarationBuilder {
         const { namespace, jsxName, className } = widget;
         const widgetName = toPascalCase(className);
-        const parentPropsName = this.getParentPropsName(widget);
+        const parentPropsName = this.resolveParentPropsName(
+            {
+                namespace,
+                parentClassName: widget.meta.parentClassName === "Widget" ? null : widget.meta.parentClassName,
+                parentNamespace: widget.meta.parentNamespace,
+            },
+            "WidgetProps",
+        );
 
-        const allProps: PropInfo[] = [];
-
-        for (const prop of properties) {
-            if (!prop.isWritable || (!prop.setter && !prop.isConstructOnly)) continue;
-
-            if (this.slotPropNames.has(prop.camelName)) {
-                allProps.push({
-                    name: prop.camelName,
-                    type: "ReactNode | null",
-                    optional: true,
-                    doc: prop.doc ? this.formatDocDescription(prop.doc, namespace) : undefined,
-                });
-                continue;
-            }
-
-            this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
-            const qualifiedType = qualifyType(prop.type, namespace);
-            const isOptional = !prop.isRequired;
-            const typeWithNull = prop.isNullable ? `${qualifiedType} | null` : qualifiedType;
-            allProps.push({
-                name: prop.camelName,
-                type: typeWithNull,
-                optional: isOptional,
-                doc: prop.doc ? this.formatDocDescription(prop.doc, namespace) : undefined,
-            });
-        }
-
-        for (const signal of signals) {
-            this.trackNamespacesFromAnalysis(signal.referencedNamespaces);
-            allProps.push({
-                name: signal.handlerName,
-                type: `(${this.buildHandlerType(signal, className, namespace)}) | null`,
-                optional: true,
-                doc: signal.doc ? this.formatDocDescription(signal.doc, namespace) : undefined,
-            });
-        }
-
-        allProps.push({
-            name: "ref",
-            type: `Ref<${namespace}.${widgetName}>`,
-            optional: true,
-        });
+        const allProps: PropInfo[] = [
+            ...this.collectPropInfos(properties, namespace, this.slotPropNames),
+            ...this.collectSignalInfos(signals, className, namespace, (h) => `(${h}) | null`),
+            { name: "ref", type: `Ref<${namespace}.${widgetName}>`, optional: true },
+        ];
 
         const iface = interfaceDecl(`${jsxName}Props`, {
             exported: true,
@@ -134,39 +75,7 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
             doc: `Props for the \`${jsxName}\` widget.`,
         });
 
-        for (const prop of allProps) {
-            iface.addProperty({
-                name: prop.name,
-                type: prop.type,
-                optional: prop.optional,
-                doc: prop.doc,
-            });
-        }
-
+        this.applyProps(iface, allProps);
         return iface;
-    }
-
-    private knownJsxNames: ReadonlySet<string> = new Set<string>();
-
-    setKnownJsxNames(names: ReadonlySet<string>): void {
-        this.knownJsxNames = names;
-    }
-
-    private getParentPropsName(widget: JsxWidget): string {
-        const { meta } = widget;
-        const parentClassName = meta.parentClassName;
-        const parentNamespace = meta.parentNamespace ?? meta.namespace;
-
-        if (!parentClassName || parentClassName === "Widget") {
-            return "WidgetProps";
-        }
-
-        const parentJsxName = `${parentNamespace}${toPascalCase(parentClassName)}`;
-        if (this.knownJsxNames.size > 0 && !this.knownJsxNames.has(parentJsxName)) {
-            return "WidgetProps";
-        }
-
-        const baseName = toPascalCase(parentClassName);
-        return `${parentNamespace}${baseName}Props`;
     }
 }

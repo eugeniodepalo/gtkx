@@ -349,23 +349,35 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private setupSelectionModel(props: ListProps): void {
-        const baseModel = this.getBaseModel();
-        const selectionMode = props.selectionMode ?? (this.isDropDown() ? null : Gtk.SelectionMode.SINGLE);
-
         if (this.isDropDown()) {
             this.selectionModel = null;
             return;
         }
+        this.selectionModel = this.createSelectionModel(props.selectionMode ?? Gtk.SelectionMode.SINGLE);
+    }
+
+    private createSelectionModel(
+        selectionMode: Gtk.SelectionMode,
+    ): Gtk.SingleSelection | Gtk.MultiSelection | Gtk.NoSelection {
+        const baseModel = this.getBaseModel();
 
         if (selectionMode === Gtk.SelectionMode.MULTIPLE) {
-            this.selectionModel = new Gtk.MultiSelection(baseModel);
-        } else if (selectionMode === Gtk.SelectionMode.NONE) {
-            this.selectionModel = new Gtk.NoSelection(baseModel);
-        } else {
-            const sel = new Gtk.SingleSelection(baseModel);
-            sel.setAutoselect(false);
-            sel.setCanUnselect(true);
-            this.selectionModel = sel;
+            return new Gtk.MultiSelection(baseModel);
+        }
+        if (selectionMode === Gtk.SelectionMode.NONE) {
+            return new Gtk.NoSelection(baseModel);
+        }
+        const sel = new Gtk.SingleSelection(baseModel);
+        sel.setAutoselect(false);
+        sel.setCanUnselect(true);
+        return sel;
+    }
+
+    private assignBaseModelToSelection(model: Gio.ListModel): void {
+        const sel = this.selectionModel;
+        if (!sel) return;
+        if (sel instanceof Gtk.SingleSelection || sel instanceof Gtk.MultiSelection || sel instanceof Gtk.NoSelection) {
+            sel.setModel(model);
         }
     }
 
@@ -472,15 +484,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                 (_item: GObject.Object) => this.createChildModel(_item),
             );
 
-            if (this.selectionModel) {
-                if (this.selectionModel instanceof Gtk.SingleSelection) {
-                    this.selectionModel.setModel(this.treeModel);
-                } else if (this.selectionModel instanceof Gtk.MultiSelection) {
-                    this.selectionModel.setModel(this.treeModel);
-                } else if (this.selectionModel instanceof Gtk.NoSelection) {
-                    this.selectionModel.setModel(this.treeModel);
-                }
-            }
+            this.assignBaseModelToSelection(this.treeModel);
 
             this.scheduleBoundItemsUpdate();
             return;
@@ -582,15 +586,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             this.sectionStore = new Gio.ListStore(Gtk.StringList.getGType());
             this.flattenModel = new Gtk.FlattenListModel(this.sectionStore as unknown as Gio.ListModel);
 
-            if (this.selectionModel) {
-                if (this.selectionModel instanceof Gtk.SingleSelection) {
-                    this.selectionModel.setModel(this.flattenModel);
-                } else if (this.selectionModel instanceof Gtk.MultiSelection) {
-                    this.selectionModel.setModel(this.flattenModel);
-                } else if (this.selectionModel instanceof Gtk.NoSelection) {
-                    this.selectionModel.setModel(this.flattenModel);
-                }
-            }
+            this.assignBaseModelToSelection(this.flattenModel);
 
             if (this.isDropDown()) {
                 this.assignModelToWidget();
@@ -713,20 +709,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private rebuildSelectionModel(props: ListProps): void {
-        const baseModel = this.getBaseModel();
-        const selectionMode = props.selectionMode ?? Gtk.SelectionMode.SINGLE;
-
-        if (selectionMode === Gtk.SelectionMode.MULTIPLE) {
-            this.selectionModel = new Gtk.MultiSelection(baseModel);
-        } else if (selectionMode === Gtk.SelectionMode.NONE) {
-            this.selectionModel = new Gtk.NoSelection(baseModel);
-        } else {
-            const sel = new Gtk.SingleSelection(baseModel);
-            sel.setAutoselect(false);
-            sel.setCanUnselect(true);
-            this.selectionModel = sel;
-        }
-
+        this.selectionModel = this.createSelectionModel(props.selectionMode ?? Gtk.SelectionMode.SINGLE);
         this.assignModelToWidget();
         this.connectSelectionSignal();
     }
@@ -772,14 +755,23 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const flatItems = this.collectFlatItems();
         for (let i = 0; i < flatItems.length; i++) {
             if (flatItems[i]?.id === id) {
-                if (this.container instanceof Gtk.DropDown) {
-                    this.container.setSelected(i);
-                } else if (this.container instanceof Adw.ComboRow) {
-                    this.container.setSelected(i);
-                }
+                this.setDropDownSelected(i);
                 return;
             }
         }
+    }
+
+    private setDropDownSelected(position: number): void {
+        if (this.container instanceof Gtk.DropDown || this.container instanceof Adw.ComboRow) {
+            this.container.setSelected(position);
+        }
+    }
+
+    private getDropDownSelected(): number {
+        if (this.container instanceof Gtk.DropDown || this.container instanceof Adw.ComboRow) {
+            return this.container.getSelected();
+        }
+        return -1;
     }
 
     private connectSelectionSignal(): void {
@@ -788,12 +780,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (this.isDropDown()) {
             const handler = onSelectionChanged
                 ? () => {
-                      const position =
-                          this.container instanceof Gtk.DropDown
-                              ? this.container.getSelected()
-                              : this.container instanceof Adw.ComboRow
-                                ? this.container.getSelected()
-                                : -1;
+                      const position = this.getDropDownSelected();
                       const flatItems = this.collectFlatItems();
                       const item = flatItems[position];
                       if (item) {
