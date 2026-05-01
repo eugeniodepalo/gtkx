@@ -15,15 +15,9 @@ let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
 let lastRenderError: Error | null = null;
 
-type ReconcilerInstance = ReturnType<typeof reconciler.getInstance>;
-
-const update = async (
-    instance: ReconcilerInstance,
-    element: ReactNode,
-    fiberRoot: Reconciler.FiberRoot,
-): Promise<void> => {
+const update = async (element: ReactNode, fiberRoot: Reconciler.FiberRoot): Promise<void> => {
     lastRenderError = null;
-    instance.updateContainer(element, fiberRoot, null, () => {});
+    reconciler.updateContainer(element, fiberRoot, null, () => {});
     await tick();
 
     if (lastRenderError) {
@@ -41,8 +35,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
     application = start("org.gtkx.testing", Gio.ApplicationFlags.NON_UNIQUE);
 
     if (!container) {
-        const instance = reconciler.getInstance();
-        container = instance.createContainer(
+        container = reconciler.createContainer(
             application,
             1,
             null,
@@ -124,14 +117,13 @@ const resolveContainer = (
  */
 export const render = async (element: ReactNode, options?: RenderOptions): Promise<RenderResult> => {
     const { app: application, container: fiberRoot } = ensureInitialized();
-    const instance = reconciler.getInstance();
     const baseElement: Container = options?.baseElement ?? application;
     const wrapper = options?.wrapper ?? true;
 
     const wrapperRef = createRef<Gtk.Widget>();
     const wrappedElement = wrapElement(element, wrapperRef, wrapper);
     const withContext = <ApplicationContext.Provider value={application}>{wrappedElement}</ApplicationContext.Provider>;
-    await update(instance, withContext, fiberRoot);
+    await update(withContext, fiberRoot);
 
     setScreenRoot(application);
 
@@ -139,12 +131,12 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
         container: resolveContainer(wrapper, wrapperRef, baseElement),
         baseElement,
         ...bindQueries(baseElement),
-        unmount: () => update(instance, null, fiberRoot),
+        unmount: () => update(null, fiberRoot),
         rerender: async (newElement: ReactNode) => {
             const newWrapperRef = createRef<Gtk.Widget>();
             const wrapped = wrapElement(newElement, newWrapperRef, wrapper);
             const withCtx = <ApplicationContext.Provider value={application}>{wrapped}</ApplicationContext.Provider>;
-            await update(instance, withCtx, fiberRoot);
+            await update(withCtx, fiberRoot);
         },
         debug: () => {
             console.log(prettyWidget(application));
@@ -174,8 +166,7 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
  */
 export const cleanup = async (): Promise<void> => {
     if (container && application) {
-        const instance = reconciler.getInstance();
-        await update(instance, null, container);
+        await update(null, container);
     }
     container = null;
     setScreenRoot(null);

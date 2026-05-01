@@ -4,7 +4,7 @@
  * Builds instance method code for classes.
  */
 
-import type { GirConstructor, GirMethod, GirParameter } from "@gtkx/gir";
+import type { GirMethod, GirParameter } from "@gtkx/gir";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -21,7 +21,6 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../core/writers/index.js";
-import type { ConstructorSelection } from "../../../core/writers/method-body-writer.js";
 
 /**
  * Builds method code for a class.
@@ -99,18 +98,9 @@ export class MethodBuilder {
 
     /**
      * Checks if a parameter list has unsupported callbacks.
-     * Delegates to MethodBodyWriter.
      */
     hasUnsupportedCallbacks(parameters: readonly GirParameter[]): boolean {
         return this.methodBody.hasUnsupportedCallbacks(parameters);
-    }
-
-    /**
-     * Selects supported constructors and identifies the main constructor.
-     * Delegates to MethodBodyWriter.
-     */
-    selectConstructors(constructors: readonly GirConstructor[]): ConstructorSelection {
-        return this.methodBody.selectConstructors(constructors);
     }
 
     /**

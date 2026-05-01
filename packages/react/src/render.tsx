@@ -2,7 +2,7 @@ import { start, stop } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
-import { formatBoundaryError, formatRenderError } from "./errors.js";
+import { toGtkxError } from "./errors.js";
 import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { reconciler } from "./reconciler.js";
 
@@ -123,9 +123,8 @@ export const render = (element: ReactNode, appId?: string, flags?: Gio.Applicati
     }
     const application = start(resolvedAppId, flags);
     app = application;
-    const instance = reconciler.getInstance();
 
-    container = instance.createContainer(
+    container = reconciler.createContainer(
         application,
         1,
         null,
@@ -134,18 +133,17 @@ export const render = (element: ReactNode, appId?: string, flags?: Gio.Applicati
         "",
         (error: unknown) => {
             getSignalStore(application).forceUnblockAll();
-            throw formatRenderError(error);
+            throw toGtkxError(error);
         },
         (error: unknown) => {
             getSignalStore(application).forceUnblockAll();
-            const formattedError = formatBoundaryError(error);
-            console.error(formattedError.toString());
+            console.error(toGtkxError(error).toString());
         },
         () => {},
         () => {},
     );
 
-    instance.updateContainer(
+    reconciler.updateContainer(
         <ApplicationContext.Provider value={application}>{element}</ApplicationContext.Provider>,
         container,
         null,
@@ -176,14 +174,12 @@ export const render = (element: ReactNode, appId?: string, flags?: Gio.Applicati
  */
 export const update = (element: ReactNode): Promise<void> => {
     return new Promise((resolve) => {
-        reconciler
-            .getInstance()
-            .updateContainer(
-                <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
-                container,
-                null,
-                resolve,
-            );
+        reconciler.updateContainer(
+            <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
+            container,
+            null,
+            resolve,
+        );
     });
 };
 
@@ -211,7 +207,7 @@ export const quit = (): void => {
         return;
     }
 
-    reconciler.getInstance().updateContainer(null, container, null, () => {
+    reconciler.updateContainer(null, container, null, () => {
         setTimeout(() => {
             stop();
         }, 0);

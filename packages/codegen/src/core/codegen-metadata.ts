@@ -1,11 +1,8 @@
 /**
  * Codegen Metadata
  *
- * Map-based metadata storage for attaching codegen-only data to file paths.
- * This data is used during generation but NOT written to generated files.
- *
- * The FFI generator populates metadata during generation, and React generators
- * consume it without needing to access @gtkx/gir or re-parse generated code.
+ * Stores codegen-only metadata produced by the FFI generator and consumed by
+ * React generators. Data is not written to generated files.
  */
 
 import type { PropertyAnalysis, SignalAnalysis } from "./generator-types.js";
@@ -61,61 +58,25 @@ export type CodegenWidgetMeta = CodegenClassMeta & {
 };
 
 /**
- * Manages codegen-only metadata keyed by file path strings.
- *
- * Metadata is populated by FfiGenerator and consumed by React generators.
+ * Holds codegen metadata accumulated during FFI generation and consumed by React generators.
  */
 export class CodegenMetadata {
-    private readonly widgetMeta = new Map<string, CodegenWidgetMeta>();
-    private readonly controllerMeta = new Map<string, CodegenControllerMeta>();
+    private readonly widgetMeta: CodegenWidgetMeta[] = [];
+    private readonly controllerMeta: CodegenControllerMeta[] = [];
 
-    /**
-     * Attaches widget metadata to a file path.
-     */
-    setWidgetMeta(path: string, meta: CodegenWidgetMeta): void {
-        this.widgetMeta.set(path, meta);
+    addWidgetMeta(meta: CodegenWidgetMeta): void {
+        this.widgetMeta.push(meta);
     }
 
-    /**
-     * Gets widget metadata for a file path.
-     */
-    getWidgetMeta(path: string): CodegenWidgetMeta | null {
-        return this.widgetMeta.get(path) ?? null;
+    addControllerMeta(meta: CodegenControllerMeta): void {
+        this.controllerMeta.push(meta);
     }
 
-    /**
-     * Gets all widget metadata.
-     */
-    getAllWidgetMeta(): CodegenWidgetMeta[] {
-        return Array.from(this.widgetMeta.values());
+    getAllWidgetMeta(): readonly CodegenWidgetMeta[] {
+        return this.widgetMeta;
     }
 
-    /**
-     * Attaches controller metadata to a file path.
-     */
-    setControllerMeta(path: string, meta: CodegenControllerMeta): void {
-        this.controllerMeta.set(path, meta);
-    }
-
-    /**
-     * Gets controller metadata for a file path.
-     */
-    getControllerMeta(path: string): CodegenControllerMeta | null {
-        return this.controllerMeta.get(path) ?? null;
-    }
-
-    /**
-     * Gets all controller metadata.
-     */
-    getAllControllerMeta(): CodegenControllerMeta[] {
-        return Array.from(this.controllerMeta.values());
-    }
-
-    /**
-     * Clears all metadata.
-     */
-    clear(): void {
-        this.widgetMeta.clear();
-        this.controllerMeta.clear();
+    getAllControllerMeta(): readonly CodegenControllerMeta[] {
+        return this.controllerMeta;
     }
 }

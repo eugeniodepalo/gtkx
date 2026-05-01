@@ -33,17 +33,7 @@ export class GtkxError extends Error {
     }
 }
 
-export function formatRenderError(error: unknown, widgetType?: string): GtkxError {
-    if (error instanceof GtkxError) {
-        return error;
-    }
-
-    const message = error instanceof Error ? error.message : String(error);
-
-    return new GtkxError(message, widgetType);
-}
-
-export function formatBoundaryError(error: unknown): GtkxError {
+export function toGtkxError(error: unknown): GtkxError {
     if (error instanceof GtkxError) {
         return error;
     }

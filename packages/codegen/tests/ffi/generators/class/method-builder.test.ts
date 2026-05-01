@@ -4,7 +4,6 @@ import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../../../src/core/type-system/ffi-types.js";
 import { MethodBuilder } from "../../../../src/ffi/generators/class/method-builder.js";
 import {
-    createNormalizedConstructor,
     createNormalizedMethod,
     createNormalizedNamespace,
     createNormalizedParameter,
@@ -311,77 +310,6 @@ describe("MethodBuilder", () => {
             const result = builder.hasUnsupportedCallbacks(parameters);
 
             expect(result).toBe(false);
-        });
-    });
-
-    describe("selectConstructors", () => {
-        it("returns empty when no constructors", () => {
-            const { builder } = createTestSetup();
-
-            const result = builder.selectConstructors([]);
-
-            expect(result.supported).toHaveLength(0);
-            expect(result.main).toBeUndefined();
-        });
-
-        it("selects constructor without unsupported callbacks", () => {
-            const { builder } = createTestSetup();
-            const constructors = [
-                createNormalizedConstructor({
-                    name: "new",
-                    cIdentifier: "gtk_button_new",
-                    returnType: createNormalizedType({ name: "Gtk.Button" }),
-                    parameters: [],
-                }),
-            ];
-
-            const result = builder.selectConstructors(constructors);
-
-            expect(result.supported).toHaveLength(1);
-        });
-
-        it("identifies main constructor", () => {
-            const { builder } = createTestSetup();
-            const constructors = [
-                createNormalizedConstructor({
-                    name: "new",
-                    cIdentifier: "gtk_button_new",
-                    returnType: createNormalizedType({ name: "Gtk.Button" }),
-                    parameters: [],
-                }),
-            ];
-
-            const result = builder.selectConstructors(constructors);
-
-            expect(result.main).toBeDefined();
-            expect(result.main?.name).toBe("new");
-        });
-
-        it("includes constructors with GLib.Closure callbacks", () => {
-            const { builder } = createTestSetup();
-            const constructors = [
-                createNormalizedConstructor({
-                    name: "new_with_callback",
-                    cIdentifier: "gtk_button_new_with_callback",
-                    returnType: createNormalizedType({ name: "Gtk.Button" }),
-                    parameters: [
-                        createNormalizedParameter({
-                            name: "callback",
-                            type: createNormalizedType({ name: "GLib.Closure" }),
-                        }),
-                    ],
-                }),
-                createNormalizedConstructor({
-                    name: "new",
-                    cIdentifier: "gtk_button_new",
-                    returnType: createNormalizedType({ name: "Gtk.Button" }),
-                    parameters: [],
-                }),
-            ];
-
-            const result = builder.selectConstructors(constructors);
-
-            expect(result.supported).toHaveLength(2);
         });
     });
 

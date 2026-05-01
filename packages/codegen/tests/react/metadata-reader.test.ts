@@ -113,47 +113,6 @@ describe("MetadataReader", () => {
         });
     });
 
-    describe("getWidget", () => {
-        it("returns widget by JSX name", () => {
-            const meta = [createWidgetMeta({ className: "Button", jsxName: "GtkButton" })];
-            const reader = new MetadataReader(meta);
-            const widget = reader.getWidget("GtkButton");
-            expect(widget).toBeDefined();
-            expect(widget?.className).toBe("Button");
-        });
-
-        it("returns null for non-existent widget", () => {
-            const reader = new MetadataReader([]);
-            expect(reader.getWidget("NonExistent")).toBeNull();
-        });
-    });
-
-    describe("getWidgetsSorted", () => {
-        it("returns widgets sorted with Widget first", () => {
-            const meta = [
-                createWidgetMeta({ className: "Button", jsxName: "GtkButton" }),
-                createWidgetMeta({ className: "Widget", jsxName: "GtkWidget" }),
-                createWidgetMeta({ className: "Label", jsxName: "GtkLabel" }),
-            ];
-            const reader = new MetadataReader(meta);
-            const sorted = reader.getWidgetsSorted();
-            expect(sorted[0].className).toBe("Widget");
-        });
-    });
-
-    describe("getPropNames", () => {
-        it("returns prop names for existing widget", () => {
-            const meta = [createWidgetMeta({ jsxName: "GtkButton", propNames: ["label", "iconName", "sensitive"] })];
-            const reader = new MetadataReader(meta);
-            expect(reader.getPropNames("GtkButton")).toEqual(["label", "iconName", "sensitive"]);
-        });
-
-        it("returns empty array for non-existent widget", () => {
-            const reader = new MetadataReader([]);
-            expect(reader.getPropNames("NonExistent")).toEqual([]);
-        });
-    });
-
     describe("getAllCodegenMeta", () => {
         it("returns original meta array", () => {
             const meta = [createWidgetMeta(), createWidgetMeta({ className: "Label" })];

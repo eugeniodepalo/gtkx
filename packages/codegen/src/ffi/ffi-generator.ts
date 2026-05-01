@@ -61,13 +61,6 @@ export class FfiGenerator {
         this.namespacePrefix = `${options.namespace.toLowerCase()}/`;
     }
 
-    /**
-     * Gets the metadata collected during generation.
-     */
-    getMetadata(): CodegenMetadata {
-        return this.metadata;
-    }
-
     private getNamespaceLibrary(namespaceName: string): string {
         const ns = this.options.repository.getNamespace(namespaceName);
         if (!ns?.sharedLibrary) {
@@ -152,10 +145,10 @@ export class FfiGenerator {
                 files.push({ path: filePath, content: stringify(file) });
 
                 if (result.widgetMeta) {
-                    this.metadata.setWidgetMeta(filePath, result.widgetMeta);
+                    this.metadata.addWidgetMeta(result.widgetMeta);
                 }
                 if (result.controllerMeta) {
-                    this.metadata.setControllerMeta(filePath, result.controllerMeta);
+                    this.metadata.addControllerMeta(result.controllerMeta);
                 }
             } else {
                 this.ffiMapper.registerSkippedClass(cls.name);

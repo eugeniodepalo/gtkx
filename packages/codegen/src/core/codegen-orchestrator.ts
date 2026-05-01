@@ -2,7 +2,7 @@ import { readdir } from "node:fs/promises";
 import { GirRepository } from "@gtkx/gir";
 import { FfiGenerator } from "../ffi/ffi-generator.js";
 import { ReactGenerator } from "../react/react-generator.js";
-import { CodegenMetadata, type CodegenWidgetMeta } from "./codegen-metadata.js";
+import { CodegenMetadata } from "./codegen-metadata.js";
 import type { GeneratedFile } from "./generated-file-set.js";
 
 /**
@@ -72,14 +72,6 @@ export class CodegenOrchestrator {
         return { ffiFiles, reactFiles, stats };
     }
 
-    getRepository(): GirRepository {
-        return this.repository;
-    }
-
-    getAllWidgetMeta(): CodegenWidgetMeta[] {
-        return this.metadata.getAllWidgetMeta();
-    }
-
     private async loadRepository(): Promise<void> {
         const { libraries, girPath, girsDir } = this.options;
         if (libraries && girPath) {
@@ -107,10 +99,10 @@ export class CodegenOrchestrator {
             this.ffiGeneratedFiles.push(...result.files);
 
             for (const meta of result.metadata.getAllWidgetMeta()) {
-                this.metadata.setWidgetMeta(meta.jsxName, meta);
+                this.metadata.addWidgetMeta(meta);
             }
             for (const meta of result.metadata.getAllControllerMeta()) {
-                this.metadata.setControllerMeta(meta.jsxName, meta);
+                this.metadata.addControllerMeta(meta);
             }
         }
     }

@@ -110,14 +110,14 @@ export class ClassGenerator {
             return { success: false };
         }
 
-        const asyncAnalysis = this.analyzeAsyncMethods();
+        const asyncAnalysis = analyzeAsyncMethods(this.cls.methods);
 
-        const parentMethodNames = this.collectParentMethodNames();
+        const parentMethodNames = collectParentMethodNames(this.cls, this.repository);
         const { interfaceMethodsByNamespace } = this.collectInterfaceMethods(parentMethodNames);
 
         const filteredClassMethods = this.filterClassMethods(parentMethodNames);
 
-        const parentInfo = this.parseParentReferenceInfo();
+        const parentInfo = parseParentReference(this.cls.parent, this.options.namespace);
         const isFundamental = this.isFundamentalType();
         const selfTypeDescriptor = this.getSelfTypeDescriptor();
 
@@ -266,14 +266,6 @@ export class ClassGenerator {
         return false;
     }
 
-    private analyzeAsyncMethods() {
-        return analyzeAsyncMethods(this.cls.methods);
-    }
-
-    private collectParentMethodNames(): Set<string> {
-        return collectParentMethodNames(this.cls, this.repository);
-    }
-
     private collectInterfaceMethods(parentMethodNames: Set<string>): {
         interfaceMethods: GirMethod[];
         interfaceMethodsByNamespace: Map<string, GirMethod[]>;
@@ -327,10 +319,6 @@ export class ClassGenerator {
             }
             return true;
         });
-    }
-
-    private parseParentReferenceInfo(): ParentInfo {
-        return parseParentReference(this.cls.parent, this.options.namespace);
     }
 
     private getSelfTypeDescriptor(): SelfTypeDescriptor {

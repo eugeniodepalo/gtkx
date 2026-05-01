@@ -51,48 +51,22 @@ export type WidgetInfo = Pick<
 
 /**
  * Reads and provides access to widget metadata.
- *
- * Indexes widgets by JSX name and namespace.class for efficient lookup
- * during React code generation.
  */
 export class MetadataReader {
-    private readonly widgetsByJsxName = new Map<string, WidgetInfo>();
-    private readonly widgetsByNamespaceClass = new Map<string, WidgetInfo>();
+    private readonly widgets: readonly WidgetInfo[];
 
     constructor(private readonly allMeta: readonly CodegenWidgetMeta[]) {
-        for (const meta of allMeta) {
-            const widgetInfo = this.toWidgetInfo(meta);
-            this.widgetsByJsxName.set(meta.jsxName, widgetInfo);
-            this.widgetsByNamespaceClass.set(`${meta.namespace}.${meta.className}`, widgetInfo);
-        }
+        this.widgets = allMeta.map((meta) => {
+            const { properties: _, signals: __, parentNamespace: ___, doc: ____, ...widgetInfo } = meta;
+            return widgetInfo;
+        });
     }
 
-    getAllWidgets(): WidgetInfo[] {
-        return Array.from(this.widgetsByJsxName.values());
-    }
-
-    getWidget(jsxName: string): WidgetInfo | null {
-        return this.widgetsByJsxName.get(jsxName) ?? null;
-    }
-
-    getWidgetByNamespaceClass(namespace: string, className: string): WidgetInfo | null {
-        return this.widgetsByNamespaceClass.get(`${namespace}.${className}`) ?? null;
-    }
-
-    getWidgetsSorted(): WidgetInfo[] {
-        return sortWidgetsByClassName(this.getAllWidgets());
-    }
-
-    getPropNames(jsxName: string): readonly string[] {
-        return this.getWidget(jsxName)?.propNames ?? [];
+    getAllWidgets(): readonly WidgetInfo[] {
+        return this.widgets;
     }
 
     getAllCodegenMeta(): readonly CodegenWidgetMeta[] {
         return this.allMeta;
-    }
-
-    private toWidgetInfo(meta: CodegenWidgetMeta): WidgetInfo {
-        const { properties: _, signals: __, parentNamespace: ___, doc: ____, ...widgetInfo } = meta;
-        return widgetInfo;
     }
 }
