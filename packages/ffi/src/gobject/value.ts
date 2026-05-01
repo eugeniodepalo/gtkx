@@ -4,15 +4,47 @@ import type { Object as GObject } from "../generated/gobject/object.js";
 import type { ParamSpec } from "../generated/gobject/param-spec.js";
 import { Value } from "../generated/gobject/value.js";
 import type { NativeClass, NativeObject } from "../native.js";
-import { call, read } from "../native.js";
+import { call, fn, read } from "../native.js";
 import { findNativeClass, getNativeObject } from "../registry.js";
 import { Type } from "./types.js";
 
+const GVALUE_ARG = {
+    type: "boxed",
+    ownership: "borrowed",
+    innerType: "GValue",
+    library: "libgobject-2.0.so.0",
+    getTypeFn: "g_value_get_type",
+} as const;
+
+const g_strv_get_type = fn("libgobject-2.0.so.0", "g_strv_get_type", [], { type: "uint64" });
+
+const g_value_set_boxed_strv = fn(
+    "libgobject-2.0.so.0",
+    "g_value_set_boxed",
+    [
+        { type: GVALUE_ARG },
+        {
+            type: {
+                type: "array",
+                itemType: { type: "string", ownership: "borrowed" },
+                kind: "array",
+                ownership: "borrowed",
+            },
+        },
+    ],
+    { type: "void" },
+);
+
+const g_value_get_boxed_strv = fn("libgobject-2.0.so.0", "g_value_get_boxed", [{ type: GVALUE_ARG }], {
+    type: "array",
+    itemType: { type: "string", ownership: "borrowed" },
+    kind: "array",
+    ownership: "borrowed",
+});
+
 let cachedStrvGType: number | undefined;
 function getStrvGType(): number {
-    cachedStrvGType ??= call("libgobject-2.0.so.0", "g_strv_get_type", [], {
-        type: "uint64",
-    }) as number;
+    cachedStrvGType ??= g_strv_get_type() as number;
     return cachedStrvGType;
 }
 
@@ -185,6 +217,13 @@ declare module "../generated/gobject/value.js" {
     }
 }
 
+function initValue(gtype: number, populate: (v: Value) => void): Value {
+    const v = new Value();
+    v.init(gtype);
+    populate(v);
+    return v;
+}
+
 Value.prototype.getType = function (): number {
     return read(this.handle, { type: "uint64" }, 0) as number;
 };
@@ -229,29 +268,7 @@ Value.prototype.getBoxed = function <T extends NativeObject>(targetType: NativeC
 };
 
 Value.prototype.getStrv = function (): string[] {
-    const result = call(
-        "libgobject-2.0.so.0",
-        "g_value_get_boxed",
-        [
-            {
-                type: {
-                    type: "boxed",
-                    ownership: "borrowed",
-                    innerType: "GValue",
-                    library: "libgobject-2.0.so.0",
-                    getTypeFn: "g_value_get_type",
-                },
-                value: this.handle,
-            },
-        ],
-        {
-            type: "array",
-            itemType: { type: "string", ownership: "borrowed" },
-            kind: "array",
-            ownership: "borrowed",
-        },
-    );
-    return (result as string[] | null) ?? [];
+    return (g_value_get_boxed_strv(this.handle) as string[] | null) ?? [];
 };
 
 Value.prototype.toJS = function (): unknown {
@@ -327,75 +344,16 @@ type ValueStatic = {
 
 const ValueWithStatics = Value as typeof Value & ValueStatic;
 
-ValueWithStatics.newFromBoolean = (value: boolean): Value => {
-    const v = new Value();
-    v.init(Type.BOOLEAN);
-    v.setBoolean(value);
-    return v;
-};
-
-ValueWithStatics.newFromInt = (value: number): Value => {
-    const v = new Value();
-    v.init(Type.INT);
-    v.setInt(value);
-    return v;
-};
-
-ValueWithStatics.newFromUint = (value: number): Value => {
-    const v = new Value();
-    v.init(Type.UINT);
-    v.setUint(value);
-    return v;
-};
-
-ValueWithStatics.newFromLong = (value: number): Value => {
-    const v = new Value();
-    v.init(Type.LONG);
-    v.setLong(value);
-    return v;
-};
-
-ValueWithStatics.newFromUlong = (value: number): Value => {
-    const v = new Value();
-    v.init(Type.ULONG);
-    v.setUlong(value);
-    return v;
-};
-
-ValueWithStatics.newFromInt64 = (value: number): Value => {
-    const v = new Value();
-    v.init(Type.INT64);
-    v.setInt64(value);
-    return v;
-};
-
-ValueWithStatics.newFromUint64 = (value: number): Value => {
-    const v = new Value();
-    v.init(Type.UINT64);
-    v.setUint64(value);
-    return v;
-};
-
-ValueWithStatics.newFromFloat = (value: number): Value => {
-    const v = new Value();
-    v.init(Type.FLOAT);
-    v.setFloat(value);
-    return v;
-};
-
-ValueWithStatics.newFromDouble = (value: number): Value => {
-    const v = new Value();
-    v.init(Type.DOUBLE);
-    v.setDouble(value);
-    return v;
-};
-
-ValueWithStatics.newFromString = (value: string | null): Value => {
-    const v = new Value();
-    v.init(Type.STRING);
-    v.setString(value);
-    return v;
-};
+ValueWithStatics.newFromBoolean = (value) => initValue(Type.BOOLEAN, (v) => v.setBoolean(value));
+ValueWithStatics.newFromInt = (value) => initValue(Type.INT, (v) => v.setInt(value));
+ValueWithStatics.newFromUint = (value) => initValue(Type.UINT, (v) => v.setUint(value));
+ValueWithStatics.newFromLong = (value) => initValue(Type.LONG, (v) => v.setLong(value));
+ValueWithStatics.newFromUlong = (value) => initValue(Type.ULONG, (v) => v.setUlong(value));
+ValueWithStatics.newFromInt64 = (value) => initValue(Type.INT64, (v) => v.setInt64(value));
+ValueWithStatics.newFromUint64 = (value) => initValue(Type.UINT64, (v) => v.setUint64(value));
+ValueWithStatics.newFromFloat = (value) => initValue(Type.FLOAT, (v) => v.setFloat(value));
+ValueWithStatics.newFromDouble = (value) => initValue(Type.DOUBLE, (v) => v.setDouble(value));
+ValueWithStatics.newFromString = (value) => initValue(Type.STRING, (v) => v.setString(value));
 
 ValueWithStatics.newFromObject = (value: GObject | null): Value => {
     const v = new Value();
@@ -410,117 +368,18 @@ ValueWithStatics.newFromObject = (value: GObject | null): Value => {
 };
 
 ValueWithStatics.newFromBoxed = (value: NativeObject): Value => {
-    const v = new Value();
     const ctor = value.constructor as typeof NativeObject;
-    const gtype = typeFromName(ctor.glibTypeName);
-    v.init(gtype);
-    call(
-        "libgobject-2.0.so.0",
-        "g_value_set_boxed",
-        [
-            {
-                type: {
-                    type: "boxed",
-                    ownership: "borrowed",
-                    innerType: "GValue",
-                    library: "libgobject-2.0.so.0",
-                    getTypeFn: "g_value_get_type",
-                },
-                value: v.handle,
-            },
-            {
-                type: {
-                    type: "boxed",
-                    ownership: "borrowed",
-                    innerType: ctor.glibTypeName,
-                    library: "libgobject-2.0.so.0",
-                },
-                value: value.handle,
-            },
-        ],
-        { type: "void" },
-    );
-    return v;
+    return initValue(typeFromName(ctor.glibTypeName), (v) => v.setBoxed(value.handle as unknown as number));
 };
 
-ValueWithStatics.newFromStrv = (value: string[]): Value => {
-    const v = new Value();
-    v.init(getStrvGType());
-    call(
-        "libgobject-2.0.so.0",
-        "g_value_set_boxed",
-        [
-            {
-                type: {
-                    type: "boxed",
-                    ownership: "borrowed",
-                    innerType: "GValue",
-                    library: "libgobject-2.0.so.0",
-                    getTypeFn: "g_value_get_type",
-                },
-                value: v.handle,
-            },
-            {
-                type: {
-                    type: "array",
-                    itemType: { type: "string", ownership: "borrowed" },
-                    kind: "array" as const,
-                    ownership: "borrowed" as const,
-                },
-                value,
-            },
-        ],
-        { type: "void" },
-    );
-    return v;
-};
+ValueWithStatics.newFromStrv = (value: string[]): Value =>
+    initValue(getStrvGType(), (v) => g_value_set_boxed_strv(v.handle, value));
 
-ValueWithStatics.newFromVariant = (value: NativeObject): Value => {
-    const v = new Value();
-    v.init(Type.VARIANT);
-    call(
-        "libgobject-2.0.so.0",
-        "g_value_set_variant",
-        [
-            {
-                type: {
-                    type: "boxed",
-                    ownership: "borrowed",
-                    innerType: "GValue",
-                    library: "libgobject-2.0.so.0",
-                    getTypeFn: "g_value_get_type",
-                },
-                value: v.handle,
-            },
-            {
-                type: {
-                    type: "fundamental",
-                    ownership: "borrowed",
-                    library: "libgobject-2.0.so.0",
-                    refFn: "g_variant_ref_sink",
-                    unrefFn: "g_variant_unref",
-                },
-                value: value.handle,
-            },
-        ],
-        { type: "void" },
-    );
-    return v;
-};
+ValueWithStatics.newFromVariant = (value: NativeObject): Value =>
+    initValue(Type.VARIANT, (v) => v.setVariant(value as unknown as Parameters<Value["setVariant"]>[0]));
 
-ValueWithStatics.newFromEnum = (gtype: number, value: number): Value => {
-    const v = new Value();
-    v.init(gtype);
-    v.setEnum(value);
-    return v;
-};
-
-ValueWithStatics.newFromFlags = (gtype: number, value: number): Value => {
-    const v = new Value();
-    v.init(gtype);
-    v.setFlags(value);
-    return v;
-};
+ValueWithStatics.newFromEnum = (gtype, value) => initValue(gtype, (v) => v.setEnum(value));
+ValueWithStatics.newFromFlags = (gtype, value) => initValue(gtype, (v) => v.setFlags(value));
 
 ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
     switch (ffiType.type) {

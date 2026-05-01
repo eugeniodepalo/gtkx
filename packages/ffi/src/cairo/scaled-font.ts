@@ -162,46 +162,30 @@ ScaledFont.prototype.getFontOptions = function (): FontOptions {
     return options;
 };
 
-ScaledFont.prototype.getFontMatrix = function (): Matrix {
+function readMatrixVia(self: ScaledFont, fnName: string): Matrix {
     const { handle, obj } = allocMatrix();
     call(
         LIB,
-        "cairo_scaled_font_get_font_matrix",
+        fnName,
         [
-            { type: SCALED_FONT_T_NONE, value: this.handle },
+            { type: SCALED_FONT_T_NONE, value: self.handle },
             { type: MATRIX_T, value: handle },
         ],
         { type: "void" },
     );
     return obj;
+}
+
+ScaledFont.prototype.getFontMatrix = function (): Matrix {
+    return readMatrixVia(this, "cairo_scaled_font_get_font_matrix");
 };
 
 ScaledFont.prototype.getCtm = function (): Matrix {
-    const { handle, obj } = allocMatrix();
-    call(
-        LIB,
-        "cairo_scaled_font_get_ctm",
-        [
-            { type: SCALED_FONT_T_NONE, value: this.handle },
-            { type: MATRIX_T, value: handle },
-        ],
-        { type: "void" },
-    );
-    return obj;
+    return readMatrixVia(this, "cairo_scaled_font_get_ctm");
 };
 
 ScaledFont.prototype.getScaleMatrix = function (): Matrix {
-    const { handle, obj } = allocMatrix();
-    call(
-        LIB,
-        "cairo_scaled_font_get_scale_matrix",
-        [
-            { type: SCALED_FONT_T_NONE, value: this.handle },
-            { type: MATRIX_T, value: handle },
-        ],
-        { type: "void" },
-    );
-    return obj;
+    return readMatrixVia(this, "cairo_scaled_font_get_scale_matrix");
 };
 
 ScaledFont.prototype.getType = function (): FontType {
