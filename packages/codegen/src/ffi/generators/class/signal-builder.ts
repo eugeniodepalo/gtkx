@@ -66,6 +66,8 @@ export class SignalBuilder {
         const overloads = this.buildOverloads(ownSignals);
         const isRootGObject = this.options.namespace === "GObject" && this.cls.name === "Object";
 
+        const emitOverloads = this.buildEmitOverloads(ownSignals);
+
         const structures: MethodStructure[] = [
             {
                 name: "connect",
@@ -82,6 +84,22 @@ export class SignalBuilder {
                 ],
                 statements: this.writeConnectMethodBody(ownSignals),
                 overloads,
+            },
+            {
+                name: "emit",
+                parameters: [
+                    { name: "signal", type: "string" },
+                    // biome-ignore lint/suspicious/noExplicitAny: matches connect's catch-all for overload subtyping
+                    { name: "args", type: "any[]", isRestParameter: true },
+                ],
+                returnType: "any",
+                docs: [
+                    {
+                        description: `Synchronously emits a signal on this ${this.className}.\n\nArguments are auto-marshalled into GValues based on the signal's GIR-defined parameter types.\nReturns the unmarshalled return value, or undefined for void-return signals.\n\n@param signal - The signal name to emit\n@param args - Arguments matching the signal's parameter list\n@returns The signal's return value, or undefined if it returns void`,
+                    },
+                ],
+                statements: this.writeEmitMethodBody(ownSignals),
+                overloads: emitOverloads,
             },
         ];
 
@@ -497,5 +515,153 @@ export class SignalBuilder {
         }
 
         return params.join(", ");
+    }
+
+    private buildEmitOverloads(ownSignals: GirSignal[]): NonNullable<MethodStructure["overloads"]> {
+        const overloads: NonNullable<MethodStructure["overloads"]> = [];
+
+        for (const signal of ownSignals) {
+            const paramData = this.buildParamData(filterVarargs(signal.parameters));
+            const returnTs = this.resolveReturnTsType(signal);
+            const params: NonNullable<MethodStructure["overloads"]>[number]["params"] = [
+                { name: "signal", type: `"${signal.name}"` },
+            ];
+            for (const p of paramData) {
+                params.push({ name: p.paramName, type: p.mapped.ts });
+            }
+            overloads.push({ params, returnType: returnTs });
+        }
+
+        overloads.push({
+            params: [
+                { name: "signal", type: "string" },
+                { name: "args", type: "any[]", isRestParameter: true },
+            ],
+            returnType: "any",
+        });
+
+        return overloads;
+    }
+
+    private resolveReturnTsType(signal: GirSignal): string {
+        if (!signal.returnType) return "void";
+        const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
+        addTypeImports(this.imports, mapped.imports, this.selfNames);
+        return mapped.ts === "void" ? "void" : mapped.ts;
+    }
+
+    private writeEmitMethodBody(ownSignals: GirSignal[]): (writer: Writer) => void {
+        const isRootGObject = this.options.namespace === "GObject" && this.cls.name === "Object";
+        const gobjectPrefix = this.options.namespace === "GObject" ? "" : "GObject.";
+
+        if (this.options.namespace === "GObject") {
+            this.imports.addImport("./functions.js", ["signalEmitv", "signalLookup", "typeFromName"]);
+            this.imports.addImport("./value.js", ["Value"]);
+        }
+
+        const needsCallImport = ownSignals.some((s) => {
+            if (!s.returnType) return false;
+            const mapped = this.ffiMapper.mapType(s.returnType, true, s.returnType.transferOwnership);
+            return mapped.ffi.type === "enum" || mapped.ffi.type === "flags";
+        });
+        if (needsCallImport) {
+            this.imports.addImport("../../native.js", ["call"]);
+        }
+
+        return (writer) => {
+            if (ownSignals.length === 0) {
+                writer.writeLine("return super.emit(signal, ...args);");
+                return;
+            }
+
+            writer.writeLine("switch (signal) {");
+            writer.withIndent(() => {
+                for (const signal of ownSignals) {
+                    this.writeEmitSignalCase(writer, signal, gobjectPrefix);
+                }
+                writer.writeLine("default:");
+                writer.withIndent(() => {
+                    if (isRootGObject) {
+                        writer.writeLine(`throw new Error(\`Unknown signal '\${signal}' on ${this.className}\`);`);
+                    } else {
+                        writer.writeLine("return super.emit(signal, ...args);");
+                    }
+                });
+            });
+            writer.writeLine("}");
+        };
+    }
+
+    private writeEmitSignalCase(writer: Writer, signal: GirSignal, gobjectPrefix: string): void {
+        const paramData = this.buildParamData(filterVarargs(signal.parameters));
+        const returnMapped = signal.returnType
+            ? this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership)
+            : null;
+        const hasReturnValue = returnMapped !== null && returnMapped.ts !== "void";
+
+        writer.writeLine(`case "${signal.name}": {`);
+        writer.withIndent(() => {
+            writer.writeLine(`const __values: ${gobjectPrefix}Value[] = [`);
+            writer.withIndent(() => {
+                writer.writeLine(`${gobjectPrefix}Value.newFrom({"type":"gobject","ownership":"full"}, this),`);
+                paramData.forEach((p, index) => {
+                    const ffiJson = JSON.stringify(p.mapped.ffi);
+                    writer.writeLine(`${gobjectPrefix}Value.newFrom(${ffiJson}, args[${index}] as ${p.mapped.ts}),`);
+                });
+            });
+            writer.writeLine("];");
+            writer.writeLine(
+                `const __signalId = ${gobjectPrefix}signalLookup("${signal.name}", ${this.className}.getGType());`,
+            );
+
+            if (hasReturnValue && returnMapped) {
+                writer.writeLine(`const __returnValue = new ${gobjectPrefix}Value();`);
+                writer.writeLine(`__returnValue.init(${this.gtypeInitExpression(returnMapped.ffi, gobjectPrefix)});`);
+                writer.writeLine(`${gobjectPrefix}signalEmitv(__values, __signalId, 0, __returnValue);`);
+                writer.writeLine(`return __returnValue.toJS() as ${returnMapped.ts};`);
+            } else {
+                writer.writeLine(`${gobjectPrefix}signalEmitv(__values, __signalId, 0);`);
+                writer.writeLine("return undefined;");
+            }
+        });
+        writer.writeLine("}");
+    }
+
+    private gtypeInitExpression(ffiType: FfiTypeDescriptor, gobjectPrefix: string): string {
+        switch (ffiType.type) {
+            case "boolean":
+                return `${gobjectPrefix}typeFromName("gboolean")`;
+            case "int8":
+            case "int16":
+            case "int32":
+                return `${gobjectPrefix}typeFromName("gint")`;
+            case "uint8":
+            case "uint16":
+            case "uint32":
+                return `${gobjectPrefix}typeFromName("guint")`;
+            case "int64":
+                return `${gobjectPrefix}typeFromName("gint64")`;
+            case "uint64":
+                return `${gobjectPrefix}typeFromName("guint64")`;
+            case "float32":
+                return `${gobjectPrefix}typeFromName("gfloat")`;
+            case "float64":
+                return `${gobjectPrefix}typeFromName("gdouble")`;
+            case "string":
+                return `${gobjectPrefix}typeFromName("gchararray")`;
+            case "gobject":
+                return `${gobjectPrefix}typeFromName("GObject")`;
+            case "boxed":
+                return `${gobjectPrefix}typeFromName(${JSON.stringify(ffiType.innerType)})`;
+            case "fundamental":
+                return ffiType.typeName
+                    ? `${gobjectPrefix}typeFromName(${JSON.stringify(ffiType.typeName)})`
+                    : `${gobjectPrefix}typeFromName("GObject")`;
+            case "enum":
+            case "flags":
+                return `(call(${JSON.stringify(ffiType.library)}, ${JSON.stringify(ffiType.getTypeFn)}, [], { type: "uint64" }) as number)`;
+            default:
+                return `${gobjectPrefix}typeFromName("GObject")`;
+        }
     }
 }

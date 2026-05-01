@@ -64,7 +64,7 @@ describe("SignalBuilder", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            expect(structures.map((s) => s.name)).toEqual(["connect", "on", "once", "off"]);
+            expect(structures.map((s) => s.name)).toEqual(["connect", "emit", "on", "once", "off"]);
         });
 
         it("includes overloads for each signal", () => {
@@ -204,7 +204,7 @@ describe("SignalBuilder", () => {
 
             const connectStructures = builder.buildConnectMethodStructures();
 
-            expect(connectStructures.map((s) => s.name)).toEqual(["connect", "on", "once", "off"]);
+            expect(connectStructures.map((s) => s.name)).toEqual(["connect", "emit", "on", "once", "off"]);
             expect(connectStructures[0]?.overloads?.length).toBeGreaterThanOrEqual(2);
         });
     });
