@@ -7,6 +7,7 @@ type ContainerSlotChild = (props: { children?: ReactNode }) => ReactNode;
  * with a specific method name.
  *
  * @param methodName - The container slot method name (e.g., "packStart", "addPrefix")
+ * @public
  */
 export function createContainerSlotChild(methodName: string): ContainerSlotChild {
     return (props: { children?: ReactNode }): ReactNode => {
@@ -19,6 +20,7 @@ export function createContainerSlotChild(methodName: string): ContainerSlotChild
  * virtual node intrinsic element.
  *
  * @param intrinsicName - The intrinsic element name (e.g., "StackPage", "GridChild")
+ * @public
  */
 export function createVirtualChild<P extends Record<string, unknown>>(
     intrinsicName: string,
@@ -33,6 +35,7 @@ export function createVirtualChild<P extends Record<string, unknown>>(
  * sets the `for` discriminant based on the parent widget type.
  *
  * @param forValue - The `for` discriminant value (e.g., "AdwNavigationView")
+ * @public
  */
 export function createNavigationPageChild<P extends Record<string, unknown>>(
     forValue: string,
@@ -47,6 +50,7 @@ export function createNavigationPageChild<P extends Record<string, unknown>>(
  * an existing menu intrinsic element.
  *
  * @param intrinsicName - "MenuItem", "MenuSection", or "MenuSubmenu"
+ * @public
  */
 export function createMenuChild<P extends Record<string, unknown>>(
     intrinsicName: string,

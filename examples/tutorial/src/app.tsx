@@ -362,5 +362,3 @@ export function App() {
         </AdwApplicationWindow>
     );
 }
-
-export default App;

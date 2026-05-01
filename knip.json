@@ -1,0 +1,68 @@
+{
+    "$schema": "https://unpkg.com/knip@6/schema.json",
+    "tags": ["-public"],
+    "ignoreExportsUsedInFile": true,
+    "workspaces": {
+        ".": {},
+        "packages/cli": {
+            "entry": ["src/cli.tsx", "src/global.d.ts"],
+            "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+        },
+        "packages/codegen": {
+            "entry": ["src/cli.ts"],
+            "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
+        },
+        "packages/css": {
+            "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+        },
+        "packages/e2e": {
+            "project": ["tests/**/*.{ts,tsx}"]
+        },
+        "packages/ffi": {
+            "project": ["src/**/*.ts", "!src/generated/**", "tests/**/*.{ts,tsx}"]
+        },
+        "packages/gir": {
+            "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
+        },
+        "packages/mcp": {
+            "entry": ["src/cli.ts"],
+            "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
+        },
+        "packages/native": {
+            "entry": ["index.ts", "types.ts"],
+            "project": ["*.ts", "scripts/**/*.ts", "tests/**/*.{ts,tsx}"],
+            "ignoreDependencies": ["@neon-rs/cli"]
+        },
+        "packages/react": {
+            "project": ["src/**/*.{ts,tsx}", "!src/generated/**"]
+        },
+        "packages/testing": {
+            "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+        },
+        "packages/vitest": {
+            "entry": ["src/setup.ts"],
+            "project": ["src/**/*.ts"]
+        },
+        "examples/browser": {
+            "entry": ["src/index.tsx", "src/dev.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
+            "project": ["src/**/*.{ts,tsx}"]
+        },
+        "examples/gtk-demo": {
+            "entry": ["src/index.tsx", "src/dev.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
+            "project": ["src/**/*.{ts,tsx}"]
+        },
+        "examples/hello-world": {
+            "entry": ["src/index.tsx", "src/dev.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
+            "project": ["src/**/*.{ts,tsx}"]
+        },
+        "examples/tutorial": {
+            "entry": ["src/index.tsx", "src/dev.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
+            "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"]
+        },
+        "website": {
+            "entry": ["screenshots/**/*.test.{ts,tsx}"],
+            "project": [".vitepress/**/*.{ts,tsx,js}", "scripts/**/*.{ts,js}", "screenshots/**/*.{ts,tsx}"],
+            "ignoreDependencies": ["typedoc", "typedoc-plugin-markdown", "typedoc-vitepress-theme"]
+        }
+    }
+}

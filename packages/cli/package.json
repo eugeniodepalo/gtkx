@@ -68,7 +68,6 @@
         "@clack/prompts": "^1.3.0",
         "@gtkx/codegen": "workspace:*",
         "@gtkx/ffi": "workspace:*",
-        "@gtkx/gir": "workspace:*",
         "@gtkx/mcp": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@swc/core": "^1.15.32",

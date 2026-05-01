@@ -49,13 +49,13 @@ import { WebViewNode } from "./nodes/web-view.js";
 import { WidgetNode } from "./nodes/widget.js";
 import { WindowNode } from "./nodes/window.js";
 
-export const AdjustableWidgets = [Gtk.SpinButton, Gtk.ScaleButton, Gtk.Range] as const;
+const AdjustableWidgets = [Gtk.SpinButton, Gtk.ScaleButton, Gtk.Range] as const;
 export type AdjustableWidget = InstanceType<(typeof AdjustableWidgets)[number]>;
 
-export const StackWidgets = [Gtk.Stack, Adw.ViewStack] as const;
+const StackWidgets = [Gtk.Stack, Adw.ViewStack] as const;
 export type StackWidget = InstanceType<(typeof StackWidgets)[number]>;
 
-export const PopoverMenuWidgets = [Gtk.PopoverMenu, Gtk.PopoverMenuBar, Gtk.MenuButton] as const;
+const PopoverMenuWidgets = [Gtk.PopoverMenu, Gtk.PopoverMenuBar, Gtk.MenuButton] as const;
 export type PopoverMenuWidget = InstanceType<(typeof PopoverMenuWidgets)[number]>;
 
 export type NodeClass = (new (

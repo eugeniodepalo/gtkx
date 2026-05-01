@@ -157,5 +157,3 @@ export const App = () => {
         </AdwApplicationWindow>
     );
 };
-
-export default App;

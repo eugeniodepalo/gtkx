@@ -24,7 +24,7 @@ function qualifiedName(ns: string, name: string): string {
 
 export type { RepositoryLike };
 
-export const NULL_REPO: RepositoryLike = {
+const NULL_REPO: RepositoryLike = {
     resolveClass: () => null,
     resolveInterface: () => null,
     findClasses: () => [],

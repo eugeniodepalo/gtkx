@@ -1,5 +1,5 @@
 import type { GirClass, GirProperty, GirRepository } from "@gtkx/gir";
-import { APPLICATION_PARAM_NAME } from "../constants/index.js";
+import { APPLICATION_PARAM_NAME } from "../config/index.js";
 import type { PropertyAnalysis } from "../generator-types.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import { collectExternalNamespaces, isSyntheticSetterSupportedPrimitive } from "../type-system/ffi-types.js";

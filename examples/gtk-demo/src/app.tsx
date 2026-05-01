@@ -285,5 +285,3 @@ export const App = () => (
         <MainWindow />
     </DemoProvider>
 );
-
-export default App;

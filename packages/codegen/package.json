@@ -35,8 +35,6 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "devDependencies": {
-        "@biomejs/js-api": "^4.0.0",
-        "@biomejs/wasm-nodejs": "^2.4.13",
         "@clack/prompts": "^1.3.0",
         "@gtkx/gir": "workspace:*",
         "@gtkx/native": "workspace:*",

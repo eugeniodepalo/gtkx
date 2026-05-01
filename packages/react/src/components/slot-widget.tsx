@@ -11,6 +11,7 @@ type SlotPropValue = ReactNode | null | undefined;
  *
  * @param intrinsicName - The intrinsic element name (e.g., "GtkWindow")
  * @param slotNames - Array of camelCase slot prop names (e.g., ["titlebar", "startChild"])
+ * @public
  */
 // biome-ignore lint/suspicious/noExplicitAny: Props interfaces don't satisfy Record<string, unknown>
 export function createSlotWidget<P = any>(

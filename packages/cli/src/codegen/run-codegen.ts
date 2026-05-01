@@ -116,7 +116,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
  * @param config - The user's resolved configuration
  * @returns True when codegen output is missing or stale by manifest hash
  */
-export const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
+const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
     try {
         const { ffiOutputDir } = resolveOutputDirs(cwd);
         if (!existsSync(ffiOutputDir)) {

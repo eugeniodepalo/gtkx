@@ -5,7 +5,6 @@ import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
 import { type ImportCollector, MethodBodyWriter } from "./method-body-writer.js";
 
-export { FfiDescriptorRegistry } from "./descriptor-registry.js";
 export type { MethodStructure } from "./method-body-writer.js";
 export type { ImportCollector, MethodBodyWriter };
 

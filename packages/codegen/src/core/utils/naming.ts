@@ -69,8 +69,6 @@ export const toPascalCase = (str: string): string => capitalize(toCamelCase(str)
 
 export const createSetterName = (camelName: string): string => `set${capitalize(camelName)}`;
 
-export const createGetterName = (camelName: string): string => `get${capitalize(camelName)}`;
-
 export const createHandlerName = (camelName: string): string => `on${capitalize(camelName)}`;
 
 export const createWrappedName = (paramName: string): string => `wrapped${capitalize(paramName)}`;

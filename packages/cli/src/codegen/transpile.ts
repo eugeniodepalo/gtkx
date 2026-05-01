@@ -42,7 +42,7 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
  * @returns Object with `.js` and `.d.ts` content as strings
  * @throws If `ts.transpileDeclaration` reports any error-category diagnostic
  */
-export const transpileFile = (fileName: string, source: string): TranspiledFile => {
+const transpileFile = (fileName: string, source: string): TranspiledFile => {
     const jsResult = ts.transpileModule(source, {
         compilerOptions: COMPILER_OPTIONS,
         fileName,

@@ -25,7 +25,6 @@
         "@gtkx/cli": "workspace:*",
         "esbuild": "^0.28.0",
         "postject": "1.0.0-alpha.6",
-        "tsx": "^4.21.0",
-        "vite": "^8.0.10"
+        "tsx": "^4.21.0"
     }
 }
