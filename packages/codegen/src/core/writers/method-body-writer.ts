@@ -519,7 +519,9 @@ export class MethodBodyWriter {
     ): boolean {
         if (!callable.throws) return false;
         if (!shape.hasOriginalReturn) return false;
-        return callable.returnType.name === "gboolean";
+        if (callable.returnType.name !== "gboolean") return false;
+        const hasMeaningfulOut = shape.returnTupleEntries.some((e) => e.kind !== "original-return");
+        return hasMeaningfulOut;
     }
 
     private stripBooleanReturn(shape: CallableShape): CallableShape {

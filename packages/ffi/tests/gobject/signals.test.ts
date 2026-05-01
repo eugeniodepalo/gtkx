@@ -19,10 +19,18 @@ describe("on/off", () => {
         expect(result).toBe(button);
         button.off("clicked", handler);
     });
+
+    it("off() after the handler was already disconnected is a no-op", () => {
+        const button = new Gtk.Button();
+        const handler = (): void => {};
+        button.on("clicked", handler);
+        button.off("clicked", handler);
+        expect(() => button.off("clicked", handler)).not.toThrow();
+    });
 });
 
 describe("once", () => {
-    it("auto-disconnects after first invocation", () => {
+    it("can be removed via off() before firing", () => {
         const button = new Gtk.Button();
         const handler = vi.fn();
 
@@ -30,6 +38,14 @@ describe("once", () => {
         button.off("clicked", handler);
 
         expect(handler).not.toHaveBeenCalled();
+    });
+
+    it("returns this for chaining", () => {
+        const button = new Gtk.Button();
+        const handler = (): void => {};
+        const result = button.once("clicked", handler);
+        expect(result).toBe(button);
+        button.off("clicked", handler);
     });
 });
 
