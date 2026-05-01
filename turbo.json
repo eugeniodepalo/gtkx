@@ -6,6 +6,7 @@
     "cacheDir": ".turbo",
     "tasks": {
         "//#lint:all": {
+            "dependsOn": ["^build"],
             "inputs": ["**/*.ts", "**/*.tsx", "**/package.json", "biome.json", "knip.json"],
             "outputs": [],
             "outputLogs": "new-only"
