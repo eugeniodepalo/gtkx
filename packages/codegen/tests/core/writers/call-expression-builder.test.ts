@@ -58,7 +58,7 @@ describe("CallExpressionBuilder", () => {
             expect(output).toContain("call(");
             expect(output).toContain('"libgtk-4.so.1"');
             expect(output).toContain('"gtk_button_new"');
-            expect(output).toContain('"gobject"');
+            expect(output).toContain('t.object("full")');
         });
 
         it("builds call expression with arguments", () => {
@@ -70,7 +70,7 @@ describe("CallExpressionBuilder", () => {
                 returnType: { type: "gobject", ownership: "full" },
             });
 
-            expect(output).toContain('"string"');
+            expect(output).toContain('t.string("borrowed")');
             expect(output).toContain("value: label");
         });
 
@@ -154,7 +154,7 @@ describe("CallExpressionBuilder", () => {
                 },
             });
 
-            expect(output).toContain('"void"');
+            expect(output).toContain("t.void");
         });
 
         it("builds call expression with boxed return type", () => {
@@ -170,8 +170,7 @@ describe("CallExpressionBuilder", () => {
                 },
             });
 
-            expect(output).toContain('"boxed"');
-            expect(output).toContain('"GdkRGBA"');
+            expect(output).toContain('t.boxed("GdkRGBA", "full")');
         });
 
         it("builds call expression with array return type", () => {
@@ -187,7 +186,7 @@ describe("CallExpressionBuilder", () => {
                 },
             });
 
-            expect(output).toContain('"array"');
+            expect(output).toContain("t.array(");
         });
 
         it("handles empty args array", () => {
@@ -217,7 +216,7 @@ describe("CallExpressionBuilder", () => {
             });
 
             expect(output).toContain('"libgtk-4.so.1"');
-            expect(output).toContain('"GdkRGBA"');
+            expect(output).toContain('t.boxed("GdkRGBA", "borrowed")');
         });
     });
 
@@ -355,8 +354,7 @@ describe("CallExpressionBuilder", () => {
                 returnType: { type: "void" },
             });
 
-            expect(output).toContain('"GdkRGBA"');
-            expect(output).toContain('"boxed"');
+            expect(output).toContain('t.boxed("GdkRGBA", "borrowed")');
         });
     });
 
@@ -377,7 +375,7 @@ describe("CallExpressionBuilder", () => {
             expect(registry.isEmpty).toBe(false);
         });
 
-        it("imports fn (not call) for hoisted bindings", () => {
+        it("imports t (not call) for hoisted bindings", () => {
             const registry = new FfiDescriptorRegistry();
             const { calls, sink } = makeImports();
             const builder = new CallExpressionBuilder(registry, sink);
@@ -389,7 +387,7 @@ describe("CallExpressionBuilder", () => {
                 selfArg: { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
             });
 
-            expect(calls).toEqual([{ specifier: "../../native.js", names: ["fn"] }]);
+            expect(calls).toEqual([{ specifier: "../../native.js", names: ["t"] }]);
         });
 
         it("falls back to inline call() for variadic callables", () => {
@@ -408,7 +406,7 @@ describe("CallExpressionBuilder", () => {
             expect(output).toContain('"g_object_new"');
             expect(output).toContain("...args");
             expect(registry.isEmpty).toBe(true);
-            expect(calls).toEqual([{ specifier: "../../native.js", names: ["call"] }]);
+            expect(calls).toEqual([{ specifier: "../../native.js", names: ["call", "t"] }]);
         });
 
         it("dedupes identical descriptors to one binding", () => {
@@ -517,11 +515,11 @@ describe("CallExpressionBuilder", () => {
             expect(output).toContain("value: widget");
             expect(output).toContain("value: enabled");
             expect(output).toContain("value: color");
-            expect(output).toContain('"string"');
-            expect(output).toContain('"int32"');
-            expect(output).toContain('"gobject"');
-            expect(output).toContain('"boolean"');
-            expect(output).toContain('"boxed"');
+            expect(output).toContain('t.string("borrowed")');
+            expect(output).toContain("t.int32");
+            expect(output).toContain('t.object("borrowed")');
+            expect(output).toContain("t.boolean");
+            expect(output).toContain('t.boxed("GdkRGBA", "borrowed")');
         });
 
         it("builds call with optional and required arguments", () => {
@@ -565,8 +563,8 @@ describe("CallExpressionBuilder", () => {
                 },
             });
 
-            expect(output).toContain('"array"');
-            expect(output).toContain('"itemType"');
+            expect(output).toContain("t.array(");
+            expect(output).toContain('t.string("borrowed")');
         });
     });
 });

@@ -533,8 +533,8 @@ describe("RecordGenerator", () => {
             generator.generate(record);
             const out = stringify(file);
 
-            expect(out).toContain("import { fn }");
-            expect(out).toContain("const gdk_rectangle_get_value = fn(");
+            expect(out).toContain("import { t }");
+            expect(out).toContain("const gdk_rectangle_get_value = t.fn(");
         });
 
         it("sets usesRead flag when record has readable fields", () => {

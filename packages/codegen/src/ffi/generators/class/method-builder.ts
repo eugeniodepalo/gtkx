@@ -14,6 +14,7 @@ import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { isMethodDuplicate } from "../../../core/utils/filtering.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
 import { formatNullableReturn } from "../../../core/utils/type-qualification.js";
+import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
 import {
     addTypeImports,
     createMethodBodyWriter,
@@ -184,7 +185,7 @@ export class MethodBuilder {
         returnTypeMapping: MappedType,
         selfTypeDescriptor: SelfTypeDescriptor,
     ): (writer: Writer) => void {
-        this.imports.addImport("../../native.js", ["call"]);
+        this.imports.addImport("../../native.js", ["call", "t"]);
         this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
 
         const hasReturnValue = returnTypeMapping.ts !== "void";
@@ -226,7 +227,7 @@ export class MethodBuilder {
                     writer.writeLine("[");
                     writer.withIndent(() => {
                         writer.write("{ type: ");
-                        writer.write(JSON.stringify(selfTypeDescriptor));
+                        writeFfiTypeExpression(writer, selfTypeDescriptor);
                         writer.writeLine(", value: this.handle },");
 
                         const asyncArgs = this.methodBody.buildShapeCallArguments(asyncShape, asyncParams);
@@ -234,9 +235,19 @@ export class MethodBuilder {
 
                         writer.writeLine("{");
                         writer.withIndent(() => {
-                            writer.writeLine(
-                                'type: { type: "trampoline", argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "gobject", ownership: "borrowed" }, { type: "uint64" }], returnType: { type: "void" }, userDataIndex: 2, scope: "async" },',
-                            );
+                            writer.write("type: ");
+                            writeFfiTypeExpression(writer, {
+                                type: "trampoline",
+                                argTypes: [
+                                    { type: "gobject", ownership: "borrowed" },
+                                    { type: "gobject", ownership: "borrowed" },
+                                    { type: "uint64" },
+                                ],
+                                returnType: { type: "void" },
+                                userDataIndex: 2,
+                                scope: "async",
+                            });
+                            writer.writeLine(",");
                             writer.writeLine("value: (_source: unknown, result: unknown) => {");
                             writer.withIndent(() => {
                                 if (finishMethod.throws) {
@@ -256,23 +267,22 @@ export class MethodBuilder {
                                     writer.writeLine("[");
                                     writer.withIndent(() => {
                                         writer.write("{ type: ");
-                                        writer.write(JSON.stringify(selfTypeDescriptor));
+                                        writeFfiTypeExpression(writer, selfTypeDescriptor);
                                         writer.writeLine(", value: this.handle },");
-                                        writer.writeLine(
-                                            '{ type: { type: "gobject", ownership: "borrowed" }, value: result },',
-                                        );
+                                        writer.write("{ type: ");
+                                        writeFfiTypeExpression(writer, { type: "gobject", ownership: "borrowed" });
+                                        writer.writeLine(", value: result },");
                                         if (finishMethod.throws) {
                                             writer.write("{ type: ");
-                                            writer.write(
-                                                JSON.stringify(
-                                                    this.methodBody.getFfiTypeWriter().createGErrorRefTypeDescriptor(),
-                                                ),
+                                            writeFfiTypeExpression(
+                                                writer,
+                                                this.methodBody.getFfiTypeWriter().createGErrorRefTypeDescriptor(),
                                             );
                                             writer.writeLine(", value: error },");
                                         }
                                     });
                                     writer.writeLine("],");
-                                    writer.write(JSON.stringify(returnTypeMapping.ffi));
+                                    writeFfiTypeExpression(writer, returnTypeMapping.ffi);
                                     writer.newLine();
                                 });
 

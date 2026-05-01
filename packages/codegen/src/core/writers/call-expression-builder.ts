@@ -11,6 +11,7 @@
 import type { Writer } from "../../builders/writer.js";
 import type { FfiTypeDescriptor, MappedType } from "../type-system/ffi-types.js";
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
+import { writeFfiTypeExpression } from "./ffi-type-expression.js";
 
 /**
  * Whether a value of `ffiTypeName` requires unwrapping to its native `.handle` pointer
@@ -113,11 +114,11 @@ export class CallExpressionBuilder {
         const binding = this.registry?.register(options);
 
         if (binding && binding.varargs === false) {
-            this.imports?.addImport("../../native.js", ["fn"]);
+            this.imports?.addImport("../../native.js", ["t"]);
             return this.curriedWriter(options, binding.name);
         }
 
-        this.imports?.addImport("../../native.js", ["call"]);
+        this.imports?.addImport("../../native.js", ["call", "t"]);
         return this.inlineWriter(options);
     }
 
@@ -159,7 +160,7 @@ export class CallExpressionBuilder {
                     });
                 }
                 writer.writeLine("],");
-                writer.write(JSON.stringify(options.returnType));
+                writeFfiTypeExpression(writer, options.returnType);
                 writer.newLine();
             });
             writer.write(")");
@@ -245,7 +246,10 @@ export class CallExpressionBuilder {
         writer.write("{");
         writer.newLine();
         writer.withIndent(() => {
-            writer.writeLine(`type: ${JSON.stringify(arg.type)},`);
+            writer.write("type: ");
+            writeFfiTypeExpression(writer, arg.type);
+            writer.write(",");
+            writer.newLine();
             writer.write(`value: ${arg.value}`);
             if (arg.optional) {
                 writer.writeLine(",");

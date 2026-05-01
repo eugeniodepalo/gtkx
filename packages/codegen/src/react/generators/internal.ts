@@ -7,9 +7,10 @@
 
 import type { FileBuilder } from "../../builders/index.js";
 import { raw, variableStatement } from "../../builders/index.js";
-import type { Writer } from "../../builders/writer.js";
+import { Writer } from "../../builders/writer.js";
 import type { CodegenControllerMeta } from "../../core/codegen-metadata.js";
 import type { PropertyAnalysis, SignalAnalysis } from "../../core/generator-types.js";
+import { renderFfiTypeExpression } from "../../core/writers/ffi-type-expression.js";
 
 import { type MetadataReader, sortWidgetsByClassName } from "../metadata-reader.js";
 
@@ -65,6 +66,7 @@ export class InternalGenerator {
     }
 
     private addTypeImports(file: FileBuilder): void {
+        file.addImport("@gtkx/ffi", ["t"]);
         file.addTypeImport("@gtkx/ffi", ["Type"]);
     }
 
@@ -77,7 +79,8 @@ export class InternalGenerator {
                 const entries: Array<[string, string]> = [];
                 for (const prop of item.properties) {
                     if (!prop.isWritable || !prop.ffiType) continue;
-                    const base = `{ girName: "${prop.name}", ffiType: ${JSON.stringify(prop.ffiType)}`;
+                    const ffiExpr = renderFfiTypeExpression(prop.ffiType, () => new Writer());
+                    const base = `{ girName: "${prop.name}", ffiType: ${ffiExpr}`;
                     const value = prop.isConstructOnly ? `${base}, constructOnly: true as const }` : `${base} }`;
                     entries.push([`"${prop.camelName}"`, value]);
                 }

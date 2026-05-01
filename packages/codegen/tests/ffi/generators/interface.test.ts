@@ -200,8 +200,8 @@ describe("InterfaceGenerator", () => {
             generator.generate(iface);
             const code = stringify(file);
 
-            expect(code).toContain("import { fn }");
-            expect(code).toContain("const gtk_orientable_get_value = fn(");
+            expect(code).toContain("import { t }");
+            expect(code).toContain("const gtk_orientable_get_value = t.fn(");
         });
 
         it("adds Ref import when method has out parameter", () => {

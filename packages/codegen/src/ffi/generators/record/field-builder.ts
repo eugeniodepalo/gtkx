@@ -14,6 +14,7 @@ import {
     isPrimitiveFieldType,
 } from "../../../core/type-system/ffi-types.js";
 import { toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
+import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
 import { FfiTypeWriter } from "../../../core/writers/ffi-type-writer.js";
 import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
 
@@ -132,7 +133,7 @@ export class FieldBuilder {
                             );
 
                             writer.write(`write(this.handle, `);
-                            writer.write(JSON.stringify(nestedTypeMapping.ffi));
+                            writeFfiTypeExpression(writer, nestedTypeMapping.ffi);
                             writer.writeLine(`, ${nestedOffset}, init.${fieldName}.${nestedFieldName});`);
                         }
                     });
@@ -142,7 +143,7 @@ export class FieldBuilder {
                     this.addFieldTypeImports(typeMapping.imports);
 
                     writer.write(`if (init.${fieldName} !== undefined) write(this.handle, `);
-                    writer.write(JSON.stringify(typeMapping.ffi));
+                    writeFfiTypeExpression(writer, typeMapping.ffi);
                     writer.writeLine(`, ${offset}, init.${fieldName});`);
                 }
             }

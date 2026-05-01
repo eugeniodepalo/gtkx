@@ -82,7 +82,7 @@ describe("FfiDescriptorRegistry", () => {
             returnType: { type: "gobject", ownership: "borrowed" },
         });
         const out = dump(registry);
-        expect(out).toContain('{ type: {"type":"string","ownership":"borrowed"}, optional: true }');
+        expect(out).toContain('{ type: t.string("borrowed"), optional: true }');
     });
 
     it("emits one fn() declaration per registered descriptor in registration order", () => {
@@ -100,8 +100,8 @@ describe("FfiDescriptorRegistry", () => {
             returnType: { type: "void" },
         });
         const out = dump(registry);
-        const firstIdx = out.indexOf("const first_fn = fn(");
-        const secondIdx = out.indexOf("const second_fn = fn(");
+        const firstIdx = out.indexOf("const first_fn = t.fn(");
+        const secondIdx = out.indexOf("const second_fn = t.fn(");
         expect(firstIdx).toBeGreaterThanOrEqual(0);
         expect(secondIdx).toBeGreaterThan(firstIdx);
     });
@@ -119,6 +119,6 @@ describe("FfiDescriptorRegistry", () => {
             },
         });
         const out = dump(registry);
-        expect(out).toContain('{ type: {"type":"gobject","ownership":"borrowed"} }');
+        expect(out).toContain('{ type: t.object("borrowed") }');
     });
 });

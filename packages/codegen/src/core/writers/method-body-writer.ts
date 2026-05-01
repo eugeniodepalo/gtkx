@@ -32,6 +32,7 @@ import {
     type ShapeCallArg,
 } from "./callable-shape.js";
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
+import { writeFfiTypeExpression } from "./ffi-type-expression.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
 import { addTypeImports } from "./index.js";
 import { buildCallbackWrapperExpression, needsParamWrap, needsReturnUnwrap } from "./param-wrap-writer.js";
@@ -429,7 +430,8 @@ export class MethodBodyWriter {
 
     writeArgumentsToWriter(writer: Writer, args: readonly CallArgument[]): void {
         for (const arg of args) {
-            writer.write(`{ type: ${JSON.stringify(arg.type)}`);
+            writer.write("{ type: ");
+            writeFfiTypeExpression(writer, arg.type);
             writer.writeLine(`, value: ${arg.value}, optional: ${arg.optional ?? false} },`);
         }
     }

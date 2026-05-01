@@ -13,6 +13,7 @@ import type { FfiTypeDescriptor, MappedType } from "../../../core/type-system/ff
 import { collectPropertiesWithDefaults, convertDefaultValue } from "../../../core/utils/default-value.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { normalizeClassName, toCamelCase, toKebabCase, toValidIdentifier } from "../../../core/utils/naming.js";
+import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
 import {
     addTypeImports,
     applyForcedNonNullArgs,
@@ -21,6 +22,29 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../core/writers/index.js";
+
+const sizedStringArrayDescriptor = (): FfiTypeDescriptor => ({
+    type: "array",
+    itemType: { type: "string", ownership: "borrowed" },
+    kind: "sized",
+    sizeParamIndex: 1,
+    ownership: "borrowed",
+});
+
+const sizedGValueArrayDescriptor = (): FfiTypeDescriptor => ({
+    type: "array",
+    itemType: {
+        type: "boxed",
+        ownership: "borrowed",
+        innerType: "GValue",
+        library: "libgobject-2.0.so.0",
+        getTypeFn: "g_value_get_type",
+    },
+    kind: "sized",
+    sizeParamIndex: 1,
+    elementSize: 24,
+    ownership: "borrowed",
+});
 
 type SettablePropParam = {
     paramName: string;
@@ -301,7 +325,7 @@ export class ConstructorBuilder {
         getTypeWriter(writer);
         writer.writeLine(";");
 
-        this.imports.addImport("../../native.js", ["call"]);
+        this.imports.addImport("../../native.js", ["call", "t"]);
         if (props.length > 0) {
             this.imports.addNamespaceImport("../gobject/index.js", "GObject");
             writer.writeLine("const __names: string[] = [];");
@@ -311,7 +335,7 @@ export class ConstructorBuilder {
                 writer.withIndent(() => {
                     writer.writeLine(`__names.push("${prop.girName}");`);
                     writer.write("__values.push(GObject.Value.newFrom(");
-                    writer.write(JSON.stringify(prop.ffiType));
+                    writeFfiTypeExpression(writer, prop.ffiType);
                     writer.writeLine(`, ${prop.valueExpr}));`);
                 });
                 writer.writeLine("}");
@@ -324,27 +348,30 @@ export class ConstructorBuilder {
             writer.writeLine('"g_object_new_with_properties",');
             writer.writeLine("[");
             writer.withIndent(() => {
-                writer.writeLine('{ type: { type: "uint64" }, value: gtype, optional: false },');
+                writer.writeLine("{ type: t.uint64, value: gtype, optional: false },");
+                const namesType = sizedStringArrayDescriptor();
+                const valuesType = sizedGValueArrayDescriptor();
                 if (props.length > 0) {
-                    writer.writeLine('{ type: { type: "uint32" }, value: __names.length, optional: false },');
-                    writer.writeLine(
-                        '{ type: { type: "array", itemType: { type: "string", ownership: "borrowed" }, kind: "sized", sizeParamIndex: 1, ownership: "borrowed" }, value: __names, optional: false },',
-                    );
-                    writer.writeLine(
-                        '{ type: { type: "array", itemType: { type: "boxed", ownership: "borrowed", innerType: "GValue", library: "libgobject-2.0.so.0", getTypeFn: "g_value_get_type" }, kind: "sized", sizeParamIndex: 1, elementSize: 24, ownership: "borrowed" }, value: __values.map((v) => v.handle), optional: false },',
-                    );
+                    writer.writeLine("{ type: t.uint32, value: __names.length, optional: false },");
+                    writer.write("{ type: ");
+                    writeFfiTypeExpression(writer, namesType);
+                    writer.writeLine(", value: __names, optional: false },");
+                    writer.write("{ type: ");
+                    writeFfiTypeExpression(writer, valuesType);
+                    writer.writeLine(", value: __values.map((v) => v.handle), optional: false },");
                 } else {
-                    writer.writeLine('{ type: { type: "uint32" }, value: 0, optional: false },');
-                    writer.writeLine(
-                        '{ type: { type: "array", itemType: { type: "string", ownership: "borrowed" }, kind: "sized", sizeParamIndex: 1, ownership: "borrowed" }, value: [], optional: false },',
-                    );
-                    writer.writeLine(
-                        '{ type: { type: "array", itemType: { type: "boxed", ownership: "borrowed", innerType: "GValue", library: "libgobject-2.0.so.0", getTypeFn: "g_value_get_type" }, kind: "sized", sizeParamIndex: 1, elementSize: 24, ownership: "borrowed" }, value: [], optional: false },',
-                    );
+                    writer.writeLine("{ type: t.uint32, value: 0, optional: false },");
+                    writer.write("{ type: ");
+                    writeFfiTypeExpression(writer, namesType);
+                    writer.writeLine(", value: [], optional: false },");
+                    writer.write("{ type: ");
+                    writeFfiTypeExpression(writer, valuesType);
+                    writer.writeLine(", value: [], optional: false },");
                 }
             });
             writer.writeLine("],");
-            writer.writeLine('{ type: "gobject", ownership: "full" }');
+            writeFfiTypeExpression(writer, { type: "gobject", ownership: "full" });
+            writer.newLine();
         });
         writer.writeLine(") as NativeHandle;");
     }
@@ -387,7 +414,7 @@ export class ConstructorBuilder {
     private buildGObjectNewConstructorWithOverloads(glibGetType: string): ConstructorOverloads {
         this.imports.addImport("@gtkx/native", ["isNativeHandle"]);
         this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
-        this.imports.addImport("../../native.js", ["call"]);
+        this.imports.addImport("../../native.js", ["call", "t"]);
         this.imports.addImport("../../registry.js", ["registerNativeObject"]);
 
         const settableProps = this.collectSettableProps();

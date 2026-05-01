@@ -1,24 +1,25 @@
 import { createRef } from "@gtkx/native";
-import { fn } from "../native.js";
+import { t } from "../native.js";
 import { INFO_LOG_LENGTH } from "./constants.js";
 
 const LIB = "libGL.so.1";
 
-const VOID = { type: "void" } as const;
-const U32 = { type: "uint32" } as const;
-const I32 = { type: "int32" } as const;
-const I64 = { type: "int64" } as const;
-const U64 = { type: "uint64" } as const;
-const F32 = { type: "float32" } as const;
-const F64 = { type: "float64" } as const;
-const BOOL = { type: "boolean" } as const;
-const STR = { type: "string", ownership: "borrowed" } as const;
-const REF_I32 = { type: "ref", innerType: I32 } as const;
-const REF_U32 = { type: "ref", innerType: U32 } as const;
-const ARRAY_F32 = { type: "array", itemType: F32, kind: "array", ownership: "borrowed" } as const;
-const ARRAY_U16 = { type: "array", itemType: { type: "uint16" }, kind: "array", ownership: "borrowed" } as const;
-const ARRAY_U32 = { type: "array", itemType: U32, kind: "array", ownership: "borrowed" } as const;
-const ARRAY_STR = { type: "array", itemType: STR, kind: "array", ownership: "borrowed" } as const;
+const { fn } = t;
+const VOID = t.void;
+const U32 = t.uint32;
+const I32 = t.int32;
+const I64 = t.int64;
+const U64 = t.uint64;
+const F32 = t.float32;
+const F64 = t.float64;
+const BOOL = t.boolean;
+const STR = t.string("borrowed");
+const REF_I32 = t.ref(I32);
+const REF_U32 = t.ref(U32);
+const ARRAY_F32 = t.array(F32);
+const ARRAY_U16 = t.array(t.uint16);
+const ARRAY_U32 = t.array(U32);
+const ARRAY_STR = t.array(STR);
 
 const glClear = fn(LIB, "glClear", [{ type: U32 }], VOID);
 const glClearColor = fn(LIB, "glClearColor", [{ type: F32 }, { type: F32 }, { type: F32 }, { type: F32 }], VOID);

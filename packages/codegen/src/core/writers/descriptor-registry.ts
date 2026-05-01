@@ -14,6 +14,7 @@
 import type { Writer } from "../../builders/writer.js";
 import type { FfiTypeDescriptor } from "../type-system/ffi-types.js";
 import type { CallArgument } from "./call-expression-builder.js";
+import { writeFfiTypeExpression } from "./ffi-type-expression.js";
 
 /**
  * Inputs to {@link FfiDescriptorRegistry.register}. Mirrors the subset of
@@ -121,7 +122,7 @@ export class FfiDescriptorRegistry {
     }
 
     private writeEntry(writer: Writer, entry: DescriptorEntry): void {
-        writer.write(`const ${entry.name} = fn(`);
+        writer.write(`const ${entry.name} = t.fn(`);
         writer.newLine();
         writer.withIndent(() => {
             writer.writeLine(`"${entry.library}",`);
@@ -130,19 +131,17 @@ export class FfiDescriptorRegistry {
             if (entry.argSlots.length > 0) {
                 writer.newLine();
                 writer.withIndent(() => {
-                    for (let i = 0; i < entry.argSlots.length; i++) {
-                        const slot = entry.argSlots[i];
+                    for (const slot of entry.argSlots) {
                         if (slot === undefined) continue;
-                        if (slot.optional) {
-                            writer.writeLine(`{ type: ${JSON.stringify(slot.type)}, optional: true },`);
-                        } else {
-                            writer.writeLine(`{ type: ${JSON.stringify(slot.type)} },`);
-                        }
+                        writer.write("{ type: ");
+                        writeFfiTypeExpression(writer, slot.type);
+                        if (slot.optional) writer.write(", optional: true");
+                        writer.writeLine(" },");
                     }
                 });
             }
             writer.writeLine("],");
-            writer.write(JSON.stringify(entry.returnType));
+            writeFfiTypeExpression(writer, entry.returnType);
             writer.newLine();
         });
         writer.writeLine(");");

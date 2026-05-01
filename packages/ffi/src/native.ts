@@ -1,10 +1,10 @@
 /**
- * Re-export the runtime primitives FIRST so that ES modules visit `./runtime.js`
- * before the generated-code imports below. Generated bindings call `fn(...)`
- * at module load time, which would hit a TDZ error if `runtime.js` were
+ * Re-export the helpers FIRST so that ES modules visit `./helpers.js`
+ * before the generated-code imports below. Generated bindings call `t.fn(...)`
+ * at module load time, which would hit a TDZ error if `helpers.js` were
  * evaluated after the generated modules in our import-graph cycle.
  */
-export { alloc, call, fn, freeze, read, unfreeze, write } from "./runtime.js";
+export { alloc, call, freeze, read, t, unfreeze, write } from "./helpers.js";
 
 import type { GError } from "./generated/glib/error.js";
 import { typeCheckInstanceIsA, typeFromName } from "./generated/gobject/functions.js";

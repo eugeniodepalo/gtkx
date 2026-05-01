@@ -210,7 +210,7 @@ describe("FunctionGenerator", () => {
             generator.generate([func]);
 
             const code = getOutput(file);
-            expect(code).toContain("const gtk_test = fn(");
+            expect(code).toContain("const gtk_test = t.fn(");
             expect(code).toContain('"libgtk-4.so.1"');
             expect(code).toContain('"gtk_test"');
             expect(code).toContain("return gtk_test() as number;");

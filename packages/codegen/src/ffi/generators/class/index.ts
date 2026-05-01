@@ -351,12 +351,12 @@ export class ClassGenerator {
             docs: undefined,
             statements: (writer: Writer) => {
                 if (binding.varargs === false) {
-                    this.file.addImport("../../native.js", ["fn"]);
+                    this.file.addImport("../../native.js", ["t"]);
                     writer.writeLine(`return ${binding.name}() as number;`);
                 } else {
-                    this.file.addImport("../../native.js", ["call"]);
+                    this.file.addImport("../../native.js", ["call", "t"]);
                     writer.writeLine(
-                        `return call("${this.options.sharedLibrary}", "${this.cls.glibGetType}", [], { type: "uint64" }) as number;`,
+                        `return call("${this.options.sharedLibrary}", "${this.cls.glibGetType}", [], t.uint64) as number;`,
                     );
                 }
             },

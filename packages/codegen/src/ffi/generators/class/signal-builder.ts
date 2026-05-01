@@ -17,6 +17,7 @@ import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../cor
 import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
 import { CallExpressionBuilder } from "../../../core/writers/call-expression-builder.js";
 import type { FfiDescriptorRegistry } from "../../../core/writers/descriptor-registry.js";
+import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
 import { addTypeImports, type ImportCollector, type MethodStructure } from "../../../core/writers/index.js";
 import {
     needsParamWrap,
@@ -562,13 +563,17 @@ export class SignalBuilder {
             this.imports.addImport("./value.js", ["Value"]);
         }
 
+        if (ownSignals.length > 0) {
+            this.imports.addImport("../../native.js", ["t"]);
+        }
+
         const needsCallImport = ownSignals.some((s) => {
             if (!s.returnType) return false;
             const mapped = this.ffiMapper.mapType(s.returnType, true, s.returnType.transferOwnership);
             return mapped.ffi.type === "enum" || mapped.ffi.type === "flags";
         });
         if (needsCallImport) {
-            this.imports.addImport("../../native.js", ["call"]);
+            this.imports.addImport("../../native.js", ["call", "t"]);
         }
 
         return (writer) => {
@@ -606,10 +611,13 @@ export class SignalBuilder {
         writer.withIndent(() => {
             writer.writeLine(`const __values: ${gobjectPrefix}Value[] = [`);
             writer.withIndent(() => {
-                writer.writeLine(`${gobjectPrefix}Value.newFrom({"type":"gobject","ownership":"full"}, this),`);
+                writer.write(`${gobjectPrefix}Value.newFrom(`);
+                writeFfiTypeExpression(writer, { type: "gobject", ownership: "full" });
+                writer.writeLine(", this),");
                 paramData.forEach((p, index) => {
-                    const ffiJson = JSON.stringify(p.mapped.ffi);
-                    writer.writeLine(`${gobjectPrefix}Value.newFrom(${ffiJson}, args[${index}] as ${p.mapped.ts}),`);
+                    writer.write(`${gobjectPrefix}Value.newFrom(`);
+                    writeFfiTypeExpression(writer, p.mapped.ffi);
+                    writer.writeLine(`, args[${index}] as ${p.mapped.ts}),`);
                 });
             });
             writer.writeLine("];");
@@ -662,7 +670,7 @@ export class SignalBuilder {
                     : `${gobjectPrefix}typeFromName("GObject")`;
             case "enum":
             case "flags":
-                return `(call(${JSON.stringify(ffiType.library)}, ${JSON.stringify(ffiType.getTypeFn)}, [], { type: "uint64" }) as number)`;
+                return `(call(${JSON.stringify(ffiType.library)}, ${JSON.stringify(ffiType.getTypeFn)}, [], t.uint64) as number)`;
             default:
                 return `${gobjectPrefix}typeFromName("GObject")`;
         }

@@ -4,43 +4,27 @@ import type { Object as GObject } from "../generated/gobject/object.js";
 import type { ParamSpec } from "../generated/gobject/param-spec.js";
 import { Value } from "../generated/gobject/value.js";
 import type { NativeClass, NativeObject } from "../native.js";
-import { call, fn, read } from "../native.js";
+import { call, read, t } from "../native.js";
 import { findNativeClass, getNativeObject } from "../registry.js";
 import { Type } from "./types.js";
 
-const GVALUE_ARG = {
-    type: "boxed",
-    ownership: "borrowed",
-    innerType: "GValue",
-    library: "libgobject-2.0.so.0",
-    getTypeFn: "g_value_get_type",
-} as const;
+const GVALUE_ARG = t.boxed("GValue", "borrowed", "libgobject-2.0.so.0", "g_value_get_type");
 
-const g_strv_get_type = fn("libgobject-2.0.so.0", "g_strv_get_type", [], { type: "uint64" });
+const g_strv_get_type = t.fn("libgobject-2.0.so.0", "g_strv_get_type", [], t.uint64);
 
-const g_value_set_boxed_strv = fn(
+const g_value_set_boxed_strv = t.fn(
     "libgobject-2.0.so.0",
     "g_value_set_boxed",
-    [
-        { type: GVALUE_ARG },
-        {
-            type: {
-                type: "array",
-                itemType: { type: "string", ownership: "borrowed" },
-                kind: "array",
-                ownership: "borrowed",
-            },
-        },
-    ],
-    { type: "void" },
+    [{ type: GVALUE_ARG }, { type: t.array(t.string("borrowed")) }],
+    t.void,
 );
 
-const g_value_get_boxed_strv = fn("libgobject-2.0.so.0", "g_value_get_boxed", [{ type: GVALUE_ARG }], {
-    type: "array",
-    itemType: { type: "string", ownership: "borrowed" },
-    kind: "array",
-    ownership: "borrowed",
-});
+const g_value_get_boxed_strv = t.fn(
+    "libgobject-2.0.so.0",
+    "g_value_get_boxed",
+    [{ type: GVALUE_ARG }],
+    t.array(t.string("borrowed")),
+);
 
 let cachedStrvGType: number | undefined;
 function getStrvGType(): number {
@@ -225,7 +209,7 @@ function initValue(gtype: number, populate: (v: Value) => void): Value {
 }
 
 Value.prototype.getType = function (): number {
-    return read(this.handle, { type: "uint64" }, 0) as number;
+    return read(this.handle, t.uint64, 0) as number;
 };
 
 Value.prototype.getTypeName = function (): string {
@@ -245,23 +229,8 @@ Value.prototype.getBoxed = function <T extends NativeObject>(targetType: NativeC
     const ptr = call(
         "libgobject-2.0.so.0",
         "g_value_dup_boxed",
-        [
-            {
-                type: {
-                    type: "boxed",
-                    ownership: "borrowed",
-                    innerType: "GValue",
-                    library: "libgobject-2.0.so.0",
-                },
-                value: this.handle,
-            },
-        ],
-        {
-            type: "boxed",
-            ownership: "full",
-            innerType: glibTypeName,
-            library: "libgobject-2.0.so.0",
-        },
+        [{ type: t.boxed("GValue", "borrowed", "libgobject-2.0.so.0"), value: this.handle }],
+        t.boxed(glibTypeName, "full", "libgobject-2.0.so.0"),
     );
     if (ptr === null) return null;
     return getNativeObject(ptr as NativeHandle, targetType);
@@ -299,7 +268,7 @@ Value.prototype.toJS = function (): unknown {
     if (fundamental === Type.PARAM) return this.getParam();
 
     if (fundamental === Type.POINTER) {
-        const ptr = read(this.handle, { type: "uint64" }, 8) as number;
+        const ptr = read(this.handle, t.uint64, 8) as number;
         if (ptr !== 0) {
             throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
         }
@@ -390,9 +359,7 @@ ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
             return Value.newFromString(value as string | null);
 
         case "enum": {
-            const gtype = call(ffiType.library, ffiType.getTypeFn, [], {
-                type: "uint64",
-            }) as number;
+            const gtype = call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as number;
             const fundamental = typeFundamental(gtype);
             if (fundamental === Type.FLAGS) {
                 return Value.newFromFlags(gtype, value as number);
@@ -401,9 +368,7 @@ ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
         }
 
         case "flags": {
-            const gtype = call(ffiType.library, ffiType.getTypeFn, [], {
-                type: "uint64",
-            }) as number;
+            const gtype = call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as number;
             return Value.newFromFlags(gtype, value as number);
         }
 
