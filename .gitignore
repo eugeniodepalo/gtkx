@@ -1,6 +1,7 @@
 .turbo
 *.log
 *.tsbuildinfo
+coverage
 dist
 generated
 node_modules

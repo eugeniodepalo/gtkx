@@ -25,6 +25,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Generate coverage
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm install --frozen-lockfile && pnpm coverage
+          cache-cargo: "true"
+          cache-pnpm: "true"
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v8
         env:

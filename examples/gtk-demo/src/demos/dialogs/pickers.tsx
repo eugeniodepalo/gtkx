@@ -107,7 +107,7 @@ const PickersDemo = ({ window }: DemoProps) => {
 
     const handleLaunchUri = useCallback(async () => {
         try {
-            const launcher = new Gtk.UriLauncher("http://www.gtk.org");
+            const launcher = new Gtk.UriLauncher("https://www.gtk.org");
             await launcher.launchAsync(window.current);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);

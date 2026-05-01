@@ -39,8 +39,11 @@ ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --default-toolchain stable \
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy,llvm-tools-preview --default-toolchain stable \
     && chmod -R a+rwX $RUSTUP_HOME $CARGO_HOME
+
+RUN /usr/local/cargo/bin/cargo install cargo-llvm-cov --locked \
+    && chmod -R a+rwX $CARGO_HOME
 
 ENV RUSTUP_TOOLCHAIN=stable
 ENV CARGO_INCREMENTAL=0

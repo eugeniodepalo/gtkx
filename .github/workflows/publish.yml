@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
@@ -15,6 +14,8 @@ env:
 
 jobs:
   build-native:
+    permissions:
+      contents: read
     strategy:
       matrix:
         include:
@@ -43,6 +44,9 @@ jobs:
   publish:
     needs: build-native
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6

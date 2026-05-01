@@ -162,7 +162,7 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
                             label={message.resentBy ?? ""}
                             receivesDefault
                             hasFrame={false}
-                            uri="http://www.gtk.org"
+                            uri="https://www.gtk.org"
                         />
                     </GtkBox>
                 </GtkGrid.Child>

@@ -39,6 +39,7 @@
     "scripts": {
         "build": "tsc -b tsconfig.lib.json",
         "test": "vitest run",
+        "coverage": "vitest run --coverage",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
