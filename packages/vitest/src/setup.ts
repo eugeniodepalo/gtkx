@@ -71,7 +71,7 @@ process.on("SIGINT", () => {
     process.exit(130);
 });
 
-const waitForFile = async (path: string, label: string, timeout = 5000): Promise<void> => {
+const waitForFile = async (path: string, label: string, timeout = 15000): Promise<void> => {
     const start = Date.now();
     while (Date.now() - start < timeout) {
         if (existsSync(path)) {

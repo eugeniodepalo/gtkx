@@ -34,6 +34,7 @@
             "ignoreDependencies": ["@neon-rs/cli"]
         },
         "packages/react": {
+            "entry": ["src/components/slot-widget.tsx"],
             "project": ["src/**/*.{ts,tsx}", "!src/generated/**"]
         },
         "packages/testing": {
