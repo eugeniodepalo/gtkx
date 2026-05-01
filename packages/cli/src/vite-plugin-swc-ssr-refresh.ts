@@ -1,32 +1,22 @@
 import { type Options as SwcOptions, transform } from "@swc/core";
 import type { Plugin } from "vite";
+import {
+    type RefreshFilterOptions,
+    resolveRefreshFilter,
+    shouldTransformForRefresh,
+} from "./internal/vite-refresh-shared.js";
 
-type SwcSsrRefreshOptions = {
-    include?: RegExp;
-    exclude?: RegExp;
-};
-
-const defaultInclude = /\.[tj]sx?$/;
-const defaultExclude = /node_modules/;
+type SwcSsrRefreshOptions = RefreshFilterOptions;
 
 export function swcSsrRefresh(options: SwcSsrRefreshOptions = {}): Plugin {
-    const include = options.include ?? defaultInclude;
-    const exclude = options.exclude ?? defaultExclude;
+    const filter = resolveRefreshFilter(options);
 
     return {
         name: "gtkx:swc-ssr-refresh",
         enforce: "pre",
 
         async transform(code, id, transformOptions) {
-            if (!transformOptions?.ssr) {
-                return;
-            }
-
-            if (!include.test(id)) {
-                return;
-            }
-
-            if (exclude.test(id)) {
+            if (!shouldTransformForRefresh(id, transformOptions, filter)) {
                 return;
             }
 

@@ -1,33 +1,23 @@
 import type { Plugin } from "vite";
+import {
+    type RefreshFilterOptions,
+    resolveRefreshFilter,
+    shouldTransformForRefresh,
+} from "./internal/vite-refresh-shared.js";
 
-type GtkxRefreshOptions = {
-    include?: RegExp;
-    exclude?: RegExp;
-};
-
-const defaultInclude = /\.[tj]sx?$/;
-const defaultExclude = /node_modules/;
+type GtkxRefreshOptions = RefreshFilterOptions;
 
 const refreshRuntimePath = "@gtkx/cli/refresh-runtime";
 
 export function gtkxRefresh(options: GtkxRefreshOptions = {}): Plugin {
-    const include = options.include ?? defaultInclude;
-    const exclude = options.exclude ?? defaultExclude;
+    const filter = resolveRefreshFilter(options);
 
     return {
         name: "gtkx:refresh",
         enforce: "post",
 
         transform(code, id, transformOptions) {
-            if (!transformOptions?.ssr) {
-                return;
-            }
-
-            if (!include.test(id)) {
-                return;
-            }
-
-            if (exclude.test(id)) {
+            if (!shouldTransformForRefresh(id, transformOptions, filter)) {
                 return;
             }
 
