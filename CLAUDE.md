@@ -76,6 +76,8 @@ Run codegen with: `turbo codegen`
 
 **CRITICAL:** Any GTK/GLib warning or error in test output (e.g., `Gtk-CRITICAL`, `GLib-GObject-WARNING`, `Adwaita-CRITICAL`) must be treated as a critical issue and fixed immediately, even if tests pass.
 
+**GOTCHA — stale `tsbuildinfo` can hide typecheck errors:** `pnpm typecheck` may report success ("FULL TURBO" or per-package exit 0) while real type errors exist. `tsc -b` reads `*.tsbuildinfo` to skip rechecking files, but the file can carry stale state across input-hash changes (e.g., when codegen regenerates FFI signatures while react source still uses the old shape). Turbo then caches the false success. Symptoms: `pnpm typecheck` passes but `pnpm run docs` (TypeDoc bypasses tsbuildinfo) or CI on a fresh checkout reports type errors. To verify locally before pushing: `find . -name "*.tsbuildinfo" -not -path "*/node_modules/*" -delete && rm -rf .turbo packages/*/.turbo examples/*/.turbo && pnpm typecheck`.
+
 **IMPORTANT:** The testing environment is **NOT headless**. It is a fully functional GTKX application identical to a real one in every way. The only difference is that it runs under Xvfb (a virtual framebuffer) instead of a physical monitor. All GTK APIs, signals, event controllers, widget activation, animations, and rendering behave exactly as they would in a real application.
 
 ## Debugging Guidelines
