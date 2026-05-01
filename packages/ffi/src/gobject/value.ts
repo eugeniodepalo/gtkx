@@ -1,10 +1,11 @@
 import type { Type as FfiType, NativeHandle } from "@gtkx/native";
 import { typeFromName, typeFundamental, typeName } from "../generated/gobject/functions.js";
 import type { Object as GObject } from "../generated/gobject/object.js";
+import type { ParamSpec } from "../generated/gobject/param-spec.js";
 import { Value } from "../generated/gobject/value.js";
 import type { NativeClass, NativeObject } from "../native.js";
 import { call, read } from "../native.js";
-import { getNativeObject } from "../registry.js";
+import { findNativeClass, getNativeObject } from "../registry.js";
 import { Type } from "./types.js";
 
 let cachedStrvGType: number | undefined;
@@ -45,6 +46,31 @@ declare module "../generated/gobject/value.js" {
          * @returns An owned copy of the boxed value wrapped in the target type, or null
          */
         getBoxed<T extends NativeObject>(targetType: NativeClass<T>): T | null;
+
+        /**
+         * Gets the contents of a G_TYPE_STRV (`gchar**`) GValue as a JS string array.
+         * Returns an empty array if the underlying GStrv pointer is NULL.
+         */
+        getStrv(): string[];
+
+        /**
+         * Unmarshals this GValue into a plain JavaScript value.
+         *
+         * Dispatches on `typeFundamental(this.getType())`:
+         * - Numeric/boolean fundamentals return their primitive JS form.
+         * - STRING returns `string | null` (NULL strings are preserved as `null`).
+         * - ENUM/FLAGS return the integer payload.
+         * - OBJECT returns the wrapped GObject instance, or `null`.
+         * - VARIANT returns the wrapped Variant instance, or `null`.
+         * - PARAM returns the wrapped ParamSpec instance.
+         * - BOXED with the GStrv concrete type returns `string[]`.
+         * - BOXED with any other type resolves the wrapper class via the registry
+         *   and returns the wrapped instance; throws if no class is registered.
+         * - POINTER returns `null` for a null pointer; throws otherwise.
+         *
+         * @throws if the GValue holds an unsupported or unregistered type.
+         */
+        toJS(): unknown;
     }
 
     namespace Value {
@@ -139,6 +165,23 @@ declare module "../generated/gobject/value.js" {
          * @param value - The JS value to convert
          */
         function newFrom(ffiType: FfiType, value: unknown): Value;
+
+        /**
+         * Creates a GValue typed as `gtype` and marshals `value` into it.
+         *
+         * The runtime counterpart to {@link Value.newFrom}: where `newFrom` consumes
+         * a codegen-time FFI type descriptor, `fromJS` consumes a runtime GType
+         * integer (typically derived from a GParamSpec via `pspec.getDefaultValue().getType()`).
+         *
+         * Dispatches on `typeFundamental(gtype)` and special-cases the GStrv concrete
+         * GType so a JS `string[]` is marshalled before falling into the generic
+         * boxed branch.
+         *
+         * @param gtype - The concrete GType (not necessarily the fundamental)
+         * @param value - The JS value to marshal
+         * @throws on G_TYPE_POINTER with a non-null value, or unsupported GTypes.
+         */
+        function fromJS(gtype: number, value: unknown): Value;
     }
 }
 
@@ -185,6 +228,82 @@ Value.prototype.getBoxed = function <T extends NativeObject>(targetType: NativeC
     return getNativeObject(ptr as NativeHandle, targetType);
 };
 
+Value.prototype.getStrv = function (): string[] {
+    const result = call(
+        "libgobject-2.0.so.0",
+        "g_value_get_boxed",
+        [
+            {
+                type: {
+                    type: "boxed",
+                    ownership: "borrowed",
+                    innerType: "GValue",
+                    library: "libgobject-2.0.so.0",
+                    getTypeFn: "g_value_get_type",
+                },
+                value: this.handle,
+            },
+        ],
+        {
+            type: "array",
+            itemType: { type: "string", ownership: "borrowed" },
+            kind: "array",
+            ownership: "borrowed",
+        },
+    );
+    return (result as string[] | null) ?? [];
+};
+
+Value.prototype.toJS = function (): unknown {
+    const gtype = this.getType();
+
+    if (gtype === getStrvGType()) {
+        return this.getStrv();
+    }
+
+    const fundamental = typeFundamental(gtype);
+
+    if (fundamental === Type.BOOLEAN) return this.getBoolean();
+    if (fundamental === Type.INT) return this.getInt();
+    if (fundamental === Type.UINT) return this.getUint();
+    if (fundamental === Type.LONG) return this.getLong();
+    if (fundamental === Type.ULONG) return this.getUlong();
+    if (fundamental === Type.INT64) return this.getInt64();
+    if (fundamental === Type.UINT64) return this.getUint64();
+    if (fundamental === Type.FLOAT) return this.getFloat();
+    if (fundamental === Type.DOUBLE) return this.getDouble();
+    if (fundamental === Type.CHAR) return this.getSchar();
+    if (fundamental === Type.UCHAR) return this.getUchar();
+    if (fundamental === Type.STRING) return this.getString();
+    if (fundamental === Type.ENUM) return this.getEnum();
+    if (fundamental === Type.FLAGS) return this.getFlags();
+    if (fundamental === Type.OBJECT) return this.getObject();
+    if (fundamental === Type.VARIANT) return this.getVariant();
+    if (fundamental === Type.PARAM) return this.getParam();
+
+    if (fundamental === Type.POINTER) {
+        const ptr = read(this.handle, { type: "uint64" }, 8) as number;
+        if (ptr !== 0) {
+            throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
+        }
+        return null;
+    }
+
+    if (fundamental === Type.BOXED) {
+        const concreteName = typeName(gtype);
+        if (!concreteName) {
+            throw new Error(`Cannot resolve type name for boxed GType ${gtype}`);
+        }
+        const cls = findNativeClass(concreteName, false);
+        if (!cls) {
+            throw new Error(`No registered class for boxed GType '${concreteName}'`);
+        }
+        return this.getBoxed(cls);
+    }
+
+    throw new Error(`Unsupported GType for Value.toJS: ${typeName(gtype) ?? gtype}`);
+};
+
 type ValueStatic = {
     newFromBoolean(value: boolean): Value;
     newFromInt(value: number): Value;
@@ -203,6 +322,7 @@ type ValueStatic = {
     newFromEnum(gtype: number, value: number): Value;
     newFromFlags(gtype: number, value: number): Value;
     newFrom(ffiType: FfiType, value: unknown): Value;
+    fromJS(gtype: number, value: unknown): Value;
 };
 
 const ValueWithStatics = Value as typeof Value & ValueStatic;
@@ -474,4 +594,67 @@ ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
         default:
             throw new Error(`Unsupported FFI type for GValue conversion: ${(ffiType as { type: string }).type}`);
     }
+};
+
+ValueWithStatics.fromJS = (gtype: number, value: unknown): Value => {
+    if (gtype === getStrvGType()) {
+        if (value === null || value === undefined) {
+            const v = new Value();
+            v.init(gtype);
+            return v;
+        }
+        return Value.newFromStrv(value as string[]);
+    }
+
+    const fundamental = typeFundamental(gtype);
+
+    if (fundamental === Type.BOOLEAN) return Value.newFromBoolean(value as boolean);
+    if (fundamental === Type.INT) return Value.newFromInt(value as number);
+    if (fundamental === Type.UINT) return Value.newFromUint(value as number);
+    if (fundamental === Type.LONG) return Value.newFromLong(value as number);
+    if (fundamental === Type.ULONG) return Value.newFromUlong(value as number);
+    if (fundamental === Type.INT64) return Value.newFromInt64(value as number);
+    if (fundamental === Type.UINT64) return Value.newFromUint64(value as number);
+    if (fundamental === Type.FLOAT) return Value.newFromFloat(value as number);
+    if (fundamental === Type.DOUBLE) return Value.newFromDouble(value as number);
+    if (fundamental === Type.STRING) return Value.newFromString(value as string | null);
+    if (fundamental === Type.ENUM) return Value.newFromEnum(gtype, value as number);
+    if (fundamental === Type.FLAGS) return Value.newFromFlags(gtype, value as number);
+    if (fundamental === Type.OBJECT) return Value.newFromObject(value as GObject | null);
+    if (fundamental === Type.VARIANT) return Value.newFromVariant(value as NativeObject);
+
+    if (fundamental === Type.CHAR || fundamental === Type.UCHAR) {
+        const v = new Value();
+        v.init(gtype);
+        if (fundamental === Type.CHAR) v.setSchar(value as number);
+        else v.setUchar(value as number);
+        return v;
+    }
+
+    if (fundamental === Type.PARAM) {
+        const v = new Value();
+        v.init(gtype);
+        v.setParam(value as ParamSpec | null);
+        return v;
+    }
+
+    if (fundamental === Type.POINTER) {
+        if (value !== null && value !== undefined) {
+            throw new Error("G_TYPE_POINTER properties cannot be set from a non-null JS value");
+        }
+        const v = new Value();
+        v.init(gtype);
+        return v;
+    }
+
+    if (fundamental === Type.BOXED) {
+        if (value === null || value === undefined) {
+            const v = new Value();
+            v.init(gtype);
+            return v;
+        }
+        return Value.newFromBoxed(value as NativeObject);
+    }
+
+    throw new Error(`Unsupported GType for Value.fromJS: ${typeName(gtype) ?? gtype}`);
 };

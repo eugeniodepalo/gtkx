@@ -1,6 +1,9 @@
 import type { NativeHandle } from "@gtkx/native";
+import { typeClassRef, typeFromName, typeNameFromInstance } from "../generated/gobject/functions.js";
 import { Object as GObject } from "../generated/gobject/object.js";
-import type { Value } from "../generated/gobject/value.js";
+import { ObjectClass } from "../generated/gobject/object-class.js";
+import { TypeInstance } from "../generated/gobject/type-instance.js";
+import { Value } from "../generated/gobject/value.js";
 import { call } from "../native.js";
 import { getNativeObject } from "../registry.js";
 
@@ -63,6 +66,32 @@ declare module "../generated/gobject/object.js" {
          */
         // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
         off(signal: string, handler: (...args: any[]) => any): this;
+
+        /**
+         * Reads a property by name and returns it as a plain JavaScript value.
+         *
+         * The property's GType is resolved at runtime via the object's class,
+         * a GValue is initialized with that type, populated by
+         * `g_object_get_property`, and finally unmarshalled via {@link Value.toJS}.
+         *
+         * @param propertyName - The property name (kebab-case GIR name)
+         * @throws if no property with that name exists on this object's class
+         */
+        getProperty(propertyName: string): unknown;
+
+        /**
+         * Sets a property by name from a plain JavaScript value.
+         *
+         * The property's GType is resolved at runtime via the object's class,
+         * `value` is marshalled via {@link Value.fromJS}, and the resulting
+         * GValue is dispatched to `g_object_set_property`.
+         *
+         * @param propertyName - The property name (kebab-case GIR name)
+         * @param value - The JS value to set
+         * @throws if no property with that name exists, or if the value cannot
+         *   be marshalled to the property's GType
+         */
+        setProperty(propertyName: string, value: unknown): void;
     }
 }
 
@@ -193,4 +222,73 @@ GObject.prototype.off = function off<T extends GObject>(this: T, signal: string,
         untrackListener(this, signal, handler);
     }
     return this;
+};
+
+const resolveObjectClass = (obj: GObject): ObjectClass => {
+    const typeInstance = getNativeObject(obj.handle, TypeInstance);
+    const runtimeTypeName = typeNameFromInstance(typeInstance);
+    const gtype = typeFromName(runtimeTypeName);
+    const typeClass = typeClassRef(gtype);
+    return getNativeObject(typeClass.handle, ObjectClass);
+};
+
+const resolvePropertyValueType = (obj: GObject, propertyName: string): number => {
+    const objectClass = resolveObjectClass(obj);
+    const pspec = objectClass.findProperty(propertyName);
+    if (!pspec) {
+        const ctor = obj.constructor as { name?: string; glibTypeName?: string };
+        const className = ctor.glibTypeName ?? ctor.name ?? "GObject";
+        throw new Error(`No property '${propertyName}' on ${className}`);
+    }
+    return pspec.getDefaultValue().getType();
+};
+
+GObject.prototype.getProperty = function getProperty(propertyName: string): unknown {
+    const valueType = resolvePropertyValueType(this, propertyName);
+    const gvalue = new Value();
+    gvalue.init(valueType);
+    call(
+        LIB,
+        "g_object_get_property",
+        [
+            { type: { type: "gobject", ownership: "borrowed" }, value: this.handle },
+            { type: { type: "string", ownership: "borrowed" }, value: propertyName },
+            {
+                type: {
+                    type: "boxed",
+                    ownership: "borrowed",
+                    innerType: "GValue",
+                    library: LIB,
+                    getTypeFn: "g_value_get_type",
+                },
+                value: gvalue.handle,
+            },
+        ],
+        { type: "void" },
+    );
+    return gvalue.toJS();
+};
+
+GObject.prototype.setProperty = function setProperty(propertyName: string, value: unknown): void {
+    const valueType = resolvePropertyValueType(this, propertyName);
+    const gvalue = Value.fromJS(valueType, value);
+    call(
+        LIB,
+        "g_object_set_property",
+        [
+            { type: { type: "gobject", ownership: "borrowed" }, value: this.handle },
+            { type: { type: "string", ownership: "borrowed" }, value: propertyName },
+            {
+                type: {
+                    type: "boxed",
+                    ownership: "borrowed",
+                    innerType: "GValue",
+                    library: LIB,
+                    getTypeFn: "g_value_get_type",
+                },
+                value: gvalue.handle,
+            },
+        ],
+        { type: "void" },
+    );
 };

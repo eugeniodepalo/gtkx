@@ -29,6 +29,7 @@ import {
 import { analyzeAsyncMethods } from "../../../core/utils/async-analysis.js";
 import { collectParentFactoryMethodNames, collectParentMethodNames } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
+import { isMethodSuppressed } from "../../../core/utils/method-suppression.js";
 import { generateConflictingMethodName, normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
 import { type ParentInfo, parseParentReference } from "../../../core/utils/parent-reference.js";
 import type { MethodStructure } from "../../../core/writers/index.js";
@@ -337,6 +338,7 @@ export class ClassGenerator {
 
     private filterClassMethods(parentMethodNames: Set<string>): GirMethod[] {
         return this.cls.methods.filter((m) => {
+            if (isMethodSuppressed(this.cls.qualifiedName, m.cIdentifier)) return false;
             const needsRename = parentMethodNames.has(m.name) || (m.name === "connect" && this.cls.parent);
             if (needsRename) {
                 const renamedMethod = generateConflictingMethodName(this.cls.name, m.name);
