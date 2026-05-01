@@ -89,7 +89,6 @@ export class SignalBuilder {
                 name: "emit",
                 parameters: [
                     { name: "signal", type: "string" },
-                    // biome-ignore lint/suspicious/noExplicitAny: matches connect's catch-all for overload subtyping
                     { name: "args", type: "any[]", isRestParameter: true },
                 ],
                 returnType: "any",

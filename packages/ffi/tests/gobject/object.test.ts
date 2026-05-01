@@ -80,9 +80,7 @@ describe("Object.emit() typed signal emission", () => {
         window.emit("enable-debugging", true);
 
         expect(handler).toHaveBeenCalledOnce();
-        const callArgs = handler.mock.calls[0]!;
-        expect(callArgs[0]).toBe(window);
-        expect(callArgs[1]).toBe(true);
+        expect(handler).toHaveBeenCalledWith(window, true);
     });
 
     it("returns the boolean result from a return-value signal", () => {
@@ -123,9 +121,7 @@ describe("Object.emit() typed signal emission", () => {
         listBox.emit("row-activated", row);
 
         expect(handler).toHaveBeenCalledOnce();
-        const callArgs = handler.mock.calls[0]!;
-        expect(callArgs[0]).toBe(listBox);
-        expect(callArgs[1]).toBe(row);
+        expect(handler).toHaveBeenCalledWith(listBox, row);
     });
 
     it("throws on an unknown signal at the GObject root", () => {
