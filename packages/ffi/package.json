@@ -42,6 +42,10 @@
             "types": "./dist/gobject/index.d.ts",
             "default": "./dist/gobject/index.js"
         },
+        "./gtk": {
+            "types": "./dist/gtk/index.d.ts",
+            "default": "./dist/gtk/index.js"
+        },
         "./*": {
             "types": "./dist/generated/*/index.d.ts",
             "default": "./dist/generated/*/index.js"
