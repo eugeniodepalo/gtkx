@@ -1,6 +1,6 @@
 import type { NativeHandle } from "@gtkx/native";
 import { Surface } from "../generated/cairo/surface.js";
-import { call } from "../native.js";
+import { call, t } from "../native.js";
 import { LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class TeeSurface extends Surface {
@@ -25,7 +25,7 @@ export class TeeSurface extends Surface {
                 { type: SURFACE_T_NONE, value: this.handle },
                 { type: SURFACE_T_NONE, value: target.handle },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 
@@ -37,7 +37,7 @@ export class TeeSurface extends Surface {
                 { type: SURFACE_T_NONE, value: this.handle },
                 { type: SURFACE_T_NONE, value: target.handle },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 }

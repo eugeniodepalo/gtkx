@@ -1,71 +1,26 @@
 import { type Arg, createRef, type NativeHandle } from "@gtkx/native";
 import { PathDataType } from "../generated/cairo/enums.js";
-import { alloc, call, read, write } from "../native.js";
+import { alloc, call, read, t, write } from "../native.js";
 
 export const LIB = "libcairo.so.2";
 const LIB_GOBJECT = "libcairo-gobject.so.2";
 
-export const FONT_OPTIONS_T = {
-    type: "boxed",
-    innerType: "CairoFontOptions",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_font_options_get_type",
-    ownership: "borrowed",
-} as const;
+const cairoBoxed = (innerType: string, ownership: "borrowed" | "full" = "borrowed", getTypeFn?: string) =>
+    t.boxed(innerType, ownership, LIB_GOBJECT, getTypeFn);
 
-export const FONT_OPTIONS_T_FULL = {
-    type: "boxed",
-    innerType: "CairoFontOptions",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_font_options_get_type",
-    ownership: "full",
-} as const;
+export const FONT_OPTIONS_T = cairoBoxed("CairoFontOptions", "borrowed", "cairo_gobject_font_options_get_type");
+export const FONT_OPTIONS_T_FULL = cairoBoxed("CairoFontOptions", "full", "cairo_gobject_font_options_get_type");
+export const CAIRO_T = cairoBoxed("CairoContext", "borrowed", "cairo_gobject_context_get_type");
+export const PATTERN_T = cairoBoxed("CairoPattern", "full", "cairo_gobject_pattern_get_type");
+export const PATTERN_T_NONE = cairoBoxed("CairoPattern", "borrowed", "cairo_gobject_pattern_get_type");
+export const SURFACE_T = cairoBoxed("CairoSurface", "full", "cairo_gobject_surface_get_type");
+export const SURFACE_T_NONE = cairoBoxed("CairoSurface", "borrowed", "cairo_gobject_surface_get_type");
 
-export const CAIRO_T = {
-    type: "boxed",
-    innerType: "CairoContext",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_context_get_type",
-    ownership: "borrowed",
-} as const;
+export const DOUBLE_TYPE = t.float64;
+export const INT_TYPE = t.int32;
+export const ULONG_TYPE = t.uint64;
 
-export const PATTERN_T = {
-    type: "boxed",
-    innerType: "CairoPattern",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_pattern_get_type",
-    ownership: "full",
-} as const;
-
-export const PATTERN_T_NONE = {
-    type: "boxed",
-    innerType: "CairoPattern",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_pattern_get_type",
-    ownership: "borrowed",
-} as const;
-
-export const SURFACE_T = {
-    type: "boxed",
-    innerType: "CairoSurface",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_surface_get_type",
-    ownership: "full",
-} as const;
-
-export const SURFACE_T_NONE = {
-    type: "boxed",
-    innerType: "CairoSurface",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_surface_get_type",
-    ownership: "borrowed",
-} as const;
-
-export const DOUBLE_TYPE = { type: "float64" } as const;
-export const INT_TYPE = { type: "int32" } as const;
-export const ULONG_TYPE = { type: "uint64" } as const;
-
-const DOUBLE_REF = { type: "ref", innerType: DOUBLE_TYPE } as const;
+const DOUBLE_REF = t.ref(DOUBLE_TYPE);
 
 /**
  * Calls a Cairo function returning two `double*` out-params and yields `{ x, y }`.
@@ -73,9 +28,7 @@ const DOUBLE_REF = { type: "ref", innerType: DOUBLE_TYPE } as const;
 export const callGetXY = (fnName: string, selfArg: Arg): { x: number; y: number } => {
     const xRef = createRef(0.0);
     const yRef = createRef(0.0);
-    call(LIB, fnName, [selfArg, { type: DOUBLE_REF, value: xRef }, { type: DOUBLE_REF, value: yRef }], {
-        type: "void",
-    });
+    call(LIB, fnName, [selfArg, { type: DOUBLE_REF, value: xRef }, { type: DOUBLE_REF, value: yRef }], t.void);
     return { x: xRef.value, y: yRef.value };
 };
 
@@ -88,7 +41,7 @@ export const createFileSurface = (fnName: string, filename: string, width: numbe
         LIB,
         fnName,
         [
-            { type: { type: "string", ownership: "full" }, value: filename },
+            { type: t.string("full"), value: filename },
             { type: DOUBLE_TYPE, value: width },
             { type: DOUBLE_TYPE, value: height },
         ],
@@ -96,111 +49,21 @@ export const createFileSurface = (fnName: string, filename: string, width: numbe
     ) as NativeHandle;
 };
 
-export const FONT_FACE_T = {
-    type: "boxed",
-    innerType: "CairoFontFace",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_font_face_get_type",
-    ownership: "full",
-} as const;
+export const FONT_FACE_T = cairoBoxed("CairoFontFace", "full", "cairo_gobject_font_face_get_type");
+export const FONT_FACE_T_NONE = cairoBoxed("CairoFontFace", "borrowed", "cairo_gobject_font_face_get_type");
+export const SCALED_FONT_T = cairoBoxed("CairoScaledFont", "full", "cairo_gobject_scaled_font_get_type");
+export const SCALED_FONT_T_NONE = cairoBoxed("CairoScaledFont", "borrowed", "cairo_gobject_scaled_font_get_type");
+export const DEVICE_T = cairoBoxed("CairoDevice", "borrowed", "cairo_gobject_device_get_type");
+export const DEVICE_T_FULL = cairoBoxed("CairoDevice", "full", "cairo_gobject_device_get_type");
+export const REGION_T = cairoBoxed("CairoRegion", "full", "cairo_gobject_region_get_type");
+export const REGION_T_NONE = cairoBoxed("CairoRegion", "borrowed", "cairo_gobject_region_get_type");
 
-export const FONT_FACE_T_NONE = {
-    type: "boxed",
-    innerType: "CairoFontFace",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_font_face_get_type",
-    ownership: "borrowed",
-} as const;
-
-export const SCALED_FONT_T = {
-    type: "boxed",
-    innerType: "CairoScaledFont",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_scaled_font_get_type",
-    ownership: "full",
-} as const;
-
-export const SCALED_FONT_T_NONE = {
-    type: "boxed",
-    innerType: "CairoScaledFont",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_scaled_font_get_type",
-    ownership: "borrowed",
-} as const;
-
-export const DEVICE_T = {
-    type: "boxed",
-    innerType: "CairoDevice",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_device_get_type",
-    ownership: "borrowed",
-} as const;
-
-export const DEVICE_T_FULL = {
-    type: "boxed",
-    innerType: "CairoDevice",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_device_get_type",
-    ownership: "full",
-} as const;
-
-export const REGION_T = {
-    type: "boxed",
-    innerType: "CairoRegion",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_region_get_type",
-    ownership: "full",
-} as const;
-
-export const REGION_T_NONE = {
-    type: "boxed",
-    innerType: "CairoRegion",
-    library: LIB_GOBJECT,
-    getTypeFn: "cairo_gobject_region_get_type",
-    ownership: "borrowed",
-} as const;
-
-export const RECT_INT_T = {
-    type: "boxed",
-    innerType: "cairo_rectangle_int_t",
-    library: LIB,
-    ownership: "borrowed",
-} as const;
-
-export const PATH_STRUCT_T = {
-    type: "boxed",
-    innerType: "cairo_path_t",
-    library: LIB,
-    ownership: "borrowed",
-} as const;
-
-export const GLYPH_BUF_T = {
-    type: "boxed",
-    innerType: "cairo_glyph_t",
-    library: LIB,
-    ownership: "borrowed",
-} as const;
-
-export const RECT_LIST_T = {
-    type: "boxed",
-    innerType: "cairo_rectangle_list_t",
-    library: LIB,
-    ownership: "borrowed",
-} as const;
-
-export const MATRIX_T = {
-    type: "boxed",
-    innerType: "cairo_matrix_t",
-    library: LIB,
-    ownership: "borrowed",
-} as const;
-
-export const CLUSTER_BUF_T = {
-    type: "boxed",
-    innerType: "cairo_text_cluster_t",
-    library: LIB,
-    ownership: "borrowed",
-} as const;
+export const RECT_INT_T = t.boxed("cairo_rectangle_int_t", "borrowed", LIB);
+export const PATH_STRUCT_T = t.boxed("cairo_path_t", "borrowed", LIB);
+export const GLYPH_BUF_T = t.boxed("cairo_glyph_t", "borrowed", LIB);
+export const RECT_LIST_T = t.boxed("cairo_rectangle_list_t", "borrowed", LIB);
+export const MATRIX_T = t.boxed("cairo_matrix_t", "borrowed", LIB);
+export const CLUSTER_BUF_T = t.boxed("cairo_text_cluster_t", "borrowed", LIB);
 
 export const allocGlyphBuffer = (glyphs: Array<{ index: number; x: number; y: number }>): NativeHandle => {
     const buf = alloc(glyphs.length * 24, "cairo_glyph_t[]", LIB);
@@ -285,14 +148,10 @@ export type PathData =
 export const parsePath = (pathHandle: NativeHandle): PathData[] => {
     const numData = read(pathHandle, INT_TYPE, 16) as number;
     if (numData === 0) {
-        call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], { type: "void" });
+        call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], t.void);
         return [];
     }
-    const dataArray = read(
-        pathHandle,
-        { type: "struct", innerType: "cairo_path_data_t", size: numData * 16, ownership: "full" },
-        8,
-    ) as NativeHandle;
+    const dataArray = read(pathHandle, t.struct("cairo_path_data_t", "full", numData * 16), 8) as NativeHandle;
     const result: PathData[] = [];
     let i = 0;
     while (i < numData) {
@@ -340,6 +199,6 @@ export const parsePath = (pathHandle: NativeHandle): PathData[] => {
         }
         i += length;
     }
-    call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], { type: "void" });
+    call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], t.void);
     return result;
 };

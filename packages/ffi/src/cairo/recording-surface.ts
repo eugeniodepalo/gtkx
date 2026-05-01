@@ -1,7 +1,7 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
 import type { Content } from "../generated/cairo/enums.js";
 import { Surface } from "../generated/cairo/surface.js";
-import { alloc, call, read, write } from "../native.js";
+import { alloc, call, read, t, write } from "../native.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class RecordingSurface extends Surface {
@@ -21,12 +21,7 @@ export class RecordingSurface extends Surface {
                     [
                         { type: INT_TYPE, value: content },
                         {
-                            type: {
-                                type: "boxed",
-                                innerType: "cairo_rectangle_t",
-                                library: LIB,
-                                ownership: "borrowed",
-                            },
+                            type: t.boxed("cairo_rectangle_t", "borrowed", LIB),
                             value: rect,
                         },
                     ],
@@ -40,7 +35,7 @@ export class RecordingSurface extends Surface {
                     "cairo_recording_surface_create",
                     [
                         { type: INT_TYPE, value: content },
-                        { type: { type: "uint64" }, value: 0 },
+                        { type: t.uint64, value: 0 },
                     ],
                     SURFACE_T,
                 ) as NativeHandle,
@@ -58,12 +53,12 @@ export class RecordingSurface extends Surface {
             "cairo_recording_surface_ink_extents",
             [
                 { type: SURFACE_T_NONE, value: this.handle },
-                { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
-                { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
-                { type: { type: "ref", innerType: DOUBLE_TYPE }, value: wRef },
-                { type: { type: "ref", innerType: DOUBLE_TYPE }, value: hRef },
+                { type: t.ref(DOUBLE_TYPE), value: xRef },
+                { type: t.ref(DOUBLE_TYPE), value: yRef },
+                { type: t.ref(DOUBLE_TYPE), value: wRef },
+                { type: t.ref(DOUBLE_TYPE), value: hRef },
             ],
-            { type: "void" },
+            t.void,
         );
         return { x: xRef.value, y: yRef.value, width: wRef.value, height: hRef.value };
     }
@@ -76,11 +71,11 @@ export class RecordingSurface extends Surface {
             [
                 { type: SURFACE_T_NONE, value: this.handle },
                 {
-                    type: { type: "boxed", innerType: "cairo_rectangle_t", library: LIB, ownership: "borrowed" },
+                    type: t.boxed("cairo_rectangle_t", "borrowed", LIB),
                     value: rect,
                 },
             ],
-            { type: "boolean" },
+            t.boolean,
         ) as boolean;
         if (!result) return null;
         return {

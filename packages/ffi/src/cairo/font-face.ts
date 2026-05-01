@@ -1,7 +1,7 @@
 import type { NativeHandle } from "@gtkx/native";
 import type { FontSlant, FontType, FontWeight, Status } from "../generated/cairo/enums.js";
 import { FontFace } from "../generated/cairo/font-face.js";
-import { call } from "../native.js";
+import { call, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import { FONT_FACE_T, FONT_FACE_T_NONE, INT_TYPE, LIB } from "./common.js";
 
@@ -32,7 +32,7 @@ FontFaceWithStatics.createToy = (family: string, slant: FontSlant, weight: FontW
         LIB,
         "cairo_toy_font_face_create",
         [
-            { type: { type: "string", ownership: "full" }, value: family },
+            { type: t.string("full"), value: family },
             { type: INT_TYPE, value: slant },
             { type: INT_TYPE, value: weight },
         ],
@@ -55,10 +55,12 @@ FontFace.prototype.getType = function (): FontType {
 };
 
 FontFace.prototype.toyGetFamily = function (): string {
-    return call(LIB, "cairo_toy_font_face_get_family", [{ type: FONT_FACE_T_NONE, value: this.handle }], {
-        type: "string",
-        ownership: "borrowed",
-    }) as string;
+    return call(
+        LIB,
+        "cairo_toy_font_face_get_family",
+        [{ type: FONT_FACE_T_NONE, value: this.handle }],
+        t.string("borrowed"),
+    ) as string;
 };
 
 FontFace.prototype.toyGetSlant = function (): FontSlant {
@@ -96,7 +98,7 @@ FontFaceWithStatics.createFromFcPattern = (pattern: NativeHandle): FontFace => {
     const ptr = call(
         LIB,
         "cairo_ft_font_face_create_for_pattern",
-        [{ type: { type: "boxed", innerType: "FcPattern", library: LIB, ownership: "borrowed" }, value: pattern }],
+        [{ type: t.boxed("FcPattern", "borrowed", LIB), value: pattern }],
         FONT_FACE_T,
     ) as NativeHandle;
     return getNativeObject(ptr, FontFace) as FontFace;
@@ -107,7 +109,7 @@ FontFaceWithStatics.createFromFtFace = (ftFace: NativeHandle, loadFlags: number)
         LIB,
         "cairo_ft_font_face_create_for_ft_face",
         [
-            { type: { type: "boxed", innerType: "FT_Face", library: LIB, ownership: "borrowed" }, value: ftFace },
+            { type: t.boxed("FT_Face", "borrowed", LIB), value: ftFace },
             { type: INT_TYPE, value: loadFlags },
         ],
         FONT_FACE_T,
@@ -132,7 +134,7 @@ FontFace.prototype.ftSetSynthesize = function (flags: number): void {
             { type: FONT_FACE_T_NONE, value: this.handle },
             { type: INT_TYPE, value: flags },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -144,6 +146,6 @@ FontFace.prototype.ftUnsetSynthesize = function (flags: number): void {
             { type: FONT_FACE_T_NONE, value: this.handle },
             { type: INT_TYPE, value: flags },
         ],
-        { type: "void" },
+        t.void,
     );
 };

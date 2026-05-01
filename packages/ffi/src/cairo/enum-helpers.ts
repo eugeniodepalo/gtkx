@@ -1,5 +1,5 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
-import { call, read } from "../native.js";
+import { call, read, t } from "../native.js";
 import { INT_TYPE, LIB } from "./common.js";
 
 export function getEnumList<T extends number>(fnName: string): T[] {
@@ -9,16 +9,10 @@ export function getEnumList<T extends number>(fnName: string): T[] {
         LIB,
         fnName,
         [
-            {
-                type: {
-                    type: "ref",
-                    innerType: { type: "boxed", innerType: "int*", library: LIB, ownership: "borrowed" },
-                },
-                value: versionsRef,
-            },
-            { type: { type: "ref", innerType: INT_TYPE }, value: numRef },
+            { type: t.ref(t.boxed("int*", "borrowed", LIB)), value: versionsRef },
+            { type: t.ref(INT_TYPE), value: numRef },
         ],
-        { type: "void" },
+        t.void,
     );
     const count = numRef.value as number;
     const result: T[] = [];
@@ -29,8 +23,5 @@ export function getEnumList<T extends number>(fnName: string): T[] {
 }
 
 export function enumToString(fnName: string, value: number): string {
-    return call(LIB, fnName, [{ type: INT_TYPE, value }], {
-        type: "string",
-        ownership: "borrowed",
-    }) as string;
+    return call(LIB, fnName, [{ type: INT_TYPE, value }], t.string("borrowed")) as string;
 }

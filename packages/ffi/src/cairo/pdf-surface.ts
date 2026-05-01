@@ -1,5 +1,5 @@
 import { Surface } from "../generated/cairo/surface.js";
-import { call } from "../native.js";
+import { call, t } from "../native.js";
 import { createFileSurface, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";
 import { enumToString, getEnumList } from "./enum-helpers.js";
 
@@ -46,7 +46,7 @@ export class PdfSurface extends Surface {
                 { type: DOUBLE_TYPE, value: widthInPoints },
                 { type: DOUBLE_TYPE, value: heightInPoints },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 
@@ -57,9 +57,9 @@ export class PdfSurface extends Surface {
             [
                 { type: SURFACE_T_NONE, value: this.handle },
                 { type: INT_TYPE, value: metadata },
-                { type: { type: "string", ownership: "full" }, value: value },
+                { type: t.string("full"), value: value },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 
@@ -69,9 +69,9 @@ export class PdfSurface extends Surface {
             "cairo_pdf_surface_set_page_label",
             [
                 { type: SURFACE_T_NONE, value: this.handle },
-                { type: { type: "string", ownership: "full" }, value: label },
+                { type: t.string("full"), value: label },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 
@@ -84,7 +84,7 @@ export class PdfSurface extends Surface {
                 { type: INT_TYPE, value: width },
                 { type: INT_TYPE, value: height },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 }
@@ -97,7 +97,7 @@ PdfSurface.prototype.restrictToVersion = function (this: PdfSurface, version: Pd
             { type: SURFACE_T_NONE, value: this.handle },
             { type: INT_TYPE, value: version },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -114,8 +114,8 @@ PdfSurface.prototype.addOutline = function (
         [
             { type: SURFACE_T_NONE, value: this.handle },
             { type: INT_TYPE, value: parentId },
-            { type: { type: "string", ownership: "full" }, value: name },
-            { type: { type: "string", ownership: "full" }, value: linkAttribs },
+            { type: t.string("full"), value: name },
+            { type: t.string("full"), value: linkAttribs },
             { type: INT_TYPE, value: flags },
         ],
         INT_TYPE,

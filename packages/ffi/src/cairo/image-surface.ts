@@ -1,7 +1,7 @@
 import type { NativeHandle } from "@gtkx/native";
 import type { Format } from "../generated/cairo/enums.js";
 import { Surface } from "../generated/cairo/surface.js";
-import { call, read } from "../native.js";
+import { call, read, t } from "../native.js";
 import { INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class ImageSurface extends Surface {
@@ -26,7 +26,7 @@ export class ImageSurface extends Surface {
         const ptr = call(
             LIB,
             "cairo_image_surface_create_from_png",
-            [{ type: { type: "string", ownership: "full" }, value: filename }],
+            [{ type: t.string("full"), value: filename }],
             SURFACE_T,
         ) as NativeHandle;
         const surface = Object.create(ImageSurface.prototype) as ImageSurface;
@@ -88,16 +88,16 @@ export class ImageSurface extends Surface {
         const height = this.getHeight();
         const totalBytes = stride * height;
         if (totalBytes === 0) return new Uint8Array(0);
-        const ptr = call(LIB, "cairo_image_surface_get_data", [{ type: SURFACE_T_NONE, value: this.handle }], {
-            type: "struct",
-            innerType: "guint8*",
-            ownership: "borrowed",
-            size: totalBytes,
-        }) as NativeHandle | null;
+        const ptr = call(
+            LIB,
+            "cairo_image_surface_get_data",
+            [{ type: SURFACE_T_NONE, value: this.handle }],
+            t.struct("guint8*", "borrowed", totalBytes),
+        ) as NativeHandle | null;
         if (ptr === null) return new Uint8Array(0);
         const result = new Uint8Array(totalBytes);
         for (let i = 0; i < totalBytes; i++) {
-            result[i] = read(ptr, { type: "uint8" }, i) as number;
+            result[i] = read(ptr, t.uint8, i) as number;
         }
         return result;
     }

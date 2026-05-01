@@ -1,6 +1,6 @@
 import { Device } from "../generated/cairo/device.js";
 import type { DeviceType, Status } from "../generated/cairo/enums.js";
-import { call } from "../native.js";
+import { call, t } from "../native.js";
 import { DEVICE_T, INT_TYPE, LIB } from "./common.js";
 
 declare module "../generated/cairo/device.js" {
@@ -19,11 +19,11 @@ Device.prototype.status = function (): Status {
 };
 
 Device.prototype.finish = function (): void {
-    call(LIB, "cairo_device_finish", [{ type: DEVICE_T, value: this.handle }], { type: "void" });
+    call(LIB, "cairo_device_finish", [{ type: DEVICE_T, value: this.handle }], t.void);
 };
 
 Device.prototype.flush = function (): void {
-    call(LIB, "cairo_device_flush", [{ type: DEVICE_T, value: this.handle }], { type: "void" });
+    call(LIB, "cairo_device_flush", [{ type: DEVICE_T, value: this.handle }], t.void);
 };
 
 Device.prototype.getType = function (): DeviceType {
@@ -35,5 +35,5 @@ Device.prototype.acquire = function (): Status {
 };
 
 Device.prototype.release = function (): void {
-    call(LIB, "cairo_device_release", [{ type: DEVICE_T, value: this.handle }], { type: "void" });
+    call(LIB, "cairo_device_release", [{ type: DEVICE_T, value: this.handle }], t.void);
 };

@@ -2,7 +2,7 @@ import type { NativeHandle } from "@gtkx/native";
 import type { RegionOverlap, Status } from "../generated/cairo/enums.js";
 import { RectangleInt } from "../generated/cairo/rectangle-int.js";
 import { Region } from "../generated/cairo/region.js";
-import { alloc, call, write } from "../native.js";
+import { alloc, call, t, write } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import { INT_TYPE, LIB, RECT_INT_T, REGION_T, REGION_T_NONE } from "./common.js";
 
@@ -67,7 +67,7 @@ class RegionImpl extends Region {
             "cairo_region_create_rectangles",
             [
                 {
-                    type: { type: "boxed", innerType: "cairo_rectangle_int_t[]", library: LIB, ownership: "borrowed" },
+                    type: t.boxed("cairo_rectangle_int_t[]", "borrowed", LIB),
                     value: buf,
                 },
                 { type: INT_TYPE, value: rects.length },
@@ -98,7 +98,7 @@ Region.prototype.getExtents = function (): RectangleInt {
             { type: REGION_T_NONE, value: this.handle },
             { type: RECT_INT_T, value: rect.handle },
         ],
-        { type: "void" },
+        t.void,
     );
     return rect;
 };
@@ -117,15 +117,13 @@ Region.prototype.getRectangle = function (nth: number): RectangleInt {
             { type: INT_TYPE, value: nth },
             { type: RECT_INT_T, value: rect.handle },
         ],
-        { type: "void" },
+        t.void,
     );
     return rect;
 };
 
 Region.prototype.isEmpty = function (): boolean {
-    return call(LIB, "cairo_region_is_empty", [{ type: REGION_T_NONE, value: this.handle }], {
-        type: "boolean",
-    }) as boolean;
+    return call(LIB, "cairo_region_is_empty", [{ type: REGION_T_NONE, value: this.handle }], t.boolean) as boolean;
 };
 
 Region.prototype.containsPoint = function (x: number, y: number): boolean {
@@ -137,7 +135,7 @@ Region.prototype.containsPoint = function (x: number, y: number): boolean {
             { type: INT_TYPE, value: x },
             { type: INT_TYPE, value: y },
         ],
-        { type: "boolean" },
+        t.boolean,
     ) as boolean;
 };
 
@@ -161,7 +159,7 @@ Region.prototype.equal = function (other: Region): boolean {
             { type: REGION_T_NONE, value: this.handle },
             { type: REGION_T_NONE, value: other.handle },
         ],
-        { type: "boolean" },
+        t.boolean,
     ) as boolean;
 };
 
@@ -174,7 +172,7 @@ Region.prototype.translate = function (dx: number, dy: number): void {
             { type: INT_TYPE, value: dx },
             { type: INT_TYPE, value: dy },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 

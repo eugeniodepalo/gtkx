@@ -1,7 +1,7 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
 import type { Status } from "../generated/cairo/enums.js";
 import { Matrix } from "../generated/cairo/matrix.js";
-import { alloc, call, read } from "../native.js";
+import { alloc, call, read, t } from "../native.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T } from "./common.js";
 
 declare module "../generated/cairo/matrix.js" {
@@ -37,7 +37,7 @@ class MatrixImpl extends Matrix {
     constructor(xx?: number, yx?: number, xy?: number, yy?: number, x0?: number, y0?: number) {
         super(alloc(48, "cairo_matrix_t", LIB));
         if (xx === undefined) {
-            call(LIB, "cairo_matrix_init_identity", [{ type: MATRIX_T, value: this.handle }], { type: "void" });
+            call(LIB, "cairo_matrix_init_identity", [{ type: MATRIX_T, value: this.handle }], t.void);
         } else {
             call(
                 LIB,
@@ -51,7 +51,7 @@ class MatrixImpl extends Matrix {
                     { type: DOUBLE_TYPE, value: x0 },
                     { type: DOUBLE_TYPE, value: y0 },
                 ],
-                { type: "void" },
+                t.void,
             );
         }
     }
@@ -66,7 +66,7 @@ class MatrixImpl extends Matrix {
                 { type: DOUBLE_TYPE, value: tx },
                 { type: DOUBLE_TYPE, value: ty },
             ],
-            { type: "void" },
+            t.void,
         );
         return obj;
     }
@@ -81,7 +81,7 @@ class MatrixImpl extends Matrix {
                 { type: DOUBLE_TYPE, value: sx },
                 { type: DOUBLE_TYPE, value: sy },
             ],
-            { type: "void" },
+            t.void,
         );
         return obj;
     }
@@ -95,7 +95,7 @@ class MatrixImpl extends Matrix {
                 { type: MATRIX_T, value: handle },
                 { type: DOUBLE_TYPE, value: radians },
             ],
-            { type: "void" },
+            t.void,
         );
         return obj;
     }
@@ -154,7 +154,7 @@ Matrix.prototype.translate = function (tx: number, ty: number): void {
             { type: DOUBLE_TYPE, value: tx },
             { type: DOUBLE_TYPE, value: ty },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -167,7 +167,7 @@ Matrix.prototype.scale = function (sx: number, sy: number): void {
             { type: DOUBLE_TYPE, value: sx },
             { type: DOUBLE_TYPE, value: sy },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -179,7 +179,7 @@ Matrix.prototype.rotate = function (radians: number): void {
             { type: MATRIX_T, value: this.handle },
             { type: DOUBLE_TYPE, value: radians },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -197,7 +197,7 @@ Matrix.prototype.multiply = function (other: Matrix): Matrix {
             { type: MATRIX_T, value: this.handle },
             { type: MATRIX_T, value: other.handle },
         ],
-        { type: "void" },
+        t.void,
     );
     return obj;
 };
@@ -210,10 +210,10 @@ Matrix.prototype.transformPoint = function (x: number, y: number): [number, numb
         "cairo_matrix_transform_point",
         [
             { type: MATRIX_T, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
+            { type: t.ref(DOUBLE_TYPE), value: xRef },
+            { type: t.ref(DOUBLE_TYPE), value: yRef },
         ],
-        { type: "void" },
+        t.void,
     );
     return [xRef.value, yRef.value];
 };
@@ -226,10 +226,10 @@ Matrix.prototype.transformDistance = function (dx: number, dy: number): [number,
         "cairo_matrix_transform_distance",
         [
             { type: MATRIX_T, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: dxRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: dyRef },
+            { type: t.ref(DOUBLE_TYPE), value: dxRef },
+            { type: t.ref(DOUBLE_TYPE), value: dyRef },
         ],
-        { type: "void" },
+        t.void,
     );
     return [dxRef.value, dyRef.value];
 };

@@ -3,7 +3,7 @@ import { Device } from "../generated/cairo/device.js";
 import type { Content, Format, Status, SurfaceType } from "../generated/cairo/enums.js";
 import type { RectangleInt } from "../generated/cairo/rectangle-int.js";
 import { Surface } from "../generated/cairo/surface.js";
-import { alloc, call, read, write } from "../native.js";
+import { alloc, call, read, t, write } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import {
     callGetXY,
@@ -31,7 +31,7 @@ declare module "../generated/cairo/surface.js" {
 }
 
 Surface.prototype.finish = function (): void {
-    call(LIB, "cairo_surface_finish", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
+    call(LIB, "cairo_surface_finish", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
 };
 
 const CONTENT_MAP = {
@@ -60,11 +60,11 @@ Surface.prototype.createSimilar = function (
 };
 
 Surface.prototype.flush = function (): void {
-    call(LIB, "cairo_surface_flush", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
+    call(LIB, "cairo_surface_flush", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
 };
 
 Surface.prototype.markDirty = function (): void {
-    call(LIB, "cairo_surface_mark_dirty", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
+    call(LIB, "cairo_surface_mark_dirty", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
 };
 
 Surface.prototype.writeToPng = function (filename: string): void {
@@ -73,7 +73,7 @@ Surface.prototype.writeToPng = function (filename: string): void {
         "cairo_surface_write_to_png",
         [
             { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "string", ownership: "full" }, value: filename },
+            { type: t.string("full"), value: filename },
         ],
         INT_TYPE,
     );
@@ -151,7 +151,7 @@ Surface.prototype.setDeviceOffset = function (xOffset: number, yOffset: number):
             { type: DOUBLE_TYPE, value: xOffset },
             { type: DOUBLE_TYPE, value: yOffset },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -168,7 +168,7 @@ Surface.prototype.setDeviceScale = function (xScale: number, yScale: number): vo
             { type: DOUBLE_TYPE, value: xScale },
             { type: DOUBLE_TYPE, value: yScale },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -185,7 +185,7 @@ Surface.prototype.setFallbackResolution = function (xPpi: number, yPpi: number):
             { type: DOUBLE_TYPE, value: xPpi },
             { type: DOUBLE_TYPE, value: yPpi },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -204,22 +204,25 @@ Surface.prototype.markDirtyRectangle = function (x: number, y: number, width: nu
             { type: INT_TYPE, value: width },
             { type: INT_TYPE, value: height },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
 Surface.prototype.copyPage = function (): void {
-    call(LIB, "cairo_surface_copy_page", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
+    call(LIB, "cairo_surface_copy_page", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
 };
 
 Surface.prototype.showPage = function (): void {
-    call(LIB, "cairo_surface_show_page", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
+    call(LIB, "cairo_surface_show_page", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
 };
 
 Surface.prototype.hasShowTextGlyphs = function (): boolean {
-    return call(LIB, "cairo_surface_has_show_text_glyphs", [{ type: SURFACE_T_NONE, value: this.handle }], {
-        type: "boolean",
-    }) as boolean;
+    return call(
+        LIB,
+        "cairo_surface_has_show_text_glyphs",
+        [{ type: SURFACE_T_NONE, value: this.handle }],
+        t.boolean,
+    ) as boolean;
 };
 
 declare module "../generated/cairo/surface.js" {
@@ -236,21 +239,21 @@ declare module "../generated/cairo/surface.js" {
 Surface.prototype.setMimeData = function (mimeType: string, data: Uint8Array): void {
     const buf = alloc(data.length, "mime_data", LIB);
     for (let i = 0; i < data.length; i++) {
-        write(buf, { type: "uint8" }, i, data[i]);
+        write(buf, t.uint8, i, data[i]);
     }
     call(
         LIB,
         "cairo_surface_set_mime_data",
         [
             { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "string", ownership: "full" }, value: mimeType },
+            { type: t.string("full"), value: mimeType },
             {
-                type: { type: "boxed", innerType: "mime_data", library: LIB, ownership: "borrowed" },
+                type: t.boxed("mime_data", "borrowed", LIB),
                 value: buf,
             },
             { type: ULONG_TYPE, value: data.length },
-            { type: { type: "uint64" }, value: 0 },
-            { type: { type: "uint64" }, value: 0 },
+            { type: t.uint64, value: 0 },
+            { type: t.uint64, value: 0 },
         ],
         INT_TYPE,
     );
@@ -264,23 +267,20 @@ Surface.prototype.getMimeData = function (mimeType: string): Uint8Array | null {
         "cairo_surface_get_mime_data",
         [
             { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "string", ownership: "full" }, value: mimeType },
+            { type: t.string("full"), value: mimeType },
             {
-                type: {
-                    type: "ref",
-                    innerType: { type: "boxed", innerType: "guint8*", library: LIB, ownership: "borrowed" },
-                },
+                type: t.ref(t.boxed("guint8*", "borrowed", LIB)),
                 value: dataRef,
             },
-            { type: { type: "ref", innerType: ULONG_TYPE }, value: lengthRef },
+            { type: t.ref(ULONG_TYPE), value: lengthRef },
         ],
-        { type: "void" },
+        t.void,
     );
     const length = lengthRef.value;
     if (length === 0 || dataRef.value === null) return null;
     const result = new Uint8Array(length as number);
     for (let i = 0; i < (length as number); i++) {
-        result[i] = read(dataRef.value, { type: "uint8" }, i) as number;
+        result[i] = read(dataRef.value, t.uint8, i) as number;
     }
     return result;
 };
@@ -291,9 +291,9 @@ Surface.prototype.supportsMimeType = function (mimeType: string): boolean {
         "cairo_surface_supports_mime_type",
         [
             { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "string", ownership: "full" }, value: mimeType },
+            { type: t.string("full"), value: mimeType },
         ],
-        { type: "boolean" },
+        t.boolean,
     ) as boolean;
 };
 
@@ -313,7 +313,7 @@ Surface.prototype.mapToImage = function (extents?: RectangleInt): ImageSurface {
               "cairo_surface_map_to_image",
               [
                   { type: SURFACE_T_NONE, value: this.handle },
-                  { type: { type: "uint64" } as const, value: 0 },
+                  { type: t.uint64, value: 0 },
               ],
               SURFACE_T_NONE,
           );
@@ -330,7 +330,7 @@ Surface.prototype.unmapImage = function (image: ImageSurface): void {
             { type: SURFACE_T_NONE, value: this.handle },
             { type: SURFACE_T_NONE, value: image.handle },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -355,19 +355,19 @@ export const imageCreateForData = (
     const surface = new ImageSurface(format, width, height);
     surface.flush();
     const actualStride = surface.getStride();
-    const ptr = call(LIB, "cairo_image_surface_get_data", [{ type: SURFACE_T_NONE, value: surface.handle }], {
-        type: "struct",
-        innerType: "guint8*",
-        ownership: "borrowed",
-    }) as NativeHandle;
+    const ptr = call(
+        LIB,
+        "cairo_image_surface_get_data",
+        [{ type: SURFACE_T_NONE, value: surface.handle }],
+        t.struct("guint8*", "borrowed"),
+    ) as NativeHandle;
     const rowBytes = Math.min(stride, actualStride);
-    const byteType = { type: "uint8" } as const;
     for (let row = 0; row < height; row++) {
         const srcOffset = row * stride;
         const dstOffset = row * actualStride;
         for (let col = 0; col < rowBytes; col++) {
             if (srcOffset + col < data.length) {
-                write(ptr, byteType, dstOffset + col, data[srcOffset + col] as number);
+                write(ptr, t.uint8, dstOffset + col, data[srcOffset + col] as number);
             }
         }
     }

@@ -1,5 +1,5 @@
 import { Surface } from "../generated/cairo/surface.js";
-import { call } from "../native.js";
+import { call, t } from "../native.js";
 import { createFileSurface, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";
 import { enumToString, getEnumList } from "./enum-helpers.js";
 
@@ -24,7 +24,7 @@ export class PsSurface extends Surface {
                 { type: DOUBLE_TYPE, value: widthInPoints },
                 { type: DOUBLE_TYPE, value: heightInPoints },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 
@@ -34,16 +34,19 @@ export class PsSurface extends Surface {
             "cairo_ps_surface_set_eps",
             [
                 { type: SURFACE_T_NONE, value: this.handle },
-                { type: { type: "boolean" }, value: eps },
+                { type: t.boolean, value: eps },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 
     getEps(): boolean {
-        return call(LIB, "cairo_ps_surface_get_eps", [{ type: SURFACE_T_NONE, value: this.handle }], {
-            type: "boolean",
-        }) as boolean;
+        return call(
+            LIB,
+            "cairo_ps_surface_get_eps",
+            [{ type: SURFACE_T_NONE, value: this.handle }],
+            t.boolean,
+        ) as boolean;
     }
 
     restrictToLevel(level: PsLevel): void {
@@ -54,7 +57,7 @@ export class PsSurface extends Surface {
                 { type: SURFACE_T_NONE, value: this.handle },
                 { type: INT_TYPE, value: level },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 
@@ -64,22 +67,18 @@ export class PsSurface extends Surface {
             "cairo_ps_surface_dsc_comment",
             [
                 { type: SURFACE_T_NONE, value: this.handle },
-                { type: { type: "string", ownership: "full" }, value: comment },
+                { type: t.string("full"), value: comment },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 
     dscBeginSetup(): void {
-        call(LIB, "cairo_ps_surface_dsc_begin_setup", [{ type: SURFACE_T_NONE, value: this.handle }], {
-            type: "void",
-        });
+        call(LIB, "cairo_ps_surface_dsc_begin_setup", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
     }
 
     dscBeginPageSetup(): void {
-        call(LIB, "cairo_ps_surface_dsc_begin_page_setup", [{ type: SURFACE_T_NONE, value: this.handle }], {
-            type: "void",
-        });
+        call(LIB, "cairo_ps_surface_dsc_begin_page_setup", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
     }
 
     static getLevels(): PsLevel[] {

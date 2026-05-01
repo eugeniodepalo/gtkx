@@ -3,7 +3,7 @@ import type { Extend, Filter, PatternType, Status } from "../generated/cairo/enu
 import type { Matrix } from "../generated/cairo/matrix.js";
 import { Pattern } from "../generated/cairo/pattern.js";
 import { Surface } from "../generated/cairo/surface.js";
-import { call } from "../native.js";
+import { call, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import {
     DOUBLE_TYPE,
@@ -136,7 +136,7 @@ Pattern.prototype.addColorStopRgb = function (offset: number, red: number, green
             { type: DOUBLE_TYPE, value: green },
             { type: DOUBLE_TYPE, value: blue },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -158,7 +158,7 @@ Pattern.prototype.addColorStopRgba = function (
             { type: DOUBLE_TYPE, value: blue },
             { type: DOUBLE_TYPE, value: alpha },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -170,7 +170,7 @@ Pattern.prototype.setFilter = function (filter: Filter): void {
             { type: PATTERN_T_NONE, value: this.handle },
             { type: INT_TYPE, value: filter },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -186,7 +186,7 @@ Pattern.prototype.setExtend = function (extend: Extend): void {
             { type: PATTERN_T_NONE, value: this.handle },
             { type: INT_TYPE, value: extend },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -202,7 +202,7 @@ Pattern.prototype.setMatrix = function (matrix: Matrix): void {
             { type: PATTERN_T_NONE, value: this.handle },
             { type: MATRIX_T, value: matrix.handle },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -215,7 +215,7 @@ Pattern.prototype.getMatrix = function (): Matrix {
             { type: PATTERN_T_NONE, value: this.handle },
             { type: MATRIX_T, value: handle },
         ],
-        { type: "void" },
+        t.void,
     );
     return obj;
 };
@@ -257,15 +257,11 @@ export class MeshPattern extends Pattern {
 }
 
 Pattern.prototype.meshBeginPatch = function (): void {
-    call(LIB, "cairo_mesh_pattern_begin_patch", [{ type: PATTERN_T_NONE, value: this.handle }], {
-        type: "void",
-    });
+    call(LIB, "cairo_mesh_pattern_begin_patch", [{ type: PATTERN_T_NONE, value: this.handle }], t.void);
 };
 
 Pattern.prototype.meshEndPatch = function (): void {
-    call(LIB, "cairo_mesh_pattern_end_patch", [{ type: PATTERN_T_NONE, value: this.handle }], {
-        type: "void",
-    });
+    call(LIB, "cairo_mesh_pattern_end_patch", [{ type: PATTERN_T_NONE, value: this.handle }], t.void);
 };
 
 Pattern.prototype.meshMoveTo = function (x: number, y: number): void {
@@ -277,7 +273,7 @@ Pattern.prototype.meshMoveTo = function (x: number, y: number): void {
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -290,7 +286,7 @@ Pattern.prototype.meshLineTo = function (x: number, y: number): void {
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -314,7 +310,7 @@ Pattern.prototype.meshCurveTo = function (
             { type: DOUBLE_TYPE, value: x3 },
             { type: DOUBLE_TYPE, value: y3 },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -328,7 +324,7 @@ Pattern.prototype.meshSetControlPoint = function (pointNum: number, x: number, y
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -343,7 +339,7 @@ Pattern.prototype.meshSetCornerColorRgb = function (cornerNum: number, r: number
             { type: DOUBLE_TYPE, value: g },
             { type: DOUBLE_TYPE, value: b },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -365,7 +361,7 @@ Pattern.prototype.meshSetCornerColorRgba = function (
             { type: DOUBLE_TYPE, value: b },
             { type: DOUBLE_TYPE, value: a },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -376,7 +372,7 @@ Pattern.prototype.meshGetPatchCount = function (): number {
         "cairo_mesh_pattern_get_patch_count",
         [
             { type: PATTERN_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: INT_TYPE }, value: countRef },
+            { type: t.ref(INT_TYPE), value: countRef },
         ],
         INT_TYPE,
     );
@@ -393,8 +389,8 @@ Pattern.prototype.meshGetControlPoint = function (patchNum: number, pointNum: nu
             { type: PATTERN_T_NONE, value: this.handle },
             { type: INT_TYPE, value: patchNum },
             { type: INT_TYPE, value: pointNum },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
+            { type: t.ref(DOUBLE_TYPE), value: xRef },
+            { type: t.ref(DOUBLE_TYPE), value: yRef },
         ],
         INT_TYPE,
     );
@@ -416,10 +412,10 @@ Pattern.prototype.meshGetCornerColorRgba = function (
             { type: PATTERN_T_NONE, value: this.handle },
             { type: INT_TYPE, value: patchNum },
             { type: INT_TYPE, value: cornerNum },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: rRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: gRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: bRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: aRef },
+            { type: t.ref(DOUBLE_TYPE), value: rRef },
+            { type: t.ref(DOUBLE_TYPE), value: gRef },
+            { type: t.ref(DOUBLE_TYPE), value: bRef },
+            { type: t.ref(DOUBLE_TYPE), value: aRef },
         ],
         INT_TYPE,
     );
@@ -433,7 +429,7 @@ Pattern.prototype.getColorStopCount = function (): number {
         "cairo_pattern_get_color_stop_count",
         [
             { type: PATTERN_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: INT_TYPE }, value: countRef },
+            { type: t.ref(INT_TYPE), value: countRef },
         ],
         INT_TYPE,
     );
@@ -458,11 +454,11 @@ Pattern.prototype.getColorStopRgba = function (index: number): {
         [
             { type: PATTERN_T_NONE, value: this.handle },
             { type: INT_TYPE, value: index },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: offsetRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: rRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: gRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: bRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: aRef },
+            { type: t.ref(DOUBLE_TYPE), value: offsetRef },
+            { type: t.ref(DOUBLE_TYPE), value: rRef },
+            { type: t.ref(DOUBLE_TYPE), value: gRef },
+            { type: t.ref(DOUBLE_TYPE), value: bRef },
+            { type: t.ref(DOUBLE_TYPE), value: aRef },
         ],
         INT_TYPE,
     );
@@ -479,10 +475,10 @@ Pattern.prototype.getRgba = function (): { r: number; g: number; b: number; a: n
         "cairo_pattern_get_rgba",
         [
             { type: PATTERN_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: rRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: gRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: bRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: aRef },
+            { type: t.ref(DOUBLE_TYPE), value: rRef },
+            { type: t.ref(DOUBLE_TYPE), value: gRef },
+            { type: t.ref(DOUBLE_TYPE), value: bRef },
+            { type: t.ref(DOUBLE_TYPE), value: aRef },
         ],
         INT_TYPE,
     );
@@ -496,7 +492,7 @@ Pattern.prototype.getSurface = function (): Surface {
         "cairo_pattern_get_surface",
         [
             { type: PATTERN_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: SURFACE_T_NONE }, value: surfRef },
+            { type: t.ref(SURFACE_T_NONE), value: surfRef },
         ],
         INT_TYPE,
     );
@@ -518,10 +514,10 @@ Pattern.prototype.getLinearPoints = function (): {
         "cairo_pattern_get_linear_points",
         [
             { type: PATTERN_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: x0Ref },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: y0Ref },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: x1Ref },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: y1Ref },
+            { type: t.ref(DOUBLE_TYPE), value: x0Ref },
+            { type: t.ref(DOUBLE_TYPE), value: y0Ref },
+            { type: t.ref(DOUBLE_TYPE), value: x1Ref },
+            { type: t.ref(DOUBLE_TYPE), value: y1Ref },
         ],
         INT_TYPE,
     );
@@ -547,12 +543,12 @@ Pattern.prototype.getRadialCircles = function (): {
         "cairo_pattern_get_radial_circles",
         [
             { type: PATTERN_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: x0Ref },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: y0Ref },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: r0Ref },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: x1Ref },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: y1Ref },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: r1Ref },
+            { type: t.ref(DOUBLE_TYPE), value: x0Ref },
+            { type: t.ref(DOUBLE_TYPE), value: y0Ref },
+            { type: t.ref(DOUBLE_TYPE), value: r0Ref },
+            { type: t.ref(DOUBLE_TYPE), value: x1Ref },
+            { type: t.ref(DOUBLE_TYPE), value: y1Ref },
+            { type: t.ref(DOUBLE_TYPE), value: r1Ref },
         ],
         INT_TYPE,
     );
@@ -607,7 +603,7 @@ Pattern.prototype.setDither = function (dither: Dither): void {
             { type: PATTERN_T_NONE, value: this.handle },
             { type: INT_TYPE, value: dither },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 

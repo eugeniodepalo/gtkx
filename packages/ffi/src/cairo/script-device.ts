@@ -2,7 +2,7 @@ import type { NativeHandle } from "@gtkx/native";
 import { Device } from "../generated/cairo/device.js";
 import type { Content } from "../generated/cairo/enums.js";
 import { Surface } from "../generated/cairo/surface.js";
-import { call } from "../native.js";
+import { call, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import { DEVICE_T, DEVICE_T_FULL, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
@@ -17,7 +17,7 @@ export class ScriptDevice extends Device {
             call(
                 LIB,
                 "cairo_script_create",
-                [{ type: { type: "string", ownership: "full" }, value: filename }],
+                [{ type: t.string("full"), value: filename }],
                 DEVICE_T_FULL,
             ) as NativeHandle,
         );
@@ -31,7 +31,7 @@ export class ScriptDevice extends Device {
                 { type: DEVICE_T, value: this.handle },
                 { type: INT_TYPE, value: mode },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 
@@ -47,10 +47,10 @@ export class ScriptDevice extends Device {
             "cairo_script_write_comment",
             [
                 { type: DEVICE_T, value: this.handle },
-                { type: { type: "string", ownership: "full" }, value: comment },
+                { type: t.string("full"), value: comment },
                 { type: INT_TYPE, value: utf8.length },
             ],
-            { type: "void" },
+            t.void,
         );
     }
 

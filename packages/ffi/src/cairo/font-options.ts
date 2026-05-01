@@ -1,7 +1,7 @@
 import type { NativeHandle } from "@gtkx/native";
 import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../generated/cairo/enums.js";
 import { FontOptions } from "../generated/cairo/font-options.js";
-import { call } from "../native.js";
+import { call, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import { FONT_OPTIONS_T, FONT_OPTIONS_T_FULL, INT_TYPE, LIB } from "./common.js";
 
@@ -39,7 +39,7 @@ FontOptions.prototype.setHintStyle = function (hintStyle: HintStyle): void {
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: INT_TYPE, value: hintStyle },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -60,7 +60,7 @@ FontOptions.prototype.setAntialias = function (antialias: Antialias): void {
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: INT_TYPE, value: antialias },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -81,7 +81,7 @@ FontOptions.prototype.setHintMetrics = function (hintMetrics: HintMetrics): void
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: INT_TYPE, value: hintMetrics },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -102,7 +102,7 @@ FontOptions.prototype.setSubpixelOrder = function (subpixelOrder: SubpixelOrder)
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: INT_TYPE, value: subpixelOrder },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -123,7 +123,7 @@ FontOptions.prototype.equal = function (other: FontOptions): boolean {
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: FONT_OPTIONS_T, value: other.handle },
         ],
-        { type: "boolean" },
+        t.boolean,
     ) as boolean;
 };
 
@@ -135,7 +135,7 @@ FontOptions.prototype.merge = function (other: FontOptions): void {
             { type: FONT_OPTIONS_T, value: this.handle },
             { type: FONT_OPTIONS_T, value: other.handle },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -163,9 +163,7 @@ FontOptions.prototype.status = function (): Status {
 };
 
 FontOptions.prototype.hash = function (): number {
-    return call(LIB, "cairo_font_options_hash", [{ type: FONT_OPTIONS_T, value: this.handle }], {
-        type: "uint64",
-    }) as number;
+    return call(LIB, "cairo_font_options_hash", [{ type: FONT_OPTIONS_T, value: this.handle }], t.uint64) as number;
 };
 
 FontOptions.prototype.setVariations = function (variations: string): void {
@@ -174,15 +172,17 @@ FontOptions.prototype.setVariations = function (variations: string): void {
         "cairo_font_options_set_variations",
         [
             { type: FONT_OPTIONS_T, value: this.handle },
-            { type: { type: "string", ownership: "full" }, value: variations },
+            { type: t.string("full"), value: variations },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
 FontOptions.prototype.getVariations = function (): string {
-    return call(LIB, "cairo_font_options_get_variations", [{ type: FONT_OPTIONS_T, value: this.handle }], {
-        type: "string",
-        ownership: "borrowed",
-    }) as string;
+    return call(
+        LIB,
+        "cairo_font_options_get_variations",
+        [{ type: FONT_OPTIONS_T, value: this.handle }],
+        t.string("borrowed"),
+    ) as string;
 };
