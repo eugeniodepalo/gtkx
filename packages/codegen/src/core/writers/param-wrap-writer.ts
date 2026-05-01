@@ -8,130 +8,85 @@ export type ParamWrapInfo = {
     tsType: string;
 };
 
-type ReturnUnwrapInfo = {
+export type ReturnUnwrapInfo = {
     needsUnwrap: boolean;
 };
 
-export class ParamWrapWriter {
-    needsReturnUnwrap(mappedType: MappedType | null): ReturnUnwrapInfo {
-        if (!mappedType) {
-            return { needsUnwrap: false };
-        }
-        const ffiType = mappedType.ffi.type;
-        const needsUnwrap = ffiType === "gobject" || ffiType === "boxed" || ffiType === "struct";
-        return { needsUnwrap };
-    }
-    needsParamWrap(mappedType: MappedType): ParamWrapInfo {
-        const ffiType = mappedType.ffi.type;
-        const tsType = mappedType.ts;
+export function needsReturnUnwrap(mappedType: MappedType | null): ReturnUnwrapInfo {
+    if (!mappedType) return { needsUnwrap: false };
+    const ffiType = mappedType.ffi.type;
+    return { needsUnwrap: ffiType === "gobject" || ffiType === "boxed" || ffiType === "struct" };
+}
 
-        if (ffiType === "gobject" && mappedType.kind !== "interface") {
-            return {
-                needsWrap: true,
-                needsTargetClass: false,
-                targetClass: undefined,
-                tsType,
-            };
-        }
+export function needsParamWrap(mappedType: MappedType): ParamWrapInfo {
+    const ffiType = mappedType.ffi.type;
+    const tsType = mappedType.ts;
 
-        const needsTargetClass =
-            (ffiType === "gobject" && mappedType.kind === "interface") ||
-            ffiType === "boxed" ||
-            ffiType === "struct" ||
-            ffiType === "fundamental";
-
-        if (needsTargetClass) {
-            return {
-                needsWrap: true,
-                needsTargetClass: true,
-                targetClass: mappedType.ts,
-                tsType,
-            };
-        }
-
-        return {
-            needsWrap: false,
-            needsTargetClass: false,
-            targetClass: undefined,
-            tsType,
-        };
+    if (ffiType === "gobject" && mappedType.kind !== "interface") {
+        return { needsWrap: true, needsTargetClass: false, targetClass: undefined, tsType };
     }
 
-    writeWrapExpression(argName: string, wrapInfo: ParamWrapInfo): string {
-        if (!wrapInfo.needsWrap) {
-            return `${argName} as ${wrapInfo.tsType}`;
-        }
+    const needsTargetClass =
+        (ffiType === "gobject" && mappedType.kind === "interface") ||
+        ffiType === "boxed" ||
+        ffiType === "struct" ||
+        ffiType === "fundamental";
 
-        if (wrapInfo.needsTargetClass && wrapInfo.targetClass) {
-            return `getNativeObject(${argName} as NativeHandle, ${wrapInfo.targetClass})`;
-        }
-
-        return `getNativeObject(${argName} as NativeHandle) as ${wrapInfo.tsType}`;
+    if (needsTargetClass) {
+        return { needsWrap: true, needsTargetClass: true, targetClass: mappedType.ts, tsType };
     }
 
-    buildWrapParamsFunction(
-        params: Array<{ mappedType: MappedType; paramName: string }>,
-    ): ((writer: Writer) => void) | null {
-        const wrapInfos = params.map((p) => ({
-            ...p,
-            wrapInfo: this.needsParamWrap(p.mappedType),
-        }));
+    return { needsWrap: false, needsTargetClass: false, targetClass: undefined, tsType };
+}
 
-        const anyNeedsWrap = wrapInfos.some((w) => w.wrapInfo.needsWrap);
-        if (!anyNeedsWrap) {
-            return null;
-        }
-
-        return (writer) => {
-            writer.write("(args: unknown[]) => [");
-            writer.newLine();
-            writer.withIndent(() => this.writeWrapExpressionsList(wrapInfos, writer));
-            writer.write("]");
-        };
+export function writeWrapExpression(argName: string, wrapInfo: ParamWrapInfo): string {
+    if (!wrapInfo.needsWrap) {
+        return `${argName} as ${wrapInfo.tsType}`;
     }
+    if (wrapInfo.needsTargetClass && wrapInfo.targetClass) {
+        return `getNativeObject(${argName} as NativeHandle, ${wrapInfo.targetClass})`;
+    }
+    return `getNativeObject(${argName} as NativeHandle) as ${wrapInfo.tsType}`;
+}
 
-    buildCallbackWrapperExpression(
-        jsParamName: string,
-        wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>,
-        returnUnwrapInfo?: ReturnUnwrapInfo,
-    ): (writer: Writer) => void {
-        return (writer) => {
-            writer.write(`${jsParamName}`);
-            writer.newLine();
-            writer.withIndent(() => {
-                writer.write("? (...args: unknown[]) => ");
-                if (returnUnwrapInfo?.needsUnwrap) {
-                    writer.write("{");
-                    writer.newLine();
-                    writer.withIndent(() => {
-                        writer.write(`const _result = ${jsParamName}(`);
-                        writer.newLine();
-                        writer.withIndent(() => this.writeWrapExpressionsList(wrapInfos, writer));
-                        writer.writeLine(");");
-                        writer.writeLine("return _result?.handle ?? null;");
-                    });
-                    writer.write("}");
-                } else {
-                    writer.write(`${jsParamName}(`);
-                    writer.newLine();
-                    writer.withIndent(() => this.writeWrapExpressionsList(wrapInfos, writer));
-                    writer.write(")");
-                }
+export function buildCallbackWrapperExpression(
+    jsParamName: string,
+    wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>,
+    returnUnwrapInfo?: ReturnUnwrapInfo,
+): (writer: Writer) => void {
+    return (writer) => {
+        writer.write(`${jsParamName}`);
+        writer.newLine();
+        writer.withIndent(() => {
+            writer.write("? (...args: unknown[]) => ");
+            if (returnUnwrapInfo?.needsUnwrap) {
+                writer.write("{");
                 writer.newLine();
-                writer.write(": null");
-            });
-        };
-    }
-
-    private writeWrapExpressionsList(wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>, writer: Writer): void {
-        wrapInfos.forEach((w, index) => {
-            const argAccess = `args[${index}]`;
-            const expression = this.writeWrapExpression(argAccess, w.wrapInfo);
-            writer.write(expression);
-            if (index < wrapInfos.length - 1) {
-                writer.write(",");
+                writer.withIndent(() => {
+                    writer.write(`const _result = ${jsParamName}(`);
+                    writer.newLine();
+                    writer.withIndent(() => writeWrapExpressionsList(wrapInfos, writer));
+                    writer.writeLine(");");
+                    writer.writeLine("return _result?.handle ?? null;");
+                });
+                writer.write("}");
+            } else {
+                writer.write(`${jsParamName}(`);
+                writer.newLine();
+                writer.withIndent(() => writeWrapExpressionsList(wrapInfos, writer));
+                writer.write(")");
             }
             writer.newLine();
+            writer.write(": null");
         });
-    }
+    };
+}
+
+function writeWrapExpressionsList(wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>, writer: Writer): void {
+    wrapInfos.forEach((w, index) => {
+        const argAccess = `args[${index}]`;
+        writer.write(writeWrapExpression(argAccess, w.wrapInfo));
+        if (index < wrapInfos.length - 1) writer.write(",");
+        writer.newLine();
+    });
 }

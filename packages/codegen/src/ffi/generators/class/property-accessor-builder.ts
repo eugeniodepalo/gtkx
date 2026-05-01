@@ -239,25 +239,7 @@ export class PropertyAccessorBuilder {
             returnType = `${returnType} | null`;
         }
 
-        const callWriter = this.callExpression.toWriter({
-            sharedLibrary: "libgobject-2.0.so.0",
-            cIdentifier: "g_object_get_property",
-            args: [
-                { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
-                { type: { type: "string", ownership: "borrowed" }, value: `"${prop.name}"` },
-                {
-                    type: {
-                        type: "boxed",
-                        ownership: "borrowed",
-                        innerType: "GValue",
-                        library: "libgobject-2.0.so.0",
-                        getTypeFn: "g_value_get_type",
-                    },
-                    value: "gvalue.handle",
-                },
-            ],
-            returnType: { type: "void" },
-        });
+        const callWriter = this.buildGObjectPropertyCall("g_object_get_property", prop.name);
 
         return (writer) => {
             writer.writeLine(`const gvalue = new ${gobjectPrefix}Value();`);
@@ -300,25 +282,7 @@ export class PropertyAccessorBuilder {
 
         const gobjectPrefix = this.options.namespace === "GObject" ? "" : "GObject.";
 
-        const callWriter = this.callExpression.toWriter({
-            sharedLibrary: "libgobject-2.0.so.0",
-            cIdentifier: "g_object_set_property",
-            args: [
-                { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
-                { type: { type: "string", ownership: "borrowed" }, value: `"${prop.name}"` },
-                {
-                    type: {
-                        type: "boxed",
-                        ownership: "borrowed",
-                        innerType: "GValue",
-                        library: "libgobject-2.0.so.0",
-                        getTypeFn: "g_value_get_type",
-                    },
-                    value: "gvalue.handle",
-                },
-            ],
-            returnType: { type: "void" },
-        });
+        const callWriter = this.buildGObjectPropertyCall("g_object_set_property", prop.name);
 
         return (writer) => {
             if (setterInfo.staticConstructor) {
@@ -336,6 +300,31 @@ export class PropertyAccessorBuilder {
             callWriter(writer);
             writer.writeLine(";");
         };
+    }
+
+    private buildGObjectPropertyCall(
+        cIdentifier: "g_object_get_property" | "g_object_set_property",
+        propName: string,
+    ): (writer: Writer) => void {
+        return this.callExpression.toWriter({
+            sharedLibrary: "libgobject-2.0.so.0",
+            cIdentifier,
+            args: [
+                { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
+                { type: { type: "string", ownership: "borrowed" }, value: `"${propName}"` },
+                {
+                    type: {
+                        type: "boxed",
+                        ownership: "borrowed",
+                        innerType: "GValue",
+                        library: "libgobject-2.0.so.0",
+                        getTypeFn: "g_value_get_type",
+                    },
+                    value: "gvalue.handle",
+                },
+            ],
+            returnType: { type: "void" },
+        });
     }
 
     private getGValueGetterInfo(prop: GirProperty, typeMapping: MappedType): GValueGetterInfo | null {

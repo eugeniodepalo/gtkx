@@ -18,7 +18,12 @@ import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
 import { CallExpressionBuilder } from "../../../core/writers/call-expression-builder.js";
 import type { FfiDescriptorRegistry } from "../../../core/writers/descriptor-registry.js";
 import { addTypeImports, type ImportCollector, type MethodStructure } from "../../../core/writers/index.js";
-import { type ParamWrapInfo, ParamWrapWriter } from "../../../core/writers/param-wrap-writer.js";
+import {
+    needsParamWrap,
+    needsReturnUnwrap,
+    type ParamWrapInfo,
+    writeWrapExpression,
+} from "../../../core/writers/param-wrap-writer.js";
 
 type SignalParamData = {
     mapped: MappedType;
@@ -31,7 +36,6 @@ type SignalParamData = {
  */
 export class SignalBuilder {
     private readonly className: string;
-    private readonly paramWrapWriter = new ParamWrapWriter();
     private readonly callExpression: CallExpressionBuilder;
 
     constructor(
@@ -324,7 +328,7 @@ export class SignalBuilder {
         const returnMapped = signal.returnType
             ? this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership)
             : null;
-        const returnUnwrapInfo = this.paramWrapWriter.needsReturnUnwrap(returnMapped);
+        const returnUnwrapInfo = needsReturnUnwrap(returnMapped);
 
         writer.writeLine(`case "${signal.name}": {`);
         writer.withIndent(() => {
@@ -345,7 +349,7 @@ export class SignalBuilder {
             return {
                 mapped,
                 paramName: toValidIdentifier(toCamelCase(p.name)),
-                wrapInfo: this.paramWrapWriter.needsParamWrap(mapped),
+                wrapInfo: needsParamWrap(mapped),
             };
         });
     }
@@ -372,7 +376,7 @@ export class SignalBuilder {
                             writer.write(`_ref${index}`);
                         } else {
                             const argAccess = `args[${index + 1}]`;
-                            writer.write(this.paramWrapWriter.writeWrapExpression(argAccess, p.wrapInfo));
+                            writer.write(writeWrapExpression(argAccess, p.wrapInfo));
                         }
                         if (index < paramData.length - 1) {
                             writer.write(",");
@@ -401,7 +405,7 @@ export class SignalBuilder {
                     writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
                     paramData.forEach((p, index) => {
                         const argAccess = `args[${index + 1}]`;
-                        const expression = this.paramWrapWriter.writeWrapExpression(argAccess, p.wrapInfo);
+                        const expression = writeWrapExpression(argAccess, p.wrapInfo);
                         writer.write(expression);
                         if (index < paramData.length - 1) {
                             writer.write(",");

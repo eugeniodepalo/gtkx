@@ -33,7 +33,7 @@ import {
 } from "./callable-shape.js";
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
-import { ParamWrapWriter } from "./param-wrap-writer.js";
+import { buildCallbackWrapperExpression, needsParamWrap, needsReturnUnwrap } from "./param-wrap-writer.js";
 
 /**
  * Collects imports during method body generation.
@@ -170,7 +170,6 @@ export type ConstructorSelection = {
 export class MethodBodyWriter {
     private ffiTypeWriter: FfiTypeWriter;
     private callExpression: CallExpressionBuilder;
-    private paramWrapWriter: ParamWrapWriter;
     private selfNames: ReadonlySet<string> = new Set();
 
     constructor(
@@ -181,7 +180,6 @@ export class MethodBodyWriter {
     ) {
         this.ffiTypeWriter = ffiTypeWriter ?? new FfiTypeWriter();
         this.callExpression = new CallExpressionBuilder(descriptors, imports);
-        this.paramWrapWriter = new ParamWrapWriter();
     }
 
     /**
@@ -973,12 +971,12 @@ export class MethodBodyWriter {
     ): CallbackWrapperInfo | undefined {
         const callbackParams = this.ffiMapper.getCallbackParamMappings(param);
         const callbackReturnType = this.ffiMapper.getCallbackReturnType(param);
-        const returnUnwrapInfo = this.paramWrapWriter.needsReturnUnwrap(callbackReturnType);
+        const returnUnwrapInfo = needsReturnUnwrap(callbackReturnType);
 
         const wrapInfos = callbackParams
             ? callbackParams.map((p) => ({
                   ...p,
-                  wrapInfo: this.paramWrapWriter.needsParamWrap(p.mapped),
+                  wrapInfo: needsParamWrap(p.mapped),
               }))
             : [];
 
@@ -997,11 +995,7 @@ export class MethodBodyWriter {
         }
 
         const wrappedName = createWrappedName(jsParamName);
-        const wrapExpression = this.paramWrapWriter.buildCallbackWrapperExpression(
-            jsParamName,
-            wrapInfos,
-            returnUnwrapInfo,
-        );
+        const wrapExpression = buildCallbackWrapperExpression(jsParamName, wrapInfos, returnUnwrapInfo);
 
         return {
             paramName: jsParamName,
