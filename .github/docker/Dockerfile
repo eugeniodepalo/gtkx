@@ -24,6 +24,7 @@ RUN dnf install -y \
     appstream-devel \
     mesa-libGLES \
     xorg-x11-server-Xvfb \
+    dbus-daemon \
     git \
     && dnf clean all \
     && rm -rf /var/cache/dnf/*
