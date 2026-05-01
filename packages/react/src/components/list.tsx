@@ -20,7 +20,7 @@ import type {
 } from "../jsx.js";
 import type { BoundItem } from "../nodes/internal/bound-item.js";
 import { createPortal } from "../portal.js";
-import { createMenuChild } from "./compound.js";
+import { createVirtualChild } from "./compound.js";
 
 type GenericListViewProps<T, S> = Omit<GtkListViewProps, keyof ListViewProps> & ListViewProps<T, S>;
 type GenericGridViewProps<T> = Omit<GtkGridViewProps, keyof GridViewProps> & GridViewProps<T>;
@@ -109,9 +109,9 @@ export const GtkColumnView: typeof GtkColumnViewBase & {
 } = Object.assign(GtkColumnViewBase, {
     Column: <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode =>
         createElement("ColumnViewColumn", props, props.children),
-    MenuItem: createMenuChild<MenuItemProps>("MenuItem"),
-    MenuSection: createMenuChild<MenuSectionProps>("MenuSection"),
-    MenuSubmenu: createMenuChild<MenuSubmenuProps>("MenuSubmenu"),
+    MenuItem: createVirtualChild<MenuItemProps>("MenuItem"),
+    MenuSection: createVirtualChild<MenuSectionProps>("MenuSection"),
+    MenuSubmenu: createVirtualChild<MenuSubmenuProps>("MenuSubmenu"),
 });
 
 /**

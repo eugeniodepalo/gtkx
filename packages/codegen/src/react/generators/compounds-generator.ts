@@ -115,14 +115,12 @@ export class CompoundsGenerator {
         file.addImport("../components/slot-widget.js", ["createSlotWidget"]);
 
         const needsContainerSlot = this.compounds.some((c) => c.containerMethods.length > 0);
-        const needsVirtualChild = this.compounds.some((c) => c.children?.virtualChildren);
-        const needsMenuChild = this.compounds.some((c) => c.children?.menuHost);
+        const needsVirtualChild = this.compounds.some((c) => c.children?.virtualChildren || c.children?.menuHost);
         const needsNavPage = this.compounds.some((c) => c.children?.navigationPages);
 
         const compoundImports: string[] = [];
         if (needsContainerSlot) compoundImports.push("createContainerSlotChild");
         if (needsVirtualChild) compoundImports.push("createVirtualChild");
-        if (needsMenuChild) compoundImports.push("createMenuChild");
         if (needsNavPage) compoundImports.push("createNavigationPageChild");
 
         if (compoundImports.length > 0) {
@@ -226,7 +224,7 @@ export class CompoundsGenerator {
                 subs.push({
                     name: mc.sub,
                     propsType: mc.props,
-                    factory: `createMenuChild<${mc.props}>("${mc.sub}")`,
+                    factory: `createVirtualChild<${mc.props}>("${mc.sub}")`,
                 });
             }
         }

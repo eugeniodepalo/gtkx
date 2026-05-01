@@ -29,6 +29,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
     private currentValues: AnimatableProperties = {};
     private isExiting = false;
     private detachedParentContainer: unknown = null;
+    private classApplied = false;
 
     constructor(typeName: string, props: AnimationProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
@@ -127,8 +128,9 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
         const parentContainer = this.parent?.container ?? null;
         const childWidget = this.children[0]?.container ?? null;
 
-        if (oldChild && this.provider) {
+        if (oldChild && this.classApplied) {
             oldChild.removeCssClass(this.className);
+            this.classApplied = false;
         }
 
         if (oldChild && parentContainer instanceof Gtk.Widget && isAttachedTo(oldChild, parentContainer)) {
@@ -149,6 +151,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
     private setupAnimatedChild(childWidget: Gtk.Widget): void {
         this.setupCssProvider();
         childWidget.addCssClass(this.className);
+        this.classApplied = true;
 
         const initial = this.props.initial;
         const animate = this.props.animate;
@@ -204,9 +207,10 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
             Gtk.StyleContext.removeProviderForDisplay(this.display, this.provider);
         }
 
-        if (childWidget) {
+        if (childWidget && this.classApplied) {
             childWidget.removeCssClass(this.className);
         }
+        this.classApplied = false;
 
         this.provider = null;
         this.display = null;
@@ -315,8 +319,9 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
         }
 
         const childWidget = this.children[0]?.container ?? null;
-        if (childWidget && !childWidget.getCssClasses()?.includes(this.className)) {
+        if (childWidget && !this.classApplied) {
             childWidget.addCssClass(this.className);
+            this.classApplied = true;
         }
 
         const css = this.buildCss(this.className, values);

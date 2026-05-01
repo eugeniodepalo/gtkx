@@ -44,18 +44,3 @@ export function createNavigationPageChild<P extends Record<string, unknown>>(
         return createElement("NavigationPage", { ...props, for: forValue }, props.children);
     };
 }
-
-/**
- * Creates a compound child component for menu items that delegates to
- * an existing menu intrinsic element.
- *
- * @param intrinsicName - "MenuItem", "MenuSection", or "MenuSubmenu"
- * @public
- */
-export function createMenuChild<P extends Record<string, unknown>>(
-    intrinsicName: string,
-): (props: P & { children?: ReactNode }) => ReactNode {
-    return (props: P & { children?: ReactNode }): ReactNode => {
-        return createElement(intrinsicName, props, props.children);
-    };
-}

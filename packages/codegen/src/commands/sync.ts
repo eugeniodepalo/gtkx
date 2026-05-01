@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { GirRepository } from "@gtkx/gir";
 import { defineCommand } from "citty";
@@ -41,10 +41,7 @@ export const sync = defineCommand({
 
         intro("Syncing GIR files");
 
-        if (!existsSync(girsDir)) {
-            mkdirSync(girsDir, { recursive: true });
-            log.info(`Created directory: ${girsDir}`);
-        }
+        mkdirSync(girsDir, { recursive: true });
 
         const graph = await GirRepository.discoverDependencies(roots, {
             girPath: [systemGirsDir],

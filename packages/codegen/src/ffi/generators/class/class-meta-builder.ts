@@ -18,8 +18,6 @@ export type ClassMetaAnalyzers = {
     readonly signal: SignalAnalyzer;
 };
 
-const SKIP_CONTROLLERS = new Set<string>();
-
 export class ClassMetaBuilder {
     private readonly widgetQualifiedName = "Gtk.Widget";
     private readonly eventControllerQualifiedName = "Gtk.EventController";
@@ -36,11 +34,7 @@ export class ClassMetaBuilder {
     }
 
     isEventController(): boolean {
-        if (SKIP_CONTROLLERS.has(this.cls.name)) return false;
-
-        const isBaseEventController = this.cls.qualifiedName === this.eventControllerQualifiedName;
-        if (isBaseEventController) return true;
-
+        if (this.cls.qualifiedName === this.eventControllerQualifiedName) return true;
         return this.cls.isSubclassOf(this.eventControllerQualifiedName);
     }
 

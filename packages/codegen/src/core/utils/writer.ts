@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 /**
@@ -11,16 +11,17 @@ import { dirname, join } from "node:path";
  * @param files - Map of paths (relative to `outputDir`) to file contents
  */
 export const writeGeneratedDir = (outputDir: string, files: Map<string, string>): void => {
-    if (existsSync(outputDir)) {
-        rmSync(outputDir, { recursive: true, force: true });
-    }
+    rmSync(outputDir, { recursive: true, force: true });
     mkdirSync(outputDir, { recursive: true });
+
+    const createdDirs = new Set<string>([outputDir]);
 
     for (const [relativePath, content] of files) {
         const fullPath = join(outputDir, relativePath);
         const parent = dirname(fullPath);
-        if (!existsSync(parent)) {
+        if (!createdDirs.has(parent)) {
             mkdirSync(parent, { recursive: true });
+            createdDirs.add(parent);
         }
         writeFileSync(fullPath, content);
     }

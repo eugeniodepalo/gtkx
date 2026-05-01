@@ -16,7 +16,7 @@ import {
 } from "../type-system/ffi-types.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { hasVarargs, isVararg } from "../utils/filtering.js";
-import { createWrappedName, toCamelCase, toKebabCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
+import { createWrappedName, toCamelCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
 import { formatNullableReturn } from "../utils/type-qualification.js";
 import {
     type CallArgument,
@@ -33,6 +33,7 @@ import {
 } from "./callable-shape.js";
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
+import { addTypeImports } from "./index.js";
 import { buildCallbackWrapperExpression, needsParamWrap, needsReturnUnwrap } from "./param-wrap-writer.js";
 
 /**
@@ -332,9 +333,7 @@ export class MethodBodyWriter {
             ffiMapper: this.ffiMapper,
         });
 
-        for (const imp of shape.imports) {
-            this.addTypeImport(imp);
-        }
+        addTypeImports(this.imports, shape.imports, this.selfNames);
         for (const mapping of shape.paramMappings) {
             if (mapping.mapped.ffi.type === "ref") {
                 this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
@@ -1118,33 +1117,10 @@ export class MethodBodyWriter {
         return this.ffiMapper;
     }
 
-    private addTypeImport(imp: import("../type-system/ffi-types.js").TypeImport): void {
-        if (!imp.isExternal && this.selfNames.has(imp.transformedName)) return;
-        if (imp.isExternal) {
-            this.imports.addNamespaceImport(`../${imp.namespace.toLowerCase()}/index.js`, imp.namespace);
-            return;
-        }
-        switch (imp.kind) {
-            case "enum":
-            case "flags":
-                this.imports.addImport("./enums.js", [imp.transformedName]);
-                break;
-            case "record":
-            case "class":
-            case "interface":
-                this.imports.addImport(`./${toKebabCase(imp.name)}.js`, [imp.transformedName]);
-                break;
-            case "callback":
-                break;
-        }
-    }
-
     /**
      * Processes type imports from a MappedType, adding them via the ImportCollector.
      */
     private addTypeImportsFromMapping(mapped: MappedType): void {
-        for (const imp of mapped.imports) {
-            this.addTypeImport(imp);
-        }
+        addTypeImports(this.imports, mapped.imports, this.selfNames);
     }
 }
