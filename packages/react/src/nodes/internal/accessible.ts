@@ -140,16 +140,31 @@ function resetDef(widget: Gtk.Widget, def: AccessiblePropDef): void {
 }
 
 export const applyAccessibleProps = (widget: Gtk.Widget, oldProps: Props | null, newProps: Props): void => {
-    for (const [name, def] of Object.entries(ACCESSIBLE_PROP_MAP)) {
-        const oldValue = oldProps?.[name];
-        const newValue = newProps[name];
+    const seen = new Set<string>();
 
-        if (oldValue === newValue) continue;
+    for (const name in newProps) {
+        const def = ACCESSIBLE_PROP_MAP[name];
+        if (!def) continue;
+        seen.add(name);
+
+        const newValue = newProps[name];
+        if (oldProps?.[name] === newValue) continue;
 
         if (newValue === undefined) {
             resetDef(widget, def);
         } else {
             applyDef(widget, def, newValue);
+        }
+    }
+
+    if (!oldProps) return;
+
+    for (const name in oldProps) {
+        if (seen.has(name)) continue;
+        const def = ACCESSIBLE_PROP_MAP[name];
+        if (!def) continue;
+        if (oldProps[name] !== undefined) {
+            resetDef(widget, def);
         }
     }
 };

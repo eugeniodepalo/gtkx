@@ -33,14 +33,31 @@ import { attachChild, detachChild, unparentWidget } from "./internal/widget.js";
 
 const EXCLUDED_PROPS = ["children"];
 
+// biome-ignore lint/complexity/noBannedTypes: WeakMap key for prototype-bound caching
+type Ctor = Function;
+
+const paramSpecCache = new WeakMap<Ctor, Map<string, GObject.ParamSpec | null>>();
+
 function findProperty(obj: NativeObject, key: string): GObject.ParamSpec | null {
+    const ctor = obj.constructor;
+    let perCtor = paramSpecCache.get(ctor);
+    if (!perCtor) {
+        perCtor = new Map();
+        paramSpecCache.set(ctor, perCtor);
+    }
+    if (perCtor.has(key)) {
+        return perCtor.get(key) ?? null;
+    }
+
     const propertyName = key.replace(/([A-Z])/g, "-$1").toLowerCase();
     const typeInstance = getNativeObject(obj.handle, TypeInstance);
     const typeName = typeNameFromInstance(typeInstance);
     const gtype = typeFromName(typeName);
     const typeClass = typeClassRef(gtype);
     const objectClass = getNativeObject(typeClass.handle, ObjectClass);
-    return objectClass.findProperty(propertyName) ?? null;
+    const pspec = objectClass.findProperty(propertyName) ?? null;
+    perCtor.set(key, pspec);
+    return pspec;
 }
 
 export class WidgetNode<
