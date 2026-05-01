@@ -53,7 +53,10 @@
     },
     "files": [
         "dist",
-        "src"
+        "src",
+        "!dist/generated",
+        "!src/generated",
+        "!**/*.tsbuildinfo"
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",

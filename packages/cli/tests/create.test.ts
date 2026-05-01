@@ -175,16 +175,20 @@ describe("isValidAppId", () => {
             expect(isValidAppId("com..app")).toBe(false);
         });
 
-        it("rejects ID with hyphens", () => {
-            expect(isValidAppId("com.my-app.test")).toBe(false);
+        it("accepts ID with hyphens (valid GTK application IDs)", () => {
+            expect(isValidAppId("com.my-app.test")).toBe(true);
         });
 
-        it("rejects ID with underscores", () => {
-            expect(isValidAppId("com.my_app.test")).toBe(false);
+        it("accepts ID with underscores (valid GTK application IDs)", () => {
+            expect(isValidAppId("com.my_app.test")).toBe(true);
         });
 
         it("rejects empty string", () => {
             expect(isValidAppId("")).toBe(false);
+        });
+
+        it("rejects ID where a segment starts with hyphen", () => {
+            expect(isValidAppId("com.-app.test")).toBe(false);
         });
     });
 });
@@ -283,8 +287,25 @@ describe("createApp", () => {
         const content = JSON.parse(vol.readFileSync(`${testDir}/test-app/package.json`, "utf-8") as string);
 
         expect(content.name).toBe("test-app");
-        expect(content.gtkx.appId).toBe("com.example.test");
+        expect(content.gtkx).toBeUndefined();
         expect(content.scripts.test).toContain("vitest");
+    });
+
+    it("creates gtkx.config.ts with appId and default libraries", async () => {
+        const { createApp } = await import("../src/create.js");
+        await createApp({
+            name: "test-app",
+            appId: "com.example.test",
+            packageManager: "npm",
+            testing: "none",
+            claudeSkills: false,
+        });
+
+        const content = vol.readFileSync(`${testDir}/test-app/gtkx.config.ts`, "utf-8") as string;
+
+        expect(content).toContain('import { defineConfig } from "@gtkx/cli"');
+        expect(content).toContain('appId: "com.example.test"');
+        expect(content).toContain('libraries: ["Gtk-4.0", "Adw-1"]');
     });
 
     it("creates tsconfig.json", async () => {
@@ -320,7 +341,7 @@ describe("createApp", () => {
         expect(content).not.toContain("appId");
     });
 
-    it("creates dev.tsx that exports App and reads appId from package.json", async () => {
+    it("creates dev.tsx that re-exports App", async () => {
         const { createApp } = await import("../src/create.js");
         await createApp({
             name: "test-app",
@@ -332,12 +353,11 @@ describe("createApp", () => {
 
         const content = vol.readFileSync(`${testDir}/test-app/src/dev.tsx`, "utf-8") as string;
 
-        expect(content).toContain('import pkg from "../package.json"');
         expect(content).toContain("export { default } from");
-        expect(content).toContain("export const appId = pkg.gtkx.appId");
+        expect(content).not.toContain("pkg.gtkx.appId");
     });
 
-    it("creates index.tsx entry point that reads appId from package.json", async () => {
+    it("creates index.tsx entry point that calls render with no appId (injected by gtkx build)", async () => {
         const { createApp } = await import("../src/create.js");
         await createApp({
             name: "test-app",
@@ -351,7 +371,8 @@ describe("createApp", () => {
 
         expect(content).toContain("import { render }");
         expect(content).toContain("import { App }");
-        expect(content).toContain("render(<App />, pkg.gtkx.appId)");
+        expect(content).toContain("render(<App />)");
+        expect(content).not.toContain("pkg.gtkx.appId");
     });
 
     it("creates .gitignore", async () => {

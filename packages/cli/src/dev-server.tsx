@@ -13,6 +13,11 @@ import { swcSsrRefresh } from "./vite-plugin-swc-ssr-refresh.js";
 export type DevServerOptions = {
     /** Path to the entry file (e.g., "src/dev.tsx") */
     entry: string;
+    /**
+     * Application ID injected as `__GTKX_APP_ID__` for the dev SSR transform.
+     * Lets user code call `render(<App />)` without an explicit appId in dev.
+     */
+    appId?: string;
     /** Additional Vite configuration */
     vite?: InlineConfig;
 };
@@ -47,13 +52,17 @@ type AppModule = {
  * @see {@link DevServerOptions} for configuration options
  */
 export const createDevServer = async (options: DevServerOptions): Promise<ViteDevServer> => {
-    const { entry, vite: viteConfig } = options;
+    const { entry, appId, vite: viteConfig } = options;
 
     const moduleExports = new Map<string, Record<string, unknown>>();
 
     const server = await createServer({
         ...viteConfig,
         appType: "custom",
+        define: {
+            ...viteConfig?.define,
+            ...(appId !== undefined ? { __GTKX_APP_ID__: JSON.stringify(appId) } : {}),
+        },
         plugins: [
             gtkxGSettings(),
             gtkxAssets(),

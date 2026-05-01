@@ -2,6 +2,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as p from "@clack/prompts";
+import { isValidAppId } from "./config.js";
 import { renderFile, type TemplateContext } from "./templates.js";
 
 /**
@@ -71,9 +72,7 @@ export const isValidProjectName = (name: string): boolean => {
     return /^[a-z0-9-]+$/.test(name);
 };
 
-export const isValidAppId = (appId: string): boolean => {
-    return /^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)+$/.test(appId);
-};
+export { isValidAppId } from "./config.js";
 
 const runCommand = (command: string, cwd: string): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -192,6 +191,7 @@ const scaffoldProject = (projectPath: string, resolved: ResolvedOptions): void =
     }
 
     writeFileSync(join(projectPath, "package.json"), renderFile("package.json.ejs", context));
+    writeFileSync(join(projectPath, "gtkx.config.ts"), renderFile("gtkx.config.ts.ejs", context));
     writeFileSync(join(projectPath, "tsconfig.json"), renderFile("tsconfig.json.ejs", context));
     writeFileSync(join(projectPath, "src", "app.tsx"), renderFile("src/app.tsx.ejs", context));
     writeFileSync(join(projectPath, "src", "dev.tsx"), renderFile("src/dev.tsx.ejs", context));

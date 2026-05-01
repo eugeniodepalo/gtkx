@@ -1,8 +1,8 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync } from "node:fs";
 import { defineCommand } from "citty";
 import { CodegenOrchestrator } from "../core/codegen-orchestrator.js";
 import { intro, log, outro, spinner } from "../core/utils/progress.js";
+import { writeGeneratedDir } from "../core/utils/writer.js";
 import { FFI_OUTPUT_DIR, GIRS_DIR, REACT_OUTPUT_DIR } from "./constants.js";
 
 export const run = defineCommand({
@@ -10,19 +10,38 @@ export const run = defineCommand({
         name: "run",
         description: "Run code generation (FFI and React bindings)",
     },
-    run: async () => {
+    args: {
+        "girs-dir": {
+            type: "string",
+            description: "Directory containing GIR files",
+            default: GIRS_DIR,
+        },
+        "ffi-output-dir": {
+            type: "string",
+            description: "Output directory for FFI bindings",
+            default: FFI_OUTPUT_DIR,
+        },
+        "react-output-dir": {
+            type: "string",
+            description: "Output directory for React bindings",
+            default: REACT_OUTPUT_DIR,
+        },
+    },
+    run: async ({ args }) => {
+        const girsDir = args["girs-dir"];
+        const ffiOutputDir = args["ffi-output-dir"];
+        const reactOutputDir = args["react-output-dir"];
+
         intro("Running code generation");
 
-        if (!existsSync(GIRS_DIR)) {
-            log.error(`GIR directory not found: ${GIRS_DIR}`);
+        if (!existsSync(girsDir)) {
+            log.error(`GIR directory not found: ${girsDir}`);
             log.info("Run 'gtkx-codegen sync' first to sync GIR files from system");
             process.exit(1);
         }
 
         const orchestrator = new CodegenOrchestrator({
-            girsDir: GIRS_DIR,
-            ffiOutputDir: FFI_OUTPUT_DIR,
-            reactOutputDir: REACT_OUTPUT_DIR,
+            girsDir,
         });
 
         const genSpinner = spinner("Generating bindings");
@@ -32,39 +51,11 @@ export const run = defineCommand({
         genSpinner.stop(`Generated ${result.stats.widgets} widgets from ${result.stats.namespaces} namespaces`);
 
         const ffiSpinner = spinner("Writing FFI files");
-
-        if (existsSync(FFI_OUTPUT_DIR)) {
-            rmSync(FFI_OUTPUT_DIR, { recursive: true, force: true });
-        }
-        mkdirSync(FFI_OUTPUT_DIR, { recursive: true });
-
-        for (const [filePath, content] of result.ffiFiles) {
-            const fullPath = join(FFI_OUTPUT_DIR, filePath);
-            const dir = dirname(fullPath);
-            if (!existsSync(dir)) {
-                mkdirSync(dir, { recursive: true });
-            }
-            writeFileSync(fullPath, content);
-        }
-
+        writeGeneratedDir(ffiOutputDir, result.ffiFiles);
         ffiSpinner.stop(`Wrote ${result.ffiFiles.size} FFI files`);
 
         const reactSpinner = spinner("Writing React files");
-
-        if (existsSync(REACT_OUTPUT_DIR)) {
-            rmSync(REACT_OUTPUT_DIR, { recursive: true, force: true });
-        }
-        mkdirSync(REACT_OUTPUT_DIR, { recursive: true });
-
-        for (const [filePath, content] of result.reactFiles) {
-            const fullPath = join(REACT_OUTPUT_DIR, filePath);
-            const dir = dirname(fullPath);
-            if (!existsSync(dir)) {
-                mkdirSync(dir, { recursive: true });
-            }
-            writeFileSync(fullPath, content);
-        }
-
+        writeGeneratedDir(reactOutputDir, result.reactFiles);
         reactSpinner.stop(`Wrote ${result.reactFiles.size} React files`);
 
         log.success(`Completed in ${result.stats.duration}ms`);

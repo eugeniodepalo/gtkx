@@ -5,10 +5,21 @@ import { ReactGenerator } from "../react/react-generator.js";
 import { CodegenMetadata, type CodegenWidgetMeta } from "./codegen-metadata.js";
 import type { GeneratedFile } from "./generated-file-set.js";
 
+/**
+ * Configuration for {@link CodegenOrchestrator}.
+ *
+ * Either provide explicit `libraries` + `girPath` (preferred for the
+ * user-facing CLI), or `girsDir` to enumerate every `.gir` file in a single
+ * directory and use it both as the root list and as the search path
+ * (preserved for the monorepo's checked-in `./girs/` flow).
+ */
 type CodegenOrchestratorOptions = {
-    girsDir: string;
-    ffiOutputDir: string;
-    reactOutputDir: string;
+    /** Explicit GIR namespace identifiers (e.g. `"Gtk-4.0"`). */
+    libraries?: string[];
+    /** Search directories for resolving `.gir` files and their dependencies. */
+    girPath?: string[];
+    /** Single directory whose `.gir` files form the input set and search path. */
+    girsDir?: string;
 };
 
 type CodegenResult = {
@@ -32,6 +43,9 @@ export class CodegenOrchestrator {
     private repository!: GirRepository;
 
     constructor(options: CodegenOrchestratorOptions) {
+        if (!options.girsDir && (!options.libraries || !options.girPath)) {
+            throw new Error("CodegenOrchestrator: provide either `girsDir` or both `libraries` and `girPath`");
+        }
         this.options = options;
     }
 
@@ -67,9 +81,17 @@ export class CodegenOrchestrator {
     }
 
     private async loadRepository(): Promise<void> {
-        const { girsDir } = this.options;
-        const roots = await getNamespaceRoots(girsDir);
-        this.repository = await GirRepository.load(roots, { girPath: [girsDir] });
+        const { libraries, girPath, girsDir } = this.options;
+        if (libraries && girPath) {
+            this.repository = await GirRepository.load(libraries, { girPath });
+            return;
+        }
+        if (girsDir) {
+            const roots = await getNamespaceRoots(girsDir);
+            this.repository = await GirRepository.load(roots, { girPath: [girsDir] });
+            return;
+        }
+        throw new Error("CodegenOrchestrator: missing input configuration");
     }
 
     private generateFfi(): void {
@@ -77,7 +99,6 @@ export class CodegenOrchestrator {
 
         for (const namespace of allNamespaces) {
             const generator = new FfiGenerator({
-                outputDir: this.options.ffiOutputDir,
                 namespace,
                 repository: this.repository,
             });

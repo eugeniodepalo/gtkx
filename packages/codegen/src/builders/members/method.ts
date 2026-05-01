@@ -55,6 +55,8 @@ export class MethodBuilder implements Builder {
         if (this.opts.returnType) {
             writer.write(": ");
             writeWritable(writer, this.opts.returnType);
+        } else if (this.opts.body && !this.opts.abstract) {
+            writer.write(": void");
         }
 
         if (this.opts.abstract || (!this.opts.body && !this.opts.overloads)) {

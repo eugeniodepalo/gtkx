@@ -32,6 +32,14 @@ export type BuildOptions = {
      * ```
      */
     assetBase?: string;
+    /**
+     * Application ID (reverse-DNS, e.g. `"com.example.myapp"`).
+     *
+     * When provided, injected into the bundle as `__GTKX_APP_ID__` so that
+     * user code calling `render(<App />)` without an explicit `appId`
+     * picks it up at runtime.
+     */
+    appId?: string;
     /** Additional Vite configuration */
     vite?: InlineConfig;
 };
@@ -59,7 +67,7 @@ export type BuildOptions = {
  * @see {@link BuildOptions} for configuration options
  */
 export const build = async (options: BuildOptions): Promise<void> => {
-    const { entry, assetBase, vite: viteConfig } = options;
+    const { entry, assetBase, appId, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
 
     await viteBuild({
@@ -90,6 +98,7 @@ export const build = async (options: BuildOptions): Promise<void> => {
         define: {
             ...viteConfig?.define,
             "process.env.NODE_ENV": JSON.stringify("production"),
+            ...(appId !== undefined ? { __GTKX_APP_ID__: JSON.stringify(appId) } : {}),
         },
         ssr: {
             ...viteConfig?.ssr,

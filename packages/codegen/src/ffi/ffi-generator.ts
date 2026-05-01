@@ -29,7 +29,6 @@ import { RecordGenerator } from "./generators/record/index.js";
  * Configuration for generating a namespace's FFI bindings.
  */
 type FfiNamespaceConfig = {
-    outputDir: string;
     namespace: string;
     repository: GirRepository;
 };

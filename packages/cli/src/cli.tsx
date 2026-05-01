@@ -9,6 +9,8 @@ import type * as Gio from "@gtkx/ffi/gio";
 import { render } from "@gtkx/react";
 import { defineCommand, runMain } from "citty";
 import { build } from "./builder.js";
+import { loadGtkxConfig } from "./codegen/config-loader.js";
+import { preflightCodegen, runCodegen } from "./codegen/run-codegen.js";
 import { createApp } from "./create.js";
 import { createDevServer } from "./dev-server.js";
 import { startMcpClient, stopMcpClient } from "./mcp-client.js";
@@ -16,11 +18,20 @@ import { startMcpClient, stopMcpClient } from "./mcp-client.js";
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
-interface AppModule {
+type AppModule = {
     default: () => React.ReactNode;
     appId?: string;
     appFlags?: Gio.ApplicationFlags;
-}
+};
+
+const readConfigAppId = async (cwd: string): Promise<string | undefined> => {
+    try {
+        const { config } = await loadGtkxConfig(cwd);
+        return config.appId;
+    } catch {
+        return undefined;
+    }
+};
 
 const dev = defineCommand({
     meta: {
@@ -35,19 +46,25 @@ const dev = defineCommand({
         },
     },
     async run({ args }) {
-        const entryPath = resolve(process.cwd(), args.entry);
+        const cwd = process.cwd();
+        const entryPath = resolve(cwd, args.entry);
         console.log(`[gtkx] Starting dev server for ${entryPath}`);
+
+        await preflightCodegen(cwd);
+
+        const configAppId = await readConfigAppId(cwd);
 
         const server = await createDevServer({
             entry: entryPath,
+            appId: configAppId,
             vite: {
-                root: process.cwd(),
+                root: cwd,
             },
         });
 
         const mod = (await server.ssrLoadModule(entryPath)) as AppModule;
         const App = mod.default;
-        const appId = mod.appId ?? "org.gtkx.dev";
+        const appId = configAppId ?? mod.appId ?? "org.gtkx.dev";
         const appFlags = mod.appFlags;
 
         if (typeof App !== "function") {
@@ -84,14 +101,20 @@ const buildCmd = defineCommand({
         },
     },
     async run({ args }) {
-        const entry = resolve(process.cwd(), args.entry ?? "src/index.tsx");
+        const cwd = process.cwd();
+        const entry = resolve(cwd, args.entry ?? "src/index.tsx");
         console.log(`[gtkx] Building ${entry}`);
+
+        await preflightCodegen(cwd);
+
+        const configAppId = await readConfigAppId(cwd);
 
         await build({
             entry,
             assetBase: args["asset-base"],
+            appId: configAppId,
             vite: {
-                root: process.cwd(),
+                root: cwd,
             },
         });
 
@@ -138,6 +161,50 @@ const create = defineCommand({
     },
 });
 
+const codegen = defineCommand({
+    meta: {
+        name: "codegen",
+        description: "Generate TypeScript bindings for the GIR libraries declared in gtkx.config.ts",
+    },
+    args: {
+        force: {
+            type: "boolean",
+            description: "Skip cache check and regenerate unconditionally",
+            default: false,
+        },
+        cwd: {
+            type: "string",
+            description: "Project root (default: current working directory)",
+        },
+    },
+    async run({ args }) {
+        const cwd = args.cwd ? resolve(args.cwd) : process.cwd();
+        const startedAt = Date.now();
+
+        const result = await runCodegen({ cwd, force: args.force });
+
+        if (!result.ran) {
+            console.log("[gtkx] codegen: up to date (use --force to regenerate)");
+            return;
+        }
+
+        if (result.configFile) {
+            console.log(`[gtkx] codegen: config=${result.configFile}`);
+        }
+        if (result.config) {
+            console.log(`[gtkx] codegen: libraries=${result.config.libraries.join(", ")}`);
+        }
+        if (result.girPath) {
+            console.log(`[gtkx] codegen: girPath=${result.girPath.join(":")}`);
+        }
+
+        const total = Date.now() - startedAt;
+        console.log(
+            `[gtkx] codegen: ${result.namespaces} namespaces, ${result.widgets} widgets in ${result.duration}ms (total ${total}ms)`,
+        );
+    },
+});
+
 const main = defineCommand({
     meta: {
         name: "gtkx",
@@ -147,6 +214,7 @@ const main = defineCommand({
     subCommands: {
         dev,
         build: buildCmd,
+        codegen,
         create,
     },
 });

@@ -34,6 +34,8 @@ export class FunctionDeclarationBuilder implements Builder {
         if (this.opts.returnType) {
             writer.write(": ");
             writeWritable(writer, this.opts.returnType);
+        } else {
+            writer.write(": void");
         }
         writer.write(" ");
         writer.writeBlock(() => {

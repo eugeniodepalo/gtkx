@@ -76,11 +76,7 @@ export class FunctionGenerator {
                 if (p.optional) writer.write("?");
                 writer.write(`: ${p.type}`);
             }
-            writer.write(")");
-
-            if (fullReturnType !== "void") {
-                writer.write(`: ${fullReturnType}`);
-            }
+            writer.write(`): ${fullReturnType}`);
 
             writer.write(" => ");
             writer.writeBlock(() => {
