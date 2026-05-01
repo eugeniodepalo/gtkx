@@ -14,6 +14,7 @@ import {
     method,
     param,
     property,
+    typeAlias,
 } from "../../../builders/index.js";
 import type { Writer } from "../../../builders/writer.js";
 import { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
@@ -148,6 +149,13 @@ export class ClassGenerator {
         );
 
         if (constructorData) {
+            if (constructorData.propsTypeAlias) {
+                this.file.add(
+                    typeAlias(constructorData.propsTypeAlias.name, constructorData.propsTypeAlias.body, {
+                        exported: true,
+                    }),
+                );
+            }
             cls.setConstructor(
                 constructorDecl({
                     overloads: constructorData.overloads,

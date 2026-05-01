@@ -21,12 +21,13 @@ import {
     type MethodStructure,
 } from "../../../core/writers/index.js";
 
-type ConstructOnlyPropParam = {
+type SettablePropParam = {
     paramName: string;
     girName: string;
     tsType: string;
     ffiType: FfiTypeDescriptor;
-    valueExpr: string;
+    /** Expression that converts the typed prop access to the FFI value. */
+    valueExpr: (accessExpr: string) => string;
     isNullable: boolean;
 };
 
@@ -40,11 +41,16 @@ type Param = {
 /**
  * Constructor overload signature data for the builder API.
  */
-type ConstructorOverloads = {
+export type ConstructorOverloads = {
     overloads: OverloadSignature[];
     implParams: Param[];
     bodyWriter: (writer: Writer) => void;
     doc?: string;
+    /** Optional props type alias to emit alongside the class. */
+    propsTypeAlias?: {
+        name: string;
+        body: string;
+    };
 };
 
 export class ConstructorBuilder {
@@ -139,7 +145,21 @@ export class ConstructorBuilder {
         const methodStructures: MethodStructure[] = [];
         let constructorData: ConstructorOverloads | null = null;
 
-        if (mainConstructor && hasParent) {
+        const mainTakesParams =
+            mainConstructor !== undefined &&
+            this.methodBody.filterParameters(mainConstructor.parameters).length > 0;
+        const useGObjectNewPath =
+            hasParent && this.cls.glibGetType !== undefined && !this.cls.abstract && !mainTakesParams;
+
+        if (useGObjectNewPath) {
+            for (const ctor of supportedConstructors) {
+                if (ctor === mainConstructor) continue;
+                if (!this.conflictsWithParentFactoryMethod(ctor)) {
+                    methodStructures.push(this.buildStaticFactoryMethodStructure(ctor));
+                }
+            }
+            constructorData = this.buildGObjectNewConstructorWithOverloads(this.cls.glibGetType as string);
+        } else if (mainConstructor && hasParent) {
             constructorData = this.buildConstructorWithOverloads(mainConstructor);
             for (const ctor of supportedConstructors) {
                 if (ctor !== mainConstructor && !this.conflictsWithParentFactoryMethod(ctor)) {
@@ -151,10 +171,6 @@ export class ConstructorBuilder {
                 if (!this.conflictsWithParentFactoryMethod(ctor)) {
                     methodStructures.push(this.buildStaticFactoryMethodStructure(ctor));
                 }
-            }
-
-            if (hasParent && this.cls.glibGetType && !this.cls.abstract) {
-                constructorData = this.buildGObjectNewConstructorWithOverloads(this.cls.glibGetType);
             }
         }
 
@@ -291,56 +307,64 @@ export class ConstructorBuilder {
         getTypeWriter(writer);
         writer.writeLine(";");
 
+        this.imports.addImport("../../native.js", ["call"]);
         if (props.length > 0) {
-            this.imports.addImport("../../native.js", ["call"]);
-            writer.writeLine('const __args: Arg[] = [{ type: { type: "uint64" }, value: gtype, optional: false }];');
+            this.imports.addNamespaceImport("../gobject/index.js", "GObject");
+            writer.writeLine("const __names: string[] = [];");
+            writer.writeLine("const __values: GObject.Value[] = [];");
             for (const prop of props) {
                 writer.writeLine(`if (${prop.guardExpr} !== undefined) {`);
                 writer.withIndent(() => {
-                    writer.writeLine("__args.push(");
-                    writer.withIndent(() => {
-                        writer.writeLine(
-                            `{ type: { type: "string", ownership: "borrowed" }, value: "${prop.girName}", optional: false },`,
-                        );
-                        writer.write("{ type: ");
-                        writer.write(JSON.stringify(prop.ffiType));
-                        writer.writeLine(`, value: ${prop.valueExpr}, optional: false },`);
-                    });
-                    writer.writeLine(");");
+                    writer.writeLine(`__names.push("${prop.girName}");`);
+                    writer.write("__values.push(GObject.Value.newFrom(");
+                    writer.write(JSON.stringify(prop.ffiType));
+                    writer.writeLine(`, ${prop.valueExpr}));`);
                 });
                 writer.writeLine("}");
             }
-            writer.writeLine('__args.push({ type: { type: "void" }, value: null, optional: false });');
-            writer.write("const __handle = call(");
-            writer.newLine();
-            writer.withIndent(() => {
-                writer.writeLine(`"${this.options.gobjectLibrary}",`);
-                writer.writeLine('"g_object_new",');
-                writer.writeLine("__args,");
-                writer.writeLine('{ type: "gobject", ownership: "full" }');
-            });
-            writer.writeLine(") as NativeHandle;");
-        } else {
-            const objectNewWriter = this.methodBody.buildCallWriter({
-                sharedLibrary: this.options.gobjectLibrary,
-                cIdentifier: "g_object_new",
-                args: [
-                    { type: { type: "uint64" }, value: "gtype" },
-                    { type: { type: "void" }, value: "null" },
-                ],
-                returnType: { type: "gobject", ownership: "full" },
-            });
-            writer.write("const __handle = ");
-            objectNewWriter(writer);
-            writer.writeLine(" as NativeHandle;");
         }
+        writer.write("const __handle = call(");
+        writer.newLine();
+        writer.withIndent(() => {
+            writer.writeLine(`"${this.options.gobjectLibrary}",`);
+            writer.writeLine('"g_object_new_with_properties",');
+            writer.writeLine("[");
+            writer.withIndent(() => {
+                writer.writeLine('{ type: { type: "uint64" }, value: gtype, optional: false },');
+                if (props.length > 0) {
+                    writer.writeLine(
+                        '{ type: { type: "uint32" }, value: __names.length, optional: false },',
+                    );
+                    writer.writeLine(
+                        '{ type: { type: "array", itemType: { type: "string", ownership: "borrowed" }, kind: "sized", sizeParamIndex: 1, ownership: "borrowed" }, value: __names, optional: false },',
+                    );
+                    writer.writeLine(
+                        '{ type: { type: "array", itemType: { type: "boxed", ownership: "borrowed", innerType: "GValue", library: "libgobject-2.0.so.0", getTypeFn: "g_value_get_type" }, kind: "sized", sizeParamIndex: 1, elementSize: 24, ownership: "borrowed" }, value: __values.map((v) => v.handle), optional: false },',
+                    );
+                } else {
+                    writer.writeLine('{ type: { type: "uint32" }, value: 0, optional: false },');
+                    writer.writeLine(
+                        '{ type: { type: "array", itemType: { type: "string", ownership: "borrowed" }, kind: "sized", sizeParamIndex: 1, ownership: "borrowed" }, value: [], optional: false },',
+                    );
+                    writer.writeLine(
+                        '{ type: { type: "array", itemType: { type: "boxed", ownership: "borrowed", innerType: "GValue", library: "libgobject-2.0.so.0", getTypeFn: "g_value_get_type" }, kind: "sized", sizeParamIndex: 1, elementSize: 24, ownership: "borrowed" }, value: [], optional: false },',
+                    );
+                }
+            });
+            writer.writeLine("],");
+            writer.writeLine('{ type: "gobject", ownership: "full" }');
+        });
+        writer.writeLine(") as NativeHandle;");
     }
 
-    private collectConstructOnlyProps(): ConstructOnlyPropParam[] {
-        const result: ConstructOnlyPropParam[] = [];
+    private collectSettableProps(): SettablePropParam[] {
+        const result: SettablePropParam[] = [];
+        const seen = new Set<string>();
 
         for (const prop of this.cls.getAllProperties()) {
-            if (!prop.constructOnly) continue;
+            if (!prop.writable && !prop.constructOnly) continue;
+            if (seen.has(prop.name)) continue;
+            seen.add(prop.name);
 
             const mapped: MappedType = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
             addTypeImports(this.imports, mapped.imports, this.selfNames);
@@ -348,27 +372,19 @@ export class ConstructorBuilder {
             const paramName = toValidIdentifier(toCamelCase(prop.name));
             const isNullable = mapped.nullable === true;
 
-            const callExpr = this.methodBody as unknown as {
-                callExpression?: { buildValueExpression(name: string, mapped: MappedType, nullable: boolean): string };
-            };
-            let valueExpr: string;
-            if (callExpr.callExpression) {
-                valueExpr = callExpr.callExpression.buildValueExpression(paramName, mapped, isNullable);
-            } else {
-                valueExpr = isNullable ? `${paramName} ?? null` : paramName;
-                if (mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed" || mapped.ffi.type === "fundamental") {
-                    valueExpr = isNullable ? `${paramName}?.handle ?? null` : `${paramName}.handle`;
-                } else if (mapped.ffi.type === "enum" || mapped.ffi.type === "flags") {
-                    valueExpr = isNullable ? `${paramName} ?? null` : `${paramName} as number`;
+            const valueExprFor = (accessExpr: string): string => {
+                if (mapped.ffi.type === "enum" || mapped.ffi.type === "flags") {
+                    return `${accessExpr} as number`;
                 }
-            }
+                return accessExpr;
+            };
 
             result.push({
                 paramName,
                 girName: prop.name,
                 tsType: isNullable ? `${mapped.ts} | null` : mapped.ts,
                 ffiType: mapped.ffi,
-                valueExpr,
+                valueExpr: valueExprFor,
                 isNullable,
             });
         }
@@ -382,31 +398,44 @@ export class ConstructorBuilder {
         this.imports.addImport("../../native.js", ["call"]);
         this.imports.addImport("../../registry.js", ["registerNativeObject"]);
 
-        const constructOnlyProps = this.collectConstructOnlyProps();
-        const params: Param[] = constructOnlyProps.map((prop) => ({
-            name: prop.paramName,
-            type: prop.tsType,
-            optional: true,
-        }));
+        const settableProps = this.collectSettableProps();
+        const propsTypeName = `${this.className}Props`;
+        const hasProps = settableProps.length > 0;
 
-        if (constructOnlyProps.length > 0) {
-            this.imports.addTypeImport("@gtkx/native", ["Arg"]);
-        }
+        const propsParam: Param = hasProps
+            ? { name: "props", type: propsTypeName, optional: true }
+            : { name: "handle", type: "NativeHandle", optional: true };
+
+        const overloads: OverloadSignature[] = [
+            { params: [paramBuilder("handle", "NativeHandle")] },
+            ...(hasProps ? [{ params: [paramBuilder("props", propsTypeName, { optional: true })] }] : []),
+        ];
+
+        const implParams: Param[] = hasProps
+            ? [{ name: "props", type: `${propsTypeName} | NativeHandle`, initializer: "{}" }]
+            : [{ name: "handle", type: "NativeHandle", optional: true }];
+
+        const propsTypeAlias = hasProps
+            ? {
+                  name: propsTypeName,
+                  body: `{ ${settableProps.map((p) => `${p.paramName}?: ${p.tsType}`).join("; ")} }`,
+              }
+            : undefined;
 
         return {
-            overloads: this.buildOverloads(params),
-            implParams: this.buildImplementationParams(params),
-            bodyWriter: this.writeGObjectNewConstructorBody(glibGetType, constructOnlyProps, params),
+            overloads,
+            implParams,
+            bodyWriter: this.writeGObjectNewConstructorBody(glibGetType, settableProps, propsParam.name, hasProps),
+            propsTypeAlias,
         };
     }
 
     private writeGObjectNewConstructorBody(
         getTypeFunc: string,
-        constructOnlyProps: ConstructOnlyPropParam[],
-        params: Param[],
+        settableProps: SettablePropParam[],
+        firstParamName: string,
+        hasProps: boolean,
     ): (writer: Writer) => void {
-        const firstParamName = params.length > 0 ? (params[0]?.name ?? "handle") : "handle";
-
         return (writer) => {
             writer.writeLine(`if (isNativeHandle(${firstParamName})) {`);
             writer.withIndent(() => {
@@ -417,11 +446,11 @@ export class ConstructorBuilder {
                 this.writeGObjectNewCallToVariable(
                     writer,
                     getTypeFunc,
-                    constructOnlyProps.map((p) => ({
+                    settableProps.map((p) => ({
                         girName: p.girName,
                         ffiType: p.ffiType,
-                        valueExpr: p.valueExpr,
-                        guardExpr: p.paramName,
+                        valueExpr: p.valueExpr(`${firstParamName}.${p.paramName}`),
+                        guardExpr: hasProps ? `${firstParamName}.${p.paramName}` : p.paramName,
                     })),
                 );
 
