@@ -103,12 +103,7 @@ impl HashTableEntryEncoder {
                 _ => bail!("Expected number in GHashTable for float, got {:?}", val),
             },
             Self::NativeHandle => match val {
-                value::Value::Object(handle) => {
-                    let ptr = handle.get_ptr().ok_or_else(|| {
-                        anyhow::anyhow!("Native object in GHashTable has been garbage collected")
-                    })?;
-                    Ok(ptr)
-                }
+                value::Value::Object(handle) => Ok(handle.ptr()),
                 value::Value::Null | value::Value::Undefined => Ok(std::ptr::null_mut()),
                 _ => bail!("Expected native object in GHashTable, got {:?}", val),
             },
@@ -120,9 +115,7 @@ impl HashTableEntryEncoder {
                 let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
                 for item in items {
                     let item_ptr = match item {
-                        value::Value::Object(handle) => handle.get_ptr().ok_or_else(|| {
-                            anyhow::anyhow!("Native object in GPtrArray has been garbage collected")
-                        })?,
+                        value::Value::Object(handle) => handle.ptr(),
                         value::Value::Null | value::Value::Undefined => std::ptr::null_mut(),
                         _ => bail!("Expected Object in GPtrArray, got {:?}", item),
                     };

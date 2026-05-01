@@ -1,25 +1,32 @@
 //! Managed object wrappers and reference tracking.
 //!
 //! This module provides wrappers for GObject, Boxed, and Fundamental instances
-//! that need to cross the FFI boundary. Objects are stored in a thread-local map
-//! and automatically cleaned up when their JavaScript handles are garbage collected.
+//! that need to cross the FFI boundary. Each [`NativeHandle`] owns its underlying
+//! [`NativeValue`] directly via [`SendWrapper`], so the JavaScript-facing handle
+//! and the native value share one allocation.
 //!
 //! ## Key Types
 //!
 //! - [`NativeValue`]: Enum wrapping GObject, Boxed, or Fundamental instances
-//! - [`NativeHandle`]: Newtype handle returned to JavaScript, implements [`Finalize`]
+//! - [`NativeHandle`]: Owned handle returned to JavaScript, implements [`Finalize`]
 //! - [`Boxed`]: GObject boxed type wrapper with copy/free semantics
 //! - [`Fundamental`]: GLib fundamental type wrapper with ref/unref semantics
 //!
 //! ## Lifecycle
 //!
-//! 1. Native code creates a value and wraps it in [`NativeValue`]
-//! 2. [`NativeValue`] is converted to [`NativeHandle`] via `From`
-//! 3. [`NativeHandle`] is returned to JavaScript as a boxed value
-//! 4. When JS garbage collects the handle, [`Finalize::finalize`] schedules removal
-//! 5. The GTK thread removes the object from the map, dropping the Rust wrapper
+//! 1. Native code creates a [`NativeValue`] on the GLib thread.
+//! 2. [`NativeValue`] is wrapped in [`NativeHandle`] via `From`, capturing the
+//!    raw pointer and storing the value in a [`SendWrapper`] anchored to the
+//!    GLib thread.
+//! 3. [`NativeHandle`] is moved into a `JsBox` and returned to JavaScript.
+//! 4. When JS garbage collects the box, [`Finalize::finalize`] takes ownership
+//!    of the handle and routes its drop back to the GLib thread.
+//! 5. The handle's [`Drop`] runs on the GLib thread, releasing the underlying
+//!    GObject ref / boxed copy / fundamental unref.
 //!
-//! This ensures proper reference counting for GObjects and proper freeing for Boxed types.
+//! At shutdown ([`Mailbox::is_stopped`]) the handle's value is intentionally
+//! leaked via [`std::mem::forget`] to avoid post-shutdown teardown crashes,
+//! mirroring the previous `ManuallyDrop`-based handle map.
 
 mod boxed;
 mod fundamental;
@@ -29,63 +36,125 @@ pub use fundamental::{Fundamental, RefFn, UnrefFn};
 
 use std::ffi::c_void;
 
-use gtk4::glib;
+use gtk4::glib::{self, prelude::ObjectType as _};
 use neon::prelude::*;
+use send_wrapper::SendWrapper;
 
-use crate::{dispatch::Mailbox, state::GtkThreadState};
+use crate::dispatch::Mailbox;
 
-#[derive(Debug, Clone, Copy)]
-pub struct NativeHandle(pub(crate) usize);
+/// Owned handle for a managed native value.
+///
+/// Wraps either an owned [`NativeValue`] (constructed via `From<NativeValue>`)
+/// or a borrowed pointer reference (constructed via [`NativeHandle::borrowed`]).
+/// An owned handle is anchored to the GLib thread via [`SendWrapper`] and routes
+/// its drop back to that thread automatically; a borrowed handle carries only
+/// the pointer and is safe to clone or drop on any thread.
+pub struct NativeHandle {
+    ptr: *mut c_void,
+    inner: Option<SendWrapper<NativeValue>>,
+}
+
+// SAFETY: `ptr` is treated as an opaque integer for cross-thread identity
+// comparison; it is never dereferenced off the GLib thread. `inner` is either
+// `None` (no thread affinity) or a `SendWrapper` whose runtime check enforces
+// origin-thread access for the underlying [`NativeValue`].
+unsafe impl Send for NativeHandle {}
+// SAFETY: same justification as `Send` — shared references expose only the
+// opaque `ptr` value and the `SendWrapper`'s own thread-checked accessors.
+unsafe impl Sync for NativeHandle {}
+
+impl std::fmt::Debug for NativeHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NativeHandle")
+            .field("ptr", &self.ptr)
+            .field("owned", &self.inner.is_some())
+            .finish()
+    }
+}
 
 impl From<NativeValue> for NativeHandle {
     fn from(value: NativeValue) -> Self {
-        GtkThreadState::with(|state| {
-            let key = state.handles.insert(value);
-            NativeHandle(key)
-        })
+        let ptr = match &value {
+            NativeValue::GObject(obj) => obj.as_ptr() as *mut c_void,
+            NativeValue::Boxed(boxed) => boxed.as_ptr(),
+            NativeValue::Fundamental(fundamental) => fundamental.as_ptr(),
+        };
+        NativeHandle {
+            ptr,
+            inner: Some(SendWrapper::new(value)),
+        }
+    }
+}
+
+impl Clone for NativeHandle {
+    /// Clones the handle, duplicating the underlying [`NativeValue`] when owned.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self` carries an owned value and the clone is performed on a
+    /// thread other than the one that constructed the handle. Borrowed handles
+    /// (created via [`NativeHandle::borrowed`]) carry no thread affinity and
+    /// can be cloned freely.
+    fn clone(&self) -> Self {
+        NativeHandle {
+            ptr: self.ptr,
+            inner: self.inner.clone(),
+        }
     }
 }
 
 impl NativeHandle {
+    /// Constructs a non-owning handle that just carries a raw pointer.
+    ///
+    /// Used when JavaScript already owns the underlying value via a live
+    /// `JsBox<NativeHandle>` and we only need the pointer for the duration of
+    /// a single FFI call. A borrowed handle has no [`SendWrapper`] and is
+    /// therefore safe to clone or drop on any thread.
     #[must_use]
-    pub fn get_ptr(&self) -> Option<*mut c_void> {
-        GtkThreadState::with(|state| state.handles.get_ptr(self.0))
+    pub fn borrowed(ptr: *mut c_void) -> Self {
+        Self { ptr, inner: None }
     }
 
+    /// Returns the raw native pointer.
+    ///
+    /// The pointer is recorded at construction and is readable from any thread
+    /// without engaging the [`SendWrapper`] thread check. May be null for
+    /// borrowed handles wrapping a null pointer.
     #[must_use]
-    pub fn get_ptr_as_usize(&self) -> Option<usize> {
-        self.get_ptr().map(|ptr| ptr as usize)
+    pub fn ptr(&self) -> *mut c_void {
+        self.ptr
     }
 
-    pub(crate) fn require_ptr(self) -> anyhow::Result<*mut c_void> {
-        self.get_ptr().ok_or_else(|| {
-            anyhow::anyhow!("Object with handle {} has been garbage collected", self.0)
-        })
+    /// Returns the raw native pointer reinterpreted as a [`usize`].
+    ///
+    /// Used by the JS-facing `getNativeId` to expose the pointer value as an
+    /// object-identity token.
+    #[must_use]
+    pub fn ptr_as_usize(&self) -> usize {
+        self.ptr as usize
     }
+}
 
-    pub(crate) fn require_non_null_ptr(self) -> anyhow::Result<*mut c_void> {
-        let ptr = self.require_ptr()?;
-        if ptr.is_null() {
-            anyhow::bail!("Object with handle {} has a null pointer", self.0);
+impl Drop for NativeHandle {
+    fn drop(&mut self) {
+        let Some(wrapper) = self.inner.take() else {
+            return;
+        };
+        if wrapper.valid() {
+            drop(wrapper);
+        } else if Mailbox::global().is_stopped() {
+            std::mem::forget(wrapper);
+        } else {
+            glib::idle_add_once(move || drop(wrapper));
         }
-        Ok(ptr)
-    }
-
-    #[must_use]
-    pub fn inner(&self) -> usize {
-        self.0
     }
 }
 
 impl Finalize for NativeHandle {
-    fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {
-        if Mailbox::global().is_stopped() {
-            return;
-        }
-        glib::idle_add_once(move || {
-            GtkThreadState::with(|state| state.handles.remove(self.0));
-        });
-    }
+    /// No-op: routing is handled by the custom [`Drop`] impl, which schedules
+    /// off-origin drops back to the GLib thread and leaks via
+    /// [`std::mem::forget`] when the mailbox is stopped.
+    fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {}
 }
 
 /// Managed value wrapper for FFI objects.

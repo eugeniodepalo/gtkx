@@ -7,7 +7,8 @@ fn gtk_thread_state_default_initializes_correctly() {
     common::ensure_gtk_init();
 
     GtkThreadState::with(|state| {
-        assert_eq!(state.handles.len(), 0);
+        assert!(state.app_hold_guard.is_none());
+        assert!(state.libs.is_empty());
     });
 }
 

@@ -3,7 +3,6 @@
 //! This module manages the thread-local state for the GTK thread, composed of
 //! focused single-responsibility types:
 //!
-//! - [`HandleMap`]: Maps handle IDs to managed [`NativeValue`] instances
 //! - [`LibraryCache`]: Caches dynamically loaded native libraries
 //! - [`FundamentalFnCache`]: Caches ref/unref function pointers for fundamental types
 //! - [`GtkThreadState`]: Thin coordinator composing the above, accessed via [`GtkThreadState::with`]
@@ -11,7 +10,6 @@
 
 use std::cell::RefCell;
 use std::collections::{HashMap, hash_map::Entry};
-use std::ffi::c_void;
 use std::mem::ManuallyDrop;
 use std::sync::{Mutex, OnceLock};
 use std::thread::JoinHandle;
@@ -19,7 +17,7 @@ use std::thread::JoinHandle;
 use gtk4::gio::ApplicationHoldGuard;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
-use crate::managed::{NativeValue, RefFn, UnrefFn};
+use crate::managed::{RefFn, UnrefFn};
 
 thread_local! {
     static GTK_THREAD_STATE: RefCell<GtkThreadState> = RefCell::new(GtkThreadState::default());
@@ -64,66 +62,6 @@ impl GtkThread {
             return Some(msg.to_owned());
         }
         None
-    }
-}
-
-pub struct HandleMap {
-    /// Wrapped in ManuallyDrop because dropping GLib objects after GTK cleanup
-    /// can crash — e.g., WebKit objects have complex cleanup that depends on
-    /// the main loop. Objects are reclaimed at process exit.
-    map: ManuallyDrop<HashMap<usize, NativeValue>>,
-    next_id: usize,
-}
-
-impl std::fmt::Debug for HandleMap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("HandleMap")
-            .field("len", &self.map.len())
-            .finish()
-    }
-}
-
-impl HandleMap {
-    fn new() -> Self {
-        Self {
-            map: ManuallyDrop::new(HashMap::new()),
-            next_id: 1,
-        }
-    }
-
-    pub fn insert(&mut self, value: NativeValue) -> usize {
-        let key = self.next_id;
-        self.next_id = self.next_id.wrapping_add(1);
-        self.map.insert(key, value);
-        key
-    }
-
-    pub fn remove(&mut self, id: usize) -> Option<NativeValue> {
-        self.map.remove(&id)
-    }
-
-    #[must_use]
-    pub fn get(&self, id: usize) -> Option<&NativeValue> {
-        self.map.get(&id)
-    }
-
-    #[must_use]
-    pub fn get_ptr(&self, id: usize) -> Option<*mut c_void> {
-        self.get(id).map(|object| match object {
-            NativeValue::GObject(obj) => gtk4::glib::object::ObjectType::as_ptr(obj) as *mut c_void,
-            NativeValue::Boxed(boxed) => boxed.as_ptr(),
-            NativeValue::Fundamental(fundamental) => fundamental.as_ptr(),
-        })
-    }
-
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
     }
 }
 
@@ -273,7 +211,6 @@ impl FundamentalFnCache {
 
 pub struct GtkThreadState {
     pub app_hold_guard: Option<ApplicationHoldGuard>,
-    pub handles: HandleMap,
     pub libs: LibraryCache,
     pub fundamental_fns: FundamentalFnCache,
 }
@@ -282,7 +219,6 @@ impl Default for GtkThreadState {
     fn default() -> Self {
         Self {
             app_hold_guard: None,
-            handles: HandleMap::new(),
             libs: LibraryCache::new(),
             fundamental_fns: FundamentalFnCache::new(),
         }
@@ -292,7 +228,6 @@ impl Default for GtkThreadState {
 impl std::fmt::Debug for GtkThreadState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GtkThreadState")
-            .field("handles_len", &self.handles.len())
             .field("libraries_len", &self.libs.len())
             .finish()
     }

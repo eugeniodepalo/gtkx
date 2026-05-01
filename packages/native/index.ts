@@ -126,12 +126,15 @@ export function alloc(size: number, glibTypeName?: string, lib?: string): Native
 }
 
 /**
- * Gets the internal handle ID for a native pointer.
+ * Returns the underlying native pointer as a number.
  *
- * Used for comparing object identity.
+ * The number is the memory address of the wrapped GObject / Boxed /
+ * Fundamental instance, suitable for object-identity comparisons in
+ * JavaScript. Two handles referring to the same native object always
+ * return the same value.
  *
  * @param handle - Native handle
- * @returns Internal handle ID
+ * @returns The native pointer value as a number
  */
 export function getNativeId(handle: NativeHandle): number {
     return native.getNativeId(handle);

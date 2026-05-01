@@ -105,16 +105,14 @@ impl Value {
     #[must_use]
     pub fn result_to_ptr(result: &Result<Self, ()>) -> *mut c_void {
         match result {
-            Ok(Value::Object(handle)) => handle.get_ptr().unwrap_or(std::ptr::null_mut()),
+            Ok(Value::Object(handle)) => handle.ptr(),
             _ => std::ptr::null_mut(),
         }
     }
 
     pub fn object_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
-            Value::Object(handle) => handle
-                .get_ptr()
-                .ok_or_else(|| anyhow::anyhow!("{} has been garbage collected", type_name)),
+            Value::Object(handle) => Ok(handle.ptr()),
             Value::Null | Value::Undefined => Ok(std::ptr::null_mut()),
             Value::Number(_)
             | Value::String(_)
@@ -195,7 +193,10 @@ impl Value {
             Value::String(s) => Ok(s.into()),
             Value::Boolean(b) => Ok(b.into()),
             Value::Object(handle) => {
-                if let Some(ptr) = handle.get_ptr() {
+                let ptr = handle.ptr();
+                if ptr.is_null() {
+                    Ok(Option::<glib::Object>::None.to_value())
+                } else {
                     let obj: glib::Object = unsafe {
                         glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
                     };
@@ -207,8 +208,6 @@ impl Value {
                         );
                     }
                     Ok(value)
-                } else {
-                    Ok(Option::<glib::Object>::None.to_value())
                 }
             }
             Value::Null | Value::Undefined => {
@@ -246,7 +245,9 @@ impl Value {
         }
 
         if let Ok(handle) = value.downcast::<JsBox<NativeHandle>, _>(cx) {
-            return Ok(Value::Object(*handle.as_inner()));
+            return Ok(Value::Object(NativeHandle::borrowed(
+                handle.as_inner().ptr(),
+            )));
         }
 
         if let Ok(callback) = value.downcast::<JsFunction, _>(cx) {
@@ -273,16 +274,16 @@ impl Value {
         cx.throw_type_error(format!("Unsupported JS value type: {:?}", *value))
     }
 
-    pub fn to_js_value<'a, C: Context<'a>>(&self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
+    pub fn to_js_value<'a, C: Context<'a>>(self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
         match self {
-            Value::Number(n) => Ok(cx.number(*n).upcast()),
+            Value::Number(n) => Ok(cx.number(n).upcast()),
             Value::String(s) => Ok(cx.string(s).upcast()),
-            Value::Boolean(b) => Ok(cx.boolean(*b).upcast()),
-            Value::Object(handle) => Ok(cx.boxed(*handle).upcast()),
+            Value::Boolean(b) => Ok(cx.boolean(b).upcast()),
+            Value::Object(handle) => Ok(cx.boxed(handle).upcast()),
             Value::Array(arr) => {
                 let js_array = cx.empty_array();
 
-                for (i, item) in arr.iter().enumerate() {
+                for (i, item) in arr.into_iter().enumerate() {
                     let js_item = item.to_js_value(cx)?;
                     js_array.set(cx, i as u32, js_item)?;
                 }

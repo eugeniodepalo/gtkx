@@ -343,13 +343,14 @@ impl Mailbox {
     /// [`Self::wait_for_glib_result`].
     pub fn process_node_pending<'a, C: Context<'a>>(&self, cx: &mut C) {
         while let Some(pending) = self.pop_node_callback() {
-            let result = Self::execute_callback(
-                cx,
-                &pending.callback,
-                &pending.args,
-                pending.capture_result,
-            );
-            if pending.result_tx.send(result).is_err() {
+            let NodeCallback {
+                callback,
+                args,
+                capture_result,
+                result_tx,
+            } = pending;
+            let result = Self::execute_callback(cx, &callback, args, capture_result);
+            if result_tx.send(result).is_err() {
                 NativeErrorReporter::global()
                     .report_str("Node callback completed but result channel was closed");
             }
@@ -360,15 +361,14 @@ impl Mailbox {
     fn execute_callback<'a, C: Context<'a>>(
         cx: &mut C,
         callback: &Arc<Root<JsFunction>>,
-        args: &[Value],
+        args: Vec<Value>,
         capture_result: bool,
     ) -> anyhow::Result<Value> {
         let callback = callback.clone();
-        let args: Vec<Value> = args.to_vec();
 
         match cx.try_catch(|cx| {
             let js_args: Vec<Handle<JsValue>> = args
-                .iter()
+                .into_iter()
                 .map(|v| v.to_js_value(cx))
                 .collect::<NeonResult<Vec<_>>>()?;
 

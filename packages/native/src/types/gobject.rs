@@ -111,15 +111,15 @@ impl RawPtrCodec for GObjectType {
 impl GlibValueCodec for GObjectType {
     fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
         let ptr = match val {
-            value::Value::Object(handle) => handle.get_ptr(),
+            value::Value::Object(handle) => handle.ptr(),
             value::Value::Null | value::Value::Undefined => {
                 return Ok(Some(Option::<glib::Object>::None.into()));
             }
             _ => return Ok(None),
         };
-        let Some(ptr) = ptr else {
+        if ptr.is_null() {
             return Ok(Some(Option::<glib::Object>::None.into()));
-        };
+        }
         let obj: glib::Object =
             unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
         let mut gvalue = glib::Value::from_type(obj.type_());

@@ -165,10 +165,12 @@ impl RawPtrCodec for FundamentalType {
 impl GlibValueCodec for FundamentalType {
     fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
         let ptr = match val {
-            value::Value::Object(handle) => handle.get_ptr(),
+            value::Value::Object(handle) => handle.ptr(),
             _ => return Ok(None),
         };
-        let Some(ptr) = ptr else { return Ok(None) };
+        if ptr.is_null() {
+            return Ok(None);
+        }
         self.ptr_to_glib_value(ptr).map(Some)
     }
 

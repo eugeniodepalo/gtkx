@@ -71,7 +71,7 @@ impl JsThreadCommand for StartCommand {
             });
 
             app.connect_activate(move |_| {
-                if tx.send(app_handle).is_err() {
+                if tx.send(app_handle.clone()).is_err() {
                     NativeErrorReporter::global().report_str(
                         "GTK application activated but startup channel was already closed",
                     );

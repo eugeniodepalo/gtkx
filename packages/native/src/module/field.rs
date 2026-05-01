@@ -34,11 +34,20 @@ use crate::{
     value::Value,
 };
 
+fn require_non_null(ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+    if ptr.is_null() {
+        anyhow::bail!("NativeHandle has a null pointer");
+    }
+    Ok(ptr)
+}
+
 struct ReadRequest {
-    handle: NativeHandle,
+    base_ptr: *mut c_void,
     field_type: Type,
     offset: usize,
 }
+
+unsafe impl Send for ReadRequest {}
 
 impl ModuleRequest for ReadRequest {
     type Output = Value;
@@ -48,17 +57,17 @@ impl ModuleRequest for ReadRequest {
         let js_type = cx.argument::<JsObject>(1)?;
         let offset = cx.argument::<JsNumber>(2)?.value(cx) as usize;
         let field_type = Type::from_js_value(cx, js_type.upcast())?;
-        let handle = *handle.as_inner();
+        let base_ptr = handle.as_inner().ptr();
 
         Ok(Self {
-            handle,
+            base_ptr,
             field_type,
             offset,
         })
     }
 
     fn execute(self) -> anyhow::Result<Value> {
-        let base_ptr = self.handle.require_non_null_ptr()?;
+        let base_ptr = require_non_null(self.base_ptr)?;
         let field_ptr = unsafe { (base_ptr as *const u8).add(self.offset) as *const c_void };
         self.field_type.read_from_raw_ptr(field_ptr, "field read")
     }
@@ -73,11 +82,13 @@ pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
 }
 
 struct WriteRequest {
-    handle: NativeHandle,
+    base_ptr: *mut c_void,
     field_type: Type,
     offset: usize,
     value: Value,
 }
+
+unsafe impl Send for WriteRequest {}
 
 impl ModuleRequest for WriteRequest {
     type Output = ();
@@ -89,10 +100,10 @@ impl ModuleRequest for WriteRequest {
         let js_value = cx.argument::<JsValue>(3)?;
         let field_type = Type::from_js_value(cx, js_type.upcast())?;
         let value = Value::from_js_value(cx, js_value)?;
-        let handle = *handle.as_inner();
+        let base_ptr = handle.as_inner().ptr();
 
         Ok(Self {
-            handle,
+            base_ptr,
             field_type,
             offset,
             value,
@@ -100,7 +111,7 @@ impl ModuleRequest for WriteRequest {
     }
 
     fn execute(self) -> anyhow::Result<()> {
-        let base_ptr = self.handle.require_non_null_ptr()?;
+        let base_ptr = require_non_null(self.base_ptr)?;
         let field_ptr = unsafe { (base_ptr as *mut u8).add(self.offset) as *mut c_void };
         self.field_type
             .write_value_to_raw_ptr(field_ptr, &self.value)

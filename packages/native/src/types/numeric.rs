@@ -1,9 +1,11 @@
 use std::ffi::c_void;
 
 use anyhow::bail;
+#[cfg(debug_assertions)]
+use gtk4::glib::translate::IntoGlib as _;
 use gtk4::glib::{
     self,
-    translate::{IntoGlib as _, ToGlibPtr as _, ToGlibPtrMut as _},
+    translate::{ToGlibPtr as _, ToGlibPtrMut as _},
 };
 use libffi::middle as libffi;
 use neon::prelude::*;
@@ -175,10 +177,7 @@ impl FfiEncoder for IntegerKind {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let number = match value {
             value::Value::Number(n) => *n,
-            value::Value::Object(handle) => handle
-                .get_ptr_as_usize()
-                .ok_or_else(|| anyhow::anyhow!("Object has been garbage collected"))?
-                as f64,
+            value::Value::Object(handle) => handle.ptr_as_usize() as f64,
             value::Value::Null | value::Value::Undefined if optional => 0.0,
             _ => bail!("Expected a Number for integer type, got {:?}", value),
         };
@@ -515,6 +514,7 @@ impl EnumType {
 }
 
 impl EnumType {
+    #[cfg(debug_assertions)]
     fn validate_enum_value(&self, value: i32) {
         if let Ok(gtype) = crate::state::GtkThreadState::with(|state| {
             state.gtype_from_lib(&self.tagged.library, &self.tagged.get_type_fn)

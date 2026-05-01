@@ -189,11 +189,13 @@ impl RawPtrCodec for BoxedType {
 impl GlibValueCodec for BoxedType {
     fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
         let ptr = match val {
-            value::Value::Object(handle) => handle.get_ptr(),
+            value::Value::Object(handle) => handle.ptr(),
             value::Value::Null | value::Value::Undefined => return Ok(None),
             _ => return Ok(None),
         };
-        let Some(ptr) = ptr else { return Ok(None) };
+        if ptr.is_null() {
+            return Ok(None);
+        }
         let Some(gtype) = self.gtype() else {
             return Ok(None);
         };

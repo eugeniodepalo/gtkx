@@ -258,12 +258,11 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
     ) -> anyhow::Result<ffi::FfiValue> {
         let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(handles.len());
         for handle in handles {
-            match handle.get_ptr() {
-                Some(ptr) => {
-                    ptrs.push(item_type.ref_for_transfer(ptr)?);
-                }
-                None => bail!("GObject in array has been garbage collected"),
+            let ptr = handle.ptr();
+            if ptr.is_null() {
+                bail!("GObject in array has a null pointer");
             }
+            ptrs.push(item_type.ref_for_transfer(ptr)?);
         }
         let ptr = ptrs.as_ptr() as *mut c_void;
 
@@ -356,13 +355,12 @@ impl ArrayKindEncoder for GListEncoder {
         let should_free = ownership.is_borrowed();
         let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
         for handle in handles {
-            match handle.get_ptr() {
-                Some(ptr) => {
-                    let ptr = item_type.ref_for_transfer(ptr)?;
-                    list = unsafe { glib::ffi::g_list_append(list, ptr) };
-                }
-                None => bail!("GObject in GList has been garbage collected"),
+            let ptr = handle.ptr();
+            if ptr.is_null() {
+                bail!("GObject in GList has a null pointer");
             }
+            let ptr = item_type.ref_for_transfer(ptr)?;
+            list = unsafe { glib::ffi::g_list_append(list, ptr) };
         }
         Ok(ffi::FfiValue::Storage(FfiStorage::new(
             list as *mut c_void,
@@ -457,13 +455,12 @@ impl ArrayKindEncoder for GSListEncoder {
         let should_free = ownership.is_borrowed();
         let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
         for handle in handles.iter().rev() {
-            match handle.get_ptr() {
-                Some(ptr) => {
-                    let ptr = item_type.ref_for_transfer(ptr)?;
-                    list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
-                }
-                None => bail!("GObject in GSList has been garbage collected"),
+            let ptr = handle.ptr();
+            if ptr.is_null() {
+                bail!("GObject in GSList has a null pointer");
             }
+            let ptr = item_type.ref_for_transfer(ptr)?;
+            list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
         }
         Ok(ffi::FfiValue::Storage(FfiStorage::new(
             list as *mut c_void,
@@ -513,7 +510,7 @@ impl ArrayType {
         array
             .iter()
             .map(|v| match v {
-                value::Value::Object(handle) => Ok(*handle),
+                value::Value::Object(handle) => Ok(handle.clone()),
                 _ => bail!("Expected an Object, got {:?}", v),
             })
             .collect()
@@ -594,18 +591,17 @@ impl ArrayType {
                 if let Some(element_size) = self.element_size {
                     let mut buffer = vec![0u8; handles.len() * element_size];
                     for (i, handle) in handles.iter().enumerate() {
-                        match handle.get_ptr() {
-                            Some(ptr) => {
-                                let offset = i * element_size;
-                                unsafe {
-                                    std::ptr::copy_nonoverlapping(
-                                        ptr as *const u8,
-                                        buffer.as_mut_ptr().add(offset),
-                                        element_size,
-                                    );
-                                }
-                            }
-                            None => bail!("GObject in array has been garbage collected"),
+                        let ptr = handle.ptr();
+                        if ptr.is_null() {
+                            bail!("GObject in array has a null pointer");
+                        }
+                        let offset = i * element_size;
+                        unsafe {
+                            std::ptr::copy_nonoverlapping(
+                                ptr as *const u8,
+                                buffer.as_mut_ptr().add(offset),
+                                element_size,
+                            );
                         }
                     }
                     return Ok(ffi::FfiValue::Storage(buffer.into()));
@@ -726,9 +722,10 @@ impl ArrayType {
             }
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                 for handle in Self::extract_handles(array)? {
-                    let ptr = handle.get_ptr().ok_or_else(|| {
-                        anyhow::anyhow!("Object in GArray has been garbage collected")
-                    })?;
+                    let ptr = handle.ptr();
+                    if ptr.is_null() {
+                        anyhow::bail!("Object in GArray has a null pointer");
+                    }
                     let ptr = self.item_type.ref_for_transfer(ptr)?;
                     unsafe {
                         glib::ffi::g_array_append_vals(
@@ -1104,7 +1101,7 @@ impl ArrayType {
                 let handles = storage.as_object_array()?;
                 handles
                     .iter()
-                    .map(|handle| value::Value::Object(*handle))
+                    .map(|handle| value::Value::Object(handle.clone()))
                     .collect()
             }
             Type::Enum(e) => {
