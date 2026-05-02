@@ -33,16 +33,20 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 use gtk4::glib;
-use neon::prelude::*;
+use napi::bindgen_prelude::{FromNapiValue, Unknown};
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
+use napi::{Env, Status};
 
 use crate::error_reporter::NativeErrorReporter;
-use crate::value::Value;
+use crate::value::{JsCallbackRef, Value};
 use crate::wait_signal::WaitSignal;
 
 type GlibTask = Box<dyn FnOnce() + Send + 'static>;
 
+pub type WakeJsTsfn = ThreadsafeFunction<(), (), (), Status, false, true>;
+
 struct NodeCallback {
-    callback: Arc<Root<JsFunction>>,
+    callback: Arc<JsCallbackRef>,
     args: Vec<Value>,
     capture_result: bool,
     result_tx: mpsc::Sender<anyhow::Result<Value>>,
@@ -60,7 +64,7 @@ pub struct Mailbox {
     wake_js: WaitSignal,
     wake_glib: WaitSignal,
 
-    dispatch_scheduled: AtomicBool,
+    wake_js_tsfn: OnceLock<Arc<WakeJsTsfn>>,
 
     started: AtomicBool,
     stopped: AtomicBool,
@@ -94,13 +98,20 @@ impl Mailbox {
             node_inbox: Mutex::new(VecDeque::new()),
             wake_js: WaitSignal::new(),
             wake_glib: WaitSignal::new(),
-            dispatch_scheduled: AtomicBool::new(false),
+            wake_js_tsfn: OnceLock::new(),
             started: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
             freeze_depth: AtomicUsize::new(0),
             freeze_loop_active: AtomicBool::new(false),
             freeze_wake: WaitSignal::new(),
         }
+    }
+
+    /// Stores the threadsafe function used to wake the JS thread from arbitrary
+    /// other threads. Set once during `start()` and invoked by the `GLib` thread
+    /// when callbacks are pushed onto the node inbox.
+    pub fn set_wake_tsfn(&self, tsfn: Arc<WakeJsTsfn>) {
+        let _ = self.wake_js_tsfn.set(tsfn);
     }
 
     /// Marks the `GLib` thread as ready to receive tasks.
@@ -207,16 +218,10 @@ impl Mailbox {
             return;
         }
 
-        if self
-            .dispatch_scheduled
-            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-            .is_ok()
-        {
-            glib::idle_add_full(glib::Priority::HIGH_IDLE, || {
-                Self::global().dispatch_pending();
-                glib::ControlFlow::Break
-            });
-        }
+        glib::idle_add_full(glib::Priority::HIGH_IDLE, || {
+            Self::global().dispatch_pending();
+            glib::ControlFlow::Break
+        });
     }
 
     /// Wakes the JS thread if it is parked in [`Self::wait_for_glib_result`].
@@ -233,7 +238,6 @@ impl Mailbox {
     /// Drains all queued `GLib` tasks. Returns whether any were executed.
     /// Intended to run on the `GLib` thread.
     pub fn dispatch_pending(&self) -> bool {
-        self.dispatch_scheduled.store(false, Ordering::Release);
         let mut dispatched = false;
 
         while let Some(task) = self.pop_glib_task() {
@@ -251,13 +255,12 @@ impl Mailbox {
     /// Schedules a task on the `GLib` thread and blocks the JS thread until the
     /// task completes. While blocked, drains any callbacks pushed onto the
     /// node inbox so re-entrant `GLib → JS → GLib` calls progress.
-    pub fn dispatch_to_glib_and_wait<'a, R, C, F>(
+    pub fn dispatch_to_glib_and_wait<R, F>(
         &self,
-        cx: &mut C,
+        env: Env,
         task: F,
     ) -> Result<R, GlibDisconnectedError>
     where
-        C: Context<'a>,
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
     {
@@ -268,7 +271,7 @@ impl Mailbox {
                     .report_str("GLib dispatch completed but result channel was closed");
             }
         });
-        self.wait_for_glib_result(cx, &rx)
+        self.wait_for_glib_result(env, &rx)
     }
 
     /// Blocks the JS thread until the receiver yields a value, draining any
@@ -276,13 +279,13 @@ impl Mailbox {
     /// tasks via [`Self::schedule_glib`] and want fine-grained control over
     /// what value the `GLib` task signals back through (for example, the
     /// freeze loop signals readiness mid-execution).
-    pub fn wait_for_glib_result<'a, R, C: Context<'a>>(
+    pub fn wait_for_glib_result<R>(
         &self,
-        cx: &mut C,
+        env: Env,
         rx: &mpsc::Receiver<R>,
     ) -> Result<R, GlibDisconnectedError> {
         loop {
-            self.process_node_pending(cx);
+            self.process_node_pending(env);
 
             match rx.try_recv() {
                 Ok(result) => return Ok(result),
@@ -298,8 +301,7 @@ impl Mailbox {
     /// calls progress.
     pub fn invoke_node_and_wait(
         &self,
-        channel: &Channel,
-        callback: &Arc<Root<JsFunction>>,
+        callback: &Arc<JsCallbackRef>,
         args: Vec<Value>,
         capture_result: bool,
     ) -> anyhow::Result<Value> {
@@ -312,10 +314,9 @@ impl Mailbox {
             result_tx: tx,
         });
 
-        channel.send(|mut cx| {
-            Self::global().process_node_pending(&mut cx);
-            Ok(())
-        });
+        if let Some(tsfn) = self.wake_js_tsfn.get() {
+            tsfn.call((), ThreadsafeFunctionCallMode::NonBlocking);
+        }
 
         self.wait_for_node_result(&rx)
     }
@@ -338,10 +339,10 @@ impl Mailbox {
     }
 
     /// Drains all currently-queued node callbacks and invokes them in JS.
-    /// Intended to run on the JS thread, either from the libuv-driven wakeup
-    /// scheduled by [`Self::invoke_node_and_wait`] or from the wait loop in
+    /// Intended to run on the JS thread, either from the wake TSFN scheduled by
+    /// [`Self::invoke_node_and_wait`] or from the wait loop in
     /// [`Self::wait_for_glib_result`].
-    pub fn process_node_pending<'a, C: Context<'a>>(&self, cx: &mut C) {
+    pub fn process_node_pending(&self, env: Env) {
         while let Some(pending) = self.pop_node_callback() {
             let NodeCallback {
                 callback,
@@ -349,7 +350,7 @@ impl Mailbox {
                 capture_result,
                 result_tx,
             } = pending;
-            let result = Self::execute_callback(cx, &callback, args, capture_result);
+            let result = Self::execute_callback(env, &callback, args, capture_result);
             if result_tx.send(result).is_err() {
                 NativeErrorReporter::global()
                     .report_str("Node callback completed but result channel was closed");
@@ -358,51 +359,96 @@ impl Mailbox {
         }
     }
 
-    fn execute_callback<'a, C: Context<'a>>(
-        cx: &mut C,
-        callback: &Arc<Root<JsFunction>>,
+    fn execute_callback(
+        env: Env,
+        callback: &Arc<JsCallbackRef>,
         args: Vec<Value>,
         capture_result: bool,
     ) -> anyhow::Result<Value> {
-        let callback = callback.clone();
+        use napi::NapiRaw as _;
+        use napi::sys;
 
-        match cx.try_catch(|cx| {
-            let js_args: Vec<Handle<JsValue>> = args
-                .into_iter()
-                .map(|v| v.to_js_value(cx))
-                .collect::<NeonResult<Vec<_>>>()?;
+        let js_args: Vec<Unknown<'_>> = args
+            .into_iter()
+            .map(|v| {
+                v.to_js_value(&env)
+                    .map_err(|e| anyhow::anyhow!("converting callback arg: {e}"))
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
 
-            let js_this = cx.undefined();
-            let js_callback = callback.to_inner(cx);
+        let raw_args: Vec<sys::napi_value> = js_args.iter().map(napi::JsValue::raw).collect();
 
-            if capture_result {
-                let js_result = js_callback.call(cx, js_this, js_args)?;
-                Value::from_js_value(cx, js_result)
+        let func = callback
+            .get_value(&env)
+            .map_err(|e| anyhow::anyhow!("retrieving callback function: {e}"))?;
+
+        let func_raw = unsafe { func.raw() };
+        let mut undef_this = std::ptr::null_mut();
+        unsafe {
+            sys::napi_get_undefined(env.raw(), &mut undef_this);
+        }
+
+        let mut return_value = std::ptr::null_mut();
+        let status = unsafe {
+            sys::napi_call_function(
+                env.raw(),
+                undef_this,
+                func_raw,
+                raw_args.len(),
+                raw_args.as_ptr(),
+                &mut return_value,
+            )
+        };
+
+        if status == sys::Status::napi_pending_exception {
+            let mut exception = std::ptr::null_mut();
+            unsafe {
+                sys::napi_get_and_clear_last_exception(env.raw(), &mut exception);
+            }
+            let msg = if exception.is_null() {
+                "JS callback threw an exception".to_owned()
             } else {
-                js_callback.call(cx, js_this, js_args)?;
-                Ok(Value::Undefined)
-            }
-        }) {
-            Ok(value) => Ok(value),
-            Err(exception) => {
-                let msg = Self::extract_exception_message(cx, exception);
-                Err(anyhow::anyhow!("{msg}"))
-            }
+                Self::extract_exception_message(env.raw(), exception)
+            };
+            return Err(anyhow::anyhow!("{msg}"));
+        }
+        if status != sys::Status::napi_ok {
+            return Err(anyhow::anyhow!("napi_call_function failed: {status:?}"));
+        }
+
+        if capture_result {
+            let unknown = unsafe { Unknown::from_raw_unchecked(env.raw(), return_value) };
+            let val = Value::from_js_value(&env, unknown)
+                .map_err(|e| anyhow::anyhow!("converting callback result: {e}"))?;
+            Ok(val)
+        } else {
+            Ok(Value::Undefined)
         }
     }
 
-    fn extract_exception_message<'a, C: Context<'a>>(
-        cx: &mut C,
-        exception: Handle<'a, JsValue>,
+    fn extract_exception_message(
+        env: napi::sys::napi_env,
+        exception: napi::sys::napi_value,
     ) -> String {
-        if let Ok(obj) = exception.downcast::<JsObject, _>(cx)
-            && let Ok(msg_handle) = obj.get_value(cx, "message")
-            && let Ok(msg_str) = msg_handle.downcast::<JsString, _>(cx)
-        {
-            return msg_str.value(cx);
+        use napi::sys;
+        let mut value_type = sys::ValueType::napi_undefined;
+        unsafe {
+            sys::napi_typeof(env, exception, &mut value_type);
         }
-        if let Ok(s) = exception.downcast::<JsString, _>(cx) {
-            return s.value(cx);
+        if value_type == sys::ValueType::napi_object {
+            let mut message = std::ptr::null_mut();
+            unsafe {
+                sys::napi_get_named_property(env, exception, c"message".as_ptr(), &mut message);
+            }
+            if !message.is_null()
+                && let Ok(s) = unsafe { String::from_napi_value(env, message) }
+            {
+                return s;
+            }
+        } else if value_type == sys::ValueType::napi_string
+            && let Ok(s) = unsafe { String::from_napi_value(env, exception) }
+        {
+            return s;
         }
         "unknown exception".to_owned()
     }

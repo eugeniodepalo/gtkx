@@ -2,10 +2,10 @@ use std::ffi::{CStr, CString, c_char, c_void};
 
 use anyhow::bail;
 use gtk4::glib;
-use neon::object::Object as _;
-use neon::prelude::*;
+use napi::bindgen_prelude::*;
+use napi::{Env, JsObject};
 
-use super::{FfiDecoder, FfiEncoder, GlibValueCodec, NeonContextExt as _, Ownership, RawPtrCodec};
+use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::arg::Arg;
 use crate::ffi::{FfiStorage, FfiStorageKind};
 use crate::types::{FloatKind, IntegerKind, Type};
@@ -27,7 +27,7 @@ pub enum ArrayKind {
 impl std::str::FromStr for ArrayKind {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
             "array" => Ok(Self::Array),
             "glist" => Ok(Self::GList),
@@ -53,49 +53,62 @@ pub struct ArrayType {
 }
 
 impl ArrayType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let item_type_value: Handle<'_, JsValue> = obj.prop(cx, "itemType").get()?;
-        let item_type = Type::from_js_value(cx, item_type_value)?;
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let item_type_value: Unknown<'_> = obj.get_named_property("itemType")?;
+        let item_type = Type::from_js_value(env, item_type_value)?;
 
-        let kind_prop: Handle<'_, JsValue> = obj.prop(cx, "kind").get()?;
-        let kind_str = kind_prop
-            .downcast::<JsString, _>(cx)
-            .or_else(|_| cx.throw_type_error("'kind' property is required for array types"))?
-            .value(cx);
+        let kind_str: String = obj.get_named_property("kind").map_err(|_| {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                "'kind' property is required for array types",
+            )
+        })?;
 
         let kind: ArrayKind = kind_str
             .parse()
-            .map_err(|e: String| cx.throw_str_error(e))?;
+            .map_err(|e: String| napi::Error::new(napi::Status::InvalidArg, e))?;
 
         let kind = match kind {
             ArrayKind::Sized { .. } => {
-                let size_index: Handle<JsNumber> =
-                    obj.get_opt(cx, "sizeParamIndex")?.ok_or_else(|| {
-                        cx.throw_str_error("'sizeParamIndex' is required for sized arrays".into())
+                let size_index: f64 = obj
+                    .get_named_property::<Option<f64>>("sizeParamIndex")
+                    .ok()
+                    .flatten()
+                    .ok_or_else(|| {
+                        napi::Error::new(
+                            napi::Status::InvalidArg,
+                            "'sizeParamIndex' is required for sized arrays",
+                        )
                     })?;
                 ArrayKind::Sized {
-                    size_index: size_index.value(cx) as usize,
+                    size_index: size_index as usize,
                 }
             }
             ArrayKind::Fixed { .. } => {
-                let fixed_size: Handle<JsNumber> =
-                    obj.get_opt(cx, "fixedSize")?.ok_or_else(|| {
-                        cx.throw_str_error("'fixedSize' is required for fixed arrays".into())
+                let fixed_size: f64 = obj
+                    .get_named_property::<Option<f64>>("fixedSize")
+                    .ok()
+                    .flatten()
+                    .ok_or_else(|| {
+                        napi::Error::new(
+                            napi::Status::InvalidArg,
+                            "'fixedSize' is required for fixed arrays",
+                        )
                     })?;
                 ArrayKind::Fixed {
-                    size: fixed_size.value(cx) as usize,
+                    size: fixed_size as usize,
                 }
             }
             other => other,
         };
 
-        let element_size: Option<usize> = {
-            let size_prop: Option<Handle<JsNumber>> = obj.get_opt(cx, "elementSize")?;
-            size_prop.map(|n| n.value(cx) as usize)
-        };
+        let element_size: Option<usize> = obj
+            .get_named_property::<Option<f64>>("elementSize")
+            .ok()
+            .flatten()
+            .map(|n| n as usize);
 
-        let ownership = Ownership::from_js_value(cx, obj, "array")?;
+        let ownership = Ownership::from_js_value(env, obj, "array")?;
 
         Ok(Self {
             item_type: Box::new(item_type),

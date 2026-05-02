@@ -37,48 +37,45 @@ use anyhow::bail;
 use enum_dispatch::enum_dispatch;
 use gtk4::glib;
 use libffi::middle as libffi;
-use neon::prelude::*;
+use napi::bindgen_prelude::*;
+use napi::{Env, JsObject};
 
 use crate::{ffi, value};
 
-mod sealed {
-    pub trait Sealed {}
-    impl Sealed for neon::prelude::FunctionContext<'_> {}
-}
-
-pub(crate) trait NeonContextExt: sealed::Sealed {
-    fn throw_str_error(&mut self, msg: String) -> neon::result::Throw;
-}
-
-impl NeonContextExt for FunctionContext<'_> {
-    fn throw_str_error(&mut self, msg: String) -> neon::result::Throw {
-        self.throw_type_error::<_, ()>(msg).unwrap_err()
-    }
-}
-
 /// Shared parser for the `argTypes` and `returnType` properties used by both
 /// `CallbackType` and `TrampolineType`. Returns the parsed argument types and
-/// return type or throws a JS type error referencing `kind` (e.g. `"callback"`).
+/// return type or returns a JS type error referencing `kind` (e.g. `"callback"`).
 pub(crate) fn parse_callback_arg_and_return_types(
-    cx: &mut FunctionContext,
-    obj: Handle<JsObject>,
+    env: &Env,
+    obj: &JsObject,
     kind: &str,
-) -> NeonResult<(Vec<Type>, Box<Type>)> {
-    let arg_types_prop: Handle<'_, JsValue> = obj.prop(cx, "argTypes").get()?;
-    let arg_types_arr = arg_types_prop.downcast::<JsArray, _>(cx).or_else(|_| {
-        cx.throw_type_error(format!("'argTypes' property is required for {kind} types"))
-    })?;
-    let arg_types_vec = arg_types_arr.to_vec(cx)?;
-    let mut arg_types = Vec::with_capacity(arg_types_vec.len());
-    for item in arg_types_vec {
-        arg_types.push(Type::from_js_value(cx, item)?);
+) -> napi::Result<(Vec<Type>, Box<Type>)> {
+    let arg_types_prop: Unknown<'_> = obj.get_named_property("argTypes")?;
+    if !arg_types_prop.is_array()? {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("'argTypes' property is required for {kind} types"),
+        ));
+    }
+    let arg_types_arr: Array = unsafe { Array::from_napi_value(env.raw(), arg_types_prop.raw())? };
+    let arr_len = arg_types_arr.len();
+    let mut arg_types = Vec::with_capacity(arr_len as usize);
+    for i in 0..arr_len {
+        let item: Unknown<'_> = arg_types_arr.get(i)?.ok_or_else(|| {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("'argTypes[{i}]' missing"),
+            )
+        })?;
+        arg_types.push(Type::from_js_value(env, item)?);
     }
 
-    let return_type_prop: Handle<'_, JsValue> = obj.prop(cx, "returnType").get()?;
-    let return_type = Box::new(Type::from_js_value(cx, return_type_prop).or_else(|_| {
-        cx.throw_type_error(format!(
-            "'returnType' property is required for {kind} types"
-        ))
+    let return_type_prop: Unknown<'_> = obj.get_named_property("returnType")?;
+    let return_type = Box::new(Type::from_js_value(env, return_type_prop).map_err(|_| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("'returnType' property is required for {kind} types"),
+        )
     })?);
 
     Ok((arg_types, return_type))
@@ -136,23 +133,26 @@ impl Ownership {
 }
 
 impl Ownership {
-    pub fn from_js_value(
-        cx: &mut FunctionContext,
-        obj: Handle<JsObject>,
-        type_name: &str,
-    ) -> NeonResult<Self> {
-        let ownership_prop: Handle<'_, JsValue> = obj.prop(cx, "ownership").get()?;
-
-        let ownership = ownership_prop
-            .downcast::<JsString, _>(cx)
-            .or_else(|_| {
-                cx.throw_type_error(format!(
-                    "'ownership' property is required for {type_name} types"
-                ))
+    pub fn from_js_value(env: &Env, obj: &JsObject, type_name: &str) -> napi::Result<Self> {
+        let ownership = obj
+            .get_named_property::<Option<String>>("ownership")
+            .map_err(|_| {
+                napi::Error::new(
+                    napi::Status::InvalidArg,
+                    format!("'ownership' property is required for {type_name} types"),
+                )
             })?
-            .value(cx);
+            .ok_or_else(|| {
+                napi::Error::new(
+                    napi::Status::InvalidArg,
+                    format!("'ownership' property is required for {type_name} types"),
+                )
+            })?;
 
-        ownership.parse().map_err(|e: String| cx.throw_str_error(e))
+        let _ = env;
+        ownership
+            .parse()
+            .map_err(|e: String| napi::Error::new(napi::Status::InvalidArg, e))
     }
 }
 
@@ -168,7 +168,7 @@ impl std::fmt::Display for Ownership {
 impl std::str::FromStr for Ownership {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
             "full" => Ok(Self::Full),
             "borrowed" => Ok(Self::Borrowed),
@@ -235,7 +235,11 @@ pub trait RawPtrCodec {
         self.ptr_to_value(inner_ptr, context)
     }
 
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    fn write_return_to_raw_ptr(
+        &self,
+        ret: *mut c_void,
+        value: &std::result::Result<value::Value, ()>,
+    ) {
         let _ = value;
         unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
     }
@@ -316,14 +320,9 @@ impl std::fmt::Display for Type {
 }
 
 impl Type {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let type_value: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
-
-        let ty = type_value
-            .downcast::<JsString, _>(cx)
-            .or_throw(cx)?
-            .value(cx);
+    pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+        let obj: JsObject = unsafe { JsObject::from_napi_value(env.raw(), value.raw())? };
+        let ty: String = obj.get_named_property("type")?;
 
         match ty.as_str() {
             "int8" => Ok(Self::Integer(IntegerKind::I8)),
@@ -336,24 +335,27 @@ impl Type {
             "uint64" => Ok(Self::Integer(IntegerKind::U64)),
             "float32" => Ok(Self::Float(FloatKind::F32)),
             "float64" => Ok(Self::Float(FloatKind::F64)),
-            "enum" => Ok(Self::Enum(EnumType::from_js_value(cx, value)?)),
-            "flags" => Ok(Self::Flags(FlagsType::from_js_value(cx, value)?)),
-            "string" => Ok(Self::String(StringType::from_js_value(cx, value)?)),
+            "enum" => Ok(Self::Enum(EnumType::from_js_value(env, &obj)?)),
+            "flags" => Ok(Self::Flags(FlagsType::from_js_value(env, &obj)?)),
+            "string" => Ok(Self::String(StringType::from_js_value(env, &obj)?)),
             "boolean" => Ok(Self::Boolean(BooleanType)),
             "void" => Ok(Self::Void(VoidType)),
-            "gobject" => Ok(Self::GObject(GObjectType::from_js_value(cx, value)?)),
-            "boxed" => Ok(Self::Boxed(BoxedType::from_js_value(cx, value)?)),
-            "struct" => Ok(Self::Struct(StructType::from_js_value(cx, value)?)),
-            "array" => Ok(Self::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
-            "hashtable" => Ok(Self::HashTable(HashTableType::from_js_value(cx, value)?)),
-            "callback" => Ok(Self::Callback(CallbackType::from_js_value(cx, value)?)),
-            "trampoline" => Ok(Self::Trampoline(TrampolineType::from_js_value(cx, value)?)),
-            "ref" => Ok(Self::Ref(RefType::from_js_value(cx, obj.upcast())?)),
+            "gobject" => Ok(Self::GObject(GObjectType::from_js_value(env, &obj)?)),
+            "boxed" => Ok(Self::Boxed(BoxedType::from_js_value(env, &obj)?)),
+            "struct" => Ok(Self::Struct(StructType::from_js_value(env, &obj)?)),
+            "array" => Ok(Self::Array(ArrayType::from_js_value(env, &obj)?)),
+            "hashtable" => Ok(Self::HashTable(HashTableType::from_js_value(env, &obj)?)),
+            "callback" => Ok(Self::Callback(CallbackType::from_js_value(env, &obj)?)),
+            "trampoline" => Ok(Self::Trampoline(TrampolineType::from_js_value(env, &obj)?)),
+            "ref" => Ok(Self::Ref(RefType::from_js_value(env, &obj)?)),
             "unichar" => Ok(Self::Unichar(UnicharType)),
             "fundamental" => Ok(Self::Fundamental(FundamentalType::from_js_value(
-                cx, value,
+                env, &obj,
             )?)),
-            _ => cx.throw_type_error(format!("Unknown type: {ty}")),
+            other => Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Unknown type: {other}"),
+            )),
         }
     }
 }

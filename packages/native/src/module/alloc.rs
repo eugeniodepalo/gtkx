@@ -13,7 +13,9 @@
 
 use gtk4::glib;
 use gtk4::glib::ffi::g_malloc0;
-use neon::prelude::*;
+use napi::Env;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
 
 use super::handler::{ModuleRequest, dispatch_request};
 use crate::managed::{Boxed, NativeHandle, NativeValue};
@@ -25,17 +27,6 @@ struct AllocRequest {
 
 impl ModuleRequest for AllocRequest {
     type Output = NativeHandle;
-
-    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
-        let size = cx.argument::<JsNumber>(0)?.value(cx) as usize;
-
-        let type_name = cx
-            .argument_opt(1)
-            .and_then(|v| v.downcast::<JsString, _>(cx).ok())
-            .map(|s| s.value(cx));
-
-        Ok(Self { size, type_name })
-    }
 
     fn execute(self) -> anyhow::Result<NativeHandle> {
         // SAFETY: g_malloc0 is a safe GLib memory allocation function
@@ -57,6 +48,16 @@ impl ModuleRequest for AllocRequest {
     }
 }
 
-pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
-    dispatch_request::<AllocRequest>(&mut cx)
+#[napi]
+pub fn alloc(
+    env: &Env,
+    size: f64,
+    type_name: Option<String>,
+    _lib: Option<String>,
+) -> napi::Result<Unknown<'_>> {
+    let request = AllocRequest {
+        size: size as usize,
+        type_name,
+    };
+    dispatch_request(env, request)
 }

@@ -24,9 +24,11 @@ use std::{ffi::c_void, sync::Arc};
 
 use anyhow::Context as _;
 use libffi::middle as libffi;
-use neon::prelude::*;
+use napi::Env;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
 
-use super::handler::{ModuleRequest, dispatch_request};
+use super::handler::{ModuleRequest, RefUpdate, dispatch_request};
 use crate::{
     arg::Arg,
     ffi,
@@ -34,8 +36,6 @@ use crate::{
     types::{FfiEncoder as _, Type},
     value::Value,
 };
-
-type RefUpdate = (Arc<Root<JsObject>>, Value);
 
 struct CallRequest {
     library_name: String,
@@ -46,22 +46,6 @@ struct CallRequest {
 
 impl ModuleRequest for CallRequest {
     type Output = (Value, Vec<RefUpdate>);
-
-    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
-        let library_name = cx.argument::<JsString>(0)?.value(cx);
-        let symbol_name = cx.argument::<JsString>(1)?.value(cx);
-        let js_args = cx.argument::<JsArray>(2)?;
-        let js_result_type = cx.argument::<JsObject>(3)?;
-        let args = Arg::from_js_array(cx, js_args)?;
-        let result_type = Type::from_js_value(cx, js_result_type.upcast())?;
-
-        Ok(Self {
-            library_name,
-            symbol_name,
-            args,
-            result_type,
-        })
-    }
 
     fn execute(self) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
         let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(self.args.len() + 1);
@@ -118,7 +102,7 @@ impl ModuleRequest for CallRequest {
                     &ffi_values,
                     &self.args,
                 )?;
-                ref_updates.push((ref_val.js_obj.clone(), new_value));
+                ref_updates.push((Arc::clone(&ref_val.js_obj), new_value));
             }
         }
 
@@ -133,6 +117,21 @@ impl ModuleRequest for CallRequest {
     }
 }
 
-pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
-    dispatch_request::<CallRequest>(&mut cx)
+#[napi]
+pub fn call<'env>(
+    env: &'env Env,
+    library: String,
+    symbol: String,
+    args: Array,
+    return_type: Unknown<'_>,
+) -> napi::Result<Unknown<'env>> {
+    let parsed_args = Arg::from_js_array(env, &args)?;
+    let result_type = Type::from_js_value(env, return_type)?;
+    let request = CallRequest {
+        library_name: library,
+        symbol_name: symbol,
+        args: parsed_args,
+        result_type,
+    };
+    dispatch_request(env, request)
 }

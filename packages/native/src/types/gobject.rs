@@ -6,7 +6,7 @@ use gtk4::glib::{
     prelude::{ObjectExt as _, ObjectType as _},
     translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _, ToGlibPtrMut as _},
 };
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::managed::NativeValue;
@@ -18,9 +18,8 @@ pub struct GObjectType {
 }
 
 impl GObjectType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let ownership = Ownership::from_js_value(cx, obj, "gobject")?;
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(env, obj, "gobject")?;
         Ok(Self { ownership })
     }
 }

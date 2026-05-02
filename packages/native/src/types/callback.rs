@@ -7,7 +7,7 @@ use gtk4::glib::{
     translate::{FromGlibPtrFull as _, ToGlibPtr as _},
 };
 use libffi::middle as libffi;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
 use crate::callback::ClosureGuard;
 use crate::dispatch::Mailbox;
@@ -16,18 +16,16 @@ use crate::ffi::{self, FfiStorage};
 use crate::managed::{Boxed, NativeValue};
 use crate::types::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, Type};
 use crate::value;
-use crate::value::Callback;
+use crate::value::{Callback, JsCallbackRef};
 
 struct ClosureContext {
-    channel: neon::event::Channel,
-    js_func: Arc<neon::handle::Root<neon::types::JsFunction>>,
+    js_func: Arc<JsCallbackRef>,
     arg_types: Vec<Type>,
 }
 
 impl ClosureContext {
     fn from_callback(callback: &Callback, callback_type: &CallbackType) -> Self {
         Self {
-            channel: callback.channel.clone(),
             js_func: callback.js_func.clone(),
             arg_types: callback_type.arg_types.clone(),
         }
@@ -70,12 +68,7 @@ impl ClosureContext {
                 })
                 .collect();
 
-            let result = Mailbox::global().invoke_node_and_wait(
-                &self.channel,
-                &self.js_func,
-                args_values,
-                true,
-            );
+            let result = Mailbox::global().invoke_node_and_wait(&self.js_func, args_values, true);
 
             match result {
                 Ok(value::Value::Array(arr)) if !ref_pointers.is_empty() => {
@@ -150,10 +143,9 @@ pub struct CallbackType {
 }
 
 impl CallbackType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let (arg_types, return_type) =
-            super::parse_callback_arg_and_return_types(cx, obj, "callback")?;
+            super::parse_callback_arg_and_return_types(env, obj, "callback")?;
         Ok(Self {
             arg_types,
             return_type,

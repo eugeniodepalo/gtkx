@@ -1,6 +1,6 @@
 //! # GTKX Native Module
 //!
-//! Neon-based native module providing FFI bindings between JavaScript and GLib/GObject-based libraries.
+//! napi-rs based native module providing FFI bindings between JavaScript and GLib/GObject-based libraries.
 //! This is the core bridge that enables JavaScript to call into any GLib/GObject-based native library.
 //!
 //! ## Exported Functions
@@ -21,7 +21,7 @@
 //!
 //! Two-thread model for `GLib`'s single-threaded main loop requirements:
 //!
-//! - **Neon/JS thread**: Handles JavaScript calls, argument conversion, callback dispatch
+//! - **Node.js/JS thread**: Handles JavaScript calls, argument conversion, callback dispatch
 //! - **`GLib` thread**: Runs the `GLib` main loop, executes all native operations
 //!
 //! Communication flows through `dispatch::Mailbox`, a single bidirectional bridge
@@ -36,6 +36,8 @@
 //! - `NativeValue`: Managed wrapper for `GObject`, Boxed, and Fundamental instances
 //! - `Type`: Type system describing all FFI-compatible types
 //! - `ffi::FfiValue`: Low-level libffi argument representation
+
+#![allow(deprecated)]
 
 #[macro_use]
 mod macros;
@@ -55,20 +57,3 @@ pub mod value;
 pub mod wait_signal;
 
 pub use managed::{Boxed, Fundamental, NativeHandle, NativeValue};
-
-use neon::prelude::*;
-
-#[neon::main]
-fn main(mut cx: ModuleContext) -> NeonResult<()> {
-    cx.export_function("start", module::start)?;
-    cx.export_function("stop", module::stop)?;
-    cx.export_function("call", module::call)?;
-    cx.export_function("read", module::read)?;
-    cx.export_function("write", module::write)?;
-    cx.export_function("alloc", module::alloc)?;
-    cx.export_function("getNativeId", module::get_native_id)?;
-    cx.export_function("isNativeHandle", module::is_native_handle)?;
-    cx.export_function("freeze", module::freeze)?;
-    cx.export_function("unfreeze", module::unfreeze)?;
-    Ok(())
-}

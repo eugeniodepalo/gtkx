@@ -2,7 +2,7 @@ use std::ffi::{CStr, CString, c_char, c_void};
 
 use anyhow::bail;
 use gtk4::glib;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::{ffi, value};
@@ -14,15 +14,14 @@ pub struct StringType {
 }
 
 impl StringType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let ownership = Ownership::from_js_value(cx, obj, "string")?;
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(env, obj, "string")?;
 
-        let length_prop: Handle<'_, JsValue> = obj.prop(cx, "length").get()?;
-        let length = length_prop
-            .downcast::<JsNumber, _>(cx)
-            .map(|n| n.value(cx) as usize)
-            .ok();
+        let length: Option<usize> = obj
+            .get_named_property::<Option<f64>>("length")
+            .ok()
+            .flatten()
+            .map(|n| n as usize);
 
         Ok(Self { ownership, length })
     }

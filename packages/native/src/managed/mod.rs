@@ -8,7 +8,7 @@
 //! ## Key Types
 //!
 //! - [`NativeValue`]: Enum wrapping `GObject`, Boxed, or Fundamental instances
-//! - [`NativeHandle`]: Owned handle returned to JavaScript, implements [`Finalize`]
+//! - [`NativeHandle`]: Owned handle returned to JavaScript via [`napi::bindgen_prelude::External`]
 //! - [`Boxed`]: `GObject` boxed type wrapper with copy/free semantics
 //! - [`Fundamental`]: `GLib` fundamental type wrapper with ref/unref semantics
 //!
@@ -18,15 +18,15 @@
 //! 2. [`NativeValue`] is wrapped in [`NativeHandle`] via `From`, capturing the
 //!    raw pointer and storing the value in a [`SendWrapper`] anchored to the
 //!    `GLib` thread.
-//! 3. [`NativeHandle`] is moved into a `JsBox` and returned to JavaScript.
-//! 4. When JS garbage collects the box, [`Finalize::finalize`] takes ownership
-//!    of the handle and routes its drop back to the `GLib` thread.
-//! 5. The handle's [`Drop`] runs on the `GLib` thread, releasing the underlying
-//!    `GObject` ref / boxed copy / fundamental unref.
+//! 3. [`NativeHandle`] is wrapped in `napi::bindgen_prelude::External` and returned to JavaScript.
+//! 4. When JS garbage collects the external value, napi-rs calls the
+//!    [`NativeHandle`]'s [`Drop`] impl, which routes the drop back to the
+//!    `GLib` thread via `glib::idle_add_once`.
+//! 5. On the `GLib` thread, the underlying `GObject` ref / boxed copy /
+//!    fundamental unref is released.
 //!
 //! At shutdown ([`Mailbox::is_stopped`]) the handle's value is intentionally
-//! leaked via [`std::mem::forget`] to avoid post-shutdown teardown crashes,
-//! mirroring the previous `ManuallyDrop`-based handle map.
+//! leaked via [`std::mem::forget`] to avoid post-shutdown teardown crashes.
 
 mod boxed;
 mod fundamental;
@@ -37,7 +37,6 @@ pub use fundamental::{Fundamental, RefFn, UnrefFn};
 use std::ffi::c_void;
 
 use gtk4::glib::{self, prelude::ObjectType as _};
-use neon::prelude::*;
 use send_wrapper::SendWrapper;
 
 use crate::dispatch::Mailbox;
@@ -107,9 +106,9 @@ impl NativeHandle {
     /// Constructs a non-owning handle that just carries a raw pointer.
     ///
     /// Used when JavaScript already owns the underlying value via a live
-    /// `JsBox<NativeHandle>` and we only need the pointer for the duration of
-    /// a single FFI call. A borrowed handle has no [`SendWrapper`] and is
-    /// therefore safe to clone or drop on any thread.
+    /// `napi::bindgen_prelude::External<NativeHandle>` and we only need the pointer
+    /// for the duration of a single FFI call. A borrowed handle has no
+    /// [`SendWrapper`] and is therefore safe to clone or drop on any thread.
     #[must_use]
     pub fn borrowed(ptr: *mut c_void) -> Self {
         Self { ptr, inner: None }
@@ -148,13 +147,6 @@ impl Drop for NativeHandle {
             glib::idle_add_once(move || drop(wrapper));
         }
     }
-}
-
-impl Finalize for NativeHandle {
-    /// No-op: routing is handled by the custom [`Drop`] impl, which schedules
-    /// off-origin drops back to the `GLib` thread and leaks via
-    /// [`std::mem::forget`] when the mailbox is stopped.
-    fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {}
 }
 
 /// Managed value wrapper for FFI objects.

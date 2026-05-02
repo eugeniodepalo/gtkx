@@ -29,9 +29,9 @@
     "libc": [
         "glibc"
     ],
-    "main": "index.node",
+    "main": "native.linux-x64-gnu.node",
     "files": [
-        "index.node"
+        "native.linux-x64-gnu.node"
     ],
     "scripts": {}
 }

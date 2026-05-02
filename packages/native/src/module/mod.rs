@@ -1,6 +1,6 @@
-//! Neon module exports for FFI operations.
+//! napi-rs module exports for FFI operations.
 //!
-//! This module contains all the functions exported to JavaScript via Neon.
+//! This module contains all the functions exported to JavaScript via napi-rs.
 
 mod alloc;
 mod call;
@@ -10,11 +10,3 @@ pub(crate) mod handler;
 mod object;
 mod start;
 mod stop;
-
-pub use alloc::alloc;
-pub use call::call;
-pub use field::{read, write};
-pub use freeze::{freeze, unfreeze};
-pub use object::{get_native_id, is_native_handle};
-pub use start::start;
-pub use stop::stop;

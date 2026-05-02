@@ -31,8 +31,7 @@
         },
         "packages/native": {
             "entry": ["index.ts", "types.ts"],
-            "project": ["*.ts", "scripts/**/*.ts", "tests/**/*.{ts,tsx}"],
-            "ignoreDependencies": ["@neon-rs/cli"]
+            "project": ["*.ts", "tests/**/*.{ts,tsx}"]
         },
         "packages/react": {
             "project": ["src/**/*.{ts,tsx}"]

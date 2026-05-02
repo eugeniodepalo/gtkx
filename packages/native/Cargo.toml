@@ -10,13 +10,17 @@ exclude = ["index.node"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-neon = "1.1.1"
+napi = { version = "3", features = ["napi8", "anyhow", "compat-mode"] }
+napi-derive = "3"
 gtk4 = "0.11.3"
 libloading = "0.9.0"
 libffi = "5.1.0"
 anyhow = "1.0.102"
 enum_dispatch = "0.3"
 send_wrapper = "0.6"
+
+[build-dependencies]
+napi-build = "2"
 
 [lints.rust]
 missing_debug_implementations = "warn"

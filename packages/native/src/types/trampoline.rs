@@ -2,13 +2,11 @@ use std::ffi::c_void;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
 use libffi::middle as libffi;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
 use crate::ffi;
 use crate::trampoline::{TrampolineData, TrampolineState};
-use crate::types::{
-    FfiDecoder, FfiEncoder, GlibValueCodec, NeonContextExt as _, RawPtrCodec, Type,
-};
+use crate::types::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, Type};
 use crate::value;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -47,25 +45,31 @@ pub struct TrampolineType {
 }
 
 impl TrampolineType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let (arg_types, return_type) =
-            super::parse_callback_arg_and_return_types(cx, obj, "trampoline")?;
+            super::parse_callback_arg_and_return_types(env, obj, "trampoline")?;
 
-        let has_destroy: Option<Handle<JsBoolean>> = obj.get_opt(cx, "hasDestroy")?;
-        let has_destroy = has_destroy.is_some_and(|v| v.value(cx));
+        let has_destroy = obj
+            .get_named_property::<Option<bool>>("hasDestroy")
+            .ok()
+            .flatten()
+            .unwrap_or(false);
 
-        let user_data_index: Option<Handle<JsNumber>> = obj.get_opt(cx, "userDataIndex")?;
-        let user_data_index = user_data_index.map(|v| v.value(cx) as usize);
+        let user_data_index = obj
+            .get_named_property::<Option<f64>>("userDataIndex")
+            .ok()
+            .flatten()
+            .map(|v| v as usize);
 
-        let scope_prop: Option<Handle<JsString>> = obj.get_opt(cx, "scope")?;
+        let scope_prop: Option<String> = obj
+            .get_named_property::<Option<String>>("scope")
+            .ok()
+            .flatten();
+
         let scope = match scope_prop {
-            Some(s) => {
-                let scope_str = s.value(cx);
-                scope_str
-                    .parse()
-                    .map_err(|e: String| cx.throw_str_error(e))?
-            }
+            Some(s) => s
+                .parse()
+                .map_err(|e: String| napi::Error::new(napi::Status::InvalidArg, e))?,
             None => {
                 if has_destroy {
                     TrampolineScope::Notified
@@ -117,7 +121,6 @@ impl FfiEncoder for TrampolineType {
         let is_oneshot = self.scope == TrampolineScope::Async;
 
         let data = TrampolineData {
-            channel: callback.channel.clone(),
             js_func: callback.js_func.clone(),
             arg_types: self.arg_types.clone(),
             return_type: (*self.return_type).clone(),

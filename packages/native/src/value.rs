@@ -2,7 +2,7 @@
 //!
 //! This module defines [`Value`], the intermediate representation for values
 //! crossing between JavaScript and native code. Values are converted to/from
-//! JavaScript objects via Neon and to/from FFI-compatible representations
+//! JavaScript types via napi-rs and to/from FFI-compatible representations
 //! via the [`ffi`] module.
 //!
 //! The [`Value`] enum supports all types that can be passed through the FFI:
@@ -21,69 +21,201 @@ use gtk4::glib::{
     translate::{FromGlibPtrNone as _, ToGlibPtrMut as _},
     value::ToValue as _,
 };
-use neon::{handle::Root, object::Object as _, prelude::*};
+use napi::bindgen_prelude::*;
+use napi::sys;
+use napi::{Env, JsFunction, JsObject, NapiRaw as _, ValueType};
 
 use crate::error_reporter::NativeErrorReporter;
 use crate::managed::NativeHandle;
 use crate::types::{FfiDecoder, GlibValueCodec, Type};
 use crate::{arg::Arg, ffi};
 
-#[derive(Debug, Clone)]
+/// Send-safe napi reference to a JavaScript function.
+///
+/// Wraps a raw `napi_ref` paired with its `napi_env`. Sending the ref across
+/// threads is safe because the contained pointer is opaque; only the JS thread
+/// dereferences it via `get_value`. The reference is released on `Drop`.
+pub struct JsCallbackRef {
+    raw: sys::napi_ref,
+    env: sys::napi_env,
+}
+
+unsafe impl Send for JsCallbackRef {}
+unsafe impl Sync for JsCallbackRef {}
+
+impl std::fmt::Debug for JsCallbackRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JsCallbackRef").finish_non_exhaustive()
+    }
+}
+
+impl Drop for JsCallbackRef {
+    fn drop(&mut self) {
+        let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
+        debug_assert_eq!(status, sys::Status::napi_ok);
+    }
+}
+
+impl JsCallbackRef {
+    pub fn from_js_function(env: &Env, func: &JsFunction) -> napi::Result<Self> {
+        let raw_value = unsafe { func.raw() };
+        let mut raw_ref = std::ptr::null_mut();
+        unsafe {
+            let status = sys::napi_create_reference(env.raw(), raw_value, 1, &mut raw_ref);
+            if status != sys::Status::napi_ok {
+                return Err(napi::Error::new(
+                    napi::Status::GenericFailure,
+                    "Failed to create function reference",
+                ));
+            }
+        }
+        Ok(Self {
+            raw: raw_ref,
+            env: env.raw(),
+        })
+    }
+
+    pub fn get_value(&self, env: &Env) -> napi::Result<JsFunction> {
+        use napi::NapiValue as _;
+        let mut raw_value = std::ptr::null_mut();
+        unsafe {
+            let status = sys::napi_get_reference_value(env.raw(), self.raw, &mut raw_value);
+            if status != sys::Status::napi_ok {
+                return Err(napi::Error::new(
+                    napi::Status::GenericFailure,
+                    "Failed to get function reference value",
+                ));
+            }
+            Ok(JsFunction::from_raw_unchecked(env.raw(), raw_value))
+        }
+    }
+}
+
+/// Send-safe napi reference to a JavaScript object.
+///
+/// Mirrors [`JsCallbackRef`] but stores a reference to a `JsObject` rather than
+/// a `JsFunction`. Used by `Ref` values to write back updated `value` properties
+/// after an FFI call completes.
+pub struct JsObjectRefValue {
+    raw: sys::napi_ref,
+    env: sys::napi_env,
+}
+
+unsafe impl Send for JsObjectRefValue {}
+unsafe impl Sync for JsObjectRefValue {}
+
+impl std::fmt::Debug for JsObjectRefValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JsObjectRefValue").finish_non_exhaustive()
+    }
+}
+
+impl Drop for JsObjectRefValue {
+    fn drop(&mut self) {
+        let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
+        debug_assert_eq!(status, sys::Status::napi_ok);
+    }
+}
+
+impl JsObjectRefValue {
+    pub fn from_js_object(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let raw_value = unsafe { obj.raw() };
+        let mut raw_ref = std::ptr::null_mut();
+        unsafe {
+            let status = sys::napi_create_reference(env.raw(), raw_value, 1, &mut raw_ref);
+            if status != sys::Status::napi_ok {
+                return Err(napi::Error::new(
+                    napi::Status::GenericFailure,
+                    "Failed to create object reference",
+                ));
+            }
+        }
+        Ok(Self {
+            raw: raw_ref,
+            env: env.raw(),
+        })
+    }
+
+    pub fn get_value(&self, env: &Env) -> napi::Result<JsObject> {
+        use napi::NapiValue as _;
+        let mut raw_value = std::ptr::null_mut();
+        unsafe {
+            let status = sys::napi_get_reference_value(env.raw(), self.raw, &mut raw_value);
+            if status != sys::Status::napi_ok {
+                return Err(napi::Error::new(
+                    napi::Status::GenericFailure,
+                    "Failed to get object reference value",
+                ));
+            }
+            Ok(JsObject::from_raw_unchecked(env.raw(), raw_value))
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Callback {
-    pub js_func: Arc<Root<JsFunction>>,
-    pub channel: Channel,
+    pub js_func: Arc<JsCallbackRef>,
 }
 
 impl Callback {
     #[must_use]
-    pub fn new(js_func: Arc<Root<JsFunction>>, channel: Channel) -> Self {
-        Self { js_func, channel }
+    pub fn new(js_func: Arc<JsCallbackRef>) -> Self {
+        Self { js_func }
     }
 
-    pub fn from_js_value<'a, C: Context<'a>>(
-        cx: &mut C,
-        value: Handle<JsValue>,
-    ) -> NeonResult<Self> {
-        let js_func = value.downcast::<JsFunction, _>(cx).or_throw(cx)?;
-        let js_func_root = js_func.root(cx);
-        let mut channel = cx.channel();
-
-        channel.unref(cx);
-
-        Ok(Self::new(Arc::new(js_func_root), channel))
+    pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+        use napi::NapiValue as _;
+        let func: JsFunction = unsafe { JsFunction::from_raw_unchecked(env.raw(), value.raw()) };
+        let func_ref = JsCallbackRef::from_js_function(env, &func)?;
+        Ok(Self::new(Arc::new(func_ref)))
     }
 
-    pub fn to_js_value<'a, C: Context<'a>>(&self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
-        let js_func = self.js_func.to_inner(cx);
-        Ok(js_func.upcast())
+    pub fn to_js_value<'env>(&self, env: &'env Env) -> napi::Result<Unknown<'env>> {
+        let func = self.js_func.get_value(env)?;
+        Ok(unsafe { Unknown::from_raw_unchecked(env.raw(), func.raw()) })
     }
 }
 
-#[derive(Debug, Clone)]
+impl Clone for Callback {
+    fn clone(&self) -> Self {
+        Self {
+            js_func: self.js_func.clone(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Ref {
     pub value: Box<Value>,
-    pub js_obj: Arc<Root<JsObject>>,
+    pub js_obj: Arc<JsObjectRefValue>,
+}
+
+impl Clone for Ref {
+    fn clone(&self) -> Self {
+        Self {
+            value: self.value.clone(),
+            js_obj: self.js_obj.clone(),
+        }
+    }
 }
 
 impl Ref {
     #[must_use]
-    pub fn new(value: Value, js_obj: Arc<Root<JsObject>>) -> Self {
+    pub fn new(value: Value, js_obj: Arc<JsObjectRefValue>) -> Self {
         Self {
             value: Box::new(value),
             js_obj,
         }
     }
 
-    pub fn from_js_value<'a, C: Context<'a>>(
-        cx: &mut C,
-        value: Handle<JsValue>,
-    ) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let js_obj_root = obj.root(cx);
-        let value_prop: Handle<JsValue> = obj.get(cx, "value")?;
-        let value = Value::from_js_value(cx, value_prop)?;
+    pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+        use napi::NapiValue as _;
+        let obj: JsObject = unsafe { JsObject::from_raw_unchecked(env.raw(), value.raw()) };
+        let value_prop: Unknown<'_> = obj.get_named_property("value")?;
+        let inner = Value::from_js_value(env, value_prop)?;
+        let js_obj_ref = JsObjectRefValue::from_js_object(env, &obj)?;
 
-        Ok(Self::new(value, Arc::new(js_obj_root)))
+        Ok(Self::new(inner, Arc::new(js_obj_ref)))
     }
 }
 
@@ -103,7 +235,7 @@ pub enum Value {
 
 impl Value {
     #[must_use]
-    pub fn result_to_ptr(result: &Result<Self, ()>) -> *mut c_void {
+    pub fn result_to_ptr(result: &std::result::Result<Self, ()>) -> *mut c_void {
         match result {
             Ok(Self::Object(handle)) => handle.ptr(),
             _ => std::ptr::null_mut(),
@@ -219,80 +351,101 @@ impl Value {
         }
     }
 
-    pub fn from_js_value<'a, C: Context<'a>>(
-        cx: &mut C,
-        value: Handle<JsValue>,
-    ) -> NeonResult<Self> {
-        if let Ok(number) = value.downcast::<JsNumber, _>(cx) {
-            return Ok(Self::Number(number.value(cx)));
+    pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+        let value_type = value.get_type()?;
+
+        match value_type {
+            ValueType::Number => {
+                let n = unsafe { f64::from_napi_value(env.raw(), value.raw())? };
+                Ok(Self::Number(n))
+            }
+            ValueType::String => {
+                let s = unsafe { String::from_napi_value(env.raw(), value.raw())? };
+                Ok(Self::String(s))
+            }
+            ValueType::Boolean => {
+                let b = unsafe { bool::from_napi_value(env.raw(), value.raw())? };
+                Ok(Self::Boolean(b))
+            }
+            ValueType::Null => Ok(Self::Null),
+            ValueType::Undefined => Ok(Self::Undefined),
+            ValueType::External => {
+                let external_ref =
+                    unsafe { <&External<NativeHandle>>::from_napi_value(env.raw(), value.raw())? };
+                Ok(Self::Object(NativeHandle::borrowed(external_ref.ptr())))
+            }
+            ValueType::Function => {
+                let cb = Callback::from_js_value(env, value)?;
+                Ok(Self::Callback(cb))
+            }
+            ValueType::Object => {
+                if value.is_array()? {
+                    let arr: Array = unsafe { Array::from_napi_value(env.raw(), value.raw())? };
+                    let len = arr.len();
+                    let mut values = Vec::with_capacity(len as usize);
+                    for i in 0..len {
+                        let item: Unknown<'_> = arr.get(i)?.ok_or_else(|| {
+                            napi::Error::new(
+                                napi::Status::GenericFailure,
+                                format!("Array element {i} missing"),
+                            )
+                        })?;
+                        values.push(Self::from_js_value(env, item)?);
+                    }
+                    Ok(Self::Array(values))
+                } else {
+                    let r = Ref::from_js_value(env, value)?;
+                    Ok(Self::Ref(r))
+                }
+            }
+            other => Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Unsupported JS value type: {other:?}"),
+            )),
         }
-
-        if let Ok(string) = value.downcast::<JsString, _>(cx) {
-            return Ok(Self::String(string.value(cx)));
-        }
-
-        if let Ok(boolean) = value.downcast::<JsBoolean, _>(cx) {
-            return Ok(Self::Boolean(boolean.value(cx)));
-        }
-
-        if value.downcast::<JsNull, _>(cx).is_ok() {
-            return Ok(Self::Null);
-        }
-
-        if value.downcast::<JsUndefined, _>(cx).is_ok() {
-            return Ok(Self::Undefined);
-        }
-
-        if let Ok(handle) = value.downcast::<JsBox<NativeHandle>, _>(cx) {
-            return Ok(Self::Object(NativeHandle::borrowed(
-                handle.as_inner().ptr(),
-            )));
-        }
-
-        if let Ok(callback) = value.downcast::<JsFunction, _>(cx) {
-            return Ok(Self::Callback(Callback::from_js_value(
-                cx,
-                callback.upcast(),
-            )?));
-        }
-
-        if let Ok(array) = value.downcast::<JsArray, _>(cx) {
-            let values = array.to_vec(cx)?;
-            let vec_values = values
-                .into_iter()
-                .map(|item| Self::from_js_value(cx, item))
-                .collect::<NeonResult<Vec<_>>>()?;
-
-            return Ok(Self::Array(vec_values));
-        }
-
-        if let Ok(obj) = value.downcast::<JsObject, _>(cx) {
-            return Ok(Self::Ref(Ref::from_js_value(cx, obj.upcast())?));
-        }
-
-        cx.throw_type_error(format!("Unsupported JS value type: {:?}", *value))
     }
 
-    pub fn to_js_value<'a, C: Context<'a>>(self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
+    pub fn to_js_value(self, env: &Env) -> napi::Result<Unknown<'_>> {
         match self {
-            Self::Number(n) => Ok(cx.number(n).upcast()),
-            Self::String(s) => Ok(cx.string(s).upcast()),
-            Self::Boolean(b) => Ok(cx.boolean(b).upcast()),
-            Self::Object(handle) => Ok(cx.boxed(handle).upcast()),
+            Self::Number(n) => unsafe {
+                let raw = f64::to_napi_value(env.raw(), n)?;
+                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+            },
+            Self::String(s) => unsafe {
+                let raw = String::to_napi_value(env.raw(), s)?;
+                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+            },
+            Self::Boolean(b) => unsafe {
+                let raw = bool::to_napi_value(env.raw(), b)?;
+                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+            },
+            Self::Object(handle) => unsafe {
+                let external = External::new(handle);
+                let raw = External::<NativeHandle>::to_napi_value(env.raw(), external)?;
+                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+            },
             Self::Array(arr) => {
-                let js_array = cx.empty_array();
-
+                let mut js_array = env.create_array(arr.len() as u32)?;
                 for (i, item) in arr.into_iter().enumerate() {
-                    let js_item = item.to_js_value(cx)?;
-                    js_array.set(cx, i as u32, js_item)?;
+                    let js_item = item.to_js_value(env)?;
+                    js_array.set(i as u32, js_item)?;
                 }
-
-                Ok(js_array.upcast())
+                unsafe {
+                    let raw = Array::to_napi_value(env.raw(), js_array)?;
+                    Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+                }
             }
-            Self::Null => Ok(cx.null().upcast()),
-            Self::Undefined => Ok(cx.undefined().upcast()),
-            Self::Callback(_) | Self::Ref(_) => cx.throw_type_error(format!(
-                "Unsupported Value type for JS conversion: {self:?}"
+            Self::Null => unsafe {
+                let raw = napi::bindgen_prelude::Null::to_napi_value(env.raw(), Null)?;
+                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+            },
+            Self::Undefined => unsafe {
+                let raw = napi::bindgen_prelude::Undefined::to_napi_value(env.raw(), ())?;
+                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+            },
+            Self::Callback(_) | Self::Ref(_) => Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Unsupported Value type for JS conversion: {self:?}"),
             )),
         }
     }

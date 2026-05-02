@@ -8,7 +8,7 @@ use gtk4::glib::{
     translate::{ToGlibPtr as _, ToGlibPtrMut as _},
 };
 use libffi::middle as libffi;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec};
 use crate::{ffi, value};
@@ -298,15 +298,13 @@ pub struct TaggedType {
 }
 
 impl TaggedType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-
-        let library: Handle<JsString> = obj.prop(cx, "library").get()?;
-        let get_type_fn: Handle<JsString> = obj.prop(cx, "getTypeFn").get()?;
+    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let library: String = obj.get_named_property("library")?;
+        let get_type_fn: String = obj.get_named_property("getTypeFn")?;
 
         Ok(Self {
-            library: library.value(cx),
-            get_type_fn: get_type_fn.value(cx),
+            library,
+            get_type_fn,
         })
     }
 }
@@ -494,11 +492,10 @@ pub struct EnumType {
 }
 
 impl EnumType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let tagged = TaggedType::from_js_value(cx, value)?;
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let signed: Handle<JsBoolean> = obj.prop(cx, "signed").get()?;
-        let storage = if signed.value(cx) {
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let tagged = TaggedType::from_js_value(env, obj)?;
+        let signed: bool = obj.get_named_property("signed")?;
+        let storage = if signed {
             IntegerKind::I32
         } else {
             IntegerKind::U32
@@ -613,11 +610,10 @@ pub struct FlagsType {
 }
 
 impl FlagsType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let tagged = TaggedType::from_js_value(cx, value)?;
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let signed: Handle<JsBoolean> = obj.prop(cx, "signed").get()?;
-        let storage = if signed.value(cx) {
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let tagged = TaggedType::from_js_value(env, obj)?;
+        let signed: bool = obj.get_named_property("signed")?;
+        let storage = if signed {
             IntegerKind::I32
         } else {
             IntegerKind::U32

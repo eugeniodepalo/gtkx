@@ -1,32 +1,18 @@
-import { createRequire } from "node:module";
-import { arch, platform } from "node:os";
+import * as nativeBinding from "./native-binding.cjs";
 import type { Arg, FfiValue, NativeHandle, Ref, Type } from "./types.js";
 
-const require = createRequire(import.meta.url);
-
-function loadNativeBinding() {
-    const currentPlatform = platform();
-    const currentArch = arch();
-
-    if (currentPlatform !== "linux") {
-        throw new Error(`Unsupported platform: ${currentPlatform}, only Linux is supported`);
-    }
-
-    if (currentArch !== "x64" && currentArch !== "arm64") {
-        throw new Error(`Unsupported architecture: ${currentArch}, only x64 and arm64 are supported`);
-    }
-
-    const packageName = `@gtkx/native-linux-${currentArch}-gnu`;
-
-    try {
-        return require(packageName);
-    } catch (error) {
-        const originalError = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to load native binding for ${currentPlatform}-${currentArch}: ${originalError}`);
-    }
-}
-
-const native = loadNativeBinding();
+const native = nativeBinding as unknown as {
+    alloc: (size: number, typeName?: string, lib?: string) => NativeHandle;
+    call: (library: string, symbol: string, args: unknown[], returnType: unknown) => unknown;
+    freeze: () => void;
+    getNativeId: (handle: NativeHandle) => number;
+    isNativeHandle: (value: unknown) => boolean;
+    read: (handle: NativeHandle, type: unknown, offset: number) => unknown;
+    start: (appId: string, flags?: number) => NativeHandle;
+    stop: () => void;
+    unfreeze: () => void;
+    write: (handle: NativeHandle, type: unknown, offset: number, value: unknown) => unknown;
+};
 
 /**
  * Creates a mutable reference wrapper.

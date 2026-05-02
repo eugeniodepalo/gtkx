@@ -12,8 +12,7 @@ use gtk4::glib::{
     self,
     translate::{FromGlib as _, IntoGlib as _, ToGlibPtr as _, ToGlibPtrMut as _},
 };
-use neon::object::Object as _;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::error_reporter::NativeErrorReporter;
@@ -30,27 +29,20 @@ pub struct BoxedType {
 }
 
 impl BoxedType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let ownership = Ownership::from_js_value(cx, obj, "boxed")?;
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(env, obj, "boxed")?;
 
-        let type_prop: Handle<'_, JsValue> = obj.prop(cx, "innerType").get()?;
-        let type_name = type_prop
-            .downcast::<JsString, _>(cx)
-            .or_throw(cx)?
-            .value(cx);
+        let type_name: String = obj.get_named_property("innerType")?;
 
-        let lib_prop: Handle<'_, JsValue> = obj.prop(cx, "library").get()?;
-        let library = lib_prop
-            .downcast::<JsString, _>(cx)
-            .map(|s: Handle<'_, JsString>| s.value(cx))
-            .ok();
+        let library: Option<String> = obj
+            .get_named_property::<Option<String>>("library")
+            .ok()
+            .flatten();
 
-        let get_type_fn_prop: Handle<'_, JsValue> = obj.prop(cx, "getTypeFn").get()?;
-        let get_type_fn = get_type_fn_prop
-            .downcast::<JsString, _>(cx)
-            .map(|s: Handle<'_, JsString>| s.value(cx))
-            .ok();
+        let get_type_fn: Option<String> = obj
+            .get_named_property::<Option<String>>("getTypeFn")
+            .ok()
+            .flatten();
 
         Ok(Self {
             ownership,
@@ -238,21 +230,16 @@ pub struct StructType {
 }
 
 impl StructType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let ownership = Ownership::from_js_value(cx, obj, "struct")?;
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(env, obj, "struct")?;
 
-        let type_prop: Handle<'_, JsValue> = obj.prop(cx, "innerType").get()?;
-        let type_name = type_prop
-            .downcast::<JsString, _>(cx)
-            .or_throw(cx)?
-            .value(cx);
+        let type_name: String = obj.get_named_property("innerType")?;
 
-        let size_prop: Handle<'_, JsValue> = obj.prop(cx, "size").get()?;
-        let size = size_prop
-            .downcast::<JsNumber, _>(cx)
-            .map(|n: Handle<'_, JsNumber>| n.value(cx) as usize)
-            .ok();
+        let size: Option<usize> = obj
+            .get_named_property::<Option<f64>>("size")
+            .ok()
+            .flatten()
+            .map(|n| n as usize);
 
         Ok(Self {
             ownership,

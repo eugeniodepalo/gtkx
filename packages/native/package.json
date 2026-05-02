@@ -9,7 +9,7 @@
         "native",
         "ffi",
         "rust",
-        "neon",
+        "napi",
         "linux",
         "desktop"
     ],
@@ -36,14 +36,26 @@
     "files": [
         "dist",
         "index.ts",
-        "types.ts"
+        "types.ts",
+        "native-binding.cjs",
+        "native-binding.d.cts"
     ],
+    "napi": {
+        "binaryName": "native",
+        "targets": [
+            "x86_64-unknown-linux-gnu",
+            "aarch64-unknown-linux-gnu"
+        ]
+    },
     "scripts": {
+        "artifacts": "napi artifacts",
         "build": "tsc -b && cp ../../README.md .",
+        "create-npm-dirs": "napi create-npm-dirs",
         "lint": "cargo fmt --check && cargo clippy -- -D warnings",
-        "native-build": "tsx scripts/native-build.ts",
+        "native-build": "napi build --platform --release --js native-binding.cjs --dts native-binding.d.cts",
         "native-coverage": "mkdir -p coverage && xvfb-run -a cargo llvm-cov --lcov --output-path coverage/lcov.info -- --test-threads=1",
         "native-test": "xvfb-run -a cargo test -- --test-threads=1",
+        "prepublishOnly": "napi prepublish -t npm",
         "test": "vitest run",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
@@ -53,6 +65,6 @@
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
-        "@neon-rs/cli": "^0.2.6"
+        "@napi-rs/cli": "^3"
     }
 }

@@ -13,7 +13,8 @@
 //! The `optional` flag allows null/undefined values for otherwise required types,
 //! converting them to appropriate defaults (null pointers, zero values).
 
-use neon::{object::Object as _, prelude::*};
+use napi::bindgen_prelude::*;
+use napi::{Env, JsObject};
 
 use crate::{types::Type, value::Value};
 
@@ -34,30 +35,35 @@ impl Arg {
         }
     }
 
-    pub fn from_js_array(
-        cx: &mut FunctionContext,
-        value: Handle<JsArray>,
-    ) -> NeonResult<Vec<Self>> {
-        let array = value.to_vec(cx)?;
-        let mut args = Vec::with_capacity(array.len());
+    pub fn from_js_array(env: &Env, value: &Array) -> napi::Result<Vec<Self>> {
+        let len = value.len();
+        let mut args = Vec::with_capacity(len as usize);
 
-        for item in array {
-            args.push(Self::from_js_value(cx, item)?);
+        for i in 0..len {
+            let item: Unknown<'_> = value.get(i)?.ok_or_else(|| {
+                napi::Error::new(
+                    napi::Status::GenericFailure,
+                    format!("Argument array element {i} missing"),
+                )
+            })?;
+            args.push(Self::from_js_value(env, item)?);
         }
 
         Ok(args)
     }
 
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let type_prop: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
-        let value_prop: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
-        let ty = Type::from_js_value(cx, type_prop)?;
-        let value = Value::from_js_value(cx, value_prop)?;
+    pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+        let obj: JsObject = unsafe { JsObject::from_napi_value(env.raw(), value.raw())? };
+        let type_prop: Unknown<'_> = obj.get_named_property("type")?;
+        let value_prop: Unknown<'_> = obj.get_named_property("value")?;
+        let ty = Type::from_js_value(env, type_prop)?;
+        let value = Value::from_js_value(env, value_prop)?;
 
         let optional = obj
-            .get_opt::<JsBoolean, _, _>(cx, "optional")?
-            .is_some_and(|v| v.value(cx));
+            .get_named_property::<Option<bool>>("optional")
+            .ok()
+            .flatten()
+            .unwrap_or(false);
 
         Ok(Self {
             ty,

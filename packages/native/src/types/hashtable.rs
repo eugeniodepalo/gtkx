@@ -2,7 +2,8 @@ use std::ffi::{CString, c_void};
 
 use anyhow::bail;
 use gtk4::glib;
-use neon::prelude::*;
+use napi::bindgen_prelude::*;
+use napi::{Env, JsObject};
 
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::ffi::{FfiStorage, FfiStorageKind, HashTableData};
@@ -139,16 +140,14 @@ pub struct HashTableType {
 }
 
 impl HashTableType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let key_type_value: Unknown<'_> = obj.get_named_property("keyType")?;
+        let key_type = Type::from_js_value(env, key_type_value)?;
 
-        let key_type_value: Handle<'_, JsValue> = obj.prop(cx, "keyType").get()?;
-        let key_type = Type::from_js_value(cx, key_type_value)?;
+        let value_type_value: Unknown<'_> = obj.get_named_property("valueType")?;
+        let value_type = Type::from_js_value(env, value_type_value)?;
 
-        let value_type_value: Handle<'_, JsValue> = obj.prop(cx, "valueType").get()?;
-        let value_type = Type::from_js_value(cx, value_type_value)?;
-
-        let ownership = Ownership::from_js_value(cx, obj, "hashtable")?;
+        let ownership = Ownership::from_js_value(env, obj, "hashtable")?;
 
         Ok(Self {
             key_type: Box::new(key_type),

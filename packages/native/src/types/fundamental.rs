@@ -8,8 +8,7 @@ use std::ffi::c_void;
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::ToGlibPtr as _, translate::ToGlibPtrMut as _};
-use neon::object::Object as _;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::managed::{Fundamental, NativeValue, RefFn, UnrefFn};
@@ -26,21 +25,23 @@ pub struct FundamentalType {
 }
 
 impl FundamentalType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let ownership = Ownership::from_js_value(cx, obj, "fundamental")?;
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(env, obj, "fundamental")?;
 
-        let library: Handle<JsString> = obj.get(cx, "library")?;
-        let ref_func: Handle<JsString> = obj.get(cx, "refFn")?;
-        let unref_func: Handle<JsString> = obj.get(cx, "unrefFn")?;
-        let type_name: Option<Handle<JsString>> = obj.get_opt(cx, "typeName")?;
+        let library: String = obj.get_named_property("library")?;
+        let ref_func: String = obj.get_named_property("refFn")?;
+        let unref_func: String = obj.get_named_property("unrefFn")?;
+        let type_name: Option<String> = obj
+            .get_named_property::<Option<String>>("typeName")
+            .ok()
+            .flatten();
 
         Ok(Self {
             ownership,
-            library: library.value(cx),
-            ref_func: ref_func.value(cx),
-            unref_func: unref_func.value(cx),
-            type_name: type_name.map(|s| s.value(cx)),
+            library,
+            ref_func,
+            unref_func,
+            type_name,
         })
     }
 

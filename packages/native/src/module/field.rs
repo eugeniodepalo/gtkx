@@ -25,14 +25,14 @@
 
 use std::ffi::c_void;
 
-use neon::prelude::*;
+use napi::Env;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
 
 use super::handler::{ModuleRequest, dispatch_request};
-use crate::{
-    managed::NativeHandle,
-    types::{RawPtrCodec as _, Type},
-    value::Value,
-};
+use crate::managed::NativeHandle;
+use crate::types::{RawPtrCodec as _, Type};
+use crate::value::Value;
 
 fn require_non_null(ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
     if ptr.is_null() {
@@ -52,20 +52,6 @@ unsafe impl Send for ReadRequest {}
 impl ModuleRequest for ReadRequest {
     type Output = Value;
 
-    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
-        let handle = cx.argument::<JsBox<NativeHandle>>(0)?;
-        let js_type = cx.argument::<JsObject>(1)?;
-        let offset = cx.argument::<JsNumber>(2)?.value(cx) as usize;
-        let field_type = Type::from_js_value(cx, js_type.upcast())?;
-        let base_ptr = handle.as_inner().ptr();
-
-        Ok(Self {
-            base_ptr,
-            field_type,
-            offset,
-        })
-    }
-
     fn execute(self) -> anyhow::Result<Value> {
         let base_ptr = require_non_null(self.base_ptr)?;
         let field_ptr = unsafe { (base_ptr as *const u8).add(self.offset) as *const c_void };
@@ -77,8 +63,21 @@ impl ModuleRequest for ReadRequest {
     }
 }
 
-pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
-    dispatch_request::<ReadRequest>(&mut cx)
+#[napi]
+pub fn read<'env>(
+    env: &'env Env,
+    handle: &External<NativeHandle>,
+    js_type: Unknown<'_>,
+    offset: f64,
+) -> napi::Result<Unknown<'env>> {
+    let field_type = Type::from_js_value(env, js_type)?;
+    let base_ptr = handle.ptr();
+    let request = ReadRequest {
+        base_ptr,
+        field_type,
+        offset: offset as usize,
+    };
+    dispatch_request(env, request)
 }
 
 struct WriteRequest {
@@ -93,23 +92,6 @@ unsafe impl Send for WriteRequest {}
 impl ModuleRequest for WriteRequest {
     type Output = ();
 
-    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
-        let handle = cx.argument::<JsBox<NativeHandle>>(0)?;
-        let js_type = cx.argument::<JsObject>(1)?;
-        let offset = cx.argument::<JsNumber>(2)?.value(cx) as usize;
-        let js_value = cx.argument::<JsValue>(3)?;
-        let field_type = Type::from_js_value(cx, js_type.upcast())?;
-        let value = Value::from_js_value(cx, js_value)?;
-        let base_ptr = handle.as_inner().ptr();
-
-        Ok(Self {
-            base_ptr,
-            field_type,
-            offset,
-            value,
-        })
-    }
-
     fn execute(self) -> anyhow::Result<()> {
         let base_ptr = require_non_null(self.base_ptr)?;
         let field_ptr = unsafe { (base_ptr as *mut u8).add(self.offset) as *mut c_void };
@@ -122,7 +104,22 @@ impl ModuleRequest for WriteRequest {
     }
 }
 
-pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    dispatch_request::<WriteRequest>(&mut cx)?;
-    Ok(cx.undefined())
+#[napi]
+pub fn write<'env>(
+    env: &'env Env,
+    handle: &External<NativeHandle>,
+    js_type: Unknown<'_>,
+    offset: f64,
+    value: Unknown<'_>,
+) -> napi::Result<Unknown<'env>> {
+    let field_type = Type::from_js_value(env, js_type)?;
+    let parsed_value = Value::from_js_value(env, value)?;
+    let base_ptr = handle.ptr();
+    let request = WriteRequest {
+        base_ptr,
+        field_type,
+        offset: offset as usize,
+        value: parsed_value,
+    };
+    dispatch_request(env, request)
 }

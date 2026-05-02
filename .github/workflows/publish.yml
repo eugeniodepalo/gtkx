@@ -39,7 +39,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: native-linux-${{ matrix.arch }}-gnu
-          path: packages/native-linux-${{ matrix.arch }}-gnu/index.node
+          path: packages/native/native.linux-${{ matrix.arch }}-gnu.node
 
   publish:
     needs: build-native
@@ -55,18 +55,18 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: native-linux-x64-gnu
-          path: packages/native-linux-x64-gnu
+          path: packages/native
 
       - name: Download arm64 binary
         uses: actions/download-artifact@v8
         with:
           name: native-linux-arm64-gnu
-          path: packages/native-linux-arm64-gnu
+          path: packages/native
 
       - name: Build and publish
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm build && pnpm -r publish --access public --no-git-checks
+          command: pnpm install --frozen-lockfile && pnpm build && pnpm --filter @gtkx/native create-npm-dirs && pnpm --filter @gtkx/native artifacts && pnpm -r publish --access public --no-git-checks
           cache-cargo: "true"
           cache-pnpm: "true"
           extra-env: -e NPM_CONFIG_PROVENANCE=true

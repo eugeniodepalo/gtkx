@@ -5,18 +5,14 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 
 use ::libffi::low as libffi_low;
 use ::libffi::middle as libffi;
-use neon::event::Channel;
-use neon::handle::Root;
-use neon::types::JsFunction;
 
 use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
 use crate::types::{FfiEncoder as _, RawPtrCodec as _, Type};
-use crate::value::Value;
+use crate::value::{JsCallbackRef, Value};
 
 pub struct TrampolineData {
-    pub channel: Channel,
-    pub js_func: Arc<Root<JsFunction>>,
+    pub js_func: Arc<JsCallbackRef>,
     pub arg_types: Vec<Type>,
     pub return_type: Type,
     pub user_data_index: Option<usize>,
@@ -135,12 +131,8 @@ impl TrampolineData {
             None
         };
 
-        let js_result = Mailbox::global().invoke_node_and_wait(
-            &self.channel,
-            &self.js_func,
-            values,
-            capture_result,
-        );
+        let js_result =
+            Mailbox::global().invoke_node_and_wait(&self.js_func, values, capture_result);
 
         if let Err(ref e) = js_result {
             NativeErrorReporter::global().report(&anyhow::anyhow!(

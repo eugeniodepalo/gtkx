@@ -1,2 +1,4 @@
 target
-index.node
+*.node
+native-binding.cjs
+native-binding.d.cts

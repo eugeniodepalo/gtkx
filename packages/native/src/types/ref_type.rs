@@ -6,8 +6,8 @@ use gtk4::glib::{
     translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
 };
 use libffi::middle as libffi;
-use neon::object::Object as _;
-use neon::prelude::*;
+use napi::bindgen_prelude::*;
+use napi::{Env, JsObject};
 
 use crate::arg::Arg;
 use crate::ffi::{FfiStorage, FfiStorageKind};
@@ -31,10 +31,9 @@ impl RefType {
         }
     }
 
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let inner_type_value: Handle<'_, JsValue> = obj.prop(cx, "innerType").get()?;
-        let inner_type = Type::from_js_value(cx, inner_type_value)?;
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let inner_type_value: Unknown<'_> = obj.get_named_property("innerType")?;
+        let inner_type = Type::from_js_value(env, inner_type_value)?;
 
         Ok(Self::new(inner_type))
     }

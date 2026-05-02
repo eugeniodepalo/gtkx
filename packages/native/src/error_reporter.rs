@@ -1,11 +1,20 @@
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
-use neon::event::Channel;
-use neon::prelude::*;
+use napi::Status;
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 
-#[derive(Debug)]
+pub type ErrorReporterTsfn = ThreadsafeFunction<String, (), String, Status, false, true>;
+
 pub struct NativeErrorReporter {
-    channel: Mutex<Option<Channel>>,
+    tsfn: Mutex<Option<Arc<ErrorReporterTsfn>>>,
+}
+
+impl std::fmt::Debug for NativeErrorReporter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NativeErrorReporter")
+            .field("initialized", &self.tsfn.lock().is_ok())
+            .finish_non_exhaustive()
+    }
 }
 
 static REPORTER: OnceLock<NativeErrorReporter> = OnceLock::new();
@@ -13,15 +22,15 @@ static REPORTER: OnceLock<NativeErrorReporter> = OnceLock::new();
 impl NativeErrorReporter {
     pub fn global() -> &'static Self {
         REPORTER.get_or_init(|| Self {
-            channel: Mutex::new(None),
+            tsfn: Mutex::new(None),
         })
     }
 
-    pub fn initialize(&self, channel: Channel) {
+    pub fn initialize(&self, tsfn: Arc<ErrorReporterTsfn>) {
         *self
-            .channel
+            .tsfn
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(channel);
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(tsfn);
     }
 
     pub fn report(&self, error: &anyhow::Error) {
@@ -29,21 +38,17 @@ impl NativeErrorReporter {
     }
 
     pub fn report_str(&self, message: &str) {
-        let channel = self
-            .channel
+        let tsfn = self
+            .tsfn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone();
 
-        let Some(channel) = channel else {
+        let Some(tsfn) = tsfn else {
             eprintln!("[gtkx] ERROR (not initialized): {message}");
             return;
         };
 
-        let message = message.to_owned();
-        channel.send(move |mut cx| {
-            cx.throw_error::<_, ()>(message)?;
-            Ok(())
-        });
+        tsfn.call(message.to_owned(), ThreadsafeFunctionCallMode::NonBlocking);
     }
 }
