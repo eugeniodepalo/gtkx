@@ -137,6 +137,18 @@ export type MappedType = {
 
     /** For Ref<T> types, the TypeScript type string of the inner type T. */
     innerTsType?: string;
+
+    /**
+     * True when this mapping resolves to (or transitively contains) a type that
+     * the native marshaling layer cannot safely handle — raw pointers, callback
+     * typedefs used as type references, untyped containers, or any composite
+     * whose inner element/key/value/return type is itself unsafe.
+     *
+     * Generators must skip any function, method, signal, property, field, or
+     * constant that has an unsafe parameter or return type. Absence of the flag
+     * means the mapping is safe.
+     */
+    unsafe?: true;
 };
 
 export const FFI_VOID: FfiTypeDescriptor = { type: "void" };
@@ -238,6 +250,20 @@ export const PRIMITIVE_TYPE_MAP = new Map<string, { ts: string; ffi: FfiTypeDesc
     ["position_t", { ts: "number", ffi: FFI_INT32 }],
     ["HarfBuzz.position_t", { ts: "number", ffi: FFI_INT32 }],
 ]);
+
+/**
+ * GIR primitive type names that map to a raw pointer at the FFI layer
+ * (`{ ts: "number", ffi: FFI_POINTER }`). Derived from {@link PRIMITIVE_TYPE_MAP}
+ * by reference-equality with {@link FFI_POINTER}, so adding a new pointer alias
+ * to that map automatically marks it unsafe — no parallel list to maintain.
+ *
+ * Distinct from numeric `uint64`/`int64` aliases such as `gsize`, `glong`,
+ * `GType`, which share the descriptor shape `{ type: "uint64" }` but use
+ * separate descriptor instances and represent genuine numeric values.
+ */
+export const UNSAFE_PRIMITIVE_NAMES: ReadonlySet<string> = new Set(
+    [...PRIMITIVE_TYPE_MAP.entries()].filter(([, { ffi }]) => ffi === FFI_POINTER).map(([name]) => name),
+);
 
 export const STRUCT_ELEMENT_SIZES = new Map<string, number>([
     ["GValue", 24],

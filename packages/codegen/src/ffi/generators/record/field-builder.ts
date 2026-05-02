@@ -118,6 +118,7 @@ export class FieldBuilder {
                     if (!nestedLayout) continue;
 
                     const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+                    if (typeMapping.unsafe) continue;
                     this.addFieldTypeImports(typeMapping.imports);
 
                     writer.writeLine(`if (init.${fieldName} !== undefined) {`);
@@ -131,6 +132,7 @@ export class FieldBuilder {
                                 false,
                                 nestedItem.field.type.transferOwnership,
                             );
+                            if (nestedTypeMapping.unsafe) continue;
 
                             writer.write(`write(this.handle, `);
                             writeFfiTypeExpression(writer, nestedTypeMapping.ffi);
@@ -140,6 +142,7 @@ export class FieldBuilder {
                     writer.writeLine("}");
                 } else {
                     const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+                    if (typeMapping.unsafe) continue;
                     this.addFieldTypeImports(typeMapping.imports);
 
                     writer.write(`if (init.${fieldName} !== undefined) write(this.handle, `);

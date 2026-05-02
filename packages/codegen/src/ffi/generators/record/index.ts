@@ -148,9 +148,12 @@ export class RecordGenerator {
             let fieldName = toValidMemberName(toCamelCase(field.name));
             if (fieldName === "id") fieldName = "id_";
             const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+            if (typeMapping.unsafe) continue;
             addTypeImports(this.file, typeMapping.imports, this.selfNames);
             propStrings.push(`${fieldName}?: ${typeMapping.ts}`);
         }
+
+        if (propStrings.length === 0) return;
 
         this.file.add(typeAlias(`${recordName}Init`, `{ ${propStrings.join("; ")} }`, { exported: true }));
     }
@@ -504,8 +507,10 @@ export class RecordGenerator {
         recordName: string,
         originalName: string,
     ): MethodStructure[] {
-        const supportedFunctions = filterSupportedFunctions(functions, (params) =>
-            this.methodBody.hasUnsupportedCallbacks(params),
+        const supportedFunctions = filterSupportedFunctions(
+            functions,
+            (params) => this.methodBody.hasUnsupportedCallbacks(params),
+            (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
         return supportedFunctions.map((func) => this.buildStaticFunctionStructure(func, recordName, originalName));
     }
@@ -524,8 +529,10 @@ export class RecordGenerator {
     }
 
     private buildMethodStructures(methods: readonly GirMethod[], meta: RecordTypeMeta): MethodStructure[] {
-        const supportedMethods = filterSupportedMethods(methods, (params) =>
-            this.methodBody.hasUnsupportedCallbacks(params),
+        const supportedMethods = filterSupportedMethods(
+            methods,
+            (params) => this.methodBody.hasUnsupportedCallbacks(params),
+            (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
         return supportedMethods.map((method) => this.buildMethodStructure(method, meta));
     }
@@ -590,6 +597,7 @@ export class RecordGenerator {
         cls: ClassDeclarationBuilder,
     ): void {
         const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        if (typeMapping.unsafe) return;
         addTypeImports(this.file, typeMapping.imports, this.selfNames);
 
         const needsObjectWrap =
@@ -711,6 +719,7 @@ export class RecordGenerator {
         if (!nestedLayout) return;
 
         const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        if (typeMapping.unsafe) return;
         addTypeImports(this.file, typeMapping.imports, this.selfNames);
 
         const tsTypeName = typeMapping.ts;
@@ -727,7 +736,8 @@ export class RecordGenerator {
                 fieldName: toValidMemberName(toCamelCase(item.field.name)),
                 offset: baseOffset + item.offset,
                 mapping: this.ffiMapper.mapType(item.field.type, false, item.field.type.transferOwnership),
-            }));
+            }))
+            .filter((entry) => !entry.mapping.unsafe);
 
         if (!isReadable) return;
 
@@ -784,6 +794,7 @@ export class RecordGenerator {
         if (elementSize === 0) return;
 
         const typeMapping = this.ffiMapper.mapType(elementType, false, elementType.transferOwnership);
+        if (typeMapping.unsafe) return;
         addTypeImports(this.file, typeMapping.imports, this.selfNames);
 
         const tsTypeName = typeMapping.ts;

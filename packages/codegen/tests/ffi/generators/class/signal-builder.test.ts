@@ -16,8 +16,9 @@ function createTestSetup(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
     namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map(),
 ) {
-    const ns = createNormalizedNamespace({ name: "Gtk" });
-    namespaces.set("Gtk", ns);
+    if (!namespaces.has("Gtk")) {
+        namespaces.set("Gtk", createNormalizedNamespace({ name: "Gtk" }));
+    }
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
     const file = fileBuilder();

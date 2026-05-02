@@ -18,7 +18,13 @@ import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
 import { CallExpressionBuilder } from "../../../core/writers/call-expression-builder.js";
 import type { FfiDescriptorRegistry } from "../../../core/writers/descriptor-registry.js";
 import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
-import { addTypeImports, type ImportCollector, type MethodStructure } from "../../../core/writers/index.js";
+import {
+    addTypeImports,
+    createMethodBodyWriter,
+    type ImportCollector,
+    type MethodBodyWriter,
+    type MethodStructure,
+} from "../../../core/writers/index.js";
 import {
     needsParamWrap,
     needsReturnUnwrap,
@@ -38,6 +44,7 @@ type SignalParamData = {
 export class SignalBuilder {
     private readonly className: string;
     private readonly callExpression: CallExpressionBuilder;
+    private readonly methodBody: MethodBodyWriter;
 
     constructor(
         private readonly cls: GirClass,
@@ -50,6 +57,11 @@ export class SignalBuilder {
         this.className = normalizeClassName(cls.name);
         const descriptors = (imports as { descriptors?: FfiDescriptorRegistry }).descriptors;
         this.callExpression = new CallExpressionBuilder(descriptors, imports);
+        this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
+            sharedLibrary: options.sharedLibrary,
+            glibLibrary: options.glibLibrary,
+            selfNames,
+        });
     }
 
     buildConnectMethodStructures(): MethodStructure[] {
@@ -214,7 +226,7 @@ export class SignalBuilder {
     }
 
     collectOwnSignals(): GirSignal[] {
-        return collectDirectMembers({
+        const directSignals = collectDirectMembers({
             cls: this.cls,
             repo: this.repository,
             getClassMembers: (c) => c.signals,
@@ -222,6 +234,14 @@ export class SignalBuilder {
             getParentNames: collectParentSignalNames,
             transformName: toCamelCase,
         });
+        return directSignals.filter((signal) => !this.isUnsafeSignal(signal));
+    }
+
+    private isUnsafeSignal(signal: GirSignal): boolean {
+        return (
+            this.methodBody.hasUnsupportedCallbacks(signal.parameters) ||
+            this.methodBody.isReturnTypeUnsafe(signal.returnType)
+        );
     }
 
     private addNewSignals(signals: readonly GirSignal[], seen: Set<string>, all: GirSignal[]): void {

@@ -880,7 +880,7 @@ describe("FfiMapper", () => {
             expect(mapper.hasUnsupportedCallback(param)).toBe(false);
         });
 
-        it("returns false for any GIR callback (all are now supported)", () => {
+        it("returns false for a GIR callback whose params/return are all safe", () => {
             const customCallback = createNormalizedCallback({
                 name: "CustomCallback",
                 qualifiedName: qualifiedName("Gtk", "CustomCallback"),
@@ -898,11 +898,29 @@ describe("FfiMapper", () => {
             expect(mapper.hasUnsupportedCallback(param)).toBe(false);
         });
 
-        it("returns false for GLib.Closure", () => {
+        it("returns true for GLib.Closure (untyped variadic, unsafe)", () => {
             const { mapper } = createTestSetup();
             const param = createNormalizedParameter({
                 name: "closure",
                 type: createNormalizedType({ name: "GLib.Closure" }),
+            });
+            expect(mapper.hasUnsupportedCallback(param)).toBe(true);
+        });
+
+        it("returns true for raw pointer parameter (gpointer)", () => {
+            const { mapper } = createTestSetup();
+            const param = createNormalizedParameter({
+                name: "data",
+                type: createNormalizedType({ name: "gpointer" }),
+            });
+            expect(mapper.hasUnsupportedCallback(param)).toBe(true);
+        });
+
+        it("returns false for primitive uint64 (gsize) — not a pointer", () => {
+            const { mapper } = createTestSetup();
+            const param = createNormalizedParameter({
+                name: "size",
+                type: createNormalizedType({ name: "gsize" }),
             });
             expect(mapper.hasUnsupportedCallback(param)).toBe(false);
         });

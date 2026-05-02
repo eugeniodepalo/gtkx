@@ -182,7 +182,7 @@ describe("MethodBuilder", () => {
             expect(structures).toHaveLength(1);
         });
 
-        it("includes methods with GLib.Closure callbacks", () => {
+        it("filters out methods whose parameters are GLib.Closure (untyped, unsafe)", () => {
             const { builder } = createTestSetup();
             const methods = [
                 createNormalizedMethod({
@@ -205,7 +205,8 @@ describe("MethodBuilder", () => {
 
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
-            expect(structures).toHaveLength(2);
+            expect(structures).toHaveLength(1);
+            expect(structures[0].name).toBe("normal");
         });
     });
 
@@ -298,7 +299,7 @@ describe("MethodBuilder", () => {
             expect(result).toBe(false);
         });
 
-        it("returns false for GLib.Closure", () => {
+        it("returns true for GLib.Closure (untyped variadic, unsafe)", () => {
             const { builder } = createTestSetup();
             const parameters = [
                 createNormalizedParameter({
@@ -309,7 +310,21 @@ describe("MethodBuilder", () => {
 
             const result = builder.hasUnsupportedCallbacks(parameters);
 
-            expect(result).toBe(false);
+            expect(result).toBe(true);
+        });
+
+        it("returns true for raw pointer parameters (gpointer)", () => {
+            const { builder } = createTestSetup();
+            const parameters = [
+                createNormalizedParameter({
+                    name: "data",
+                    type: createNormalizedType({ name: "gpointer" }),
+                }),
+            ];
+
+            const result = builder.hasUnsupportedCallbacks(parameters);
+
+            expect(result).toBe(true);
         });
     });
 

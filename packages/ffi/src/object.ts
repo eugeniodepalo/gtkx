@@ -11,6 +11,7 @@ export type { NativeHandle } from "@gtkx/native";
 export abstract class NativeObject {
     static readonly glibTypeName: string;
     static readonly objectType: "gobject" | "interface" | "boxed" | "struct" | "fundamental";
+    // biome-ignore lint/complexity/useLiteralKeys: bracket syntax required to declare the `constructor` field type without overriding the actual constructor signature
     declare ["constructor"]: NativeClass;
     handle: NativeHandle;
 

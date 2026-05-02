@@ -75,6 +75,7 @@ export class PropertyAccessorBuilder {
         if (this.existingMethodNames.has(camelName)) return null;
 
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
+        if (typeMapping.unsafe) return null;
 
         const getBody = this.buildGetBody(prop, typeMapping);
         if (!getBody) return null;
@@ -164,10 +165,10 @@ export class PropertyAccessorBuilder {
         const resolved = this.resolveNonConflictingMethodName(prop.getter);
         if (!resolved) return null;
         const { method } = resolved;
-        const returnTs = this.ffiMapper.mapType(method.returnType, false, method.returnType.transferOwnership).ts;
-        if (returnTs === "void" || method.parameters.length > 0) return null;
-        const propTs = typeMapping.ts;
-        if (returnTs !== propTs) return null;
+        const returnMapping = this.ffiMapper.mapType(method.returnType, false, method.returnType.transferOwnership);
+        if (returnMapping.unsafe) return null;
+        if (returnMapping.ts === "void" || method.parameters.length > 0) return null;
+        if (returnMapping.ts !== typeMapping.ts) return null;
         return resolved;
     }
 
@@ -176,6 +177,9 @@ export class PropertyAccessorBuilder {
         const resolved = this.resolveNonConflictingMethodName(prop.setter);
         if (!resolved) return null;
         if (resolved.method.parameters.length !== 1) return null;
+        const setterParam = resolved.method.parameters[0];
+        if (!setterParam) return null;
+        if (this.ffiMapper.mapParameter(setterParam).unsafe) return null;
         return resolved;
     }
 

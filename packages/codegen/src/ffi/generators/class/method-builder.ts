@@ -64,6 +64,7 @@ export class MethodBuilder {
         for (const method of methods) {
             if (isMethodDuplicate(method.name, method.cIdentifier, seen)) continue;
             if (this.methodBody.hasUnsupportedCallbacks(method.parameters)) continue;
+            if (this.methodBody.isReturnTypeUnsafe(method.returnType)) continue;
             if (asyncMethods.has(method.name)) continue;
             if (finishMethods.has(method.name)) continue;
 

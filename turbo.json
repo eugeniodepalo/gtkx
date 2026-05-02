@@ -152,6 +152,12 @@
             "outputs": [],
             "outputLogs": "new-only"
         },
+        "@gtkx/native#typecheck": {
+            "dependsOn": ["^build", "native-build"],
+            "inputs": ["*.ts", "tests/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
+            "outputs": [],
+            "outputLogs": "new-only"
+        },
         "website#build": {
             "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
             "inputs": [

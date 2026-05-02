@@ -62,12 +62,12 @@ describe("ClassGenerator", () => {
     });
 
     describe("generateToSourceFile", () => {
-        it("returns success for valid class", () => {
+        it("returns a result for a valid class", () => {
             const { generator } = createTestSetup();
 
             const result = generator.generate();
 
-            expect(result.success).toBe(true);
+            expect(result).toBeDefined();
         });
 
         it("generates class with correct name", () => {
@@ -348,9 +348,9 @@ describe("ClassGenerator", () => {
         });
     });
 
-    describe("failure cases", () => {
-        it("returns success true for class with GLib.Closure constructor", () => {
-            const { generator } = createTestSetup({
+    describe("empty-shell behavior", () => {
+        it("still emits a class shell when every constructor has unsafe parameters", () => {
+            const { generator, file } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
                         name: "new_with_callback",
@@ -367,8 +367,10 @@ describe("ClassGenerator", () => {
             });
 
             const result = generator.generate();
+            const code = stringify(file);
 
-            expect(result.success).toBe(true);
+            expect(result).toBeDefined();
+            expect(code).toContain("export class Button");
         });
     });
 

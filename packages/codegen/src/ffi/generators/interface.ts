@@ -110,8 +110,10 @@ export class InterfaceGenerator {
         ifaceName: string,
         gobjectMethodNames: Set<string>,
     ): MethodStructure[] {
-        const supportedMethods = filterSupportedMethods(methods, (params) =>
-            this.methodBody.hasUnsupportedCallbacks(params),
+        const supportedMethods = filterSupportedMethods(
+            methods,
+            (params) => this.methodBody.hasUnsupportedCallbacks(params),
+            (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
         return supportedMethods.map((m) => {
             const methodName = toCamelCase(m.name);

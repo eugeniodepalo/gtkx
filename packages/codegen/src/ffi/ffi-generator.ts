@@ -188,10 +188,6 @@ export class FfiGenerator {
             );
 
             const result = classGenerator.generate();
-            if (!result.success) {
-                this.ffiMapper.registerSkippedClass(cls.name);
-                continue;
-            }
 
             const fileName = `${toKebabCase(cls.name)}.ts`;
             files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
@@ -249,8 +245,10 @@ export class FfiGenerator {
                 glibLibrary: generatorOptions.glibLibrary,
                 selfNames: new Set([recordName]),
             });
-            const supportedMethods = filterSupportedMethods(record.methods, (params) =>
-                methodBody.hasUnsupportedCallbacks(params),
+            const supportedMethods = filterSupportedMethods(
+                record.methods,
+                (params) => methodBody.hasUnsupportedCallbacks(params),
+                (returnType) => methodBody.isReturnTypeUnsafe(returnType),
             );
 
             if (supportedMethods.length > 0) {

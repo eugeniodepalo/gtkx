@@ -244,7 +244,11 @@ describe("filterSupportedMethods", () => {
             { name: "get_name", cIdentifier: "gtk_widget_get_name", parameters: [] },
         ];
 
-        const result = filterSupportedMethods(methods, () => false);
+        const result = filterSupportedMethods(
+            methods,
+            () => false,
+            () => false,
+        );
         expect(result).toHaveLength(1);
     });
 
@@ -254,9 +258,28 @@ describe("filterSupportedMethods", () => {
             { name: "unsupported", cIdentifier: "gtk_unsupported", parameters: [{ name: "callback" }] },
         ];
 
-        const result = filterSupportedMethods(methods, (params) => params.length > 0);
+        const result = filterSupportedMethods(
+            methods,
+            (params) => params.length > 0,
+            () => false,
+        );
         expect(result).toHaveLength(1);
         expect(result[0].name).toBe("supported");
+    });
+
+    it("filters out methods with unsafe return types", () => {
+        const methods = [
+            { name: "safe", cIdentifier: "gtk_safe", parameters: [], returnType: { name: "gint" } },
+            { name: "unsafe", cIdentifier: "gtk_unsafe", parameters: [], returnType: { name: "gpointer" } },
+        ];
+
+        const result = filterSupportedMethods(
+            methods,
+            () => false,
+            (returnType) => returnType?.name === "gpointer",
+        );
+        expect(result).toHaveLength(1);
+        expect(result[0].name).toBe("safe");
     });
 
     it("keeps first occurrence when duplicates exist", () => {
@@ -265,7 +288,11 @@ describe("filterSupportedMethods", () => {
             { name: "get_name", cIdentifier: "gtk_widget_get_name", parameters: [{ name: "second" }] },
         ];
 
-        const result = filterSupportedMethods(methods, () => false);
+        const result = filterSupportedMethods(
+            methods,
+            () => false,
+            () => false,
+        );
         expect(result).toHaveLength(1);
         expect(result[0].parameters[0].name).toBe("first");
     });
@@ -282,7 +309,11 @@ describe("filterSupportedMethods", () => {
             { name: "method_c", cIdentifier: "c_method_c", parameters: [] },
         ];
 
-        const result = filterSupportedMethods(methods, () => false);
+        const result = filterSupportedMethods(
+            methods,
+            () => false,
+            () => false,
+        );
         expect(result).toHaveLength(3);
     });
 });

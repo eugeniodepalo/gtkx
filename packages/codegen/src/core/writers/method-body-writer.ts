@@ -258,10 +258,27 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Checks if any parameter has an unsupported callback type.
+     * Checks if any user-visible parameter has a type the native marshaling
+     * layer cannot safely handle. Closure targets (`user_data`, `destroy`) and
+     * varargs are excluded — those are stripped from the public signature and
+     * handled internally by the trampoline FFI.
      */
     hasUnsupportedCallbacks(params: readonly GirParameter[]): boolean {
-        return params.some((p) => this.ffiMapper.hasUnsupportedCallback(p));
+        return this.filterParameters(params).some((p) => this.ffiMapper.hasUnsupportedCallback(p));
+    }
+
+    /**
+     * Checks if a return type is one the native marshaling layer cannot
+     * safely handle (raw pointer, callback typedef as type ref, untyped
+     * container, or a composite whose inner type is unsafe).
+     *
+     * Returns false for `null`/`undefined`/`void`/`none` return types.
+     */
+    isReturnTypeUnsafe(returnType: GirType | null | undefined): boolean {
+        if (!returnType) return false;
+        const name = returnType.name;
+        if (name === "void" || name === "none") return false;
+        return this.ffiMapper.mapType(returnType, true, returnType.transferOwnership).unsafe === true;
     }
 
     /**

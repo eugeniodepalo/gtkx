@@ -53,8 +53,10 @@ export class StaticFunctionBuilder {
     }
 
     buildStructures(): MethodStructure[] {
-        const supportedFunctions = filterSupportedFunctions(this.cls.staticFunctions, (params) =>
-            this.methodBody.hasUnsupportedCallbacks(params),
+        const supportedFunctions = filterSupportedFunctions(
+            this.cls.staticFunctions,
+            (params) => this.methodBody.hasUnsupportedCallbacks(params),
+            (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
 
         return supportedFunctions

@@ -40,10 +40,10 @@ import { SignalBuilder } from "./signal-builder.js";
 import { StaticFunctionBuilder } from "./static-function-builder.js";
 
 /**
- * Result of class generation.
+ * Result of class generation. Carries widget and controller metadata
+ * harvested while emitting the class.
  */
 type ClassGenerationResult = {
-    success: boolean;
     widgetMeta?: CodegenWidgetMeta | null;
     controllerMeta?: CodegenControllerMeta | null;
 };
@@ -103,13 +103,15 @@ export class ClassGenerator {
     /**
      * Generates the class into the FileBuilder.
      *
-     * @returns Result containing success flag and optional widget/controller metadata
+     * Always emits a class shell carrying type identity (constructor binding,
+     * GType registration). When every constructor or method has unsafe
+     * parameters/return types, those individual members are filtered out but
+     * the class file is still emitted so the type can be referenced as a
+     * typed parameter elsewhere.
+     *
+     * @returns Result with success flag and optional widget/controller metadata.
      */
     generate(): ClassGenerationResult {
-        if (!this.canGenerate()) {
-            return { success: false };
-        }
-
         const asyncAnalysis = analyzeAsyncMethods(this.cls.methods);
 
         const parentMethodNames = collectParentMethodNames(this.cls, this.repository);
@@ -184,7 +186,7 @@ export class ClassGenerator {
         const widgetMeta = this.classMetaBuilder.buildCodegenWidgetMeta();
         const controllerMeta = this.classMetaBuilder.buildCodegenControllerMeta();
 
-        return { success: true, widgetMeta, controllerMeta };
+        return { widgetMeta, controllerMeta };
     }
 
     private buildClassDeclaration(parentInfo: ParentInfo, isFundamental: boolean): ClassDeclarationBuilder {
@@ -238,16 +240,6 @@ export class ClassGenerator {
         }
 
         return cls;
-    }
-
-    private canGenerate(): boolean {
-        if (this.cls.constructors.length === 0) return true;
-
-        const hasAnySupportedConstructor = this.cls.constructors.some(
-            (c) => !this.methodBuilder.hasUnsupportedCallbacks(c.parameters),
-        );
-
-        return hasAnySupportedConstructor;
     }
 
     private isFundamentalType(): boolean {

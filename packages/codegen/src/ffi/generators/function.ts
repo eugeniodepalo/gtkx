@@ -43,8 +43,10 @@ export class FunctionGenerator {
      * @returns true if any functions were generated
      */
     generate(functions: GirFunction[]): boolean {
-        const supported = filterSupportedFunctions(functions, (params) =>
-            this.methodBody.hasUnsupportedCallbacks(params),
+        const supported = filterSupportedFunctions(
+            functions,
+            (params) => this.methodBody.hasUnsupportedCallbacks(params),
+            (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
 
         for (const func of supported) {

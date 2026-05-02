@@ -16,7 +16,17 @@ function createTestSetup(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
     namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map(),
 ) {
-    const ns = createNormalizedNamespace({ name: "Gtk" });
+    const cls = createNormalizedClass({
+        name: "Button",
+        qualifiedName: qualifiedName("Gtk", "Button"),
+        parent: null,
+        staticFunctions: [],
+        ...classOverrides,
+    });
+    const ns = createNormalizedNamespace({
+        name: "Gtk",
+        classes: new Map([["Button", cls]]),
+    });
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
@@ -27,14 +37,6 @@ function createTestSetup(
         glibLibrary: "libglib-2.0.so.0",
         gobjectLibrary: "libgobject-2.0.so.0",
     };
-
-    const cls = createNormalizedClass({
-        name: "Button",
-        qualifiedName: qualifiedName("Gtk", "Button"),
-        parent: null,
-        staticFunctions: [],
-        ...classOverrides,
-    });
 
     const builder = new StaticFunctionBuilder(cls, ffiMapper, file, options);
     return { cls, builder, ffiMapper };
@@ -175,7 +177,7 @@ describe("StaticFunctionBuilder", () => {
             expect(structures[0].returnType).toBeUndefined();
         });
 
-        it("includes functions with GLib.Closure callbacks", () => {
+        it("filters out functions whose parameters are GLib.Closure (untyped, unsafe)", () => {
             const { builder } = createTestSetup({
                 staticFunctions: [
                     createNormalizedFunction({
@@ -199,7 +201,8 @@ describe("StaticFunctionBuilder", () => {
 
             const structures = builder.buildStructures();
 
-            expect(structures).toHaveLength(2);
+            expect(structures).toHaveLength(1);
+            expect(structures[0].name).toBe("normal");
         });
 
         it("uses normalized class name for return type mapping", () => {

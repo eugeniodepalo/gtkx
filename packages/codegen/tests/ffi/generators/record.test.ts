@@ -356,7 +356,7 @@ describe("RecordGenerator", () => {
             expect(code).toContain("static intersect");
         });
 
-        it("includes methods with GLib.Closure callbacks", () => {
+        it("filters out methods whose parameters are GLib.Closure (untyped, unsafe)", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -385,7 +385,7 @@ describe("RecordGenerator", () => {
 
             const code = stringify(file);
             expect(code).toContain("normal");
-            expect(code).toContain("withClosure");
+            expect(code).not.toContain("withClosure");
         });
     });
 

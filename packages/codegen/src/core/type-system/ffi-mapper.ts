@@ -38,6 +38,7 @@ import {
     structType,
     type TypeImport,
     trampolineType,
+    UNSAFE_PRIMITIVE_NAMES,
 } from "./ffi-types.js";
 
 /**
@@ -115,17 +116,22 @@ export class FfiMapper {
             const valueResult = this.mapType(valueType, isReturn, elementTransfer);
             imports.push(...keyResult.imports, ...valueResult.imports);
 
-            return {
-                ts: `Map<${keyResult.ts}, ${valueResult.ts}>`,
-                ffi: hashTableType(keyResult.ffi, valueResult.ffi, transferFull),
-                imports,
-            };
+            return withInheritedUnsafe(
+                {
+                    ts: `Map<${keyResult.ts}, ${valueResult.ts}>`,
+                    ffi: hashTableType(keyResult.ffi, valueResult.ffi, transferFull),
+                    imports,
+                },
+                keyResult,
+                valueResult,
+            );
         }
 
         return {
             ts: "Map<unknown, unknown>",
             ffi: hashTableType(FFI_POINTER, FFI_POINTER, transferFull),
             imports,
+            unsafe: true,
         };
     }
 
@@ -157,6 +163,7 @@ export class FfiMapper {
                 ts: "unknown[]",
                 ffi: arrayType(FFI_VOID, listType, transferFull, adjustedSizeParamIndex, type.fixedSize),
                 imports,
+                unsafe: true,
             };
         }
 
@@ -165,19 +172,22 @@ export class FfiMapper {
         imports.push(...elementResult.imports);
         const elementSize = this.resolveInlineElementSize(type.elementType);
 
-        return {
-            ts: `${elementResult.ts}[]`,
-            ffi: arrayType(
-                elementResult.ffi,
-                listType,
-                transferFull,
-                adjustedSizeParamIndex,
-                type.fixedSize,
-                elementSize,
-            ),
-            imports,
-            itemKind: elementResult.kind,
-        };
+        return withInheritedUnsafe(
+            {
+                ts: `${elementResult.ts}[]`,
+                ffi: arrayType(
+                    elementResult.ffi,
+                    listType,
+                    transferFull,
+                    adjustedSizeParamIndex,
+                    type.fixedSize,
+                    elementSize,
+                ),
+                imports,
+                itemKind: elementResult.kind,
+            },
+            elementResult,
+        );
     }
 
     mapType(type: GirType, isReturn = false, parentTransferOwnership?: string, sizeParamOffset = 0): MappedType {
@@ -206,7 +216,8 @@ export class FfiMapper {
 
         const primitive = PRIMITIVE_TYPE_MAP.get(type.name);
         if (primitive) {
-            return { ...primitive, imports };
+            const base: MappedType = { ...primitive, imports };
+            return UNSAFE_PRIMITIVE_NAMES.has(type.name) ? { ...base, unsafe: true } : base;
         }
 
         const resolved = this.resolveType(type.name);
@@ -219,6 +230,7 @@ export class FfiMapper {
             ts: "number",
             ffi: FFI_POINTER,
             imports,
+            unsafe: true,
         };
     }
 
@@ -243,22 +255,28 @@ export class FfiMapper {
             (param.direction === "inout" && isBoxedOrGObjectOrStruct);
 
         if (passHandleDirectly) {
-            return {
-                ts: innerType.ts,
-                ffi: { ...innerType.ffi, ownership: "borrowed" as const },
-                imports,
-                kind: innerType.kind,
-            };
+            return withInheritedUnsafe(
+                {
+                    ts: innerType.ts,
+                    ffi: { ...innerType.ffi, ownership: "borrowed" as const },
+                    imports,
+                    kind: innerType.kind,
+                },
+                innerType,
+            );
         }
 
-        return {
-            ts: `Ref<${innerType.ts}>`,
-            ffi: refType(innerType.ffi),
-            imports,
-            kind: innerType.kind,
-            itemKind: innerType.itemKind,
-            innerTsType: innerType.ts,
-        };
+        return withInheritedUnsafe(
+            {
+                ts: `Ref<${innerType.ts}>`,
+                ffi: refType(innerType.ffi),
+                imports,
+                kind: innerType.kind,
+                itemKind: innerType.itemKind,
+                innerTsType: innerType.ts,
+            },
+            innerType,
+        );
     }
 
     private adjustObjectOwnershipForParam(mapped: MappedType, param: GirParameter): MappedType {
@@ -267,22 +285,28 @@ export class FfiMapper {
 
         const isTransferFull = param.transferOwnership === "full" || param.transferOwnership === "container";
         if (isTransferFull) {
-            return {
-                ts: mapped.ts,
-                ffi: { ...mapped.ffi, ownership: "full" as const },
-                imports: mapped.imports,
-                kind: mapped.kind,
-            };
+            return withInheritedUnsafe(
+                {
+                    ts: mapped.ts,
+                    ffi: { ...mapped.ffi, ownership: "full" as const },
+                    imports: mapped.imports,
+                    kind: mapped.kind,
+                },
+                mapped,
+            );
         }
 
         const isTransferNone = param.transferOwnership === "none" || param.transferOwnership === undefined;
         if (isTransferNone) {
-            return {
-                ts: mapped.ts,
-                ffi: { ...mapped.ffi, ownership: "borrowed" as const },
-                imports: mapped.imports,
-                kind: mapped.kind,
-            };
+            return withInheritedUnsafe(
+                {
+                    ts: mapped.ts,
+                    ffi: { ...mapped.ffi, ownership: "borrowed" as const },
+                    imports: mapped.imports,
+                    kind: mapped.kind,
+                },
+                mapped,
+            );
         }
 
         return mapped;
@@ -312,6 +336,7 @@ export class FfiMapper {
                 ts: "(...args: unknown[]) => unknown",
                 ffi: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
                 imports,
+                unsafe: true,
             };
         }
 
@@ -338,11 +363,12 @@ export class FfiMapper {
     }
 
     /**
-     * Checks if a parameter has an unsupported callback type.
-     * Supported callbacks are those with native implementations in NATIVE_CALLBACKS.
+     * Checks if a parameter has a type the native marshaling layer cannot
+     * safely handle (raw pointers, untyped containers, callback typedefs used
+     * as type references, or composites whose inner types are unsafe).
      */
-    hasUnsupportedCallback(_param: GirParameter): boolean {
-        return false;
+    hasUnsupportedCallback(param: GirParameter): boolean {
+        return this.mapParameter(param).unsafe === true;
     }
 
     private resolveCallbackForParam(param: GirParameter): GirCallback | null {
@@ -687,6 +713,7 @@ export class FfiMapper {
                 ts: "unknown",
                 ffi: gobjectType(this.computeTransferFull(isReturn, transferOwnership)),
                 imports,
+                unsafe: true,
             };
         }
 
@@ -717,6 +744,7 @@ export class FfiMapper {
                     ffi: FFI_POINTER,
                     imports,
                     kind: "callback",
+                    unsafe: true,
                 };
 
             case "class":
@@ -736,39 +764,42 @@ export class FfiMapper {
             return null;
         }
 
-        const tsParams = this.buildCallbackTsParams(callback, imports);
-        const tsReturn = this.buildCallbackTsReturn(callback.returnType, imports);
-        const ts = `(${tsParams.join(", ")}) => ${tsReturn}`;
+        const params = this.buildCallbackTsParams(callback, imports);
+        const returnPart = this.buildCallbackTsReturn(callback.returnType, imports);
+        const ts = `(${params.parts.join(", ")}) => ${returnPart.ts}`;
         const ffi = this.buildTrampolineFfiDescriptor(callback);
 
-        return { ts, ffi, imports };
+        const result: MappedType = { ts, ffi, imports };
+        return params.unsafe || returnPart.unsafe ? { ...result, unsafe: true } : result;
     }
 
-    private buildCallbackTsParams(callback: GirCallback, imports: TypeImport[]): string[] {
-        const result: string[] = [];
+    private buildCallbackTsParams(callback: GirCallback, imports: TypeImport[]): { parts: string[]; unsafe: boolean } {
+        const parts: string[] = [];
+        let unsafe = false;
 
         for (const param of callback.parameters) {
             if (param.name === "user_data" || param.name === "data") continue;
 
             const mapped = this.mapType(param.type, false, param.transferOwnership);
             imports.push(...mapped.imports);
+            if (mapped.unsafe === true) unsafe = true;
 
             const nullable = param.nullable ? " | null" : "";
             const paramName = toValidIdentifier(toCamelCase(param.name));
-            result.push(`${paramName}: ${mapped.ts}${nullable}`);
+            parts.push(`${paramName}: ${mapped.ts}${nullable}`);
         }
 
-        return result;
+        return { parts, unsafe };
     }
 
-    private buildCallbackTsReturn(returnType: GirType, imports: TypeImport[]): string {
+    private buildCallbackTsReturn(returnType: GirType, imports: TypeImport[]): { ts: string; unsafe: boolean } {
         if (returnType.name === "none" || returnType.name === "void") {
-            return "void";
+            return { ts: "void", unsafe: false };
         }
         const mapped = this.mapType(returnType, true, returnType.transferOwnership);
         imports.push(...mapped.imports);
         const nullable = returnType.nullable ? " | null" : "";
-        return `${mapped.ts}${nullable}`;
+        return { ts: `${mapped.ts}${nullable}`, unsafe: mapped.unsafe === true };
     }
 
     private buildTrampolineFfiDescriptor(callback: GirCallback): FfiTypeDescriptor {
@@ -816,14 +847,14 @@ export class FfiMapper {
                 ? gArrayType(elementResult.ffi, this.getElementSize(type.elementType), transferFull)
                 : ptrArrayType(elementResult.ffi, transferFull);
 
-            return { ts: `${elementResult.ts}[]`, ffi, imports };
+            return withInheritedUnsafe({ ts: `${elementResult.ts}[]`, ffi, imports }, elementResult);
         }
 
         const fallbackFfi = isGArray
             ? gArrayType(FFI_POINTER, 8, transferFull)
             : ptrArrayType(FFI_POINTER, transferFull);
 
-        return { ts: "unknown[]", ffi: fallbackFfi, imports };
+        return { ts: "unknown[]", ffi: fallbackFfi, imports, unsafe: true };
     }
 
     private resolveInlineElementSize(elementType: GirType): number | undefined {
@@ -993,4 +1024,18 @@ type ResolvedType = {
     copyFunction?: string;
     freeFunction?: string;
     signed?: boolean;
+};
+
+/**
+ * Returns a {@link MappedType} marked unsafe iff any of the provided source
+ * mappings is unsafe. Used to propagate the unsafe flag from inner element /
+ * key / value / ref / callback mappings to the enclosing composite mapping.
+ *
+ * Requires at least one source so the contract — "outer is unsafe iff some
+ * inner is unsafe" — is precise; passing zero sources would silently return
+ * the input unchanged, masking call-site mistakes.
+ */
+const withInheritedUnsafe = (mapped: MappedType, source: MappedType, ...extra: MappedType[]): MappedType => {
+    const inherited = source.unsafe === true || extra.some((s) => s.unsafe === true);
+    return inherited ? { ...mapped, unsafe: true } : mapped;
 };
