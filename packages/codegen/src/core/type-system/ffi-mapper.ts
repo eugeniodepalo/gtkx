@@ -59,10 +59,12 @@ import {
  * // result.imports = [{ kind: "class", name: "Button", ... }]
  * ```
  */
+const signedFallback = (signed: boolean) => (signed ? FFI_INT32 : FFI_UINT32);
+
 export class FfiMapper {
     private skippedClasses = new Set<string>();
-    private structSizeCache = new Map<string, number>();
-    private structAlignmentCache = new Map<string, number>();
+    private readonly structSizeCache = new Map<string, number>();
+    private readonly structAlignmentCache = new Map<string, number>();
 
     constructor(
         private repo: GirRepository,
@@ -606,9 +608,7 @@ export class FfiMapper {
                     ffi:
                         resolved.glibGetType && sharedLib
                             ? enumType(sharedLib, resolved.glibGetType, signed)
-                            : signed
-                              ? FFI_INT32
-                              : FFI_UINT32,
+                            : signedFallback(signed),
                     imports,
                     kind: "enum",
                 };
@@ -622,9 +622,7 @@ export class FfiMapper {
                     ffi:
                         resolved.glibGetType && sharedLib
                             ? flagsType(sharedLib, resolved.glibGetType, signed)
-                            : signed
-                              ? FFI_INT32
-                              : FFI_UINT32,
+                            : signedFallback(signed),
                     imports,
                     kind: "flags",
                 };

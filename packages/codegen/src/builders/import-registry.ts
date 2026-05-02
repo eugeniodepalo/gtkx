@@ -60,9 +60,10 @@ export class ImportRegistry implements Builder {
                 continue;
             }
 
-            const valueNames = [...entry.names].filter((n) => !entry.typeOnlyNames.has(n)).sort();
-            const typeOnlyNames = [...entry.typeOnlyNames].filter((n) => !entry.names.has(n)).sort();
-            const bothNames = [...entry.names].filter((n) => entry.typeOnlyNames.has(n)).sort();
+            const compareNames = (a: string, b: string): number => a.localeCompare(b);
+            const valueNames = [...entry.names].filter((n) => !entry.typeOnlyNames.has(n)).sort(compareNames);
+            const typeOnlyNames = [...entry.typeOnlyNames].filter((n) => !entry.names.has(n)).sort(compareNames);
+            const bothNames = [...entry.names].filter((n) => entry.typeOnlyNames.has(n)).sort(compareNames);
 
             const parts: string[] = [];
             for (const name of typeOnlyNames) {

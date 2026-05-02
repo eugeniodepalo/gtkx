@@ -98,7 +98,7 @@ export const build = async (options: BuildOptions): Promise<void> => {
         define: {
             ...viteConfig?.define,
             "process.env.NODE_ENV": JSON.stringify("production"),
-            ...(appId !== undefined ? { __GTKX_APP_ID__: JSON.stringify(appId) } : {}),
+            ...(appId === undefined ? {} : { __GTKX_APP_ID__: JSON.stringify(appId) }),
         },
         ssr: {
             ...viteConfig?.ssr,

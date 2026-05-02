@@ -22,7 +22,7 @@ const DEFAULT_SPRING_MASS = 1;
 const DEFAULT_SPRING_STIFFNESS = 100;
 
 export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, WidgetNode> {
-    private className: string;
+    private readonly className: string;
     private provider: Gtk.CssProvider | null = null;
     private display: Gdk.Display | null = null;
     private currentAnimation: Adw.Animation | null = null;

@@ -9,7 +9,7 @@ type SpinRowProps = AdjustableProps & {
 };
 
 export class SpinRowNode extends WidgetNode<Adw.SpinRow, SpinRowProps> {
-    private adjustmentController = new AdjustmentController(this.container);
+    private readonly adjustmentController = new AdjustmentController(this.container);
 
     public override commitUpdate(oldProps: SpinRowProps | null, newProps: SpinRowProps): void {
         super.commitUpdate(

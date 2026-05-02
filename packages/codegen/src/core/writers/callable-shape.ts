@@ -242,7 +242,7 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
         if (!isOut) {
             if (isLengthParam) {
                 const dataIndex = lengthToDataIndex.get(girIndex);
-                const dataParam = dataIndex !== undefined ? filteredParams[dataIndex] : undefined;
+                const dataParam = dataIndex === undefined ? undefined : filteredParams[dataIndex];
                 const dataMapped = dataParam ? ffiMapper.mapParameter(dataParam, sizeParamOffset) : undefined;
                 const dataJsName = dataParam ? toValidIdentifier(toCamelCase(dataParam.name)) : undefined;
                 callArgs.push({

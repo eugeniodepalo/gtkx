@@ -276,7 +276,7 @@ export class FfiGenerator {
                 return relativeName;
             })
             .filter((name) => name !== "index")
-            .sort()
+            .sort((a, b) => a.localeCompare(b))
             .map((name) => `export * from "./${name}.js";`)
             .join("\n");
 

@@ -6,7 +6,7 @@ import { filterProps, hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
-    private adjustmentController = new AdjustmentController(this.container);
+    private readonly adjustmentController = new AdjustmentController(this.container);
 
     public override commitUpdate(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
         super.commitUpdate(

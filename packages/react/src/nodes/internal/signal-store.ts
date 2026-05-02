@@ -42,7 +42,7 @@ function getSignalKey(obj: GObject.Object, signal: string): SignalKey {
 }
 
 export class SignalStore {
-    private ownerHandlers: Map<SignalOwner, Map<SignalKey, HandlerEntry>> = new Map();
+    private readonly ownerHandlers: Map<SignalOwner, Map<SignalKey, HandlerEntry>> = new Map();
     private blockDepth = 0;
 
     private getOwnerMap(owner: SignalOwner): Map<SignalKey, HandlerEntry> {

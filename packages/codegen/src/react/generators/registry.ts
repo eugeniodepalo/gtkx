@@ -20,7 +20,7 @@ export class RegistryGenerator {
     }
 
     private addImports(file: FileBuilder, namespaces: string[]): void {
-        const sorted = [...namespaces].sort();
+        const sorted = [...namespaces].sort((a, b) => a.localeCompare(b));
         for (const ns of sorted) {
             file.addNamespaceImport(`@gtkx/ffi/${ns.toLowerCase()}`, ns);
         }

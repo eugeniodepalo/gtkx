@@ -15,7 +15,7 @@ export const ADJUSTMENT_PROPS = [
 export class AdjustmentController {
     private adjustment: Gtk.Adjustment | null = null;
 
-    constructor(private container: { setAdjustment: (a: Gtk.Adjustment) => void }) {}
+    constructor(private readonly container: { setAdjustment: (a: Gtk.Adjustment) => void }) {}
 
     apply(oldProps: AdjustableProps | null, newProps: AdjustableProps): Gtk.Adjustment {
         if (!this.adjustment) {

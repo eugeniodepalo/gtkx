@@ -242,14 +242,14 @@ function groupByScript(entries: UcdEntry[]): UcdSection[] {
 
     for (const entry of sorted) {
         const script = getScriptName(GLib.unicharGetScript(entry.char));
-        if (script !== currentScript) {
+        if (script === currentScript) {
+            currentEntries.push(entry);
+        } else {
             if (currentEntries.length > 0) {
                 sections.push({ script: currentScript, entries: currentEntries });
             }
             currentScript = script;
             currentEntries = [entry];
-        } else {
-            currentEntries.push(entry);
         }
     }
     if (currentEntries.length > 0) {

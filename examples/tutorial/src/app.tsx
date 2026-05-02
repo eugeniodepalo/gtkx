@@ -30,6 +30,27 @@ import { Preferences } from "./components/preferences.js";
 import { Sidebar } from "./components/sidebar.js";
 import type { Note } from "./types.js";
 
+const getEmptyStateIcon = (searchQuery: string, category: string): string => {
+    if (searchQuery) return "system-search-symbolic";
+    if (category === "trash") return "user-trash-symbolic";
+    if (category === "favorites") return "starred-symbolic";
+    return "document-edit-symbolic";
+};
+
+const getEmptyStateTitle = (searchQuery: string, category: string): string => {
+    if (searchQuery) return "No Results Found";
+    if (category === "trash") return "Trash is Empty";
+    if (category === "favorites") return "No Favorites";
+    return "No Notes Yet";
+};
+
+const getEmptyStateDescription = (searchQuery: string, category: string): string => {
+    if (searchQuery) return `No notes match “${searchQuery}”`;
+    if (category === "trash") return "Deleted notes will appear here";
+    if (category === "favorites") return "Star notes to find them here";
+    return "Press + or Ctrl+N to create your first note";
+};
+
 export function App() {
     const [compactMode] = useSetting(schemaId, "compact-mode", "boolean");
     const [fontSize] = useSetting(schemaId, "font-size", "int");
@@ -61,7 +82,12 @@ export function App() {
     const trashedNotes = notes.filter((n) => n.deleted);
     const favoriteNotes = activeNotes.filter((n) => n.favorite);
 
-    const categoryNotes = category === "trash" ? trashedNotes : category === "favorites" ? favoriteNotes : activeNotes;
+    const getCategoryNotes = () => {
+        if (category === "trash") return trashedNotes;
+        if (category === "favorites") return favoriteNotes;
+        return activeNotes;
+    };
+    const categoryNotes = getCategoryNotes();
 
     const filteredNotes = searchQuery
         ? categoryNotes.filter(
@@ -313,33 +339,9 @@ export function App() {
                                     ) : (
                                         <AdwStatusPage
                                             vexpand
-                                            iconName={
-                                                searchQuery
-                                                    ? "system-search-symbolic"
-                                                    : category === "trash"
-                                                      ? "user-trash-symbolic"
-                                                      : category === "favorites"
-                                                        ? "starred-symbolic"
-                                                        : "document-edit-symbolic"
-                                            }
-                                            title={
-                                                searchQuery
-                                                    ? "No Results Found"
-                                                    : category === "trash"
-                                                      ? "Trash is Empty"
-                                                      : category === "favorites"
-                                                        ? "No Favorites"
-                                                        : "No Notes Yet"
-                                            }
-                                            description={
-                                                searchQuery
-                                                    ? `No notes match \u201c${searchQuery}\u201d`
-                                                    : category === "trash"
-                                                      ? "Deleted notes will appear here"
-                                                      : category === "favorites"
-                                                        ? "Star notes to find them here"
-                                                        : "Press + or Ctrl+N to create your first note"
-                                            }
+                                            iconName={getEmptyStateIcon(searchQuery, category)}
+                                            title={getEmptyStateTitle(searchQuery, category)}
+                                            description={getEmptyStateDescription(searchQuery, category)}
                                         />
                                     )}
                                 </GtkBox>

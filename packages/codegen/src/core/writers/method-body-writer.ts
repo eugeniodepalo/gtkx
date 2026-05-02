@@ -82,6 +82,17 @@ export const addTypeImports = (
 
 const VOID_RETURN_MAPPING: MappedType = { ts: "void", ffi: FFI_VOID, imports: [] };
 
+const computeResultSuffix = (
+    needsResultPtr: boolean,
+    needsArrayWrapVar: unknown,
+    needsHashTableVar: boolean,
+): string => {
+    if (needsResultPtr) return "Ptr";
+    if (needsArrayWrapVar) return "Arr";
+    if (needsHashTableVar) return "Tuples";
+    return "";
+};
+
 /**
  * Options for building instance method body statements.
  */
@@ -355,9 +366,9 @@ export class MethodBodyWriter {
         sizeParamOffset: number,
     ): CallableShape {
         const returnMapping =
-            returnType !== undefined
-                ? this.ffiMapper.mapType(returnType, true, returnType.transferOwnership, sizeParamOffset)
-                : VOID_RETURN_MAPPING;
+            returnType === undefined
+                ? VOID_RETURN_MAPPING
+                : this.ffiMapper.mapType(returnType, true, returnType.transferOwnership, sizeParamOffset);
 
         const shape = buildCallableShape({
             parameters,
@@ -653,10 +664,10 @@ export class MethodBodyWriter {
 
             const returnTupleNeedsBuild = shape.returnTupleEntries.length > 0;
             const writeCall = (target: string | null, cast: string | null) => {
-                if (target !== null) {
-                    writer.write(`const ${target} = `);
-                } else {
+                if (target === null) {
                     writer.write("return ");
+                } else {
+                    writer.write(`const ${target} = `);
                 }
                 this.callExpression.toWriter({
                     sharedLibrary: options.sharedLibrary,
@@ -770,7 +781,7 @@ export class MethodBodyWriter {
 
         if (hasReturnValue) {
             const baseVar = this.uniqueResultVarName(shape, "result");
-            const suffix = needsResultPtr ? "Ptr" : needsArrayWrapVar ? "Arr" : needsHashTableVar ? "Tuples" : "";
+            const suffix = computeResultSuffix(needsResultPtr, needsArrayWrapVar, needsHashTableVar);
             resultExpression = `${baseVar}${suffix}`;
             writer.write(`const ${resultExpression} = `);
             this.callExpression.toWriter({

@@ -61,7 +61,7 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
         appType: "custom",
         define: {
             ...viteConfig?.define,
-            ...(appId !== undefined ? { __GTKX_APP_ID__: JSON.stringify(appId) } : {}),
+            ...(appId === undefined ? {} : { __GTKX_APP_ID__: JSON.stringify(appId) }),
         },
         plugins: [
             gtkxGSettings(),

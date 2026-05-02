@@ -67,7 +67,7 @@ const voidT: Type = Object.freeze({ type: "void" });
 const unicharT: Type = Object.freeze({ type: "unichar" });
 
 const stringT = (ownership: Ownership = "borrowed", length?: number): Type =>
-    length !== undefined ? { type: "string", ownership, length } : { type: "string", ownership };
+    length === undefined ? { type: "string", ownership } : { type: "string", ownership, length };
 
 const objectT = (ownership: Ownership = "borrowed"): Type => ({ type: "gobject", ownership });
 
@@ -149,7 +149,7 @@ const slist = (itemType: Type, ownership: Ownership = "borrowed"): Type => array
 const ptrArray = (itemType: Type, ownership: Ownership = "borrowed"): Type => arrayT(itemType, "gptrarray", ownership);
 
 const gArray = (itemType: Type, ownership: Ownership = "borrowed", elementSize?: number): Type =>
-    arrayT(itemType, "garray", ownership, elementSize !== undefined ? { elementSize } : undefined);
+    arrayT(itemType, "garray", ownership, elementSize === undefined ? undefined : { elementSize });
 
 const byteArray = (ownership: Ownership = "borrowed"): Type => arrayT(uint8, "gbytearray", ownership);
 

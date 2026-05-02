@@ -109,7 +109,7 @@ export class JsxTypesGenerator {
             usedNamespaces.add(ns);
         }
 
-        const sorted = [...usedNamespaces].sort();
+        const sorted = [...usedNamespaces].sort((a, b) => a.localeCompare(b));
         for (const ns of sorted) {
             file.addTypeNamespaceImport(`@gtkx/ffi/${ns.toLowerCase()}`, ns);
         }

@@ -68,21 +68,21 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     private factory: Gtk.SignalListItemFactory | null = null;
     private headerFactory: Gtk.SignalListItemFactory | null = null;
     private listFactory: Gtk.SignalListItemFactory | null = null;
-    private containers = new Map<Gtk.Widget | Gtk.ListItem, number>();
-    private containerKeys = new Map<Gtk.Widget | Gtk.ListItem, string>();
-    private headerContainers = new Map<Gtk.ListHeader, number>();
-    private headerContainerKeys = new Map<Gtk.ListHeader, string>();
-    private listContainers = new Map<Gtk.ListItem, number>();
-    private listContainerKeys = new Map<Gtk.ListItem, string>();
-    private treeExpanders = new Map<Gtk.ListItem, Gtk.TreeExpander>();
+    private readonly containers = new Map<Gtk.Widget | Gtk.ListItem, number>();
+    private readonly containerKeys = new Map<Gtk.Widget | Gtk.ListItem, string>();
+    private readonly headerContainers = new Map<Gtk.ListHeader, number>();
+    private readonly headerContainerKeys = new Map<Gtk.ListHeader, string>();
+    private readonly listContainers = new Map<Gtk.ListItem, number>();
+    private readonly listContainerKeys = new Map<Gtk.ListItem, string>();
+    private readonly treeExpanders = new Map<Gtk.ListItem, Gtk.TreeExpander>();
     private disposed = false;
     private boundItemsUpdateScheduled = false;
     private syncScheduled = false;
-    private sectionModels: Gtk.StringList[] = [];
+    private readonly sectionModels: Gtk.StringList[] = [];
     private sectionStore: Gio.ListStore | null = null;
     private flattenModel: Gtk.FlattenListModel | null = null;
-    private treeChildModels = new Map<GObject.Object["handle"], Gtk.StringList>();
-    private queriedLeaves = new Set<GObject.Object["handle"]>();
+    private readonly treeChildModels = new Map<GObject.Object["handle"], Gtk.StringList>();
+    private readonly queriedLeaves = new Set<GObject.Object["handle"]>();
     private rootItemIds: string[] = [];
 
     public override isValidChild(child: Node): boolean {

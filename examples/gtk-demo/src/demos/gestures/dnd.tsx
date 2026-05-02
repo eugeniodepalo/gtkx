@@ -264,7 +264,7 @@ const DndDemo = ({ window }: DemoProps) => {
         const itemId = value.getString();
         if (itemId) {
             const r = itemRadii.current.get(itemId) ?? 0;
-            setItems((prev) => prev.map((item) => (item.id !== itemId ? item : { ...item, x: x - r, y: y - r })));
+            setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, x: x - r, y: y - r } : item)));
         }
         return true;
     }, []);

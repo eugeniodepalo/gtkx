@@ -14,10 +14,10 @@ import { WidgetNode } from "./widget.js";
 export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, WidgetNode, MenuNode> {
     private column: Gtk.ColumnViewColumn | null = null;
     private columnFactory: Gtk.SignalListItemFactory | null = null;
-    private containers = new Map<Gtk.ListItem, number>();
-    private containerKeys = new Map<Gtk.ListItem, string>();
-    private menu: MenuModel;
-    private actionGroup: Gio.SimpleActionGroup;
+    private readonly containers = new Map<Gtk.ListItem, number>();
+    private readonly containerKeys = new Map<Gtk.ListItem, string>();
+    private readonly menu: MenuModel;
+    private readonly actionGroup: Gio.SimpleActionGroup;
 
     constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);

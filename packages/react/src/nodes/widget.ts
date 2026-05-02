@@ -237,10 +237,10 @@ export class WidgetNode<
 
         const position = this.findAutowrappedPosition(before);
 
-        if (position !== null) {
-            container.insert(child.container, position);
-        } else {
+        if (position === null) {
             container.append(child.container);
+        } else {
+            container.insert(child.container, position);
         }
     }
 

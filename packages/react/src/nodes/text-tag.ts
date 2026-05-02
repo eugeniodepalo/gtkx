@@ -92,7 +92,7 @@ export class TextTagNode
 
     public override insertBefore(child: TextContentChild, before: TextContentChild): void {
         const beforeIndex = this.children.indexOf(before);
-        const insertIndex = beforeIndex !== -1 ? beforeIndex : this.children.length;
+        const insertIndex = beforeIndex === -1 ? this.children.length : beforeIndex;
 
         super.insertBefore(child, before);
 

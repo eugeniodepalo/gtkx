@@ -381,7 +381,7 @@ export class GirParser {
                 readable: prop["@_readable"] !== "0",
                 writable: prop["@_writable"] === "1",
                 constructOnly: prop["@_construct-only"] === "1",
-                defaultValueRaw: prop["@_default-value"] !== undefined ? String(prop["@_default-value"]) : undefined,
+                defaultValueRaw: prop["@_default-value"] === undefined ? undefined : String(prop["@_default-value"]),
                 getter,
                 setter,
                 doc: extractDoc(prop),
@@ -500,10 +500,10 @@ export class GirParser {
                 name: "array",
                 isArray: true,
                 elementType: typeNode.type ? this.parseType(typeNode.type as Record<string, unknown>) : undefined,
-                sizeParamIndex: typeNode["@_length"] !== undefined ? Number(typeNode["@_length"]) : undefined,
+                sizeParamIndex: typeNode["@_length"] === undefined ? undefined : Number(typeNode["@_length"]),
                 zeroTerminated:
-                    typeNode["@_zero-terminated"] !== undefined ? typeNode["@_zero-terminated"] !== "0" : undefined,
-                fixedSize: typeNode["@_fixed-size"] !== undefined ? Number(typeNode["@_fixed-size"]) : undefined,
+                    typeNode["@_zero-terminated"] === undefined ? undefined : typeNode["@_zero-terminated"] !== "0",
+                fixedSize: typeNode["@_fixed-size"] === undefined ? undefined : Number(typeNode["@_fixed-size"]),
             };
         }
 
