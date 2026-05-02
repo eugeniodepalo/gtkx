@@ -21,6 +21,11 @@ const forwardSignal = (child: ChildProcess, signal: NodeJS.Signals): void => {
     }
 };
 
+const exitCodeForSignal = (signal: NodeJS.Signals | null): number => {
+    if (!signal) return 0;
+    return signal === "SIGINT" ? 130 : 143;
+};
+
 const runDevSupervisor = async (entryPath: string): Promise<never> => {
     const runnerPath = fileURLToPath(DEV_RUNNER_URL);
     let child: ChildProcess | null = null;
@@ -36,7 +41,7 @@ const runDevSupervisor = async (entryPath: string): Promise<never> => {
                 launch();
                 return;
             }
-            process.exit(code ?? (signal ? 128 + (signal === "SIGINT" ? 2 : 15) : 0));
+            process.exit(code ?? exitCodeForSignal(signal));
         });
     };
 

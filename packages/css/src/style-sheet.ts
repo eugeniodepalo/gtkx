@@ -114,5 +114,7 @@ export class StyleSheet {
      * GTK applications. Provided so that consumers written for browser-based
      * style-sheet APIs can call it safely.
      */
-    hydrate(_elements: unknown[]): void {}
+    hydrate(_elements: unknown[]): void {
+        return;
+    }
 }

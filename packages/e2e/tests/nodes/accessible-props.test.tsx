@@ -38,17 +38,21 @@ describe("accessible props - GValue marshaling regression", () => {
     });
 
     it("sets accessibleLabelledBy (reference list) without crashing", async () => {
+        const entryRef = createRef<Gtk.Entry>();
+
         function App() {
             const [label, setLabel] = useState<Gtk.Label | null>(null);
             return (
                 <>
                     <GtkLabel ref={setLabel} label="Description" />
-                    <GtkEntry accessibleLabelledBy={label ? [label] : undefined} />
+                    <GtkEntry ref={entryRef} accessibleLabelledBy={label ? [label] : undefined} />
                 </>
             );
         }
 
         await render(<App />);
+
+        expect(entryRef.current).not.toBeNull();
     });
 
     it("updates a string accessible prop across renders without crashing", async () => {

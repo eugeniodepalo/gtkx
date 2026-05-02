@@ -1,5 +1,3 @@
-import "./refresh-runtime.js";
-
 import { resolve } from "node:path";
 import { events } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
@@ -90,7 +88,9 @@ const main = async (): Promise<void> => {
 
     events.on("stop", () => {
         stopMcpClient();
-        void server.close();
+        server.close().catch((error: unknown) => {
+            console.error("[gtkx-dev-runner] Error closing server:", error);
+        });
     });
 
     server.watcher.on("change", (changedPath) => {
@@ -114,7 +114,9 @@ const main = async (): Promise<void> => {
     log("HMR enabled - watching for changes...");
 };
 
-main().catch((error) => {
+try {
+    await main();
+} catch (error) {
     console.error("[gtkx-dev-runner] Fatal:", error);
     process.exit(1);
-});
+}

@@ -45,10 +45,10 @@ export const renderHook = async <Result, Props>(
     options?: RenderHookOptions<Props>,
 ): Promise<RenderHookResult<Result, Props>> => {
     const resultRef: { current: Result | undefined } = { current: undefined };
-    let currentProps: Props | undefined = options?.initialProps;
+    let currentProps = options?.initialProps as Props;
 
-    const TestComponent = ({ props }: { props: Props | undefined }): null => {
-        const result = callback(props as Props);
+    const TestComponent = ({ props }: { props: Props }): null => {
+        const result = callback(props);
         const ref = useRef(resultRef);
         ref.current.current = result;
         return null;
