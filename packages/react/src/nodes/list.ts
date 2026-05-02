@@ -934,13 +934,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const renderFn = renderItem ?? (this.isDropDown() ? (item: unknown) => String(item ?? "") : null);
 
         if (renderFn) {
-            this.collectContainerBoundItems(
-                this.containers,
-                this.containerKeys,
-                flatItems,
-                renderFn,
-                newBoundItems,
-            );
+            this.collectContainerBoundItems(this.containers, this.containerKeys, flatItems, renderFn, newBoundItems);
         }
 
         if (renderListItem && this.isDropDown()) {

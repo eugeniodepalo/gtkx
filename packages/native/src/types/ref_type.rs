@@ -147,17 +147,17 @@ impl RefType {
     fn decode_gobject_inner(
         gobject_type: &super::GObjectType,
         storage: &FfiStorage,
-    ) -> anyhow::Result<value::Value> {
+    ) -> value::Value {
         let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
         if actual_ptr.is_null() {
-            return Ok(value::Value::Null);
+            return value::Value::Null;
         }
         let object = if gobject_type.ownership.is_full() {
             unsafe { glib::Object::from_glib_full(actual_ptr as *mut glib::gobject_ffi::GObject) }
         } else {
             unsafe { glib::Object::from_glib_none(actual_ptr as *mut glib::gobject_ffi::GObject) }
         };
-        Ok(value::Value::Object(NativeValue::GObject(object).into()))
+        value::Value::Object(NativeValue::GObject(object).into())
     }
 
     fn decode_boxed_inner(
@@ -230,7 +230,7 @@ impl FfiDecoder for RefType {
         };
 
         match &*self.inner_type {
-            Type::GObject(gobject_type) => Self::decode_gobject_inner(gobject_type, storage),
+            Type::GObject(gobject_type) => Ok(Self::decode_gobject_inner(gobject_type, storage)),
             Type::Boxed(boxed_type) => Self::decode_boxed_inner(boxed_type, storage),
             Type::Fundamental(fundamental_type) => {
                 Self::decode_fundamental_inner(fundamental_type, storage)

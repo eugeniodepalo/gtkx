@@ -183,7 +183,7 @@ impl FfiStorage {
     }
 
     fn drop_string_glist(data: &StringGListData) {
-        if !(data.should_free && !data.list_ptr.is_null()) {
+        if !data.should_free || data.list_ptr.is_null() {
             return;
         }
         if data.elements_duped {
@@ -196,7 +196,7 @@ impl FfiStorage {
     }
 
     fn drop_string_gslist(data: &StringGSListData) {
-        if !(data.should_free && !data.list_ptr.is_null()) {
+        if !data.should_free || data.list_ptr.is_null() {
             return;
         }
         if data.elements_duped {
