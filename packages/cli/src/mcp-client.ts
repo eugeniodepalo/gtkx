@@ -335,6 +335,117 @@ class McpClient {
         }
     }
 
+    private async handleQuery(params: unknown, app: Gtk.Application): Promise<unknown> {
+        const testing = await loadTestingModule();
+        const p = params as { queryType: string; value: string | number; options?: Record<string, unknown> };
+        let widgets: Gtk.Widget[] = [];
+
+        switch (p.queryType) {
+            case "role": {
+                const roleValue =
+                    typeof p.value === "string"
+                        ? (Gtk.AccessibleRole[p.value as keyof typeof Gtk.AccessibleRole] as Gtk.AccessibleRole)
+                        : (p.value as Gtk.AccessibleRole);
+                widgets = await testing.findAllByRole(app, roleValue, p.options);
+                break;
+            }
+            case "text":
+                widgets = await testing.findAllByText(app, String(p.value), p.options);
+                break;
+            case "name":
+                widgets = await testing.findAllByName(app, String(p.value), p.options);
+                break;
+            case "labelText":
+                widgets = await testing.findAllByLabelText(app, String(p.value), p.options);
+                break;
+            default:
+                throw new Error(`Unknown query type: ${p.queryType}`);
+        }
+
+        return { widgets: widgets.map((w) => serializeWidget(w)) };
+    }
+
+    private async handleType(params: unknown): Promise<unknown> {
+        const testing = await loadTestingModule();
+        const p = params as { widgetId: string; text: string; clear?: boolean };
+        const widget = getWidgetById(p.widgetId);
+        if (!widget) {
+            throw widgetNotFoundError(p.widgetId);
+        }
+        if (p.clear) {
+            await testing.userEvent.clear(widget);
+        }
+        await testing.userEvent.type(widget, p.text);
+        return { success: true };
+    }
+
+    private buildSignalArgValue(arg: unknown): Value {
+        const isTypedArg = typeof arg === "object" && arg !== null && "type" in arg && "value" in arg;
+        const argType = isTypedArg ? (arg as { type: string }).type : typeof arg;
+        const argValue = isTypedArg ? (arg as { value: unknown }).value : arg;
+
+        switch (argType) {
+            case "boolean":
+                return Value.newFromBoolean(argValue as boolean);
+            case "int":
+                return Value.newFromInt(argValue as number);
+            case "uint":
+                return Value.newFromUint(argValue as number);
+            case "int64":
+                return Value.newFromInt64(argValue as number);
+            case "uint64":
+                return Value.newFromUint64(argValue as number);
+            case "float":
+                return Value.newFromFloat(argValue as number);
+            case "double":
+            case "number":
+                return Value.newFromDouble(argValue as number);
+            case "string":
+                return Value.newFromString(argValue as string | null);
+            default:
+                throw new McpError(McpErrorCode.INVALID_REQUEST, `Unknown argument type: ${argType}`);
+        }
+    }
+
+    private async handleFireEvent(params: unknown): Promise<unknown> {
+        const testing = await loadTestingModule();
+        const p = params as {
+            widgetId: string;
+            signal: string;
+            args?: (unknown | { type: string; value: unknown })[];
+        };
+        const widget = getWidgetById(p.widgetId);
+        if (!widget) {
+            throw widgetNotFoundError(p.widgetId);
+        }
+        const signalArgs = (p.args ?? []).map((arg) => this.buildSignalArgValue(arg));
+        await testing.fireEvent(widget, p.signal, ...signalArgs);
+        return { success: true };
+    }
+
+    private async handleScreenshot(params: unknown, app: Gtk.Application): Promise<unknown> {
+        const testing = await loadTestingModule();
+        const p = params as { windowId?: string };
+        const targetWindow = this.resolveTargetWindow(p.windowId, app);
+        const result = await testing.screenshot(targetWindow);
+        return { data: result.data, mimeType: result.mimeType };
+    }
+
+    private resolveTargetWindow(windowId: string | undefined, app: Gtk.Application): Gtk.Window {
+        if (windowId) {
+            const widget = getWidgetById(windowId);
+            if (!widget) {
+                throw widgetNotFoundError(windowId);
+            }
+            return widget as Gtk.Window;
+        }
+        const windows = app.getWindows();
+        if (windows.length === 0) {
+            throw new Error("No windows available for screenshot");
+        }
+        return windows[0] as Gtk.Window;
+    }
+
     private async executeMethod(method: IpcMethod, params: unknown): Promise<unknown> {
         const app = Gio.Application.getDefault() as Gtk.Application | null;
 
@@ -360,35 +471,8 @@ class McpClient {
                 return { tree: testing.prettyWidget(app, { includeIds: true, highlight: false }) };
             }
 
-            case "widget.query": {
-                const testing = await loadTestingModule();
-                const p = params as { queryType: string; value: string | number; options?: Record<string, unknown> };
-                let widgets: Gtk.Widget[] = [];
-
-                switch (p.queryType) {
-                    case "role": {
-                        const roleValue =
-                            typeof p.value === "string"
-                                ? (Gtk.AccessibleRole[p.value as keyof typeof Gtk.AccessibleRole] as Gtk.AccessibleRole)
-                                : (p.value as Gtk.AccessibleRole);
-                        widgets = await testing.findAllByRole(app, roleValue, p.options);
-                        break;
-                    }
-                    case "text":
-                        widgets = await testing.findAllByText(app, String(p.value), p.options);
-                        break;
-                    case "name":
-                        widgets = await testing.findAllByName(app, String(p.value), p.options);
-                        break;
-                    case "labelText":
-                        widgets = await testing.findAllByLabelText(app, String(p.value), p.options);
-                        break;
-                    default:
-                        throw new Error(`Unknown query type: ${p.queryType}`);
-                }
-
-                return { widgets: widgets.map((w) => serializeWidget(w)) };
-            }
+            case "widget.query":
+                return this.handleQuery(params, app);
 
             case "widget.getProps": {
                 const p = params as { widgetId: string };
@@ -410,85 +494,14 @@ class McpClient {
                 return { success: true };
             }
 
-            case "widget.type": {
-                const testing = await loadTestingModule();
-                const p = params as { widgetId: string; text: string; clear?: boolean };
-                const widget = getWidgetById(p.widgetId);
-                if (!widget) {
-                    throw widgetNotFoundError(p.widgetId);
-                }
-                if (p.clear) {
-                    await testing.userEvent.clear(widget);
-                }
-                await testing.userEvent.type(widget, p.text);
-                return { success: true };
-            }
+            case "widget.type":
+                return this.handleType(params);
 
-            case "widget.fireEvent": {
-                const testing = await loadTestingModule();
-                const p = params as {
-                    widgetId: string;
-                    signal: string;
-                    args?: (unknown | { type: string; value: unknown })[];
-                };
-                const widget = getWidgetById(p.widgetId);
-                if (!widget) {
-                    throw widgetNotFoundError(p.widgetId);
-                }
-                const signalArgs = (p.args ?? []).map((arg) => {
-                    const isTypedArg = typeof arg === "object" && arg !== null && "type" in arg && "value" in arg;
-                    const argType = isTypedArg ? (arg as { type: string }).type : typeof arg;
-                    const argValue = isTypedArg ? (arg as { value: unknown }).value : arg;
+            case "widget.fireEvent":
+                return this.handleFireEvent(params);
 
-                    switch (argType) {
-                        case "boolean":
-                            return Value.newFromBoolean(argValue as boolean);
-                        case "int":
-                            return Value.newFromInt(argValue as number);
-                        case "uint":
-                            return Value.newFromUint(argValue as number);
-                        case "int64":
-                            return Value.newFromInt64(argValue as number);
-                        case "uint64":
-                            return Value.newFromUint64(argValue as number);
-                        case "float":
-                            return Value.newFromFloat(argValue as number);
-                        case "double":
-                        case "number":
-                            return Value.newFromDouble(argValue as number);
-                        case "string":
-                            return Value.newFromString(argValue as string | null);
-                        default:
-                            throw new McpError(McpErrorCode.INVALID_REQUEST, `Unknown argument type: ${argType}`);
-                    }
-                });
-                await testing.fireEvent(widget, p.signal, ...signalArgs);
-                return { success: true };
-            }
-
-            case "widget.screenshot": {
-                const testing = await loadTestingModule();
-                const p = params as { windowId?: string };
-
-                let targetWindow: Gtk.Window;
-
-                if (p.windowId) {
-                    const widget = getWidgetById(p.windowId);
-                    if (!widget) {
-                        throw widgetNotFoundError(p.windowId);
-                    }
-                    targetWindow = widget as Gtk.Window;
-                } else {
-                    const windows = app.getWindows();
-                    if (windows.length === 0) {
-                        throw new Error("No windows available for screenshot");
-                    }
-                    targetWindow = windows[0] as Gtk.Window;
-                }
-
-                const result = await testing.screenshot(targetWindow);
-                return { data: result.data, mimeType: result.mimeType };
-            }
+            case "widget.screenshot":
+                return this.handleScreenshot(params, app);
 
             default:
                 throw methodNotFoundError(method);

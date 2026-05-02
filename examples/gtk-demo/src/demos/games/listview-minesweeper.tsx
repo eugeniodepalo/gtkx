@@ -20,9 +20,8 @@ interface Cell {
 
 type GameState = "playing" | "won" | "lost";
 
-const createBoard = (): Cell[] => {
+const createEmptyCells = (): Cell[] => {
     const cells: Cell[] = [];
-
     for (let row = 0; row < GRID_SIZE; row++) {
         for (let col = 0; col < GRID_SIZE; col++) {
             cells.push({
@@ -35,7 +34,10 @@ const createBoard = (): Cell[] => {
             });
         }
     }
+    return cells;
+};
 
+const placeMines = (cells: Cell[]): void => {
     let minesPlaced = 0;
     while (minesPlaced < MINE_COUNT) {
         const index = Math.floor(Math.random() * cells.length);
@@ -45,24 +47,28 @@ const createBoard = (): Cell[] => {
             minesPlaced++;
         }
     }
+};
 
-    for (const cell of cells) {
-        if (cell.isMine) continue;
-        let count = 0;
-        for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-                if (dr === 0 && dc === 0) continue;
-                const nr = cell.row + dr;
-                const nc = cell.col + dc;
-                if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
-                    const neighbor = cells[nr * GRID_SIZE + nc];
-                    if (neighbor?.isMine) count++;
-                }
-            }
+const countAdjacentMines = (cells: Cell[], cell: Cell): number => {
+    let count = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = cell.row + dr;
+            const nc = cell.col + dc;
+            if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
+            if (cells[nr * GRID_SIZE + nc]?.isMine) count++;
         }
-        cell.adjacentMines = count;
     }
+    return count;
+};
 
+const createBoard = (): Cell[] => {
+    const cells = createEmptyCells();
+    placeMines(cells);
+    for (const cell of cells) {
+        if (!cell.isMine) cell.adjacentMines = countAdjacentMines(cells, cell);
+    }
     return cells;
 };
 
