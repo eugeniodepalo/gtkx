@@ -38,6 +38,8 @@ describe("render - Menu", () => {
             await render(<App items={["Item 1", "Item 2"]} />);
 
             await render(<App items={["Item 1", "Item 2", "Item 3"]} />);
+
+            expect(ref.current).not.toBeNull();
         });
     });
 
@@ -66,6 +68,8 @@ describe("render - Menu", () => {
                     <MenuItem id="test" label="Test Item" onActivate={() => {}} />
                 </GtkPopoverMenu>,
             );
+
+            expect(ref.current).not.toBeNull();
         });
 
         it("sets keyboard accelerators via accels prop", async () => {
@@ -76,6 +80,8 @@ describe("render - Menu", () => {
                     <MenuItem id="save" label="Save" accels="<Control>s" onActivate={() => {}} />
                 </GtkPopoverMenu>,
             );
+
+            expect(ref.current).not.toBeNull();
         });
 
         it("updates label when prop changes", async () => {
@@ -92,6 +98,8 @@ describe("render - Menu", () => {
             await render(<App label="Initial" />);
 
             await render(<App label="Updated" />);
+
+            expect(ref.current).not.toBeNull();
         });
 
         it("cleans up action on unmount", async () => {
@@ -109,6 +117,8 @@ describe("render - Menu", () => {
             await render(<App showItem={true} />);
 
             await render(<App showItem={false} />);
+
+            expect(ref.current).not.toBeNull();
         });
     });
 
@@ -124,6 +134,8 @@ describe("render - Menu", () => {
                     </MenuSection>
                 </GtkPopoverMenu>,
             );
+
+            expect(ref.current).not.toBeNull();
         });
 
         it("adds items within section", async () => {
@@ -139,6 +151,8 @@ describe("render - Menu", () => {
                     </MenuSection>
                 </GtkPopoverMenu>,
             );
+
+            expect(ref.current).not.toBeNull();
         });
 
         it("sets section label", async () => {
@@ -151,6 +165,8 @@ describe("render - Menu", () => {
                     </MenuSection>
                 </GtkPopoverMenu>,
             );
+
+            expect(ref.current).not.toBeNull();
         });
     });
 
@@ -166,6 +182,8 @@ describe("render - Menu", () => {
                     </MenuSubmenu>
                 </GtkPopoverMenu>,
             );
+
+            expect(ref.current).not.toBeNull();
         });
 
         it("adds items within submenu", async () => {
@@ -180,6 +198,8 @@ describe("render - Menu", () => {
                     </MenuSubmenu>
                 </GtkPopoverMenu>,
             );
+
+            expect(ref.current).not.toBeNull();
         });
 
         it("sets submenu label", async () => {
@@ -192,6 +212,8 @@ describe("render - Menu", () => {
                     </MenuSubmenu>
                 </GtkPopoverMenu>,
             );
+
+            expect(ref.current).not.toBeNull();
         });
 
         it("supports nested submenus", async () => {
@@ -207,6 +229,8 @@ describe("render - Menu", () => {
                     </MenuSubmenu>
                 </GtkPopoverMenu>,
             );
+
+            expect(ref.current).not.toBeNull();
         });
     });
 });

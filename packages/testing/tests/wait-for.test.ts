@@ -123,7 +123,9 @@ describe("waitForElementToBeRemoved", () => {
             hasParent = false;
         }, 50);
 
-        await waitForElementToBeRemoved(element as never, { timeout: 500, interval: 10 });
+        await expect(
+            waitForElementToBeRemoved(element as never, { timeout: 500, interval: 10 }),
+        ).resolves.toBeUndefined();
     });
 
     it("resolves when callback returns null", async () => {
@@ -133,7 +135,9 @@ describe("waitForElementToBeRemoved", () => {
             element = null;
         }, 50);
 
-        await waitForElementToBeRemoved(() => element as never, { timeout: 500, interval: 10 });
+        await expect(
+            waitForElementToBeRemoved(() => element as never, { timeout: 500, interval: 10 }),
+        ).resolves.toBeUndefined();
     });
 
     it("times out if element is never removed", async () => {
@@ -169,6 +173,8 @@ describe("waitForElementToBeRemoved", () => {
             shouldThrow = true;
         }, 50);
 
-        await waitForElementToBeRemoved(element as never, { timeout: 500, interval: 10 });
+        await expect(
+            waitForElementToBeRemoved(element as never, { timeout: 500, interval: 10 }),
+        ).resolves.toBeUndefined();
     });
 });

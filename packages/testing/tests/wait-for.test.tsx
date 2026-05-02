@@ -115,7 +115,7 @@ describe("waitForElementToBeRemoved", () => {
         const removalPromise = waitForElementToBeRemoved(tempButton);
         await userEvent.click(removeButton);
 
-        await removalPromise;
+        await expect(removalPromise).resolves.toBeUndefined();
     });
 
     it("accepts callback that returns element", async () => {
@@ -145,7 +145,7 @@ describe("waitForElementToBeRemoved", () => {
         });
 
         await userEvent.click(removeButton);
-        await removalPromise;
+        await expect(removalPromise).resolves.toBeUndefined();
     });
 
     it("respects custom timeout", async () => {

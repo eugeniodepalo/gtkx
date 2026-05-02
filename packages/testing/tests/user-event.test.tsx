@@ -156,6 +156,9 @@ describe("userEvent.tab", () => {
         const first = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
         first.grabFocus();
         await userEvent.tab(first);
+
+        const second = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
+        expect(second.hasFocus()).toBe(true);
     });
 
     it("moves focus backward with shift option", async () => {
@@ -169,6 +172,9 @@ describe("userEvent.tab", () => {
         const second = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
         second.grabFocus();
         await userEvent.tab(second, { shift: true });
+
+        const first = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
+        expect(first.hasFocus()).toBe(true);
     });
 });
 
@@ -186,6 +192,7 @@ describe("userEvent.selectOptions", () => {
 
         const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
         await userEvent.selectOptions(dropdown, 1);
+        expect((dropdown as Gtk.DropDown).getSelected()).toBe(1);
     });
 
     it("selects row in list box by index", async () => {
@@ -198,6 +205,7 @@ describe("userEvent.selectOptions", () => {
 
         const listBox = await screen.findByRole(Gtk.AccessibleRole.LIST);
         await userEvent.selectOptions(listBox, 0);
+        expect((listBox as Gtk.ListBox).getSelectedRow()).not.toBeNull();
     });
 
     describe("error handling", () => {
@@ -240,6 +248,7 @@ describe("userEvent.deselectOptions", () => {
         const listBox = await screen.findByRole(Gtk.AccessibleRole.LIST);
         await userEvent.selectOptions(listBox, [0, 1]);
         await userEvent.deselectOptions(listBox, 0);
+        expect((listBox as Gtk.ListBox).getSelectedRows()).toHaveLength(1);
     });
 
     describe("error handling", () => {

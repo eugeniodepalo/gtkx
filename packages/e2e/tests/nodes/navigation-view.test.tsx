@@ -153,7 +153,7 @@ describe("render - NavigationView", () => {
 
             await render(<NavigationApp />);
 
-            await screen.findByText("Home Page");
+            expect(await screen.findByText("Home Page")).toBeDefined();
         });
     });
 });

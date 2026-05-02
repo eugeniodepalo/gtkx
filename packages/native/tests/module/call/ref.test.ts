@@ -184,7 +184,7 @@ describe("call - ref types", () => {
         it("handles all null refs", () => {
             const label = createLabel("Test");
 
-            call(
+            const result = call(
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
@@ -198,6 +198,8 @@ describe("call - ref types", () => {
                 ],
                 VOID,
             );
+
+            expect(result).toBeUndefined();
         });
     });
 

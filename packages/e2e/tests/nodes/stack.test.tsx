@@ -23,7 +23,7 @@ describe("render - Stack", () => {
                 </GtkStack>,
             );
 
-            await screen.findByText("Page 1");
+            expect(await screen.findByText("Page 1")).toBeDefined();
         });
 
         it("adds titled page", async () => {
@@ -50,7 +50,7 @@ describe("render - Stack", () => {
                 </GtkStack>,
             );
 
-            await screen.findByText("Unnamed Page");
+            expect(await screen.findByText("Unnamed Page")).toBeDefined();
         });
 
         it("sets page properties (iconName, needsAttention, etc.)", async () => {

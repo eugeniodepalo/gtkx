@@ -17,6 +17,7 @@ describe("registerNativeClass", () => {
             static objectType = "gobject" as const;
         }
         registerNativeClass(TestClass as NativeClass);
+        expect(findNativeClass("TestType")).toBe(TestClass);
     });
 
     it("allows getNativeObject to find registered types", () => {

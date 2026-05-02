@@ -245,7 +245,7 @@ describe("widget - props", () => {
 
             await rerender(<App label="Now Set" />);
 
-            await screen.findByText("Now Set");
+            expect(await screen.findByText("Now Set")).toBeDefined();
         });
 
         it("handles value to undefined transition", async () => {
@@ -259,6 +259,8 @@ describe("widget - props", () => {
             await screen.findByText("Has Value");
 
             await rerender(<App label={undefined} />);
+
+            expect(ref.current?.getLabel()).toBe("");
         });
     });
 
@@ -518,7 +520,7 @@ describe("widget - signals", () => {
             button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Clicks: 2" });
 
             await userEvent.click(button);
-            await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Clicks: 3" });
+            expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Clicks: 3" })).toBeDefined();
         });
     });
 

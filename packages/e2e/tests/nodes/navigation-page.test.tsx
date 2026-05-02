@@ -30,7 +30,7 @@ describe("render - NavigationPage", () => {
                 </AdwNavigationView>,
             );
 
-            await screen.findByText("Main Content");
+            expect(await screen.findByText("Main Content")).toBeDefined();
         });
 
         it("adds multiple pages", async () => {

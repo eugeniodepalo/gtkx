@@ -178,6 +178,8 @@ describe("render - ListView", () => {
                     <GtkListView items={[{ id: "1", value: { name: "Test Item" } }]} renderItem={renderItem} />
                 </ScrollWrapper>,
             );
+
+            expect(renderItem).toHaveBeenCalledWith({ name: "Test Item" });
         });
 
         it("updates when renderItem function changes", async () => {
@@ -195,6 +197,8 @@ describe("render - ListView", () => {
             await render(<App prefix="First" />);
 
             await render(<App prefix="Second" />);
+
+            expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
         });
     });
 
@@ -212,6 +216,8 @@ describe("render - ListView", () => {
                     />
                 </ScrollWrapper>,
             );
+
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
 
         it("calls onSelectionChanged when selection changes", async () => {
@@ -282,6 +288,8 @@ describe("render - ListView", () => {
             await render(<App selected={["1"]} />);
 
             await render(<App selected={[]} />);
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
         });
     });
 
@@ -299,6 +307,9 @@ describe("render - ListView", () => {
                     />
                 </ScrollWrapper>,
             );
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
 
         it("sets multiple selected items", async () => {
@@ -316,6 +327,9 @@ describe("render - ListView", () => {
                     />
                 </ScrollWrapper>,
             );
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Third")).toHaveLength(1);
         });
 
         it("calls onSelectionChanged with array of ids", async () => {
@@ -1036,6 +1050,8 @@ describe("render - ListView (tree)", () => {
             await render(<App itemName="Initial" />);
 
             await render(<App itemName="Updated" />);
+
+            expect(screen.queryAllByText("Updated")).toHaveLength(1);
         });
     });
 
@@ -1048,6 +1064,8 @@ describe("render - ListView (tree)", () => {
                     <GtkListView items={[{ id: "1", value: { name: "Test Item" } }]} renderItem={renderItem} />
                 </ScrollWrapper>,
             );
+
+            expect(renderItem).toHaveBeenCalled();
         });
 
         it("receives TreeListRow in renderItem", async () => {
@@ -1070,6 +1088,8 @@ describe("render - ListView (tree)", () => {
                     />
                 </ScrollWrapper>,
             );
+
+            expect(screen.queryAllByText("Parent - depth: 0")).toHaveLength(1);
         });
 
         it("updates when renderItem function changes", async () => {
@@ -1087,6 +1107,8 @@ describe("render - ListView (tree)", () => {
             await render(<App prefix="First" />);
 
             await render(<App prefix="Second" />);
+
+            expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
         });
     });
 
@@ -1314,6 +1336,8 @@ describe("render - ListView (tree)", () => {
             await render(<App selected={["1"]} />);
 
             await render(<App selected={[]} />);
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
         });
 
         it("selects correct child item after scrolling to bottom of expanded tree", async () => {
@@ -1487,6 +1511,9 @@ describe("render - ListView (tree)", () => {
                     />
                 </ScrollWrapper>,
             );
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
 
         it("sets multiple selected items", async () => {
@@ -1504,6 +1531,9 @@ describe("render - ListView (tree)", () => {
                     />
                 </ScrollWrapper>,
             );
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Third")).toHaveLength(1);
         });
 
         it("calls onSelectionChanged with array of ids", async () => {

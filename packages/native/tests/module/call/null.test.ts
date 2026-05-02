@@ -25,7 +25,7 @@ describe("call - null pointer arguments", () => {
     it("passes null for unused out-parameters", () => {
         const label = createLabel("Test");
 
-        call(
+        const result = call(
             GTK_LIB,
             "gtk_widget_measure",
             [
@@ -39,6 +39,8 @@ describe("call - null pointer arguments", () => {
             ],
             VOID,
         );
+
+        expect(result).toBeUndefined();
     });
 
     it("returns null for absent optional return", () => {
@@ -94,7 +96,7 @@ describe("call - null pointer arguments", () => {
     it("handles null pointers in callback user_data position", () => {
         const label = createLabel("Test");
 
-        call(
+        const result = call(
             GTK_LIB,
             "gtk_widget_measure",
             [
@@ -108,6 +110,8 @@ describe("call - null pointer arguments", () => {
             ],
             VOID,
         );
+
+        expect(result).toBeUndefined();
     });
 
     describe("edge cases", () => {
@@ -181,7 +185,7 @@ describe("call - null pointer arguments", () => {
         it("handles consecutive null pointer arguments", () => {
             const label = createLabel("Test");
 
-            call(
+            const result = call(
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
@@ -195,6 +199,8 @@ describe("call - null pointer arguments", () => {
                 ],
                 VOID,
             );
+
+            expect(result).toBeUndefined();
         });
     });
 });

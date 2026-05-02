@@ -155,6 +155,9 @@ describe("host-config - children", () => {
             const { rerender } = await render(<App windows={["First"]} />, { wrapper: false });
 
             await rerender(<App windows={["Second", "First"]} />);
+
+            expect(window1Ref.current).not.toBeNull();
+            expect(window2Ref.current).not.toBeNull();
         });
     });
 
@@ -277,11 +280,11 @@ describe("host-config - text instances", () => {
 
         const { rerender } = await render(<App text="Initial" />);
 
-        await screen.findByText("Initial");
+        expect(await screen.findByText("Initial")).toBeDefined();
 
         await rerender(<App text="Updated" />);
 
-        await screen.findByText("Updated");
+        expect(await screen.findByText("Updated")).toBeDefined();
     });
 
     it("handles empty string", async () => {

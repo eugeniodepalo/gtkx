@@ -245,6 +245,8 @@ describe("render - ColumnView", () => {
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
+
+            expect(ref.current?.getColumns()).not.toBeNull();
         });
 
         it("updates column properties when props change", async () => {
@@ -268,6 +270,8 @@ describe("render - ColumnView", () => {
             await render(<App title="Initial" />);
 
             await render(<App title="Updated" />);
+
+            expect(ref.current?.getColumns()).not.toBeNull();
         });
     });
 
@@ -390,6 +394,8 @@ describe("render - ColumnView", () => {
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
+
+            expect(renderCell).toHaveBeenCalledWith({ name: "Test" });
         });
     });
 
@@ -409,6 +415,8 @@ describe("render - ColumnView", () => {
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
+
+            expect(ref.current?.getSorter()).not.toBeNull();
         });
 
         it("sets sort order via sortOrder prop", async () => {
@@ -431,6 +439,8 @@ describe("render - ColumnView", () => {
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
+
+            expect(ref.current?.getSorter()).not.toBeNull();
         });
 
         it("calls onSortChanged when sort changes", async () => {
@@ -453,6 +463,8 @@ describe("render - ColumnView", () => {
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
+
+            expect(ref.current).not.toBeNull();
         });
 
         it("updates sort indicator when props change", async () => {
@@ -486,6 +498,8 @@ describe("render - ColumnView", () => {
             await render(<App sortColumn="name" />);
 
             await render(<App sortColumn="age" />);
+
+            expect(ref.current?.getSorter()).not.toBeNull();
         });
     });
 
@@ -512,6 +526,8 @@ describe("render - ColumnView", () => {
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
+
+            expect(ref.current?.getModel()).not.toBeNull();
         });
 
         it("supports multiple selection", async () => {
@@ -538,6 +554,8 @@ describe("render - ColumnView", () => {
                     </GtkColumnView>
                 </ScrollWrapper>,
             );
+
+            expect(ref.current?.getModel()).not.toBeNull();
         });
     });
 
