@@ -163,7 +163,7 @@ export class FfiMapper {
         const elementTransferOwnership = this.deriveElementTransfer(type.transferOwnership ?? parentTransferOwnership);
         const elementResult = this.mapType(type.elementType, isReturn, elementTransferOwnership, sizeParamOffset);
         imports.push(...elementResult.imports);
-        const elementSize = STRUCT_ELEMENT_SIZES.get(type.elementType.name);
+        const elementSize = this.resolveInlineElementSize(type.elementType);
 
         return {
             ts: `${elementResult.ts}[]`,
@@ -824,6 +824,20 @@ export class FfiMapper {
             : ptrArrayType(FFI_POINTER, transferFull);
 
         return { ts: "unknown[]", ffi: fallbackFfi, imports };
+    }
+
+    private resolveInlineElementSize(elementType: GirType): number | undefined {
+        const known = STRUCT_ELEMENT_SIZES.get(elementType.name);
+        if (known !== undefined) return known;
+
+        if (elementType.cType?.includes("*")) return undefined;
+
+        const qualified = elementType.name?.includes(".")
+            ? splitQualifiedName(elementType.name)
+            : { namespace: this.currentNamespace, name: elementType.name as string };
+        if (!qualified.name) return undefined;
+
+        return this.calculateRecordSize(qualified.name, qualified.namespace);
     }
 
     private calculateRecordSize(name: string, namespace: string): number | undefined {

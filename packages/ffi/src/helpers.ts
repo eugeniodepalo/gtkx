@@ -153,11 +153,15 @@ const gArray = (itemType: Type, ownership: Ownership = "borrowed", elementSize?:
 
 const byteArray = (ownership: Ownership = "borrowed"): Type => arrayT(uint8, "gbytearray", ownership);
 
-const sizedArray = (itemType: Type, sizeParamIndex: number, ownership: Ownership = "borrowed"): Type =>
-    arrayT(itemType, "sized", ownership, { sizeParamIndex });
+const sizedArray = (
+    itemType: Type,
+    sizeParamIndex: number,
+    ownership: Ownership = "borrowed",
+    elementSize?: number,
+): Type => arrayT(itemType, "sized", ownership, { sizeParamIndex, elementSize });
 
-const fixedArray = (itemType: Type, fixedSize: number, ownership: Ownership = "borrowed"): Type =>
-    arrayT(itemType, "fixed", ownership, { fixedSize });
+const fixedArray = (itemType: Type, fixedSize: number, ownership: Ownership = "borrowed", elementSize?: number): Type =>
+    arrayT(itemType, "fixed", ownership, { fixedSize, elementSize });
 
 const callbackT = (argTypes: Type[], returnType: Type): Type => ({
     type: "callback",

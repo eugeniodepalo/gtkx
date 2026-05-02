@@ -198,12 +198,20 @@ function writeArrayExpression(writer: Writer, descriptor: FfiTypeDescriptor): vo
         case "sized":
             writer.write("t.sizedArray(");
             writeFfiTypeExpression(writer, item);
-            writer.write(`, ${descriptor.sizeParamIndex ?? 0}, ${own})`);
+            writer.write(`, ${descriptor.sizeParamIndex ?? 0}, ${own}`);
+            if (descriptor.elementSize !== undefined) {
+                writer.write(`, ${descriptor.elementSize}`);
+            }
+            writer.write(")");
             return;
         case "fixed":
             writer.write("t.fixedArray(");
             writeFfiTypeExpression(writer, item);
-            writer.write(`, ${descriptor.fixedSize ?? 0}, ${own})`);
+            writer.write(`, ${descriptor.fixedSize ?? 0}, ${own}`);
+            if (descriptor.elementSize !== undefined) {
+                writer.write(`, ${descriptor.elementSize}`);
+            }
+            writer.write(")");
             return;
         default:
             writer.write("t.array(");
