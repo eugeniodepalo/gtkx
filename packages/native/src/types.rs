@@ -180,7 +180,6 @@ impl std::str::FromStr for Ownership {
 }
 
 #[enum_dispatch]
-#[allow(clippy::wrong_self_convention)]
 pub trait FfiEncoder {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue>;
 

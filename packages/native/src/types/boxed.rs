@@ -113,7 +113,6 @@ impl FfiEncoder for BoxedType {
         Ok(ffi::FfiValue::Ptr(ptr))
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         if self.ownership.is_full()
             && !ptr.is_null()

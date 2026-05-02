@@ -432,15 +432,10 @@ fn try_from_array_boolean() {
 }
 
 #[test]
-#[allow(clippy::similar_names)]
 fn value_as_ptr_integer_types_fail() {
-    let val_u8 = FfiValue::U8(42);
-    let val_i32 = FfiValue::I32(-100);
-    let val_u64 = FfiValue::U64(999);
-
-    assert!(val_u8.as_ptr("test").is_err());
-    assert!(val_i32.as_ptr("test").is_err());
-    assert!(val_u64.as_ptr("test").is_err());
+    assert!(FfiValue::U8(42).as_ptr("test").is_err());
+    assert!(FfiValue::I32(-100).as_ptr("test").is_err());
+    assert!(FfiValue::U64(999).as_ptr("test").is_err());
 }
 
 #[test]
