@@ -26,8 +26,8 @@ const DOUBLE_REF = t.ref(DOUBLE_TYPE);
  * Calls a Cairo function returning two `double*` out-params and yields `{ x, y }`.
  */
 export const callGetXY = (fnName: string, selfArg: Arg): { x: number; y: number } => {
-    const xRef = createRef(0.0);
-    const yRef = createRef(0.0);
+    const xRef = createRef(0);
+    const yRef = createRef(0);
     call(LIB, fnName, [selfArg, { type: DOUBLE_REF, value: xRef }, { type: DOUBLE_REF, value: yRef }], t.void);
     return { x: xRef.value, y: yRef.value };
 };

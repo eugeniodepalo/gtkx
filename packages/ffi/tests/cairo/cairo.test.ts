@@ -257,6 +257,7 @@ describe("Context", () => {
             ctx.moveTo(0, 0);
             ctx.lineTo(100, 100);
             ctx.stroke();
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("strokes preserving the path", () => {
@@ -264,28 +265,33 @@ describe("Context", () => {
             ctx.moveTo(0, 0);
             ctx.lineTo(100, 100);
             ctx.strokePreserve();
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("fills the current path", () => {
             const ctx = createTestContext();
             ctx.rectangle(0, 0, 100, 100);
             ctx.fill();
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("fills preserving the path", () => {
             const ctx = createTestContext();
             ctx.rectangle(0, 0, 100, 100);
             ctx.fillPreserve();
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("paints the entire surface", () => {
             const ctx = createTestContext();
             ctx.paint();
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("paints with alpha", () => {
             const ctx = createTestContext();
             ctx.paintWithAlpha(0.5);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
     });
 
@@ -294,29 +300,34 @@ describe("Context", () => {
             const ctx = createTestContext();
             ctx.rectangle(10, 10, 80, 80);
             ctx.clip();
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("clips preserving the path", () => {
             const ctx = createTestContext();
             ctx.rectangle(10, 10, 80, 80);
             ctx.clipPreserve();
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("resets the clip region", () => {
             const ctx = createTestContext();
             ctx.resetClip();
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
     });
 
     describe("source color", () => {
         it("sets source RGB", () => {
             const ctx = createTestContext();
-            ctx.setSourceRgb(1.0, 0.0, 0.0);
+            ctx.setSourceRgb(1, 0, 0);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("sets source RGBA", () => {
             const ctx = createTestContext();
-            ctx.setSourceRgba(1.0, 0.0, 0.0, 0.5);
+            ctx.setSourceRgba(1, 0, 0, 0.5);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("sets a pattern as source", () => {
@@ -325,6 +336,7 @@ describe("Context", () => {
             pattern.addColorStopRgb(0, 1, 0, 0);
             pattern.addColorStopRgb(1, 0, 0, 1);
             ctx.setSource(pattern);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
     });
 
@@ -350,6 +362,7 @@ describe("Context", () => {
         it("sets dash pattern", () => {
             const ctx = createTestContext();
             ctx.setDash([5, 3], 0);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("gets dash count and dash values", () => {
@@ -409,16 +422,19 @@ describe("Context", () => {
         it("translates the coordinate system", () => {
             const ctx = createTestContext();
             ctx.translate(50, 50);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("scales the coordinate system", () => {
             const ctx = createTestContext();
             ctx.scale(2, 2);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("rotates the coordinate system", () => {
             const ctx = createTestContext();
             ctx.rotate(Math.PI / 4);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
     });
 
@@ -434,11 +450,13 @@ describe("Context", () => {
         it("selects a font face", () => {
             const ctx = createTestContext();
             ctx.selectFontFace("Sans", 0, 0);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("sets font size", () => {
             const ctx = createTestContext();
             ctx.setFontSize(14);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("shows text", () => {
@@ -447,6 +465,7 @@ describe("Context", () => {
             ctx.setFontSize(14);
             ctx.moveTo(10, 50);
             ctx.showText("Hello");
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("adds text to path", () => {
@@ -455,6 +474,7 @@ describe("Context", () => {
             ctx.setFontSize(14);
             ctx.moveTo(10, 50);
             ctx.textPath("Hello");
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("measures text extents", () => {
@@ -505,11 +525,13 @@ describe("Context", () => {
         it("shows a page", () => {
             const ctx = createTestContext();
             ctx.showPage();
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("copies a page", () => {
             const ctx = createTestContext();
             ctx.copyPage();
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
     });
 
@@ -525,6 +547,7 @@ describe("Context", () => {
             const surface = createTestSurface();
             const ctx = new Context(surface);
             ctx.setSourceSurface(surface, 0, 0);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
     });
 
@@ -599,6 +622,7 @@ describe("Context", () => {
             ctx.setSourceRgb(1, 0, 0);
             const pattern = new SolidPattern(0, 0, 0, 0.5);
             ctx.mask(pattern);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("masks with a surface", () => {
@@ -607,6 +631,7 @@ describe("Context", () => {
             ctx.setSourceRgb(1, 0, 0);
             const maskSurf = surface.createSimilar("ALPHA", 100, 100);
             ctx.maskSurface(maskSurf, 0, 0);
+            expect(ctx.status()).toBe(Status.SUCCESS);
         });
     });
 
@@ -725,6 +750,7 @@ describe("Pattern", () => {
         it("adds an RGB color stop to a gradient", () => {
             const pattern = new LinearPattern(0, 0, 100, 0);
             pattern.addColorStopRgb(0, 1, 0, 0);
+            expect(pattern.status()).toBe(Status.SUCCESS);
         });
     });
 
@@ -732,6 +758,7 @@ describe("Pattern", () => {
         it("adds an RGBA color stop to a gradient", () => {
             const pattern = new LinearPattern(0, 0, 100, 0);
             pattern.addColorStopRgba(0.5, 0, 1, 0, 0.5);
+            expect(pattern.status()).toBe(Status.SUCCESS);
         });
     });
 

@@ -1110,8 +1110,7 @@ const SHADER_PRESETS = [
 ];
 
 const QUAD_VERTICES = [
-    -1.0, -1.0, 0.0, 1.0, -1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, -1.0, -1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, -1.0,
-    0.0, 1.0,
+    -1, -1, 0, 1, -1, 1, 0, 1, 1, 1, 0, 1, -1, -1, 0, 1, 1, 1, 0, 1, 1, -1, 0, 1,
 ];
 
 interface GLState {
@@ -1148,7 +1147,7 @@ const ShaderPreview = ({ shaderCode }: { shaderCode: string }) => {
         mouse: [0, 0, 0, 0],
     });
     const tickIdRef = useRef<number | null>(null);
-    const resolutionRef = useRef<[number, number, number]>([64, 36, 1.0]);
+    const resolutionRef = useRef<[number, number, number]>([64, 36, 1]);
 
     const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
         const anim = animRef.current;
@@ -1283,7 +1282,7 @@ const ShaderPreview = ({ shaderCode }: { shaderCode: string }) => {
     );
 
     const handleResize = useCallback((width: number, height: number) => {
-        resolutionRef.current = [width, height, 1.0];
+        resolutionRef.current = [width, height, 1];
         gl.viewport(0, 0, width, height);
     }, []);
 
@@ -1305,7 +1304,7 @@ const ShadertoyDemo = () => {
     const glStateRef = useRef<GLState | null>(null);
     const sourceViewRef = useRef<GtkSource.View | null>(null);
     const [compiledCode, setCompiledCode] = useState(ALIEN_PLANET_SHADER);
-    const [resolution, setResolution] = useState<[number, number, number]>([400, 300, 1.0]);
+    const [resolution, setResolution] = useState<[number, number, number]>([400, 300, 1]);
     const animRef = useRef<AnimState>({
         firstFrameTime: 0,
         firstFrame: 0,
@@ -1516,7 +1515,7 @@ const ShadertoyDemo = () => {
     );
 
     const handleResize = useCallback((width: number, height: number) => {
-        setResolution([width, height, 1.0]);
+        setResolution([width, height, 1]);
         gl.viewport(0, 0, width, height);
     }, []);
 

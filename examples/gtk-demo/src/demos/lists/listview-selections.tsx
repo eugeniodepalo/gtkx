@@ -188,7 +188,7 @@ const TimesDropDown = () => {
             renderListItem={(label: string) => (
                 <GtkBox spacing={10}>
                     <GtkLabel label={label} xalign={0} hexpand />
-                    <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1.0 : 0.0} />
+                    <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
                 </GtkBox>
             )}
             items={times.map((t) => ({ id: t, value: t }))}
@@ -207,7 +207,7 @@ const TimesSectionedDropDown = () => {
             renderListItem={(label: string) => (
                 <GtkBox spacing={10}>
                     <GtkLabel label={label} xalign={0} hexpand />
-                    <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1.0 : 0.0} />
+                    <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
                 </GtkBox>
             )}
             renderHeader={(value: string) => (
@@ -268,7 +268,7 @@ const DevicesDropDown = () => {
                             <GtkLabel label={device.title} xalign={0} />
                             <GtkLabel label={device.description} xalign={0} cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1.0 : 0.0} />
+                        <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
                     </GtkBox>
                 );
             }}

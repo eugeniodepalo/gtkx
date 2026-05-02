@@ -75,7 +75,7 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
 
             const surface = renderSvgToSurface(filePath, width, height);
             if (!surface) {
-                cr.setSourceRgba(238 / 255, 106 / 255, 167 / 255, 1.0);
+                cr.setSourceRgba(238 / 255, 106 / 255, 167 / 255, 1);
                 cr.rectangle(0, 0, width, height);
                 cr.fill();
                 return;

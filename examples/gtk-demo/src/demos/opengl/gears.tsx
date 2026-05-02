@@ -213,7 +213,7 @@ function mat4Rotate(m: number[], angle: number, x: number, y: number, z: number)
 }
 
 function mat4Perspective(fovy: number, aspect: number, zNear: number, zFar: number): number[] {
-    const f = 1.0 / Math.tan(fovy / 2);
+    const f = 1 / Math.tan(fovy / 2);
     const dz = zFar - zNear;
     return [f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, -(zFar + zNear) / dz, -1, 0, 0, (-2 * zNear * zFar) / dz, 0];
 }
@@ -262,15 +262,15 @@ interface GLState {
 }
 
 const GEAR_COLORS = [
-    [0.8, 0.1, 0.0, 1.0],
-    [0.0, 0.8, 0.2, 1.0],
-    [0.2, 0.2, 1.0, 1.0],
+    [0.8, 0.1, 0, 1],
+    [0, 0.8, 0.2, 1],
+    [0.2, 0.2, 1, 1],
 ];
 
 const GEAR_PARAMS = [
-    { inner: 1.0, outer: 4.0, width: 1.0, teeth: 20, depth: 0.7 },
-    { inner: 0.5, outer: 2.0, width: 2.0, teeth: 10, depth: 0.7 },
-    { inner: 1.3, outer: 2.0, width: 0.5, teeth: 10, depth: 0.7 },
+    { inner: 1, outer: 4, width: 1, teeth: 20, depth: 0.7 },
+    { inner: 0.5, outer: 2, width: 2, teeth: 10, depth: 0.7 },
+    { inner: 1.3, outer: 2, width: 0.5, teeth: 10, depth: 0.7 },
 ];
 
 function initGL(): GLState {
@@ -301,7 +301,7 @@ function initGL(): GLState {
         materialColor: gl.getUniformLocation(program, "MaterialColor"),
     };
 
-    gl.uniform4f(uniforms.lightSourcePosition, 5.0, 5.0, 10.0, 1.0);
+    gl.uniform4f(uniforms.lightSourcePosition, 5, 5, 10, 1);
 
     const vao = gl.genVertexArray();
     gl.bindVertexArray(vao);
@@ -491,7 +491,7 @@ const GearsDemo = () => {
         const width = self.getAllocatedWidth() * scale;
         const height = self.getAllocatedHeight() * scale;
 
-        const projection = mat4Perspective(Math.PI / 3, width / height, 1.0, 1024.0);
+        const projection = mat4Perspective(Math.PI / 3, width / height, 1, 1024);
         gl.viewport(0, 0, width, height);
 
         gl.clearColor(0, 0, 0, 0);
@@ -514,21 +514,21 @@ const GearsDemo = () => {
         const vbo0 = state.gearVbos[0];
         const color0 = GEAR_COLORS[0];
         if (gear0 !== undefined && vbo0 !== undefined && color0) {
-            drawGear(state.uniforms, projection, transform, gear0, vbo0, -3.0, -2.0, angle, color0);
+            drawGear(state.uniforms, projection, transform, gear0, vbo0, -3, -2, angle, color0);
         }
 
         const gear1 = state.gearGeoms[1];
         const vbo1 = state.gearVbos[1];
         const color1 = GEAR_COLORS[1];
         if (gear1 !== undefined && vbo1 !== undefined && color1) {
-            drawGear(state.uniforms, projection, transform, gear1, vbo1, 3.1, -2.0, -2 * angle - 9.0, color1);
+            drawGear(state.uniforms, projection, transform, gear1, vbo1, 3.1, -2, -2 * angle - 9, color1);
         }
 
         const gear2 = state.gearGeoms[2];
         const vbo2 = state.gearVbos[2];
         const color2 = GEAR_COLORS[2];
         if (gear2 !== undefined && vbo2 !== undefined && color2) {
-            drawGear(state.uniforms, projection, transform, gear2, vbo2, -3.1, 4.2, -2 * angle - 25.0, color2);
+            drawGear(state.uniforms, projection, transform, gear2, vbo2, -3.1, 4.2, -2 * angle - 25, color2);
         }
 
         // biome-ignore lint/correctness/useHookAtTopLevel: not a hook

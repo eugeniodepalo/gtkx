@@ -278,8 +278,8 @@ Surface.prototype.getMimeData = function (mimeType: string): Uint8Array | null {
     );
     const length = lengthRef.value;
     if (length === 0 || dataRef.value === null) return null;
-    const result = new Uint8Array(length as number);
-    for (let i = 0; i < (length as number); i++) {
+    const result = new Uint8Array(length);
+    for (let i = 0; i < length; i++) {
         result[i] = read(dataRef.value, t.uint8, i) as number;
     }
     return result;
@@ -367,7 +367,7 @@ export const imageCreateForData = (
         const dstOffset = row * actualStride;
         for (let col = 0; col < rowBytes; col++) {
             if (srcOffset + col < data.length) {
-                write(ptr, t.uint8, dstOffset + col, data[srcOffset + col] as number);
+                write(ptr, t.uint8, dstOffset + col, data[srcOffset + col]);
             }
         }
     }

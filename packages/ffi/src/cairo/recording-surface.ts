@@ -44,10 +44,10 @@ export class RecordingSurface extends Surface {
     }
 
     inkExtents(): { x: number; y: number; width: number; height: number } {
-        const xRef = createRef(0.0);
-        const yRef = createRef(0.0);
-        const wRef = createRef(0.0);
-        const hRef = createRef(0.0);
+        const xRef = createRef(0);
+        const yRef = createRef(0);
+        const wRef = createRef(0);
+        const hRef = createRef(0);
         call(
             LIB,
             "cairo_recording_surface_ink_extents",

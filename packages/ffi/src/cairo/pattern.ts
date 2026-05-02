@@ -380,8 +380,8 @@ Pattern.prototype.meshGetPatchCount = function (): number {
 };
 
 Pattern.prototype.meshGetControlPoint = function (patchNum: number, pointNum: number): { x: number; y: number } {
-    const xRef = createRef(0.0);
-    const yRef = createRef(0.0);
+    const xRef = createRef(0);
+    const yRef = createRef(0);
     call(
         LIB,
         "cairo_mesh_pattern_get_control_point",
@@ -401,10 +401,10 @@ Pattern.prototype.meshGetCornerColorRgba = function (
     patchNum: number,
     cornerNum: number,
 ): { r: number; g: number; b: number; a: number } {
-    const rRef = createRef(0.0);
-    const gRef = createRef(0.0);
-    const bRef = createRef(0.0);
-    const aRef = createRef(0.0);
+    const rRef = createRef(0);
+    const gRef = createRef(0);
+    const bRef = createRef(0);
+    const aRef = createRef(0);
     call(
         LIB,
         "cairo_mesh_pattern_get_corner_color_rgba",
@@ -443,11 +443,11 @@ Pattern.prototype.getColorStopRgba = function (index: number): {
     b: number;
     a: number;
 } {
-    const offsetRef = createRef(0.0);
-    const rRef = createRef(0.0);
-    const gRef = createRef(0.0);
-    const bRef = createRef(0.0);
-    const aRef = createRef(0.0);
+    const offsetRef = createRef(0);
+    const rRef = createRef(0);
+    const gRef = createRef(0);
+    const bRef = createRef(0);
+    const aRef = createRef(0);
     call(
         LIB,
         "cairo_pattern_get_color_stop_rgba",
@@ -466,10 +466,10 @@ Pattern.prototype.getColorStopRgba = function (index: number): {
 };
 
 Pattern.prototype.getRgba = function (): { r: number; g: number; b: number; a: number } {
-    const rRef = createRef(0.0);
-    const gRef = createRef(0.0);
-    const bRef = createRef(0.0);
-    const aRef = createRef(0.0);
+    const rRef = createRef(0);
+    const gRef = createRef(0);
+    const bRef = createRef(0);
+    const aRef = createRef(0);
     call(
         LIB,
         "cairo_pattern_get_rgba",
@@ -505,10 +505,10 @@ Pattern.prototype.getLinearPoints = function (): {
     x1: number;
     y1: number;
 } {
-    const x0Ref = createRef(0.0);
-    const y0Ref = createRef(0.0);
-    const x1Ref = createRef(0.0);
-    const y1Ref = createRef(0.0);
+    const x0Ref = createRef(0);
+    const y0Ref = createRef(0);
+    const x1Ref = createRef(0);
+    const y1Ref = createRef(0);
     call(
         LIB,
         "cairo_pattern_get_linear_points",
@@ -532,12 +532,12 @@ Pattern.prototype.getRadialCircles = function (): {
     y1: number;
     r1: number;
 } {
-    const x0Ref = createRef(0.0);
-    const y0Ref = createRef(0.0);
-    const r0Ref = createRef(0.0);
-    const x1Ref = createRef(0.0);
-    const y1Ref = createRef(0.0);
-    const r1Ref = createRef(0.0);
+    const x0Ref = createRef(0);
+    const y0Ref = createRef(0);
+    const r0Ref = createRef(0);
+    const x1Ref = createRef(0);
+    const y1Ref = createRef(0);
+    const r1Ref = createRef(0);
     call(
         LIB,
         "cairo_pattern_get_radial_circles",

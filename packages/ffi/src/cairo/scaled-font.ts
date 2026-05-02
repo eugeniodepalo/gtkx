@@ -237,8 +237,8 @@ ScaledFont.prototype.textToGlyphs = function (
         INT_TYPE,
     );
 
-    const numGlyphs = numGlyphsRef.value as number;
-    const numClusters = numClustersRef.value as number;
+    const numGlyphs = numGlyphsRef.value;
+    const numClusters = numClustersRef.value;
 
     const glyphsBuf = glyphsRef.value as NativeHandle;
     const clustersBuf = clustersRef.value as NativeHandle;

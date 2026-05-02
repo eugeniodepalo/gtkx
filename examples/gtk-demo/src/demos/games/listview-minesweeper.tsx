@@ -88,7 +88,7 @@ const ListViewMinesweeperDemo = () => {
             .find((candidate) => existsSync(candidate));
         if (!path) return;
         const stream = Gtk.MediaFile.newForFilename(path);
-        stream.setVolume(1.0);
+        stream.setVolume(1);
         stream.play();
         soundStreamRef.current = stream;
     }, []);

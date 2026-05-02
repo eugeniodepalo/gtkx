@@ -314,7 +314,7 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
     const resetBasic = useCallback(() => {
         setSize(20);
         setLetterSpacing(0);
-        setLineHeight(1.0);
+        setLineHeight(1);
         setFgColor(createDefaultFgColor());
         setBgColor(createDefaultBgColor());
     }, []);

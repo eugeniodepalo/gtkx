@@ -34,7 +34,7 @@ export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
     obj: T | null | undefined,
     propertyName: K,
 ): T[K] | undefined {
-    const [value, setValue] = useState<T[K] | undefined>(() => (obj ? (obj[propertyName] as T[K]) : undefined));
+    const [value, setValue] = useState<T[K] | undefined>(() => (obj ? (obj[propertyName]) : undefined));
 
     useEffect(() => {
         if (!obj) {
@@ -42,11 +42,11 @@ export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
             return;
         }
 
-        setValue(obj[propertyName] as T[K]);
+        setValue(obj[propertyName]);
 
         const signal = `notify::${toKebabCase(propertyName as string)}`;
         const handlerId = obj.connect(signal, () => {
-            setValue(obj[propertyName] as T[K]);
+            setValue(obj[propertyName]);
         });
 
         return () => {

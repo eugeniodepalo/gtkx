@@ -465,7 +465,7 @@ Context.prototype.getDash = function (): [number[], number] {
         return [[], 0];
     }
     const dashBuf = alloc(count * 8, "double[]", LIB);
-    const offsetRef = createRef(0.0);
+    const offsetRef = createRef(0);
     call(
         LIB,
         "cairo_get_dash",
@@ -760,8 +760,8 @@ Context.prototype.getCurrentPoint = function (): [number, number] | null {
         return null;
     }
 
-    const xRef = createRef(0.0);
-    const yRef = createRef(0.0);
+    const xRef = createRef(0);
+    const yRef = createRef(0);
 
     call(
         LIB,
@@ -783,10 +783,10 @@ Context.prototype.getSource = function (): Pattern {
 };
 
 const getExtents = (ctx: Context, fn: string): [number, number, number, number] => {
-    const x1Ref = createRef(0.0);
-    const y1Ref = createRef(0.0);
-    const x2Ref = createRef(0.0);
-    const y2Ref = createRef(0.0);
+    const x1Ref = createRef(0);
+    const y1Ref = createRef(0);
+    const x2Ref = createRef(0);
+    const y2Ref = createRef(0);
     call(
         LIB,
         fn,
