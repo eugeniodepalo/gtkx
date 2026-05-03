@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -254,7 +252,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
     return tools;
 }
 
-async function main() {
+export async function main() {
     const socketServer = new SocketServer(DEFAULT_SOCKET_PATH);
     const connectionManager = new ConnectionManager(socketServer);
 
@@ -303,13 +301,4 @@ async function main() {
 
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
-}
-
-if (import.meta.main) {
-    try {
-        await main();
-    } catch (error) {
-        console.error("[gtkx] Fatal error:", error);
-        process.exit(1);
-    }
 }

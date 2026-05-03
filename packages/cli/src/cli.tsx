@@ -1,10 +1,8 @@
-#!/usr/bin/env node
-
 import { type ChildProcess, fork } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineCommand, runMain } from "citty";
+import { defineCommand } from "citty";
 import { build } from "./builder.js";
 import { preflightCodegen, runCodegen } from "./codegen/run-codegen.js";
 import { createApp } from "./create.js";
@@ -217,7 +215,3 @@ export const main = defineCommand({
         create,
     },
 });
-
-if (import.meta.main) {
-    runMain(main);
-}

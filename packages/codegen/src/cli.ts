@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 import { createRequire } from "node:module";
-import { defineCommand, runMain } from "citty";
+import { defineCommand } from "citty";
 import { run } from "./commands/run.js";
 import { sync } from "./commands/sync.js";
 
@@ -18,7 +17,3 @@ export const main = defineCommand({
         sync,
     },
 });
-
-if (import.meta.main) {
-    runMain(main);
-}
