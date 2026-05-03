@@ -7,7 +7,7 @@ import { sync } from "./commands/sync.js";
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
-const main = defineCommand({
+export const main = defineCommand({
     meta: {
         name: "gtkx-codegen",
         version,
@@ -19,4 +19,6 @@ const main = defineCommand({
     },
 });
 
-runMain(main);
+if (import.meta.main) {
+    runMain(main);
+}
