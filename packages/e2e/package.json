@@ -6,7 +6,7 @@
     "scripts": {
         "build": "tsc -b",
         "test": "vitest run",
-        "coverage": "vitest run --coverage",
+        "coverage": "vitest run --coverage && sed -i 's|^SF:\\.\\./|SF:packages/|' coverage/lcov.info",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
