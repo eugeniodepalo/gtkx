@@ -1,4 +1,4 @@
 import { defineConfig, mergeConfig } from "vitest/config";
-import baseConfig from "../../vitest.config.js";
+import { packageVitestConfig } from "../../vitest.shared.js";
 
-export default mergeConfig(baseConfig, defineConfig({}));
+export default mergeConfig(packageVitestConfig(import.meta.url), defineConfig({}));
