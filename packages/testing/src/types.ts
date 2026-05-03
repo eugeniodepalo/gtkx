@@ -180,12 +180,11 @@ export type ScreenshotResult = {
 
 /**
  * Options for {@link renderHook}.
+ *
+ * `initialProps` is required when `Props` is a non-optional type, and optional
+ * when `Props` accepts `undefined`. The `wrapper` field is always optional.
  */
 export type RenderHookOptions<Props> = {
-    /**
-     * Initial props passed to the hook callback.
-     */
-    initialProps?: Props;
     /**
      * Wrapper component or boolean.
      * - `true` (default): Wrap in GtkApplicationWindow
@@ -193,7 +192,19 @@ export type RenderHookOptions<Props> = {
      * - Component: Custom wrapper that passes `ref` to its root element
      */
     wrapper?: boolean | WrapperComponent;
-};
+} & (undefined extends Props
+    ? {
+          /**
+           * Initial props passed to the hook callback.
+           */
+          initialProps?: Props;
+      }
+    : {
+          /**
+           * Initial props passed to the hook callback.
+           */
+          initialProps: Props;
+      });
 
 /**
  * Result returned by {@link renderHook}.
