@@ -1,2 +1,5 @@
 #!/usr/bin/env node
-import "../dist/cli.js";
+import { runMain } from "citty";
+import { main } from "../dist/cli.js";
+
+runMain(main);
