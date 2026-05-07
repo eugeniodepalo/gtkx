@@ -41,7 +41,7 @@ type ClassWithGetGType = NativeClass & { readonly getGType?: () => number };
  */
 export function registerClass<T extends NativeClass>(klass: T, options: RegisterClassOptions = {}): T {
     if (!(klass.prototype instanceof NativeObject)) {
-        throw new Error(`registerClass: ${klass.name} must extend a NativeObject subclass`);
+        throw new TypeError(`registerClass: ${klass.name} must extend a NativeObject subclass`);
     }
 
     const parent = Object.getPrototypeOf(klass.prototype).constructor as ClassWithGetGType | undefined;
