@@ -66,4 +66,66 @@ describe("writeGeneratedDir", () => {
         writeGeneratedDir(outputDir, new Map());
         expect(existsSync(outputDir)).toBe(true);
     });
+
+    it("releases its lock file after a successful write", () => {
+        const target = join(outputDir, "release");
+        writeGeneratedDir(target, new Map([["a.ts", "1"]]));
+        expect(existsSync(`${target}.lock`)).toBe(false);
+    });
+
+    it("reclaims a stale lock left behind by a dead process", () => {
+        const target = join(outputDir, "stale");
+        const lockPath = `${target}.lock`;
+        const deadPid = findUnusedPid();
+        writeFileSync(lockPath, String(deadPid));
+
+        writeGeneratedDir(target, new Map([["a.ts", "1"]]));
+
+        expect(readFileSync(join(target, "a.ts"), "utf8")).toBe("1");
+        expect(existsSync(lockPath)).toBe(false);
+    });
+
+    it("skips the rewrite when called again with the same file map", () => {
+        const target = join(outputDir, "stable");
+        writeGeneratedDir(target, new Map([["a.ts", "1"]]));
+        const sentinel = join(target, "sentinel");
+        writeFileSync(sentinel, "external");
+
+        writeGeneratedDir(target, new Map([["a.ts", "1"]]));
+
+        expect(readFileSync(sentinel, "utf8")).toBe("external");
+    });
+
+    it("rewrites when the file map changes", () => {
+        const target = join(outputDir, "changing");
+        writeGeneratedDir(target, new Map([["a.ts", "1"]]));
+        const sentinel = join(target, "sentinel");
+        writeFileSync(sentinel, "external");
+
+        writeGeneratedDir(target, new Map([["a.ts", "2"]]));
+
+        expect(existsSync(sentinel)).toBe(false);
+        expect(readFileSync(join(target, "a.ts"), "utf8")).toBe("2");
+    });
+
+    it("rewrites when the output directory was removed externally", () => {
+        const target = join(outputDir, "rebuild");
+        writeGeneratedDir(target, new Map([["a.ts", "1"]]));
+        rmSync(target, { recursive: true, force: true });
+
+        writeGeneratedDir(target, new Map([["a.ts", "1"]]));
+
+        expect(readFileSync(join(target, "a.ts"), "utf8")).toBe("1");
+    });
 });
+
+const findUnusedPid = (): number => {
+    for (let pid = 0x70000000; pid < 0x70010000; pid++) {
+        try {
+            process.kill(pid, 0);
+        } catch (err) {
+            if ((err as NodeJS.ErrnoException).code === "ESRCH") return pid;
+        }
+    }
+    throw new Error("Could not locate an unused PID");
+};
