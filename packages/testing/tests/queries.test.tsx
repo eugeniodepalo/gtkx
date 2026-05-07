@@ -288,4 +288,20 @@ describe("findAllByName", () => {
         const entries = await findAllByName(container, "field");
         expect(entries.length).toBe(2);
     });
+
+    it("throws a name-formatted error when no widget matches", async () => {
+        const { container } = await render(<GtkEntry name="real-name" />);
+
+        await expect(findByName(container, "missing", { timeout: 100 })).rejects.toThrow(
+            /Unable to find an element with name 'missing'/,
+        );
+    });
+
+    it("throws a regex-formatted name error when no widget matches", async () => {
+        const { container } = await render(<GtkEntry name="real-name" />);
+
+        await expect(findByName(container, /^missing/, { timeout: 100 })).rejects.toThrow(
+            /Unable to find an element with name \/\^missing\//,
+        );
+    });
 });

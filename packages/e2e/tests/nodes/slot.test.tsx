@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPaned, GtkPopover } from "@gtkx/react";
+import { GtkBox, GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPaned, GtkPopover } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { createElement, createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - Slot", () => {
@@ -105,5 +105,11 @@ describe("render - Slot", () => {
 
         expect(panedRef.current?.getStartChild()?.handle).toEqual(startRef.current?.handle);
         expect(panedRef.current?.getEndChild()?.handle).toEqual(endRef.current?.handle);
+    });
+
+    it("throws when the slot id has no matching property setter on the parent", async () => {
+        await expect(
+            render(<GtkBox>{createElement("Slot", { id: "non-existent-slot" }, <GtkLabel label="orphan" />)}</GtkBox>),
+        ).rejects.toThrow(/Unable to find property for Slot 'nonExistentSlot'/);
     });
 });

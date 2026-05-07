@@ -11,7 +11,7 @@ import {
     GtkListBox,
 } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { createElement, createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - ContainerSlot", () => {
@@ -680,6 +680,18 @@ describe("render - ContainerSlot", () => {
 
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
+        });
+    });
+
+    describe("error handling", () => {
+        it("throws when the requested method does not exist on the parent", async () => {
+            await expect(
+                render(
+                    <GtkListBox>
+                        {createElement("ContainerSlot", { id: "thisMethodDoesNotExist" }, <GtkLabel label="orphan" />)}
+                    </GtkListBox>,
+                ),
+            ).rejects.toThrow(/Method 'thisMethodDoesNotExist' not found/);
         });
     });
 });

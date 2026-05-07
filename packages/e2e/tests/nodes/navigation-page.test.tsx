@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import { AdwNavigationView, GtkLabel } from "@gtkx/react";
+import { AdwNavigationView, GtkBox, GtkLabel } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
-import { createRef } from "react";
+import { createElement, createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - NavigationPage", () => {
@@ -134,6 +134,20 @@ describe("render - NavigationPage", () => {
             await render(<App canPop={false} />);
             page = viewRef.current?.findPage("page");
             expect(page?.getCanPop()).toBe(false);
+        });
+
+        it("throws when used inside a parent without a matching slot setter", async () => {
+            await expect(
+                render(
+                    <GtkBox>
+                        {createElement(
+                            "NavigationPage",
+                            { id: "non-existent-slot", title: "Orphan" },
+                            <GtkLabel label="content" />,
+                        )}
+                    </GtkBox>,
+                ),
+            ).rejects.toThrow(/Unable to find property for slot 'nonExistentSlot'/);
         });
     });
 });

@@ -3,22 +3,50 @@ import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, quit, render, useApplication } from "@gtkx/react";
 import { tick } from "@gtkx/testing";
+import { Component, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 describe("render and quit", () => {
-    it("initializes the runtime, registers the app, mounts the tree, then quits", async () => {
+    it("logs caught render errors via console.error and registers the app", async () => {
         const app = new Gtk.Application(Gio.ApplicationFlags.NON_UNIQUE, "org.gtkx.render-coverage");
         const stopHandler = vi.fn();
         events.on("stop", stopHandler);
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        const Boom = (): null => {
+            throw new Error("boom-from-render");
+        };
+
+        class ErrorBoundary extends Component<{ children: ReactNode }, { errored: boolean }> {
+            override state = { errored: false };
+            static getDerivedStateFromError(): { errored: boolean } {
+                return { errored: true };
+            }
+            override render(): ReactNode {
+                return this.state.errored ? (
+                    <GtkApplicationWindow defaultWidth={50} defaultHeight={50} />
+                ) : (
+                    this.props.children
+                );
+            }
+        }
 
         let resolvedApp: Gtk.Application | null = null;
-        const Probe = () => {
+        const Probe = (): ReactNode => {
             resolvedApp = useApplication();
-            return <GtkApplicationWindow defaultWidth={100} defaultHeight={100} />;
+            return (
+                <ErrorBoundary>
+                    <Boom />
+                </ErrorBoundary>
+            );
         };
 
         render(<Probe />, app);
         await tick();
+
+        const messages = errorSpy.mock.calls.map((call) => String(call[0])).join("\n");
+        expect(messages).toContain("boom-from-render");
+        errorSpy.mockRestore();
 
         expect(app.getIsRegistered()).toBe(true);
         expect(isStarted()).toBe(true);
