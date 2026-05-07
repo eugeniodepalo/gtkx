@@ -14,6 +14,7 @@ import {
     isPrimitiveFieldType,
 } from "../../../core/type-system/ffi-types.js";
 import { toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
+import { isGeneratableFieldType as isGeneratableFieldTypeUtil } from "../../../core/utils/record-filter.js";
 import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
 import { FfiTypeWriter } from "../../../core/writers/ffi-type-writer.js";
 import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
@@ -220,22 +221,10 @@ export class FieldBuilder {
     }
 
     isGeneratableFieldType(typeName: string, visited: Set<string> = new Set()): boolean {
-        if (isPrimitiveFieldType(typeName)) return true;
-
-        if (visited.has(typeName)) return false;
-        visited.add(typeName);
-
-        const resolved = this.resolveRecord(typeName);
-        if (!resolved) return false;
-
-        if (resolved.glibTypeName) return true;
-
-        if (resolved.opaque || resolved.disguised) return false;
-
-        const publicFields = resolved.getPublicFields();
-        if (publicFields.length === 0) return false;
-
-        return publicFields.every((field) => this.isGeneratableFieldType(field.type.name as string, visited));
+        if (!this.repo || !this.currentNamespace) {
+            return isPrimitiveFieldType(typeName);
+        }
+        return isGeneratableFieldTypeUtil(typeName, this.repo, this.currentNamespace, visited);
     }
 
     getFfiTypeWriter(): FfiTypeWriter {

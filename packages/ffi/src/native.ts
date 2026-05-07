@@ -8,9 +8,9 @@
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, read, t, unfreeze, write } from "./helpers.js";
 
+import { instanceIsA } from "@gtkx/native";
 import type { GError } from "./generated/glib/error.js";
-import { typeCheckInstanceIsA, typeFromName } from "./generated/gobject/functions.js";
-import { TypeInstance } from "./generated/gobject/type-instance.js";
+import { typeFromName } from "./generated/gobject/functions.js";
 import type { NativeClass, NativeObject } from "./object.js";
 
 export type { NativeHandle } from "./object.js";
@@ -89,10 +89,7 @@ export function getNativeInterface<T extends NativeObject>(obj: NativeObject, if
     const gtype = typeFromName(glibTypeName);
     if (gtype === 0) return null;
 
-    const typeInstance = Object.create(TypeInstance.prototype) as TypeInstance;
-    typeInstance.handle = obj.handle;
-
-    if (!typeCheckInstanceIsA(typeInstance, gtype)) {
+    if (!instanceIsA(obj.handle, gtype)) {
         return null;
     }
 

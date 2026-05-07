@@ -14,10 +14,14 @@ import type {
 const native = nativeBinding as unknown as {
     alloc: (size: number, typeName?: string, lib?: string) => unknown;
     call: (library: string, symbol: string, args: unknown[], returnType: unknown) => unknown;
+    findObjectProperty: (external: unknown, propertyName: string) => unknown;
     freeze: () => void;
+    getInstanceTypeName: (external: unknown) => string | undefined;
     getNativeId: (external: unknown) => number;
     init: () => unknown;
+    instanceIsA: (external: unknown, gtype: bigint) => boolean;
     read: (external: unknown, type: unknown, offset: number) => unknown;
+    registerClass: (name: string, parentGtype: bigint) => bigint;
     stop: (mainLoop: unknown) => void;
     unfreeze: () => void;
     write: (external: unknown, type: unknown, offset: number, value: unknown) => unknown;
@@ -254,6 +258,66 @@ export function write(handle: NativeHandle, type: Type, offset: number, value: u
  */
 export function alloc(size: number, glibTypeName?: string, lib?: string): NativeHandle {
     return new NativeHandle(native.alloc(size, glibTypeName, lib));
+}
+
+/**
+ * Looks up a property descriptor on a `GObject` instance by property name.
+ *
+ * Walks the `GTypeInstance` → `GObjectClass` → `g_object_class_find_property`
+ * chain entirely on the GLib thread, returning a borrowed `GParamSpec` handle
+ * (or `null` if the property is unknown). The returned handle's pointer is
+ * owned by the class vtable and remains valid for the lifetime of the type
+ * registration.
+ *
+ * @param handle - Handle to a live `GObject` instance
+ * @param propertyName - Property name in dashed form (e.g. `"label"`, `"halign"`)
+ * @returns Borrowed `GParamSpec` handle, or `null` when no such property exists
+ */
+export function findObjectProperty(handle: NativeHandle, propertyName: string): NativeHandle | null {
+    const result = native.findObjectProperty(handle.external, propertyName);
+    return result == null ? null : new NativeHandle(result);
+}
+
+/**
+ * Returns the runtime GType name of a `GTypeInstance`-compatible handle.
+ *
+ * Wraps `g_type_name_from_instance` on the GLib thread. Returns `null` when
+ * the handle is null or the underlying type cannot be resolved.
+ *
+ * @param handle - Handle to a live GObject-compatible instance
+ */
+export function getInstanceTypeName(handle: NativeHandle): string | null {
+    const result = native.getInstanceTypeName(handle.external);
+    return result ?? null;
+}
+
+/**
+ * Tests whether a `GTypeInstance`-compatible handle is an instance of `gtype`.
+ *
+ * Wraps `g_type_check_instance_is_a` on the GLib thread.
+ *
+ * @param handle - Handle to a live GObject-compatible instance
+ * @param gtype - Numeric GType identifier
+ */
+export function instanceIsA(handle: NativeHandle, gtype: number): boolean {
+    return native.instanceIsA(handle.external, BigInt(gtype));
+}
+
+/**
+ * Registers a new `GType` derived from `parentGtype` under `name`.
+ *
+ * Wraps `g_type_register_static`, sizing the new class so it matches the
+ * parent's class and instance struct sizes. No `class_init`, `instance_init`,
+ * or value table is supplied. Higher-level orchestration (resolving the
+ * parent class, walking JS prototypes, updating the JS class registry) lives
+ * in `@gtkx/ffi`'s `registerClass`.
+ *
+ * @param name - Globally-unique GType name (must not already be registered)
+ * @param parentGtype - Numeric GType of the parent class
+ * @returns Numeric GType of the newly registered subclass
+ */
+export function registerClass(name: string, parentGtype: number): number {
+    return Number(native.registerClass(name, BigInt(parentGtype)));
 }
 
 /**

@@ -1,6 +1,5 @@
-import type { NativeHandle } from "@gtkx/native";
-import { typeFromName, typeName, typeNameFromInstance, typeParent } from "./generated/gobject/functions.js";
-import { TypeInstance } from "./generated/gobject/type-instance.js";
+import { getInstanceTypeName, type NativeHandle } from "@gtkx/native";
+import { typeFromName, typeName, typeParent } from "./generated/gobject/functions.js";
 import type { NativeClass, NativeObject } from "./object.js";
 
 const classRegistry = new Map<string, NativeClass>();
@@ -167,7 +166,10 @@ export function getNativeObject<
     const existing = findNativeObject(handle);
     if (existing) return existing as Result;
 
-    const runtimeTypeName = typeNameFromInstance(new TypeInstance(handle));
+    const runtimeTypeName = getInstanceTypeName(handle);
+    if (!runtimeTypeName) {
+        throw new Error("Cannot resolve runtime GLib type from handle");
+    }
     const cls = findNativeClass(runtimeTypeName);
     if (!cls) {
         throw new Error(`Expected registered GLib type, got '${runtimeTypeName}'`);
@@ -204,7 +206,10 @@ export function getNativeObjectAsInterface<T extends NativeHandle | null | undef
     const existing = findNativeObject(handle);
     if (existing) return existing as Result;
 
-    const runtimeTypeName = typeNameFromInstance(new TypeInstance(handle));
+    const runtimeTypeName = getInstanceTypeName(handle);
+    if (!runtimeTypeName) {
+        throw new Error("Cannot resolve runtime GLib type from handle");
+    }
     const cls = findNativeClass(runtimeTypeName, false) ?? interfaceClass;
     const instance = new cls(handle);
     registerNativeObject(instance);

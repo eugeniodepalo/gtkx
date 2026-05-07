@@ -14,7 +14,6 @@ import type {
 } from "../generated/cairo/enums.js";
 import { FontFace } from "../generated/cairo/font-face.js";
 import type { FontOptions } from "../generated/cairo/font-options.js";
-import type { Matrix } from "../generated/cairo/matrix.js";
 import { Pattern } from "../generated/cairo/pattern.js";
 import { ScaledFont } from "../generated/cairo/scaled-font.js";
 import { Surface } from "../generated/cairo/surface.js";
@@ -48,6 +47,7 @@ import {
     type TextExtents,
 } from "./common.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
+import type { Matrix } from "./matrix.js";
 import { allocMatrix } from "./matrix.js";
 
 declare module "../generated/cairo/context.js" {

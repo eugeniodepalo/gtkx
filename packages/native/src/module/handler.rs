@@ -46,6 +46,51 @@ impl ModuleResponse for NativeHandle {
     }
 }
 
+impl ModuleResponse for Option<NativeHandle> {
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        self.map_or_else(
+            || ().to_js_response(env),
+            |handle| handle.to_js_response(env),
+        )
+    }
+}
+
+impl ModuleResponse for Option<String> {
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        unsafe {
+            let raw = match self {
+                Some(value) => String::to_napi_value(env.raw(), value)?,
+                None => Undefined::to_napi_value(env.raw(), ())?,
+            };
+            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+        }
+    }
+}
+
+impl ModuleResponse for bool {
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        unsafe {
+            let raw = Self::to_napi_value(env.raw(), self)?;
+            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+        }
+    }
+}
+
+impl ModuleResponse for u64 {
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        unsafe {
+            let raw = BigInt::to_napi_value(
+                env.raw(),
+                BigInt {
+                    sign_bit: false,
+                    words: vec![self],
+                },
+            )?;
+            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+        }
+    }
+}
+
 impl ModuleResponse for () {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         unsafe {

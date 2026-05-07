@@ -5,19 +5,16 @@
  * Produces GeneratedFile arrays using FileBuilder.
  */
 
-import type { GirClass, GirNamespace, GirRecord, GirRepository } from "@gtkx/gir";
-import { type FileBuilder, fileBuilder } from "../builders/file-builder.js";
-import { classDecl, property } from "../builders/index.js";
+import type { GirClass, GirNamespace, GirRepository } from "@gtkx/gir";
+import { fileBuilder } from "../builders/file-builder.js";
 import { stringify } from "../builders/stringify.js";
 import { CodegenMetadata } from "../core/codegen-metadata.js";
 import type { GeneratedFile } from "../core/generated-file-set.js";
 import type { FfiGeneratorOptions } from "../core/generator-types.js";
 import { FfiMapper } from "../core/type-system/ffi-mapper.js";
-import { boxedSelfType, isPrimitiveFieldType } from "../core/type-system/ffi-types.js";
-import { filterSupportedMethods } from "../core/utils/filtering.js";
-import { normalizeClassName, toCamelCase, toKebabCase, toPascalCase, toValidMemberName } from "../core/utils/naming.js";
+import { normalizeClassName, toKebabCase, toPascalCase } from "../core/utils/naming.js";
 import { splitQualifiedName } from "../core/utils/qualified-name.js";
-import { addMethodStructure, createMethodBodyWriter } from "../core/writers/index.js";
+import { shouldGenerateRecord } from "../core/utils/record-filter.js";
 import { ClassGenerator } from "./generators/class/index.js";
 import { ConstantGenerator } from "./generators/constant.js";
 import { EnumGenerator } from "./generators/enum.js";
@@ -150,24 +147,17 @@ export class FfiGenerator {
         files: GeneratedFile[],
     ): void {
         for (const [, record] of namespace.records) {
-            if (this.shouldGenerateRecord(record)) {
-                const file = fileBuilder();
-                const recordGenerator = new RecordGenerator(
-                    this.ffiMapper,
-                    file,
-                    generatorOptions,
-                    this.options.repository,
-                );
-                recordGenerator.generate(record);
-                const fileName = `${toKebabCase(record.name)}.ts`;
-                files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
-            } else if (this.isUsableStubRecord(record)) {
-                const file = this.generateStubRecord(record, namespace, generatorOptions);
-                if (file) {
-                    const fileName = `${toKebabCase(record.name)}.ts`;
-                    files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
-                }
-            }
+            if (!shouldGenerateRecord(record, this.options.repository, this.options.namespace)) continue;
+            const file = fileBuilder();
+            const recordGenerator = new RecordGenerator(
+                this.ffiMapper,
+                file,
+                generatorOptions,
+                this.options.repository,
+            );
+            recordGenerator.generate(record);
+            const fileName = `${toKebabCase(record.name)}.ts`;
+            files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
         }
     }
 
@@ -201,78 +191,6 @@ export class FfiGenerator {
         }
     }
 
-    private generateStubRecord(
-        record: GirRecord,
-        namespace: GirNamespace,
-        generatorOptions: FfiGeneratorOptions,
-    ): FileBuilder | null {
-        const file = fileBuilder();
-        const recordName = normalizeClassName(record.name);
-
-        file.addImport("../../object.js", ["NativeObject"]);
-        if (record.methods.length === 0) {
-            file.addImport("../../object.js", ["NativeHandle"]);
-        }
-
-        const cls = classDecl(recordName, {
-            exported: true,
-            extends: "NativeObject",
-            doc: `Stub class for ${record.name} (opaque type not fully generated)`,
-        });
-
-        if (record.glibTypeName) {
-            cls.addProperty(
-                property("glibTypeName", {
-                    isStatic: true,
-                    readonly: true,
-                    type: "string",
-                    initializer: `"${record.glibTypeName}"`,
-                }),
-            );
-        }
-
-        if (record.methods.length > 0) {
-            const methodBody = createMethodBodyWriter(this.ffiMapper, file, {
-                sharedLibrary: generatorOptions.sharedLibrary,
-                glibLibrary: generatorOptions.glibLibrary,
-                selfNames: new Set([recordName]),
-            });
-            const supportedMethods = filterSupportedMethods(
-                record.methods,
-                (params) => methodBody.hasUnsupportedCallbacks(params),
-                (returnType) => methodBody.isReturnTypeUnsafe(returnType),
-            );
-
-            if (supportedMethods.length > 0) {
-                file.addImport("../../object.js", ["NativeHandle"]);
-
-                for (const m of supportedMethods) {
-                    const methodName = toValidMemberName(toCamelCase(m.name));
-                    const instanceOwnership = m.instanceParameter?.transferOwnership === "full" ? "full" : "borrowed";
-                    const selfTypeDescriptor = boxedSelfType(
-                        record.cType,
-                        namespace.sharedLibrary ?? "",
-                        record.glibGetType,
-                        instanceOwnership,
-                    );
-
-                    const struct = methodBody.buildMethodStructure(m, {
-                        methodName,
-                        selfTypeDescriptor,
-                        sharedLibrary: namespace.sharedLibrary ?? "",
-                        namespace: this.options.namespace,
-                        className: record.cType,
-                    });
-
-                    addMethodStructure(cls, struct);
-                }
-            }
-        }
-
-        file.add(cls);
-        return file;
-    }
-
     private generateIndexFile(files: GeneratedFile[]): string {
         const exportLines = files
             .map((f) => {
@@ -289,69 +207,11 @@ export class FfiGenerator {
 
     private registerRecords(namespace: GirNamespace): void {
         for (const [, record] of namespace.records) {
-            if (this.shouldGenerateRecord(record)) {
+            if (shouldGenerateRecord(record, this.options.repository, this.options.namespace)) {
                 const normalizedName = normalizeClassName(record.name);
                 this.recordNameToFile.set(normalizedName, record.name);
             }
         }
-    }
-
-    private isGeneratableFieldType(typeName: string, visited: Set<string> = new Set()): boolean {
-        if (isPrimitiveFieldType(typeName)) return true;
-
-        if (visited.has(typeName)) return false;
-        visited.add(typeName);
-
-        const resolved = this.resolveRecordType(typeName);
-        if (!resolved) return false;
-
-        if (resolved.glibTypeName) return true;
-
-        if (resolved.opaque || resolved.disguised) return false;
-
-        const publicFields = resolved.getPublicFields();
-        if (publicFields.length === 0) return false;
-
-        return publicFields.every((field) => this.isGeneratableFieldType(field.type.name as string, visited));
-    }
-
-    private resolveRecordType(typeName: string): GirRecord | null {
-        if (typeName.includes(".")) {
-            return this.options.repository.resolveRecord(typeName);
-        }
-
-        const ns = this.options.repository.getNamespace(this.options.namespace);
-        if (!ns) return null;
-
-        return ns.records.get(typeName) ?? null;
-    }
-
-    private shouldGenerateRecord(record: GirRecord): boolean {
-        if (record.disguised) return false;
-
-        if (record.isGtypeStruct()) return false;
-
-        if (record.name.endsWith("Private")) return false;
-
-        if (record.glibTypeName) return true;
-
-        if (record.opaque || record.fields.length === 0) return false;
-
-        const publicFields = record.getPublicFields();
-        if (publicFields.length === 0) return false;
-
-        return publicFields.some((field) => this.isGeneratableFieldType(field.type.name as string));
-    }
-
-    private isUsableStubRecord(record: GirRecord): boolean {
-        if (record.glibTypeName) return true;
-
-        if (record.name.endsWith("Private")) return false;
-
-        const coreTypeStructs = ["TypeClass", "TypeInterface", "EnumClass", "FlagsClass", "ObjectClass", "AttrClass"];
-        if (coreTypeStructs.includes(record.name)) return true;
-
-        return true;
     }
 
     private registerInterfaces(namespace: GirNamespace): void {

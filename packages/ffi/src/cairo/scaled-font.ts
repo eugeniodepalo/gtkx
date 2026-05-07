@@ -2,7 +2,6 @@ import { createRef, type NativeHandle } from "@gtkx/native";
 import type { FontType, Status, TextClusterFlags } from "../generated/cairo/enums.js";
 import { FontFace } from "../generated/cairo/font-face.js";
 import type { FontOptions } from "../generated/cairo/font-options.js";
-import type { Matrix } from "../generated/cairo/matrix.js";
 import { ScaledFont } from "../generated/cairo/scaled-font.js";
 import { alloc, call, read, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
@@ -27,6 +26,7 @@ import {
     ULONG_TYPE,
 } from "./common.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
+import type { Matrix } from "./matrix.js";
 import { allocMatrix } from "./matrix.js";
 
 declare module "../generated/cairo/scaled-font.js" {

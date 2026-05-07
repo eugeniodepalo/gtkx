@@ -1,40 +1,35 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
 import type { Status } from "../generated/cairo/enums.js";
-import { Matrix } from "../generated/cairo/matrix.js";
 import { alloc, call, read, t } from "../native.js";
+import { NativeObject } from "../object.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T } from "./common.js";
 
-declare module "../generated/cairo/matrix.js" {
-    interface Matrix {
-        get xx(): number;
-        get yx(): number;
-        get xy(): number;
-        get yy(): number;
-        get x0(): number;
-        get y0(): number;
-        translate(tx: number, ty: number): void;
-        scale(sx: number, sy: number): void;
-        rotate(radians: number): void;
-        invert(): Status;
-        multiply(other: Matrix): Matrix;
-        transformPoint(x: number, y: number): [number, number];
-        transformDistance(dx: number, dy: number): [number, number];
-    }
-}
-
-export const allocMatrix = (): { handle: NativeHandle; obj: MatrixImpl } => {
+export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
     const handle = alloc(48, "cairo_matrix_t", LIB);
-    const obj = Object.create(MatrixImpl.prototype) as MatrixImpl;
+    const obj = Object.create(Matrix.prototype) as Matrix;
     obj.handle = handle;
     return { handle, obj };
 };
 
-class MatrixImpl extends Matrix {
-    static override readonly glibTypeName: string = "cairo_matrix_t";
+/**
+ * Cairo affine transformation matrix backed by the `cairo_matrix_t` C struct.
+ *
+ * The struct is treated as an opaque 48-byte block accessed through cairo's
+ * own functions and direct field reads. The TypeScript getters and instance
+ * methods on the prototype expose the canonical cairo_matrix_t API.
+ */
+export class Matrix extends NativeObject {
+    static readonly glibTypeName: string = "cairo_matrix_t";
 
     constructor();
+    constructor(handle: NativeHandle);
     constructor(xx: number, yx: number, xy: number, yy: number, x0: number, y0: number);
-    constructor(xx?: number, yx?: number, xy?: number, yy?: number, x0?: number, y0?: number) {
+    constructor(xxOrHandle?: number | NativeHandle, yx?: number, xy?: number, yy?: number, x0?: number, y0?: number) {
+        if (xxOrHandle !== undefined && typeof xxOrHandle !== "number") {
+            super(xxOrHandle);
+            return;
+        }
+        const xx = xxOrHandle;
         super(alloc(48, "cairo_matrix_t", LIB));
         if (xx === undefined) {
             call(LIB, "cairo_matrix_init_identity", [{ type: MATRIX_T, value: this.handle }], t.void);
@@ -56,7 +51,120 @@ class MatrixImpl extends Matrix {
         }
     }
 
-    static createTranslate(tx: number, ty: number): MatrixImpl {
+    get xx(): number {
+        return read(this.handle, DOUBLE_TYPE, 0) as number;
+    }
+
+    get yx(): number {
+        return read(this.handle, DOUBLE_TYPE, 8) as number;
+    }
+
+    get xy(): number {
+        return read(this.handle, DOUBLE_TYPE, 16) as number;
+    }
+
+    get yy(): number {
+        return read(this.handle, DOUBLE_TYPE, 24) as number;
+    }
+
+    get x0(): number {
+        return read(this.handle, DOUBLE_TYPE, 32) as number;
+    }
+
+    get y0(): number {
+        return read(this.handle, DOUBLE_TYPE, 40) as number;
+    }
+
+    translate(tx: number, ty: number): void {
+        call(
+            LIB,
+            "cairo_matrix_translate",
+            [
+                { type: MATRIX_T, value: this.handle },
+                { type: DOUBLE_TYPE, value: tx },
+                { type: DOUBLE_TYPE, value: ty },
+            ],
+            t.void,
+        );
+    }
+
+    scale(sx: number, sy: number): void {
+        call(
+            LIB,
+            "cairo_matrix_scale",
+            [
+                { type: MATRIX_T, value: this.handle },
+                { type: DOUBLE_TYPE, value: sx },
+                { type: DOUBLE_TYPE, value: sy },
+            ],
+            t.void,
+        );
+    }
+
+    rotate(radians: number): void {
+        call(
+            LIB,
+            "cairo_matrix_rotate",
+            [
+                { type: MATRIX_T, value: this.handle },
+                { type: DOUBLE_TYPE, value: radians },
+            ],
+            t.void,
+        );
+    }
+
+    invert(): Status {
+        return call(LIB, "cairo_matrix_invert", [{ type: MATRIX_T, value: this.handle }], INT_TYPE) as Status;
+    }
+
+    multiply(other: Matrix): Matrix {
+        const { handle, obj } = allocMatrix();
+        call(
+            LIB,
+            "cairo_matrix_multiply",
+            [
+                { type: MATRIX_T, value: handle },
+                { type: MATRIX_T, value: this.handle },
+                { type: MATRIX_T, value: other.handle },
+            ],
+            t.void,
+        );
+        return obj;
+    }
+
+    transformPoint(x: number, y: number): [number, number] {
+        const xRef = createRef(x);
+        const yRef = createRef(y);
+        call(
+            LIB,
+            "cairo_matrix_transform_point",
+            [
+                { type: MATRIX_T, value: this.handle },
+                { type: t.ref(DOUBLE_TYPE), value: xRef },
+                { type: t.ref(DOUBLE_TYPE), value: yRef },
+            ],
+            t.void,
+        );
+        return [xRef.value, yRef.value];
+    }
+
+    transformDistance(dx: number, dy: number): [number, number] {
+        const dxRef = createRef(dx);
+        const dyRef = createRef(dy);
+        call(
+            LIB,
+            "cairo_matrix_transform_distance",
+            [
+                { type: MATRIX_T, value: this.handle },
+                { type: t.ref(DOUBLE_TYPE), value: dxRef },
+                { type: t.ref(DOUBLE_TYPE), value: dyRef },
+            ],
+            t.void,
+        );
+        return [dxRef.value, dyRef.value];
+    }
+
+    static createTranslate(tx: number, ty: number): Matrix {
         const { handle, obj } = allocMatrix();
         call(
             LIB,
@@ -71,7 +179,7 @@ class MatrixImpl extends Matrix {
         return obj;
     }
 
-    static createScale(sx: number, sy: number): MatrixImpl {
+    static createScale(sx: number, sy: number): Matrix {
         const { handle, obj } = allocMatrix();
         call(
             LIB,
@@ -86,7 +194,7 @@ class MatrixImpl extends Matrix {
         return obj;
     }
 
-    static createRotate(radians: number): MatrixImpl {
+    static createRotate(radians: number): Matrix {
         const { handle, obj } = allocMatrix();
         call(
             LIB,
@@ -100,136 +208,3 @@ class MatrixImpl extends Matrix {
         return obj;
     }
 }
-
-export { MatrixImpl as Matrix };
-
-/**
- * `cairo_matrix_t` struct layout (48 bytes, 6 doubles):
- *   offset  0: double xx (x scale)
- *   offset  8: double yx (y shear)
- *   offset 16: double xy (x shear)
- *   offset 24: double yy (y scale)
- *   offset 32: double x0 (x translation)
- *   offset 40: double y0 (y translation)
- */
-Object.defineProperties(Matrix.prototype, {
-    xx: {
-        get(this: Matrix) {
-            return read(this.handle, DOUBLE_TYPE, 0) as number;
-        },
-    },
-    yx: {
-        get(this: Matrix) {
-            return read(this.handle, DOUBLE_TYPE, 8) as number;
-        },
-    },
-    xy: {
-        get(this: Matrix) {
-            return read(this.handle, DOUBLE_TYPE, 16) as number;
-        },
-    },
-    yy: {
-        get(this: Matrix) {
-            return read(this.handle, DOUBLE_TYPE, 24) as number;
-        },
-    },
-    x0: {
-        get(this: Matrix) {
-            return read(this.handle, DOUBLE_TYPE, 32) as number;
-        },
-    },
-    y0: {
-        get(this: Matrix) {
-            return read(this.handle, DOUBLE_TYPE, 40) as number;
-        },
-    },
-});
-
-Matrix.prototype.translate = function (tx: number, ty: number): void {
-    call(
-        LIB,
-        "cairo_matrix_translate",
-        [
-            { type: MATRIX_T, value: this.handle },
-            { type: DOUBLE_TYPE, value: tx },
-            { type: DOUBLE_TYPE, value: ty },
-        ],
-        t.void,
-    );
-};
-
-Matrix.prototype.scale = function (sx: number, sy: number): void {
-    call(
-        LIB,
-        "cairo_matrix_scale",
-        [
-            { type: MATRIX_T, value: this.handle },
-            { type: DOUBLE_TYPE, value: sx },
-            { type: DOUBLE_TYPE, value: sy },
-        ],
-        t.void,
-    );
-};
-
-Matrix.prototype.rotate = function (radians: number): void {
-    call(
-        LIB,
-        "cairo_matrix_rotate",
-        [
-            { type: MATRIX_T, value: this.handle },
-            { type: DOUBLE_TYPE, value: radians },
-        ],
-        t.void,
-    );
-};
-
-Matrix.prototype.invert = function (): Status {
-    return call(LIB, "cairo_matrix_invert", [{ type: MATRIX_T, value: this.handle }], INT_TYPE) as Status;
-};
-
-Matrix.prototype.multiply = function (other: Matrix): Matrix {
-    const { handle, obj } = allocMatrix();
-    call(
-        LIB,
-        "cairo_matrix_multiply",
-        [
-            { type: MATRIX_T, value: handle },
-            { type: MATRIX_T, value: this.handle },
-            { type: MATRIX_T, value: other.handle },
-        ],
-        t.void,
-    );
-    return obj;
-};
-
-Matrix.prototype.transformPoint = function (x: number, y: number): [number, number] {
-    const xRef = createRef(x);
-    const yRef = createRef(y);
-    call(
-        LIB,
-        "cairo_matrix_transform_point",
-        [
-            { type: MATRIX_T, value: this.handle },
-            { type: t.ref(DOUBLE_TYPE), value: xRef },
-            { type: t.ref(DOUBLE_TYPE), value: yRef },
-        ],
-        t.void,
-    );
-    return [xRef.value, yRef.value];
-};
-
-Matrix.prototype.transformDistance = function (dx: number, dy: number): [number, number] {
-    const dxRef = createRef(dx);
-    const dyRef = createRef(dy);
-    call(
-        LIB,
-        "cairo_matrix_transform_distance",
-        [
-            { type: MATRIX_T, value: this.handle },
-            { type: t.ref(DOUBLE_TYPE), value: dxRef },
-            { type: t.ref(DOUBLE_TYPE), value: dyRef },
-        ],
-        t.void,
-    );
-    return [dxRef.value, dyRef.value];
-};

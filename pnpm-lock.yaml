@@ -288,6 +288,9 @@ importers:
       '@gtkx/gir':
         specifier: workspace:*
         version: link:../gir
+      '@gtkx/native':
+        specifier: workspace:*
+        version: link:../native
       react:
         specifier: ^19
         version: 19.2.6

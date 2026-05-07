@@ -5,6 +5,7 @@ import {
     createNormalizedCallback,
     createNormalizedClass,
     createNormalizedEnumeration,
+    createNormalizedField,
     createNormalizedInterface,
     createNormalizedNamespace,
     createNormalizedParameter,
@@ -451,6 +452,11 @@ describe("FfiMapper", () => {
                 const record = createNormalizedRecord({
                     name: "Color",
                     qualifiedName: qualifiedName("Gdk", "Color"),
+                    fields: [
+                        createNormalizedField({ name: "red", type: createNormalizedType({ name: "guint16" }) }),
+                        createNormalizedField({ name: "green", type: createNormalizedType({ name: "guint16" }) }),
+                        createNormalizedField({ name: "blue", type: createNormalizedType({ name: "guint16" }) }),
+                    ],
                 });
                 const ns = createNormalizedNamespace({
                     name: "Gdk",
@@ -464,6 +470,25 @@ describe("FfiMapper", () => {
 
                 expect(result.ts).toBe("Color");
                 expect(result.ffi.type).toBe("struct");
+            });
+
+            it("maps plain struct record with no fields as unsafe", () => {
+                const record = createNormalizedRecord({
+                    name: "Color",
+                    qualifiedName: qualifiedName("Gdk", "Color"),
+                });
+                const ns = createNormalizedNamespace({
+                    name: "Gdk",
+                    records: new Map([["Color", record]]),
+                });
+                const repo = createMockRepository(new Map([["Gdk", ns]]));
+                const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gdk");
+
+                const type = createNormalizedType({ name: "Color" });
+                const result = mapper.mapType(type);
+
+                expect(result.unsafe).toBe(true);
+                expect(result.ts).toBe("unknown");
             });
 
             it("maps records with copy/free functions as fundamental", () => {
@@ -1044,6 +1069,11 @@ describe("FfiMapper - Extended Coverage", () => {
             const record = createNormalizedRecord({
                 name: "Color",
                 qualifiedName: qualifiedName("Gdk", "Color"),
+                fields: [
+                    createNormalizedField({ name: "red", type: createNormalizedType({ name: "guint16" }) }),
+                    createNormalizedField({ name: "green", type: createNormalizedType({ name: "guint16" }) }),
+                    createNormalizedField({ name: "blue", type: createNormalizedType({ name: "guint16" }) }),
+                ],
             });
             const ns = createNormalizedNamespace({
                 name: "Gdk",

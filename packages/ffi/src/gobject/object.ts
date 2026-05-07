@@ -1,8 +1,6 @@
-import type { NativeHandle } from "@gtkx/native";
-import { typeClassRef, typeFromName, typeNameFromInstance } from "../generated/gobject/functions.js";
+import { findObjectProperty, type NativeHandle } from "@gtkx/native";
 import { Object as GObject } from "../generated/gobject/object.js";
-import { ObjectClass } from "../generated/gobject/object-class.js";
-import { TypeInstance } from "../generated/gobject/type-instance.js";
+import type { ParamSpec } from "../generated/gobject/param-spec.js";
 import { Value } from "../generated/gobject/value.js";
 import { call, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
@@ -202,23 +200,14 @@ GObject.prototype.off = function off<T extends GObject>(this: T, signal: string,
     return this;
 };
 
-const resolveObjectClass = (obj: GObject): ObjectClass => {
-    const typeInstance = getNativeObject(obj.handle, TypeInstance);
-    const runtimeTypeName = typeNameFromInstance(typeInstance);
-    const gtype = typeFromName(runtimeTypeName);
-    const typeClass = typeClassRef(gtype);
-    return getNativeObject(typeClass.handle, ObjectClass);
-};
-
 const resolvePropertyValueType = (obj: GObject, propertyName: string): number => {
-    const objectClass = resolveObjectClass(obj);
-    const pspec = objectClass.findProperty(propertyName);
-    if (!pspec) {
+    const pspecHandle = findObjectProperty(obj.handle, propertyName);
+    if (!pspecHandle) {
         const ctor = obj.constructor as { name?: string; glibTypeName?: string };
         const className = ctor.glibTypeName ?? ctor.name ?? "GObject";
         throw new Error(`No property '${propertyName}' on ${className}`);
     }
-    return pspec.getDefaultValue().getType();
+    return (getNativeObject(pspecHandle) as ParamSpec).getDefaultValue().getType();
 };
 
 GObject.prototype.getProperty = function getProperty(propertyName: string): unknown {

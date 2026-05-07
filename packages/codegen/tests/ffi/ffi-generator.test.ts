@@ -219,8 +219,13 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(filePathOf(files, "orientable.ts")).toBe("gtk/orientable.ts");
     });
 
-    it("skips records whose name ends with the Private suffix", () => {
-        const privateRec = createNormalizedRecord({ name: "WidgetPrivate" });
+    it("generates Private-suffixed records that have marshalable public fields", () => {
+        const privateRec = createNormalizedRecord({
+            name: "WidgetPrivate",
+            qualifiedName: "Gtk.WidgetPrivate",
+            cType: "GtkWidgetPrivate",
+            fields: [createNormalizedField({ name: "value", type: createNormalizedType({ name: "gint" }) })],
+        });
         const ns = createNormalizedNamespace({
             name: "Gtk",
             records: new Map([[privateRec.name, privateRec]]),
@@ -232,10 +237,50 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(files.find((f) => f.path.includes("widget-private"))).toBeUndefined();
+        expect(filePathOf(files, "widget-private.ts")).toBe("gtk/widget-private.ts");
     });
 
-    it("emits a stub for opaque records when they carry a glib type name", () => {
+    it("skips records that end with Class because they back a class vtable", () => {
+        const klass = createNormalizedRecord({
+            name: "WidgetClass",
+            qualifiedName: "Gtk.WidgetClass",
+            fields: [createNormalizedField({ name: "padding", type: createNormalizedType({ name: "gint" }) })],
+        });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            records: new Map([[klass.name, klass]]),
+        });
+        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
+
+        const { files } = new FfiGenerator({
+            repository: repo as unknown as GirRepository,
+            namespace: "Gtk",
+        }).generateNamespace("Gtk");
+
+        expect(filePathOf(files, "widget-class.ts")).toBeUndefined();
+    });
+
+    it("skips records that end with Iface because they back an interface vtable", () => {
+        const iface = createNormalizedRecord({
+            name: "OrientableIface",
+            qualifiedName: "Gtk.OrientableIface",
+            fields: [createNormalizedField({ name: "padding", type: createNormalizedType({ name: "gint" }) })],
+        });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            records: new Map([[iface.name, iface]]),
+        });
+        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
+
+        const { files } = new FfiGenerator({
+            repository: repo as unknown as GirRepository,
+            namespace: "Gtk",
+        }).generateNamespace("Gtk");
+
+        expect(filePathOf(files, "orientable-iface.ts")).toBeUndefined();
+    });
+
+    it("emits a full binding for opaque records that carry a glib type name", () => {
         const opaqueRecord = createNormalizedRecord({
             name: "Bytes",
             qualifiedName: "GLib.Bytes",
@@ -294,7 +339,7 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(filePathOf(files, "inner.ts")).toBe("gtk/inner.ts");
     });
 
-    it("falls back to a stub for records whose fields recurse to a disguised type", () => {
+    it("skips records whose fields recurse to an unmarshalable type", () => {
         const inner = createNormalizedRecord({
             name: "Inner",
             qualifiedName: "Gtk.Inner",
@@ -321,11 +366,11 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        const outerFile = files.find((f) => f.path === "gtk/outer.ts");
-        expect(outerFile?.content).toContain("Stub class for Outer");
+        expect(filePathOf(files, "outer.ts")).toBeUndefined();
+        expect(filePathOf(files, "inner.ts")).toBeUndefined();
     });
 
-    it("emits stub methods on a glib-typed opaque record that exposes safe instance methods", () => {
+    it("emits methods on opaque boxed records that expose safe instance methods", () => {
         const opaqueRecord = createNormalizedRecord({
             name: "Bytes",
             qualifiedName: "GLib.Bytes",
@@ -392,7 +437,7 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(filePathOf(files, "rectangle.ts")).toBe("gdk/rectangle.ts");
     });
 
-    it("includes well-known core type-class records as stubs", () => {
+    it("skips opaque core type-class records to keep class vtables out of the bindings", () => {
         const typeClass = createNormalizedRecord({
             name: "TypeClass",
             qualifiedName: "GObject.TypeClass",
@@ -414,7 +459,7 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "GObject",
         }).generateNamespace("GObject");
 
-        expect(filePathOf(files, "type-class.ts")).toBe("gobject/type-class.ts");
+        expect(filePathOf(files, "type-class.ts")).toBeUndefined();
     });
 
     it("topologically sorts classes so a parent file precedes its children", () => {

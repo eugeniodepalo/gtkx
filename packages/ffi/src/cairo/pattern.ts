@@ -1,6 +1,5 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
 import type { Extend, Filter, PatternType, Status } from "../generated/cairo/enums.js";
-import type { Matrix } from "../generated/cairo/matrix.js";
 import { Pattern } from "../generated/cairo/pattern.js";
 import { Surface } from "../generated/cairo/surface.js";
 import { call, t } from "../native.js";
@@ -17,6 +16,7 @@ import {
     parsePath,
     SURFACE_T_NONE,
 } from "./common.js";
+import type { Matrix } from "./matrix.js";
 import { allocMatrix } from "./matrix.js";
 
 declare module "../generated/cairo/pattern.js" {

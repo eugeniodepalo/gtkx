@@ -1,16 +1,8 @@
 import { getNativeObject, type NativeObject } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
-import {
-    ObjectClass,
-    ParamSpecString,
-    Type,
-    TypeInstance,
-    typeClassRef,
-    typeFromName,
-    typeFundamental,
-    typeNameFromInstance,
-} from "@gtkx/ffi/gobject";
+import { ParamSpecString, Type, typeFundamental } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { findObjectProperty } from "@gtkx/native";
 import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
@@ -50,12 +42,8 @@ function findProperty(obj: NativeObject, key: string): GObject.ParamSpec | null 
     }
 
     const propertyName = key.replaceAll(/([A-Z])/g, "-$1").toLowerCase();
-    const typeInstance = getNativeObject(obj.handle, TypeInstance);
-    const typeName = typeNameFromInstance(typeInstance);
-    const gtype = typeFromName(typeName);
-    const typeClass = typeClassRef(gtype);
-    const objectClass = getNativeObject(typeClass.handle, ObjectClass);
-    const pspec = objectClass.findProperty(propertyName) ?? null;
+    const pspecHandle = findObjectProperty(obj.handle, propertyName);
+    const pspec = pspecHandle ? (getNativeObject(pspecHandle) as GObject.ParamSpec) : null;
     perCtor.set(key, pspec);
     return pspec;
 }

@@ -85,6 +85,9 @@ export class MethodBuilder {
             const asyncMethod = methods.find((m) => m.name === asyncMethodName);
             const finishMethod = methods.find((m) => m.name === finishMethodName);
             if (!asyncMethod || !finishMethod) continue;
+            const asyncParams = this.filterAsyncParameters(asyncMethod.parameters);
+            if (asyncParams.some((p) => this.ffiMapper.hasUnsupportedCallback(p))) continue;
+            if (this.methodBody.isReturnTypeUnsafe(finishMethod.returnType)) continue;
             const structure = this.buildAsyncWrapperStructure(asyncMethod, finishMethod, selfTypeDescriptor);
             if (structure) result.push(structure);
         }
