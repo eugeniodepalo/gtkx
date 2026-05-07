@@ -210,11 +210,7 @@ impl ModuleRequest for RegisterClassRequest {
 
 #[napi]
 #[allow(clippy::needless_pass_by_value)]
-pub fn register_class<'env>(
-    env: &'env Env,
-    name: String,
-    parent_gtype: BigInt,
-) -> napi::Result<Unknown<'env>> {
+pub fn register_class(env: &Env, name: String, parent_gtype: BigInt) -> napi::Result<Unknown<'_>> {
     let name = CString::new(name)
         .map_err(|err| napi::Error::new(napi::Status::InvalidArg, err.to_string()))?;
     let (_, parent_gtype_value, _) = parent_gtype.get_u64();
