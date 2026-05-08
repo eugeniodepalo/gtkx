@@ -11,6 +11,33 @@ import type {
     Type,
 } from "./types.js";
 
+type NativePropertyDefinition = {
+    readonly pspec: unknown;
+};
+
+type NativeSignalDefinition = {
+    readonly name: string;
+    readonly flags: bigint;
+    readonly returnGtype: bigint;
+    readonly paramGtypes: readonly bigint[];
+    readonly defaultHandler?: ((...args: unknown[]) => unknown) | null;
+    readonly defaultHandlerArgTypes?: readonly Type[];
+    readonly defaultHandlerReturnType?: Type;
+};
+
+type NativeVfuncDefinition = {
+    readonly byteOffset: number;
+    readonly argTypes: readonly Type[];
+    readonly returnType: Type;
+    readonly fn: (...args: unknown[]) => unknown;
+};
+
+type NativeRegisterClassOptions = {
+    readonly properties?: readonly NativePropertyDefinition[];
+    readonly signals?: readonly NativeSignalDefinition[];
+    readonly vfuncs?: readonly NativeVfuncDefinition[];
+};
+
 const native = nativeBinding as unknown as {
     alloc: (size: number, typeName?: string, lib?: string) => unknown;
     call: (library: string, symbol: string, args: unknown[], returnType: unknown) => unknown;
@@ -21,7 +48,7 @@ const native = nativeBinding as unknown as {
     init: () => unknown;
     instanceIsA: (external: unknown, gtype: bigint) => boolean;
     read: (external: unknown, type: unknown, offset: number) => unknown;
-    registerClass: (name: string, parentGtype: bigint) => bigint;
+    registerClass: (name: string, parentGtype: bigint, options?: NativeRegisterClassOptions) => bigint;
     stop: (mainLoop: unknown) => void;
     unfreeze: () => void;
     write: (external: unknown, type: unknown, offset: number, value: unknown) => unknown;
@@ -304,20 +331,111 @@ export function instanceIsA(handle: NativeHandle, gtype: number): boolean {
 }
 
 /**
+ * Pre-built `GParamSpec` to install on a registered class.
+ *
+ * The handle is borrowed: ownership stays with the caller's existing reference
+ * and `g_object_class_install_property` adds its own reference. Property ids are
+ * assigned implicitly from the array index (1-based).
+ */
+export type RegisterClassPropertyDefinition = {
+    /** `GParamSpec` handle obtained from any `g_param_spec_*` binding. */
+    readonly pspec: NativeHandle;
+};
+
+/**
+ * Signal definition installed alongside a class registration.
+ *
+ * Mirrors the parameters of `g_signal_newv`. When `defaultHandler` is provided
+ * its `defaultHandlerArgTypes` and `defaultHandlerReturnType` are required so
+ * the native side can marshal `GValue` arguments to and from JavaScript.
+ */
+export type RegisterClassSignalDefinition = {
+    /** Signal name (e.g. `"activate"`). Must be unique within the type. */
+    readonly name: string;
+    /** `GSignalFlags` bitmask. Use `0` for no flags. */
+    readonly flags: number;
+    /** `GType` of the value returned by the signal (use `G_TYPE_NONE` for void). */
+    readonly returnGType: number;
+    /** `GType`s of the signal's parameters in order. */
+    readonly paramGTypes: readonly number[];
+    /** Optional default class closure invoked for emissions of this signal. */
+    readonly defaultHandler?: (...args: unknown[]) => unknown;
+    /** Argument types for `defaultHandler`. Required when `defaultHandler` is set. */
+    readonly defaultHandlerArgTypes?: Type[];
+    /** Return type for `defaultHandler`. Required when `defaultHandler` is set. */
+    readonly defaultHandlerReturnType?: Type;
+};
+
+/**
+ * Virtual function override installed into a registered class's vtable.
+ *
+ * `byteOffset` is the offset (in bytes) of the function pointer slot inside
+ * the class struct relative to the class struct base; the JavaScript function
+ * is wrapped in a libffi trampoline whose generated C function pointer is
+ * written at that offset during class initialization.
+ */
+export type RegisterClassVfuncDefinition = {
+    /** Byte offset of the vfunc slot within the class struct. */
+    readonly byteOffset: number;
+    /** FFI argument types matching the vfunc signature. */
+    readonly argTypes: readonly Type[];
+    /** FFI return type matching the vfunc signature. */
+    readonly returnType: Type;
+    /** Implementation invoked on each vfunc call. */
+    readonly fn: (...args: unknown[]) => unknown;
+};
+
+/**
+ * Optional payload for {@link registerClass} containing properties, signals,
+ * and vfunc overrides.
+ */
+export type RegisterClassNativeOptions = {
+    readonly properties?: readonly RegisterClassPropertyDefinition[];
+    readonly signals?: readonly RegisterClassSignalDefinition[];
+    readonly vfuncs?: readonly RegisterClassVfuncDefinition[];
+};
+
+/**
  * Registers a new `GType` derived from `parentGtype` under `name`.
  *
  * Wraps `g_type_register_static`, sizing the new class so it matches the
- * parent's class and instance struct sizes. No `class_init`, `instance_init`,
- * or value table is supplied. Higher-level orchestration (resolving the
- * parent class, walking JS prototypes, updating the JS class registry) lives
- * in `@gtkx/ffi`'s `registerClass`.
+ * parent's class and instance struct sizes. The provided properties, signals,
+ * and vfunc overrides are installed atomically inside a single `class_init`.
+ * Higher-level orchestration (resolving the parent class, walking JS
+ * prototypes, updating the JS class registry) lives in `@gtkx/ffi`'s
+ * `registerClass`.
  *
  * @param name - Globally-unique GType name (must not already be registered)
  * @param parentGtype - Numeric GType of the parent class
+ * @param options - Optional properties, signals, and vfunc overrides
  * @returns Numeric GType of the newly registered subclass
  */
-export function registerClass(name: string, parentGtype: number): number {
-    return Number(native.registerClass(name, BigInt(parentGtype)));
+export function registerClass(name: string, parentGtype: number, options?: RegisterClassNativeOptions): number {
+    const nativeOptions = options ? buildNativeOptions(options) : undefined;
+    return Number(native.registerClass(name, BigInt(parentGtype), nativeOptions));
+}
+
+function buildNativeOptions(options: RegisterClassNativeOptions): NativeRegisterClassOptions {
+    return {
+        properties: options.properties?.map((property) => ({
+            pspec: property.pspec.external,
+        })),
+        signals: options.signals?.map((signal) => ({
+            name: signal.name,
+            flags: BigInt(signal.flags),
+            returnGtype: BigInt(signal.returnGType),
+            paramGtypes: signal.paramGTypes.map(BigInt),
+            defaultHandler: signal.defaultHandler ?? null,
+            defaultHandlerArgTypes: signal.defaultHandlerArgTypes,
+            defaultHandlerReturnType: signal.defaultHandlerReturnType,
+        })),
+        vfuncs: options.vfuncs?.map((vfunc) => ({
+            byteOffset: vfunc.byteOffset,
+            argTypes: [...vfunc.argTypes],
+            returnType: vfunc.returnType,
+            fn: vfunc.fn,
+        })),
+    };
 }
 
 /**
