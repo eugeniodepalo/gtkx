@@ -34,26 +34,24 @@ use crate::managed::NativeHandle;
 use crate::types::{RawPtrCodec as _, Type};
 use crate::value::Value;
 
-fn require_non_null(ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-    if ptr.is_null() {
+fn require_non_null(addr: usize) -> anyhow::Result<*mut c_void> {
+    if addr == 0 {
         anyhow::bail!("NativeHandle has a null pointer");
     }
-    Ok(ptr)
+    Ok(addr as *mut c_void)
 }
 
 struct ReadRequest {
-    base_ptr: *mut c_void,
+    base_addr: usize,
     field_type: Type,
     offset: usize,
 }
-
-unsafe impl Send for ReadRequest {}
 
 impl ModuleRequest for ReadRequest {
     type Output = Value;
 
     fn execute(self) -> anyhow::Result<Value> {
-        let base_ptr = require_non_null(self.base_ptr)?;
+        let base_ptr = require_non_null(self.base_addr)?;
         let field_ptr = unsafe { (base_ptr as *const u8).add(self.offset) as *const c_void };
         self.field_type.read_from_raw_ptr(field_ptr, "field read")
     }
@@ -71,9 +69,8 @@ pub fn read<'env>(
     offset: f64,
 ) -> napi::Result<Unknown<'env>> {
     let field_type = Type::from_js_value(env, js_type)?;
-    let base_ptr = handle.ptr();
     let request = ReadRequest {
-        base_ptr,
+        base_addr: handle.ptr_as_usize(),
         field_type,
         offset: offset as usize,
     };
@@ -81,19 +78,17 @@ pub fn read<'env>(
 }
 
 struct WriteRequest {
-    base_ptr: *mut c_void,
+    base_addr: usize,
     field_type: Type,
     offset: usize,
     value: Value,
 }
 
-unsafe impl Send for WriteRequest {}
-
 impl ModuleRequest for WriteRequest {
     type Output = ();
 
     fn execute(self) -> anyhow::Result<()> {
-        let base_ptr = require_non_null(self.base_ptr)?;
+        let base_ptr = require_non_null(self.base_addr)?;
         let field_ptr = unsafe { (base_ptr as *mut u8).add(self.offset) as *mut c_void };
         self.field_type
             .write_value_to_raw_ptr(field_ptr, &self.value)
@@ -114,9 +109,8 @@ pub fn write<'env>(
 ) -> napi::Result<Unknown<'env>> {
     let field_type = Type::from_js_value(env, js_type)?;
     let parsed_value = Value::from_js_value(env, value)?;
-    let base_ptr = handle.ptr();
     let request = WriteRequest {
-        base_ptr,
+        base_addr: handle.ptr_as_usize(),
         field_type,
         offset: offset as usize,
         value: parsed_value,

@@ -22,21 +22,19 @@ use crate::types::Type;
 use crate::value::{self, JsCallbackRef};
 
 struct FindObjectPropertyRequest {
-    instance_ptr: *mut c_void,
+    instance_addr: usize,
     property_name: CString,
 }
-
-unsafe impl Send for FindObjectPropertyRequest {}
 
 impl ModuleRequest for FindObjectPropertyRequest {
     type Output = Option<NativeHandle>;
 
     fn execute(self) -> anyhow::Result<Option<NativeHandle>> {
-        if self.instance_ptr.is_null() {
+        if self.instance_addr == 0 {
             anyhow::bail!("instance handle has a null pointer");
         }
 
-        let instance = self.instance_ptr.cast::<gobject_ffi::GTypeInstance>();
+        let instance = self.instance_addr as *mut gobject_ffi::GTypeInstance;
         let object_class = unsafe { (*instance).g_class.cast::<gobject_ffi::GObjectClass>() };
         if object_class.is_null() {
             anyhow::bail!("instance has no resolved class");
@@ -69,26 +67,24 @@ pub fn find_object_property<'env>(
     dispatch_request(
         env,
         FindObjectPropertyRequest {
-            instance_ptr: handle.ptr(),
+            instance_addr: handle.ptr_as_usize(),
             property_name,
         },
     )
 }
 
 struct GetInstanceTypeNameRequest {
-    instance_ptr: *mut c_void,
+    instance_addr: usize,
 }
-
-unsafe impl Send for GetInstanceTypeNameRequest {}
 
 impl ModuleRequest for GetInstanceTypeNameRequest {
     type Output = Option<String>;
 
     fn execute(self) -> anyhow::Result<Option<String>> {
-        if self.instance_ptr.is_null() {
+        if self.instance_addr == 0 {
             return Ok(None);
         }
-        let instance = self.instance_ptr.cast::<gobject_ffi::GTypeInstance>();
+        let instance = self.instance_addr as *mut gobject_ffi::GTypeInstance;
         let name = unsafe { gobject_ffi::g_type_name_from_instance(instance) };
         if name.is_null() {
             return Ok(None);
@@ -112,26 +108,24 @@ pub fn get_instance_type_name<'env>(
     dispatch_request(
         env,
         GetInstanceTypeNameRequest {
-            instance_ptr: handle.ptr(),
+            instance_addr: handle.ptr_as_usize(),
         },
     )
 }
 
 struct InstanceIsARequest {
-    instance_ptr: *mut c_void,
+    instance_addr: usize,
     gtype: usize,
 }
-
-unsafe impl Send for InstanceIsARequest {}
 
 impl ModuleRequest for InstanceIsARequest {
     type Output = bool;
 
     fn execute(self) -> anyhow::Result<bool> {
-        if self.instance_ptr.is_null() {
+        if self.instance_addr == 0 {
             return Ok(false);
         }
-        let instance = self.instance_ptr.cast::<gobject_ffi::GTypeInstance>();
+        let instance = self.instance_addr as *mut gobject_ffi::GTypeInstance;
         let result = unsafe { gobject_ffi::g_type_check_instance_is_a(instance, self.gtype) };
         Ok(result != 0)
     }
@@ -152,7 +146,7 @@ pub fn instance_is_a<'env>(
     dispatch_request(
         env,
         InstanceIsARequest {
-            instance_ptr: handle.ptr(),
+            instance_addr: handle.ptr_as_usize(),
             gtype: gtype_value as usize,
         },
     )
