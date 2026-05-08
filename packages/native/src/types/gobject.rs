@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use anyhow::bail;
 use gtk4::glib::{
     self,
-    translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
+    translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, IntoGlibPtr, ToGlibPtr as _},
     value::ToValue as _,
 };
 use napi::{Env, JsObject};
@@ -27,17 +27,16 @@ impl GObjectType {
 impl FfiEncoder for GObjectType {
     fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("GObject")?;
-
-        if self.ownership.is_full() && !ptr.is_null() {
-            unsafe { glib::gobject_ffi::g_object_ref(ptr as *mut _) };
-        }
-
-        Ok(ffi::FfiValue::Ptr(ptr))
+        Ok(ffi::FfiValue::Ptr(self.ref_for_transfer(ptr)?))
     }
 
     fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         if self.ownership.is_full() && !ptr.is_null() {
-            unsafe { glib::gobject_ffi::g_object_ref(ptr as *mut _) };
+            let obj: glib::Object =
+                unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
+            return Ok(
+                IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>(),
+            );
         }
         Ok(ptr)
     }
@@ -87,12 +86,14 @@ impl RawPtrCodec for GObjectType {
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = value::Value::result_to_ptr(value);
-        if !ptr.is_null() {
-            unsafe {
-                glib::gobject_ffi::g_object_ref(ptr as *mut glib::gobject_ffi::GObject);
-            }
-        }
-        unsafe { *(ret as *mut *mut c_void) = ptr };
+        let owned_ptr = if ptr.is_null() {
+            ptr
+        } else {
+            let obj: glib::Object =
+                unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
+            IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>()
+        };
+        unsafe { *(ret as *mut *mut c_void) = owned_ptr };
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
