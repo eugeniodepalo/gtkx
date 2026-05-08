@@ -1,5 +1,6 @@
-import { findObjectProperty } from "@gtkx/native";
+import { findObjectProperty, instanceIsA } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
+import { GIconIface } from "../src/generated/gio/icon-iface.js";
 import { ParamFlags } from "../src/generated/gobject/enums.js";
 import {
     paramSpecBoolean,
@@ -15,6 +16,7 @@ import { GObjectClass } from "../src/generated/gobject/object-class.js";
 import { Value as GValue } from "../src/generated/gobject/value.js";
 import * as Gtk from "../src/generated/gtk/index.js";
 import { findNativeClass, registerClass } from "../src/index.js";
+import { call, t } from "../src/native.js";
 
 let suffix = 0;
 const uniqueName = (prefix: string): string => `${prefix}_${process.pid}_${++suffix}`;
@@ -280,5 +282,94 @@ describe("registerClass", () => {
                 ],
             }),
         ).toThrow(/defaultHandlerArgTypes or defaultHandlerReturnType/);
+    });
+
+    it("registers a class as implementing an interface and dispatches through its vtable", () => {
+        const name = uniqueName("GtkxIconImpl");
+        class CustomIcon extends GObject {}
+
+        const hashCalls: number[] = [];
+        const giconGtype = typeFromName("GIcon");
+        expect(giconGtype).not.toBe(0);
+
+        registerClass(CustomIcon, {
+            gtypeName: name,
+            interfaces: [
+                {
+                    gtype: giconGtype,
+                    vfuncs: [
+                        {
+                            ...GIconIface.hash,
+                            fn: () => {
+                                hashCalls.push(1);
+                                return 0xfeed_face;
+                            },
+                        },
+                    ],
+                },
+            ],
+        });
+
+        const customGtype = typeFromName(name);
+        const instance = GObject.newv(customGtype, []);
+        expect(instanceIsA(instance.handle, giconGtype)).toBe(true);
+
+        const result = call(
+            "libgio-2.0.so.0",
+            "g_icon_hash",
+            [{ type: t.object("borrowed"), value: instance.handle }],
+            t.uint32,
+        );
+
+        expect(hashCalls).toEqual([1]);
+        expect(result).toBe(0xfeed_face);
+    });
+
+    it("rejects an interface vfunc whose offset is not pointer-aligned", () => {
+        class CustomObject extends GObject {}
+        const giconGtype = typeFromName("GIcon");
+
+        expect(() =>
+            registerClass(CustomObject, {
+                gtypeName: uniqueName("GtkxMisalignedIfaceVfunc"),
+                interfaces: [
+                    {
+                        gtype: giconGtype,
+                        vfuncs: [{ ...GIconIface.hash, byteOffset: 1, fn: () => 0 }],
+                    },
+                ],
+            }),
+        ).toThrow(/interface vfunc byte_offset 1 is not aligned to a pointer/);
+    });
+
+    it("rejects a registration with an invalid (zero) interface gtype", () => {
+        class CustomObject extends GObject {}
+
+        expect(() =>
+            registerClass(CustomObject, {
+                gtypeName: uniqueName("GtkxBadInterfaceGtype"),
+                interfaces: [
+                    {
+                        gtype: 0,
+                        vfuncs: [{ ...GIconIface.hash, fn: () => 0 }],
+                    },
+                ],
+            }),
+        ).toThrow(/interface gtype must be non-zero/);
+    });
+
+    it("rejects an interface descriptor in the class vfuncs slot at compile time", () => {
+        const _typeOnly = (): void => {
+            class CustomObject extends GObject {}
+            registerClass(CustomObject, {
+                gtypeName: "GtkxKindDiscriminator",
+                vfuncs: [
+                    // @ts-expect-error — GIconIface.hash is a `kind: "interface"` descriptor and cannot flow into `vfuncs`.
+                    { ...GIconIface.hash, fn: () => 0 },
+                ],
+            });
+        };
+        void _typeOnly;
+        expect(true).toBe(true);
     });
 });

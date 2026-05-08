@@ -45,10 +45,14 @@ export type RegisterClassSignal = RegisterClassSignalDefinition;
  * type, and diagnostic names so users only provide the implementation.
  *
  * `byteOffset` is the offset (in bytes) of the vfunc slot inside the class
- * struct, relative to the class struct base. `className` and `vfuncName`
- * are recorded only for diagnostic purposes.
+ * struct, relative to the class struct base. The `kind: "class"` tag
+ * prevents an interface vfunc descriptor (`kind: "interface"`) from being
+ * passed to `RegisterClassOptions.vfuncs`, since interface vfunc offsets
+ * are relative to the interface struct, not the class struct.
  */
 export type RegisterClassVfunc = {
+    /** Discriminator marking this descriptor as a class vfunc. */
+    readonly kind: "class";
     /** Owning class name, for documentation and diagnostics (e.g. `"GObjectClass"`). */
     readonly className: string;
     /** Vfunc slot name, for documentation and diagnostics (e.g. `"finalize"`). */
@@ -64,13 +68,58 @@ export type RegisterClassVfunc = {
 };
 
 /**
- * Generated descriptor of a vfunc slot, i.e. {@link RegisterClassVfunc}
+ * Generated descriptor of a class vfunc slot, i.e. {@link RegisterClassVfunc}
  * minus the user-supplied implementation. Codegen emits one of these per
- * vfunc on each class struct registry (e.g. `GObjectClass.setProperty`)
+ * vfunc on each class-struct registry (e.g. `GObjectClass.setProperty`)
  * so users construct the full {@link RegisterClassVfunc} by spreading the
  * descriptor and adding `fn`.
  */
 export type RegisterClassVfuncDescriptor = Omit<RegisterClassVfunc, "fn">;
+
+/**
+ * Virtual function override installed on a custom subclass's interface
+ * vtable via {@link registerClass}. Identical shape to {@link RegisterClassVfunc}
+ * except for the `kind: "interface"` discriminator, which keeps the type
+ * system from accepting an interface descriptor in `RegisterClassOptions.vfuncs`.
+ */
+export type RegisterClassInterfaceVfunc = {
+    /** Discriminator marking this descriptor as an interface vfunc. */
+    readonly kind: "interface";
+    /** Owning interface struct name, for documentation and diagnostics (e.g. `"GIconIface"`). */
+    readonly className: string;
+    /** Vfunc slot name, for documentation and diagnostics (e.g. `"hash"`). */
+    readonly vfuncName: string;
+    /** Byte offset of the vfunc slot within the interface struct. */
+    readonly byteOffset: number;
+    /** FFI argument types matching the vfunc signature. */
+    readonly argTypes: RegisterClassVfuncDefinition["argTypes"];
+    /** FFI return type matching the vfunc signature. */
+    readonly returnType: RegisterClassVfuncDefinition["returnType"];
+    /** Implementation invoked on each vfunc call. */
+    readonly fn: RegisterClassVfuncDefinition["fn"];
+};
+
+/**
+ * Generated descriptor of an interface vfunc slot, i.e.
+ * {@link RegisterClassInterfaceVfunc} minus the user-supplied implementation.
+ * Codegen emits one of these per vfunc on each interface-struct registry
+ * (e.g. `GIconIface.hash`) so users construct the full
+ * {@link RegisterClassInterfaceVfunc} by spreading the descriptor and adding `fn`.
+ */
+export type RegisterClassInterfaceVfuncDescriptor = Omit<RegisterClassInterfaceVfunc, "fn">;
+
+/**
+ * Interface implementation installed on a custom subclass via
+ * {@link registerClass}. Each interface entry produces one
+ * `g_type_add_interface_static` call against the new GType, attaching the
+ * supplied vfunc trampolines into the interface vtable.
+ */
+export type RegisterClassInterface = {
+    /** GType of the interface to implement. Use the interface class's `getGType()`. */
+    readonly gtype: number;
+    /** Vfunc overrides for the interface's vtable. */
+    readonly vfuncs: readonly RegisterClassInterfaceVfunc[];
+};
 
 /**
  * Options accepted by {@link registerClass}.
@@ -88,6 +137,8 @@ export type RegisterClassOptions = {
     readonly signals?: readonly RegisterClassSignal[];
     /** Virtual function overrides installed into the new class struct. */
     readonly vfuncs?: readonly RegisterClassVfunc[];
+    /** Interfaces implemented by the new class, with their vfunc overrides. */
+    readonly interfaces?: readonly RegisterClassInterface[];
 };
 
 type ClassWithGetGType = NativeClass & { readonly getGType?: () => number };
@@ -156,8 +207,8 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
 }
 
 function toNativeOptions(options: RegisterClassOptions): RegisterClassNativeOptions | undefined {
-    const { properties, signals, vfuncs } = options;
-    if (!properties && !signals && !vfuncs) {
+    const { properties, signals, vfuncs, interfaces } = options;
+    if (!properties && !signals && !vfuncs && !interfaces) {
         return undefined;
     }
     signals?.forEach(validateSignal);
@@ -165,6 +216,7 @@ function toNativeOptions(options: RegisterClassOptions): RegisterClassNativeOpti
         properties: properties?.map(toNativeProperty),
         signals,
         vfuncs,
+        interfaces: interfaces?.map((iface) => ({ gtype: iface.gtype, vfuncs: iface.vfuncs })),
     };
 }
 

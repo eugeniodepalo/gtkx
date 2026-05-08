@@ -185,6 +185,16 @@ struct PreparedVfunc {
     state: Box<TrampolineState>,
 }
 
+/// Pre-built interface implementation. Each entry produces a single
+/// `g_type_add_interface_static` call after the new class type has been
+/// registered. The vfunc pointers are written into the iface struct by
+/// `interface_init_trampoline` when `GLib` invokes it during interface
+/// attachment.
+struct PreparedInterface {
+    gtype: usize,
+    vfuncs: Vec<PreparedVfunc>,
+}
+
 /// Class-registration payload threaded into `GTypeInfo.class_data`.
 ///
 /// Allocated on the JS thread, leaked on the `GLib` thread immediately before
@@ -207,6 +217,22 @@ struct ClassData {
 /// hand-off, so the `!Send` interior is harmless in practice.
 #[allow(clippy::non_send_fields_in_send_ty)]
 unsafe impl Send for ClassData {}
+
+unsafe extern "C" fn interface_init_trampoline(g_iface: *mut c_void, iface_data: *mut c_void) {
+    if iface_data.is_null() {
+        return;
+    }
+    let prepared = unsafe { Box::from_raw(iface_data.cast::<PreparedInterface>()) };
+    for vfunc in prepared.vfuncs {
+        unsafe {
+            let slot = (g_iface.cast::<u8>())
+                .add(vfunc.byte_offset)
+                .cast::<*mut c_void>();
+            slot.write(vfunc.code_ptr);
+        }
+        std::mem::forget(vfunc.state);
+    }
+}
 
 unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mut c_void) {
     if class_data.is_null() {
@@ -287,9 +313,12 @@ struct RegisterClassRequest {
     name: CString,
     parent_gtype: usize,
     class_data: Box<ClassData>,
+    interfaces: Vec<PreparedInterface>,
 }
 
 unsafe impl Send for RegisterClassRequest {}
+#[allow(clippy::non_send_fields_in_send_ty)]
+unsafe impl Send for PreparedInterface {}
 
 impl ModuleRequest for RegisterClassRequest {
     type Output = u64;
@@ -336,6 +365,25 @@ impl ModuleRequest for RegisterClassRequest {
             }
         }
 
+        for iface in &self.interfaces {
+            if iface.gtype == 0 {
+                anyhow::bail!("interface gtype is invalid (G_TYPE_INVALID)");
+            }
+            for vfunc in &iface.vfuncs {
+                if !vfunc.byte_offset.is_multiple_of(pointer_align) {
+                    anyhow::bail!(
+                        "interface vfunc byte_offset {} is not aligned to a pointer ({})",
+                        vfunc.byte_offset,
+                        pointer_align,
+                    );
+                }
+                vfunc
+                    .byte_offset
+                    .checked_add(pointer_size)
+                    .ok_or_else(|| anyhow::anyhow!("interface vfunc byte_offset overflow"))?;
+            }
+        }
+
         let class_size = query.class_size as u16;
         let instance_size = query.instance_size as u16;
         let class_data_ptr = Box::into_raw(self.class_data).cast::<c_void>();
@@ -360,6 +408,19 @@ impl ModuleRequest for RegisterClassRequest {
         if new_gtype == 0 {
             drop(unsafe { Box::from_raw(class_data_ptr.cast::<ClassData>()) });
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
+        }
+
+        for iface in self.interfaces {
+            let iface_gtype = iface.gtype;
+            let prepared_ptr = Box::into_raw(Box::new(iface));
+            let info = gobject_ffi::GInterfaceInfo {
+                interface_init: Some(interface_init_trampoline),
+                interface_finalize: None,
+                interface_data: prepared_ptr.cast::<c_void>(),
+            };
+            unsafe {
+                gobject_ffi::g_type_add_interface_static(new_gtype, iface_gtype, &info);
+            }
         }
 
         unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
@@ -549,6 +610,23 @@ fn parse_vfunc(env: &Env, item: Unknown<'_>) -> napi::Result<PreparedVfunc> {
     })
 }
 
+fn parse_interface(env: &Env, item: Unknown<'_>) -> napi::Result<PreparedInterface> {
+    let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
+    let (_, gtype, _) = obj.get_named_property::<BigInt>("gtype")?.get_u64();
+    if gtype == 0 {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            "register_class: interface gtype must be non-zero",
+        ));
+    }
+    let vfuncs_prop: Unknown<'_> = obj.get_named_property("vfuncs")?;
+    let vfuncs = parse_js_array(env, vfuncs_prop, "interface vfuncs", parse_vfunc)?;
+    Ok(PreparedInterface {
+        gtype: gtype as usize,
+        vfuncs,
+    })
+}
+
 fn parse_array_property<T>(
     env: &Env,
     options: &JsObject,
@@ -587,24 +665,34 @@ fn parse_array_property<T>(
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn parse_class_data(env: &Env, options: Option<JsObject>) -> napi::Result<Box<ClassData>> {
+fn parse_class_data(
+    env: &Env,
+    options: Option<JsObject>,
+) -> napi::Result<(Box<ClassData>, Vec<PreparedInterface>)> {
     let Some(options) = options else {
-        return Ok(Box::new(ClassData {
-            properties: Vec::new(),
-            signals: Vec::new(),
-            vfuncs: Vec::new(),
-        }));
+        return Ok((
+            Box::new(ClassData {
+                properties: Vec::new(),
+                signals: Vec::new(),
+                vfuncs: Vec::new(),
+            }),
+            Vec::new(),
+        ));
     };
 
     let properties = parse_array_property(env, &options, "properties", parse_property)?;
     let signals = parse_array_property(env, &options, "signals", parse_signal)?;
     let vfuncs = parse_array_property(env, &options, "vfuncs", parse_vfunc)?;
+    let interfaces = parse_array_property(env, &options, "interfaces", parse_interface)?;
 
-    Ok(Box::new(ClassData {
-        properties,
-        signals,
-        vfuncs,
-    }))
+    Ok((
+        Box::new(ClassData {
+            properties,
+            signals,
+            vfuncs,
+        }),
+        interfaces,
+    ))
 }
 
 #[napi]
@@ -618,13 +706,14 @@ pub fn register_class(
     let name = CString::new(name)
         .map_err(|err| napi::Error::new(napi::Status::InvalidArg, err.to_string()))?;
     let (_, parent_gtype_value, _) = parent_gtype.get_u64();
-    let class_data = parse_class_data(env, options)?;
+    let (class_data, interfaces) = parse_class_data(env, options)?;
     dispatch_request(
         env,
         RegisterClassRequest {
             name,
             parent_gtype: parent_gtype_value as usize,
             class_data,
+            interfaces,
         },
     )
 }

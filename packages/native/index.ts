@@ -32,10 +32,16 @@ type NativeVfuncDefinition = {
     readonly fn: (...args: unknown[]) => unknown;
 };
 
+type NativeInterfaceDefinition = {
+    readonly gtype: bigint;
+    readonly vfuncs: readonly NativeVfuncDefinition[];
+};
+
 type NativeRegisterClassOptions = {
     readonly properties?: readonly NativePropertyDefinition[];
     readonly signals?: readonly NativeSignalDefinition[];
     readonly vfuncs?: readonly NativeVfuncDefinition[];
+    readonly interfaces?: readonly NativeInterfaceDefinition[];
 };
 
 const native = nativeBinding as unknown as {
@@ -386,13 +392,30 @@ export type RegisterClassVfuncDefinition = {
 };
 
 /**
+ * Interface implementation installed on the registered class.
+ *
+ * `gtype` is the GType of the interface to implement. `vfuncs` are the
+ * interface vfunc overrides, with `byteOffset` relative to the interface
+ * struct base (not the class struct). Each vfunc is wrapped in a libffi
+ * trampoline whose function pointer is written into the interface struct
+ * by GLib when the interface is attached to the new class.
+ */
+export type RegisterClassInterfaceDefinition = {
+    /** GType of the interface to implement. */
+    readonly gtype: number;
+    /** Vfunc overrides relative to the interface struct base. */
+    readonly vfuncs: readonly RegisterClassVfuncDefinition[];
+};
+
+/**
  * Optional payload for {@link registerClass} containing properties, signals,
- * and vfunc overrides.
+ * vfunc overrides, and interface implementations.
  */
 export type RegisterClassNativeOptions = {
     readonly properties?: readonly RegisterClassPropertyDefinition[];
     readonly signals?: readonly RegisterClassSignalDefinition[];
     readonly vfuncs?: readonly RegisterClassVfuncDefinition[];
+    readonly interfaces?: readonly RegisterClassInterfaceDefinition[];
 };
 
 /**
@@ -429,12 +452,20 @@ function buildNativeOptions(options: RegisterClassNativeOptions): NativeRegister
             defaultHandlerArgTypes: signal.defaultHandlerArgTypes,
             defaultHandlerReturnType: signal.defaultHandlerReturnType,
         })),
-        vfuncs: options.vfuncs?.map((vfunc) => ({
-            byteOffset: vfunc.byteOffset,
-            argTypes: [...vfunc.argTypes],
-            returnType: vfunc.returnType,
-            fn: vfunc.fn,
+        vfuncs: options.vfuncs?.map(toNativeVfunc),
+        interfaces: options.interfaces?.map((iface) => ({
+            gtype: BigInt(iface.gtype),
+            vfuncs: iface.vfuncs.map(toNativeVfunc),
         })),
+    };
+}
+
+function toNativeVfunc(vfunc: RegisterClassVfuncDefinition): NativeVfuncDefinition {
+    return {
+        byteOffset: vfunc.byteOffset,
+        argTypes: [...vfunc.argTypes],
+        returnType: vfunc.returnType,
+        fn: vfunc.fn,
     };
 }
 

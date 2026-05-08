@@ -98,9 +98,9 @@ describe("ClassStructGenerator", () => {
             parameters: [],
         });
         const record = createNormalizedRecord({
-            name: "VTable",
-            cType: "TestVTable",
-            isGtypeStructFor: "Object",
+            name: "VTableClass",
+            cType: "TestVTableClass",
+            isGtypeStructFor: "VTable",
             fields: [callbackField("first", noopCb), callbackField("second", noopCb), callbackField("third", noopCb)],
         });
         expect(generator.generate(record)).toBe(true);
