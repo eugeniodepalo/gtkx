@@ -10,6 +10,7 @@ impl ClosureGuard {
     ///
     /// `closure` must be either null or point to a valid `GClosure`.
     #[must_use]
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn from_ptr(closure: *mut gobject_ffi::GClosure) -> Option<Self> {
         if closure.is_null() {
             return None;
