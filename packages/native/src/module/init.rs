@@ -15,14 +15,10 @@
 //! 5. The loop runs until JS calls `stop`, which dispatches a final task to
 //!    drain pending finalizers and quit the loop
 
-use std::ffi::c_void;
 use std::sync::Arc;
 use std::sync::mpsc;
 
-use gtk4::glib::{
-    self,
-    translate::{FromGlib, IntoGlibPtr},
-};
+use gtk4::glib;
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi::sys;
@@ -31,10 +27,9 @@ use napi_derive::napi;
 use crate::dispatch::{Mailbox, WakeJsTsfn};
 use crate::error_reporter::{ErrorReporterTsfn, NativeErrorReporter};
 use crate::glib_log_handler::GlibLogHandler;
-use crate::managed::{Boxed, NativeHandle, NativeValue};
 
 #[napi]
-pub fn init(env: Env) -> napi::Result<External<NativeHandle>> {
+pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
     let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
         Mailbox::global().process_node_pending(*ctx.env);
         Ok(())
@@ -63,7 +58,7 @@ pub fn init(env: Env) -> napi::Result<External<NativeHandle>> {
 
     NativeErrorReporter::global().initialize(Arc::new(error_tsfn));
 
-    let (tx, rx) = mpsc::channel::<NativeHandle>();
+    let (tx, rx) = mpsc::channel::<glib::MainLoop>();
 
     std::thread::spawn(move || {
         GlibLogHandler::install();
@@ -72,13 +67,7 @@ pub fn init(env: Env) -> napi::Result<External<NativeHandle>> {
         let main_loop_for_js = main_loop.clone();
 
         glib::idle_add_once(move || {
-            let gtype = unsafe { glib::Type::from_glib(glib::ffi::g_main_loop_get_type()) };
-            let raw_ptr = IntoGlibPtr::<*mut glib::ffi::GMainLoop>::into_glib_ptr(main_loop_for_js)
-                as *mut c_void;
-            let boxed = Boxed::from_glib_full(Some(gtype), raw_ptr);
-            let handle: NativeHandle = NativeValue::Boxed(boxed).into();
-
-            if tx.send(handle).is_err() {
+            if tx.send(main_loop_for_js).is_err() {
                 NativeErrorReporter::global()
                     .report_str("GLib main loop ready but startup channel was closed");
             }
@@ -87,14 +76,14 @@ pub fn init(env: Env) -> napi::Result<External<NativeHandle>> {
         main_loop.run();
     });
 
-    let main_loop_handle = rx.recv().map_err(|err| {
+    let main_loop = rx.recv().map_err(|err| {
         napi::Error::new(
             napi::Status::GenericFailure,
             format!("Error starting GLib thread: {err}"),
         )
     })?;
 
-    Ok(External::new(main_loop_handle))
+    Ok(External::new(main_loop))
 }
 
 /// Emits an `unhandledRejection` event on the Node.js process with a synthesized

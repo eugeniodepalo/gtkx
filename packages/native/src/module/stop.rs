@@ -26,17 +26,16 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::dispatch::Mailbox;
-use crate::managed::NativeHandle;
 
 #[napi]
-pub fn stop(env: Env, main_loop: &External<NativeHandle>) -> napi::Result<()> {
-    let main_loop_addr = main_loop.ptr() as usize;
+pub fn stop(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> {
+    let main_loop = (**main_loop).clone();
 
     Mailbox::global()
         .dispatch_to_glib_and_wait(env, move || {
             Mailbox::global().mark_stopped();
             drain_pending_sources();
-            unsafe { glib::ffi::g_main_loop_quit(main_loop_addr as *mut glib::ffi::GMainLoop) };
+            main_loop.quit();
         })
         .map_err(|err| napi::Error::new(napi::Status::GenericFailure, err.to_string()))?;
 
