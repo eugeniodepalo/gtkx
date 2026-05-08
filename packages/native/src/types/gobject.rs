@@ -3,8 +3,8 @@ use std::ffi::c_void;
 use anyhow::bail;
 use gtk4::glib::{
     self,
-    prelude::{ObjectExt as _, ObjectType as _},
-    translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _, ToGlibPtrMut as _},
+    translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
+    value::ToValue as _,
 };
 use napi::{Env, JsObject};
 
@@ -116,14 +116,7 @@ impl GlibValueCodec for GObjectType {
         }
         let obj: glib::Object =
             unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
-        let mut gvalue = glib::Value::from_type(obj.type_());
-        unsafe {
-            glib::gobject_ffi::g_value_set_object(
-                gvalue.to_glib_none_mut().0,
-                obj.as_ptr() as *mut _,
-            );
-        }
-        Ok(Some(gvalue))
+        Ok(Some(obj.to_value()))
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {

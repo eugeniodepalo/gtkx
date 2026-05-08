@@ -15,12 +15,7 @@ use std::ffi::c_void;
 use std::sync::Arc;
 
 use anyhow::bail;
-use gtk4::glib::{
-    self,
-    prelude::{ObjectExt as _, ObjectType as _},
-    translate::{FromGlibPtrNone as _, ToGlibPtrMut as _},
-    value::ToValue as _,
-};
+use gtk4::glib::{self, translate::FromGlibPtrNone as _, value::ToValue as _};
 use napi::bindgen_prelude::*;
 use napi::sys;
 use napi::{Env, JsFunction, JsObject, NapiRaw as _, ValueType};
@@ -332,14 +327,7 @@ impl Value {
                     let obj: glib::Object = unsafe {
                         glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
                     };
-                    let mut value = glib::Value::from_type(obj.type_());
-                    unsafe {
-                        glib::gobject_ffi::g_value_set_object(
-                            value.to_glib_none_mut().0,
-                            obj.as_ptr() as *mut _,
-                        );
-                    }
-                    Ok(value)
+                    Ok(obj.to_value())
                 }
             }
             Self::Null | Self::Undefined => {
