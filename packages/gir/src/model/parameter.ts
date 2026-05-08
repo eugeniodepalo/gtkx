@@ -14,6 +14,7 @@ export class GirParameter {
     readonly closure?: number;
     readonly destroy?: number;
     readonly transferOwnership?: "none" | "full" | "container";
+    readonly varargs: boolean;
     readonly doc?: string;
 
     constructor(data: {
@@ -27,6 +28,7 @@ export class GirParameter {
         closure?: number;
         destroy?: number;
         transferOwnership?: "none" | "full" | "container";
+        varargs?: boolean;
         doc?: string;
     }) {
         this.name = data.name;
@@ -39,6 +41,7 @@ export class GirParameter {
         this.closure = data.closure;
         this.destroy = data.destroy;
         this.transferOwnership = data.transferOwnership;
+        this.varargs = data.varargs ?? false;
         this.doc = data.doc;
     }
 

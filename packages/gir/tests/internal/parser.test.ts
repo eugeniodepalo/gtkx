@@ -132,5 +132,80 @@ describe("GirParser", () => {
             expect(result.classes[0]?.methods.length).toBe(1);
             expect(result.classes[0]?.methods[0]?.name).toBe("visible");
         });
+
+        it("preserves callback fields in records", () => {
+            const parser = new GirParser();
+            const gir = createMinimalGir(`
+                <record name="VTable" c:type="TestVTable">
+                    <field name="parent_ptr"><type name="gpointer" c:type="gpointer"/></field>
+                    <field name="fn_ptr">
+                        <callback name="fn_ptr">
+                            <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+                        </callback>
+                    </field>
+                </record>
+            `);
+            const result = parser.parseNamespace(gir);
+            const record = result.records[0];
+            expect(record?.fields.length).toBe(2);
+            expect(record?.fields.map((f) => f.name)).toEqual(["parent_ptr", "fn_ptr"]);
+        });
+
+        it("synthesizes gpointer type for callback fields so layout math is correct", () => {
+            const parser = new GirParser();
+            const gir = createMinimalGir(`
+                <record name="VTable" c:type="TestVTable">
+                    <field name="fn_ptr">
+                        <callback name="fn_ptr">
+                            <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+                        </callback>
+                    </field>
+                </record>
+            `);
+            const result = parser.parseNamespace(gir);
+            const field = result.records[0]?.fields[0];
+            expect(field?.type.name).toBe("gpointer");
+            expect(field?.type.cType).toBe("gpointer");
+        });
+
+        it("attaches the parsed callback signature to callback fields", () => {
+            const parser = new GirParser();
+            const gir = createMinimalGir(`
+                <record name="Hook" c:type="TestHook">
+                    <field name="func">
+                        <callback name="func">
+                            <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+                            <parameters>
+                                <parameter name="data" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></parameter>
+                            </parameters>
+                        </callback>
+                    </field>
+                </record>
+            `);
+            const result = parser.parseNamespace(gir);
+            const field = result.records[0]?.fields[0];
+            expect(field?.callback).toBeDefined();
+            expect(field?.callback?.name).toBe("func");
+            expect(field?.callback?.returnType.name).toBe("gboolean");
+            expect(field?.callback?.parameters.length).toBe(1);
+            expect(field?.callback?.parameters[0]?.name).toBe("data");
+            expect(field?.callback?.introspectable).toBe(true);
+        });
+
+        it("marks non-introspectable callback fields", () => {
+            const parser = new GirParser();
+            const gir = createMinimalGir(`
+                <record name="VTable" c:type="TestVTable">
+                    <field name="opaque_fn">
+                        <callback name="opaque_fn" introspectable="0">
+                            <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+                        </callback>
+                    </field>
+                </record>
+            `);
+            const result = parser.parseNamespace(gir);
+            const field = result.records[0]?.fields[0];
+            expect(field?.callback?.introspectable).toBe(false);
+        });
     });
 });

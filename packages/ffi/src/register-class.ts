@@ -38,10 +38,15 @@ export type RegisterClassSignal = RegisterClassSignalDefinition;
  * Virtual function override installed on a custom subclass via
  * {@link registerClass}.
  *
+ * Every field except `fn` is supplied by codegen via the per-namespace
+ * class-struct registries (e.g. `GObjectClass.setProperty` from
+ * `@gtkx/ffi/generated/gobject/object-class`); spreading that descriptor
+ * into the call site fills in the byte offset, FFI argument types, return
+ * type, and diagnostic names so users only provide the implementation.
+ *
  * `byteOffset` is the offset (in bytes) of the vfunc slot inside the class
- * struct, relative to the class struct base. Determine this from the parent
- * type's class struct layout (codegen emits these offsets for known classes).
- * `className` and `vfuncName` are recorded only for diagnostic purposes.
+ * struct, relative to the class struct base. `className` and `vfuncName`
+ * are recorded only for diagnostic purposes.
  */
 export type RegisterClassVfunc = {
     /** Owning class name, for documentation and diagnostics (e.g. `"GObjectClass"`). */
@@ -57,6 +62,15 @@ export type RegisterClassVfunc = {
     /** Implementation invoked on each vfunc call. */
     readonly fn: RegisterClassVfuncDefinition["fn"];
 };
+
+/**
+ * Generated descriptor of a vfunc slot, i.e. {@link RegisterClassVfunc}
+ * minus the user-supplied implementation. Codegen emits one of these per
+ * vfunc on each class struct registry (e.g. `GObjectClass.setProperty`)
+ * so users construct the full {@link RegisterClassVfunc} by spreading the
+ * descriptor and adding `fn`.
+ */
+export type RegisterClassVfuncDescriptor = Omit<RegisterClassVfunc, "fn">;
 
 /**
  * Options accepted by {@link registerClass}.

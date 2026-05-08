@@ -417,16 +417,34 @@ export class GirParser {
 
     private parseFields(fields: Record<string, unknown>[]): RawField[] {
         if (!fields || !Array.isArray(fields)) return [];
-        return fields
-            .filter((field) => field.callback === undefined)
-            .map((field) => ({
-                name: attrString(field["@_name"]),
-                type: this.parseType((field.type ?? field.array) as Record<string, unknown> | undefined),
+        return fields.map((field) => {
+            const fieldName = attrString(field["@_name"]);
+            const callbackNode = field.callback as Record<string, unknown> | undefined;
+            const callback = callbackNode ? this.parseInlineCallback(callbackNode, fieldName) : undefined;
+            const type = callback
+                ? { name: "gpointer", cType: "gpointer" }
+                : this.parseType((field.type ?? field.array) as Record<string, unknown> | undefined);
+            return {
+                name: fieldName,
+                type,
                 writable: field["@_writable"] === "1",
                 readable: field["@_readable"] !== "0",
                 private: field["@_private"] === "1",
+                callback,
                 doc: extractDoc(field),
-            }));
+            };
+        });
+    }
+
+    private parseInlineCallback(node: Record<string, unknown>, fieldName: string): RawCallback {
+        return {
+            name: attrString(node["@_name"]) || fieldName,
+            cType: attrString(node["@_c:type"]),
+            returnType: this.parseReturnType(node["return-value"] as Record<string, unknown> | undefined),
+            parameters: this.parseParameters(this.extractParametersNode(node)),
+            introspectable: node["@_introspectable"] !== "0",
+            doc: extractDoc(node),
+        };
     }
 
     private extractParametersNode(node: Record<string, unknown>): Record<string, unknown> {
@@ -467,6 +485,7 @@ export class GirParser {
                 transferOwnership === "none" || transferOwnership === "full" || transferOwnership === "container"
                     ? transferOwnership
                     : undefined,
+            varargs: param.varargs !== undefined,
             doc: extractDoc(param),
         };
     }

@@ -11,6 +11,7 @@ import {
     typeParent,
 } from "../src/generated/gobject/functions.js";
 import { Object as GObject } from "../src/generated/gobject/object.js";
+import { GObjectClass } from "../src/generated/gobject/object-class.js";
 import { Value as GValue } from "../src/generated/gobject/value.js";
 import * as Gtk from "../src/generated/gtk/index.js";
 import { findNativeClass, registerClass } from "../src/index.js";
@@ -21,46 +22,9 @@ const uniqueName = (prefix: string): string => `${prefix}_${process.pid}_${++suf
 const gtypeNone = (): number => typeFromName("void");
 const gtypeString = (): number => typeFromName("gchararray");
 
-const GOBJECT_CLASS_SET_PROPERTY_OFFSET = 24;
-const GOBJECT_CLASS_GET_PROPERTY_OFFSET = 32;
-
-const propertyAccessorArgTypes = [
-    { type: "gobject", ownership: "borrowed" },
-    { type: "uint32" },
-    {
-        type: "boxed",
-        innerType: "GValue",
-        ownership: "borrowed",
-        library: "libgobject-2.0.so.0",
-        getTypeFn: "g_value_get_type",
-    },
-    {
-        type: "fundamental",
-        ownership: "borrowed",
-        library: "libgobject-2.0.so.0",
-        refFn: "g_param_spec_ref_sink",
-        unrefFn: "g_param_spec_unref",
-        typeName: "GParam",
-    },
-] as const;
-
 const noopPropertyAccessors = [
-    {
-        className: "GObjectClass",
-        vfuncName: "set_property",
-        byteOffset: GOBJECT_CLASS_SET_PROPERTY_OFFSET,
-        argTypes: propertyAccessorArgTypes,
-        returnType: { type: "void" } as const,
-        fn: () => undefined,
-    },
-    {
-        className: "GObjectClass",
-        vfuncName: "get_property",
-        byteOffset: GOBJECT_CLASS_GET_PROPERTY_OFFSET,
-        argTypes: propertyAccessorArgTypes,
-        returnType: { type: "void" } as const,
-        fn: () => undefined,
-    },
+    { ...GObjectClass.setProperty, fn: () => undefined },
+    { ...GObjectClass.getProperty, fn: () => undefined },
 ];
 
 describe("registerClass", () => {
@@ -232,16 +196,7 @@ describe("registerClass", () => {
 
         registerClass(CustomObject, {
             gtypeName: name,
-            vfuncs: [
-                {
-                    className: "GObjectClass",
-                    vfuncName: "set_property",
-                    byteOffset: GOBJECT_CLASS_SET_PROPERTY_OFFSET,
-                    argTypes: propertyAccessorArgTypes,
-                    returnType: { type: "void" },
-                    fn: () => undefined,
-                },
-            ],
+            vfuncs: [{ ...GObjectClass.setProperty, fn: () => undefined }],
         });
 
         const customGtype = typeFromName(name);
@@ -261,23 +216,12 @@ describe("registerClass", () => {
             properties: [{ pspec }],
             vfuncs: [
                 {
-                    className: "GObjectClass",
-                    vfuncName: "set_property",
-                    byteOffset: GOBJECT_CLASS_SET_PROPERTY_OFFSET,
-                    argTypes: propertyAccessorArgTypes,
-                    returnType: { type: "void" },
+                    ...GObjectClass.setProperty,
                     fn: (..._args: unknown[]) => {
                         setCalls.push("set_property invoked");
                     },
                 },
-                {
-                    className: "GObjectClass",
-                    vfuncName: "get_property",
-                    byteOffset: GOBJECT_CLASS_GET_PROPERTY_OFFSET,
-                    argTypes: propertyAccessorArgTypes,
-                    returnType: { type: "void" },
-                    fn: () => undefined,
-                },
+                { ...GObjectClass.getProperty, fn: () => undefined },
             ],
         });
 
@@ -296,16 +240,7 @@ describe("registerClass", () => {
         expect(() =>
             registerClass(CustomObject, {
                 gtypeName: uniqueName("GtkxMisalignedVfunc"),
-                vfuncs: [
-                    {
-                        className: "GObjectClass",
-                        vfuncName: "set_property",
-                        byteOffset: 1,
-                        argTypes: propertyAccessorArgTypes,
-                        returnType: { type: "void" },
-                        fn: () => undefined,
-                    },
-                ],
+                vfuncs: [{ ...GObjectClass.setProperty, byteOffset: 1, fn: () => undefined }],
             }),
         ).toThrow(/not aligned to a pointer/);
     });
@@ -318,11 +253,9 @@ describe("registerClass", () => {
                 gtypeName: uniqueName("GtkxOversizedVfunc"),
                 vfuncs: [
                     {
-                        className: "GObjectClass",
-                        vfuncName: "set_property",
+                        ...GObjectClass.setProperty,
                         byteOffset: 1_000_000,
                         argTypes: [],
-                        returnType: { type: "void" },
                         fn: () => undefined,
                     },
                 ],

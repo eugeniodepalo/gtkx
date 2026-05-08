@@ -361,6 +361,19 @@ export class GirNormalizer {
             cType: raw.cType,
             returnType: this.normalizeType(raw.returnType, currentNamespace),
             parameters: raw.parameters.map((p) => this.normalizeParameter(p, currentNamespace)),
+            introspectable: raw.introspectable,
+            doc: raw.doc,
+        });
+    }
+
+    private normalizeInlineCallback(raw: RawCallback, fieldName: string, currentNamespace: string): GirCallback {
+        return new GirCallback({
+            name: raw.name || fieldName,
+            qualifiedName: `${currentNamespace}.__field_${fieldName}`,
+            cType: raw.cType,
+            returnType: this.normalizeType(raw.returnType, currentNamespace),
+            parameters: raw.parameters.map((p) => this.normalizeParameter(p, currentNamespace)),
+            introspectable: raw.introspectable,
             doc: raw.doc,
         });
     }
@@ -444,6 +457,7 @@ export class GirNormalizer {
             closure: raw.closure,
             destroy: raw.destroy,
             transferOwnership: raw.transferOwnership,
+            varargs: raw.varargs,
             doc: raw.doc,
         });
     }
@@ -479,6 +493,7 @@ export class GirNormalizer {
             writable: raw.writable ?? false,
             readable: raw.readable ?? true,
             private: raw.private ?? false,
+            callback: raw.callback ? this.normalizeInlineCallback(raw.callback, raw.name, currentNamespace) : undefined,
             doc: raw.doc,
         });
     }

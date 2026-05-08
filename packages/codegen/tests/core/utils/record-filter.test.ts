@@ -1,4 +1,4 @@
-import type { GirNamespace, GirRepository } from "@gtkx/gir";
+import { GirCallback, type GirNamespace, type GirRepository } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
 import {
     canAllocateRecord,
@@ -177,6 +177,27 @@ describe("shouldGenerateRecord", () => {
             ],
         });
         expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(false);
+    });
+
+    it("ignores inline callback fields when checking field marshalability", () => {
+        const record = createNormalizedRecord({
+            name: "WithCallback",
+            fields: [
+                createNormalizedField({ name: "value", type: createNormalizedType({ name: "gint" }) }),
+                createNormalizedField({
+                    name: "callback",
+                    type: createNormalizedType({ name: "gpointer", cType: "gpointer" }),
+                    callback: new GirCallback({
+                        name: "callback",
+                        qualifiedName: "Gtk.WithCallback.__field_callback",
+                        cType: "",
+                        returnType: createNormalizedType({ name: "none" }),
+                        parameters: [],
+                    }),
+                }),
+            ],
+        });
+        expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(true);
     });
 });
 

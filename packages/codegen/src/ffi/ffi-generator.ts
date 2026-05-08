@@ -14,8 +14,9 @@ import type { FfiGeneratorOptions } from "../core/generator-types.js";
 import { FfiMapper } from "../core/type-system/ffi-mapper.js";
 import { normalizeClassName, toKebabCase, toPascalCase } from "../core/utils/naming.js";
 import { splitQualifiedName } from "../core/utils/qualified-name.js";
-import { shouldGenerateRecord } from "../core/utils/record-filter.js";
+import { isClassVtable, shouldGenerateRecord } from "../core/utils/record-filter.js";
 import { ClassGenerator } from "./generators/class/index.js";
+import { ClassStructGenerator } from "./generators/class-struct/index.js";
 import { ConstantGenerator } from "./generators/constant.js";
 import { EnumGenerator } from "./generators/enum.js";
 import { FunctionGenerator } from "./generators/function.js";
@@ -105,6 +106,7 @@ export class FfiGenerator {
 
         this.generateRecordFiles(namespace, generatorOptions, files);
         this.generateClassFiles(namespace, generatorOptions, files);
+        this.generateClassStructFiles(namespace, generatorOptions, files);
 
         for (const [, iface] of namespace.interfaces) {
             const file = fileBuilder();
@@ -156,6 +158,21 @@ export class FfiGenerator {
                 this.options.repository,
             );
             recordGenerator.generate(record);
+            const fileName = `${toKebabCase(record.name)}.ts`;
+            files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
+        }
+    }
+
+    private generateClassStructFiles(
+        namespace: GirNamespace,
+        generatorOptions: FfiGeneratorOptions,
+        files: GeneratedFile[],
+    ): void {
+        for (const [, record] of namespace.records) {
+            if (!isClassVtable(record)) continue;
+            const file = fileBuilder();
+            const generator = new ClassStructGenerator(this.ffiMapper, file, generatorOptions, this.options.repository);
+            if (!generator.generate(record)) continue;
             const fileName = `${toKebabCase(record.name)}.ts`;
             files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
         }

@@ -69,7 +69,7 @@ export function isGeneratableFieldType(
     if (resolved.glibTypeName) return true;
     if (resolved.opaque || resolved.disguised) return false;
 
-    const publicFields = resolved.getPublicFields();
+    const publicFields = resolved.getPublicFields().filter((field) => field.callback === undefined);
     if (publicFields.length === 0) return false;
 
     return publicFields.every((field) =>
@@ -83,7 +83,10 @@ export function isGeneratableFieldType(
  * A `false` result means the record is skipped entirely — no stub class is
  * emitted. Boxed types always pass once they survive the vtable check;
  * plain structs must be non-opaque, have at least one field, and have
- * every public field marshalable.
+ * every public field marshalable. Inline callback fields (function-pointer
+ * slots) do not gate marshalability: they have no JS-visible accessor and
+ * their presence on a struct is orthogonal to whether the rest of the
+ * struct can be marshalled.
  *
  * @param record - The record under consideration.
  * @param repo - Repository for recursive field-type resolution.
@@ -95,7 +98,7 @@ export function shouldGenerateRecord(record: GirRecord, repo: GirRepository, cur
     if (record.opaque) return false;
     if (record.fields.length === 0) return false;
 
-    const publicFields = record.getPublicFields();
+    const publicFields = record.getPublicFields().filter((field) => field.callback === undefined);
     if (publicFields.length === 0) return false;
 
     return publicFields.every((field) => isGeneratableFieldType(field.type.name as string, repo, currentNamespace));

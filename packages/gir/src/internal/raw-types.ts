@@ -103,6 +103,7 @@ export type RawCallback = {
     cType: string;
     returnType: RawType;
     parameters: RawParameter[];
+    introspectable?: boolean;
     doc?: string;
 };
 
@@ -170,6 +171,7 @@ export type RawParameter = {
     closure?: number;
     destroy?: number;
     transferOwnership?: "none" | "full" | "container";
+    varargs?: boolean;
     doc?: string;
 };
 
@@ -213,5 +215,6 @@ export type RawField = {
     writable?: boolean;
     readable?: boolean;
     private?: boolean;
+    callback?: RawCallback;
     doc?: string;
 };
