@@ -158,15 +158,134 @@ pub fn instance_is_a<'env>(
     )
 }
 
-/// Pre-built `GParamSpec` pointer to install on the new class.
+/// JS-thread parse output for a signal default handler.
 ///
-/// The pointer is borrowed: the caller's `NativeHandle` retains ownership and
-/// `g_object_class_install_property` takes a reference.
-struct PreparedProperty {
-    pspec_ptr: *mut gobject_ffi::GParamSpec,
+/// Carries only `Send` data so the enclosing [`RawClassData`] can cross the
+/// `JS → GLib` thread boundary without a manual `Send` assertion. The
+/// `glib::Closure` is constructed from these fields on the `GLib` thread inside
+/// [`RawSignal::into_built`].
+struct RawDefaultHandler {
+    js_func: Arc<JsCallbackRef>,
+    arg_types: Vec<Type>,
+    return_type: Type,
 }
 
-/// Pre-built signal definition with optional default class closure.
+/// JS-thread parse output for a signal definition.
+struct RawSignal {
+    name: CString,
+    flags: gobject_ffi::GSignalFlags,
+    return_gtype: usize,
+    param_gtypes: Vec<usize>,
+    default_handler: Option<RawDefaultHandler>,
+}
+
+/// JS-thread parse output for a vfunc.
+///
+/// The libffi closure is built on the `GLib` thread inside
+/// [`RawVfunc::into_built`], where the trampoline will eventually fire.
+struct RawVfunc {
+    byte_offset: usize,
+    js_func: Arc<JsCallbackRef>,
+    arg_types: Vec<Type>,
+    return_type: Type,
+}
+
+/// JS-thread parse output for an interface implementation.
+struct RawInterface {
+    gtype: usize,
+    vfuncs: Vec<RawVfunc>,
+}
+
+/// JS-thread parse output for a class registration payload.
+///
+/// Constructed on the JS thread by [`parse_class_data`] and converted into a
+/// [`ClassData`] on the `GLib` thread inside [`RawClassData::into_built`].
+struct RawClassData {
+    properties: Vec<PreparedProperty>,
+    signals: Vec<RawSignal>,
+    vfuncs: Vec<RawVfunc>,
+}
+
+impl RawClassData {
+    fn into_built(self) -> ClassData {
+        let Self {
+            properties,
+            signals,
+            vfuncs,
+        } = self;
+        ClassData {
+            properties,
+            signals: signals.into_iter().map(RawSignal::into_built).collect(),
+            vfuncs: vfuncs.into_iter().map(RawVfunc::into_built).collect(),
+        }
+    }
+}
+
+impl RawSignal {
+    fn into_built(self) -> PreparedSignal {
+        let Self {
+            name,
+            flags,
+            return_gtype,
+            param_gtypes,
+            default_handler,
+        } = self;
+        let default_handler = default_handler
+            .map(|h| build_signal_default_closure(h.js_func, h.arg_types, h.return_type));
+        PreparedSignal {
+            name,
+            flags,
+            return_gtype,
+            param_gtypes,
+            default_handler,
+        }
+    }
+}
+
+impl RawVfunc {
+    fn into_built(self) -> PreparedVfunc {
+        let Self {
+            byte_offset,
+            js_func,
+            arg_types,
+            return_type,
+        } = self;
+        let data = TrampolineData {
+            js_func,
+            arg_types,
+            return_type,
+            user_data_index: None,
+            is_oneshot: false,
+            oneshot_state_ptr: AtomicPtr::new(std::ptr::null_mut()),
+        };
+        let state = Box::new(TrampolineState::create(data));
+        let code_ptr = state.code_ptr;
+        PreparedVfunc {
+            byte_offset,
+            code_ptr,
+            state,
+        }
+    }
+}
+
+impl RawInterface {
+    fn into_built(self) -> PreparedInterface {
+        PreparedInterface {
+            gtype: self.gtype,
+            vfuncs: self.vfuncs.into_iter().map(RawVfunc::into_built).collect(),
+        }
+    }
+}
+
+/// Borrowed `GParamSpec` pointer to install on the new class.
+///
+/// `g_object_class_install_property` takes a reference; the caller's
+/// `NativeHandle` retains ownership.
+struct PreparedProperty {
+    pspec_addr: usize,
+}
+
+/// Built signal definition with optional default class closure.
 struct PreparedSignal {
     name: CString,
     flags: gobject_ffi::GSignalFlags,
@@ -175,7 +294,7 @@ struct PreparedSignal {
     default_handler: Option<glib::Closure>,
 }
 
-/// Pre-built vfunc trampoline waiting to be written into the class struct.
+/// Built vfunc trampoline waiting to be written into the class struct.
 ///
 /// `code_ptr` is the libffi-generated C function pointer; `state` retains the
 /// `TrampolineData` and libffi closure for the lifetime of the type registration.
@@ -185,7 +304,7 @@ struct PreparedVfunc {
     state: Box<TrampolineState>,
 }
 
-/// Pre-built interface implementation. Each entry produces a single
+/// Built interface implementation. Each entry produces a single
 /// `g_type_add_interface_static` call after the new class type has been
 /// registered. The vfunc pointers are written into the iface struct by
 /// `interface_init_trampoline` when `GLib` invokes it during interface
@@ -197,26 +316,15 @@ struct PreparedInterface {
 
 /// Class-registration payload threaded into `GTypeInfo.class_data`.
 ///
-/// Allocated on the JS thread, leaked on the `GLib` thread immediately before
-/// `g_type_register_static`, and consumed by `class_init_trampoline` which
-/// reclaims it via `Box::from_raw` and forgets the contained vfunc states so
-/// they live for the process lifetime alongside the new `GType`.
+/// Built on the `GLib` thread, leaked into `GTypeInfo.class_data` immediately
+/// before `g_type_register_static`, and consumed by `class_init_trampoline`
+/// which reclaims it via `Box::from_raw` and forgets the contained vfunc
+/// states so they live for the process lifetime alongside the new `GType`.
 struct ClassData {
     properties: Vec<PreparedProperty>,
     signals: Vec<PreparedSignal>,
     vfuncs: Vec<PreparedVfunc>,
 }
-
-/// # Safety
-///
-/// `ClassData` carries raw FFI pointers and a `glib::Closure` that is `!Send`.
-/// The struct is heap-allocated on the JS thread, transferred to the `GLib`
-/// thread by leaking the box into `GTypeInfo.class_data`, and consumed exactly
-/// once by `class_init_trampoline` on the `GLib` thread. No concurrent access
-/// occurs and the value never crosses thread boundaries beyond that single
-/// hand-off, so the `!Send` interior is harmless in practice.
-#[allow(clippy::non_send_fields_in_send_ty)]
-unsafe impl Send for ClassData {}
 
 unsafe extern "C" fn interface_init_trampoline(g_iface: *mut c_void, iface_data: *mut c_void) {
     if iface_data.is_null() {
@@ -253,7 +361,7 @@ unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mu
     }
 
     for (index, property) in data.properties.iter().enumerate() {
-        if property.pspec_ptr.is_null() {
+        if property.pspec_addr == 0 {
             NativeErrorReporter::global().report_str(&format!(
                 "register_class: skipping null pspec at property index {index}"
             ));
@@ -264,7 +372,7 @@ unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mu
             gobject_ffi::g_object_class_install_property(
                 object_class,
                 property_id,
-                property.pspec_ptr,
+                property.pspec_addr as *mut gobject_ffi::GParamSpec,
             );
         }
     }
@@ -312,13 +420,9 @@ unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mu
 struct RegisterClassRequest {
     name: CString,
     parent_gtype: usize,
-    class_data: Box<ClassData>,
-    interfaces: Vec<PreparedInterface>,
+    class_data: RawClassData,
+    interfaces: Vec<RawInterface>,
 }
-
-unsafe impl Send for RegisterClassRequest {}
-#[allow(clippy::non_send_fields_in_send_ty)]
-unsafe impl Send for PreparedInterface {}
 
 impl ModuleRequest for RegisterClassRequest {
     type Output = u64;
@@ -384,9 +488,16 @@ impl ModuleRequest for RegisterClassRequest {
             }
         }
 
+        let class_data = self.class_data.into_built();
+        let interfaces: Vec<PreparedInterface> = self
+            .interfaces
+            .into_iter()
+            .map(RawInterface::into_built)
+            .collect();
+
         let class_size = query.class_size as u16;
         let instance_size = query.instance_size as u16;
-        let class_data_ptr = Box::into_raw(self.class_data).cast::<c_void>();
+        let class_data_ptr = Box::into_raw(Box::new(class_data)).cast::<c_void>();
 
         let info = gobject_ffi::GTypeInfo {
             class_size,
@@ -410,7 +521,7 @@ impl ModuleRequest for RegisterClassRequest {
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
-        for iface in self.interfaces {
+        for iface in interfaces {
             let iface_gtype = iface.gtype;
             let prepared_ptr = Box::into_raw(Box::new(iface));
             let info = gobject_ffi::GInterfaceInfo {
@@ -436,14 +547,14 @@ impl ModuleRequest for RegisterClassRequest {
 fn parse_property(env: &Env, item: Unknown<'_>) -> napi::Result<PreparedProperty> {
     let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
     let pspec_ext: &External<NativeHandle> = obj.get_named_property("pspec")?;
-    let pspec_ptr = pspec_ext.ptr().cast::<gobject_ffi::GParamSpec>();
-    if pspec_ptr.is_null() {
+    let pspec_addr = pspec_ext.ptr() as usize;
+    if pspec_addr == 0 {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
             "register_class: property pspec handle is null",
         ));
     }
-    Ok(PreparedProperty { pspec_ptr })
+    Ok(PreparedProperty { pspec_addr })
 }
 
 fn parse_js_array<T>(
@@ -523,7 +634,7 @@ fn build_signal_default_closure(
     })
 }
 
-fn parse_signal(env: &Env, item: Unknown<'_>) -> napi::Result<PreparedSignal> {
+fn parse_signal(env: &Env, item: Unknown<'_>) -> napi::Result<RawSignal> {
     let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
     let raw_name: String = obj.get_named_property("name")?;
     let name = CString::new(raw_name)
@@ -534,7 +645,7 @@ fn parse_signal(env: &Env, item: Unknown<'_>) -> napi::Result<PreparedSignal> {
     let param_gtypes = parse_gtype_array(env, param_types_prop)?;
     let default_handler = parse_signal_default_handler(env, &obj)?;
 
-    Ok(PreparedSignal {
+    Ok(RawSignal {
         name,
         flags: flags as gobject_ffi::GSignalFlags,
         return_gtype: return_gtype as usize,
@@ -543,7 +654,10 @@ fn parse_signal(env: &Env, item: Unknown<'_>) -> napi::Result<PreparedSignal> {
     })
 }
 
-fn parse_signal_default_handler(env: &Env, obj: &JsObject) -> napi::Result<Option<glib::Closure>> {
+fn parse_signal_default_handler(
+    env: &Env,
+    obj: &JsObject,
+) -> napi::Result<Option<RawDefaultHandler>> {
     if !obj.has_named_property("defaultHandler")? {
         return Ok(None);
     }
@@ -560,14 +674,14 @@ fn parse_signal_default_handler(env: &Env, obj: &JsObject) -> napi::Result<Optio
     let return_type =
         Type::from_js_value(env, obj.get_named_property("defaultHandlerReturnType")?)?;
     let js_func = Arc::new(JsCallbackRef::from_js_function(env, &handler)?);
-    Ok(Some(build_signal_default_closure(
+    Ok(Some(RawDefaultHandler {
         js_func,
         arg_types,
         return_type,
-    )))
+    }))
 }
 
-fn parse_vfunc(env: &Env, item: Unknown<'_>) -> napi::Result<PreparedVfunc> {
+fn parse_vfunc(env: &Env, item: Unknown<'_>) -> napi::Result<RawVfunc> {
     let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
     let byte_offset: f64 = obj.get_named_property("byteOffset")?;
     if byte_offset < 0.0 {
@@ -592,25 +706,15 @@ fn parse_vfunc(env: &Env, item: Unknown<'_>) -> napi::Result<PreparedVfunc> {
     let return_type = Type::from_js_value(env, return_type_prop)?;
     let js_func = Arc::new(JsCallbackRef::from_js_function(env, &handler)?);
 
-    let data = TrampolineData {
+    Ok(RawVfunc {
+        byte_offset: byte_offset as usize,
         js_func,
         arg_types,
         return_type,
-        user_data_index: None,
-        is_oneshot: false,
-        oneshot_state_ptr: AtomicPtr::new(std::ptr::null_mut()),
-    };
-    let state = Box::new(TrampolineState::create(data));
-    let code_ptr = state.code_ptr;
-
-    Ok(PreparedVfunc {
-        byte_offset: byte_offset as usize,
-        code_ptr,
-        state,
     })
 }
 
-fn parse_interface(env: &Env, item: Unknown<'_>) -> napi::Result<PreparedInterface> {
+fn parse_interface(env: &Env, item: Unknown<'_>) -> napi::Result<RawInterface> {
     let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
     let (_, gtype, _) = obj.get_named_property::<BigInt>("gtype")?.get_u64();
     if gtype == 0 {
@@ -621,7 +725,7 @@ fn parse_interface(env: &Env, item: Unknown<'_>) -> napi::Result<PreparedInterfa
     }
     let vfuncs_prop: Unknown<'_> = obj.get_named_property("vfuncs")?;
     let vfuncs = parse_js_array(env, vfuncs_prop, "interface vfuncs", parse_vfunc)?;
-    Ok(PreparedInterface {
+    Ok(RawInterface {
         gtype: gtype as usize,
         vfuncs,
     })
@@ -668,14 +772,14 @@ fn parse_array_property<T>(
 fn parse_class_data(
     env: &Env,
     options: Option<JsObject>,
-) -> napi::Result<(Box<ClassData>, Vec<PreparedInterface>)> {
+) -> napi::Result<(RawClassData, Vec<RawInterface>)> {
     let Some(options) = options else {
         return Ok((
-            Box::new(ClassData {
+            RawClassData {
                 properties: Vec::new(),
                 signals: Vec::new(),
                 vfuncs: Vec::new(),
-            }),
+            },
             Vec::new(),
         ));
     };
@@ -686,11 +790,11 @@ fn parse_class_data(
     let interfaces = parse_array_property(env, &options, "interfaces", parse_interface)?;
 
     Ok((
-        Box::new(ClassData {
+        RawClassData {
             properties,
             signals,
             vfuncs,
-        }),
+        },
         interfaces,
     ))
 }
