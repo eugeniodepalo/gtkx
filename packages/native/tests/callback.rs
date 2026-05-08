@@ -28,7 +28,7 @@ fn closure_guard_refs_closure() {
     let closure_ptr = create_test_closure_with_flag(Arc::new(AtomicBool::new(false)));
     let initial_ref = common::get_closure_refcount(closure_ptr.as_ptr());
 
-    let _guard = ClosureGuard::new(closure_ptr);
+    let _guard = ClosureGuard::from_ptr(closure_ptr.as_ptr()).expect("closure ptr is non-null");
 
     let ref_after = common::get_closure_refcount(closure_ptr.as_ptr());
     assert_eq!(ref_after, initial_ref + 1);
@@ -44,7 +44,7 @@ fn closure_guard_unrefs_on_drop() {
     let ref_with_extra = common::get_closure_refcount(closure_ptr.as_ptr());
 
     {
-        let _guard = ClosureGuard::new(closure_ptr);
+        let _guard = ClosureGuard::from_ptr(closure_ptr.as_ptr()).expect("closure ptr is non-null");
         assert_eq!(
             common::get_closure_refcount(closure_ptr.as_ptr()),
             ref_with_extra + 1
