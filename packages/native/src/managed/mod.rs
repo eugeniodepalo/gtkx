@@ -16,7 +16,7 @@
 //!
 //! 1. Native code creates a [`NativeValue`] on the `GLib` thread.
 //! 2. [`NativeValue`] is wrapped in [`NativeHandle`] via `From`, capturing the
-//!    raw pointer and storing the value in a [`SendWrapper`] anchored to the
+//!    pointer address and storing the value in a [`SendWrapper`] anchored to the
 //!    `GLib` thread.
 //! 3. [`NativeHandle`] is wrapped in `napi::bindgen_prelude::External` and returned to JavaScript.
 //! 4. When JS garbage collects the external value, napi-rs calls the
@@ -49,23 +49,14 @@ use crate::dispatch::Mailbox;
 /// its drop back to that thread automatically; a borrowed handle carries only
 /// the pointer and is safe to clone or drop on any thread.
 pub struct NativeHandle {
-    ptr: *mut c_void,
+    ptr: usize,
     inner: Option<SendWrapper<NativeValue>>,
 }
-
-// SAFETY: `ptr` is treated as an opaque integer for cross-thread identity
-// comparison; it is never dereferenced off the GLib thread. `inner` is either
-// `None` (no thread affinity) or a `SendWrapper` whose runtime check enforces
-// origin-thread access for the underlying [`NativeValue`].
-unsafe impl Send for NativeHandle {}
-// SAFETY: same justification as `Send` — shared references expose only the
-// opaque `ptr` value and the `SendWrapper`'s own thread-checked accessors.
-unsafe impl Sync for NativeHandle {}
 
 impl std::fmt::Debug for NativeHandle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NativeHandle")
-            .field("ptr", &self.ptr)
+            .field("ptr", &(self.ptr as *const c_void))
             .field("owned", &self.inner.is_some())
             .finish_non_exhaustive()
     }
@@ -74,9 +65,9 @@ impl std::fmt::Debug for NativeHandle {
 impl From<NativeValue> for NativeHandle {
     fn from(value: NativeValue) -> Self {
         let ptr = match &value {
-            NativeValue::GObject(obj) => obj.as_ptr() as *mut c_void,
-            NativeValue::Boxed(boxed) => boxed.as_ptr(),
-            NativeValue::Fundamental(fundamental) => fundamental.as_ptr(),
+            NativeValue::GObject(obj) => obj.as_ptr() as usize,
+            NativeValue::Boxed(boxed) => boxed.as_ptr() as usize,
+            NativeValue::Fundamental(fundamental) => fundamental.as_ptr() as usize,
         };
         Self {
             ptr,
@@ -103,7 +94,7 @@ impl Clone for NativeHandle {
 }
 
 impl NativeHandle {
-    /// Constructs a non-owning handle that just carries a raw pointer.
+    /// Constructs a non-owning handle that just carries a pointer address.
     ///
     /// Used when JavaScript already owns the underlying value via a live
     /// `napi::bindgen_prelude::External<NativeHandle>` and we only need the pointer
@@ -111,7 +102,10 @@ impl NativeHandle {
     /// [`SendWrapper`] and is therefore safe to clone or drop on any thread.
     #[must_use]
     pub fn borrowed(ptr: *mut c_void) -> Self {
-        Self { ptr, inner: None }
+        Self {
+            ptr: ptr as usize,
+            inner: None,
+        }
     }
 
     /// Returns the raw native pointer.
@@ -121,7 +115,7 @@ impl NativeHandle {
     /// borrowed handles wrapping a null pointer.
     #[must_use]
     pub fn ptr(&self) -> *mut c_void {
-        self.ptr
+        self.ptr as *mut c_void
     }
 
     /// Returns the raw native pointer reinterpreted as a [`usize`].
@@ -130,7 +124,7 @@ impl NativeHandle {
     /// object-identity token.
     #[must_use]
     pub fn ptr_as_usize(&self) -> usize {
-        self.ptr as usize
+        self.ptr
     }
 }
 
