@@ -47,6 +47,7 @@
 //! `Send + Sync` reference type for the typed surface.
 
 #![allow(deprecated)]
+#![cfg_attr(test, allow(dead_code))]
 
 #[macro_use]
 mod macros;
