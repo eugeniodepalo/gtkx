@@ -4,6 +4,10 @@ packages:
   - examples/*
   - website
 
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
+
 onlyBuiltDependencies:
   - "@swc/core"
   - core-js

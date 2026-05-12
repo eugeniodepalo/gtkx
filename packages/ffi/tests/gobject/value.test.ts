@@ -304,3 +304,195 @@ describe("Value.fromJS / toJS round-trips", () => {
         expect(v.getStrv()).toEqual([]);
     });
 });
+
+describe("Value.toJS extra coverage", () => {
+    it("returns null when reading a default-initialised G_TYPE_POINTER", () => {
+        const v = new Value();
+        v.init(Type.POINTER);
+        expect(v.toJS()).toBeNull();
+    });
+
+    it("returns a Gdk.RGBA wrapper when reading a boxed value via toJS", () => {
+        const rgba = new Gdk.RGBA({ red: 0.1, green: 0.2, blue: 0.3, alpha: 1.0 });
+        const v = Value.newFromBoxed(rgba, gdkRgbaGType());
+        const out = v.toJS();
+        expect(out).toBeInstanceOf(Gdk.RGBA);
+    });
+});
+
+describe("Value.newFrom (FFI-type-driven factory)", () => {
+    it("builds a boolean value", () => {
+        const v = Value.newFrom({ type: "boolean" }, true);
+        expect(v.getBoolean()).toBe(true);
+    });
+
+    it("builds a string value", () => {
+        const v = Value.newFrom({ type: "string", ownership: "borrowed" }, "hi");
+        expect(v.getString()).toBe("hi");
+    });
+
+    it("builds an enum value from library/getTypeFn descriptor", () => {
+        const v = Value.newFrom(
+            { type: "enum", library: "libgtk-4.so.1", getTypeFn: "gtk_align_get_type", signed: false },
+            Gtk.Align.CENTER,
+        );
+        expect(v.getEnum()).toBe(Gtk.Align.CENTER);
+    });
+
+    it("builds a flags value from a flags-fundamental enum descriptor", () => {
+        const v = Value.newFrom(
+            {
+                type: "enum",
+                library: "libgobject-2.0.so.0",
+                getTypeFn: "g_binding_flags_get_type",
+                signed: false,
+            },
+            3,
+        );
+        expect(v.getFlags()).toBe(3);
+    });
+
+    it("builds a flags value from a flags descriptor", () => {
+        const v = Value.newFrom(
+            {
+                type: "flags",
+                library: "libgobject-2.0.so.0",
+                getTypeFn: "g_binding_flags_get_type",
+                signed: false,
+            },
+            5,
+        );
+        expect(v.getFlags()).toBe(5);
+    });
+
+    it("builds an int value for int8/int16/int32 descriptors", () => {
+        expect(Value.newFrom({ type: "int8" }, -1).getInt()).toBe(-1);
+        expect(Value.newFrom({ type: "int16" }, 100).getInt()).toBe(100);
+        expect(Value.newFrom({ type: "int32" }, 2000).getInt()).toBe(2000);
+    });
+
+    it("builds a uint value for uint8/uint16/uint32 descriptors", () => {
+        expect(Value.newFrom({ type: "uint8" }, 1).getUint()).toBe(1);
+        expect(Value.newFrom({ type: "uint16" }, 200).getUint()).toBe(200);
+        expect(Value.newFrom({ type: "uint32" }, 4000).getUint()).toBe(4000);
+    });
+
+    it("builds int64 and uint64 values", () => {
+        expect(Value.newFrom({ type: "int64" }, 42).getInt64()).toBe(42);
+        expect(Value.newFrom({ type: "uint64" }, 84).getUint64()).toBe(84);
+    });
+
+    it("builds float and double values", () => {
+        expect(Value.newFrom({ type: "float32" }, 1.5).getFloat()).toBeCloseTo(1.5, 3);
+        expect(Value.newFrom({ type: "float64" }, Math.PI).getDouble()).toBeCloseTo(Math.PI);
+    });
+
+    it("builds a gobject value", () => {
+        const label = new Gtk.Label("x");
+        const v = Value.newFrom({ type: "gobject", ownership: "borrowed" }, label);
+        expect(v.getObject()).not.toBeNull();
+    });
+
+    it("builds a boxed value via getTypeFn resolution", () => {
+        const rgba = new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1 });
+        const v = Value.newFrom(
+            {
+                type: "boxed",
+                ownership: "borrowed",
+                innerType: "GdkRGBA",
+                library: "libgtk-4.so.1",
+                getTypeFn: "gdk_rgba_get_type",
+            },
+            rgba,
+        );
+        expect(v.getType()).toBe(gdkRgbaGType());
+    });
+
+    it("builds a boxed value when only innerType is provided", () => {
+        const rgba = new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1 });
+        const v = Value.newFrom({ type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" }, rgba);
+        expect(v.getType()).toBe(gdkRgbaGType());
+    });
+
+    it("throws for boxed types with an unresolvable innerType", () => {
+        const dummy = new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1 });
+        expect(() =>
+            Value.newFrom({ type: "boxed", ownership: "borrowed", innerType: "NotARealGType" }, dummy),
+        ).toThrow(/Cannot resolve gtype/);
+    });
+
+    it("builds a strv array value", () => {
+        const v = Value.newFrom(
+            {
+                type: "array",
+                kind: "array",
+                ownership: "borrowed",
+                itemType: { type: "string", ownership: "borrowed" },
+            },
+            ["one", "two"],
+        );
+        expect(v.getStrv()).toEqual(["one", "two"]);
+    });
+
+    it("throws for unsupported array types", () => {
+        expect(() =>
+            Value.newFrom(
+                {
+                    type: "array",
+                    kind: "glist",
+                    ownership: "borrowed",
+                    itemType: { type: "string", ownership: "borrowed" },
+                },
+                ["x"],
+            ),
+        ).toThrow(/Unsupported array type/);
+    });
+
+    it("throws for fundamental types without a typeName", () => {
+        const dummy = new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1 });
+        expect(() =>
+            Value.newFrom(
+                {
+                    type: "fundamental",
+                    ownership: "borrowed",
+                    library: "libgobject-2.0.so.0",
+                    refFn: "g_object_ref",
+                    unrefFn: "g_object_unref",
+                },
+                dummy,
+            ),
+        ).toThrow(/Cannot resolve gtype for fundamental/);
+    });
+
+    it("throws for unsupported FFI types", () => {
+        expect(() => Value.newFrom({ type: "unichar" }, 0)).toThrow(/Unsupported FFI type for GValue conversion/);
+    });
+});
+
+describe("Value.fromJS extra coverage", () => {
+    it("returns a null-initialised BOXED value when value is null", () => {
+        const v = Value.fromJS(gdkRgbaGType(), null);
+        expect(v.getType()).toBe(gdkRgbaGType());
+    });
+
+    it("returns a null-initialised BOXED value when value is undefined", () => {
+        const v = Value.fromJS(gdkRgbaGType(), undefined);
+        expect(v.getType()).toBe(gdkRgbaGType());
+    });
+
+    it("returns an empty GStrv value when value is null", () => {
+        const strvGType = typeFromName("GStrv");
+        const v = Value.fromJS(strvGType, null);
+        expect(v.getStrv()).toEqual([]);
+    });
+
+    it("round-trips a signed char (G_TYPE_CHAR) through toJS", () => {
+        const charGType = typeFromName("gchar");
+        expect(Value.fromJS(charGType, -1).toJS()).toBe(-1);
+    });
+
+    it("round-trips an unsigned char (G_TYPE_UCHAR) through toJS", () => {
+        const ucharGType = typeFromName("guchar");
+        expect(Value.fromJS(ucharGType, 200).toJS()).toBe(200);
+    });
+});
