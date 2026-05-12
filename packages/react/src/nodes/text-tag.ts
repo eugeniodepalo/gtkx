@@ -8,7 +8,7 @@ import type { TextContentChild, TextContentParent } from "./text-content.js";
 import { TextPaintableNode } from "./text-paintable.js";
 import { isTextContentParent, TextSegmentNode } from "./text-segment.js";
 
-const STYLE_PROPS: Partial<Record<keyof TextTagProps, keyof Gtk.TextTag | string>> = {
+const STYLE_PROPS: Partial<Record<keyof TextTagProps, string>> = {
     background: "setBackground",
     backgroundFullHeight: "backgroundFullHeight",
     foreground: "setForeground",

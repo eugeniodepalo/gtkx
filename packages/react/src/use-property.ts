@@ -44,7 +44,7 @@ export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
 
         setValue(obj[propertyName]);
 
-        const signal = `notify::${toKebabCase(propertyName as string)}`;
+        const signal = `notify::${toKebabCase(propertyName)}`;
         const handlerId = obj.connect(signal, () => {
             setValue(obj[propertyName]);
         });

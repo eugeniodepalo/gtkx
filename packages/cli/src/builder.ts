@@ -83,10 +83,10 @@ export const build = async (options: BuildOptions): Promise<void> => {
             outDir: viteConfig?.build?.outDir ?? "dist",
             minify: true,
             cssMinify: false,
-            rollupOptions: {
-                ...viteConfig?.build?.rollupOptions,
+            rolldownOptions: {
+                ...viteConfig?.build?.rolldownOptions,
                 output: {
-                    ...((viteConfig?.build?.rollupOptions?.output ?? {}) as Record<string, unknown>),
+                    ...((viteConfig?.build?.rolldownOptions?.output ?? {}) as Record<string, unknown>),
                     entryFileNames: "bundle.js",
                 },
             },

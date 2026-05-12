@@ -8,7 +8,11 @@ const STATE_SUFFIX = ".state";
 
 const hashFiles = (files: Map<string, string>): string => {
     const hash = createHash("sha256");
-    const sortedKeys = [...files.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    const compareKeys = (a: string, b: string): number => {
+        if (a < b) return -1;
+        return a > b ? 1 : 0;
+    };
+    const sortedKeys = [...files.keys()].sort(compareKeys);
     for (const key of sortedKeys) {
         const content = files.get(key) ?? "";
         hash.update(key);

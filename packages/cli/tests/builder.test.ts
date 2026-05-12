@@ -43,7 +43,7 @@ describe("build", () => {
 
         const config = getViteConfig();
         expect(config.build.ssr).toBe("src/index.tsx");
-        expect(config.build.rollupOptions.output.entryFileNames).toBe("bundle.js");
+        expect(config.build.rolldownOptions.output.entryFileNames).toBe("bundle.js");
         expect(config.build.outDir).toBe("dist");
         expect(config.build.minify).toBe(true);
         expect(config.build.cssMinify).toBe(false);
@@ -112,14 +112,14 @@ describe("build", () => {
         expect(config.define["process.env.NODE_ENV"]).toBe(JSON.stringify("production"));
     });
 
-    it("preserves user rollup output options while overriding entryFileNames", async () => {
+    it("preserves user rolldown output options while overriding entryFileNames", async () => {
         const userOutput = { format: "es" as const, sourcemap: true };
         await build({
             entry: "src/index.tsx",
-            vite: { build: { rollupOptions: { output: userOutput } } },
+            vite: { build: { rolldownOptions: { output: userOutput } } },
         });
 
-        const output = getViteConfig().build.rollupOptions.output as Record<string, unknown>;
+        const output = getViteConfig().build.rolldownOptions.output as Record<string, unknown>;
         expect(output.format).toBe("es");
         expect(output.sourcemap).toBe(true);
         expect(output.entryFileNames).toBe("bundle.js");

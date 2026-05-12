@@ -184,12 +184,12 @@ export class ConstructorBuilder {
 
         const mainTakesParams =
             mainConstructor !== undefined && this.methodBody.filterParameters(mainConstructor.parameters).length > 0;
-        const useGObjectNewPath =
-            hasParent && this.cls.glibGetType !== undefined && !this.cls.abstract && !mainTakesParams;
+        const glibGetType = this.cls.glibGetType;
+        const useGObjectNewPath = hasParent && glibGetType !== undefined && !this.cls.abstract && !mainTakesParams;
 
-        if (useGObjectNewPath) {
+        if (useGObjectNewPath && glibGetType !== undefined) {
             return {
-                constructorData: this.buildGObjectNewConstructorWithOverloads(this.cls.glibGetType as string),
+                constructorData: this.buildGObjectNewConstructorWithOverloads(glibGetType),
                 factoryMethods: this.collectFactoryMethods(supportedConstructors, mainConstructor),
             };
         }

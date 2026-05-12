@@ -555,9 +555,9 @@ export class MethodBodyWriter {
         const params = this.buildSignatureParameters(shape, hasVarargs(func.parameters));
         this.addTypeImportsFromMapping(shape.returnTypeMapping);
 
-        const returnTypeName = func.returnType.name as string | undefined;
+        const returnTypeName = func.returnType.name;
         const returnsOwnClass =
-            returnTypeName === options.originalClassName || returnTypeName?.endsWith(`.${options.originalClassName}`);
+            returnTypeName === options.originalClassName || returnTypeName.endsWith(`.${options.originalClassName}`);
         const ownClassName = returnsOwnClass ? options.className : undefined;
         const tsReturnType = this.computeReturnTypeString(shape, ownClassName);
 

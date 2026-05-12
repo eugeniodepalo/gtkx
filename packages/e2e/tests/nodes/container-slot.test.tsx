@@ -267,18 +267,22 @@ describe("render - ContainerSlot", () => {
         });
 
         it("adds prefix and suffix widgets via compound components", async () => {
+            const prefixRef = createRef<Gtk.Button>();
+            const suffixRef = createRef<Gtk.Button>();
+
             await render(
                 <AdwExpanderRow title="Row">
                     <AdwExpanderRow.AddPrefix>
-                        <GtkButton label="Prefix" />
+                        <GtkButton ref={prefixRef} label="Prefix" />
                     </AdwExpanderRow.AddPrefix>
                     <AdwExpanderRow.AddSuffix>
-                        <GtkButton label="Suffix" />
+                        <GtkButton ref={suffixRef} label="Suffix" />
                     </AdwExpanderRow.AddSuffix>
                 </AdwExpanderRow>,
             );
 
-            expect(true).toBe(true);
+            expect(prefixRef.current?.getLabel()).toBe("Prefix");
+            expect(suffixRef.current?.getLabel()).toBe("Suffix");
         });
 
         it("adds nested rows to ExpanderRow", async () => {
@@ -335,28 +339,34 @@ describe("render - ContainerSlot", () => {
         });
 
         it("adds action widgets to ExpanderRow", async () => {
+            const actionRef = createRef<Gtk.Button>();
+
             await render(
                 <AdwExpanderRow title="Group">
                     <AdwExpanderRow.AddAction>
-                        <GtkButton label="Action" />
+                        <GtkButton ref={actionRef} label="Action" />
                     </AdwExpanderRow.AddAction>
                 </AdwExpanderRow>,
             );
 
-            expect(true).toBe(true);
+            expect(actionRef.current?.getLabel()).toBe("Action");
         });
 
         it("adds multiple action widgets", async () => {
+            const action1Ref = createRef<Gtk.Button>();
+            const action2Ref = createRef<Gtk.Button>();
+
             await render(
                 <AdwExpanderRow title="Group">
                     <AdwExpanderRow.AddAction>
-                        <GtkButton label="Action 1" />
-                        <GtkButton label="Action 2" />
+                        <GtkButton ref={action1Ref} label="Action 1" />
+                        <GtkButton ref={action2Ref} label="Action 2" />
                     </AdwExpanderRow.AddAction>
                 </AdwExpanderRow>,
             );
 
-            expect(true).toBe(true);
+            expect(action1Ref.current?.getLabel()).toBe("Action 1");
+            expect(action2Ref.current?.getLabel()).toBe("Action 2");
         });
 
         it("handles multiple rows and actions together", async () => {

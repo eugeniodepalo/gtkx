@@ -1,5 +1,4 @@
 import { XMLParser } from "fast-xml-parser";
-import type { ContainerType } from "../model/type.js";
 import type {
     RawAlias,
     RawCallback,
@@ -587,7 +586,7 @@ export class GirParser {
             name: "GLib.HashTable",
             cType,
             isArray: false,
-            containerType: "ghashtable" as ContainerType,
+            containerType: "ghashtable",
             typeParameters: typeParams.length >= 2 ? typeParams : undefined,
             elementType: typeParams[1],
         };
@@ -603,7 +602,7 @@ export class GirParser {
             name: typeName,
             cType,
             isArray: true,
-            containerType: (typeName === "GLib.PtrArray" ? "gptrarray" : "garray") as ContainerType,
+            containerType: typeName === "GLib.PtrArray" ? "gptrarray" : "garray",
             typeParameters: typeParams.length > 0 ? typeParams : undefined,
             elementType: typeParams[0],
         };
@@ -614,7 +613,7 @@ export class GirParser {
             name: "GLib.ByteArray",
             cType,
             isArray: true,
-            containerType: "gbytearray" as ContainerType,
+            containerType: "gbytearray",
             elementType: { name: "guint8", cType: "guint8" },
         };
     }
@@ -630,7 +629,7 @@ export class GirParser {
             name: "array",
             cType,
             isArray: true,
-            containerType: (typeName === "GLib.List" ? "glist" : "gslist") as ContainerType,
+            containerType: typeName === "GLib.List" ? "glist" : "gslist",
             typeParameters: elementType ? [elementType] : undefined,
             elementType,
         };

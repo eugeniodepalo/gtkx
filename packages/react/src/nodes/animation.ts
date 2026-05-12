@@ -221,7 +221,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
 
         this.currentAnimation = animation;
 
-        const delay = (this.props as AdwTimedAnimationProps | AdwSpringAnimationProps).delay ?? 0;
+        const delay = this.props.delay ?? 0;
 
         if (delay > 0) {
             setTimeout(() => {

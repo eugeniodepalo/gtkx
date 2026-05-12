@@ -80,7 +80,7 @@ export class SignalBuilder {
                 returnType: { type: "uint64" },
             });
             this.imports.addImport("../../native.js", ["t"]);
-            if (binding && binding.varargs === false) {
+            if (binding?.varargs === false) {
                 return `${binding.name}("${glibTypeName}") as number`;
             }
             this.imports.addImport("../../native.js", ["call"]);
@@ -94,7 +94,7 @@ export class SignalBuilder {
             exported: true,
         });
         this.imports.addImport("../../native.js", ["t"]);
-        if (binding && binding.varargs === false) {
+        if (binding?.varargs === false) {
             return `${binding.name}() as number`;
         }
         this.imports.addImport("../../native.js", ["call"]);

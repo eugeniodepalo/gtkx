@@ -18,7 +18,7 @@ export class EventControllerNode<
         props: Props,
         containerClass: typeof Gtk.EventController,
     ): Gtk.EventController {
-        if ((containerClass as typeof Gtk.EventController) === Gtk.DropTarget) {
+        if (containerClass === Gtk.DropTarget) {
             const actions = (props.actions as number | undefined) ?? 0;
             return new Gtk.DropTarget(G_TYPE_INVALID, actions);
         }
@@ -52,7 +52,7 @@ export class EventControllerNode<
     }
 
     public override detachDeletedInstance(): void {
-        if (this.parent && this.container.getWidget() === this.parent.container) {
+        if (this.container.getWidget() === this.parent?.container) {
             this.parent.container.removeController(this.container);
         }
         super.detachDeletedInstance();

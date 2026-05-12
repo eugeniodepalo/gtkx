@@ -371,7 +371,6 @@ describe("registerClass", () => {
                 ],
             });
         };
-        void _typeOnly;
-        expect(true).toBe(true);
+        expect(typeof _typeOnly).toBe("function");
     });
 });

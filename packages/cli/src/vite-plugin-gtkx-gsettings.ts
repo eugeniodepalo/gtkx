@@ -109,7 +109,7 @@ export function gtkxGSettings(): Plugin {
 
             const schemaIds: string[] = [];
             for (const match of xml.matchAll(SCHEMA_ID_RE)) {
-                schemaIds.push(match[1] as string);
+                if (match[1]) schemaIds.push(match[1]);
             }
 
             if (schemaIds.length === 0) {

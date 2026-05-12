@@ -327,7 +327,7 @@ export class FfiMapper {
                 callbackResult.ffi.hasDestroy = true;
             }
             if (callbackResult.ffi.type === "trampoline" && param.scope) {
-                callbackResult.ffi.scope = param.scope as "call" | "notified" | "async";
+                callbackResult.ffi.scope = param.scope;
             }
             return callbackResult;
         }
@@ -867,7 +867,7 @@ export class FfiMapper {
 
         const qualified = elementType.name?.includes(".")
             ? splitQualifiedName(elementType.name)
-            : { namespace: this.currentNamespace, name: elementType.name as string };
+            : { namespace: this.currentNamespace, name: elementType.name };
         if (!qualified.name) return undefined;
 
         return this.calculateRecordSize(qualified.name, qualified.namespace);
@@ -913,26 +913,26 @@ export class FfiMapper {
     private getFieldByteSize(field: GirField, namespace: string): number {
         const type = field.type;
         if (type.cType?.includes("*")) return 8;
-        if (this.isCallbackType(type.name as string, namespace)) return 8;
+        if (this.isCallbackType(type.name, namespace)) return 8;
 
         if (type.isArray && type.fixedSize !== undefined && type.elementType) {
-            const elemSize = this.getTypePrimitiveSize(type.elementType.name as string, namespace);
+            const elemSize = this.getTypePrimitiveSize(type.elementType.name, namespace);
             return elemSize * type.fixedSize;
         }
 
-        return this.getTypePrimitiveSize(type.name as string, namespace);
+        return this.getTypePrimitiveSize(type.name, namespace);
     }
 
     private getFieldAlignment(field: GirField, namespace: string): number {
         const type = field.type;
         if (type.cType?.includes("*")) return 8;
-        if (this.isCallbackType(type.name as string, namespace)) return 8;
+        if (this.isCallbackType(type.name, namespace)) return 8;
 
         if (type.isArray && type.fixedSize !== undefined && type.elementType) {
-            return this.getTypeAlignment(type.elementType.name as string, namespace);
+            return this.getTypeAlignment(type.elementType.name, namespace);
         }
 
-        return this.getTypeAlignment(type.name as string, namespace);
+        return this.getTypeAlignment(type.name, namespace);
     }
 
     private getTypeAlignment(typeName: string, namespace: string): number {
@@ -999,7 +999,7 @@ export class FfiMapper {
 
     private getElementSize(type: GirType): number {
         if (type.isNumeric()) {
-            const primitive = PRIMITIVE_TYPE_MAP.get(type.name as string);
+            const primitive = PRIMITIVE_TYPE_MAP.get(type.name);
             if (primitive) {
                 return getFfiTypeByteSize(primitive.ffi.type);
             }

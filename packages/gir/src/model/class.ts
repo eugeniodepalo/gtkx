@@ -87,7 +87,7 @@ export class GirClass {
     /** Gets the full inheritance chain from this class to the root. */
     getInheritanceChain(): string[] {
         const chain: string[] = [this.qualifiedName];
-        let current: GirClass | null = this as GirClass;
+        let current: GirClass | null = this;
         while (current?.parent) {
             chain.push(current.parent);
             current = this.repo.resolveClass(current.parent);

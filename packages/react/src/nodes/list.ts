@@ -464,7 +464,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         this.rootItemIds = rootItems.map((item) => item.id);
 
         this.treeModel = new Gtk.TreeListModel(
-            this.model as Gio.ListModel,
+            this.model,
             false,
             this.props.autoexpand ?? false,
             (_item: GObject.Object) => this.createChildModel(_item),
@@ -579,7 +579,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const nItems = this.model.getNItems();
         for (let i = 0; i < nItems; i++) {
             const obj = this.model.getObject(i);
-            if (obj && obj.handle === item.handle) {
+            if (obj?.handle === item.handle) {
                 return i;
             }
         }
@@ -651,7 +651,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (childModel) {
             for (let j = 0; j < childModel.getNItems(); j++) {
                 const obj = childModel.getObject(j);
-                if (obj && obj.handle === childItem.handle) {
+                if (obj?.handle === childItem.handle) {
                     return parentItem.children[j] ?? null;
                 }
             }
@@ -849,7 +849,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             const handler = onSelectionChanged
                 ? this.buildDropDownSelectionHandler(onSelectionChanged as (id: string) => void)
                 : undefined;
-            this.signalStore.set(this, this.container as GObject.Object, "notify::selected", handler);
+            this.signalStore.set(this, this.container, "notify::selected", handler);
             return;
         }
 
@@ -859,7 +859,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             ? this.buildMultiSelectionHandler(onSelectionChanged as (ids: string[]) => void)
             : undefined;
 
-        this.signalStore.set(this, this.selectionModel as GObject.Object, "selection-changed", handler, {
+        this.signalStore.set(this, this.selectionModel, "selection-changed", handler, {
             blockable: false,
         });
     }
@@ -886,7 +886,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
               }
             : undefined;
 
-        this.signalStore.set(this, sorter as GObject.Object, "changed", handler, { blockable: false });
+        this.signalStore.set(this, sorter, "changed", handler, { blockable: false });
     }
 
     private applySortColumn(props: ListProps): void {

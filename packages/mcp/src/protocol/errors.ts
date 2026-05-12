@@ -10,18 +10,8 @@ export enum McpErrorCode {
     APP_NOT_FOUND = 1002,
     /** Widget with specified ID was not found */
     WIDGET_NOT_FOUND = 1003,
-    /** Widget cannot be interacted with */
-    WIDGET_NOT_INTERACTABLE = 1004,
-    /** Query timed out waiting for widget */
-    QUERY_TIMEOUT = 1005,
-    /** Widget is not the expected type */
-    INVALID_WIDGET_TYPE = 1006,
-    /** Screenshot capture failed */
-    SCREENSHOT_FAILED = 1007,
     /** IPC request timed out */
     IPC_TIMEOUT = 1008,
-    /** Failed to serialize data */
-    SERIALIZATION_ERROR = 1009,
     /** Request format is invalid */
     INVALID_REQUEST = 1010,
     /** Requested method does not exist */

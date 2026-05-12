@@ -4,7 +4,6 @@ import {
     invalidRequestError,
     ipcTimeoutError,
     McpError,
-    type McpErrorCode,
     noAppConnectedError,
 } from "./protocol/errors.js";
 import { type AppInfo, type IpcRequest, type IpcResponse, RegisterParamsSchema } from "./protocol/types.js";
@@ -175,7 +174,7 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
 
         if (response.error) {
             const err = response.error;
-            pending.reject(new McpError(err.code as McpErrorCode, err.message, err.data));
+            pending.reject(new McpError(err.code, err.message, err.data));
         } else {
             pending.resolve(response.result);
         }

@@ -343,8 +343,8 @@ class McpClient {
             case "role": {
                 const roleValue =
                     typeof p.value === "string"
-                        ? (Gtk.AccessibleRole[p.value as keyof typeof Gtk.AccessibleRole] as Gtk.AccessibleRole)
-                        : (p.value as Gtk.AccessibleRole);
+                        ? Gtk.AccessibleRole[p.value as keyof typeof Gtk.AccessibleRole]
+                        : p.value;
                 widgets = await testing.findAllByRole(app, roleValue, p.options);
                 break;
             }
@@ -438,11 +438,11 @@ class McpClient {
             }
             return widget as Gtk.Window;
         }
-        const windows = app.getWindows();
-        if (windows.length === 0) {
+        const [firstWindow] = app.getWindows();
+        if (!firstWindow) {
             throw new Error("No windows available for screenshot");
         }
-        return windows[0] as Gtk.Window;
+        return firstWindow;
     }
 
     private async executeMethod(method: IpcMethod, params: unknown): Promise<unknown> {

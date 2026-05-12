@@ -4,7 +4,7 @@
 //! not need to traverse the `GTypeInstance` → `GTypeClass` → `GObjectClass`
 //! chain through several individual FFI dispatches.
 
-use std::ffi::{CString, c_void};
+use std::ffi::{CString, c_char, c_void};
 use std::sync::Arc;
 use std::sync::atomic::AtomicPtr;
 
@@ -377,10 +377,8 @@ struct RegisterClassRequest {
     interfaces: Vec<RawInterface>,
 }
 
-impl ModuleRequest for RegisterClassRequest {
-    type Output = u64;
-
-    fn execute(self) -> anyhow::Result<u64> {
+impl RegisterClassRequest {
+    fn query_parent_gtype(&self) -> anyhow::Result<gobject_ffi::GTypeQuery> {
         if self.parent_gtype == 0 {
             anyhow::bail!("parent gtype is invalid (G_TYPE_INVALID)");
         }
@@ -398,28 +396,44 @@ impl ModuleRequest for RegisterClassRequest {
         if query.type_ == 0 {
             anyhow::bail!("parent gtype could not be queried");
         }
+        Ok(query)
+    }
 
+    fn validate_vfunc_offset(
+        byte_offset: usize,
+        pointer_align: usize,
+        pointer_size: usize,
+        class_size: Option<u32>,
+        label: &str,
+    ) -> anyhow::Result<()> {
+        if !byte_offset.is_multiple_of(pointer_align) {
+            anyhow::bail!(
+                "{label} byte_offset {byte_offset} is not aligned to a pointer ({pointer_align})"
+            );
+        }
+        let end = byte_offset
+            .checked_add(pointer_size)
+            .ok_or_else(|| anyhow::anyhow!("{label} byte_offset overflow"))?;
+        if let Some(class_size) = class_size
+            && end > class_size as usize
+        {
+            anyhow::bail!("{label} byte_offset {byte_offset} exceeds class size {class_size}");
+        }
+        Ok(())
+    }
+
+    fn validate_layout(&self, query: &gobject_ffi::GTypeQuery) -> anyhow::Result<()> {
         let pointer_align = std::mem::align_of::<*mut c_void>();
         let pointer_size = std::mem::size_of::<*mut c_void>();
+
         for vfunc in &self.class_data.vfuncs {
-            if !vfunc.byte_offset.is_multiple_of(pointer_align) {
-                anyhow::bail!(
-                    "vfunc byte_offset {} is not aligned to a pointer ({})",
-                    vfunc.byte_offset,
-                    pointer_align,
-                );
-            }
-            let end = vfunc
-                .byte_offset
-                .checked_add(pointer_size)
-                .ok_or_else(|| anyhow::anyhow!("vfunc byte_offset overflow"))?;
-            if end > query.class_size as usize {
-                anyhow::bail!(
-                    "vfunc byte_offset {} exceeds class size {}",
-                    vfunc.byte_offset,
-                    query.class_size,
-                );
-            }
+            Self::validate_vfunc_offset(
+                vfunc.byte_offset,
+                pointer_align,
+                pointer_size,
+                Some(query.class_size),
+                "vfunc",
+            )?;
         }
 
         for iface in &self.interfaces {
@@ -427,67 +441,91 @@ impl ModuleRequest for RegisterClassRequest {
                 anyhow::bail!("interface gtype is invalid (G_TYPE_INVALID)");
             }
             for vfunc in &iface.vfuncs {
-                if !vfunc.byte_offset.is_multiple_of(pointer_align) {
-                    anyhow::bail!(
-                        "interface vfunc byte_offset {} is not aligned to a pointer ({})",
-                        vfunc.byte_offset,
-                        pointer_align,
-                    );
-                }
-                vfunc
-                    .byte_offset
-                    .checked_add(pointer_size)
-                    .ok_or_else(|| anyhow::anyhow!("interface vfunc byte_offset overflow"))?;
+                Self::validate_vfunc_offset(
+                    vfunc.byte_offset,
+                    pointer_align,
+                    pointer_size,
+                    None,
+                    "interface vfunc",
+                )?;
             }
         }
+        Ok(())
+    }
+}
 
+fn register_class_with_interfaces(
+    parent_gtype: usize,
+    name_ptr: *const c_char,
+    class_data_ptr: *mut c_void,
+    interfaces: Vec<PreparedInterface>,
+    class_size: u16,
+    instance_size: u16,
+) -> anyhow::Result<usize> {
+    let info = gobject_ffi::GTypeInfo {
+        class_size,
+        base_init: None,
+        base_finalize: None,
+        class_init: Some(class_init_trampoline),
+        class_finalize: None,
+        class_data: class_data_ptr,
+        instance_size,
+        n_preallocs: 0,
+        instance_init: None,
+        value_table: std::ptr::null(),
+    };
+
+    let new_gtype =
+        unsafe { gobject_ffi::g_type_register_static(parent_gtype, name_ptr, &info, 0) };
+
+    if new_gtype == 0 {
+        drop(unsafe { Box::from_raw(class_data_ptr.cast::<ClassData>()) });
+        anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
+    }
+
+    for iface in interfaces {
+        let iface_gtype = iface.gtype;
+        let prepared_ptr = Box::into_raw(Box::new(iface));
+        let info = gobject_ffi::GInterfaceInfo {
+            interface_init: Some(interface_init_trampoline),
+            interface_finalize: None,
+            interface_data: prepared_ptr.cast::<c_void>(),
+        };
+        unsafe {
+            gobject_ffi::g_type_add_interface_static(new_gtype, iface_gtype, &info);
+        }
+    }
+
+    unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
+
+    Ok(new_gtype)
+}
+
+impl ModuleRequest for RegisterClassRequest {
+    type Output = u64;
+
+    fn execute(self) -> anyhow::Result<u64> {
+        let query = self.query_parent_gtype()?;
+        self.validate_layout(&query)?;
+
+        let class_size = query.class_size as u16;
+        let instance_size = query.instance_size as u16;
         let class_data = self.class_data.into_built();
         let interfaces: Vec<PreparedInterface> = self
             .interfaces
             .into_iter()
             .map(RawInterface::into_built)
             .collect();
-
-        let class_size = query.class_size as u16;
-        let instance_size = query.instance_size as u16;
         let class_data_ptr = Box::into_raw(Box::new(class_data)).cast::<c_void>();
 
-        let info = gobject_ffi::GTypeInfo {
+        let new_gtype = register_class_with_interfaces(
+            self.parent_gtype,
+            self.name.as_ptr(),
+            class_data_ptr,
+            interfaces,
             class_size,
-            base_init: None,
-            base_finalize: None,
-            class_init: Some(class_init_trampoline),
-            class_finalize: None,
-            class_data: class_data_ptr,
             instance_size,
-            n_preallocs: 0,
-            instance_init: None,
-            value_table: std::ptr::null(),
-        };
-
-        let new_gtype = unsafe {
-            gobject_ffi::g_type_register_static(self.parent_gtype, self.name.as_ptr(), &info, 0)
-        };
-
-        if new_gtype == 0 {
-            drop(unsafe { Box::from_raw(class_data_ptr.cast::<ClassData>()) });
-            anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
-        }
-
-        for iface in interfaces {
-            let iface_gtype = iface.gtype;
-            let prepared_ptr = Box::into_raw(Box::new(iface));
-            let info = gobject_ffi::GInterfaceInfo {
-                interface_init: Some(interface_init_trampoline),
-                interface_finalize: None,
-                interface_data: prepared_ptr.cast::<c_void>(),
-            };
-            unsafe {
-                gobject_ffi::g_type_add_interface_static(new_gtype, iface_gtype, &info);
-            }
-        }
-
-        unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
+        )?;
 
         Ok(new_gtype as u64)
     }

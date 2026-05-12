@@ -137,7 +137,10 @@ const selectOptions = async (element: Gtk.Widget, values: number | number[]): Pr
     const valueArray = Array.isArray(values) ? values : [values];
 
     if (isListView(element)) {
-        const selectionModel = element.getModel() as Gtk.SelectionModel;
+        const selectionModel = element.getModel();
+        if (selectionModel === null) {
+            throw new Error("Cannot select options: list view has no selection model");
+        }
         const isMultiSelection = selectionModel instanceof Gtk.MultiSelection;
         selectListViewItems(selectionModel, valueArray, !isMultiSelection);
         await tick();
@@ -162,7 +165,10 @@ const deselectOptions = async (element: Gtk.Widget, values: number | number[]): 
     const valueArray = Array.isArray(values) ? values : [values];
 
     if (isListView(element)) {
-        const selectionModel = element.getModel() as Gtk.SelectionModel;
+        const selectionModel = element.getModel();
+        if (selectionModel === null) {
+            throw new Error("Cannot deselect options: list view has no selection model");
+        }
 
         for (const pos of valueArray) {
             selectionModel.unselectItem(pos);
@@ -184,7 +190,7 @@ const deselectOptions = async (element: Gtk.Widget, values: number | number[]): 
         const row = listBox.getRowAtIndex(value);
 
         if (row) {
-            listBox.unselectRow(row as Gtk.ListBoxRow);
+            listBox.unselectRow(row);
         }
     }
 

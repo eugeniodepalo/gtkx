@@ -97,7 +97,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                 description: "List all connected GTKX applications",
                 inputSchema: listAppsShape,
             },
-            handler: (async ({ waitForApps, timeout }: { waitForApps?: boolean; timeout?: number }) => {
+            handler: async ({ waitForApps, timeout }: { waitForApps?: boolean; timeout?: number }) => {
                 if (waitForApps && !connectionManager.hasConnectedApps()) {
                     try {
                         await connectionManager.waitForApp(timeout);
@@ -120,7 +120,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                     }),
                 );
                 return textContent(JSON.stringify(appsWithWindows, null, 2));
-            }) as ToolDefinition<never>["handler"],
+            },
         },
         {
             name: "gtkx_get_widget_tree",
@@ -129,10 +129,10 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                     "Get the widget hierarchy for a connected GTKX app. Returns a tree of all widgets with their IDs, types, roles, and properties.",
                 inputSchema: appIdShape,
             },
-            handler: (async ({ appId }: { appId?: string }) => {
+            handler: async ({ appId }: { appId?: string }) => {
                 const result = await connectionManager.sendToApp<{ tree: string }>(appId, "widget.getTree", {});
                 return textContent(result.tree);
-            }) as ToolDefinition<never>["handler"],
+            },
         },
         {
             name: "gtkx_query_widgets",
@@ -141,7 +141,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                     "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
                 inputSchema: queryWidgetsShape,
             },
-            handler: (async ({
+            handler: async ({
                 appId,
                 by,
                 value,
@@ -158,7 +158,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                     options,
                 });
                 return textContent(JSON.stringify(result, null, 2));
-            }) as ToolDefinition<never>["handler"],
+            },
         },
         {
             name: "gtkx_get_widget_props",
@@ -166,10 +166,10 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                 description: "Get all properties of a specific widget by its ID",
                 inputSchema: widgetIdShape,
             },
-            handler: (async ({ appId, widgetId }: { appId?: string; widgetId: string }) => {
+            handler: async ({ appId, widgetId }: { appId?: string; widgetId: string }) => {
                 const result = await connectionManager.sendToApp(appId, "widget.getProps", { widgetId });
                 return textContent(JSON.stringify(result, null, 2));
-            }) as ToolDefinition<never>["handler"],
+            },
         },
         {
             name: "gtkx_click",
@@ -177,10 +177,10 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                 description: "Click a widget. Works with buttons, checkboxes, and other interactive widgets.",
                 inputSchema: widgetIdShape,
             },
-            handler: (async ({ appId, widgetId }: { appId?: string; widgetId: string }) => {
+            handler: async ({ appId, widgetId }: { appId?: string; widgetId: string }) => {
                 await connectionManager.sendToApp(appId, "widget.click", { widgetId });
                 return textContent("Click successful");
-            }) as ToolDefinition<never>["handler"],
+            },
         },
         {
             name: "gtkx_type",
@@ -188,7 +188,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                 description: "Type text into an editable widget like Entry or TextView",
                 inputSchema: typeShape,
             },
-            handler: (async ({
+            handler: async ({
                 appId,
                 widgetId,
                 text,
@@ -201,7 +201,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
             }) => {
                 await connectionManager.sendToApp(appId, "widget.type", { widgetId, text, clear });
                 return textContent("Type successful");
-            }) as ToolDefinition<never>["handler"],
+            },
         },
         {
             name: "gtkx_fire_event",
@@ -209,7 +209,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                 description: "Emit a GTK signal on a widget. Use this for custom interactions.",
                 inputSchema: fireEventShape,
             },
-            handler: (async ({
+            handler: async ({
                 appId,
                 widgetId,
                 signal,
@@ -222,7 +222,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
             }) => {
                 await connectionManager.sendToApp(appId, "widget.fireEvent", { widgetId, signal, args });
                 return textContent("Event fired successfully");
-            }) as ToolDefinition<never>["handler"],
+            },
         },
         {
             name: "gtkx_take_screenshot",
@@ -230,7 +230,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                 description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
                 inputSchema: screenshotShape,
             },
-            handler: (async ({ appId, windowId }: { appId?: string; windowId?: string }) => {
+            handler: async ({ appId, windowId }: { appId?: string; windowId?: string }) => {
                 const result = await connectionManager.sendToApp<{ data: string; mimeType: string }>(
                     appId,
                     "widget.screenshot",
@@ -245,7 +245,7 @@ export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinit
                         },
                     ],
                 };
-            }) as ToolDefinition<never>["handler"],
+            },
         },
     ];
 

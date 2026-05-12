@@ -72,9 +72,7 @@ export function isGeneratableFieldType(
     const publicFields = resolved.getPublicFields().filter((field) => field.callback === undefined);
     if (publicFields.length === 0) return false;
 
-    return publicFields.every((field) =>
-        isGeneratableFieldType(field.type.name as string, repo, currentNamespace, visited),
-    );
+    return publicFields.every((field) => isGeneratableFieldType(field.type.name, repo, currentNamespace, visited));
 }
 
 /**
@@ -101,7 +99,7 @@ export function shouldGenerateRecord(record: GirRecord, repo: GirRepository, cur
     const publicFields = record.getPublicFields().filter((field) => field.callback === undefined);
     if (publicFields.length === 0) return false;
 
-    return publicFields.every((field) => isGeneratableFieldType(field.type.name as string, repo, currentNamespace));
+    return publicFields.every((field) => isGeneratableFieldType(field.type.name, repo, currentNamespace));
 }
 
 /**

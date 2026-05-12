@@ -133,20 +133,27 @@ export class ClassStructGenerator {
         return true;
     }
 
-    private resolveVtableKind(record: GirRecord): VtableKind | null {
+    private resolveVtableKindByOwner(record: GirRecord): VtableKind | null {
         const owner = record.isGtypeStructFor;
-        if (owner) {
-            const ownerNamespace = owner.includes(".") ? owner.split(".")[0] : record.qualifiedName.split(".")[0];
-            const ownerName = owner.includes(".") ? owner.split(".")[1] : owner;
-            if (ownerNamespace && ownerName) {
-                const ns = this.repo.getNamespace(ownerNamespace);
-                if (ns?.classes.has(ownerName)) return "class";
-                if (ns?.interfaces.has(ownerName)) return "interface";
-            }
-        }
+        if (!owner) return null;
+        const [ownerNamespace, ownerName] = owner.includes(".")
+            ? [owner.split(".")[0], owner.split(".")[1]]
+            : [record.qualifiedName.split(".")[0], owner];
+        if (!ownerNamespace || !ownerName) return null;
+        const ns = this.repo.getNamespace(ownerNamespace);
+        if (ns?.classes.has(ownerName)) return "class";
+        if (ns?.interfaces.has(ownerName)) return "interface";
+        return null;
+    }
+
+    private resolveVtableKindByName(record: GirRecord): VtableKind | null {
         if (record.name.endsWith("Iface") || record.name.endsWith("Interface")) return "interface";
         if (record.name.endsWith("Class")) return "class";
         return null;
+    }
+
+    private resolveVtableKind(record: GirRecord): VtableKind | null {
+        return this.resolveVtableKindByOwner(record) ?? this.resolveVtableKindByName(record);
     }
 
     private writeRegistryObject(

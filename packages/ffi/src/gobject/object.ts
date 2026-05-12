@@ -180,12 +180,12 @@ GObject.prototype.once = function once<T extends GObject>(
 ): T {
     let handlerId = 0;
     const wrapped: Listener = (...args: unknown[]) => {
-        untrackListener(this as GObject, signal, wrapped);
-        untrackListener(this as GObject, signal, handler);
-        (this as GObject).disconnect(handlerId);
+        untrackListener(this, signal, wrapped);
+        untrackListener(this, signal, handler);
+        this.disconnect(handlerId);
         return handler(...args);
     };
-    handlerId = (this as GObject).connect(signal, wrapped, after);
+    handlerId = this.connect(signal, wrapped, after);
     trackListener(this, signal, wrapped, handlerId);
     trackListener(this, signal, handler, handlerId);
     return this;

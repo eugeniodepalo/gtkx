@@ -1,5 +1,5 @@
 import { getInstanceGType } from "@gtkx/ffi";
-import { type Object as GObject, signalEmitv, signalLookup, Value } from "@gtkx/ffi/gobject";
+import { signalEmitv, signalLookup, Value } from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { tick } from "./timing.js";
 
@@ -36,7 +36,7 @@ export const fireEvent = async (
     const gtype = getInstanceGType(element.handle);
     const signalId = signalLookup(signalName, gtype);
 
-    const instanceValue = Value.newFromObject(element as GObject);
+    const instanceValue = Value.newFromObject(element);
 
     signalEmitv([instanceValue, ...args], signalId, 0);
 
