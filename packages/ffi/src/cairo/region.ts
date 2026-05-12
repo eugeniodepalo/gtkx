@@ -30,8 +30,6 @@ declare module "../generated/cairo/region.js" {
 }
 
 class RegionImpl extends Region {
-    static override readonly glibTypeName: string = "CairoRegion";
-
     constructor();
     constructor(rect: RectangleInt);
     constructor(rect?: RectangleInt) {

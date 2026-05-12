@@ -108,9 +108,7 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
         const setter = this.resolveChildSetter(parent);
 
         if (!setter) {
-            throw new Error(
-                `Unable to find property for Slot '${this.getId()}' on type '${parent.constructor.glibTypeName}'`,
-            );
+            throw new Error(`Unable to find property for Slot '${this.getId()}' on type '${parent.constructor.name}'`);
         }
 
         this.cachedSetter = setter;

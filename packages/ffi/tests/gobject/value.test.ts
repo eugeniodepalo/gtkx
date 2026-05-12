@@ -8,6 +8,7 @@ import { Type } from "../../src/gobject/types.js";
 import { call } from "../../src/native.js";
 
 const callGetType = (lib: string, fn: string): number => call(lib, fn, [], { type: "uint64" }) as number;
+const gdkRgbaGType = (): number => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
 
 describe("Value factory methods", () => {
     describe("newFromBoolean", () => {
@@ -122,7 +123,7 @@ describe("Value factory methods", () => {
     describe("newFromBoxed", () => {
         it("creates a GValue holding a boxed type", () => {
             const rgba = new Gdk.RGBA({ red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 });
-            const v = Value.newFromBoxed(rgba);
+            const v = Value.newFromBoxed(rgba, gdkRgbaGType());
             expect(v).not.toBeNull();
         });
     });
@@ -194,8 +195,8 @@ describe("Value instance methods", () => {
     describe("getBoxed", () => {
         it("returns an owned copy of the boxed value", () => {
             const rgba = new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1.0 });
-            const v = Value.newFromBoxed(rgba);
-            const extracted = v.getBoxed(Gdk.RGBA);
+            const v = Value.newFromBoxed(rgba, gdkRgbaGType());
+            const extracted = v.getBoxed(Gdk.RGBA, gdkRgbaGType());
             expect(extracted).not.toBeNull();
             expect(extracted?.red).toBeCloseTo(0.5);
             expect(extracted?.green).toBeCloseTo(0.25);

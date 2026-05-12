@@ -55,13 +55,50 @@ export class SignalBuilder {
         private readonly selfNames: ReadonlySet<string> = new Set(),
     ) {
         this.className = normalizeClassName(cls.name);
-        const descriptors = (imports as { descriptors?: FfiDescriptorRegistry }).descriptors;
-        this.callExpression = new CallExpressionBuilder(descriptors, imports);
+        this.descriptors = (imports as { descriptors?: FfiDescriptorRegistry }).descriptors;
+        this.callExpression = new CallExpressionBuilder(this.descriptors, imports);
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
             sharedLibrary: options.sharedLibrary,
             glibLibrary: options.glibLibrary,
             selfNames,
         });
+    }
+
+    private readonly descriptors: FfiDescriptorRegistry | undefined;
+
+    private gtypeCall(): string {
+        const glibGetType = this.cls.glibGetType;
+        const glibTypeName = this.cls.glibTypeName;
+        if (!glibGetType || glibGetType === "intern") {
+            if (!glibTypeName) {
+                return `0 /* ${this.className} has no glib:type-name */`;
+            }
+            const binding = this.descriptors?.register({
+                sharedLibrary: "libgobject-2.0.so.0",
+                cIdentifier: "g_type_from_name",
+                args: [{ type: { type: "string", ownership: "borrowed" }, value: "" }],
+                returnType: { type: "uint64" },
+            });
+            this.imports.addImport("../../native.js", ["t"]);
+            if (binding && binding.varargs === false) {
+                return `${binding.name}("${glibTypeName}") as number`;
+            }
+            this.imports.addImport("../../native.js", ["call"]);
+            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) as number`;
+        }
+        const binding = this.descriptors?.register({
+            sharedLibrary: this.options.sharedLibrary,
+            cIdentifier: glibGetType,
+            args: [],
+            returnType: { type: "uint64" },
+            exported: true,
+        });
+        this.imports.addImport("../../native.js", ["t"]);
+        if (binding && binding.varargs === false) {
+            return `${binding.name}() as number`;
+        }
+        this.imports.addImport("../../native.js", ["call"]);
+        return `call("${this.options.sharedLibrary}", "${glibGetType}", [], t.uint64) as number`;
     }
 
     buildConnectMethodStructures(): MethodStructure[] {
@@ -649,9 +686,7 @@ export class SignalBuilder {
                 });
             });
             writer.writeLine("];");
-            writer.writeLine(
-                `const __signalId = ${gobjectPrefix}signalLookup("${signal.name}", ${this.className}.getGType());`,
-            );
+            writer.writeLine(`const __signalId = ${gobjectPrefix}signalLookup("${signal.name}", ${this.gtypeCall()});`);
 
             if (hasReturnValue && returnMapped) {
                 writer.writeLine(`const __returnValue = new ${gobjectPrefix}Value();`);

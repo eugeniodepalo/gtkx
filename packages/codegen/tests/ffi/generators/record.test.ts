@@ -65,19 +65,20 @@ describe("RecordGenerator", () => {
             expect(code).toContain("extends NativeObject");
         });
 
-        it("adds glibTypeName property when present", () => {
+        it("registers native class with gtype when glibGetType is present", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
                 glibTypeName: "GdkRectangle",
+                glibGetType: "gdk_rectangle_get_type",
                 fields: [],
             });
 
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("glibTypeName");
-            expect(code).toContain('"GdkRectangle"');
+            expect(code).toContain("registerNativeClass(Rectangle, gdk_rectangle_get_type() as number);");
+            expect(code).toContain("export const gdk_rectangle_get_type");
         });
 
         it("does not emit objectType when glibTypeName present", () => {
@@ -136,18 +137,19 @@ describe("RecordGenerator", () => {
             expect(code).not.toContain("objectType");
         });
 
-        it("adds registerNativeClass call when glibTypeName present", () => {
+        it("adds registerNativeClass call when glibGetType is present", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
                 glibTypeName: "GdkRectangle",
+                glibGetType: "gdk_rectangle_get_type",
                 fields: [],
             });
 
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("registerNativeClass(Rectangle)");
+            expect(code).toContain("registerNativeClass(Rectangle, gdk_rectangle_get_type() as number);");
         });
     });
 
@@ -554,11 +556,12 @@ describe("RecordGenerator", () => {
             expect(stringify(file)).toContain("read");
         });
 
-        it("sets usesRegisterNativeClass flag when glibTypeName present", () => {
+        it("registers native class when glibGetType is present", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
                 glibTypeName: "GdkRectangle",
+                glibGetType: "gdk_rectangle_get_type",
                 fields: [],
             });
 

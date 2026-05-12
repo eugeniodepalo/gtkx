@@ -1,4 +1,4 @@
-import type { Type as FfiType, NativeHandle } from "@gtkx/native";
+import { type Type as FfiType, getInstanceGType, type NativeHandle } from "@gtkx/native";
 import { typeFromName, typeFundamental, typeName } from "../generated/gobject/functions.js";
 import type { Object as GObject } from "../generated/gobject/object.js";
 import type { ParamSpec } from "../generated/gobject/param-spec.js";
@@ -59,9 +59,10 @@ declare module "../generated/gobject/value.js" {
         /**
          * Gets an owned copy of the boxed value from a G_TYPE_BOXED derived GValue.
          * @param targetType - The class constructor to wrap the result with
+         * @param targetGType - The GType identifier of the boxed type
          * @returns An owned copy of the boxed value wrapped in the target type, or null
          */
-        getBoxed<T extends NativeObject>(targetType: NativeClass<T>): T | null;
+        getBoxed<T extends NativeObject>(targetType: NativeClass<T>, targetGType: number): T | null;
 
         /**
          * Gets the contents of a G_TYPE_STRV (`gchar**`) GValue as a JS string array.
@@ -142,16 +143,17 @@ declare module "../generated/gobject/value.js" {
         function newFromString(value: string | null): Value;
         /**
          * Creates a GValue initialized with a GObject instance.
-         * The GType is automatically determined from the object's class.
+         * The GType is automatically determined from the object's runtime class.
          * @param value - The GObject instance, or null
          */
         function newFromObject(value: GObject | null): Value;
         /**
          * Creates a GValue initialized with a boxed type instance.
-         * The GType is automatically determined from the object's class.
          * @param value - The boxed type instance (e.g., Gdk.RGBA, Graphene.Rect)
+         * @param gtype - The GType identifier of the boxed type (use the type
+         *     module's exported `*_get_type()` function)
          */
-        function newFromBoxed(value: NativeObject): Value;
+        function newFromBoxed(value: NativeObject, gtype: number): Value;
         /**
          * Creates a GValue initialized with a null-terminated string array (GStrv).
          * @param value - The string array
@@ -221,10 +223,13 @@ Value.prototype.holds = function (gtype: number): boolean {
     return this.getType() === gtype;
 };
 
-Value.prototype.getBoxed = function <T extends NativeObject>(targetType: NativeClass<T>): T | null {
-    const glibTypeName = targetType.glibTypeName;
+Value.prototype.getBoxed = function <T extends NativeObject>(
+    targetType: NativeClass<T>,
+    targetGType: number,
+): T | null {
+    const glibTypeName = typeName(targetGType);
     if (!glibTypeName) {
-        throw new Error("targetType must have a glibTypeName");
+        throw new Error(`Cannot resolve type name for boxed gtype ${targetGType}`);
     }
     const ptr = call(
         "libgobject-2.0.so.0",
@@ -283,15 +288,12 @@ const readPointerValue = (handle: NativeHandle): null => {
 };
 
 const readBoxedValue = (value: Value, gtype: number): unknown => {
-    const concreteName = typeName(gtype);
-    if (!concreteName) {
-        throw new Error(`Cannot resolve type name for boxed GType ${gtype}`);
-    }
-    const cls = findNativeClass(concreteName, false);
+    const cls = findNativeClass(gtype, false);
     if (!cls) {
-        throw new Error(`No registered class for boxed GType '${concreteName}'`);
+        const name = typeName(gtype) ?? `gtype ${gtype}`;
+        throw new Error(`No registered class for boxed GType '${name}'`);
     }
-    return value.getBoxed(cls);
+    return value.getBoxed(cls, gtype);
 };
 
 Value.prototype.toJS = function (): unknown {
@@ -321,7 +323,7 @@ type ValueStatic = {
     newFromDouble(value: number): Value;
     newFromString(value: string | null): Value;
     newFromObject(value: GObject | null): Value;
-    newFromBoxed(value: NativeObject): Value;
+    newFromBoxed(value: NativeObject, gtype: number): Value;
     newFromStrv(value: string[]): Value;
     newFromVariant(value: NativeObject): Value;
     newFromEnum(gtype: number, value: number): Value;
@@ -346,7 +348,7 @@ ValueWithStatics.newFromString = (value) => initValue(Type.STRING, (v) => v.setS
 ValueWithStatics.newFromObject = (value: GObject | null): Value => {
     const v = new Value();
     if (value) {
-        const gtype = typeFromName((value.constructor as typeof GObject).glibTypeName);
+        const gtype = getInstanceGType(value.handle);
         v.init(gtype);
     } else {
         v.init(Type.OBJECT);
@@ -355,10 +357,12 @@ ValueWithStatics.newFromObject = (value: GObject | null): Value => {
     return v;
 };
 
-ValueWithStatics.newFromBoxed = (value: NativeObject): Value => {
-    const ctor = value.constructor as typeof NativeObject;
-    const glibTypeName = ctor.glibTypeName;
-    return initValue(typeFromName(glibTypeName), (v) => {
+ValueWithStatics.newFromBoxed = (value: NativeObject, gtype: number): Value => {
+    const glibTypeName = typeName(gtype);
+    if (!glibTypeName) {
+        throw new Error(`Cannot resolve type name for boxed gtype ${gtype}`);
+    }
+    return initValue(gtype, (v) => {
         call(
             "libgobject-2.0.so.0",
             "g_value_set_boxed",
@@ -383,6 +387,27 @@ ValueWithStatics.newFromVariant = (value: NativeObject): Value =>
 
 ValueWithStatics.newFromEnum = (gtype, value) => initValue(gtype, (v) => v.setEnum(value));
 ValueWithStatics.newFromFlags = (gtype, value) => initValue(gtype, (v) => v.setFlags(value));
+
+const resolveBoxedGType = (ffiType: FfiType): number => {
+    if (ffiType.type === "boxed") {
+        if (ffiType.getTypeFn && ffiType.library) {
+            return call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as number;
+        }
+        const gtype = typeFromName(ffiType.innerType);
+        if (gtype === 0) {
+            throw new Error(`Cannot resolve gtype for boxed type '${ffiType.innerType}'`);
+        }
+        return gtype;
+    }
+    if (ffiType.type === "fundamental") {
+        if (ffiType.typeName) {
+            const gtype = typeFromName(ffiType.typeName);
+            if (gtype !== 0) return gtype;
+        }
+        throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
+    }
+    throw new Error(`resolveBoxedGType: unsupported FFI type '${ffiType.type}'`);
+};
 
 ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
     switch (ffiType.type) {
@@ -432,7 +457,7 @@ ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
             return Value.newFromObject(value as GObject | null);
 
         case "boxed":
-            return Value.newFromBoxed(value as NativeObject);
+            return Value.newFromBoxed(value as NativeObject, resolveBoxedGType(ffiType));
 
         case "array": {
             if (ffiType.itemType.type === "string" && ffiType.kind === "array") {
@@ -447,7 +472,7 @@ ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
             if (ffiType.refFn === "g_variant_ref_sink") {
                 return Value.newFromVariant(value as NativeObject);
             }
-            return Value.newFromBoxed(value as NativeObject);
+            return Value.newFromBoxed(value as NativeObject, resolveBoxedGType(ffiType));
 
         default:
             throw new Error(`Unsupported FFI type for GValue conversion: ${(ffiType as { type: string }).type}`);
@@ -477,7 +502,7 @@ const newBoxedValue = (gtype: number, value: unknown): Value => {
         v.init(gtype);
         return v;
     }
-    return Value.newFromBoxed(value as NativeObject);
+    return Value.newFromBoxed(value as NativeObject, gtype);
 };
 
 const newStrvValue = (gtype: number, value: unknown): Value => {

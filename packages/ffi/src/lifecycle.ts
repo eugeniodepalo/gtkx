@@ -1,14 +1,14 @@
 import EventEmitter from "node:events";
-import { type NativeHandle, init as nativeInit, stop as nativeStop } from "@gtkx/native";
+import { stop as nativeStop } from "@gtkx/native";
 import { init as initAdwaita } from "./generated/adw/functions.js";
 import { init as initGtk } from "./generated/gtk/functions.js";
 import { finalize as finalizeGtkSource, init as initGtkSource } from "./generated/gtksource/functions.js";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
-let mainLoopHandle: NativeHandle | null = nativeInit();
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let runtimeReady = false;
+let stopped = false;
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(keepAlive, KEEP_ALIVE_INTERVAL);
@@ -89,7 +89,8 @@ export const initRuntime = (): void => {
  * @see {@link events}
  */
 export const stop = (): void => {
-    if (!mainLoopHandle) return;
+    if (stopped) return;
+    stopped = true;
 
     if (runtimeReady) {
         runtimeReady = false;
@@ -101,12 +102,10 @@ export const stop = (): void => {
         events.emit("stop");
     }
 
-    nativeStop(mainLoopHandle);
+    nativeStop();
 
     if (keepAliveTimeout) {
         clearTimeout(keepAliveTimeout);
         keepAliveTimeout = null;
     }
-
-    mainLoopHandle = null;
 };

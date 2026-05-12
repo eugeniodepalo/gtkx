@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Gdk from "../src/generated/gdk/index.js";
+import { typeFromName } from "../src/generated/gobject/functions.js";
 import * as Gtk from "../src/generated/gtk/index.js";
 import {
     findNativeClass,
@@ -12,12 +13,11 @@ import {
 } from "../src/index.js";
 
 describe("registerNativeClass", () => {
-    it("registers a class by glibTypeName", () => {
-        class TestClass extends NativeObject {
-            static glibTypeName = "TestType";
-        }
-        registerNativeClass(TestClass as NativeClass);
-        expect(findNativeClass("TestType")).toBe(TestClass);
+    it("registers a class by GType", () => {
+        class TestClass extends NativeObject {}
+        const fakeGtype = 123456789;
+        registerNativeClass(TestClass as NativeClass, fakeGtype);
+        expect(findNativeClass(fakeGtype)).toBe(TestClass);
     });
 
     it("allows getNativeObject to find registered types", () => {
@@ -28,30 +28,30 @@ describe("registerNativeClass", () => {
 });
 
 describe("getNativeClass", () => {
-    it("returns a registered class by GLib type name", () => {
-        const cls = getNativeClass("GtkLabel");
+    it("returns a registered class by GType", () => {
+        const cls = getNativeClass(typeFromName("GtkLabel"));
         expect(cls).toBe(Gtk.Label);
     });
 
-    it("returns null for an unregistered type name", () => {
-        const cls = getNativeClass("NonExistentType");
+    it("returns null for an unregistered GType", () => {
+        const cls = getNativeClass(0);
         expect(cls).toBeNull();
     });
 });
 
 describe("findNativeClass", () => {
     it("returns exact match when type is registered", () => {
-        const cls = findNativeClass("GtkButton");
+        const cls = findNativeClass(typeFromName("GtkButton"));
         expect(cls).toBe(Gtk.Button);
     });
 
     it("walks hierarchy to find a registered parent class", () => {
-        const cls = findNativeClass("GtkButton", true);
+        const cls = findNativeClass(typeFromName("GtkButton"), true);
         expect(cls).not.toBeNull();
     });
 
     it("returns null when walkHierarchy is false and type is not registered", () => {
-        const cls = findNativeClass("NonExistentType", false);
+        const cls = findNativeClass(0, false);
         expect(cls).toBeNull();
     });
 });

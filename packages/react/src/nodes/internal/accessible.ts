@@ -1,6 +1,7 @@
 import type * as GObject from "@gtkx/ffi/gobject";
 import { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { gtk_accessible_list_get_type } from "@gtkx/ffi/gtk";
 import type { Props } from "../../types.js";
 
 type CreateValue = (jsValue: unknown) => Value;
@@ -34,7 +35,7 @@ const fromObject: CreateValue = (val) => Value.newFromObject((val as GObject.Obj
 const fromRefList: CreateValue = (val) => {
     const widgets = val as Gtk.Accessible[];
     const list = Gtk.AccessibleList.newFromList(widgets);
-    return Value.newFromBoxed(list);
+    return Value.newFromBoxed(list, gtk_accessible_list_get_type() as number);
 };
 
 const prop = (enumValue: Gtk.AccessibleProperty, createValue: CreateValue): PropertyDef => ({

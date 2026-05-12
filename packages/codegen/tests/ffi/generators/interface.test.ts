@@ -75,19 +75,20 @@ describe("InterfaceGenerator", () => {
             expect(code).toContain("extends GObject.Object");
         });
 
-        it("adds glibTypeName property when present", () => {
+        it("emits exported get-type FFI binding when glibGetType is present", () => {
             const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
                 glibTypeName: "GtkBuildable",
+                glibGetType: "gtk_buildable_get_type",
                 methods: [],
             });
 
             generator.generate(iface);
 
             const code = stringify(file);
-            expect(code).toContain("glibTypeName");
-            expect(code).toContain('"GtkBuildable"');
+            expect(code).toContain("export const gtk_buildable_get_type");
+            expect(code).toContain('"gtk_buildable_get_type"');
         });
 
         it("does not emit objectType property", () => {
@@ -385,7 +386,6 @@ describe("InterfaceGenerator", () => {
 
             const code = stringify(file);
             expect(code).toContain("export class Orientable extends GObject.Object");
-            expect(code).toContain("glibTypeName");
             expect(code).toContain("getOrientation");
             expect(code).toContain("setOrientation");
         });

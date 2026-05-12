@@ -64,6 +64,7 @@ export type GirInterfaceData = {
     qualifiedName: string;
     cType: string;
     glibTypeName?: string;
+    glibGetType?: string;
     prerequisites: string[];
     methods: GirMethod[];
     properties: GirProperty[];
@@ -307,6 +308,7 @@ export class GirNormalizer {
             qualifiedName: `${currentNamespace}.${raw.name}`,
             cType: raw.cType,
             glibTypeName: raw.glibTypeName,
+            glibGetType: raw.glibGetType,
             prerequisites: raw.prerequisites.map((prereq) => this.qualifyTypeName(prereq, currentNamespace)),
             methods: raw.methods.map((m) => this.normalizeMethod(m, currentNamespace)),
             properties: raw.properties.map((p) => this.normalizeProperty(p, currentNamespace)),

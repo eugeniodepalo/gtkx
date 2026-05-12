@@ -206,6 +206,7 @@ export class GirParser {
             name: attrString(iface["@_name"]),
             cType: attrString(iface["@_c:type"], attrString(iface["@_glib:type-name"])),
             glibTypeName: attrStringOrUndefined(iface["@_glib:type-name"]),
+            glibGetType: attrStringOrUndefined(iface["@_glib:get-type"]),
             prerequisites: this.parsePrerequisites(iface.prerequisite as XmlElements),
             methods: this.parseMethods(ensureArray(iface.method)),
             properties: this.parseProperties(ensureArray(iface.property)),

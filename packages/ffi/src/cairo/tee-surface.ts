@@ -4,8 +4,6 @@ import { call, t } from "../native.js";
 import { LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class TeeSurface extends Surface {
-    static override readonly glibTypeName: string = "CairoSurface";
-
     constructor(primary: Surface) {
         super(
             call(

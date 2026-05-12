@@ -148,7 +148,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
     const createColorProvider = useCallback(() => {
         const rgba = new Gdk.RGBA();
         rgba.parse(color);
-        return Gdk.ContentProvider.newForValue(GObject.Value.newFromBoxed(rgba));
+        return Gdk.ContentProvider.newForValue(GObject.Value.newFromBoxed(rgba, getGdkRgbaType()));
     }, [color]);
 
     return (
@@ -357,7 +357,7 @@ const DndDemo = ({ window }: DemoProps) => {
     const handleItemColorDrop = useCallback((itemId: string, value: GObject.Value) => {
         const gtype = value.getType();
         if (gtype === getGdkRgbaType()) {
-            const rgba = value.getBoxed(Gdk.RGBA);
+            const rgba = value.getBoxed(Gdk.RGBA, getGdkRgbaType());
             if (rgba) {
                 const cssColor = rgba.toString() ?? "transparent";
                 setItems((prev) =>

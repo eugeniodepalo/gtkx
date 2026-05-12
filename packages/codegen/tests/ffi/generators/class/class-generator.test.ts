@@ -108,16 +108,17 @@ describe("ClassGenerator", () => {
             expect(code).toContain("extends NativeObject");
         });
 
-        it("includes glibTypeName property when present", () => {
+        it("emits exported get-type FFI binding when glibGetType is present", () => {
             const { generator, file } = createTestSetup({
                 glibTypeName: "GtkButton",
+                glibGetType: "gtk_button_get_type",
             });
 
             generator.generate();
 
             const code = stringify(file);
-            expect(code).toContain("glibTypeName");
-            expect(code).toContain('"GtkButton"');
+            expect(code).toContain("export const gtk_button_get_type");
+            expect(code).toContain('"gtk_button_get_type"');
         });
 
         it("does not emit objectType property", () => {
@@ -167,16 +168,17 @@ describe("ClassGenerator", () => {
             expect(code).toContain("getDefaultDirection");
         });
 
-        it("adds registerNativeClass call when glibTypeName present", () => {
+        it("adds registerNativeClass call when glibGetType is present", () => {
             const { generator, file } = createTestSetup({
                 name: "Button",
                 glibTypeName: "GtkButton",
+                glibGetType: "gtk_button_get_type",
             });
 
             generator.generate();
 
             const code = stringify(file);
-            expect(code).toContain("registerNativeClass(Button)");
+            expect(code).toContain("registerNativeClass(Button, gtk_button_get_type() as number);");
         });
     });
 
@@ -232,9 +234,10 @@ describe("ClassGenerator", () => {
             expect(stringify(file)).toContain("call");
         });
 
-        it("sets usesRegisterNativeClass when class has glibTypeName", () => {
+        it("sets usesRegisterNativeClass when class has glibGetType", () => {
             const { generator, file } = createTestSetup({
                 glibTypeName: "GtkButton",
+                glibGetType: "gtk_button_get_type",
             });
 
             generator.generate();

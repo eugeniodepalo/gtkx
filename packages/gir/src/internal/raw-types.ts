@@ -59,6 +59,7 @@ export type RawInterface = {
     name: string;
     cType: string;
     glibTypeName?: string;
+    glibGetType?: string;
     prerequisites: string[];
     methods: RawMethod[];
     properties: RawProperty[];

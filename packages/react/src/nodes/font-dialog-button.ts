@@ -23,6 +23,7 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
     private readonly dialog: Gtk.FontDialog;
 
     public static override createContainer(
+        _typeName: string,
         _props: FontDialogButtonProps,
         containerClass: typeof Gtk.FontDialogButton,
     ): Container | null {

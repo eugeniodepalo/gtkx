@@ -7,15 +7,7 @@
 
 import type { GirClass, GirMethod, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../../builders/file-builder.js";
-import {
-    type ClassDeclarationBuilder,
-    classDecl,
-    constructorDecl,
-    param,
-    property,
-    typeAlias,
-} from "../../../builders/index.js";
-import type { Writer } from "../../../builders/writer.js";
+import { type ClassDeclarationBuilder, classDecl, constructorDecl, param, typeAlias } from "../../../builders/index.js";
 import { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
@@ -163,10 +155,6 @@ export class ClassGenerator {
             ...this.signalBuilder.buildConnectMethodStructures(),
         ];
 
-        if (this.cls.glibGetType) {
-            allMethodStructures.push(this.buildGetGTypeMethod());
-        }
-
         for (const struct of allMethodStructures) {
             addMethodStructure(cls, struct);
         }
@@ -177,9 +165,10 @@ export class ClassGenerator {
 
         this.file.add(cls);
 
-        if (this.cls.glibTypeName) {
+        if (this.cls.glibGetType) {
+            const getTypeCall = this.buildGTypeCall(this.cls.glibGetType, this.cls.glibTypeName);
             this.file.addImport("../../registry.js", ["registerNativeClass"]);
-            this.file.addStatement(`\nregisterNativeClass(${this.className});`);
+            this.file.addStatement(`\nregisterNativeClass(${this.className}, ${getTypeCall});`);
         }
 
         const widgetMeta = this.classMetaBuilder.buildCodegenWidgetMeta();
@@ -211,18 +200,6 @@ export class ClassGenerator {
             extends: extendsExpr,
             doc: doc?.[0]?.description,
         });
-
-        if (this.cls.glibTypeName) {
-            cls.addProperty(
-                property("glibTypeName", {
-                    isStatic: true,
-                    readonly: true,
-                    type: "string",
-                    initializer: `"${this.cls.glibTypeName}"`,
-                    override: parentInfo.hasParent,
-                }),
-            );
-        }
 
         return cls;
     }
@@ -317,32 +294,39 @@ export class ClassGenerator {
         return SELF_TYPE_GOBJECT;
     }
 
-    private buildGetGTypeMethod(): MethodStructure {
+    private buildGTypeCall(cIdentifier: string, glibTypeName: string | undefined): string {
+        if (cIdentifier === "intern" || cIdentifier === "") {
+            if (!glibTypeName) {
+                return `0 /* ${this.className} has no glib:type-name */`;
+            }
+            const binding = this.file.descriptors.register({
+                sharedLibrary: "libgobject-2.0.so.0",
+                cIdentifier: "g_type_from_name",
+                args: [{ type: { type: "string", ownership: "borrowed" }, value: "" }],
+                returnType: { type: "uint64" },
+            });
+            this.file.addImport("../../native.js", ["t"]);
+            if (binding.varargs === false) {
+                return `${binding.name}("${glibTypeName}") as number`;
+            }
+            this.file.addImport("../../native.js", ["call"]);
+            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) as number`;
+        }
+
         const binding = this.file.descriptors.register({
             sharedLibrary: this.options.sharedLibrary,
-            cIdentifier: this.cls.glibGetType ?? "",
+            cIdentifier,
             args: [],
             returnType: { type: "uint64" },
+            exported: true,
         });
 
-        return {
-            name: "getGType",
-            isStatic: true,
-            parameters: [],
-            returnType: "number",
-            docs: undefined,
-            statements: (writer: Writer) => {
-                if (binding.varargs === false) {
-                    this.file.addImport("../../native.js", ["t"]);
-                    writer.writeLine(`return ${binding.name}() as number;`);
-                } else {
-                    this.file.addImport("../../native.js", ["call", "t"]);
-                    writer.writeLine(
-                        `return call("${this.options.sharedLibrary}", "${this.cls.glibGetType}", [], t.uint64) as number;`,
-                    );
-                }
-            },
-        };
+        this.file.addImport("../../native.js", ["t"]);
+        if (binding.varargs === false) {
+            return `${binding.name}() as number`;
+        }
+        this.file.addImport("../../native.js", ["call"]);
+        return `call("${this.options.sharedLibrary}", "${cIdentifier}", [], t.uint64) as number`;
     }
 
     private getFundamentalTypeInfo(): { lib: string; refFn: string; unrefFn: string; typeName?: string } | null {

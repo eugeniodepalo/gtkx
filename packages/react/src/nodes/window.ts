@@ -37,6 +37,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
     private readonly menu: MenuModel;
 
     public static override createContainer(
+        typeName: string,
         props: Props,
         containerClass: typeof Gtk.Window,
         rootContainer: Container | undefined,
@@ -58,7 +59,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
             return new Gtk.ApplicationWindow(rootContainer);
         }
 
-        return WidgetNode.createContainer(props, containerClass) as Gtk.Window;
+        return WidgetNode.createContainer(typeName, props, containerClass) as Gtk.Window;
     }
 
     constructor(typeName: string, props: WindowProps, container: Gtk.Window, rootContainer: Container) {

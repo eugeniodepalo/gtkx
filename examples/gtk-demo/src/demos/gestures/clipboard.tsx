@@ -124,7 +124,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     }, [sourceText]);
 
     const createColorDragProvider = useCallback(() => {
-        return Gdk.ContentProvider.newForValue(GObject.Value.newFromBoxed(sourceColor));
+        return Gdk.ContentProvider.newForValue(GObject.Value.newFromBoxed(sourceColor, getGdkRgbaType()));
     }, [sourceColor]);
 
     const createImageDragProvider = useCallback(() => {
@@ -156,7 +156,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
             const value = GObject.Value.newFromString(sourceText);
             clipboard.setValue(value);
         } else if (sourceType === "Color") {
-            const value = GObject.Value.newFromBoxed(sourceColor);
+            const value = GObject.Value.newFromBoxed(sourceColor, getGdkRgbaType());
             clipboard.setValue(value);
         } else if (sourceType === "Image") {
             const paths = [portlandRosePath, floppyBuddyPath, gtkLogoSvgPath];
@@ -201,7 +201,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
         async (clipboard: Gdk.Clipboard, formats: Gdk.ContentFormats): Promise<boolean> => {
             if (!formats.containGtype(getGdkRgbaType())) return false;
             const value = await clipboard.readValueAsync(getGdkRgbaType(), 0);
-            const rgba = value.getBoxed(Gdk.RGBA);
+            const rgba = value.getBoxed(Gdk.RGBA, getGdkRgbaType());
             if (!rgba) return false;
             setPastedContent({
                 type: "Color",
@@ -267,7 +267,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const handleDrop = useCallback((value: GObject.Value) => {
         const obj = value.getObject();
         if (obj) {
-            const paintable = getNativeInterface(obj, Gdk.Paintable);
+            const paintable = getNativeInterface(obj, Gdk.Paintable, getGdkPaintableType());
             if (paintable) {
                 setPastedContent({ type: "Image", paintable });
                 return true;
@@ -277,7 +277,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                 return true;
             }
         }
-        const rgba = value.getBoxed(Gdk.RGBA);
+        const rgba = value.getBoxed(Gdk.RGBA, getGdkRgbaType());
         if (rgba) {
             setPastedContent({
                 type: "Color",

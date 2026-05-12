@@ -28,6 +28,13 @@ export type DescriptorRegistration = {
     returnType: FfiTypeDescriptor;
     selfArg?: { type: FfiTypeDescriptor; value: string };
     hasVarargs?: boolean;
+    /**
+     * When true, the hoisted `const` declaration for this descriptor is
+     * emitted with an `export` modifier so external modules can call it
+     * directly (e.g. `gtk_button_get_type()`). If any registration of the
+     * same descriptor key marks it exported, the descriptor is exported.
+     */
+    exported?: boolean;
 };
 
 /**
@@ -45,6 +52,7 @@ type DescriptorEntry = {
     symbol: string;
     argSlots: ReadonlyArray<{ type: FfiTypeDescriptor; optional: boolean }>;
     returnType: FfiTypeDescriptor;
+    exported: boolean;
 };
 
 /**
@@ -85,6 +93,7 @@ export class FfiDescriptorRegistry {
 
         const existing = this.entriesByKey.get(key);
         if (existing) {
+            if (opts.exported) existing.exported = true;
             return { varargs: false, name: existing.name };
         }
 
@@ -95,6 +104,7 @@ export class FfiDescriptorRegistry {
             symbol: opts.cIdentifier,
             argSlots,
             returnType: opts.returnType,
+            exported: opts.exported === true,
         };
         this.entriesByKey.set(key, entry);
         this.entriesInOrder.push(entry);
@@ -122,7 +132,7 @@ export class FfiDescriptorRegistry {
     }
 
     private writeEntry(writer: Writer, entry: DescriptorEntry): void {
-        writer.write(`const ${entry.name} = t.fn(`);
+        writer.write(`${entry.exported ? "export " : ""}const ${entry.name} = t.fn(`);
         writer.newLine();
         writer.withIndent(() => {
             writer.writeLine(`"${entry.library}",`);

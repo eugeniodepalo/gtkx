@@ -1,3 +1,4 @@
+import { getInstanceGType } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import { signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -207,8 +208,7 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
 };
 
 const getSignalId = (target: Gtk.EventController, signalName: string): number => {
-    const ctor = target.constructor;
-    const gtype = typeFromName(ctor.glibTypeName);
+    const gtype = getInstanceGType(target.handle);
     return signalLookup(signalName, gtype);
 };
 

@@ -14,9 +14,13 @@ type OwnProps = Pick<AdwToggleGroupProps, (typeof OWN_PROPS)[number]>;
 export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, OwnProps> {
     private managedToggles: Adw.Toggle[] = [];
 
-    public static override createContainer(props: Props, containerClass: typeof Gtk.Widget): Container | null {
+    public static override createContainer(
+        typeName: string,
+        props: Props,
+        _containerClass: typeof Gtk.Widget,
+    ): Container | null {
         const { activeName: _, active: __, ...rest } = props;
-        return createContainerWithProperties(containerClass, rest);
+        return createContainerWithProperties(typeName, rest);
     }
 
     public override commitUpdate(oldProps: OwnProps | null, newProps: OwnProps): void {

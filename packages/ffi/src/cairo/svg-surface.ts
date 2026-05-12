@@ -22,8 +22,6 @@ export enum SvgVersion {
 }
 
 export class SvgSurface extends Surface {
-    static override readonly glibTypeName: string = "CairoSurface";
-
     declare setDocumentUnit: (unit: SvgUnit) => void;
     declare getDocumentUnit: () => SvgUnit;
     declare restrictToVersion: (version: SvgVersion) => void;

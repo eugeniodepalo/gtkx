@@ -5,8 +5,6 @@ import { call, read, t } from "../native.js";
 import { INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class ImageSurface extends Surface {
-    static override readonly glibTypeName: string = "CairoSurface";
-
     constructor(format: Format, width: number, height: number) {
         super(
             call(

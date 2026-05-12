@@ -22,8 +22,6 @@ declare module "../generated/cairo/font-options.js" {
 }
 
 class FontOptionsImpl extends FontOptions {
-    static override readonly glibTypeName: string = "CairoFontOptions";
-
     constructor() {
         super(call(LIB, "cairo_font_options_create", [], FONT_OPTIONS_T_FULL) as NativeHandle);
     }

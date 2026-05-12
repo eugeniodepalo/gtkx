@@ -7,7 +7,7 @@
 
 import type { GirInterface, GirMethod, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../builders/file-builder.js";
-import { classDecl, property } from "../../builders/index.js";
+import { classDecl } from "../../builders/index.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
@@ -70,18 +70,6 @@ export class InterfaceGenerator {
             doc: doc?.[0]?.description,
         });
 
-        if (iface.glibTypeName) {
-            cls.addProperty(
-                property("glibTypeName", {
-                    isStatic: true,
-                    readonly: true,
-                    type: "string",
-                    initializer: `"${iface.glibTypeName}"`,
-                    override: true,
-                }),
-            );
-        }
-
         const gobjectMethodNames = collectGObjectMethodNames(this.repository);
         const methodStructures: MethodStructure[] = [
             ...this.buildMethodStructures(iface.methods, iface.name, gobjectMethodNames),
@@ -93,6 +81,17 @@ export class InterfaceGenerator {
         }
 
         this.file.add(cls);
+
+        if (iface.glibGetType) {
+            this.file.descriptors.register({
+                sharedLibrary: this.options.sharedLibrary,
+                cIdentifier: iface.glibGetType,
+                args: [],
+                returnType: { type: "uint64" },
+                exported: true,
+            });
+            this.file.addImport("../../native.js", ["t"]);
+        }
 
         return true;
     }

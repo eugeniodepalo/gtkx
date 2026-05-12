@@ -56,11 +56,12 @@ export class WidgetNode<
     TParent extends Node = Node,
 > extends Node<T, P, TParent, TChild> {
     public static override createContainer(
+        typeName: string,
         props: Props,
-        containerClass: typeof Gtk.Widget,
+        _containerClass: typeof Gtk.Widget,
         _rootContainer?: Container,
     ): Container | null {
-        return createContainerWithProperties(containerClass, props);
+        return createContainerWithProperties(typeName, props);
     }
 
     public override isValidChild(_child: Node): boolean {

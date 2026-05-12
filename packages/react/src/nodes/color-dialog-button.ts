@@ -12,6 +12,7 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
     private readonly dialog: Gtk.ColorDialog;
 
     public static override createContainer(
+        _typeName: string,
         _props: ColorDialogButtonProps,
         containerClass: typeof Gtk.ColorDialogButton,
     ): Container | null {

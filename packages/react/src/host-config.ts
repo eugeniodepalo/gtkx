@@ -1,4 +1,5 @@
-import { freeze, unfreeze } from "@gtkx/ffi";
+import { freeze, getInstanceGType, unfreeze } from "@gtkx/ffi";
+import { typeName } from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
@@ -43,7 +44,11 @@ const getOrCreateContainerNode = (container: Container): Node => {
     let node = containerNodeCache.get(container);
 
     if (!node) {
-        node = createNode(container.constructor.glibTypeName, {}, container, container);
+        const runtimeName = typeName(getInstanceGType(container.handle));
+        if (!runtimeName) {
+            throw new Error("Cannot resolve runtime GLib type name for container");
+        }
+        node = createNode(runtimeName, {}, container, container);
         containerNodeCache.set(container, node);
     }
 

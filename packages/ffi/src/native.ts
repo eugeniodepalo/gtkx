@@ -8,13 +8,29 @@
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, read, t, unfreeze, write } from "./helpers.js";
 
-import { instanceIsA } from "@gtkx/native";
+import { getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { GError } from "./generated/glib/error.js";
-import { typeFromName } from "./generated/gobject/functions.js";
+import { typeIsA } from "./generated/gobject/functions.js";
 import type { NativeClass, NativeObject } from "./object.js";
 
+export { getInstanceGType } from "@gtkx/native";
 export type { NativeHandle } from "./object.js";
 export { type NativeClass, NativeObject } from "./object.js";
+
+/**
+ * Tests whether a `GTypeInstance`-compatible handle is an instance of `gtype`.
+ *
+ * Composes {@link getInstanceGType} with `g_type_is_a`, so the check covers
+ * both class inheritance and interface implementation in a single call.
+ *
+ * @param handle - Handle to a live GObject-compatible instance
+ * @param gtype - Numeric GType identifier
+ */
+export function instanceIsA(handle: NativeHandle, gtype: number): boolean {
+    const instanceGtype = getInstanceGType(handle);
+    if (instanceGtype === 0) return false;
+    return typeIsA(instanceGtype, gtype);
+}
 
 /**
  * Error class wrapping GLib GError structures.
@@ -69,29 +85,29 @@ export class NativeError extends Error {
  *
  * @typeParam T - The interface type
  * @param obj - The native object to check
- * @param iface - The interface class (must have a glibTypeName property)
+ * @param iface - The interface class
+ * @param ifaceGType - The interface's GType identifier (use the interface
+ *     module's exported `*_get_type()` function)
  * @returns The wrapped interface instance, or null if not implemented
  *
  * @example
  * ```tsx
- * const editable = getNativeInterface(widget, Gtk.Editable);
+ * import { gtk_editable_get_type } from "@gtkx/ffi/generated/gtk/editable.js";
+ *
+ * const editable = getNativeInterface(widget, Gtk.Editable, gtk_editable_get_type());
  * if (editable) {
  *     const text = editable.getText();
  * }
  * ```
  */
-export function getNativeInterface<T extends NativeObject>(obj: NativeObject, iface: NativeClass<T>): T | null {
+export function getNativeInterface<T extends NativeObject>(
+    obj: NativeObject,
+    iface: NativeClass<T>,
+    ifaceGType: number,
+): T | null {
     if (!obj.handle) return null;
-
-    const glibTypeName = iface.glibTypeName;
-    if (!glibTypeName) return null;
-
-    const gtype = typeFromName(glibTypeName);
-    if (gtype === 0) return null;
-
-    if (!instanceIsA(obj.handle, gtype)) {
-        return null;
-    }
+    if (ifaceGType === 0) return null;
+    if (!instanceIsA(obj.handle, ifaceGType)) return null;
 
     const instance = Object.create(iface.prototype) as T;
     instance.handle = obj.handle;

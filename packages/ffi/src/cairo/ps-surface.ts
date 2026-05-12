@@ -9,8 +9,6 @@ export enum PsLevel {
 }
 
 export class PsSurface extends Surface {
-    static override readonly glibTypeName: string = "CairoSurface";
-
     constructor(filename: string, widthInPoints: number, heightInPoints: number) {
         super(createFileSurface("cairo_ps_surface_create", filename, widthInPoints, heightInPoints));
     }

@@ -1,4 +1,5 @@
-import { type Object as GObject, signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
+import { getInstanceGType } from "@gtkx/ffi";
+import { type Object as GObject, signalEmitv, signalLookup, Value } from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { tick } from "./timing.js";
 
@@ -32,8 +33,7 @@ export const fireEvent = async (
     signalName: string,
     ...args: Value[]
 ): Promise<void> => {
-    const ctor = element.constructor;
-    const gtype = typeFromName(ctor.glibTypeName);
+    const gtype = getInstanceGType(element.handle);
     const signalId = signalLookup(signalName, gtype);
 
     const instanceValue = Value.newFromObject(element as GObject);

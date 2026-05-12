@@ -14,7 +14,6 @@ import {
     constructorDecl,
     method,
     param,
-    property,
     typeAlias,
 } from "../../../builders/index.js";
 import type { ConstructorBuilder } from "../../../builders/members/constructor.js";
@@ -126,10 +125,44 @@ export class RecordGenerator {
 
         this.file.add(cls);
 
-        if (record.glibTypeName) {
+        if (record.glibGetType) {
             this.file.addImport("../../registry.js", ["registerNativeClass"]);
-            this.file.addStatement(`\nregisterNativeClass(${recordName});`);
+            const getTypeCall = this.buildGTypeCall(record.glibGetType, record.glibTypeName, recordName);
+            this.file.addStatement(`\nregisterNativeClass(${recordName}, ${getTypeCall});`);
         }
+    }
+
+    private buildGTypeCall(cIdentifier: string, glibTypeName: string | undefined, recordName: string): string {
+        if (cIdentifier === "intern" || cIdentifier === "") {
+            if (!glibTypeName) {
+                return `0 /* ${recordName} has no glib:type-name */`;
+            }
+            const binding = this.file.descriptors.register({
+                sharedLibrary: "libgobject-2.0.so.0",
+                cIdentifier: "g_type_from_name",
+                args: [{ type: { type: "string", ownership: "borrowed" }, value: "" }],
+                returnType: { type: "uint64" },
+            });
+            this.file.addImport("../../native.js", ["t"]);
+            if (binding.varargs === false) {
+                return `${binding.name}("${glibTypeName}") as number`;
+            }
+            this.file.addImport("../../native.js", ["call"]);
+            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) as number`;
+        }
+        const binding = this.file.descriptors.register({
+            sharedLibrary: this.options.sharedLibrary,
+            cIdentifier,
+            args: [],
+            returnType: { type: "uint64" },
+            exported: true,
+        });
+        this.file.addImport("../../native.js", ["t"]);
+        if (binding.varargs === false) {
+            return `${binding.name}() as number`;
+        }
+        this.file.addImport("../../native.js", ["call"]);
+        return `call("${this.options.sharedLibrary}", "${cIdentifier}", [], t.uint64) as number`;
     }
 
     private generateInitInterface(record: GirRecord, recordName: string): void {
@@ -167,17 +200,6 @@ export class RecordGenerator {
             extends: "NativeObject",
             doc: doc?.[0]?.description,
         });
-
-        if (record.glibTypeName) {
-            cls.addProperty(
-                property("glibTypeName", {
-                    isStatic: true,
-                    readonly: true,
-                    type: "string",
-                    initializer: `"${record.glibTypeName}"`,
-                }),
-            );
-        }
 
         return cls;
     }

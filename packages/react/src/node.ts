@@ -3,7 +3,12 @@ import type { Container, ContainerClass, Props } from "./types.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: Self-referential type bounds require any
 export class Node<TContainer = any, TProps = any, TParent extends Node = any, TChild extends Node = any> {
-    public static createContainer(_props: Props, _containerClass: ContainerClass, _rootContainer?: Container): unknown {
+    public static createContainer(
+        _typeName: string,
+        _props: Props,
+        _containerClass: ContainerClass,
+        _rootContainer?: Container,
+    ): unknown {
         throw new Error("Cannot create container: unsupported node type");
     }
 

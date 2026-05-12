@@ -14,15 +14,16 @@ export class EventControllerNode<
     TChild extends Node = any,
 > extends Node<T, Props, WidgetNode, TChild> {
     public static override createContainer(
+        typeName: string,
         props: Props,
         containerClass: typeof Gtk.EventController,
     ): Gtk.EventController {
-        if (containerClass.glibTypeName === "GtkDropTarget") {
+        if ((containerClass as typeof Gtk.EventController) === Gtk.DropTarget) {
             const actions = (props.actions as number | undefined) ?? 0;
             return new Gtk.DropTarget(G_TYPE_INVALID, actions);
         }
 
-        return createContainerWithProperties(containerClass, props) as Gtk.EventController;
+        return createContainerWithProperties(typeName, props) as Gtk.EventController;
     }
 
     public override isValidChild(child: Node): boolean {

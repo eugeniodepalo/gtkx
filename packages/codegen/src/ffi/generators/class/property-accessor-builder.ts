@@ -259,7 +259,9 @@ export class PropertyAccessorBuilder {
             writer.writeLine(";");
 
             if (getterInfo.isBoxed) {
-                writer.writeLine(`return gvalue.${getterInfo.getMethod}(${getterInfo.tsType});`);
+                writer.writeLine(
+                    `return gvalue.${getterInfo.getMethod}(${getterInfo.tsType}, ${gobjectPrefix}typeFromName("${getterInfo.gtypeName}"));`,
+                );
             } else if (getterInfo.isFundamental) {
                 writer.writeLine(`return gvalue.${getterInfo.getMethod}() as ${returnType};`);
             } else if (getterInfo.isClass || getterInfo.isInterface) {
@@ -291,7 +293,13 @@ export class PropertyAccessorBuilder {
 
         return (writer) => {
             if (setterInfo.staticConstructor) {
-                writer.writeLine(`const gvalue = ${gobjectPrefix}Value.${setterInfo.staticConstructor}(value);`);
+                if (setterInfo.staticConstructor === "newFromBoxed" && setterInfo.gtypeName) {
+                    writer.writeLine(
+                        `const gvalue = ${gobjectPrefix}Value.${setterInfo.staticConstructor}(value, ${gobjectPrefix}typeFromName("${setterInfo.gtypeName}"));`,
+                    );
+                } else {
+                    writer.writeLine(`const gvalue = ${gobjectPrefix}Value.${setterInfo.staticConstructor}(value);`);
+                }
             } else if (setterInfo.isFundamental) {
                 writer.writeLine(`const gvalue = new ${gobjectPrefix}Value();`);
                 writer.writeLine(`gvalue.init(${gobjectPrefix}typeFromName("${setterInfo.gtypeName}"));`);
@@ -435,20 +443,20 @@ export class PropertyAccessorBuilder {
             return { gtypeName: "GParam", setMethod: "setParam", isFundamental: true };
         }
         if (cls.glibTypeName) {
-            return { staticConstructor: "newFromBoxed" };
+            return { staticConstructor: "newFromBoxed", gtypeName: cls.glibTypeName };
         }
         return null;
     }
 
     private getRecordSetterInfo(typeName: string, typeMapping: MappedType): GValueSetterInfo | null {
-        if (typeMapping.ffi.type === "boxed") {
-            return { staticConstructor: "newFromBoxed" };
+        if (typeMapping.ffi.type === "boxed" && typeof typeMapping.ffi.innerType === "string") {
+            return { staticConstructor: "newFromBoxed", gtypeName: typeMapping.ffi.innerType };
         }
         if (typeMapping.ffi.type === "fundamental") {
             const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
             const record = this.repository.resolveRecord(qualifiedName);
             if (record?.glibTypeName) {
-                return { staticConstructor: "newFromBoxed" };
+                return { staticConstructor: "newFromBoxed", gtypeName: record.glibTypeName };
             }
         }
         return null;
@@ -470,6 +478,11 @@ interface GValueGetterInfo {
 
 interface GValueSetterInfo {
     staticConstructor?: string;
+    /**
+     * GLib type name. For `staticConstructor === "newFromBoxed"`, passed as the
+     * second argument to `Value.newFromBoxed(value, typeFromName(name))`.
+     * For `isFundamental`-style setters, used to initialize a fresh `GValue`.
+     */
     gtypeName?: string;
     setMethod?: string;
     isEnum?: boolean;

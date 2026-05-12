@@ -49,10 +49,9 @@ const native = nativeBinding as unknown as {
     call: (library: string, symbol: string, args: unknown[], returnType: unknown) => unknown;
     findObjectProperty: (external: unknown, propertyName: string) => unknown;
     freeze: () => void;
-    getInstanceTypeName: (external: unknown) => string | undefined;
+    getInstanceGtype: (external: unknown) => bigint;
     getNativeId: (external: unknown) => number;
     init: () => unknown;
-    instanceIsA: (external: unknown, gtype: bigint) => boolean;
     read: (external: unknown, type: unknown, offset: number) => unknown;
     registerClass: (name: string, parentGtype: bigint, options?: NativeRegisterClassOptions) => bigint;
     stop: (mainLoop: unknown) => void;
@@ -231,29 +230,23 @@ export function call(library: string, symbol: string, args: Arg[], returnType: T
 }
 
 /**
- * Spawns the dedicated `GLib` thread and starts a `glib::MainLoop` on it.
- *
- * Returns an opaque handle to the loop, which must be passed to {@link stop}
- * to terminate it. Most code should rely on `@gtkx/ffi`'s lifecycle wrapper
- * instead of calling this directly.
- *
- * @returns Native handle wrapping the spawned `GMainLoop`.
+ * Handle to the `GLib` main loop spawned automatically when this module is
+ * first loaded. Stored so {@link stop} can quit the loop without callers
+ * having to thread the handle through.
  */
-export function init(): NativeHandle {
-    return new NativeHandle(native.init());
-}
+let mainLoopHandle: NativeHandle | null = new NativeHandle(native.init());
 
 /**
- * Quits the `GLib` main loop wrapped by `mainLoop`.
+ * Quits the `GLib` main loop spawned at module load.
  *
  * Drains all pending finalizers before quitting so the spawned GLib thread
- * terminates cleanly. Most code should rely on `@gtkx/ffi`'s lifecycle wrapper
- * instead of calling this directly.
- *
- * @param mainLoop - Handle returned by {@link init}.
+ * terminates cleanly. Subsequent calls are no-ops. Most code should rely on
+ * `@gtkx/ffi`'s lifecycle wrapper instead of calling this directly.
  */
-export function stop(mainLoop: NativeHandle): void {
-    native.stop(mainLoop.external);
+export function stop(): void {
+    if (!mainLoopHandle) return;
+    native.stop(mainLoopHandle.external);
+    mainLoopHandle = null;
 }
 
 /**
@@ -312,28 +305,15 @@ export function findObjectProperty(handle: NativeHandle, propertyName: string): 
 }
 
 /**
- * Returns the runtime GType name of a `GTypeInstance`-compatible handle.
+ * Returns the runtime GType of a `GTypeInstance`-compatible handle.
  *
- * Wraps `g_type_name_from_instance` on the GLib thread. Returns `null` when
- * the handle is null or the underlying type cannot be resolved.
+ * Reads the `g_class->g_type` field on the GLib thread. Returns `0`
+ * (`G_TYPE_INVALID`) when the handle is null or the class pointer is unset.
  *
  * @param handle - Handle to a live GObject-compatible instance
  */
-export function getInstanceTypeName(handle: NativeHandle): string | null {
-    const result = native.getInstanceTypeName(handle.external);
-    return result ?? null;
-}
-
-/**
- * Tests whether a `GTypeInstance`-compatible handle is an instance of `gtype`.
- *
- * Wraps `g_type_check_instance_is_a` on the GLib thread.
- *
- * @param handle - Handle to a live GObject-compatible instance
- * @param gtype - Numeric GType identifier
- */
-export function instanceIsA(handle: NativeHandle, gtype: number): boolean {
-    return native.instanceIsA(handle.external, BigInt(gtype));
+export function getInstanceGType(handle: NativeHandle): number {
+    return Number(native.getInstanceGtype(handle.external));
 }
 
 /**

@@ -1,8 +1,9 @@
-import { call, type NativeHandle, init as nativeInit, stop as nativeStop } from "../../index.js";
+import { call, stop as nativeStop } from "../../index.js";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
-let mainLoopHandle: NativeHandle | null = null;
+let started = false;
+let stopped = false;
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let exitHandlersRegistered = false;
 
@@ -11,11 +12,9 @@ const keepAlive = (): void => {
 };
 
 const teardown = (): void => {
-    if (mainLoopHandle) {
-        try {
-            nativeStop(mainLoopHandle);
-        } catch {}
-    }
+    try {
+        nativeStop();
+    } catch {}
 };
 
 const handleSigint = (): void => {
@@ -67,30 +66,29 @@ const unregisterExitHandlers = (): void => {
 };
 
 export const start = (): void => {
-    if (mainLoopHandle) {
+    if (started) {
         return;
     }
+    started = true;
 
-    mainLoopHandle = nativeInit();
     keepAlive();
     call("libgtk-4.so.1", "gtk_init", [], { type: "void" });
     registerExitHandlers();
 };
 
 export const stop = (): void => {
-    if (!mainLoopHandle) {
+    if (stopped) {
         return;
     }
+    stopped = true;
 
     unregisterExitHandlers();
-    nativeStop(mainLoopHandle);
+    nativeStop();
 
     if (keepAliveTimeout) {
         clearTimeout(keepAliveTimeout);
         keepAliveTimeout = null;
     }
-
-    mainLoopHandle = null;
 };
 
 export const suppressUnhandledRejections = async (fn: () => void): Promise<void> => {

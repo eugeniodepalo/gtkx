@@ -34,8 +34,6 @@ declare module "../generated/cairo/pattern.js" {
 }
 
 export class LinearPattern extends Pattern {
-    static override readonly glibTypeName: string = "CairoPattern";
-
     constructor(x0: number, y0: number, x1: number, y1: number) {
         super(
             call(
@@ -54,8 +52,6 @@ export class LinearPattern extends Pattern {
 }
 
 export class RadialPattern extends Pattern {
-    static override readonly glibTypeName: string = "CairoPattern";
-
     constructor(cx0: number, cy0: number, radius0: number, cx1: number, cy1: number, radius1: number) {
         super(
             call(
@@ -76,8 +72,6 @@ export class RadialPattern extends Pattern {
 }
 
 export class SurfacePattern extends Pattern {
-    static override readonly glibTypeName: string = "CairoPattern";
-
     constructor(surface: Surface) {
         super(
             call(
@@ -91,8 +85,6 @@ export class SurfacePattern extends Pattern {
 }
 
 export class SolidPattern extends Pattern {
-    static override readonly glibTypeName: string = "CairoPattern";
-
     constructor(r: number, g: number, b: number, a?: number) {
         if (a === undefined) {
             super(
@@ -249,8 +241,6 @@ declare module "../generated/cairo/pattern.js" {
 }
 
 export class MeshPattern extends Pattern {
-    static override readonly glibTypeName: string = "CairoPattern";
-
     constructor() {
         super(call(LIB, "cairo_pattern_create_mesh", [], PATTERN_T) as NativeHandle);
     }

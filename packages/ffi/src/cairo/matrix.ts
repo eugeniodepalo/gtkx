@@ -19,8 +19,6 @@ export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
  * methods on the prototype expose the canonical cairo_matrix_t API.
  */
 export class Matrix extends NativeObject {
-    static readonly glibTypeName: string = "cairo_matrix_t";
-
     constructor();
     constructor(handle: NativeHandle);
     constructor(xx: number, yx: number, xy: number, yy: number, x0: number, y0: number);

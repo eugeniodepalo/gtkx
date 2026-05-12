@@ -203,8 +203,7 @@ GObject.prototype.off = function off<T extends GObject>(this: T, signal: string,
 const resolvePropertyValueType = (obj: GObject, propertyName: string): number => {
     const pspecHandle = findObjectProperty(obj.handle, propertyName);
     if (!pspecHandle) {
-        const ctor = obj.constructor as { name?: string; glibTypeName?: string };
-        const className = ctor.glibTypeName ?? ctor.name ?? "GObject";
+        const className = obj.constructor.name || "GObject";
         throw new Error(`No property '${propertyName}' on ${className}`);
     }
     return (getNativeObject(pspecHandle) as ParamSpec).getDefaultValue().getType();

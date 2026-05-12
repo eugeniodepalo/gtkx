@@ -28,8 +28,6 @@ export enum PdfOutlineFlags {
 }
 
 export class PdfSurface extends Surface {
-    static override readonly glibTypeName: string = "CairoSurface";
-
     declare restrictToVersion: (version: PdfVersion) => void;
     declare addOutline: (parentId: number, name: string, linkAttribs: string, flags: PdfOutlineFlags) => number;
 

@@ -592,7 +592,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const sections = this.collectSections();
 
         if (!this.sectionStore) {
-            this.sectionStore = new Gio.ListStore(Gtk.StringList.getGType());
+            this.sectionStore = new Gio.ListStore(Gtk.gtk_string_list_get_type() as number);
             this.flattenModel = new Gtk.FlattenListModel(this.sectionStore as unknown as Gio.ListModel);
 
             this.assignBaseModelToSelection(this.flattenModel);

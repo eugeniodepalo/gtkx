@@ -1231,8 +1231,6 @@ export const statusToString = (status: Status): string => {
 };
 
 class ContextImpl extends Context {
-    static override readonly glibTypeName: string = "CairoContext";
-
     constructor(surface: Surface) {
         super(call(LIB, "cairo_create", [{ type: SURFACE_T_NONE, value: surface.handle }], CAIRO_T) as NativeHandle);
     }

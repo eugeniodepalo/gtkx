@@ -5,8 +5,6 @@ import { alloc, call, read, t, write } from "../native.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class RecordingSurface extends Surface {
-    static override readonly glibTypeName: string = "CairoSurface";
-
     constructor(content: Content, extents?: { x: number; y: number; width: number; height: number }) {
         if (extents) {
             const rect = alloc(32, "cairo_rectangle_t", LIB);

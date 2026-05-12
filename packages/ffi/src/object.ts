@@ -9,7 +9,6 @@ export type { NativeHandle } from "@gtkx/native";
  * this class, which holds the raw native handle used for FFI calls.
  */
 export abstract class NativeObject {
-    static readonly glibTypeName: string;
     // biome-ignore lint/complexity/useLiteralKeys: bracket syntax required to declare the `constructor` field type without overriding the actual constructor signature
     declare ["constructor"]: NativeClass;
     handle: NativeHandle;
@@ -20,12 +19,7 @@ export abstract class NativeObject {
 }
 
 /**
- * Constructor type for a {@link NativeObject} subclass, carrying the GLib
- * type name as a static property.
+ * Constructor type for a {@link NativeObject} subclass.
  */
-export type NativeClass<T extends NativeObject = NativeObject> = (new (
-    // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant constructor type compatibility
-    ...args: any[]
-) => T) & {
-    readonly glibTypeName: string;
-};
+// biome-ignore lint/suspicious/noExplicitAny: Required for contravariant constructor type compatibility
+export type NativeClass<T extends NativeObject = NativeObject> = new (...args: any[]) => T;

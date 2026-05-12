@@ -57,6 +57,7 @@ const instantiateNode = (
     rootContainer: Container,
 ): Node => {
     const container =
-        existingContainer ?? (containerClass && NodeClass.createContainer(props, containerClass, rootContainer));
+        existingContainer ??
+        (containerClass && NodeClass.createContainer(typeName, props, containerClass, rootContainer));
     return new NodeClass(typeName, props, container, rootContainer);
 };

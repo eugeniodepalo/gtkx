@@ -14,6 +14,7 @@ export class GirInterface {
     readonly qualifiedName: string;
     readonly cType: string;
     readonly glibTypeName?: string;
+    readonly glibGetType?: string;
     readonly prerequisites: string[];
     readonly methods: GirMethod[];
     readonly properties: GirProperty[];
@@ -28,6 +29,7 @@ export class GirInterface {
             qualifiedName: string;
             cType: string;
             glibTypeName?: string;
+            glibGetType?: string;
             prerequisites: string[];
             methods: GirMethod[];
             properties: GirProperty[];
@@ -40,6 +42,7 @@ export class GirInterface {
         this.qualifiedName = data.qualifiedName;
         this.cType = data.cType;
         this.glibTypeName = data.glibTypeName;
+        this.glibGetType = data.glibGetType;
         this.prerequisites = data.prerequisites;
         this.methods = data.methods;
         this.properties = data.properties;

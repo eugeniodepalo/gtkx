@@ -6,7 +6,6 @@ import {
     type RegisterClassSignalDefinition,
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
-import { typeFromName } from "./generated/gobject/functions.js";
 import type { ParamSpec } from "./generated/gobject/param-spec.js";
 import { type NativeClass, NativeObject } from "./object.js";
 import { registerNativeClass } from "./registry.js";
@@ -115,7 +114,7 @@ export type RegisterClassInterfaceVfuncDescriptor = Omit<RegisterClassInterfaceV
  * supplied vfunc trampolines into the interface vtable.
  */
 export type RegisterClassInterface = {
-    /** GType of the interface to implement. Use the interface class's `getGType()`. */
+    /** GType of the interface to implement. */
     readonly gtype: number;
     /** Vfunc overrides for the interface's vtable. */
     readonly vfuncs: readonly RegisterClassInterfaceVfunc[];
@@ -127,8 +126,7 @@ export type RegisterClassInterface = {
 export type RegisterClassOptions = {
     /**
      * The `GType` name to register under. Must be globally unique. Defaults
-     * to `klass.glibTypeName` (when set as an own property on the class) and
-     * finally `klass.name`.
+     * to `klass.name`.
      */
     readonly gtypeName?: string;
     /** Properties installed on the new class. */
@@ -141,11 +139,9 @@ export type RegisterClassOptions = {
     readonly interfaces?: readonly RegisterClassInterface[];
 };
 
-type ClassWithGetGType = NativeClass & { readonly getGType?: () => number };
-
 /**
  * Registers a JavaScript subclass of a `NativeObject` as a real `GType`
- * derived from its parent.
+ * derived from a parent `GType` supplied by the caller.
  *
  * The new type is created via `g_type_register_static`, sized to match the
  * parent's class and instance struct layouts. Any supplied properties,
@@ -155,53 +151,39 @@ type ClassWithGetGType = NativeClass & { readonly getGType?: () => number };
  * JavaScript class.
  *
  * @param klass - A class that extends a registered `NativeObject` subclass
+ * @param parentGType - The parent's `GType` identifier (use the parent module's
+ *     exported `*_get_type()` function)
  * @param options - Optional overrides for the registration
  * @returns The same `klass`, for chaining
  *
  * @example
  * ```tsx
+ * import { gtk_button_get_type } from "@gtkx/ffi/generated/gtk/button.js";
+ *
  * class MyCustomButton extends Gtk.Button {}
- * registerClass(MyCustomButton);
+ * registerClass(MyCustomButton, gtk_button_get_type());
  * const button = new MyCustomButton();
  * ```
  */
-export function registerClass<T extends NativeClass>(klass: T, options: RegisterClassOptions = {}): T {
+export function registerClass<T extends NativeClass>(
+    klass: T,
+    parentGType: number,
+    options: RegisterClassOptions = {},
+): T {
     if (!(klass.prototype instanceof NativeObject)) {
         throw new TypeError(`registerClass: ${klass.name} must extend a NativeObject subclass`);
     }
-
-    const parent = Object.getPrototypeOf(klass.prototype).constructor as ClassWithGetGType | undefined;
-    const parentGlibTypeName = parent?.glibTypeName;
-    if (!parentGlibTypeName) {
-        throw new Error(`registerClass: ${klass.name} has no registered GType parent`);
+    if (parentGType === 0) {
+        throw new Error(`registerClass: ${klass.name} parent GType is invalid (G_TYPE_INVALID)`);
     }
 
-    if (typeof parent?.getGType === "function") {
-        parent.getGType();
-    }
-
-    const parentGtype = typeFromName(parentGlibTypeName);
-    if (parentGtype === 0) {
-        throw new Error(`registerClass: parent GType '${parentGlibTypeName}' is not registered with GLib`);
-    }
-
-    const ownGlibTypeName = Object.hasOwn(klass, "glibTypeName") ? klass.glibTypeName : undefined;
-    const name = options.gtypeName ?? ownGlibTypeName ?? klass.name;
+    const name = options.gtypeName ?? klass.name;
     if (!name) {
         throw new Error("registerClass: cannot derive a GType name (anonymous class with no gtypeName option)");
     }
 
-    nativeRegisterClass(name, parentGtype, toNativeOptions(options));
-
-    if (klass.glibTypeName !== name) {
-        Object.defineProperty(klass, "glibTypeName", {
-            configurable: true,
-            value: name,
-            writable: false,
-        });
-    }
-
-    registerNativeClass(klass);
+    const newGtype = nativeRegisterClass(name, parentGType, toNativeOptions(options));
+    registerNativeClass(klass, newGtype);
 
     return klass;
 }
