@@ -23,7 +23,7 @@
     "devDependencies": {
         "@biomejs/biome": "^2.4.15",
         "@gtkx/codegen": "workspace:*",
-        "@types/node": "^25.6.2",
+        "@types/node": "^25.7.0",
         "@types/react": "^19.2.14",
         "@vitest/coverage-v8": "^4.1.5",
         "dpdm": "^4.2.0",
