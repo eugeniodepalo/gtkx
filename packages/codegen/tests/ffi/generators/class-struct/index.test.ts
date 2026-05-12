@@ -230,4 +230,78 @@ describe("ClassStructGenerator", () => {
         expect(stringify(file)).toBe("");
         expect(skipMessages.some((m) => m.includes("missing c:type"))).toBe(true);
     });
+
+    it("skips records whose vtable kind cannot be inferred from owner or name", () => {
+        const { generator, file, skipMessages } = createTestSetup();
+        const record = createNormalizedRecord({
+            name: "MysteryVTable",
+            cType: "GMysteryVTable",
+            fields: [
+                callbackField(
+                    "act",
+                    createNormalizedCallback({
+                        name: "act",
+                        returnType: createNormalizedType({ name: "none" }),
+                        parameters: [],
+                    }),
+                ),
+            ],
+        });
+        expect(generator.generate(record)).toBe(false);
+        expect(stringify(file)).toBe("");
+        expect(skipMessages.some((m) => m.includes("cannot determine"))).toBe(true);
+    });
+
+    it("treats records ending in Iface as interface vtables", () => {
+        const { generator, file } = createTestSetup();
+        const record = createNormalizedRecord({
+            name: "ActionIface",
+            cType: "GActionIface",
+            fields: [
+                callbackField(
+                    "activate",
+                    createNormalizedCallback({
+                        name: "activate",
+                        returnType: createNormalizedType({ name: "none" }),
+                        parameters: [],
+                    }),
+                ),
+            ],
+        });
+        expect(generator.generate(record)).toBe(true);
+        const code = stringify(file);
+        expect(code).toContain('kind: "interface"');
+    });
+
+    it("writes argTypes for eligible vfuncs that have parameters", () => {
+        const { generator, file } = createTestSetup();
+        const record = createNormalizedRecord({
+            name: "ObjectClass",
+            cType: "GObjectClass",
+            isGtypeStructFor: "Object",
+            fields: [
+                callbackField(
+                    "set_size",
+                    createNormalizedCallback({
+                        name: "set_size",
+                        returnType: createNormalizedType({ name: "gboolean" }),
+                        parameters: [
+                            createNormalizedParameter({
+                                name: "width",
+                                type: createNormalizedType({ name: "gint" }),
+                            }),
+                            createNormalizedParameter({
+                                name: "height",
+                                type: createNormalizedType({ name: "gint" }),
+                            }),
+                        ],
+                    }),
+                ),
+            ],
+        });
+        expect(generator.generate(record)).toBe(true);
+        const code = stringify(file);
+        expect(code).toContain("argTypes: [t.int32, t.int32]");
+        expect(code).toContain("returnType: t.bool");
+    });
 });

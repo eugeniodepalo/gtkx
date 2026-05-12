@@ -812,3 +812,77 @@ pub fn register_class(
         },
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const POINTER_ALIGN: usize = 8;
+    const POINTER_SIZE: usize = 8;
+
+    #[test]
+    fn validate_vfunc_offset_accepts_aligned_offset_within_class() {
+        let result = RegisterClassRequest::validate_vfunc_offset(
+            16,
+            POINTER_ALIGN,
+            POINTER_SIZE,
+            Some(64),
+            "vfunc",
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn validate_vfunc_offset_accepts_offset_when_class_size_unknown() {
+        let result = RegisterClassRequest::validate_vfunc_offset(
+            64,
+            POINTER_ALIGN,
+            POINTER_SIZE,
+            None,
+            "interface vfunc",
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn validate_vfunc_offset_rejects_misaligned_offset() {
+        let result = RegisterClassRequest::validate_vfunc_offset(
+            7,
+            POINTER_ALIGN,
+            POINTER_SIZE,
+            Some(64),
+            "vfunc",
+        );
+        let err = result.expect_err("misaligned offset should fail validation");
+        let message = err.to_string();
+        assert!(message.contains("vfunc"));
+        assert!(message.contains("not aligned"));
+    }
+
+    #[test]
+    fn validate_vfunc_offset_rejects_offset_overflowing_class_size() {
+        let result = RegisterClassRequest::validate_vfunc_offset(
+            64,
+            POINTER_ALIGN,
+            POINTER_SIZE,
+            Some(64),
+            "vfunc",
+        );
+        let err = result.expect_err("offset past class size should fail validation");
+        assert!(err.to_string().contains("exceeds class size"));
+    }
+
+    #[test]
+    fn validate_vfunc_offset_rejects_arithmetic_overflow() {
+        let aligned_max = usize::MAX & !(POINTER_ALIGN - 1);
+        let result = RegisterClassRequest::validate_vfunc_offset(
+            aligned_max,
+            POINTER_ALIGN,
+            POINTER_SIZE,
+            None,
+            "interface vfunc",
+        );
+        let err = result.expect_err("usize overflow should fail validation");
+        assert!(err.to_string().contains("overflow"));
+    }
+}

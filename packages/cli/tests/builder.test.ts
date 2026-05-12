@@ -9,7 +9,7 @@ type ViteConfigSnapshot = {
         cssMinify: boolean;
         assetsInlineLimit: number;
         ssrEmitAssets: boolean;
-        rollupOptions: { output: { entryFileNames: string } };
+        rolldownOptions: { output: { entryFileNames: string } };
     };
     define: Record<string, string>;
     ssr: { noExternal: boolean };
