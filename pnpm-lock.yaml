@@ -27,8 +27,8 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0
       knip:
-        specifier: ^6.13.0
-        version: 6.13.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)
+        specifier: ^6.13.1
+        version: 6.13.1(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)
       react:
         specifier: ^19.2.6
         version: 19.2.6
@@ -3108,8 +3108,8 @@ packages:
   jsonfile@6.2.1:
     resolution: {integrity: sha512-zwOTdL3rFQ/lRdBnntKVOX6k5cKJwEc1HdilT71BWEu7J41gXIB2MRp+vxduPSwZJPWBxEzv4yH1wYLJGUHX4Q==}
 
-  knip@6.13.0:
-    resolution: {integrity: sha512-FeBSpXspbHpjFQxpBmpUkEpveb4ee9+lPcHTiLq0PaFOzmtxG+/Rf+mIptuCcz0C+nGjaq+XlIlx8VA4r6um8w==}
+  knip@6.13.1:
+    resolution: {integrity: sha512-hvSnb+YDpDWW1LXub4U0JFfkQhscwgInWuQOv99WTutPZavf1cEP3GwxzEzO2JJpGI9yATk6l0jPLY1V3fp1sQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
@@ -6243,7 +6243,7 @@ snapshots:
     optionalDependencies:
       graceful-fs: 4.2.11
 
-  knip@6.13.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0):
+  knip@6.13.1(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0):
     dependencies:
       fdir: 6.5.0(picomatch@4.0.4)
       formatly: 0.3.0
