@@ -1,4 +1,4 @@
-import { alloc, call, type NativeHandle, write } from "@gtkx/native";
+import { alloc, call, getInstanceGType, type NativeHandle, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
 import { t } from "./helpers.js";
 
@@ -27,6 +27,16 @@ const GVALUE_SIZE = 24;
 export abstract class NativeObject {
     handle!: NativeHandle;
 
+    /**
+     * Resolves the GType of the underlying GObject instance.
+     *
+     * Mirrors the `__gtype__` field surfaced on every class in the
+     * ts-for-gir-published `.d.ts` contract.
+     */
+    get __gtype__(): number {
+        return getInstanceGType(this.handle);
+    }
+
     constructor(props: object = {}) {
         const ctor = this.constructor as NativeClass;
         const meta = CONSTRUCTION_META.get(ctor);
@@ -46,6 +56,14 @@ export abstract class NativeObject {
             this.handle = constructBoxed(meta, props as Record<string, unknown>);
         }
     }
+
+    /**
+     * Matches the no-op `_init` hook every ts-for-gir-generated class exposes
+     * for GJS introspection compatibility. Native construction has already
+     * completed by the time `_init` would be called, so this implementation
+     * has no behaviour and exists purely to satisfy the contract.
+     */
+    _init(_config?: object): void {}
 }
 
 type InstanceRegistrar = (obj: NativeObject) => void;
