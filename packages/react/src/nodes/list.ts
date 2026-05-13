@@ -1,4 +1,5 @@
 import * as Adw from "@gtkx/ffi/adw";
+import { getNativeId } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -248,7 +249,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                 const expander = new Gtk.TreeExpander();
                 listItem.setChild(expander);
                 this.containers.set(expander, UNBOUND_POSITION);
-                this.containerKeys.set(expander, String(expander.handle.id));
+                this.containerKeys.set(expander, String(getNativeId(expander.handle)));
                 this.treeExpanders.set(listItem, expander);
             } else {
                 const { width, height } = this.getEstimatedItemSize();
@@ -258,7 +259,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                     listItem.setChild(placeholder);
                 }
                 this.containers.set(listItem, UNBOUND_POSITION);
-                this.containerKeys.set(listItem, String(listItem.handle.id));
+                this.containerKeys.set(listItem, String(getNativeId(listItem.handle)));
             }
         });
 
@@ -365,12 +366,12 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const baseModel = this.getBaseModel();
 
         if (selectionMode === Gtk.SelectionMode.MULTIPLE) {
-            return new Gtk.MultiSelection(baseModel);
+            return new Gtk.MultiSelection({ model: baseModel });
         }
         if (selectionMode === Gtk.SelectionMode.NONE) {
-            return new Gtk.NoSelection(baseModel);
+            return new Gtk.NoSelection({ model: baseModel });
         }
-        const sel = new Gtk.SingleSelection(baseModel);
+        const sel = new Gtk.SingleSelection({ model: baseModel });
         sel.setAutoselect(false);
         sel.setCanUnselect(true);
         return sel;
@@ -463,7 +464,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         this.model.splice(0, this.model.getNItems(), new Array(newSize).fill(""));
         this.rootItemIds = rootItems.map((item) => item.id);
 
-        this.treeModel = new Gtk.TreeListModel(
+        this.treeModel = Gtk.TreeListModel.new(
             this.model,
             false,
             this.props.autoexpand ?? false,
@@ -592,8 +593,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const sections = this.collectSections();
 
         if (!this.sectionStore) {
-            this.sectionStore = new Gio.ListStore(Gtk.gtk_string_list_get_type() as number);
-            this.flattenModel = new Gtk.FlattenListModel(this.sectionStore as unknown as Gio.ListModel);
+            this.sectionStore = Gio.ListStore.new(Gtk.gtk_string_list_get_type() as number);
+            this.flattenModel = new Gtk.FlattenListModel({ model: this.sectionStore as unknown as Gio.ListModel });
 
             this.assignBaseModelToSelection(this.flattenModel);
 

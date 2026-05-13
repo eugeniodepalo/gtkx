@@ -2,43 +2,42 @@ import { createRef, type NativeHandle } from "@gtkx/native";
 import type { Content } from "../generated/cairo/enums.js";
 import { Surface } from "../generated/cairo/surface.js";
 import { alloc, call, read, t, write } from "../native.js";
+import { wrapHandle } from "../object.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class RecordingSurface extends Surface {
-    constructor(content: Content, extents?: { x: number; y: number; width: number; height: number }) {
+    static create(content: Content, extents?: { x: number; y: number; width: number; height: number }): RecordingSurface {
+        let handle: NativeHandle;
         if (extents) {
             const rect = alloc(32, "cairo_rectangle_t", LIB);
             write(rect, DOUBLE_TYPE, 0, extents.x);
             write(rect, DOUBLE_TYPE, 8, extents.y);
             write(rect, DOUBLE_TYPE, 16, extents.width);
             write(rect, DOUBLE_TYPE, 24, extents.height);
-            super(
-                call(
-                    LIB,
-                    "cairo_recording_surface_create",
-                    [
-                        { type: INT_TYPE, value: content },
-                        {
-                            type: t.boxed("cairo_rectangle_t", "borrowed", LIB),
-                            value: rect,
-                        },
-                    ],
-                    SURFACE_T,
-                ) as NativeHandle,
-            );
+            handle = call(
+                LIB,
+                "cairo_recording_surface_create",
+                [
+                    { type: INT_TYPE, value: content },
+                    {
+                        type: t.boxed("cairo_rectangle_t", "borrowed", LIB),
+                        value: rect,
+                    },
+                ],
+                SURFACE_T,
+            ) as NativeHandle;
         } else {
-            super(
-                call(
-                    LIB,
-                    "cairo_recording_surface_create",
-                    [
-                        { type: INT_TYPE, value: content },
-                        { type: t.uint64, value: 0 },
-                    ],
-                    SURFACE_T,
-                ) as NativeHandle,
-            );
+            handle = call(
+                LIB,
+                "cairo_recording_surface_create",
+                [
+                    { type: INT_TYPE, value: content },
+                    { type: t.uint64, value: 0 },
+                ],
+                SURFACE_T,
+            ) as NativeHandle;
         }
+        return wrapHandle(RecordingSurface, handle);
     }
 
     inkExtents(): { x: number; y: number; width: number; height: number } {

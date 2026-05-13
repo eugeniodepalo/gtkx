@@ -4,7 +4,7 @@ import {
     findObjectProperty,
     freeze,
     getInstanceGType,
-    isNativeHandle,
+    getNativeId,
     type NativeHandle,
     registerClass,
     unfreeze,
@@ -84,35 +84,6 @@ const NOOP_PROPERTY_VFUNCS = [gobjectClassVfunc(24, () => undefined), gobjectCla
 let uniqueSuffix = 0;
 const uniqueName = (prefix: string): string => `${prefix}NativeTest${process.pid}_${++uniqueSuffix}`;
 
-describe("isNativeHandle", () => {
-    it("returns true for handles produced by the native module", () => {
-        const label = createLabel("Test");
-
-        expect(isNativeHandle(label)).toBe(true);
-    });
-
-    it("returns false for plain objects", () => {
-        expect(isNativeHandle({})).toBe(false);
-    });
-
-    it("returns false for primitives and nullish values", () => {
-        expect(isNativeHandle(null)).toBe(false);
-        expect(isNativeHandle(undefined)).toBe(false);
-        expect(isNativeHandle(0)).toBe(false);
-        expect(isNativeHandle("string")).toBe(false);
-        expect(isNativeHandle(true)).toBe(false);
-    });
-
-    it("narrows the type of the value when true", () => {
-        const label = createLabel("Test");
-        if (isNativeHandle(label)) {
-            expect(typeof label.id).toBe("number");
-        } else {
-            throw new Error("expected isNativeHandle to narrow the type");
-        }
-    });
-});
-
 describe("getInstanceGType", () => {
     it("returns the runtime GType of a GtkLabel instance", () => {
         const label = createLabel("Test") as NativeHandle;
@@ -130,7 +101,7 @@ describe("findObjectProperty", () => {
 
         expect(pspec).not.toBeNull();
         expect(pspec).toBeDefined();
-        expect(typeof (pspec as NativeHandle).id).toBe("number");
+        expect(typeof getNativeId(pspec as NativeHandle)).toBe("number");
     });
 
     it("returns null when the property name is unknown", () => {

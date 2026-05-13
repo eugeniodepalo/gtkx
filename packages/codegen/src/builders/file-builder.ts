@@ -58,6 +58,12 @@ export class FileBuilder implements Builder {
         return this;
     }
 
+    /** Append a top-level declaration whose body is rendered by a writer callback. */
+    addRawBlock(write: (writer: Writer) => void): this {
+        this.declarations.push({ write });
+        return this;
+    }
+
     /**
      * Write the complete file: imports, then any registered FFI descriptor
      * preamble, then declarations separated by blank lines.

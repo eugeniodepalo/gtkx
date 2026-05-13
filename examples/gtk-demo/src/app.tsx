@@ -109,7 +109,7 @@ const AppContent = () => {
 
     const gtkxLogo = useMemo(() => {
         const pixbuf = GdkPixbuf.Pixbuf.newFromFileAtScale(logoPath, 64, 64, true);
-        return new Gdk.Texture(pixbuf);
+        return Gdk.Texture.newForPixbuf(pixbuf);
     }, []);
 
     const handleRun = useCallback(() => {
@@ -131,15 +131,15 @@ const AppContent = () => {
 
         const dialog = new Adw.ShortcutsDialog();
 
-        const general = new Adw.ShortcutsSection("General");
-        general.add(new Adw.ShortcutsItem("Search demos", "<Control>f"));
-        general.add(new Adw.ShortcutsItem("Open Inspector", "<Control><Shift>i"));
-        general.add(new Adw.ShortcutsItem("Keyboard Shortcuts", "<Control>question"));
+        const general = Adw.ShortcutsSection.new("General");
+        general.add(Adw.ShortcutsItem.new("Search demos", "<Control>f"));
+        general.add(Adw.ShortcutsItem.new("Open Inspector", "<Control><Shift>i"));
+        general.add(Adw.ShortcutsItem.new("Keyboard Shortcuts", "<Control>question"));
         dialog.add(general);
 
-        const navigation = new Adw.ShortcutsSection("Navigation");
-        navigation.add(new Adw.ShortcutsItem("Next tab", "<Control>Page_Down"));
-        navigation.add(new Adw.ShortcutsItem("Previous tab", "<Control>Page_Up"));
+        const navigation = Adw.ShortcutsSection.new("Navigation");
+        navigation.add(Adw.ShortcutsItem.new("Next tab", "<Control>Page_Down"));
+        navigation.add(Adw.ShortcutsItem.new("Previous tab", "<Control>Page_Up"));
         dialog.add(navigation);
 
         dialog.present(activeWindow);

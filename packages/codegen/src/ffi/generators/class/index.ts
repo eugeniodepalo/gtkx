@@ -7,7 +7,7 @@
 
 import type { GirClass, GirMethod, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../../builders/file-builder.js";
-import { type ClassDeclarationBuilder, classDecl, constructorDecl, param, typeAlias } from "../../../builders/index.js";
+import { type ClassDeclarationBuilder, classDecl, typeAlias } from "../../../builders/index.js";
 import { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
@@ -114,36 +114,20 @@ export class ClassGenerator {
         const parentInfo = parseParentReference(this.cls.parent, this.options.namespace);
         const selfTypeDescriptor = this.getSelfTypeDescriptor();
 
-        const cls = this.buildClassDeclaration(parentInfo);
-
         const parentFactoryMethodNames = collectParentFactoryMethodNames(this.cls);
         this.constructorBuilder.setParentFactoryMethodNames(parentFactoryMethodNames);
 
-        const { constructorData, factoryMethods } = this.constructorBuilder.buildConstructorAndFactoryMethods(
-            parentInfo.hasParent,
+        const { metaPlan, factoryMethods } = this.constructorBuilder.build();
+
+        const parentPropsTypeName = this.resolveParentPropsTypeName(parentInfo);
+
+        this.file.add(
+            typeAlias(metaPlan.propsTypeName, mergePropsTypes(parentPropsTypeName, metaPlan.propsTypeBody), {
+                exported: true,
+            }),
         );
 
-        if (constructorData) {
-            if (constructorData.propsTypeAlias) {
-                this.file.add(
-                    typeAlias(constructorData.propsTypeAlias.name, constructorData.propsTypeAlias.body, {
-                        exported: true,
-                    }),
-                );
-            }
-            cls.setConstructor(
-                constructorDecl({
-                    overloads: constructorData.overloads,
-                    params: constructorData.implParams.map((p) =>
-                        param(p.name, p.type, {
-                            optional: p.optional,
-                            defaultValue: p.initializer,
-                        }),
-                    ),
-                    body: constructorData.bodyWriter,
-                }),
-            );
-        }
+        const cls = this.buildClassDeclaration(parentInfo, metaPlan.propsTypeName);
 
         const allMethodStructures: MethodStructure[] = [
             ...factoryMethods,
@@ -171,33 +155,54 @@ export class ClassGenerator {
             this.file.addStatement(`\nregisterNativeClass(${this.className}, ${getTypeCall});`);
         }
 
+        if (metaPlan.constructionMetaWriter) {
+            this.file.addRawBlock(metaPlan.constructionMetaWriter);
+        }
+
         const widgetMeta = this.classMetaBuilder.buildCodegenWidgetMeta();
         const controllerMeta = this.classMetaBuilder.buildCodegenControllerMeta();
 
         return { widgetMeta, controllerMeta };
     }
 
-    private buildClassDeclaration(parentInfo: ParentInfo): ClassDeclarationBuilder {
-        let extendsExpr: string | undefined;
+    private resolveParentPropsTypeName(parentInfo: ParentInfo): string | null {
+        if (!parentInfo.hasParent) return null;
+        if (parentInfo.isCrossNamespace && parentInfo.namespace) {
+            this.file.addNamespaceImport(`../${parentInfo.namespace.toLowerCase()}/index.js`, parentInfo.namespace);
+            return `${parentInfo.namespace}.${parentInfo.className}Props`;
+        }
+        if (parentInfo.originalName) {
+            this.file.addTypeImport(`./${toKebabCase(parentInfo.originalName)}.js`, [`${parentInfo.className}Props`]);
+        }
+        return `${parentInfo.className}Props`;
+    }
+
+    private buildClassDeclaration(parentInfo: ParentInfo, propsTypeName: string): ClassDeclarationBuilder {
+        let extendsBase: string;
         if (parentInfo.hasParent) {
             if (parentInfo.isCrossNamespace && parentInfo.namespace) {
-                extendsExpr = `${parentInfo.namespace}.${parentInfo.className}`;
+                extendsBase = `${parentInfo.namespace}.${parentInfo.className}`;
                 this.file.addNamespaceImport(`../${parentInfo.namespace.toLowerCase()}/index.js`, parentInfo.namespace);
             } else {
-                extendsExpr = parentInfo.className;
+                extendsBase = parentInfo.className;
                 if (parentInfo.originalName) {
                     this.file.addImport(`./${toKebabCase(parentInfo.originalName)}.js`, [parentInfo.className]);
                 }
             }
         } else {
-            extendsExpr = "NativeObject";
+            extendsBase = "NativeObject";
             this.file.addImport("../../object.js", ["NativeObject"]);
         }
+
+        const typeParams = `<TProps extends ${propsTypeName} = ${propsTypeName}>`;
+        const extendsExpr = `${extendsBase}<TProps>`;
 
         const doc = buildJsDocStructure(this.cls.doc, this.options.namespace);
         const cls = classDecl(this.className, {
             exported: true,
+            typeParams,
             extends: extendsExpr,
+            abstract: this.cls.abstract,
             doc: doc?.[0]?.description,
         });
 
@@ -348,4 +353,10 @@ export class ClassGenerator {
         }
         return null;
     }
+}
+
+function mergePropsTypes(parentPropsTypeName: string | null, ownBody: string): string {
+    if (!parentPropsTypeName) return ownBody;
+    if (ownBody === "{}") return parentPropsTypeName;
+    return `${parentPropsTypeName} & ${ownBody}`;
 }

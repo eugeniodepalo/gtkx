@@ -6,7 +6,7 @@
  */
 
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
-export { alloc, call, freeze, read, t, unfreeze, write } from "./helpers.js";
+export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
 
 import { getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { GError } from "./generated/glib/error.js";

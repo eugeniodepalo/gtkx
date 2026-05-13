@@ -70,7 +70,7 @@ export function useSetting<T extends SettingType>(
     key: string,
     type: T,
 ): [SettingTypeMap[T], (value: SettingTypeMap[T]) => void] {
-    const settings = useMemo(() => new Gio.Settings(schemaId), [schemaId]);
+    const settings = useMemo(() => Gio.Settings.new(schemaId), [schemaId]);
     const [value, setValue] = useState<SettingTypeMap[T]>(() => readSetting(settings, key, type) as SettingTypeMap[T]);
 
     useEffect(() => {

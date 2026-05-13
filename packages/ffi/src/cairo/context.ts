@@ -18,6 +18,7 @@ import { Pattern } from "../generated/cairo/pattern.js";
 import { ScaledFont } from "../generated/cairo/scaled-font.js";
 import { Surface } from "../generated/cairo/surface.js";
 import { alloc, call, read, t } from "../native.js";
+import { wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import {
     allocClusterBuffer,
@@ -693,7 +694,7 @@ Context.prototype.setFontOptions = function (options: FontOptions): void {
 };
 
 Context.prototype.getFontOptions = function (): FontOptions {
-    const options = new FontOptionsConstructor();
+    const options = FontOptionsConstructor.create();
     call(
         LIB,
         "cairo_get_font_options",
@@ -1231,8 +1232,9 @@ export const statusToString = (status: Status): string => {
 };
 
 class ContextImpl extends Context {
-    constructor(surface: Surface) {
-        super(call(LIB, "cairo_create", [{ type: SURFACE_T_NONE, value: surface.handle }], CAIRO_T) as NativeHandle);
+    static create(surface: Surface): ContextImpl {
+        const handle = call(LIB, "cairo_create", [{ type: SURFACE_T_NONE, value: surface.handle }], CAIRO_T) as NativeHandle;
+        return wrapHandle(ContextImpl, handle);
     }
 }
 

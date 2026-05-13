@@ -259,7 +259,7 @@ describe("RecordGenerator", () => {
             expect(code).toContain("RectangleInit");
         });
 
-        it("generates constructor from main constructor", () => {
+        it("emits a static factory for the GIR `new` constructor", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -277,7 +277,7 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("constructor()");
+            expect(code).toContain("static new(");
         });
 
         it("generates factory methods for non-main constructors", () => {
@@ -465,10 +465,10 @@ describe("RecordGenerator", () => {
 
             const code = stringify(file);
             expect(code).toContain("export type RectangleInit");
-            expect(code).toContain("constructor(init?: RectangleInit)");
+            expect(code).toContain("extends NativeObject<TProps>");
         });
 
-        it("does not generate init interface when main constructor takes parameters", () => {
+        it("emits the GIR `<constructor>` as a static factory even when it takes parameters", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -499,7 +499,7 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).not.toContain("RectangleInit");
+            expect(code).toContain("static new(");
         });
     });
 

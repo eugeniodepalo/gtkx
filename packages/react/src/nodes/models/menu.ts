@@ -112,7 +112,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
             this.signalStore.set(this, this.action, "activate", null);
         }
 
-        this.action = new Gio.SimpleAction(this.getId());
+        this.action = Gio.SimpleAction.new(this.getId());
         this.signalStore.set(this, this.action, "activate", this.getOnActivate());
         this.getActionMap().addAction(this.action);
 

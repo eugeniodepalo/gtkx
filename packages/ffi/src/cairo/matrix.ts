@@ -1,13 +1,13 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
+import { registerConstructionMeta } from "../construction-meta.js";
 import type { Status } from "../generated/cairo/enums.js";
 import { alloc, call, read, t } from "../native.js";
-import { NativeObject } from "../object.js";
+import { NativeObject, wrapHandle } from "../object.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T } from "./common.js";
 
 export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
     const handle = alloc(48, "cairo_matrix_t", LIB);
-    const obj = Object.create(Matrix.prototype) as Matrix;
-    obj.handle = handle;
+    const obj = wrapHandle(Matrix, handle);
     return { handle, obj };
 };
 
@@ -19,36 +19,6 @@ export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
  * methods on the prototype expose the canonical cairo_matrix_t API.
  */
 export class Matrix extends NativeObject {
-    constructor();
-    constructor(handle: NativeHandle);
-    constructor(xx: number, yx: number, xy: number, yy: number, x0: number, y0: number);
-    constructor(xxOrHandle?: number | NativeHandle, yx?: number, xy?: number, yy?: number, x0?: number, y0?: number) {
-        if (xxOrHandle !== undefined && typeof xxOrHandle !== "number") {
-            super(xxOrHandle);
-            return;
-        }
-        const xx = xxOrHandle;
-        super(alloc(48, "cairo_matrix_t", LIB));
-        if (xx === undefined) {
-            call(LIB, "cairo_matrix_init_identity", [{ type: MATRIX_T, value: this.handle }], t.void);
-        } else {
-            call(
-                LIB,
-                "cairo_matrix_init",
-                [
-                    { type: MATRIX_T, value: this.handle },
-                    { type: DOUBLE_TYPE, value: xx },
-                    { type: DOUBLE_TYPE, value: yx },
-                    { type: DOUBLE_TYPE, value: xy },
-                    { type: DOUBLE_TYPE, value: yy },
-                    { type: DOUBLE_TYPE, value: x0 },
-                    { type: DOUBLE_TYPE, value: y0 },
-                ],
-                t.void,
-            );
-        }
-    }
-
     get xx(): number {
         return read(this.handle, DOUBLE_TYPE, 0) as number;
     }
@@ -162,6 +132,28 @@ export class Matrix extends NativeObject {
         return [dxRef.value, dyRef.value];
     }
 
+    /**
+     * Allocates a matrix and initialises it from explicit affine values.
+     */
+    static init(xx: number, yx: number, xy: number, yy: number, x0: number, y0: number): Matrix {
+        const { handle, obj } = allocMatrix();
+        call(
+            LIB,
+            "cairo_matrix_init",
+            [
+                { type: MATRIX_T, value: handle },
+                { type: DOUBLE_TYPE, value: xx },
+                { type: DOUBLE_TYPE, value: yx },
+                { type: DOUBLE_TYPE, value: xy },
+                { type: DOUBLE_TYPE, value: yy },
+                { type: DOUBLE_TYPE, value: x0 },
+                { type: DOUBLE_TYPE, value: y0 },
+            ],
+            t.void,
+        );
+        return obj;
+    }
+
     static createTranslate(tx: number, ty: number): Matrix {
         const { handle, obj } = allocMatrix();
         call(
@@ -206,3 +198,11 @@ export class Matrix extends NativeObject {
         return obj;
     }
 }
+
+registerConstructionMeta(Matrix, {
+    kind: "boxed",
+    size: 48,
+    glibTypeName: "cairo_matrix_t",
+    lib: LIB,
+    fields: {},
+});

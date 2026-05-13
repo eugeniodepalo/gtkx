@@ -188,12 +188,12 @@ export function App() {
         if (deletedNote.deleted) {
             setNotes(notes.filter((n) => n.id !== deletedNote.id));
 
-            const toast = new Adw.Toast(`\u201c${deletedNote.title}\u201d permanently deleted`);
+            const toast = Adw.Toast.new(`\u201c${deletedNote.title}\u201d permanently deleted`);
             toastOverlayRef.current?.addToast(toast);
         } else {
             setNotes(notes.map((n) => (n.id === deletedNote.id ? { ...n, deleted: true } : n)));
 
-            const toast = new Adw.Toast(`\u201c${deletedNote.title}\u201d moved to Trash`);
+            const toast = Adw.Toast.new(`\u201c${deletedNote.title}\u201d moved to Trash`);
             toast.buttonLabel = "Undo";
             toast.connect("button-clicked", () => restoreNote(deletedNote.id));
             toastOverlayRef.current?.addToast(toast);

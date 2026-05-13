@@ -20,7 +20,7 @@ export class EventControllerNode<
     ): Gtk.EventController {
         if (containerClass === Gtk.DropTarget) {
             const actions = (props.actions as number | undefined) ?? 0;
-            return new Gtk.DropTarget(G_TYPE_INVALID, actions);
+            return Gtk.DropTarget.new(G_TYPE_INVALID, actions);
         }
 
         return createContainerWithProperties(typeName, props) as Gtk.EventController;

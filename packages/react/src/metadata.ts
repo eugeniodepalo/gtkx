@@ -1,6 +1,6 @@
-import { getInstanceGType } from "@gtkx/ffi";
+import { CONSTRUCTION_META, getInstanceGType, type NativeClass } from "@gtkx/ffi";
 import { typeName, typeParent } from "@gtkx/ffi/gobject";
-import { CONSTRUCTION_META, PROPS, SIGNALS } from "./generated/internal.js";
+import { PROPS, SIGNALS } from "./generated/internal.js";
 import type { Container } from "./types.js";
 
 const typeNameChainCache = new Map<number, readonly string[]>();
@@ -54,12 +54,14 @@ export const resolvePropMeta = (instance: Container, key: string): string | null
     });
 
 export const isConstructOnlyProp = (instance: Container, key: string): boolean =>
-    memoize(constructOnlyCache, instance, key, (typeNames) => {
-        for (const name of typeNames) {
-            const meta = CONSTRUCTION_META[name];
-            if (meta && key in meta) {
-                return meta[key]?.constructOnly === true;
+    memoize(constructOnlyCache, instance, key, () => {
+        let cls: NativeClass | null = instance.constructor as NativeClass;
+        while (cls && cls !== (Function.prototype as unknown as NativeClass)) {
+            const meta = CONSTRUCTION_META.get(cls);
+            if (meta?.kind === "gobject" && key in meta.props) {
+                return meta.props[key]?.constructOnly === true;
             }
+            cls = Object.getPrototypeOf(cls) as NativeClass | null;
         }
         return false;
     });

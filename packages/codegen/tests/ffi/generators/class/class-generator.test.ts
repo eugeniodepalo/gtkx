@@ -218,7 +218,7 @@ describe("ClassGenerator", () => {
     });
 
     describe("context updates", () => {
-        it("sets usesCall when class has methods", () => {
+        it("registers an FFI binding when the class has methods", () => {
             const { generator, file } = createTestSetup({
                 methods: [
                     createNormalizedMethod({
@@ -231,7 +231,9 @@ describe("ClassGenerator", () => {
 
             generator.generate();
 
-            expect(stringify(file)).toContain("call");
+            const code = stringify(file);
+            expect(code).toContain("gtk_button_get_value");
+            expect(code).toContain("t.fn(");
         });
 
         it("sets usesRegisterNativeClass when class has glibGetType", () => {
@@ -264,7 +266,7 @@ describe("ClassGenerator", () => {
     });
 
     describe("constructor generation", () => {
-        it("generates constructor for class with constructors", () => {
+        it("emits the GIR `new` constructor as a static factory", () => {
             const { generator, file } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
@@ -279,7 +281,7 @@ describe("ClassGenerator", () => {
             generator.generate();
 
             const code = stringify(file);
-            expect(code).toContain("constructor");
+            expect(code).toContain("static new(");
         });
 
         it("generates factory methods for non-main constructors", () => {

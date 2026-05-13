@@ -6,7 +6,7 @@ import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const installAdjustment = (row: Adw.SpinRow, lower: number, upper: number, value: number) => {
-    const adjustment = new Gtk.Adjustment(value, lower, upper, 1, 10, 0);
+    const adjustment = Gtk.Adjustment.new(value, lower, upper, 1, 10, 0);
     row.setAdjustment(adjustment);
     return adjustment;
 };

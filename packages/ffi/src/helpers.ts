@@ -1,6 +1,6 @@
 import { type Arg, call as nativeCall, type Type } from "@gtkx/native";
 
-export { alloc, call, freeze, read, unfreeze, write } from "@gtkx/native";
+export { alloc, call, freeze, getNativeId, read, unfreeze, write } from "@gtkx/native";
 
 /** Whether the caller takes ownership of a returned native value (`"full"`) or only borrows it (`"borrowed"`). */
 export type Ownership = "full" | "borrowed";

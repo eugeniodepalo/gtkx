@@ -12,7 +12,7 @@ const DEFAULT_SCREENSHOT_TIMEOUT = 100;
 const DEFAULT_SCREENSHOT_INTERVAL = 10;
 
 const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
-    const paintable = new Gtk.WidgetPaintable(widget);
+    const paintable = new Gtk.WidgetPaintable({ widget });
     const width = paintable.getIntrinsicWidth();
     const height = paintable.getIntrinsicHeight();
 
@@ -90,7 +90,7 @@ export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions
         timeout: options?.timeout ?? DEFAULT_SCREENSHOT_TIMEOUT,
         interval: options?.interval ?? DEFAULT_SCREENSHOT_INTERVAL,
         onTimeout: (error) => {
-            const paintable = new Gtk.WidgetPaintable(widget);
+            const paintable = new Gtk.WidgetPaintable({ widget });
             const width = paintable.getIntrinsicWidth();
             const height = paintable.getIntrinsicHeight();
 

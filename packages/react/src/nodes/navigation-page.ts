@@ -61,7 +61,7 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
         if (childWidget) {
             const wrappedChild = this.props.id
                 ? Adw.NavigationPage.newWithTag(childWidget, title, this.props.id)
-                : new Adw.NavigationPage(childWidget, title);
+                : Adw.NavigationPage.new(childWidget, title);
 
             this.wrappedPage = wrappedChild;
             this.applyOwnProps(null, this.props);

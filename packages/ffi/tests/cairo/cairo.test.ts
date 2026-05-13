@@ -31,16 +31,16 @@ import {
 } from "../../src/generated/cairo/enums.js";
 
 const createTestSurface = (): Surface => {
-    return new PdfSurface("/dev/null", 200, 200);
+    return PdfSurface.create("/dev/null", 200, 200);
 };
 
 const createTestContext = (): Context => {
-    return new Context(createTestSurface());
+    return Context.create(createTestSurface());
 };
 
 describe("Matrix", () => {
     it("creates with explicit values", () => {
-        const m = new Matrix(1, 0, 0, 1, 10, 20);
+        const m = Matrix.init(1, 0, 0, 1, 10, 20);
         expect(m.xx).toBeCloseTo(1);
         expect(m.yx).toBeCloseTo(0);
         expect(m.xy).toBeCloseTo(0);
@@ -50,7 +50,7 @@ describe("Matrix", () => {
     });
 
     it("creates identity matrix", () => {
-        const m = new Matrix();
+        const m = Matrix.init(1, 0, 0, 1, 0, 0);
         expect(m.xx).toBeCloseTo(1);
         expect(m.yx).toBeCloseTo(0);
         expect(m.xy).toBeCloseTo(0);
@@ -80,21 +80,21 @@ describe("Matrix", () => {
     });
 
     it("translates in place", () => {
-        const m = new Matrix();
+        const m = Matrix.init(1, 0, 0, 1, 0, 0);
         m.translate(5, 10);
         expect(m.x0).toBeCloseTo(5);
         expect(m.y0).toBeCloseTo(10);
     });
 
     it("scales in place", () => {
-        const m = new Matrix();
+        const m = Matrix.init(1, 0, 0, 1, 0, 0);
         m.scale(2, 3);
         expect(m.xx).toBeCloseTo(2);
         expect(m.yy).toBeCloseTo(3);
     });
 
     it("rotates in place", () => {
-        const m = new Matrix();
+        const m = Matrix.init(1, 0, 0, 1, 0, 0);
         m.rotate(Math.PI / 2);
         expect(m.xx).toBeCloseTo(0, 5);
         expect(m.yx).toBeCloseTo(1, 5);
@@ -332,7 +332,7 @@ describe("Context", () => {
 
         it("sets a pattern as source", () => {
             const ctx = createTestContext();
-            const pattern = new LinearPattern(0, 0, 100, 100);
+            const pattern = LinearPattern.create(0, 0, 100, 100);
             pattern.addColorStopRgb(0, 1, 0, 0);
             pattern.addColorStopRgb(1, 0, 0, 1);
             ctx.setSource(pattern);
@@ -506,7 +506,7 @@ describe("Context", () => {
     describe("font options", () => {
         it("sets and gets font options", () => {
             const ctx = createTestContext();
-            const options = new FontOptions();
+            const options = FontOptions.create();
             ctx.setFontOptions(options);
             const retrieved = ctx.getFontOptions();
             expect(retrieved).not.toBeNull();
@@ -538,14 +538,14 @@ describe("Context", () => {
     describe("surface interaction", () => {
         it("gets the target surface", () => {
             const surface = createTestSurface();
-            const ctx = new Context(surface);
+            const ctx = Context.create(surface);
             const target = ctx.getTarget();
             expect(target).not.toBeNull();
         });
 
         it("sets a surface as source", () => {
             const surface = createTestSurface();
-            const ctx = new Context(surface);
+            const ctx = Context.create(surface);
             ctx.setSourceSurface(surface, 0, 0);
             expect(ctx.status()).toBe(Status.SUCCESS);
         });
@@ -620,14 +620,14 @@ describe("Context", () => {
         it("masks with a pattern", () => {
             const ctx = createTestContext();
             ctx.setSourceRgb(1, 0, 0);
-            const pattern = new SolidPattern(0, 0, 0, 0.5);
+            const pattern = SolidPattern.create(0, 0, 0, 0.5);
             ctx.mask(pattern);
             expect(ctx.status()).toBe(Status.SUCCESS);
         });
 
         it("masks with a surface", () => {
             const surface = createTestSurface();
-            const ctx = new Context(surface);
+            const ctx = Context.create(surface);
             ctx.setSourceRgb(1, 0, 0);
             const maskSurf = surface.createSimilar("ALPHA", 100, 100);
             ctx.maskSurface(maskSurf, 0, 0);
@@ -707,7 +707,7 @@ describe("Context", () => {
 describe("Pattern", () => {
     describe("createLinear", () => {
         it("creates a linear gradient pattern", () => {
-            const pattern = new LinearPattern(0, 0, 100, 100);
+            const pattern = LinearPattern.create(0, 0, 100, 100);
             expect(pattern).not.toBeNull();
             expect(pattern).toBeInstanceOf(Pattern);
         });
@@ -715,7 +715,7 @@ describe("Pattern", () => {
 
     describe("createRadial", () => {
         it("creates a radial gradient pattern", () => {
-            const pattern = new RadialPattern(50, 50, 10, 50, 50, 50);
+            const pattern = RadialPattern.create(50, 50, 10, 50, 50, 50);
             expect(pattern).not.toBeNull();
             expect(pattern).toBeInstanceOf(Pattern);
         });
@@ -724,7 +724,7 @@ describe("Pattern", () => {
     describe("createForSurface", () => {
         it("creates a pattern from a surface", () => {
             const surface = createTestSurface();
-            const pattern = new SurfacePattern(surface);
+            const pattern = SurfacePattern.create(surface);
             expect(pattern).toBeInstanceOf(Pattern);
             expect(pattern.getType()).toBe(PatternType.SURFACE);
         });
@@ -732,7 +732,7 @@ describe("Pattern", () => {
 
     describe("createRgb", () => {
         it("creates a solid RGB pattern", () => {
-            const pattern = new SolidPattern(1, 0, 0);
+            const pattern = SolidPattern.create(1, 0, 0);
             expect(pattern).toBeInstanceOf(Pattern);
             expect(pattern.getType()).toBe(PatternType.SOLID);
         });
@@ -740,7 +740,7 @@ describe("Pattern", () => {
 
     describe("createRgba", () => {
         it("creates a solid RGBA pattern", () => {
-            const pattern = new SolidPattern(1, 0, 0, 0.5);
+            const pattern = SolidPattern.create(1, 0, 0, 0.5);
             expect(pattern).toBeInstanceOf(Pattern);
             expect(pattern.getType()).toBe(PatternType.SOLID);
         });
@@ -748,7 +748,7 @@ describe("Pattern", () => {
 
     describe("addColorStopRgb", () => {
         it("adds an RGB color stop to a gradient", () => {
-            const pattern = new LinearPattern(0, 0, 100, 0);
+            const pattern = LinearPattern.create(0, 0, 100, 0);
             pattern.addColorStopRgb(0, 1, 0, 0);
             expect(pattern.status()).toBe(Status.SUCCESS);
         });
@@ -756,7 +756,7 @@ describe("Pattern", () => {
 
     describe("addColorStopRgba", () => {
         it("adds an RGBA color stop to a gradient", () => {
-            const pattern = new LinearPattern(0, 0, 100, 0);
+            const pattern = LinearPattern.create(0, 0, 100, 0);
             pattern.addColorStopRgba(0.5, 0, 1, 0, 0.5);
             expect(pattern.status()).toBe(Status.SUCCESS);
         });
@@ -764,7 +764,7 @@ describe("Pattern", () => {
 
     describe("extend", () => {
         it("sets and gets extend mode", () => {
-            const pattern = new LinearPattern(0, 0, 100, 0);
+            const pattern = LinearPattern.create(0, 0, 100, 0);
             pattern.setExtend(Extend.REPEAT);
             expect(pattern.getExtend()).toBe(Extend.REPEAT);
         });
@@ -772,7 +772,7 @@ describe("Pattern", () => {
 
     describe("filter", () => {
         it("sets and gets filter", () => {
-            const pattern = new LinearPattern(0, 0, 100, 0);
+            const pattern = LinearPattern.create(0, 0, 100, 0);
             pattern.setFilter(Filter.NEAREST);
             expect(pattern.getFilter()).toBe(Filter.NEAREST);
         });
@@ -780,7 +780,7 @@ describe("Pattern", () => {
 
     describe("matrix", () => {
         it("sets and gets matrix", () => {
-            const pattern = new LinearPattern(0, 0, 100, 0);
+            const pattern = LinearPattern.create(0, 0, 100, 0);
             const m = Matrix.createTranslate(5, 10);
             pattern.setMatrix(m);
             const got = pattern.getMatrix();
@@ -791,12 +791,12 @@ describe("Pattern", () => {
 
     describe("getType", () => {
         it("returns LINEAR for linear pattern", () => {
-            const pattern = new LinearPattern(0, 0, 100, 0);
+            const pattern = LinearPattern.create(0, 0, 100, 0);
             expect(pattern.getType()).toBe(PatternType.LINEAR);
         });
 
         it("returns RADIAL for radial pattern", () => {
-            const pattern = new RadialPattern(50, 50, 10, 50, 50, 50);
+            const pattern = RadialPattern.create(50, 50, 10, 50, 50, 50);
             expect(pattern.getType()).toBe(PatternType.RADIAL);
         });
     });
@@ -805,32 +805,32 @@ describe("Pattern", () => {
 describe("FontOptions", () => {
     describe("create", () => {
         it("creates a new FontOptions instance", () => {
-            const options = new FontOptions();
+            const options = FontOptions.create();
             expect(options).not.toBeNull();
         });
     });
 
     describe("settings", () => {
         it("sets and gets hint style", () => {
-            const options = new FontOptions();
+            const options = FontOptions.create();
             options.setHintStyle(HintStyle.FULL);
             expect(options.getHintStyle()).toBe(HintStyle.FULL);
         });
 
         it("sets and gets antialias", () => {
-            const options = new FontOptions();
+            const options = FontOptions.create();
             options.setAntialias(1);
             expect(options.getAntialias()).toBe(1);
         });
 
         it("sets and gets hint metrics", () => {
-            const options = new FontOptions();
+            const options = FontOptions.create();
             options.setHintMetrics(HintMetrics.ON);
             expect(options.getHintMetrics()).toBe(HintMetrics.ON);
         });
 
         it("sets and gets subpixel order", () => {
-            const options = new FontOptions();
+            const options = FontOptions.create();
             options.setSubpixelOrder(SubpixelOrder.RGB);
             expect(options.getSubpixelOrder()).toBe(SubpixelOrder.RGB);
         });
@@ -838,16 +838,16 @@ describe("FontOptions", () => {
 
     describe("equal", () => {
         it("returns true for equal options", () => {
-            const a = new FontOptions();
-            const b = new FontOptions();
+            const a = FontOptions.create();
+            const b = FontOptions.create();
             a.setHintStyle(HintStyle.FULL);
             b.setHintStyle(HintStyle.FULL);
             expect(a.equal(b)).toBe(true);
         });
 
         it("returns false for different options", () => {
-            const a = new FontOptions();
-            const b = new FontOptions();
+            const a = FontOptions.create();
+            const b = FontOptions.create();
             a.setHintStyle(HintStyle.FULL);
             b.setHintStyle(HintStyle.NONE);
             expect(a.equal(b)).toBe(false);
@@ -856,8 +856,8 @@ describe("FontOptions", () => {
 
     describe("merge", () => {
         it("merges another font options into this one", () => {
-            const a = new FontOptions();
-            const b = new FontOptions();
+            const a = FontOptions.create();
+            const b = FontOptions.create();
             b.setHintStyle(HintStyle.FULL);
             a.merge(b);
             expect(a.getHintStyle()).toBe(HintStyle.FULL);
@@ -866,7 +866,7 @@ describe("FontOptions", () => {
 
     describe("copy", () => {
         it("creates a copy with same values", () => {
-            const orig = new FontOptions();
+            const orig = FontOptions.create();
             orig.setHintStyle(HintStyle.SLIGHT);
             orig.setSubpixelOrder(SubpixelOrder.BGR);
             const copy = orig.copy();
@@ -881,7 +881,7 @@ describe("Surface", () => {
     describe("createContext", () => {
         it("creates a context from a surface", () => {
             const surface = createTestSurface();
-            const ctx = new Context(surface);
+            const ctx = Context.create(surface);
             expect(ctx).not.toBeNull();
             expect(ctx).toBeInstanceOf(Context);
         });
@@ -919,8 +919,8 @@ describe("Surface", () => {
         it("writes surface to PNG file", () => {
             const tmpPath = "/tmp/gtkx-test-cairo-write.png";
             try {
-                const surface = new ImageSurface(Format.ARGB32, 10, 10);
-                const ctx = new Context(surface);
+                const surface = ImageSurface.create(Format.ARGB32, 10, 10);
+                const ctx = Context.create(surface);
                 ctx.setSourceRgb(1, 0, 0);
                 ctx.paint();
                 surface.writeToPng(tmpPath);
@@ -933,19 +933,19 @@ describe("Surface", () => {
 
     describe("getType", () => {
         it("returns PDF type for PdfSurface", () => {
-            const surface = new PdfSurface("/dev/null", 100, 100);
+            const surface = PdfSurface.create("/dev/null", 100, 100);
             expect(surface.getType()).toBe(SurfaceType.PDF);
         });
 
         it("returns IMAGE type for ImageSurface", () => {
-            const surface = new ImageSurface(Format.ARGB32, 10, 10);
+            const surface = ImageSurface.create(Format.ARGB32, 10, 10);
             expect(surface.getType()).toBe(SurfaceType.IMAGE);
         });
     });
 
     describe("getContent", () => {
         it("returns content type", () => {
-            const surface = new ImageSurface(Format.ARGB32, 10, 10);
+            const surface = ImageSurface.create(Format.ARGB32, 10, 10);
             expect(surface.getContent()).toBe(Content.COLOR_ALPHA);
         });
     });
@@ -953,41 +953,41 @@ describe("Surface", () => {
 
 describe("ImageSurface", () => {
     it("creates an image surface", () => {
-        const surface = new ImageSurface(Format.ARGB32, 100, 50);
+        const surface = ImageSurface.create(Format.ARGB32, 100, 50);
         expect(surface).toBeInstanceOf(Surface);
         expect(surface).toBeInstanceOf(ImageSurface);
     });
 
     it("gets width", () => {
-        const surface = new ImageSurface(Format.ARGB32, 100, 50);
+        const surface = ImageSurface.create(Format.ARGB32, 100, 50);
         expect(surface.getWidth()).toBe(100);
     });
 
     it("gets height", () => {
-        const surface = new ImageSurface(Format.ARGB32, 100, 50);
+        const surface = ImageSurface.create(Format.ARGB32, 100, 50);
         expect(surface.getHeight()).toBe(50);
     });
 
     it("gets format", () => {
-        const surface = new ImageSurface(Format.RGB24, 10, 10);
+        const surface = ImageSurface.create(Format.RGB24, 10, 10);
         expect(surface.getFormat()).toBe(Format.RGB24);
     });
 
     it("gets stride", () => {
-        const surface = new ImageSurface(Format.ARGB32, 10, 10);
+        const surface = ImageSurface.create(Format.ARGB32, 10, 10);
         expect(surface.getStride()).toBeGreaterThanOrEqual(40);
     });
 
     describe("getData", () => {
         it("returns data with correct length", () => {
-            const surface = new ImageSurface(Format.ARGB32, 10, 10);
+            const surface = ImageSurface.create(Format.ARGB32, 10, 10);
             const data = surface.getData();
             expect(data.length).toBe(surface.getStride() * surface.getHeight());
         });
 
         it("contains painted pixel values", () => {
-            const surface = new ImageSurface(Format.ARGB32, 2, 2);
-            const ctx = new Context(surface);
+            const surface = ImageSurface.create(Format.ARGB32, 2, 2);
+            const ctx = Context.create(surface);
             ctx.setSourceRgba(0, 0, 1, 1);
             ctx.paint();
             const data = surface.getData();
@@ -998,7 +998,7 @@ describe("ImageSurface", () => {
         });
 
         it("returns empty array for zero-size surface", () => {
-            const surface = new ImageSurface(Format.ARGB32, 0, 0);
+            const surface = ImageSurface.create(Format.ARGB32, 0, 0);
             const data = surface.getData();
             expect(data.length).toBe(0);
         });
@@ -1009,9 +1009,9 @@ describe("PdfSurface", () => {
     it("creates a PDF surface with given dimensions", () => {
         const tmpPath = "/tmp/gtkx-test-cairo.pdf";
         try {
-            const surface = new PdfSurface(tmpPath, 612, 792);
+            const surface = PdfSurface.create(tmpPath, 612, 792);
             expect(surface).toBeInstanceOf(Surface);
-            const ctx = new Context(surface);
+            const ctx = Context.create(surface);
             ctx.setSourceRgb(0, 0, 0);
             ctx.selectFontFace("Sans", 0, 0);
             ctx.setFontSize(12);
@@ -1027,13 +1027,13 @@ describe("PdfSurface", () => {
 
 describe("Surface.createSimilarImage", () => {
     it("returns an ImageSurface instance", () => {
-        const surface = new ImageSurface(Format.ARGB32, 100, 100);
+        const surface = ImageSurface.create(Format.ARGB32, 100, 100);
         const similar = surface.createSimilarImage(Format.ARGB32, 50, 30);
         expect(similar).toBeInstanceOf(ImageSurface);
     });
 
     it("has correct dimensions", () => {
-        const surface = new ImageSurface(Format.ARGB32, 100, 100);
+        const surface = ImageSurface.create(Format.ARGB32, 100, 100);
         const similar = surface.createSimilarImage(Format.ARGB32, 50, 30);
         expect(similar.getWidth()).toBe(50);
         expect(similar.getHeight()).toBe(30);

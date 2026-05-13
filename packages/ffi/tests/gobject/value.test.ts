@@ -108,7 +108,7 @@ describe("Value factory methods", () => {
 
     describe("newFromObject", () => {
         it("creates a GValue holding a GObject", () => {
-            const label = new Gtk.Label("test");
+            const label = new Gtk.Label({ label: "test" });
             const v = Value.newFromObject(label);
             const retrieved = v.getObject();
             expect(retrieved).not.toBeNull();
@@ -280,7 +280,7 @@ describe("Value.fromJS / toJS round-trips", () => {
     });
 
     it("round-trips a GObject reference returning the same wrapper", () => {
-        const label = new Gtk.Label("hello");
+        const label = new Gtk.Label({ label: "hello" });
         const result = Value.fromJS(Type.OBJECT, label).toJS();
         expect(result).toBe(label);
     });
@@ -388,7 +388,7 @@ describe("Value.newFrom (FFI-type-driven factory)", () => {
     });
 
     it("builds a gobject value", () => {
-        const label = new Gtk.Label("x");
+        const label = new Gtk.Label({ label: "x" });
         const v = Value.newFrom({ type: "gobject", ownership: "borrowed" }, label);
         expect(v.getObject()).not.toBeNull();
     });

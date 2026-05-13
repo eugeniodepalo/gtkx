@@ -184,7 +184,7 @@ export class TextTagNode
         if (!this.buffer) return;
 
         const tagTable = this.buffer.getTagTable();
-        this.tag = new Gtk.TextTag(this.props.id);
+        this.tag = Gtk.TextTag.new(this.props.id);
 
         this.applyStyleProps(null, this.props);
         tagTable.add(this.tag);

@@ -67,7 +67,7 @@ export type NodeClass = (new (
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: Class keys require flexible typing for GTK class hierarchy matching
-type ClassKey = new (...args: any[]) => any;
+type ClassKey = abstract new (...args: any[]) => any;
 type RegistryKey = string | ClassKey | readonly (string | ClassKey)[];
 type NodeRegistryEntry = [RegistryKey, NodeClass];
 

@@ -3,6 +3,7 @@ import { Device } from "../generated/cairo/device.js";
 import type { Content } from "../generated/cairo/enums.js";
 import { Surface } from "../generated/cairo/surface.js";
 import { call, t } from "../native.js";
+import { wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import { DEVICE_T, DEVICE_T_FULL, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
@@ -12,15 +13,14 @@ export enum ScriptMode {
 }
 
 export class ScriptDevice extends Device {
-    constructor(filename: string) {
-        super(
-            call(
-                LIB,
-                "cairo_script_create",
-                [{ type: t.string("full"), value: filename }],
-                DEVICE_T_FULL,
-            ) as NativeHandle,
-        );
+    static create(filename: string): ScriptDevice {
+        const handle = call(
+            LIB,
+            "cairo_script_create",
+            [{ type: t.string("full"), value: filename }],
+            DEVICE_T_FULL,
+        ) as NativeHandle;
+        return wrapHandle(ScriptDevice, handle);
     }
 
     setMode(mode: ScriptMode): void {

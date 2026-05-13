@@ -2,6 +2,7 @@ import type { NativeHandle } from "@gtkx/native";
 import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../generated/cairo/enums.js";
 import { FontOptions } from "../generated/cairo/font-options.js";
 import { call, t } from "../native.js";
+import { wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import { FONT_OPTIONS_T, FONT_OPTIONS_T_FULL, INT_TYPE, LIB } from "./common.js";
 
@@ -22,8 +23,9 @@ declare module "../generated/cairo/font-options.js" {
 }
 
 class FontOptionsImpl extends FontOptions {
-    constructor() {
-        super(call(LIB, "cairo_font_options_create", [], FONT_OPTIONS_T_FULL) as NativeHandle);
+    static create(): FontOptionsImpl {
+        const handle = call(LIB, "cairo_font_options_create", [], FONT_OPTIONS_T_FULL) as NativeHandle;
+        return wrapHandle(FontOptionsImpl, handle);
     }
 }
 

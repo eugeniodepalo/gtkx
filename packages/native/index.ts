@@ -59,32 +59,30 @@ const native = nativeBinding as unknown as {
     write: (external: unknown, type: unknown, offset: number, value: unknown) => unknown;
 };
 
+declare const __nativeHandleBrand: unique symbol;
+
 /**
- * Opaque handle wrapping a native pointer (GObject, Boxed, or Fundamental).
+ * Opaque reference to a native pointer (GObject, Boxed, Fundamental, or
+ * GLib main-loop handle).
  *
- * Instances are produced by this module's exported functions; external code
- * should never construct one directly. Use `instanceof NativeHandle` for type
- * guards and the `id` accessor for object-identity comparisons.
+ * Values of this type are produced exclusively by the functions in this
+ * module ({@link alloc}, {@link call}, {@link findObjectProperty}, etc.) and
+ * must never be constructed by user code. The underlying value is a raw
+ * native external pointer; the brand ensures TypeScript treats it opaquely.
  */
-export class NativeHandle {
-    /**
-     * Opaque value owned by the native module. Stable across the lifetime of
-     * the handle, but its concrete representation is an implementation detail.
-     */
-    readonly external: unknown;
+export type NativeHandle = unknown & { readonly [__nativeHandleBrand]: never };
 
-    constructor(external: unknown) {
-        this.external = external;
-    }
-
-    /**
-     * Native pointer value as a number, suitable for object-identity
-     * comparisons. Two handles referring to the same underlying instance
-     * always return the same id.
-     */
-    get id(): number {
-        return native.getNativeId(this.external);
-    }
+/**
+ * Returns the numeric pointer identity for a native handle.
+ *
+ * Two handles referring to the same underlying instance return the same
+ * value, making the result suitable as a key in identity-tracking
+ * collections.
+ *
+ * @param handle - A handle produced by this module
+ */
+export function getNativeId(handle: NativeHandle): number {
+    return native.getNativeId(handle);
 }
 
 /**
@@ -110,16 +108,6 @@ export function createRef<T>(value: T): Ref<T> {
     return { value } as Ref<T>;
 }
 
-/**
- * Type guard recognising handles produced by this module.
- *
- * @param value - Any JavaScript value
- * @returns `true` if `value` is a `NativeHandle` instance
- */
-export function isNativeHandle(value: unknown): value is NativeHandle {
-    return value instanceof NativeHandle;
-}
-
 function isHandleType(type: Type): boolean {
     return type.type === "gobject" || type.type === "boxed" || type.type === "struct" || type.type === "fundamental";
 }
@@ -127,9 +115,7 @@ function isHandleType(type: Type): boolean {
 function unwrapValue(value: unknown, type: Type): unknown {
     if (value === null || value === undefined) return value;
 
-    if (isHandleType(type)) {
-        return value instanceof NativeHandle ? value.external : value;
-    }
+    if (isHandleType(type)) return value;
 
     switch (type.type) {
         case "array":
@@ -178,9 +164,7 @@ function wrapUserCallback(value: unknown, type: CallbackType | TrampolineType): 
 function wrapValue(value: unknown, type: Type): unknown {
     if (value === null || value === undefined) return value;
 
-    if (isHandleType(type)) {
-        return value instanceof NativeHandle ? value : new NativeHandle(value);
-    }
+    if (isHandleType(type)) return value as NativeHandle;
 
     switch (type.type) {
         case "array":
@@ -234,7 +218,7 @@ export function call(library: string, symbol: string, args: Arg[], returnType: T
  * first loaded. Stored so {@link stop} can quit the loop without callers
  * having to thread the handle through.
  */
-let mainLoopHandle: NativeHandle | null = new NativeHandle(native.init());
+let mainLoopHandle: NativeHandle | null = native.init() as NativeHandle;
 
 /**
  * Quits the `GLib` main loop spawned at module load.
@@ -245,7 +229,7 @@ let mainLoopHandle: NativeHandle | null = new NativeHandle(native.init());
  */
 export function stop(): void {
     if (!mainLoopHandle) return;
-    native.stop(mainLoopHandle.external);
+    native.stop(mainLoopHandle);
     mainLoopHandle = null;
 }
 
@@ -258,7 +242,7 @@ export function stop(): void {
  * @returns The read value
  */
 export function read(handle: NativeHandle, type: Type, offset: number): FfiValue {
-    const result = native.read(handle.external, type, offset);
+    const result = native.read(handle, type, offset);
     return wrapValue(result, type) as FfiValue;
 }
 
@@ -271,7 +255,7 @@ export function read(handle: NativeHandle, type: Type, offset: number): FfiValue
  * @param value - Value to write
  */
 export function write(handle: NativeHandle, type: Type, offset: number, value: unknown): void {
-    native.write(handle.external, type, offset, unwrapValue(value, type));
+    native.write(handle, type, offset, unwrapValue(value, type));
 }
 
 /**
@@ -283,7 +267,7 @@ export function write(handle: NativeHandle, type: Type, offset: number, value: u
  * @returns Native handle to allocated memory
  */
 export function alloc(size: number, glibTypeName?: string, lib?: string): NativeHandle {
-    return new NativeHandle(native.alloc(size, glibTypeName, lib));
+    return native.alloc(size, glibTypeName, lib) as NativeHandle;
 }
 
 /**
@@ -300,8 +284,8 @@ export function alloc(size: number, glibTypeName?: string, lib?: string): Native
  * @returns Borrowed `GParamSpec` handle, or `null` when no such property exists
  */
 export function findObjectProperty(handle: NativeHandle, propertyName: string): NativeHandle | null {
-    const result = native.findObjectProperty(handle.external, propertyName);
-    return result == null ? null : new NativeHandle(result);
+    const result = native.findObjectProperty(handle, propertyName);
+    return result == null ? null : (result as NativeHandle);
 }
 
 /**
@@ -313,7 +297,7 @@ export function findObjectProperty(handle: NativeHandle, propertyName: string): 
  * @param handle - Handle to a live GObject-compatible instance
  */
 export function getInstanceGType(handle: NativeHandle): number {
-    return Number(native.getInstanceGtype(handle.external));
+    return Number(native.getInstanceGtype(handle));
 }
 
 /**
@@ -421,7 +405,7 @@ export function registerClass(name: string, parentGtype: number, options?: Regis
 function buildNativeOptions(options: RegisterClassNativeOptions): NativeRegisterClassOptions {
     return {
         properties: options.properties?.map((property) => ({
-            pspec: property.pspec.external,
+            pspec: property.pspec,
         })),
         signals: options.signals?.map((signal) => ({
             name: signal.name,

@@ -53,10 +53,10 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
             }
 
             if (isOrExtendsClass(WindowClass, Adw.ApplicationWindow)) {
-                return new Adw.ApplicationWindow(rootContainer);
+                return new Adw.ApplicationWindow({ application: rootContainer });
             }
 
-            return new Gtk.ApplicationWindow(rootContainer);
+            return new Gtk.ApplicationWindow({ application: rootContainer });
         }
 
         return WidgetNode.createContainer(typeName, props, containerClass) as Gtk.Window;

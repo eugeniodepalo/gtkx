@@ -1,22 +1,23 @@
 /**
  * Record Generator
  *
- * Generates record (struct/boxed type) classes using the builder library.
- * Orchestrates sub-builders for different aspects of record generation.
+ * Generates record (struct/boxed type) classes. Records emit a generic
+ * class header, an `__girName` static, field accessors, methods, static
+ * factory methods for every GIR `<constructor>`, and a module-load
+ * `registerConstructionMeta` call describing the boxed layout. The actual
+ * allocation happens inside `NativeObject`'s generic constructor.
  */
 
-import type { GirConstructor, GirField, GirFunction, GirMethod, GirRecord, GirRepository } from "@gtkx/gir";
+import type { GirField, GirFunction, GirMethod, GirRecord, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../../builders/file-builder.js";
 import {
     accessor,
     type ClassDeclarationBuilder,
     classDecl,
-    constructorDecl,
     method,
     param,
     typeAlias,
 } from "../../../builders/index.js";
-import type { ConstructorBuilder } from "../../../builders/members/constructor.js";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -35,7 +36,6 @@ import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expressio
 import {
     addMethodStructure,
     addTypeImports,
-    applyForcedNonNullArgs,
     createMethodBodyWriter,
     type MethodBodyWriter,
     type MethodStructure,
@@ -48,21 +48,6 @@ type RecordTypeMeta = {
     copyFunction?: string;
     freeFunction?: string;
 };
-
-function writeNativeHandleBranch(
-    writer: Writer,
-    handleVar: string,
-    elseBody: () => void,
-    superCall: string = `super(${handleVar})`,
-): void {
-    writer.writeLine(`if (isNativeHandle(${handleVar})) {`);
-    writer.withIndent(() => {
-        writer.writeLine(`${superCall};`);
-    });
-    writer.writeLine("} else {");
-    writer.withIndent(elseBody);
-    writer.writeLine("}");
-}
 
 /**
  * Generates record (struct/boxed type) classes.
@@ -100,13 +85,14 @@ export class RecordGenerator {
         this.selfNames = new Set([recordName]);
         this.methodBody.setSelfNames(this.selfNames);
 
-        this.generateInitInterface(record, recordName);
+        const initFields = this.collectInitializableFields(record);
+        this.emitInitTypeAlias(record, recordName, initFields);
+
         const cls = this.generateClass(record, recordName);
 
         const methodStructures: MethodStructure[] = [];
 
-        this.generateConstructors(record, recordName, cls, methodStructures);
-
+        methodStructures.push(...this.buildStaticFactoryMethodStructures(record, recordName));
         methodStructures.push(
             ...this.buildStaticFunctionStructures(record.staticFunctions, recordName, record.name),
             ...this.buildMethodStructures(record.methods, {
@@ -130,6 +116,99 @@ export class RecordGenerator {
             const getTypeCall = this.buildGTypeCall(record.glibGetType, record.glibTypeName, recordName);
             this.file.addStatement(`\nregisterNativeClass(${recordName}, ${getTypeCall});`);
         }
+
+        if (record.glibTypeName) {
+            this.emitConstructionMeta(record, initFields);
+        }
+    }
+
+    private collectInitializableFields(record: GirRecord): GirField[] {
+        return this.fieldBuilder.getInitializableFields(record.fields);
+    }
+
+    private emitInitTypeAlias(record: GirRecord, recordName: string, initFields: readonly GirField[]): void {
+        const propStrings: string[] = [];
+        for (const field of initFields) {
+            let fieldName = toValidMemberName(toCamelCase(field.name));
+            if (fieldName === "id") fieldName = "id_";
+            const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+            if (typeMapping.unsafe) continue;
+            addTypeImports(this.file, typeMapping.imports, this.selfNames);
+            propStrings.push(`${fieldName}?: ${typeMapping.ts}`);
+        }
+
+        const body = propStrings.length > 0 ? `{ ${propStrings.join("; ")} }` : "{}";
+        this.file.add(typeAlias(`${recordName}Init`, body, { exported: true }));
+    }
+
+    private generateClass(record: GirRecord, recordName: string): ClassDeclarationBuilder {
+        this.file.addImport("../../object.js", ["NativeObject"]);
+
+        const initTypeName = `${recordName}Init`;
+        const typeParams = `<TProps extends ${initTypeName} = ${initTypeName}>`;
+        const extendsExpr = `NativeObject<TProps>`;
+
+        const doc = buildJsDocStructure(record.doc, this.options.namespace);
+        const cls = classDecl(recordName, {
+            exported: true,
+            typeParams,
+            extends: extendsExpr,
+            doc: doc?.[0]?.description,
+        });
+
+        return cls;
+    }
+
+    private emitConstructionMeta(record: GirRecord, initFields: readonly GirField[]): void {
+        const glibTypeName = record.glibTypeName;
+        if (!glibTypeName) return;
+
+        this.file.addImport("../../construction-meta.js", ["registerConstructionMeta"]);
+        const structSize = this.fieldBuilder.calculateStructSize(record.fields);
+        const layout = this.fieldBuilder.calculateLayout(record.fields);
+        const offsetByName = new Map<string, number>();
+        for (const item of layout) {
+            offsetByName.set(item.field.name, item.offset);
+        }
+
+        const fieldEntries: Array<{ jsName: string; offset: number; ffiType: FfiTypeDescriptor }> = [];
+        for (const field of initFields) {
+            const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+            if (typeMapping.unsafe) continue;
+            const offset = offsetByName.get(field.name);
+            if (offset === undefined) continue;
+            let jsName = toValidMemberName(toCamelCase(field.name));
+            if (jsName === "id") jsName = "id_";
+            fieldEntries.push({ jsName, offset, ffiType: typeMapping.ffi });
+        }
+
+        this.file.addImport("../../native.js", ["t"]);
+
+        const recordName = normalizeClassName(record.name);
+        this.file.addRawBlock((writer: Writer) => {
+            writer.writeLine("");
+            writer.writeLine(`registerConstructionMeta(${recordName}, {`);
+            writer.withIndent(() => {
+                writer.writeLine(`kind: "boxed",`);
+                writer.writeLine(`size: ${structSize},`);
+                writer.writeLine(`glibTypeName: "${glibTypeName}",`);
+                writer.writeLine(`lib: "${this.options.sharedLibrary}",`);
+                if (fieldEntries.length === 0) {
+                    writer.writeLine("fields: {},");
+                } else {
+                    writer.writeLine("fields: {");
+                    writer.withIndent(() => {
+                        for (const entry of fieldEntries) {
+                            writer.write(`${entry.jsName}: { offset: ${entry.offset}, ffiType: `);
+                            writeFfiTypeExpression(writer, entry.ffiType);
+                            writer.writeLine(" },");
+                        }
+                    });
+                    writer.writeLine("},");
+                }
+            });
+            writer.writeLine("});");
+        });
     }
 
     private buildGTypeCall(cIdentifier: string, glibTypeName: string | undefined, recordName: string): string {
@@ -165,205 +244,6 @@ export class RecordGenerator {
         return `call("${this.options.sharedLibrary}", "${cIdentifier}", [], t.uint64) as number`;
     }
 
-    private generateInitInterface(record: GirRecord, recordName: string): void {
-        const { main: mainConstructor } = this.methodBody.selectConstructors(record.constructors);
-
-        if (mainConstructor) {
-            const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
-            if (filteredParams.length > 0) return;
-        }
-
-        const initFields = this.fieldBuilder.getInitializableFields(record.fields);
-        if (initFields.length === 0) return;
-
-        const propStrings: string[] = [];
-        for (const field of initFields) {
-            let fieldName = toValidMemberName(toCamelCase(field.name));
-            if (fieldName === "id") fieldName = "id_";
-            const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-            if (typeMapping.unsafe) continue;
-            addTypeImports(this.file, typeMapping.imports, this.selfNames);
-            propStrings.push(`${fieldName}?: ${typeMapping.ts}`);
-        }
-
-        if (propStrings.length === 0) return;
-
-        this.file.add(typeAlias(`${recordName}Init`, `{ ${propStrings.join("; ")} }`, { exported: true }));
-    }
-
-    private generateClass(record: GirRecord, recordName: string): ClassDeclarationBuilder {
-        this.file.addImport("../../object.js", ["NativeObject"]);
-
-        const doc = buildJsDocStructure(record.doc, this.options.namespace);
-        const cls = classDecl(recordName, {
-            exported: true,
-            extends: "NativeObject",
-            doc: doc?.[0]?.description,
-        });
-
-        return cls;
-    }
-
-    private buildRecordMeta(record: GirRecord): RecordTypeMeta {
-        return {
-            glibTypeName: record.glibTypeName ?? record.cType,
-            glibGetType: record.glibGetType,
-            copyFunction: record.copyFunction,
-            freeFunction: record.freeFunction,
-        };
-    }
-
-    private buildEmptyParamConstructor(
-        record: GirRecord,
-        recordName: string,
-        mainConstructor: GirConstructor,
-        args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
-        meta: RecordTypeMeta,
-    ): ConstructorBuilder {
-        const initFields = this.fieldBuilder.getInitializableFields(record.fields);
-        if (initFields.length > 0) {
-            this.file.addImport("../../native.js", ["t", "write"]);
-            return constructorDecl({
-                overloads: [
-                    { params: [param("handle", "NativeHandle")] },
-                    { params: [param("init", `${recordName}Init`, { optional: true })] },
-                ],
-                params: [param("init", `${recordName}Init | NativeHandle`, { defaultValue: "{}" })],
-                body: this.writeConstructorWithCallAndInitOverloaded(mainConstructor, args, meta, record.fields),
-            });
-        }
-
-        return constructorDecl({
-            overloads: [{ params: [param("handle", "NativeHandle")] }, { params: [] }],
-            params: [param("handle", "NativeHandle", { optional: true })],
-            body: this.writeConstructorWithCallOverloaded("handle", mainConstructor, args, meta),
-        });
-    }
-
-    private buildParameterizedConstructor(
-        ctorShape: ReturnType<MethodBodyWriter["buildShape"]>,
-        mainConstructor: GirConstructor,
-        args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
-        meta: RecordTypeMeta,
-    ): ConstructorBuilder {
-        const params = this.methodBody.buildSignatureParameters(ctorShape, false);
-        const firstParam = params[0] ?? { name: "arg0", type: "unknown" };
-        const baseType = firstParam.type.includes("=>") ? `(${firstParam.type})` : firstParam.type;
-        const implParams = params.map((p, i) =>
-            i === 0
-                ? param(p.name, `${baseType} | NativeHandle`, { optional: p.optional })
-                : param(p.name, p.type, { optional: true }),
-        );
-        return constructorDecl({
-            overloads: [
-                { params: [param("handle", "NativeHandle")] },
-                { params: params.map((p) => param(p.name, p.type, { optional: p.optional })) },
-            ],
-            params: implParams,
-            body: this.writeConstructorWithCallOverloaded(firstParam.name, mainConstructor, args, meta),
-        });
-    }
-
-    private buildAllocConstructor(record: GirRecord, recordName: string, allocFn: string): ConstructorBuilder {
-        const initFields = this.fieldBuilder.getInitializableFields(record.fields);
-        if (initFields.length > 0) {
-            this.file.addImport("../../native.js", ["t", "write"]);
-            return constructorDecl({
-                overloads: [
-                    { params: [param("handle", "NativeHandle")] },
-                    { params: [param("init", `${recordName}Init`, { optional: true })] },
-                ],
-                params: [param("init", `${recordName}Init | NativeHandle`, { defaultValue: "{}" })],
-                body: this.writeConstructorWithAllocOverloaded(allocFn, record.fields),
-            });
-        }
-
-        return constructorDecl({
-            overloads: [{ params: [param("handle", "NativeHandle")] }, { params: [] }],
-            params: [param("handle", "NativeHandle", { optional: true })],
-            body: (writer) => {
-                writer.writeLine("if (isNativeHandle(handle)) {");
-                writer.withIndent(() => writer.writeLine("super(handle);"));
-                writer.writeLine("} else {");
-                writer.withIndent(() => writer.writeLine(`super(${allocFn} as NativeHandle);`));
-                writer.writeLine("}");
-            },
-        });
-    }
-
-    private setupMainConstructor(
-        record: GirRecord,
-        recordName: string,
-        cls: ClassDeclarationBuilder,
-        mainConstructor: GirConstructor,
-        supportedConstructors: GirConstructor[],
-        methodStructures: MethodStructure[],
-    ): void {
-        this.file.addImport("@gtkx/native", ["isNativeHandle"]);
-        this.file.addTypeImport("../../object.js", ["NativeHandle"]);
-        const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
-        const ctorShape = this.methodBody.buildShape(mainConstructor.parameters, undefined, 0);
-        const args = this.methodBody.buildShapeCallArguments(ctorShape, mainConstructor.parameters);
-        const meta = this.buildRecordMeta(record);
-
-        cls.setConstructor(
-            filteredParams.length === 0
-                ? this.buildEmptyParamConstructor(record, recordName, mainConstructor, args, meta)
-                : this.buildParameterizedConstructor(ctorShape, mainConstructor, args, meta),
-        );
-
-        const factoryMeta: RecordTypeMeta = {
-            glibTypeName: record.glibTypeName,
-            glibGetType: record.glibGetType,
-            copyFunction: record.copyFunction,
-            freeFunction: record.freeFunction,
-        };
-        for (const ctor of supportedConstructors) {
-            if (ctor !== mainConstructor) {
-                methodStructures.push(this.buildStaticFactoryMethodStructure(ctor, recordName, factoryMeta));
-            }
-        }
-    }
-
-    private setupAllocConstructor(record: GirRecord, recordName: string, cls: ClassDeclarationBuilder): void {
-        if (record.fields.length === 0) return;
-
-        this.file.addImport("@gtkx/native", ["isNativeHandle"]);
-        this.file.addTypeImport("../../object.js", ["NativeHandle"]);
-        const structSize = this.fieldBuilder.calculateStructSize(record.fields);
-        this.file.addImport("../../native.js", ["alloc"]);
-
-        const allocFn = record.glibTypeName
-            ? `alloc(${structSize}, "${record.glibTypeName}", "${this.options.sharedLibrary}")`
-            : `alloc(${structSize})`;
-
-        cls.setConstructor(this.buildAllocConstructor(record, recordName, allocFn));
-    }
-
-    private generateConstructors(
-        record: GirRecord,
-        recordName: string,
-        cls: ClassDeclarationBuilder,
-        methodStructures: MethodStructure[],
-    ): void {
-        const { supported: supportedConstructors, main: mainConstructor } = this.methodBody.selectConstructors(
-            record.constructors,
-        );
-
-        if (mainConstructor) {
-            this.setupMainConstructor(
-                record,
-                recordName,
-                cls,
-                mainConstructor,
-                supportedConstructors,
-                methodStructures,
-            );
-        } else {
-            this.setupAllocConstructor(record, recordName, cls);
-        }
-    }
-
     private buildRecordReturnDescriptor(
         meta: RecordTypeMeta,
         ownership: "full" | "borrowed",
@@ -388,85 +268,19 @@ export class RecordGenerator {
         };
     }
 
-    private writeCallExpression(
-        writer: Writer,
-        mainConstructor: GirConstructor,
-        args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
-        meta: RecordTypeMeta,
-    ): void {
-        const ownership: "full" | "borrowed" =
-            mainConstructor.returnType.transferOwnership === "full" ? "full" : "borrowed";
-
-        const returnType = this.buildRecordReturnDescriptor(meta, ownership);
-
-        const callWriter = this.methodBody.buildCallWriter({
-            sharedLibrary: this.options.sharedLibrary,
-            cIdentifier: mainConstructor.cIdentifier,
-            args,
-            returnType,
-        });
-        writer.write("const __handle = ");
-        callWriter(writer);
-        writer.writeLine(" as NativeHandle;");
-    }
-
-    private writeConstructorWithCallOverloaded(
-        firstParamName: string,
-        mainConstructor: GirConstructor,
-        args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
-        meta: RecordTypeMeta,
-    ): (writer: Writer) => void {
-        const shape = this.methodBody.buildShape(mainConstructor.parameters, undefined, 0);
-        const params = this.methodBody.buildSignatureParameters(shape, false);
-        applyForcedNonNullArgs(
-            args,
-            params
-                .slice(1)
-                .filter((p) => !p.optional)
-                .map((p) => p.name),
-        );
-
-        return (writer) => {
-            writeNativeHandleBranch(writer, firstParamName, () => {
-                for (const hidden of shape.hiddenOuts) {
-                    this.methodBody.writeHiddenOutDeclarationFor(writer, hidden);
-                }
-                this.writeCallExpression(writer, mainConstructor, args, meta);
-                writer.writeLine("super(__handle);");
-            });
+    private buildStaticFactoryMethodStructures(record: GirRecord, recordName: string): MethodStructure[] {
+        const { supported: supportedConstructors } = this.methodBody.selectConstructors(record.constructors);
+        const meta: RecordTypeMeta = {
+            glibTypeName: record.glibTypeName,
+            glibGetType: record.glibGetType,
+            copyFunction: record.copyFunction,
+            freeFunction: record.freeFunction,
         };
-    }
-
-    private writeConstructorWithAllocOverloaded(
-        allocFn: string,
-        fields: readonly GirField[],
-    ): (writer: Writer) => void {
-        return (writer) => {
-            writeNativeHandleBranch(writer, "init", () => {
-                writer.writeLine(`const __handle = ${allocFn} as NativeHandle;`);
-                writer.writeLine("super(__handle);");
-                this.fieldBuilder.writeFieldWrites(fields)(writer);
-            });
-        };
-    }
-
-    private writeConstructorWithCallAndInitOverloaded(
-        mainConstructor: GirConstructor,
-        args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
-        meta: RecordTypeMeta,
-        fields: readonly GirField[],
-    ): (writer: Writer) => void {
-        return (writer) => {
-            writeNativeHandleBranch(writer, "init", () => {
-                this.writeCallExpression(writer, mainConstructor, args, meta);
-                writer.writeLine("super(__handle);");
-                this.fieldBuilder.writeFieldWrites(fields)(writer);
-            });
-        };
+        return supportedConstructors.map((ctor) => this.buildStaticFactoryMethodStructure(ctor, recordName, meta));
     }
 
     private buildStaticFactoryMethodStructure(
-        ctor: GirConstructor,
+        ctor: import("@gtkx/gir").GirConstructor,
         recordName: string,
         meta: RecordTypeMeta,
     ): MethodStructure {
@@ -486,7 +300,7 @@ export class RecordGenerator {
     }
 
     private writeStaticFactoryMethodBody(
-        ctor: GirConstructor,
+        ctor: import("@gtkx/gir").GirConstructor,
         recordName: string,
         meta: RecordTypeMeta,
     ): (writer: Writer) => void {

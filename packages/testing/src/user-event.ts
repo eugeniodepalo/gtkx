@@ -96,7 +96,7 @@ const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: numb
     }
 
     const nItems = selectionModel.getNItems();
-    const selected = new Gtk.Bitset();
+    const selected = Gtk.Bitset.newEmpty();
     const mask = Gtk.Bitset.newRange(0, nItems);
 
     for (const pos of positions) {

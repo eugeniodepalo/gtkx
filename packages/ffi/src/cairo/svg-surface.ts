@@ -1,5 +1,6 @@
 import { Surface } from "../generated/cairo/surface.js";
 import { call, t } from "../native.js";
+import { wrapHandle } from "../object.js";
 import { createFileSurface, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";
 import { enumToString, getEnumList } from "./enum-helpers.js";
 
@@ -26,8 +27,9 @@ export class SvgSurface extends Surface {
     declare getDocumentUnit: () => SvgUnit;
     declare restrictToVersion: (version: SvgVersion) => void;
 
-    constructor(filename: string, widthInPoints: number, heightInPoints: number) {
-        super(createFileSurface("cairo_svg_surface_create", filename, widthInPoints, heightInPoints));
+    static create(filename: string, widthInPoints: number, heightInPoints: number): SvgSurface {
+        const handle = createFileSurface("cairo_svg_surface_create", filename, widthInPoints, heightInPoints);
+        return wrapHandle(SvgSurface, handle);
     }
 }
 

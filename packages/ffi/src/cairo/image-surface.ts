@@ -2,22 +2,22 @@ import type { NativeHandle } from "@gtkx/native";
 import type { Format } from "../generated/cairo/enums.js";
 import { Surface } from "../generated/cairo/surface.js";
 import { call, read, t } from "../native.js";
+import { wrapHandle } from "../object.js";
 import { INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class ImageSurface extends Surface {
-    constructor(format: Format, width: number, height: number) {
-        super(
-            call(
-                LIB,
-                "cairo_image_surface_create",
-                [
-                    { type: INT_TYPE, value: format },
-                    { type: INT_TYPE, value: width },
-                    { type: INT_TYPE, value: height },
-                ],
-                SURFACE_T,
-            ) as NativeHandle,
-        );
+    static create(format: Format, width: number, height: number): ImageSurface {
+        const handle = call(
+            LIB,
+            "cairo_image_surface_create",
+            [
+                { type: INT_TYPE, value: format },
+                { type: INT_TYPE, value: width },
+                { type: INT_TYPE, value: height },
+            ],
+            SURFACE_T,
+        ) as NativeHandle;
+        return wrapHandle(ImageSurface, handle);
     }
 
     static createFromPng(filename: string): ImageSurface {

@@ -3,6 +3,7 @@ import type { Extend, Filter, PatternType, Status } from "../generated/cairo/enu
 import { Pattern } from "../generated/cairo/pattern.js";
 import { Surface } from "../generated/cairo/surface.js";
 import { call, t } from "../native.js";
+import { wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import {
     DOUBLE_TYPE,
@@ -34,86 +35,86 @@ declare module "../generated/cairo/pattern.js" {
 }
 
 export class LinearPattern extends Pattern {
-    constructor(x0: number, y0: number, x1: number, y1: number) {
-        super(
-            call(
-                LIB,
-                "cairo_pattern_create_linear",
-                [
-                    { type: DOUBLE_TYPE, value: x0 },
-                    { type: DOUBLE_TYPE, value: y0 },
-                    { type: DOUBLE_TYPE, value: x1 },
-                    { type: DOUBLE_TYPE, value: y1 },
-                ],
-                PATTERN_T,
-            ) as NativeHandle,
-        );
+    static create(x0: number, y0: number, x1: number, y1: number): LinearPattern {
+        const handle = call(
+            LIB,
+            "cairo_pattern_create_linear",
+            [
+                { type: DOUBLE_TYPE, value: x0 },
+                { type: DOUBLE_TYPE, value: y0 },
+                { type: DOUBLE_TYPE, value: x1 },
+                { type: DOUBLE_TYPE, value: y1 },
+            ],
+            PATTERN_T,
+        ) as NativeHandle;
+        return wrapHandle(LinearPattern, handle);
     }
 }
 
 export class RadialPattern extends Pattern {
-    constructor(cx0: number, cy0: number, radius0: number, cx1: number, cy1: number, radius1: number) {
-        super(
-            call(
-                LIB,
-                "cairo_pattern_create_radial",
-                [
-                    { type: DOUBLE_TYPE, value: cx0 },
-                    { type: DOUBLE_TYPE, value: cy0 },
-                    { type: DOUBLE_TYPE, value: radius0 },
-                    { type: DOUBLE_TYPE, value: cx1 },
-                    { type: DOUBLE_TYPE, value: cy1 },
-                    { type: DOUBLE_TYPE, value: radius1 },
-                ],
-                PATTERN_T,
-            ) as NativeHandle,
-        );
+    static create(
+        cx0: number,
+        cy0: number,
+        radius0: number,
+        cx1: number,
+        cy1: number,
+        radius1: number,
+    ): RadialPattern {
+        const handle = call(
+            LIB,
+            "cairo_pattern_create_radial",
+            [
+                { type: DOUBLE_TYPE, value: cx0 },
+                { type: DOUBLE_TYPE, value: cy0 },
+                { type: DOUBLE_TYPE, value: radius0 },
+                { type: DOUBLE_TYPE, value: cx1 },
+                { type: DOUBLE_TYPE, value: cy1 },
+                { type: DOUBLE_TYPE, value: radius1 },
+            ],
+            PATTERN_T,
+        ) as NativeHandle;
+        return wrapHandle(RadialPattern, handle);
     }
 }
 
 export class SurfacePattern extends Pattern {
-    constructor(surface: Surface) {
-        super(
-            call(
-                LIB,
-                "cairo_pattern_create_for_surface",
-                [{ type: SURFACE_T_NONE, value: surface.handle }],
-                PATTERN_T,
-            ) as NativeHandle,
-        );
+    static create(surface: Surface): SurfacePattern {
+        const handle = call(
+            LIB,
+            "cairo_pattern_create_for_surface",
+            [{ type: SURFACE_T_NONE, value: surface.handle }],
+            PATTERN_T,
+        ) as NativeHandle;
+        return wrapHandle(SurfacePattern, handle);
     }
 }
 
 export class SolidPattern extends Pattern {
-    constructor(r: number, g: number, b: number, a?: number) {
-        if (a === undefined) {
-            super(
-                call(
-                    LIB,
-                    "cairo_pattern_create_rgb",
-                    [
-                        { type: DOUBLE_TYPE, value: r },
-                        { type: DOUBLE_TYPE, value: g },
-                        { type: DOUBLE_TYPE, value: b },
-                    ],
-                    PATTERN_T,
-                ) as NativeHandle,
-            );
-        } else {
-            super(
-                call(
-                    LIB,
-                    "cairo_pattern_create_rgba",
-                    [
-                        { type: DOUBLE_TYPE, value: r },
-                        { type: DOUBLE_TYPE, value: g },
-                        { type: DOUBLE_TYPE, value: b },
-                        { type: DOUBLE_TYPE, value: a },
-                    ],
-                    PATTERN_T,
-                ) as NativeHandle,
-            );
-        }
+    static create(r: number, g: number, b: number, a?: number): SolidPattern {
+        const handle =
+            a === undefined
+                ? (call(
+                      LIB,
+                      "cairo_pattern_create_rgb",
+                      [
+                          { type: DOUBLE_TYPE, value: r },
+                          { type: DOUBLE_TYPE, value: g },
+                          { type: DOUBLE_TYPE, value: b },
+                      ],
+                      PATTERN_T,
+                  ) as NativeHandle)
+                : (call(
+                      LIB,
+                      "cairo_pattern_create_rgba",
+                      [
+                          { type: DOUBLE_TYPE, value: r },
+                          { type: DOUBLE_TYPE, value: g },
+                          { type: DOUBLE_TYPE, value: b },
+                          { type: DOUBLE_TYPE, value: a },
+                      ],
+                      PATTERN_T,
+                  ) as NativeHandle);
+        return wrapHandle(SolidPattern, handle);
     }
 }
 
@@ -241,8 +242,9 @@ declare module "../generated/cairo/pattern.js" {
 }
 
 export class MeshPattern extends Pattern {
-    constructor() {
-        super(call(LIB, "cairo_pattern_create_mesh", [], PATTERN_T) as NativeHandle);
+    static create(): MeshPattern {
+        const handle = call(LIB, "cairo_pattern_create_mesh", [], PATTERN_T) as NativeHandle;
+        return wrapHandle(MeshPattern, handle);
     }
 }
 

@@ -352,7 +352,7 @@ export const imageCreateForData = (
     height: number,
     stride: number,
 ): ImageSurface => {
-    const surface = new ImageSurface(format, width, height);
+    const surface = ImageSurface.create(format, width, height);
     surface.flush();
     const actualStride = surface.getStride();
     const ptr = call(

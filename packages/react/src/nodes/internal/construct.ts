@@ -1,84 +1,27 @@
-import type { Type } from "@gtkx/ffi";
-import { Object as GObject, typeFromName, typeName, typeParent, Value } from "@gtkx/ffi/gobject";
-import { CONSTRUCTION_META } from "../../generated/internal.js";
+import { findNativeClass } from "@gtkx/ffi";
+import { typeFromName } from "@gtkx/ffi/gobject";
 import type { Container, Props } from "../../types.js";
 
-type ConstructionPropMeta = {
-    girName: string;
-    ffiType: Type;
-    constructOnly?: true;
-};
-
-const chainCache = new Map<number, readonly string[]>();
-
-function buildTypeNameChain(gtype: number): readonly string[] {
-    const cached = chainCache.get(gtype);
-    if (cached) return cached;
-
-    const chain: string[] = [];
-    let current = gtype;
-    while (current !== 0) {
-        const name = typeName(current);
-        if (!name) break;
-        chain.push(name);
-        current = typeParent(current);
-    }
-
-    chainCache.set(gtype, chain);
-    return chain;
-}
-
-function collectMetaPropsForType(
-    meta: Record<string, ConstructionPropMeta>,
-    props: Props,
-    seen: Set<string>,
-    result: Array<{ girName: string; ffiType: Type; value: unknown }>,
-): void {
-    for (const [camelName, propMeta] of Object.entries(meta)) {
-        if (seen.has(camelName)) continue;
-        seen.add(camelName);
-        if (props[camelName] !== undefined) {
-            result.push({
-                girName: propMeta.girName,
-                ffiType: propMeta.ffiType,
-                value: props[camelName],
-            });
-        }
-    }
-}
-
-function collectConstructionProps(
-    typeNameChain: readonly string[],
-    props: Props,
-): Array<{ girName: string; ffiType: Type; value: unknown }> {
-    const result: Array<{ girName: string; ffiType: Type; value: unknown }> = [];
-    const seen = new Set<string>();
-
-    for (const name of typeNameChain) {
-        const meta: Record<string, ConstructionPropMeta> | undefined = CONSTRUCTION_META[name];
-        if (meta) {
-            collectMetaPropsForType(meta, props, seen, result);
-        }
-    }
-
-    return result;
-}
-
+/**
+ * Instantiates a container widget from the React reconciler.
+ *
+ * Resolves the GLib type by name, looks up the registered wrapper class,
+ * and constructs it via the generic `NativeObject` constructor. The
+ * constructor walks the JS prototype chain to merge inherited props from
+ * the construction-meta registry.
+ *
+ * @param typeName - GLib type name (e.g. `"GtkLabel"`)
+ * @param props - React prop bag; only construct-time properties are picked
+ *   up, all others are ignored at construction
+ */
 export function createContainerWithProperties(typeName: string, props: Props): Container {
     const gtype = typeFromName(typeName);
     if (gtype === 0) {
         throw new Error(`createContainerWithProperties: unknown GLib type '${typeName}'`);
     }
-    const chain = buildTypeNameChain(gtype);
-    const constructionProps = collectConstructionProps(chain, props);
-
-    const names: string[] = [];
-    const values: Value[] = [];
-
-    for (const { girName, ffiType, value } of constructionProps) {
-        names.push(girName);
-        values.push(Value.newFrom(ffiType, value));
+    const cls = findNativeClass(gtype);
+    if (!cls) {
+        throw new Error(`createContainerWithProperties: no registered class for GLib type '${typeName}'`);
     }
-
-    return GObject.newWithProperties(gtype, names, values) as unknown as Container;
+    return new (cls as new (props: Props) => Container)(props);
 }

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const SCHEMA_ID = "com.gtkx.test.useSetting";
 
 const resetKey = (key: string, fallback: () => void): void => {
-    const settings = new Gio.Settings(SCHEMA_ID);
+    const settings = Gio.Settings.new(SCHEMA_ID);
     if (settings.isWritable(key)) {
         settings.reset(key);
     } else {
@@ -89,7 +89,7 @@ describe("useSetting", () => {
         resetKey("count", () => {});
         const { result } = await renderHook(() => useSetting(SCHEMA_ID, "count", "int"));
 
-        const settings = new Gio.Settings(SCHEMA_ID);
+        const settings = Gio.Settings.new(SCHEMA_ID);
         settings.setInt("count", 99);
 
         await waitFor(() => {
@@ -103,7 +103,7 @@ describe("useSetting", () => {
 
         await unmount();
 
-        const settings = new Gio.Settings(SCHEMA_ID);
+        const settings = Gio.Settings.new(SCHEMA_ID);
         settings.setInt("count", 7);
 
         await new Promise((resolve) => setTimeout(resolve, 50));

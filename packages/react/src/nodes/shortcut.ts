@@ -50,11 +50,11 @@ export class ShortcutNode extends VirtualNode<ShortcutProps, EventControllerNode
 
     private createShortcut(): void {
         const trigger = this.createTrigger();
-        this.action = new Gtk.CallbackAction(() => {
+        this.action = Gtk.CallbackAction.new(() => {
             const result = this.props.onActivate();
             return result !== false;
         });
-        this.shortcut = new Gtk.Shortcut(trigger, this.action);
+        this.shortcut = Gtk.Shortcut.new(trigger, this.action);
     }
 
     private applyOwnProps(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
@@ -79,9 +79,9 @@ export class ShortcutNode extends VirtualNode<ShortcutProps, EventControllerNode
 
         const [first, ...rest] = triggers;
         if (first === undefined) return Gtk.NeverTrigger.get();
-        let result: Gtk.ShortcutTrigger = new Gtk.ShortcutTrigger(first);
+        let result: Gtk.ShortcutTrigger = Gtk.ShortcutTrigger.parseString(first);
         for (const next of rest) {
-            result = new Gtk.AlternativeTrigger(result, new Gtk.ShortcutTrigger(next));
+            result = Gtk.AlternativeTrigger.new(result, Gtk.ShortcutTrigger.parseString(next));
         }
         return result;
     }

@@ -6,7 +6,7 @@ import "../../src/gobject/value.js";
 
 describe("Object.setProperty / getProperty auto-marshalling", () => {
     it("round-trips a string property through pspec lookup", () => {
-        const label = new Gtk.Label("");
+        const label = new Gtk.Label({ label: "" });
         label.setProperty("label", "hello");
         expect(label.getProperty("label")).toBe("hello");
     });
@@ -32,7 +32,7 @@ describe("Object.setProperty / getProperty auto-marshalling", () => {
     });
 
     it("round-trips a double property", () => {
-        const adjustment = new Gtk.Adjustment(0, 0, 1, 0.1, 0.1, 0);
+        const adjustment = Gtk.Adjustment.new(0, 0, 1, 0.1, 0.1, 0);
         adjustment.setProperty("value", 0.75);
         expect(adjustment.getProperty("value") as number).toBeCloseTo(0.75);
     });

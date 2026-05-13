@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { alloc, call, type NativeHandle } from "../../index.js";
+import { alloc, call, getNativeId, type NativeHandle } from "../../index.js";
 import { GDK_LIB, GTK_LIB } from "./utils.js";
 
-describe("NativeHandle.id", () => {
+describe("getNativeId", () => {
     it("returns a number identifier for a GObject", () => {
         const label = call(
             GTK_LIB,
@@ -14,13 +14,13 @@ describe("NativeHandle.id", () => {
             },
         ) as NativeHandle;
 
-        expect(typeof label.id).toBe("number");
+        expect(typeof getNativeId(label)).toBe("number");
     });
 
     it("returns a number identifier for a boxed type", () => {
         const rgba = alloc(16, "GdkRGBA", GDK_LIB);
 
-        expect(typeof rgba.id).toBe("number");
+        expect(typeof getNativeId(rgba)).toBe("number");
     });
 
     it("returns consistent id for the same object", () => {
@@ -34,7 +34,7 @@ describe("NativeHandle.id", () => {
             },
         ) as NativeHandle;
 
-        expect(label.id).toBe(label.id);
+        expect(getNativeId(label)).toBe(getNativeId(label));
     });
 
     it("returns different ids for different objects", () => {
@@ -51,7 +51,7 @@ describe("NativeHandle.id", () => {
             { type: "gobject", ownership: "borrowed" },
         ) as NativeHandle;
 
-        expect(label1.id).not.toBe(label2.id);
+        expect(getNativeId(label1)).not.toBe(getNativeId(label2));
     });
 
     it("can be used as a Map key", () => {
@@ -66,8 +66,8 @@ describe("NativeHandle.id", () => {
         ) as NativeHandle;
 
         const map = new Map<number, string>();
-        map.set(label.id, "label-value");
+        map.set(getNativeId(label), "label-value");
 
-        expect(map.get(label.id)).toBe("label-value");
+        expect(map.get(getNativeId(label))).toBe("label-value");
     });
 });

@@ -246,7 +246,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
         const props = this.props as AdwTimedAnimationProps;
         const duration = props.duration ?? DEFAULT_TIMED_DURATION;
 
-        const animation = new Adw.TimedAnimation(widget, 0, 1, duration, target);
+        const animation = Adw.TimedAnimation.new(widget, 0, 1, duration, target);
 
         if (props.easing !== undefined) {
             animation.setEasing(props.easing);
@@ -273,8 +273,8 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
         const mass = props.mass ?? DEFAULT_SPRING_MASS;
         const stiffness = props.stiffness ?? DEFAULT_SPRING_STIFFNESS;
 
-        const springParams = new Adw.SpringParams(damping, mass, stiffness);
-        const animation = new Adw.SpringAnimation(widget, 0, 1, springParams, target);
+        const springParams = Adw.SpringParams.new(damping, mass, stiffness);
+        const animation = Adw.SpringAnimation.new(widget, 0, 1, springParams, target);
 
         if (props.initialVelocity !== undefined) {
             animation.setInitialVelocity(props.initialVelocity);

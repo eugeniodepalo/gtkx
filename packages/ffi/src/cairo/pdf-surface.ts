@@ -1,5 +1,6 @@
 import { Surface } from "../generated/cairo/surface.js";
 import { call, t } from "../native.js";
+import { wrapHandle } from "../object.js";
 import { createFileSurface, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";
 import { enumToString, getEnumList } from "./enum-helpers.js";
 
@@ -31,8 +32,12 @@ export class PdfSurface extends Surface {
     declare restrictToVersion: (version: PdfVersion) => void;
     declare addOutline: (parentId: number, name: string, linkAttribs: string, flags: PdfOutlineFlags) => number;
 
-    constructor(filename: string, widthInPoints: number, heightInPoints: number) {
-        super(createFileSurface("cairo_pdf_surface_create", filename, widthInPoints, heightInPoints));
+    /**
+     * Creates a PDF surface that writes its output to the given filename.
+     */
+    static create(filename: string, widthInPoints: number, heightInPoints: number): PdfSurface {
+        const handle = createFileSurface("cairo_pdf_surface_create", filename, widthInPoints, heightInPoints);
+        return wrapHandle(PdfSurface, handle);
     }
 
     setSize(widthInPoints: number, heightInPoints: number): void {

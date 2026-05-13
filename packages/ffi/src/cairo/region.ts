@@ -3,6 +3,7 @@ import type { RegionOverlap, Status } from "../generated/cairo/enums.js";
 import { RectangleInt } from "../generated/cairo/rectangle-int.js";
 import { Region } from "../generated/cairo/region.js";
 import { alloc, call, t, write } from "../native.js";
+import { wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import { INT_TYPE, LIB, RECT_INT_T, REGION_T, REGION_T_NONE } from "./common.js";
 
@@ -30,26 +31,24 @@ declare module "../generated/cairo/region.js" {
 }
 
 class RegionImpl extends Region {
-    constructor();
-    constructor(rect: RectangleInt);
-    constructor(rect?: RectangleInt) {
-        if (rect) {
-            super(
-                call(
-                    LIB,
-                    "cairo_region_create_rectangle",
-                    [{ type: RECT_INT_T, value: rect.handle }],
-                    REGION_T,
-                ) as NativeHandle,
-            );
-        } else {
-            super(call(LIB, "cairo_region_create", [], REGION_T) as NativeHandle);
-        }
+    static empty(): Region {
+        const handle = call(LIB, "cairo_region_create", [], REGION_T) as NativeHandle;
+        return wrapHandle(RegionImpl, handle);
+    }
+
+    static forRectangle(rect: RectangleInt): Region {
+        const handle = call(
+            LIB,
+            "cairo_region_create_rectangle",
+            [{ type: RECT_INT_T, value: rect.handle }],
+            REGION_T,
+        ) as NativeHandle;
+        return wrapHandle(RegionImpl, handle);
     }
 
     static createRectangles(rects: Array<{ x: number; y: number; width: number; height: number }>): Region {
         if (rects.length === 0) {
-            return new RegionImpl();
+            return RegionImpl.empty();
         }
         const buf = alloc(rects.length * 16, "cairo_rectangle_int_t[]", LIB);
         let offset = 0;

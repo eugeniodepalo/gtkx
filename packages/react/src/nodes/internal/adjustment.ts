@@ -19,7 +19,7 @@ export class AdjustmentController {
 
     apply(oldProps: AdjustableProps | null, newProps: AdjustableProps): Gtk.Adjustment {
         if (!this.adjustment) {
-            this.adjustment = new Gtk.Adjustment(
+            this.adjustment = Gtk.Adjustment.new(
                 newProps.value ?? 0,
                 newProps.lower ?? 0,
                 newProps.upper ?? 100,

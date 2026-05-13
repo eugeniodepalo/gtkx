@@ -11,7 +11,7 @@ const FILE_ERROR_NOENT = 5;
 
 describe("NativeError", () => {
     it("extends Error", () => {
-        const gerror = new GError(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
+        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
         const error = new NativeError(gerror);
 
         expect(error).toBeInstanceOf(Error);
@@ -19,21 +19,21 @@ describe("NativeError", () => {
     });
 
     it("exposes the GError instance through the `gerror` property", () => {
-        const gerror = new GError(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
+        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
         const error = new NativeError(gerror);
 
         expect(error.gerror).toBe(gerror);
     });
 
     it("sets the error name to NativeError", () => {
-        const gerror = new GError(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
+        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
         const error = new NativeError(gerror);
 
         expect(error.name).toBe("NativeError");
     });
 
     it("uses the GError message for the Error message", () => {
-        const gerror = new GError(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
+        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
         const error = new NativeError(gerror);
 
         expect(error.message).toBe("missing file");
@@ -47,21 +47,21 @@ describe("NativeError", () => {
     });
 
     it("returns the GError domain from getDomain()", () => {
-        const gerror = new GError(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
+        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
         const error = new NativeError(gerror);
 
         expect(error.getDomain()).toBe(FILE_ERROR_DOMAIN);
     });
 
     it("returns the GError code from getCode()", () => {
-        const gerror = new GError(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
+        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
         const error = new NativeError(gerror);
 
         expect(error.getCode()).toBe(FILE_ERROR_NOENT);
     });
 
     it("captures a stack trace pointing past the NativeError constructor", () => {
-        const gerror = new GError(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
+        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
         const error = new NativeError(gerror);
 
         expect(typeof error.stack).toBe("string");
@@ -84,7 +84,7 @@ describe("instanceIsA", () => {
     });
 
     it("returns false when the instance does not derive from the requested GType", () => {
-        const label = new Gtk.Label("Test");
+        const label = new Gtk.Label({ label: "Test" });
 
         expect(instanceIsA(label.handle, orientableGType())).toBe(false);
     });
@@ -105,7 +105,7 @@ describe("getNativeInterface", () => {
     });
 
     it("returns null when object does not implement the interface", () => {
-        const label = new Gtk.Label("Test");
+        const label = new Gtk.Label({ label: "Test" });
         const orientable = getNativeInterface(label, Gtk.Orientable, orientableGType());
         expect(orientable).toBeNull();
     });

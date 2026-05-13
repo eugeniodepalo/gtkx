@@ -1,6 +1,6 @@
-import { getInstanceGType, type NativeHandle } from "@gtkx/native";
+import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import { typeParent } from "./generated/gobject/functions.js";
-import type { NativeClass, NativeObject } from "./object.js";
+import { type NativeClass, type NativeObject, wrapHandle } from "./object.js";
 
 const classRegistry = new Map<number, NativeClass>();
 
@@ -80,7 +80,7 @@ const cleanupObjectRegistry = new FinalizationRegistry<number>((pointerId) => {
  * @param obj - The native object wrapper to register
  */
 export function registerNativeObject(obj: NativeObject): void {
-    const pointerId = obj.handle.id;
+    const pointerId = getNativeId(obj.handle);
     objectRegistry.set(pointerId, new WeakRef(obj));
     cleanupObjectRegistry.register(obj, pointerId, obj);
 }
@@ -96,7 +96,7 @@ export function registerNativeObject(obj: NativeObject): void {
  * @returns The existing wrapper, or null if not found
  */
 export function findNativeObject(handle: NativeHandle): NativeObject | null {
-    const pointerId = handle.id;
+    const pointerId = getNativeId(handle);
     const ref = objectRegistry.get(pointerId);
 
     if (!ref) return null;
@@ -110,12 +110,6 @@ export function findNativeObject(handle: NativeHandle): NativeObject | null {
     return obj;
 }
 
-/** @internal */
-type GetNativeObjectResult<
-    T extends NativeHandle | null | undefined,
-    TClass extends NativeClass | undefined,
-> = T extends null | undefined ? null : TClass extends NativeClass<infer U> ? U : NativeObject;
-
 /**
  * Creates a JavaScript wrapper for a native handle.
  *
@@ -126,12 +120,6 @@ type GetNativeObjectResult<
  * type and reuses the registered wrapper instance, preserving object
  * identity (`===`) for shared GObject pointers.
  *
- * @typeParam T - The handle type (null, undefined, or NativeHandle)
- * @typeParam TClass - Optional target wrapper class type
- * @param handle - The native handle (or null/undefined)
- * @param targetType - Optional wrapper class to use directly
- * @returns A wrapper instance, or null if handle is null/undefined
- *
  * @example
  * ```tsx
  * // Automatic type resolution (identity-tracked GObject)
@@ -141,22 +129,33 @@ type GetNativeObjectResult<
  * const rgba = getNativeObject(rgbaHandle, Gdk.RGBA);
  * ```
  */
-export function getNativeObject<
-    T extends NativeHandle | null | undefined,
-    TClass extends NativeClass | undefined = undefined,
->(handle: T, targetType?: TClass): GetNativeObjectResult<T, TClass> {
-    type Result = GetNativeObjectResult<T, TClass>;
-
+// biome-ignore lint/suspicious/noExplicitAny: matches NativeClass's bound to keep TProps inference working across abstract subclasses.
+export function getNativeObject<T extends NativeObject<any>>(
+    handle: NativeHandle,
+    targetType: NativeClass<T>,
+): T;
+// biome-ignore lint/suspicious/noExplicitAny: matches NativeClass's bound to keep TProps inference working across abstract subclasses.
+export function getNativeObject<T extends NativeObject<any>>(
+    handle: NativeHandle | null | undefined,
+    targetType: NativeClass<T>,
+): T | null;
+export function getNativeObject(handle: null | undefined): null;
+export function getNativeObject(handle: NativeHandle): NativeObject;
+export function getNativeObject(handle: NativeHandle | null | undefined): NativeObject | null;
+export function getNativeObject(
+    handle: NativeHandle | null | undefined,
+    targetType?: NativeClass,
+): NativeObject | null {
     if (handle === null || handle === undefined) {
-        return null as Result;
+        return null;
     }
 
     if (targetType) {
-        return new targetType(handle) as Result;
+        return wrapHandle(targetType, handle);
     }
 
     const existing = findNativeObject(handle);
-    if (existing) return existing as Result;
+    if (existing) return existing;
 
     const runtimeGtype = getInstanceGType(handle);
     if (runtimeGtype === 0) {
@@ -167,9 +166,9 @@ export function getNativeObject<
         throw new Error(`Expected registered GLib type, got gtype ${runtimeGtype}`);
     }
 
-    const instance = new cls(handle);
+    const instance = wrapHandle(cls, handle);
     registerNativeObject(instance);
-    return instance as Result;
+    return instance;
 }
 
 /**
@@ -203,7 +202,7 @@ export function getNativeObjectAsInterface<T extends NativeHandle | null | undef
         throw new Error("Cannot resolve runtime GLib type from handle");
     }
     const cls = findNativeClass(runtimeGtype, false) ?? interfaceClass;
-    const instance = new cls(handle);
+    const instance = wrapHandle(cls, handle);
     registerNativeObject(instance);
     return instance as Result;
 }

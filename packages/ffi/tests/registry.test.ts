@@ -21,7 +21,7 @@ describe("registerNativeClass", () => {
     });
 
     it("allows getNativeObject to find registered types", () => {
-        const label = new Gtk.Label("Test");
+        const label = new Gtk.Label({ label: "Test" });
         const wrapped = getNativeObject(label.handle);
         expect(wrapped).toBeInstanceOf(Gtk.Label);
     });
@@ -58,7 +58,7 @@ describe("findNativeClass", () => {
 
 describe("getNativeObject", () => {
     it("wraps a native pointer in a class instance", () => {
-        const label = new Gtk.Label("Test");
+        const label = new Gtk.Label({ label: "Test" });
         const wrapped = getNativeObject(label.handle);
         expect(wrapped).toBeInstanceOf(Gtk.Label);
     });

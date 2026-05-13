@@ -35,7 +35,7 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         layout.addConstraint(
-            new Gtk.Constraint(
+            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.START,
                 Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.START,
@@ -48,7 +48,7 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         layout.addConstraint(
-            new Gtk.Constraint(
+            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.END,
                 Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.START,
@@ -61,7 +61,7 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         layout.addConstraint(
-            new Gtk.Constraint(
+            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.START,
                 Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.END,
@@ -74,7 +74,7 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         layout.addConstraint(
-            new Gtk.Constraint(
+            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.END,
                 Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.END,
@@ -87,7 +87,7 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         layout.addConstraint(
-            new Gtk.Constraint(
+            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.START,
                 Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.START,
@@ -100,7 +100,7 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         layout.addConstraint(
-            new Gtk.Constraint(
+            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.END,
                 Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.START,
@@ -113,7 +113,7 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         layout.addConstraint(
-            new Gtk.Constraint(
+            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.TOP,
                 Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.TOP,
@@ -126,7 +126,7 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         layout.addConstraint(
-            new Gtk.Constraint(
+            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.TOP,
                 Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.BOTTOM,
@@ -139,7 +139,7 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         layout.addConstraint(
-            new Gtk.Constraint(
+            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.TOP,
                 Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.BOTTOM,
@@ -152,7 +152,7 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         layout.addConstraint(
-            new Gtk.Constraint(
+            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.BOTTOM,
                 Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.BOTTOM,

@@ -12,6 +12,8 @@ export type ClassOptions = {
     extends?: string;
     abstract?: boolean;
     doc?: string;
+    /** Generic type parameters, e.g. `<TProps extends LabelProps = LabelProps>`. */
+    typeParams?: string;
 };
 
 /** Builder that emits a class declaration with properties, constructor, and methods. */
@@ -56,6 +58,9 @@ export class ClassDeclarationBuilder implements Builder {
         if (this.opts.exported) writer.write("export ");
         if (this.opts.abstract) writer.write("abstract ");
         writer.write(`class ${this.name}`);
+        if (this.opts.typeParams) {
+            writer.write(this.opts.typeParams);
+        }
         if (this.opts.extends) {
             writer.write(` extends ${this.opts.extends}`);
         }

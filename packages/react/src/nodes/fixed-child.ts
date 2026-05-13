@@ -52,7 +52,7 @@ export class FixedChildNode extends AttachOnParentVirtualNode<FixedChildProps, W
         const position = new Graphene.Point();
         position.init(x, y);
 
-        let transform: Gsk.Transform | null = new Gsk.Transform();
+        let transform: Gsk.Transform | null = Gsk.Transform.new();
         transform = transform.translate(position);
 
         if (this.props.transform && transform) {

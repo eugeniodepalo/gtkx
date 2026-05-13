@@ -117,7 +117,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     }
 
     private setupColumn(props: ColumnViewColumnProps): void {
-        this.column = new Gtk.ColumnViewColumn(props.title, this.columnFactory);
+        this.column = Gtk.ColumnViewColumn.new(props.title, this.columnFactory);
         this.column.setId(props.id);
 
         if (props.expand !== undefined) this.column.setExpand(props.expand);
