@@ -96,7 +96,18 @@ export const toValidIdentifier = (str: string): string => {
 
 export const CLASS_RENAMES = new Map<string, string>();
 
+/**
+ * HarfBuzz publishes every public type in lowercase `snake_case_t` form
+ * (e.g. `font_t`, `feature_t`, `aat_layout_feature_selector_t`), and the
+ * ts-for-gir-published `.d.ts` contract preserves that shape verbatim. Names
+ * that already end with the `_t` suffix are kept as-is so cross-namespace
+ * references like `HarfBuzz.font_t` resolve against the gtkx-published
+ * exports.
+ */
 export const normalizeClassName = (name: string): string => {
+    if (name.endsWith("_t") && /^[a-z][a-z0-9_]*_t$/.test(name)) {
+        return CLASS_RENAMES.get(name) ?? name;
+    }
     const pascalName = toPascalCase(name);
     return CLASS_RENAMES.get(pascalName) ?? pascalName;
 };
