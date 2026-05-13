@@ -897,13 +897,13 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const { sortColumn, sortOrder } = props;
 
         if (sortColumn === null || sortColumn === undefined) {
-            columnView.sortByColumn(Gtk.SortType.ASCENDING, null);
+            columnView.sortByColumn(null, Gtk.SortType.ASCENDING);
             return;
         }
 
         const column = this.findColumnById(sortColumn);
         if (column) {
-            columnView.sortByColumn(sortOrder ?? Gtk.SortType.ASCENDING, column);
+            columnView.sortByColumn(column, sortOrder ?? Gtk.SortType.ASCENDING);
         }
     }
 

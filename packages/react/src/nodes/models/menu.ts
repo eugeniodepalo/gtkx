@@ -112,7 +112,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
             this.signalStore.set(this, this.action, "activate", null);
         }
 
-        this.action = Gio.SimpleAction.new(this.getId());
+        this.action = Gio.SimpleAction.new(this.getId(), null);
         this.signalStore.set(this, this.action, "activate", this.getOnActivate());
         this.getActionMap().addAction(this.action);
 
@@ -140,7 +140,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
     private findPositionIn(parentMenu: Gio.Menu): number {
         for (let i = 0; i < parentMenu.getNItems(); i++) {
             if (this.type === "item") {
-                const actionName = parentMenu.getItemAttributeValue(i, "action")?.getString()[0];
+                const actionName = parentMenu.getItemAttributeValue(i, "action", null)?.getString()[0];
 
                 if (actionName === this.getActionName()) {
                     return i;
@@ -190,14 +190,14 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
         switch (this.type) {
             case "item": {
-                parentMenu.insert(beforePosition, this.props.label, this.getActionName());
+                parentMenu.insert(beforePosition, this.props.label ?? null, this.getActionName());
                 break;
             }
             case "section":
-                parentMenu.insertSection(beforePosition, this.menu, this.props.label);
+                parentMenu.insertSection(beforePosition, this.props.label ?? null, this.menu);
                 break;
             case "submenu":
-                parentMenu.insertSubmenu(beforePosition, this.menu, this.props.label);
+                parentMenu.insertSubmenu(beforePosition, this.props.label ?? null, this.menu);
                 break;
         }
     }
@@ -211,13 +211,13 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
         switch (this.type) {
             case "item":
-                parentMenu.append(this.props.label, this.getActionName());
+                parentMenu.append(this.props.label ?? null, this.getActionName());
                 break;
             case "section":
-                parentMenu.appendSection(this.menu, this.props.label);
+                parentMenu.appendSection(this.props.label ?? null, this.menu);
                 break;
             case "submenu":
-                parentMenu.appendSubmenu(this.menu, this.props.label);
+                parentMenu.appendSubmenu(this.props.label ?? null, this.menu);
                 break;
         }
     }
@@ -298,9 +298,9 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
                 parentMenu.remove(position);
 
                 if (this.type === "section") {
-                    parentMenu.insertSection(position, this.menu, this.props.label);
+                    parentMenu.insertSection(position, this.props.label ?? null, this.menu);
                 } else if (this.type === "submenu") {
-                    parentMenu.insertSubmenu(position, this.menu, this.props.label);
+                    parentMenu.insertSubmenu(position, this.props.label ?? null, this.menu);
                 }
             }
         }

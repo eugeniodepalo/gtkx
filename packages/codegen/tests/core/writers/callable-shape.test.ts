@@ -557,7 +557,7 @@ describe("buildCallableShape — return tuple", () => {
         ]);
     });
 
-    it("reorders signature params so optional ones come last", () => {
+    it("preserves GIR parameter order in the signature without reordering", () => {
         const required = makeParam({ name: "first", typeName: "gint" });
         const opt = makeParam({ name: "second", typeName: "gint", optional: true });
         const mapper = new FakeFfiMapper()
@@ -572,7 +572,8 @@ describe("buildCallableShape — return tuple", () => {
             ffiMapper: mapper.asMapper(),
         });
 
-        expect(shape.signatureParams.map((p) => p.name)).toEqual(["first", "second"]);
+        expect(shape.signatureParams.map((p) => p.name)).toEqual(["second", "first"]);
+        expect(shape.signatureParams.find((p) => p.name === "second")?.optional).toBeFalsy();
     });
 });
 

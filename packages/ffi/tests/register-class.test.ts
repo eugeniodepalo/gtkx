@@ -97,7 +97,7 @@ describe("registerClass", () => {
         const name = uniqueName("GtkxPropertySubclass");
         class CustomObject extends GObject {}
 
-        const pspec = paramSpecString("custom-prop", ParamFlags.READWRITE, "Custom Prop", "Custom property", "default");
+        const pspec = paramSpecString("custom-prop", "Custom Prop", "Custom property", "default", ParamFlags.READWRITE);
         registerClass(CustomObject, gObjectGType(), {
             gtypeName: name,
             properties: [{ pspec }],
@@ -114,8 +114,8 @@ describe("registerClass", () => {
         const name = uniqueName("GtkxMultiPropertySubclass");
         class CustomObject extends GObject {}
 
-        const stringSpec = paramSpecString("first", ParamFlags.READWRITE, null, null, null);
-        const booleanSpec = paramSpecBoolean("second", false, ParamFlags.READWRITE, null, null);
+        const stringSpec = paramSpecString("first", null, null, null, ParamFlags.READWRITE);
+        const booleanSpec = paramSpecBoolean("second", null, null, false, ParamFlags.READWRITE);
         registerClass(CustomObject, gObjectGType(), {
             gtypeName: name,
             properties: [{ pspec: stringSpec }, { pspec: booleanSpec }],
@@ -214,7 +214,7 @@ describe("registerClass", () => {
         class CustomObject extends GObject {}
 
         const setCalls: string[] = [];
-        const pspec = paramSpecString("dispatched-prop", ParamFlags.READWRITE, null, null, null);
+        const pspec = paramSpecString("dispatched-prop", null, null, null, ParamFlags.READWRITE);
         registerClass(CustomObject, gObjectGType(), {
             gtypeName: name,
             properties: [{ pspec }],

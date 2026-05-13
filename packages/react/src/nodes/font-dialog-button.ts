@@ -63,11 +63,11 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
         }
 
         if (hasChanged(oldProps, newProps, "filter")) {
-            this.dialog.setFilter(newProps.filter);
+            this.dialog.setFilter(newProps.filter ?? null);
         }
 
         if (hasChanged(oldProps, newProps, "fontMap")) {
-            this.dialog.setFontMap(newProps.fontMap);
+            this.dialog.setFontMap(newProps.fontMap ?? null);
         }
 
         if (hasChanged(oldProps, newProps, "useFont")) {

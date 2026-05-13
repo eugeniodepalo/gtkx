@@ -93,16 +93,16 @@ export class StackPageNode extends SingleChildVirtualNode<StackPageProps, Widget
 
         if (parent instanceof Adw.ViewStack) {
             if (this.props.title && this.props.iconName) {
-                page = parent.addTitledWithIcon(child, this.props.title, this.props.iconName, this.props.id);
+                page = parent.addTitledWithIcon(child, this.props.id ?? null, this.props.title, this.props.iconName);
             } else if (this.props.title) {
-                page = parent.addTitled(child, this.props.title, this.props.id);
+                page = parent.addTitled(child, this.props.id ?? null, this.props.title);
             } else if (this.props.id) {
                 page = parent.addNamed(child, this.props.id);
             } else {
                 page = parent.add(child);
             }
         } else if (this.props.title) {
-            page = parent.addTitled(child, this.props.title, this.props.id);
+            page = parent.addTitled(child, this.props.id ?? null, this.props.title);
         } else if (this.props.id) {
             page = parent.addNamed(child, this.props.id);
         } else {

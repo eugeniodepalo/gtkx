@@ -345,7 +345,7 @@ describe("MethodBodyWriter", () => {
             expect(result[1].type).toBe("number");
         });
 
-        it("marks nullable parameters as optional", () => {
+        it("marks nullable parameters as required with a nullable type", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const params = [
@@ -358,7 +358,7 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildParameterList(params);
 
-            expect(result[0].optional).toBe(true);
+            expect(result[0].optional).toBeFalsy();
             expect(result[0].type).toBe("string | null");
         });
 
@@ -379,7 +379,7 @@ describe("MethodBodyWriter", () => {
             expect(result[0].type).toBe("string");
         });
 
-        it("reorders optional parameters to the end", () => {
+        it("preserves GIR parameter order even when a nullable param precedes a required one", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const params = [
@@ -396,10 +396,11 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildParameterList(params);
 
-            expect(result[0].name).toBe("requiredParam");
-            expect(result[0].optional).toBe(false);
-            expect(result[1].name).toBe("optionalParam");
-            expect(result[1].optional).toBe(true);
+            expect(result[0].name).toBe("optionalParam");
+            expect(result[0].optional).toBeFalsy();
+            expect(result[0].type).toBe("string | null");
+            expect(result[1].name).toBe("requiredParam");
+            expect(result[1].optional).toBeFalsy();
         });
 
         it("converts varargs to rest parameter", () => {
@@ -477,7 +478,7 @@ describe("MethodBodyWriter", () => {
             expect(args[0].value).toBe("myLabel");
         });
 
-        it("marks nullable parameters as optional", () => {
+        it("does not mark nullable parameters as optional in call arguments", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const params = [
@@ -490,7 +491,7 @@ describe("MethodBodyWriter", () => {
 
             const args = writer.buildCallArgumentsArray(params);
 
-            expect(args[0].optional).toBe(true);
+            expect(args[0].optional).toBeFalsy();
         });
     });
 

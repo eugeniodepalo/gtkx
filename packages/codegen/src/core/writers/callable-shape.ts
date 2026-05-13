@@ -401,6 +401,13 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
         tupleOuts: [],
     };
 
+    const trailingOptional = new Set<number>();
+    for (let i = filteredParams.length - 1; i >= 0; i--) {
+        const param = filteredParams[i];
+        if (!param || !param.optional) break;
+        trailingOptional.add(i);
+    }
+
     filteredParams.forEach((param, girIndex) => {
         const mapped = ffiMapper.mapParameter(param, sizeParamOffset);
         acc.imports.push(...mapped.imports);
@@ -417,13 +424,17 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
             mapped,
             jsName: toValidIdentifier(toCamelCase(param.name)),
             isNullable: param.nullable,
-            isOptional: param.optional || param.nullable,
+            isOptional: trailingOptional.has(girIndex),
             isOut,
             isInout: param.direction === "inout",
             isLengthParam: lengthIndices.has(girIndex),
             isOpaqueCallerAllocates: isOpaque,
             isCallerAllocatesStruct: isOut && param.callerAllocates && isBoxedOrStructFfi(mapped.ffi) && !isOpaque,
-            tsType: formatNullableType(mapped.ts, param.nullable, mapped.ffi.type === "callback"),
+            tsType: formatNullableType(
+                mapped.ts,
+                param.nullable,
+                mapped.ffi.type === "callback" || mapped.ffi.type === "trampoline",
+            ),
         };
 
         if (!ctx.isOut) {
@@ -434,8 +445,6 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
     });
 
     const { imports, paramMappings, signatureParams, hiddenOuts, callArgs, tupleOuts } = acc;
-
-    const reorderedSignature = reorderOptionalLast(signatureParams);
 
     const hasOriginalReturn = returnTypeMapping.ts !== "void";
     const returnTupleEntries: ReturnTupleEntry[] = [];
@@ -458,7 +467,7 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
     }
 
     return {
-        signatureParams: reorderedSignature,
+        signatureParams,
         hiddenOuts,
         callArgs,
         returnTupleEntries,
@@ -582,12 +591,6 @@ const outParamReturnTsType = (mapping: ParamMapping): string => {
 const formatNullableType = (tsType: string, nullable: boolean, isCallback: boolean): string => {
     if (!nullable) return tsType;
     return isCallback ? `(${tsType}) | null` : `${tsType} | null`;
-};
-
-const reorderOptionalLast = (params: SignatureParam[]): SignatureParam[] => {
-    const required = params.filter((p) => !p.optional);
-    const optional = params.filter((p) => p.optional);
-    return [...required, ...optional];
 };
 
 /**

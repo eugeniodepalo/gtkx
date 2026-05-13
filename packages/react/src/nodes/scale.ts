@@ -20,7 +20,7 @@ export class ScaleNode extends AdjustableNode<Gtk.Scale> {
         this.container.clearMarks();
 
         for (const mark of newMarks) {
-            this.container.addMark(mark.value, mark.position ?? Gtk.PositionType.BOTTOM, mark.label);
+            this.container.addMark(mark.value, mark.position ?? Gtk.PositionType.BOTTOM, mark.label ?? null);
         }
 
         this.appliedMarks = [...newMarks];

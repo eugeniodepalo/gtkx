@@ -178,15 +178,15 @@ describe("FunctionGenerator", () => {
             expect(code).toContain("string | null");
         });
 
-        it("marks optional parameters with question token", () => {
+        it("emits nullable parameters as required with a `| null` type", () => {
             const { generator, file } = createTestSetup();
             const func = createNormalizedFunction({
-                name: "optional_param",
-                cIdentifier: "gtk_optional_param",
+                name: "nullable_param",
+                cIdentifier: "gtk_nullable_param",
                 returnType: createNormalizedType({ name: "none" }),
                 parameters: [
                     createNormalizedParameter({
-                        name: "optional",
+                        name: "nullable",
                         type: createNormalizedType({ name: "utf8", nullable: true }),
                         nullable: true,
                     }),
@@ -196,7 +196,8 @@ describe("FunctionGenerator", () => {
             generator.generate([func]);
 
             const code = getOutput(file);
-            expect(code).toContain("optional?:");
+            expect(code).toContain("nullable: string | null");
+            expect(code).not.toContain("nullable?:");
         });
 
         it("includes call expression in function body", () => {
