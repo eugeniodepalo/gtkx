@@ -13,3 +13,6 @@ onlyBuiltDependencies:
   - core-js
   - core-js-pure
   - esbuild
+
+overrides:
+  fast-xml-parser@^4: 4.3.6
