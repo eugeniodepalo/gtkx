@@ -64,7 +64,28 @@ const withSignalsBlocked = <T>(node: Node, fn: () => T): T => {
     }
 };
 
+/**
+ * Builds an idempotency guard for {@link HostConfig.detachDeletedInstance}.
+ *
+ * React's fiber model keeps both `current` and `workInProgress` fibers
+ * pointing at the same host instance. When a subtree is unmounted after a
+ * commit, `detachFiberAfterEffects` recurses into the alternate fiber, so
+ * `detachDeletedInstance` is invoked once per fiber alternate — twice for
+ * any node that has survived at least one re-render. Side-effects such as
+ * `Gtk.Window.destroy()` must run exactly once; this guard tracks Nodes
+ * whose detach has already executed and short-circuits subsequent calls.
+ */
+const createDetachGuard = (): ((instance: Node) => void) => {
+    const detachedNodes = new WeakSet<Node>();
+    return (instance: Node) => {
+        if (detachedNodes.has(instance)) return;
+        detachedNodes.add(instance);
+        instance.detachDeletedInstance();
+    };
+};
+
 export function createHostConfig(): HostConfig {
+    const detachDeletedInstance = createDetachGuard();
     return {
         supportsMutation: true,
         supportsPersistence: false,
@@ -157,9 +178,7 @@ export function createHostConfig(): HostConfig {
         afterActiveInstanceBlur: () => {},
         prepareScopeUpdate: () => {},
         getInstanceFromScope: () => null,
-        detachDeletedInstance: (instance) => {
-            instance.detachDeletedInstance();
-        },
+        detachDeletedInstance,
         resetFormInstance: () => {},
         requestPostPaintCallback: () => {},
         shouldAttemptEagerTransition: () => false,
