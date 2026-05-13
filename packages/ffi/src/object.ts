@@ -28,14 +28,13 @@ export abstract class NativeObject {
     handle!: NativeHandle;
 
     /**
-     * Resolves the GType of the underlying GObject instance.
+     * Runtime GType of the underlying GObject or boxed instance.
      *
      * Mirrors the `__gtype__` field surfaced on every class in the
-     * ts-for-gir-published `.d.ts` contract.
+     * ts-for-gir-published `.d.ts` contract, declared as an instance
+     * property (not an accessor) so subclass declarations merge cleanly.
      */
-    get __gtype__(): number {
-        return getInstanceGType(this.handle);
-    }
+    __gtype__!: number;
 
     constructor(props: object = {}) {
         const ctor = this.constructor as NativeClass;
@@ -52,8 +51,10 @@ export abstract class NativeObject {
         if (meta.kind === "gobject") {
             this.handle = constructGObject(ctor, meta, props as Record<string, unknown>);
             registerInstance(this);
+            this.__gtype__ = getInstanceGType(this.handle);
         } else {
             this.handle = constructBoxed(meta, props as Record<string, unknown>);
+            this.__gtype__ = 0;
         }
     }
 
@@ -110,6 +111,8 @@ export type NativeClass<T extends NativeObject = NativeObject> = (abstract new (
 export function wrapHandle<T extends NativeObject>(cls: NativeClass<T>, handle: NativeHandle): T {
     const instance = Object.create(cls.prototype) as T;
     instance.handle = handle;
+    const meta = CONSTRUCTION_META.get(cls);
+    instance.__gtype__ = meta?.kind === "gobject" ? getInstanceGType(handle) : 0;
     return instance;
 }
 
