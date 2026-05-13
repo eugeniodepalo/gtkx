@@ -157,60 +157,60 @@ export class SignalBuilder {
         ];
 
         if (!isRootGObject) {
-            const onOverloads = this.buildAliasOverloads(ownSignals, "this", { withAfter: true });
-            const offOverloads = this.buildAliasOverloads(ownSignals, "this", { withAfter: false });
+            const onOverloads = this.buildAliasOverloads(ownSignals, "NodeJS.EventEmitter", { withAfter: true });
+            const offOverloads = this.buildAliasOverloads(ownSignals, "NodeJS.EventEmitter", { withAfter: false });
 
             structures.push(
                 {
                     name: "on",
                     parameters: [
-                        { name: "signal", type: "string" },
-                        { name: "handler", type: "(...args: any[]) => any" },
+                        { name: "sigName", type: "string" },
+                        { name: "callback", type: "(...args: any[]) => any" },
                         { name: "after", type: "boolean", optional: true },
                     ],
-                    returnType: "this",
+                    returnType: "NodeJS.EventEmitter",
                     docs: [
                         {
-                            description: `Connects a callback to a signal on this ${this.className}, tracked for later removal via off().\n\n@param signal - The signal name\n@param handler - Callback function\n@param after - If true, run after the default handler\n@returns This object, for chaining`,
+                            description: `Connects a callback to a signal on this ${this.className}, tracked for later removal via off().\n\n@param sigName - The signal name\n@param callback - Callback function\n@param after - If true, run after the default handler\n@returns A \`NodeJS.EventEmitter\` for chaining EventEmitter-style calls`,
                         },
                     ],
                     statements: (writer) => {
-                        writer.writeLine("return super.on(signal, handler, after);");
+                        writer.writeLine("return super.on(sigName, callback, after);");
                     },
                     overloads: onOverloads,
                 },
                 {
                     name: "once",
                     parameters: [
-                        { name: "signal", type: "string" },
-                        { name: "handler", type: "(...args: any[]) => any" },
+                        { name: "sigName", type: "string" },
+                        { name: "callback", type: "(...args: any[]) => any" },
                         { name: "after", type: "boolean", optional: true },
                     ],
-                    returnType: "this",
+                    returnType: "NodeJS.EventEmitter",
                     docs: [
                         {
-                            description: `Connects a one-shot callback to a signal on this ${this.className}.\n\n@param signal - The signal name\n@param handler - Callback function\n@param after - If true, run after the default handler\n@returns This object, for chaining`,
+                            description: `Connects a one-shot callback to a signal on this ${this.className}.\n\n@param sigName - The signal name\n@param callback - Callback function\n@param after - If true, run after the default handler\n@returns A \`NodeJS.EventEmitter\` for chaining EventEmitter-style calls`,
                         },
                     ],
                     statements: (writer) => {
-                        writer.writeLine("return super.once(signal, handler, after);");
+                        writer.writeLine("return super.once(sigName, callback, after);");
                     },
                     overloads: onOverloads,
                 },
                 {
                     name: "off",
                     parameters: [
-                        { name: "signal", type: "string" },
-                        { name: "handler", type: "(...args: any[]) => any" },
+                        { name: "sigName", type: "string" },
+                        { name: "callback", type: "(...args: any[]) => any" },
                     ],
-                    returnType: "this",
+                    returnType: "NodeJS.EventEmitter",
                     docs: [
                         {
-                            description: `Disconnects a callback previously registered with on() or once() on this ${this.className}.\n\n@param signal - The signal name\n@param handler - The exact callback reference\n@returns This object, for chaining`,
+                            description: `Disconnects a callback previously registered with on() or once() on this ${this.className}.\n\n@param sigName - The signal name\n@param callback - The exact callback reference\n@returns A \`NodeJS.EventEmitter\` for chaining EventEmitter-style calls`,
                         },
                     ],
                     statements: (writer) => {
-                        writer.writeLine("return super.off(signal, handler);");
+                        writer.writeLine("return super.off(sigName, callback);");
                     },
                     overloads: offOverloads,
                 },
@@ -235,8 +235,8 @@ export class SignalBuilder {
                 signalReturnType = mapped.ts;
             }
             const overloadParams = [
-                { name: "signal", type: `"${signal.name}"` },
-                { name: "handler", type: `(${params}) => ${signalReturnType}` },
+                { name: "sigName", type: `"${signal.name}"` },
+                { name: "callback", type: `(${params}) => ${signalReturnType}` },
             ];
             if (opts.withAfter) {
                 overloadParams.push({ name: "after", type: "boolean", optional: true } as {
@@ -248,8 +248,8 @@ export class SignalBuilder {
             overloads.push({ params: overloadParams, returnType });
         }
         const fallbackParams = [
-            { name: "signal", type: "string" },
-            { name: "handler", type: "(...args: any[]) => any" },
+            { name: "sigName", type: "string" },
+            { name: "callback", type: "(...args: any[]) => any" },
         ];
         if (opts.withAfter) {
             fallbackParams.push({ name: "after", type: "boolean", optional: true } as {

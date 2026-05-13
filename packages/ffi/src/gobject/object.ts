@@ -39,31 +39,31 @@ declare module "../generated/gobject/object.js" {
          * can be later removed via {@link Object.off} without needing the
          * handler ID.
          *
-         * @param signal - The signal name
-         * @param handler - The callback function
+         * @param sigName - The signal name
+         * @param callback - The callback function
          * @param after - If true, run after the default handler
-         * @returns This object, for chaining
+         * @returns A `NodeJS.EventEmitter` for chaining EventEmitter-style calls
          */
         // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        on(signal: string, handler: (...args: any[]) => any, after?: boolean): this;
+        on(sigName: string, callback: (...args: any[]) => any, after?: boolean): NodeJS.EventEmitter;
 
         /**
          * Like {@link Object.on}, but the handler is automatically disconnected
          * after the first emission.
          */
         // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        once(signal: string, handler: (...args: any[]) => any, after?: boolean): this;
+        once(sigName: string, callback: (...args: any[]) => any, after?: boolean): NodeJS.EventEmitter;
 
         /**
          * Disconnects a callback previously registered with
          * {@link Object.on} or {@link Object.once}.
          *
-         * @param signal - The signal name
-         * @param handler - The exact callback reference passed to `on`/`once`
-         * @returns This object, for chaining
+         * @param sigName - The signal name
+         * @param callback - The exact callback reference passed to `on`/`once`
+         * @returns A `NodeJS.EventEmitter` for chaining EventEmitter-style calls
          */
         // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        off(signal: string, handler: (...args: any[]) => any): this;
+        off(sigName: string, callback: (...args: any[]) => any): NodeJS.EventEmitter;
 
         /**
          * Reads a property by name and returns it as a plain JavaScript value.
@@ -166,38 +166,38 @@ GObject.prototype.disconnect = function disconnect(handlerId: number): void {
     );
 };
 
-GObject.prototype.on = function on<T extends GObject>(this: T, signal: string, handler: Listener, after?: boolean): T {
-    const handlerId = (this as GObject).connect(signal, handler, after);
-    trackListener(this, signal, handler, handlerId);
-    return this;
+GObject.prototype.on = function on(this: GObject, sigName: string, callback: Listener, after?: boolean): NodeJS.EventEmitter {
+    const handlerId = this.connect(sigName, callback, after);
+    trackListener(this, sigName, callback, handlerId);
+    return this as unknown as NodeJS.EventEmitter;
 };
 
-GObject.prototype.once = function once<T extends GObject>(
-    this: T,
-    signal: string,
-    handler: Listener,
+GObject.prototype.once = function once(
+    this: GObject,
+    sigName: string,
+    callback: Listener,
     after?: boolean,
-): T {
+): NodeJS.EventEmitter {
     let handlerId = 0;
     const wrapped: Listener = (...args: unknown[]) => {
-        untrackListener(this, signal, wrapped);
-        untrackListener(this, signal, handler);
+        untrackListener(this, sigName, wrapped);
+        untrackListener(this, sigName, callback);
         this.disconnect(handlerId);
-        return handler(...args);
+        return callback(...args);
     };
-    handlerId = this.connect(signal, wrapped, after);
-    trackListener(this, signal, wrapped, handlerId);
-    trackListener(this, signal, handler, handlerId);
-    return this;
+    handlerId = this.connect(sigName, wrapped, after);
+    trackListener(this, sigName, wrapped, handlerId);
+    trackListener(this, sigName, callback, handlerId);
+    return this as unknown as NodeJS.EventEmitter;
 };
 
-GObject.prototype.off = function off<T extends GObject>(this: T, signal: string, handler: Listener): T {
-    const handlerId = findHandlerId(this, signal, handler);
+GObject.prototype.off = function off(this: GObject, sigName: string, callback: Listener): NodeJS.EventEmitter {
+    const handlerId = findHandlerId(this, sigName, callback);
     if (handlerId !== undefined) {
-        (this as GObject).disconnect(handlerId);
-        untrackListener(this, signal, handler);
+        this.disconnect(handlerId);
+        untrackListener(this, sigName, callback);
     }
-    return this;
+    return this as unknown as NodeJS.EventEmitter;
 };
 
 const resolvePropertyValueType = (obj: GObject, propertyName: string): number => {
