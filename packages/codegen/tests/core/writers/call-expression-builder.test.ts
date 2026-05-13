@@ -324,9 +324,7 @@ describe("CallExpressionBuilder", () => {
             const output = getWriterOutput(builder.errorCheckWriter());
 
             expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain(
-                "throw new NativeError(getNativeObject(error.value as NativeHandle, GLib.Error))",
-            );
+            expect(output).toContain("throw new NativeError(getNativeObject(error.value as NativeHandle, GLib.Error))");
         });
 
         it("builds error check code with custom Error reference", () => {

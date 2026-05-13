@@ -8,8 +8,8 @@
  * against gtkx's runtime module surface.
  */
 
-import { typeAlias } from "../../builders/index.js";
 import type { FileBuilder } from "../../builders/file-builder.js";
+import { typeAlias } from "../../builders/index.js";
 import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
 import { toCamelCase, toValidIdentifier } from "../../core/utils/naming.js";
@@ -42,7 +42,8 @@ export class CallbackGenerator {
 function buildCallbackSignature(callback: GirCallback): string {
     const params = callback.parameters
         .map((param, index) => {
-            const baseName = param.name && param.name !== "..." ? toValidIdentifier(toCamelCase(param.name)) : `arg${index}`;
+            const baseName =
+                param.name && param.name !== "..." ? toValidIdentifier(toCamelCase(param.name)) : `arg${index}`;
             return `${baseName}: unknown`;
         })
         .join(", ");

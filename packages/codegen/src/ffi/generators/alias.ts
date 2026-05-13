@@ -7,8 +7,8 @@
  * `GLib.Quark` etc. resolves against gtkx's runtime module.
  */
 
-import { raw, typeAlias } from "../../builders/index.js";
 import type { FileBuilder } from "../../builders/file-builder.js";
+import { raw, typeAlias } from "../../builders/index.js";
 import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
 import type { GirAlias, GirType } from "../../gir/index.js";

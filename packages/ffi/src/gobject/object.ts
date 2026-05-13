@@ -166,7 +166,12 @@ GObject.prototype.disconnect = function disconnect(handlerId: number): void {
     );
 };
 
-GObject.prototype.on = function on(this: GObject, sigName: string, callback: Listener, after?: boolean): NodeJS.EventEmitter {
+GObject.prototype.on = function on(
+    this: GObject,
+    sigName: string,
+    callback: Listener,
+    after?: boolean,
+): NodeJS.EventEmitter {
     const handlerId = this.connect(sigName, callback, after);
     trackListener(this, sigName, callback, handlerId);
     return this as unknown as NodeJS.EventEmitter;

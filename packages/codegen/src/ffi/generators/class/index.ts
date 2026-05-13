@@ -20,7 +20,12 @@ import { analyzeAsyncMethods } from "../../../core/utils/async-analysis.js";
 import { collectParentFactoryMethodNames, collectParentMethodNames } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { isMethodSuppressed } from "../../../core/utils/method-suppression.js";
-import { generateConflictingMethodName, normalizeClassName, toKebabCase, toPascalCase } from "../../../core/utils/naming.js";
+import {
+    generateConflictingMethodName,
+    normalizeClassName,
+    toKebabCase,
+    toPascalCase,
+} from "../../../core/utils/naming.js";
 import { type ParentInfo, parseParentReference } from "../../../core/utils/parent-reference.js";
 import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
 import { addMethodStructure, type MethodStructure } from "../../../core/writers/index.js";
@@ -138,11 +143,19 @@ export class ClassGenerator {
             addMethodStructure(cls, struct);
         }
 
-        for (const a of this.propertyAccessorBuilder.buildAccessors()) {
-            cls.addAccessor(a);
+        const propertyEmissions = this.propertyAccessorBuilder.buildAccessors();
+        for (const { property } of propertyEmissions) {
+            cls.addProperty(property);
         }
 
         this.file.add(cls);
+
+        for (const { installer } of propertyEmissions) {
+            this.file.addRawBlock((writer) => {
+                writer.writeLine("");
+                installer(writer);
+            });
+        }
 
         if (this.cls.glibGetType) {
             const getTypeCall = this.buildGTypeCall(this.cls.glibGetType, this.cls.glibTypeName);

@@ -21,29 +21,26 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
         buffer.removeAllTags(startIter, endIter);
     }, []);
 
-    const handleParsingError = useCallback(
-        (_provider: Gtk.CssProvider, section: Gtk.CssSection, error: GLib.Error) => {
-            const textView = textViewRef.current;
-            if (!textView) return;
+    const handleParsingError = useCallback((_provider: Gtk.CssProvider, section: Gtk.CssSection, error: GLib.Error) => {
+        const textView = textViewRef.current;
+        if (!textView) return;
 
-            const buffer = textView.getBuffer();
-            if (!buffer) return;
+        const buffer = textView.getBuffer();
+        if (!buffer) return;
 
-            const startLocation = section.getStartLocation();
-            const endLocation = section.getEndLocation();
+        const startLocation = section.getStartLocation();
+        const endLocation = section.getEndLocation();
 
-            const [, startIter] = buffer.getIterAtLineIndex(startLocation.lines, startLocation.lineBytes);
-            const [, endIter] = buffer.getIterAtLineIndex(endLocation.lines, endLocation.lineBytes);
+        const [, startIter] = buffer.getIterAtLineIndex(startLocation.lines, startLocation.lineBytes);
+        const [, endIter] = buffer.getIterAtLineIndex(endLocation.lines, endLocation.lineBytes);
 
-            const isWarning = error.domain === cssParserWarningQuark();
-            const tag = isWarning ? warningTagRef.current : errorTagRef.current;
+        const isWarning = error.domain === cssParserWarningQuark();
+        const tag = isWarning ? warningTagRef.current : errorTagRef.current;
 
-            if (tag) {
-                buffer.applyTag(tag, startIter, endIter);
-            }
-        },
-        [],
-    );
+        if (tag) {
+            buffer.applyTag(tag, startIter, endIter);
+        }
+    }, []);
 
     const onBufferChanged = useCallback(
         (buffer: Gtk.TextBuffer) => {

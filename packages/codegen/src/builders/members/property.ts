@@ -10,6 +10,7 @@ export type PropertyOptions = {
     readonly?: boolean;
     isStatic?: boolean;
     override?: boolean;
+    declare?: boolean;
     initializer?: string;
     doc?: string;
     abstract?: boolean;
@@ -28,6 +29,7 @@ export class PropertyBuilder implements Builder {
         if (this.opts.isStatic) writer.write("static ");
         if (this.opts.abstract) writer.write("abstract ");
         if (this.opts.override) writer.write("override ");
+        if (this.opts.declare) writer.write("declare ");
         if (this.opts.readonly) writer.write("readonly ");
         writer.write(this.name);
         if (this.opts.optional) writer.write("?");

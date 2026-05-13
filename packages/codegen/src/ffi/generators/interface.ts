@@ -114,7 +114,9 @@ export class InterfaceGenerator {
         }
         if (extendsList.length === 0) {
             const isGObjectNamespace = this.options.namespace === "GObject";
-            extendsList.push(isGObjectNamespace ? "Object.ConstructorProperties" : "GObject.Object.ConstructorProperties");
+            extendsList.push(
+                isGObjectNamespace ? "Object.ConstructorProperties" : "GObject.Object.ConstructorProperties",
+            );
         }
 
         const ns = namespaceDecl(interfaceName, { exported: true });

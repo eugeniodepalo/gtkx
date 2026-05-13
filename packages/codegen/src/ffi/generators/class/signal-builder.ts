@@ -607,13 +607,6 @@ export class SignalBuilder {
         return overloads;
     }
 
-    private resolveReturnTsType(signal: GirSignal): string {
-        if (!signal.returnType) return "void";
-        const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
-        addTypeImports(this.imports, mapped.imports, this.selfNames);
-        return mapped.ts === "void" ? "void" : mapped.ts;
-    }
-
     private writeEmitMethodBody(ownSignals: GirSignal[]): (writer: Writer) => void {
         const isRootGObject = this.options.namespace === "GObject" && this.cls.name === "Object";
         const gobjectPrefix = this.options.namespace === "GObject" ? "" : "GObject.";

@@ -1,17 +1,23 @@
 /**
  * Property Accessor Builder
  *
- * Generates ES6 get/set accessor pairs for GObject properties.
+ * Generates GObject property bindings shaped as `declare <name>: <type>`
+ * field declarations on the class plus matching
+ * `Object.defineProperty(<class>.prototype, ...)` installers emitted after
+ * the class body. Subclasses can therefore extend with their own
+ * `<name>: <type>` field declarations without colliding with an ancestor's
+ * ES6 accessor pair, matching the field-shaped `.d.ts` contract published
+ * by ts-for-gir's node-gtk templates.
  *
- * For properties with explicit GIR getter/setter methods, the accessor
- * delegates to those methods. For properties without, the accessor
- * contains inline GValue logic via g_object_get_property / g_object_set_property.
- *
- * Construct-only properties get a getter-only accessor (no setter).
+ * For properties with explicit GIR getter/setter methods, the installer
+ * delegates to those methods. For properties without, the installer
+ * contains inline GValue logic via g_object_get_property /
+ * g_object_set_property. Construct-only properties get a getter-only
+ * installer (no setter, declared as `readonly`).
  */
 
-import { accessor } from "../../../builders/index.js";
-import type { AccessorBuilder } from "../../../builders/members/accessor.js";
+import { property } from "../../../builders/index.js";
+import type { PropertyBuilder } from "../../../builders/members/property.js";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -27,11 +33,28 @@ import {
     collectParentPropertyNames,
 } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { toCamelCase } from "../../../core/utils/naming.js";
+import { normalizeClassName, toCamelCase } from "../../../core/utils/naming.js";
 import { CallExpressionBuilder } from "../../../core/writers/call-expression-builder.js";
 import type { FfiDescriptorRegistry } from "../../../core/writers/descriptor-registry.js";
 import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
 import type { GirClass, GirMethod, GirProperty, GirRepository } from "../../../gir/index.js";
+
+/**
+ * A single property binding split into the class-body field declaration and
+ * the post-class `Object.defineProperty` installer that wires the runtime
+ * getter (and optional setter) into the prototype.
+ */
+export type PropertyAccessorEmission = {
+    /** `declare <name>: <type>` field added to the class body. */
+    readonly property: PropertyBuilder;
+    /**
+     * Writer callback that emits the
+     * `Object.defineProperty(<class>.prototype, ...)` block describing the
+     * runtime get/set behaviour. Called after the class declaration is
+     * flushed to the file.
+     */
+    readonly installer: (writer: Writer) => void;
+};
 
 export class PropertyAccessorBuilder {
     private readonly existingMethodNames: Set<string>;
@@ -55,7 +78,7 @@ export class PropertyAccessorBuilder {
         this.callExpression = new CallExpressionBuilder(descriptors, imports);
     }
 
-    buildAccessors(): AccessorBuilder[] {
+    buildAccessors(): PropertyAccessorEmission[] {
         const directProps = collectDirectMembers({
             cls: this.cls,
             repo: this.repository,
@@ -66,10 +89,12 @@ export class PropertyAccessorBuilder {
             isHidden: () => false,
         });
 
-        return directProps.map((prop) => this.buildAccessor(prop)).filter((a): a is AccessorBuilder => a !== null);
+        return directProps
+            .map((prop) => this.buildAccessor(prop))
+            .filter((a): a is PropertyAccessorEmission => a !== null);
     }
 
-    private buildAccessor(prop: GirProperty): AccessorBuilder | null {
+    private buildAccessor(prop: GirProperty): PropertyAccessorEmission | null {
         const camelName = toCamelCase(prop.name);
 
         if (this.existingMethodNames.has(camelName)) return null;
@@ -95,13 +120,56 @@ export class PropertyAccessorBuilder {
 
         const docs = buildJsDocStructure(prop.doc, this.options.namespace);
 
-        return accessor(camelName, {
+        const declaredProperty = property(camelName, {
             type: returnType,
-            setType: setType && setType !== returnType ? setType : undefined,
-            getBody,
-            setBody,
+            declare: true,
+            readonly: setBody === undefined,
             doc: docs?.[0]?.description,
         });
+
+        const className = normalizeClassName(this.cls.name);
+        const resolvedSetType = setType && setType !== returnType ? setType : returnType;
+        const installer = this.buildInstaller({
+            className,
+            propertyName: camelName,
+            returnType,
+            setType: resolvedSetType,
+            getBody,
+            setBody,
+        });
+
+        return { property: declaredProperty, installer };
+    }
+
+    private buildInstaller(opts: {
+        className: string;
+        propertyName: string;
+        returnType: string;
+        setType: string;
+        getBody: (writer: Writer) => void;
+        setBody?: (writer: Writer) => void;
+    }): (writer: Writer) => void {
+        const { className, propertyName, returnType, setType, getBody, setBody } = opts;
+        return (writer) => {
+            writer.writeLine(`globalThis.Object.defineProperty(${className}.prototype, "${propertyName}", {`);
+            writer.withIndent(() => {
+                writer.writeLine(`get(this: ${className}): ${returnType} {`);
+                writer.withIndent(() => {
+                    getBody(writer);
+                });
+                writer.writeLine("},");
+                if (setBody) {
+                    writer.writeLine(`set(this: ${className}, value: ${setType}) {`);
+                    writer.withIndent(() => {
+                        setBody(writer);
+                    });
+                    writer.writeLine("},");
+                }
+                writer.writeLine("enumerable: true,");
+                writer.writeLine("configurable: true,");
+            });
+            writer.writeLine("});");
+        };
     }
 
     private buildGetBody(prop: GirProperty, typeMapping: MappedType): ((writer: Writer) => void) | null {
