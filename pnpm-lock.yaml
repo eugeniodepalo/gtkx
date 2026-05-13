@@ -199,9 +199,6 @@ importers:
       '@ts-for-gir/cli':
         specifier: ^3.3.0
         version: 3.3.0(@types/node@25.7.0)(typescript@6.0.3)
-      '@ts-for-gir/lib':
-        specifier: ^3.3.0
-        version: 3.3.0
       citty:
         specifier: ^0.2.2
         version: 0.2.2
