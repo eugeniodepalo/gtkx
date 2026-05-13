@@ -102,7 +102,7 @@ const ListViewFilebrowserDemo = () => {
 
     useEffect(() => {
         const file = Gio.fileNewForPath(currentPath);
-        const dirList = new Gtk.DirectoryList(ATTRIBUTES, file);
+        const dirList = Gtk.DirectoryList.new(ATTRIBUTES, file);
 
         const checkLoading = () => {
             if (dirList.isLoading()) {

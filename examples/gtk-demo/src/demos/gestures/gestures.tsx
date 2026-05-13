@@ -89,7 +89,7 @@ const GesturesDemo = () => {
             cr.rotate(angle);
             cr.scale(scale, scale);
 
-            const pattern = new LinearPattern(-rectSize / 2, 0, rectSize, 0);
+            const pattern = LinearPattern.create(-rectSize / 2, 0, rectSize, 0);
             pattern.addColorStopRgb(0, 0, 0, 1);
             pattern.addColorStopRgb(1, 1, 0, 0);
             cr.setSource(pattern);

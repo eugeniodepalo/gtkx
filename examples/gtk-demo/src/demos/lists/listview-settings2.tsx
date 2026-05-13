@@ -49,7 +49,7 @@ function loadAllSchemaKeys(): SchemaKeys[] {
             const schema = source.lookup(schemaId, true);
             if (!schema) continue;
 
-            const settings = new Gio.Settings(schemaId);
+            const settings = Gio.Settings.new(schemaId);
             const keyNames = schema.listKeys();
             const keys: KeyItem[] = [];
 
@@ -160,7 +160,7 @@ const ListViewSettings2Demo = () => {
                 }
             }
 
-            const settings = new Gio.Settings(key.schemaId);
+            const settings = Gio.Settings.new(key.schemaId);
             settings.setValue(key.name, variant);
             keysState.current.set(key.id, variant.print(false));
         } catch {

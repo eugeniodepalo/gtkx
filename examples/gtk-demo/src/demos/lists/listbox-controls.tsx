@@ -29,7 +29,7 @@ const ListBoxControlsDemo = () => {
     const labelRefs = useRef<(Gtk.Label | null)[]>([]);
 
     useEffect(() => {
-        const sizeGroup = new Gtk.SizeGroup(Gtk.SizeGroupMode.HORIZONTAL);
+        const sizeGroup = Gtk.SizeGroup.new(Gtk.SizeGroupMode.HORIZONTAL);
         for (const label of labelRefs.current) {
             if (label) {
                 sizeGroup.addWidget(label);

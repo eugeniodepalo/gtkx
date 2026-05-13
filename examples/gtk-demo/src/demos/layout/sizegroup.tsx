@@ -25,7 +25,7 @@ const SizeGroupDemo = () => {
     const label4Ref = useRef<Gtk.Label | null>(null);
 
     useLayoutEffect(() => {
-        const sizeGroup = new Gtk.SizeGroup(Gtk.SizeGroupMode.HORIZONTAL);
+        const sizeGroup = Gtk.SizeGroup.new(Gtk.SizeGroupMode.HORIZONTAL);
         sizeGroupRef.current = sizeGroup;
 
         const dropdowns = [dropdown1Ref, dropdown2Ref, dropdown3Ref, dropdown4Ref];

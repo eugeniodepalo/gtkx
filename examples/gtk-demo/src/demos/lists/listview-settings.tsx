@@ -70,7 +70,7 @@ function loadSchemaTree(): SchemaTreeNode[] {
     const [nonRelocatable] = source.listSchemas(true);
 
     return nonRelocatable.sort().map((id) => {
-        const settings = new Gio.Settings(id);
+        const settings = Gio.Settings.new(id);
         return buildNodeFromSettings(settings, id);
     });
 }
@@ -208,10 +208,10 @@ const ListViewSettingsDemo = () => {
         menu.appendSection(section);
 
         const actionGroup = new Gio.SimpleActionGroup();
-        actionGroup.addAction(new Gio.PropertyAction("show-type", typeCol, "visible"));
-        actionGroup.addAction(new Gio.PropertyAction("show-default", defaultCol, "visible"));
-        actionGroup.addAction(new Gio.PropertyAction("show-summary", summaryCol, "visible"));
-        actionGroup.addAction(new Gio.PropertyAction("show-description", descriptionCol, "visible"));
+        actionGroup.addAction(Gio.PropertyAction.new("show-type", typeCol, "visible"));
+        actionGroup.addAction(Gio.PropertyAction.new("show-default", defaultCol, "visible"));
+        actionGroup.addAction(Gio.PropertyAction.new("show-summary", summaryCol, "visible"));
+        actionGroup.addAction(Gio.PropertyAction.new("show-description", descriptionCol, "visible"));
 
         cv.insertActionGroup("columnview", actionGroup);
 

@@ -15,8 +15,8 @@ const headingProps = { weight: Pango.Weight.BOLD, size: 15 * Pango.SCALE } as co
 
 function createNuclearTexture(): Gdk.Texture {
     const size = 32;
-    const surface = new ImageSurface(Format.ARGB32, size, size);
-    const cr = new Context(surface);
+    const surface = ImageSurface.create(Format.ARGB32, size, size);
+    const cr = Context.create(surface);
 
     const cx = size / 2;
     const cy = size / 2;
@@ -76,8 +76,8 @@ function attachWidgetClones(view: Gtk.TextView, anchors: Gtk.TextChildAnchor[], 
     }
 
     if (anchors[2]) {
-        const adj = new Gtk.Adjustment(0, 0, 100, 1, 10, 0);
-        const scale = new Gtk.Scale(Gtk.Orientation.HORIZONTAL, adj);
+        const adj = Gtk.Adjustment.new(0, 0, 100, 1, 10, 0);
+        const scale = Gtk.Scale.new(Gtk.Orientation.HORIZONTAL, adj);
         scale.setSizeRequest(100, -1);
         view.addChildAtAnchor(scale, anchors[2]);
     }

@@ -42,7 +42,7 @@ const ImagesDemo = ({ window }: DemoProps) => {
     useEffect(() => {
         const win = window.current;
         if (win) {
-            const paintable = new Gtk.WidgetPaintable(win);
+            const paintable = Gtk.WidgetPaintable.new(win);
             setWidgetPaintable(paintable);
         }
     }, [window]);
@@ -60,7 +60,7 @@ const ImagesDemo = ({ window }: DemoProps) => {
 
         const width = source.getWidth();
         const height = source.getHeight();
-        const display = new GdkPixbuf.Pixbuf(
+        const display = GdkPixbuf.Pixbuf.new(
             GdkPixbuf.Colorspace.RGB,
             source.getHasAlpha(),
             source.getBitsPerSample(),
@@ -68,7 +68,7 @@ const ImagesDemo = ({ window }: DemoProps) => {
             height,
         );
         display.fill(0xaaaaaaff);
-        setProgressiveTexture(new Gdk.Texture(display));
+        setProgressiveTexture(Gdk.Texture.newForPixbuf(display));
 
         let row = 0;
         const revealRows = () => {
@@ -76,7 +76,7 @@ const ImagesDemo = ({ window }: DemoProps) => {
             const count = Math.min(PROGRESSIVE_ROWS_PER_TICK, height - row);
             source.copyArea(0, row, width, count, display, 0, row);
             row += count;
-            setProgressiveTexture(new Gdk.Texture(display));
+            setProgressiveTexture(Gdk.Texture.newForPixbuf(display));
             if (row < height) {
                 progressiveTimerRef.current = setTimeout(revealRows, PROGRESSIVE_INTERVAL_MS);
             }

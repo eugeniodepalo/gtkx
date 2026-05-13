@@ -21,7 +21,7 @@ const VideoPlayerDemo = ({ window }: DemoProps) => {
         const dialog = new Gtk.FileDialog();
         dialog.setTitle("Select a video");
 
-        const filters = new Gio.ListStore(GObject.typeFromName("GtkFileFilter"));
+        const filters = Gio.ListStore.new(GObject.typeFromName("GtkFileFilter"));
 
         const allFilter = new Gtk.FileFilter();
         allFilter.setName("All Files");

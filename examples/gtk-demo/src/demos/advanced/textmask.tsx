@@ -25,7 +25,7 @@ const TextmaskDemo = () => {
         cr.moveTo(30, 20);
         PangoCairo.layoutPath(cr, layout);
 
-        const pattern = new LinearPattern(0, 0, width, height);
+        const pattern = LinearPattern.create(0, 0, width, height);
         pattern.addColorStopRgb(0, 1, 0, 0);
         pattern.addColorStopRgb(0.2, 1, 0, 0);
         pattern.addColorStopRgb(0.3, 1, 1, 0);

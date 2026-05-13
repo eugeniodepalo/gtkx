@@ -51,7 +51,7 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
         const dialog = new Gtk.FileDialog();
         dialog.setTitle("Open SVG image");
 
-        const filters = new Gio.ListStore(GObject.typeFromName("GtkFileFilter"));
+        const filters = Gio.ListStore.new(GObject.typeFromName("GtkFileFilter"));
         const filter = new Gtk.FileFilter();
         filter.setName("SVG images");
         filter.addMimeType("image/svg+xml");

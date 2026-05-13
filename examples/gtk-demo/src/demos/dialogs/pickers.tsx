@@ -72,7 +72,7 @@ const PickersDemo = ({ window }: DemoProps) => {
     const handleLaunchApp = useCallback(async () => {
         if (!selectedFile) return;
         try {
-            const launcher = new Gtk.FileLauncher(selectedFile);
+            const launcher = Gtk.FileLauncher.new(selectedFile);
             await launcher.launchAsync(window.current);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
@@ -82,7 +82,7 @@ const PickersDemo = ({ window }: DemoProps) => {
     const handleOpenFolder = useCallback(async () => {
         if (!selectedFile) return;
         try {
-            const launcher = new Gtk.FileLauncher(selectedFile);
+            const launcher = Gtk.FileLauncher.new(selectedFile);
             await launcher.openContainingFolderAsync(window.current);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
@@ -105,7 +105,7 @@ const PickersDemo = ({ window }: DemoProps) => {
 
     const handleLaunchUri = useCallback(async () => {
         try {
-            const launcher = new Gtk.UriLauncher("https://www.gtk.org");
+            const launcher = Gtk.UriLauncher.new("https://www.gtk.org");
             await launcher.launchAsync(window.current);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);

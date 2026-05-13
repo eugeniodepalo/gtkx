@@ -69,12 +69,12 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
 
         const tagTable = buffer.getTagTable();
 
-        const errorTag = new Gtk.TextTag("error");
+        const errorTag = Gtk.TextTag.new("error");
         errorTag.underline = Pango.Underline.ERROR;
         tagTable.add(errorTag);
         errorTagRef.current = errorTag;
 
-        const warningTag = new Gtk.TextTag("warning");
+        const warningTag = Gtk.TextTag.new("warning");
         warningTag.underline = Pango.Underline.SINGLE;
         tagTable.add(warningTag);
         warningTagRef.current = warningTag;

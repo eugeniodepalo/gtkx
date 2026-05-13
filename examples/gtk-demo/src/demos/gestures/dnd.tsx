@@ -387,7 +387,7 @@ const DndDemo = ({ window }: DemoProps) => {
         for (let i = 0; i < count; i++) {
             const controller = controllers.getObject(i);
             if (controller instanceof Gtk.DragSource) {
-                const paintable = new Gtk.WidgetPaintable(button);
+                const paintable = Gtk.WidgetPaintable.new(button);
                 const { x, y } = dragHotspotRef.current;
                 controller.setIcon(x, y, paintable);
                 break;

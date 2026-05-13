@@ -82,19 +82,19 @@ const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
     const punch = cr.getTarget().createSimilar("ALPHA", width, height);
     const circles = cr.getTarget().createSimilar("COLOR_ALPHA", width, height);
 
-    const overlayCr = new Context(overlay);
+    const overlayCr = Context.create(overlay);
     overlayCr.setSourceRgb(0, 0, 0);
     ovalPath(overlayCr, xc, yc, radius, radius);
     overlayCr.fill();
 
-    const punchCr = new Context(punch);
+    const punchCr = Context.create(punch);
     draw3Circles(punchCr, xc, yc, radius, 1);
 
     overlayCr.setOperator(Operator.DEST_OUT);
     overlayCr.setSourceSurface(punch, 0, 0);
     overlayCr.paint();
 
-    const circlesCr = new Context(circles);
+    const circlesCr = Context.create(circles);
     circlesCr.setOperator(Operator.OVER);
     draw3Circles(circlesCr, xc, yc, radius, 0.5);
 
@@ -107,15 +107,15 @@ const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
 };
 
 const createSurface = (width: number, height: number): ImageSurface => {
-    const surface = new ImageSurface(Format.ARGB32, width, height);
-    const cr = new Context(surface);
+    const surface = ImageSurface.create(Format.ARGB32, width, height);
+    const cr = Context.create(surface);
     cr.setSourceRgb(1, 1, 1);
     cr.paint();
     return surface;
 };
 
 const drawBrush = (surface: ImageSurface, widget: Gtk.DrawingArea, x: number, y: number) => {
-    const cr = new Context(surface);
+    const cr = Context.create(surface);
     cr.rectangle(x - 3, y - 3, 6, 6);
     cr.fill();
     widget.queueDraw();

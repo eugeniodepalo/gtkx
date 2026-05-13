@@ -7,7 +7,7 @@ import sourceCode from "./tabs.tsx?raw";
 
 const TabsDemo = () => {
     const tabs = useMemo(() => {
-        const t = new Pango.TabArray(3, true);
+        const t = Pango.TabArray.new(3, true);
         t.setTab(0, Pango.TabAlign.LEFT, 0);
         t.setTab(1, Pango.TabAlign.DECIMAL, 150);
         t.setDecimalPoint(1, ".");
