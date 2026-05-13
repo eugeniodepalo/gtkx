@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/ffi/adw";
 import { getNativeId } from "@gtkx/ffi";
+import * as Adw from "@gtkx/ffi/adw";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";

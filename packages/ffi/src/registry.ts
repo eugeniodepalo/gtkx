@@ -1,6 +1,6 @@
 import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import { typeParent } from "./generated/gobject/functions.js";
-import { type NativeClass, type NativeObject, wrapHandle } from "./object.js";
+import { type NativeClass, type NativeObject, setInstanceRegistrar, wrapHandle } from "./object.js";
 
 const classRegistry = new Map<number, NativeClass>();
 
@@ -85,6 +85,8 @@ export function registerNativeObject(obj: NativeObject): void {
     cleanupObjectRegistry.register(obj, pointerId, obj);
 }
 
+setInstanceRegistrar(registerNativeObject);
+
 /**
  * Finds an existing JavaScript wrapper for a native pointer.
  *
@@ -130,10 +132,7 @@ export function findNativeObject(handle: NativeHandle): NativeObject | null {
  * ```
  */
 // biome-ignore lint/suspicious/noExplicitAny: matches NativeClass's bound to keep TProps inference working across abstract subclasses.
-export function getNativeObject<T extends NativeObject<any>>(
-    handle: NativeHandle,
-    targetType: NativeClass<T>,
-): T;
+export function getNativeObject<T extends NativeObject<any>>(handle: NativeHandle, targetType: NativeClass<T>): T;
 // biome-ignore lint/suspicious/noExplicitAny: matches NativeClass's bound to keep TProps inference working across abstract subclasses.
 export function getNativeObject<T extends NativeObject<any>>(
     handle: NativeHandle | null | undefined,

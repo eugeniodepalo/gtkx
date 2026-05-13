@@ -8,7 +8,10 @@ import { describe, expect, it, vi } from "vitest";
 
 describe("render and quit", () => {
     it("logs caught render errors via console.error and registers the app", async () => {
-        const app = new Gtk.Application({ applicationId: "org.gtkx.render-coverage", flags: Gio.ApplicationFlags.NON_UNIQUE });
+        const app = new Gtk.Application({
+            applicationId: "org.gtkx.render-coverage",
+            flags: Gio.ApplicationFlags.NON_UNIQUE,
+        });
         const stopHandler = vi.fn();
         events.on("stop", stopHandler);
         const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});

@@ -86,7 +86,7 @@ export class RecordGenerator {
         this.methodBody.setSelfNames(this.selfNames);
 
         const initFields = this.collectInitializableFields(record);
-        this.emitInitTypeAlias(record, recordName, initFields);
+        this.emitInitTypeAlias(recordName, initFields);
 
         const cls = this.generateClass(record, recordName);
 
@@ -126,7 +126,7 @@ export class RecordGenerator {
         return this.fieldBuilder.getInitializableFields(record.fields);
     }
 
-    private emitInitTypeAlias(record: GirRecord, recordName: string, initFields: readonly GirField[]): void {
+    private emitInitTypeAlias(recordName: string, initFields: readonly GirField[]): void {
         const propStrings: string[] = [];
         for (const field of initFields) {
             let fieldName = toValidMemberName(toCamelCase(field.name));

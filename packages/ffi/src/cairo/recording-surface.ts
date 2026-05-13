@@ -6,7 +6,10 @@ import { wrapHandle } from "../object.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class RecordingSurface extends Surface {
-    static create(content: Content, extents?: { x: number; y: number; width: number; height: number }): RecordingSurface {
+    static create(
+        content: Content,
+        extents?: { x: number; y: number; width: number; height: number },
+    ): RecordingSurface {
         let handle: NativeHandle;
         if (extents) {
             const rect = alloc(32, "cairo_rectangle_t", LIB);

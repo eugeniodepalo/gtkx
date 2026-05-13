@@ -1,7 +1,6 @@
 import { alloc, call, type NativeHandle, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
 import { t } from "./helpers.js";
-import { registerNativeObject } from "./registry.js";
 
 export type { NativeHandle } from "@gtkx/native";
 
@@ -45,11 +44,29 @@ export abstract class NativeObject<TProps extends object = object> {
 
         if (meta.kind === "gobject") {
             this.handle = constructGObject(ctor, meta, props as Record<string, unknown>);
-            registerNativeObject(this);
+            registerInstance(this);
         } else {
             this.handle = constructBoxed(meta, props as Record<string, unknown>);
         }
     }
+}
+
+type InstanceRegistrar = (obj: NativeObject) => void;
+
+let registerInstance: InstanceRegistrar = () => {};
+
+/**
+ * Installs the callback invoked from {@link NativeObject}'s GObject branch to
+ * register the newly constructed instance in the identity registry.
+ *
+ * Called once by `./registry.js` at module load. Exposed only so the FFI
+ * bootstrap can wire its layers together without creating an import cycle
+ * between `object.ts` and `registry.ts`.
+ *
+ * @internal
+ */
+export function setInstanceRegistrar(registrar: InstanceRegistrar): void {
+    registerInstance = registrar;
 }
 
 /**
@@ -64,8 +81,10 @@ export abstract class NativeObject<TProps extends object = object> {
 export type NativeClass<
     // biome-ignore lint/suspicious/noExplicitAny: see jsdoc above for why `any` is necessary.
     T extends NativeObject<any> = NativeObject<any>,
+> = (abstract new (
     // biome-ignore lint/suspicious/noExplicitAny: constructor parameters must be bivariant to accept arbitrary subclass shapes.
-> = (abstract new (...args: any[]) => T) & {
+    ...args: any[]
+) => T) & {
     readonly prototype: T;
 };
 

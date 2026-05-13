@@ -52,14 +52,7 @@ export class LinearPattern extends Pattern {
 }
 
 export class RadialPattern extends Pattern {
-    static create(
-        cx0: number,
-        cy0: number,
-        radius0: number,
-        cx1: number,
-        cy1: number,
-        radius1: number,
-    ): RadialPattern {
+    static create(cx0: number, cy0: number, radius0: number, cx1: number, cy1: number, radius1: number): RadialPattern {
         const handle = call(
             LIB,
             "cairo_pattern_create_radial",

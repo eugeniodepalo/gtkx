@@ -1233,7 +1233,12 @@ export const statusToString = (status: Status): string => {
 
 class ContextImpl extends Context {
     static create(surface: Surface): ContextImpl {
-        const handle = call(LIB, "cairo_create", [{ type: SURFACE_T_NONE, value: surface.handle }], CAIRO_T) as NativeHandle;
+        const handle = call(
+            LIB,
+            "cairo_create",
+            [{ type: SURFACE_T_NONE, value: surface.handle }],
+            CAIRO_T,
+        ) as NativeHandle;
         return wrapHandle(ContextImpl, handle);
     }
 }
