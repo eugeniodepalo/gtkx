@@ -76,22 +76,35 @@ export function isGeneratableFieldType(
 }
 
 /**
- * Returns `true` if the record should receive a full generated binding.
+ * Returns `true` if the record should receive a generated binding.
  *
- * A `false` result means the record is skipped entirely — no stub class is
- * emitted. Boxed types always pass once they survive the vtable check;
- * plain structs must be non-opaque, have at least one field, and have
- * every public field marshalable. Inline callback fields (function-pointer
- * slots) do not gate marshalability: they have no JS-visible accessor and
- * their presence on a struct is orthogonal to whether the rest of the
- * struct can be marshalled.
+ * Class vtables (`*Class` / `*Iface`) are routed to the class-struct
+ * generator and always rejected here. Every other record — boxed types,
+ * opaque structs, structs with only private fields — receives at least
+ * a stub class so the ts-for-gir-published `.d.ts` contract can reference
+ * the symbol. Field accessors are only emitted when {@link
+ * isGeneratableFieldType} accepts every public field.
+ *
+ * @param record - The record under consideration.
+ * @param _repo - Repository for recursive field-type resolution.
+ * @param _currentNamespace - Namespace used to resolve unqualified names.
+ */
+export function shouldGenerateRecord(record: GirRecord, _repo: GirRepository, _currentNamespace: string): boolean {
+    if (isClassVtable(record)) return false;
+    return true;
+}
+
+/**
+ * Returns `true` if the record's public fields are fully marshalable, in
+ * which case the record generator can emit field accessors and registry
+ * metadata. A `false` result keeps the emitted class as a bare symbol
+ * stub so cross-namespace `.d.ts` references still resolve.
  *
  * @param record - The record under consideration.
  * @param repo - Repository for recursive field-type resolution.
  * @param currentNamespace - Namespace used to resolve unqualified names.
  */
-export function shouldGenerateRecord(record: GirRecord, repo: GirRepository, currentNamespace: string): boolean {
-    if (isClassVtable(record)) return false;
+export function canMarshalRecord(record: GirRecord, repo: GirRepository, currentNamespace: string): boolean {
     if (record.isBoxed()) return true;
     if (record.opaque) return false;
     if (record.fields.length === 0) return false;

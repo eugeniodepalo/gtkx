@@ -147,14 +147,14 @@ describe("shouldGenerateRecord", () => {
         expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(true);
     });
 
-    it("rejects opaque plain structs that lack a glib type name", () => {
+    it("accepts opaque plain structs as stub classes for cross-namespace contract resolution", () => {
         const record = createNormalizedRecord({ name: "Mystery", opaque: true });
-        expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(false);
+        expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(true);
     });
 
-    it("rejects plain structs with no fields", () => {
+    it("accepts plain structs with no fields as stub classes", () => {
         const record = createNormalizedRecord({ name: "Empty" });
-        expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(false);
+        expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(true);
     });
 
     it("accepts plain structs whose every public field is marshalable", () => {
@@ -168,7 +168,7 @@ describe("shouldGenerateRecord", () => {
         expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(true);
     });
 
-    it("rejects plain structs that contain even one unmarshalable public field", () => {
+    it("accepts plain structs even with unmarshalable public fields (field accessors omitted later)", () => {
         const record = createNormalizedRecord({
             name: "Mixed",
             fields: [
@@ -176,10 +176,10 @@ describe("shouldGenerateRecord", () => {
                 createNormalizedField({ name: "raw", type: createNormalizedType({ name: "gpointer" }) }),
             ],
         });
-        expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(false);
+        expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(true);
     });
 
-    it("ignores inline callback fields when checking field marshalability", () => {
+    it("accepts structs with inline callback fields", () => {
         const record = createNormalizedRecord({
             name: "WithCallback",
             fields: [

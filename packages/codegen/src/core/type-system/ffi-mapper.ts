@@ -10,7 +10,7 @@ import type { GirCallback, GirField, GirNamespace, GirParameter, GirRepository, 
 import { isIntrinsicType, isStringType } from "../../gir/index.js";
 import { normalizeClassName, toCamelCase, toPascalCase, toValidIdentifier } from "../utils/naming.js";
 import { splitQualifiedName } from "../utils/qualified-name.js";
-import { canAllocateRecord, shouldGenerateRecord } from "../utils/record-filter.js";
+import { canAllocateRecord, canMarshalRecord } from "../utils/record-filter.js";
 import {
     arrayType,
     boxedType,
@@ -621,7 +621,7 @@ export class FfiMapper {
         imports: TypeImport[],
     ): MappedType {
         const record = this.repo.getNamespace(resolved.namespace)?.records.get(resolved.name);
-        if (record && !shouldGenerateRecord(record, this.repo, resolved.namespace)) {
+        if (record && !canMarshalRecord(record, this.repo, resolved.namespace)) {
             return {
                 ts: "unknown",
                 ffi: structType(resolved.transformedName, transferFull),

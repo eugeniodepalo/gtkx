@@ -339,7 +339,7 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(filePathOf(files, "inner.ts")).toBe("gtk/inner.ts");
     });
 
-    it("skips records whose fields recurse to an unmarshalable type", () => {
+    it("emits stub files for records whose fields recurse to an unmarshalable type", () => {
         const inner = createNormalizedRecord({
             name: "Inner",
             qualifiedName: "Gtk.Inner",
@@ -366,8 +366,8 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(filePathOf(files, "outer.ts")).toBeUndefined();
-        expect(filePathOf(files, "inner.ts")).toBeUndefined();
+        expect(filePathOf(files, "outer.ts")).toBe("gtk/outer.ts");
+        expect(filePathOf(files, "inner.ts")).toBe("gtk/inner.ts");
     });
 
     it("emits methods on opaque boxed records that expose safe instance methods", () => {
