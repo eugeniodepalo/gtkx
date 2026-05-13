@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GirRepository } from "../src/repository.js";
+import { GirRepository } from "../../src/gir/repository.js";
 
 const createMinimalGir = (name: string, version: string, content: string) => `<?xml version="1.0"?>
 <repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"

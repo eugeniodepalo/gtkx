@@ -13,7 +13,7 @@
         "codegen:run": "gtkx-codegen run",
         "conformance": "turbo conformance --filter=@gtkx/ffi",
         "docs": "turbo build --filter=website",
-        "circular": "dpdm --no-warning --no-tree --transform -T --skip-dynamic-imports circular --exit-code circular:1 --exclude '(node_modules|dist|generated|out-tsc)' 'packages/{cli,codegen,css,e2e,ffi,gir,mcp,react,testing,vitest}/src/**/*.{ts,tsx}'",
+        "circular": "dpdm --no-warning --no-tree --transform -T --skip-dynamic-imports circular --exit-code circular:1 --exclude '(node_modules|dist|generated|out-tsc)' 'packages/{cli,codegen,css,e2e,ffi,mcp,react,testing,vitest}/src/**/*.{ts,tsx}'",
         "knip": "knip",
         "lint": "turbo lint:all && turbo lint --filter=!website --filter=!gtkx",
         "lint:all": "biome check . && knip && pnpm circular",

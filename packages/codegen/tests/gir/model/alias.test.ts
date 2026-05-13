@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GirAlias } from "../../src/model/alias.js";
-import { GirType } from "../../src/model/type.js";
+import { GirAlias } from "../../../src/gir/model/alias.js";
+import { GirType } from "../../../src/gir/model/type.js";
 
 function makeType(overrides: { name?: string; isArray?: boolean } = {}): GirType {
     return new GirType({

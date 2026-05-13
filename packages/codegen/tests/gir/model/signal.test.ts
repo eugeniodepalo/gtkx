@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GirSignal } from "../../src/model/signal.js";
-import { GirType } from "../../src/model/type.js";
+import { GirSignal } from "../../../src/gir/model/signal.js";
+import { GirType } from "../../../src/gir/model/type.js";
 
 function makeType(name: string, isArray = false): GirType {
     return new GirType({ name, isArray, elementType: null, nullable: false });

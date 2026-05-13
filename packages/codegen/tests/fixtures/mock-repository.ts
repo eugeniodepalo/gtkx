@@ -8,7 +8,7 @@ import type {
     GirNamespace,
     GirRecord,
     TypeKind,
-} from "@gtkx/gir";
+} from "../../src/gir/index.js";
 
 function splitQualifiedName(qn: string): { namespace: string; name: string } {
     const dot = qn.indexOf(".");

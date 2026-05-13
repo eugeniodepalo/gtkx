@@ -1,9 +1,9 @@
-import type { GirRepository } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { stringify } from "../../../../src/builders/stringify.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
 import { ClassGenerator } from "../../../../src/ffi/generators/class/index.js";
+import type { GirRepository } from "../../../../src/gir/index.js";
 import {
     createNormalizedClass,
     createNormalizedConstructor,

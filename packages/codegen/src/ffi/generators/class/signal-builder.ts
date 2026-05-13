@@ -6,7 +6,6 @@
  * delegating inherited signals to super.connect().
  */
 
-import type { GirClass, GirParameter, GirRepository, GirSignal } from "@gtkx/gir";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -31,6 +30,7 @@ import {
     type ParamWrapInfo,
     writeWrapExpression,
 } from "../../../core/writers/param-wrap-writer.js";
+import type { GirClass, GirParameter, GirRepository, GirSignal } from "../../../gir/index.js";
 
 type SignalParamData = {
     mapped: MappedType;

@@ -5,7 +5,6 @@
  * Delegates to specialized builders for each component.
  */
 
-import type { GirClass, GirMethod, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../../builders/file-builder.js";
 import { type ClassDeclarationBuilder, classDecl } from "../../../builders/index.js";
 import { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
@@ -24,6 +23,7 @@ import { isMethodSuppressed } from "../../../core/utils/method-suppression.js";
 import { generateConflictingMethodName, normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
 import { type ParentInfo, parseParentReference } from "../../../core/utils/parent-reference.js";
 import { addMethodStructure, type MethodStructure } from "../../../core/writers/index.js";
+import type { GirClass, GirMethod, GirRepository } from "../../../gir/index.js";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
 import { ConstructorBuilder } from "./constructor-builder.js";
 import { MethodBuilder } from "./method-builder.js";

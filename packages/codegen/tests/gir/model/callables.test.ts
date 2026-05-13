@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { GirConstructor, GirFunction, GirMethod } from "../../src/model/callables.js";
-import { GirParameter } from "../../src/model/parameter.js";
-import { GirType } from "../../src/model/type.js";
+import { GirConstructor, GirFunction, GirMethod } from "../../../src/gir/model/callables.js";
+import { GirParameter } from "../../../src/gir/model/parameter.js";
+import { GirType } from "../../../src/gir/model/type.js";
 
 function makeType(name: string): GirType {
     return new GirType({ name, isArray: false, elementType: null, nullable: false });

@@ -13,7 +13,6 @@ This is a monorepo containing the following key packages in `packages/`:
 | `react`   | React reconciler for GTK widgets    |
 | `css`     | CSS-in-JS styling for GTK           |
 | `codegen` | Code generation from GIR files      |
-| `gir`     | GIR parsing utilities               |
 | `cli`     | CLI tooling                         |
 | `testing` | Test utilities                      |
 | `e2e`     | End-to-end tests (reconciler nodes) |

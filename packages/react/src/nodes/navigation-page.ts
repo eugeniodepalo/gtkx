@@ -1,12 +1,14 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { toCamelCase } from "@gtkx/gir";
 import type { NavigationPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";
 import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { getFocusWidget, isDescendantOf, resolvePropertySetter } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
+
+const toCamelCase = (str: string): string =>
+    str.replaceAll(/[-_]([a-z])/g, (_, letter: string) => letter.toUpperCase());
 
 export class NavigationPageNode extends SingleChildVirtualNode<NavigationPageProps, WidgetNode, WidgetNode> {
     private wrappedPage: Adw.NavigationPage | null = null;

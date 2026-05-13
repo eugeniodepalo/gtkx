@@ -23,9 +23,6 @@
             "entry": ["src/generated/*/index.ts"],
             "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
         },
-        "packages/gir": {
-            "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
-        },
         "packages/mcp": {
             "entry": ["src/cli.ts"],
             "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]

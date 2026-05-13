@@ -5,7 +5,6 @@
  * Handles struct memory layout calculations, including nested structs.
  */
 
-import type { GirField, GirRecord, GirRepository } from "@gtkx/gir";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import {
@@ -18,6 +17,7 @@ import { isGeneratableFieldType as isGeneratableFieldTypeUtil } from "../../../c
 import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
 import { FfiTypeWriter } from "../../../core/writers/ffi-type-writer.js";
 import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
+import type { GirField, GirRecord, GirRepository } from "../../../gir/index.js";
 
 /**
  * Field layout information.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toCamelCase, toPascalCase } from "../src/utils.js";
+import { toCamelCase, toPascalCase } from "../../src/gir/utils.js";
 
 describe("toCamelCase", () => {
     it("converts kebab-case to camelCase", () => {

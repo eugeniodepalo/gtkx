@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GirType } from "../../src/model/type.js";
+import { GirType } from "../../../src/gir/model/type.js";
 
 function makeType(overrides: Partial<ConstructorParameters<typeof GirType>[0]> = {}): GirType {
     return new GirType({

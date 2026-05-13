@@ -8,7 +8,6 @@
  * actual allocation happens inside `NativeObject`'s constructor.
  */
 
-import type { GirField, GirFunction, GirMethod, GirRecord, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../../builders/file-builder.js";
 import { accessor, type ClassDeclarationBuilder, classDecl, method, param } from "../../../builders/index.js";
 import type { Writer } from "../../../builders/writer.js";
@@ -33,6 +32,7 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../core/writers/index.js";
+import type { GirField, GirFunction, GirMethod, GirRecord, GirRepository } from "../../../gir/index.js";
 import { FieldBuilder } from "./field-builder.js";
 
 type RecordTypeMeta = {
@@ -252,7 +252,7 @@ export class RecordGenerator {
     }
 
     private buildStaticFactoryMethodStructure(
-        ctor: import("@gtkx/gir").GirConstructor,
+        ctor: import("../../../gir/index.js").GirConstructor,
         recordName: string,
         meta: RecordTypeMeta,
     ): MethodStructure {
@@ -272,7 +272,7 @@ export class RecordGenerator {
     }
 
     private writeStaticFactoryMethodBody(
-        ctor: import("@gtkx/gir").GirConstructor,
+        ctor: import("../../../gir/index.js").GirConstructor,
         recordName: string,
         meta: RecordTypeMeta,
     ): (writer: Writer) => void {

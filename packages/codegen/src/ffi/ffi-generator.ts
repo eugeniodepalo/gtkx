@@ -5,7 +5,6 @@
  * Produces GeneratedFile arrays using FileBuilder.
  */
 
-import type { GirClass, GirNamespace, GirRepository } from "@gtkx/gir";
 import { fileBuilder } from "../builders/file-builder.js";
 import { stringify } from "../builders/stringify.js";
 import { CodegenMetadata } from "../core/codegen-metadata.js";
@@ -15,6 +14,7 @@ import { FfiMapper } from "../core/type-system/ffi-mapper.js";
 import { normalizeClassName, toKebabCase, toPascalCase } from "../core/utils/naming.js";
 import { splitQualifiedName } from "../core/utils/qualified-name.js";
 import { isClassVtable, shouldGenerateRecord } from "../core/utils/record-filter.js";
+import type { GirClass, GirNamespace, GirRepository } from "../gir/index.js";
 import { ClassGenerator } from "./generators/class/index.js";
 import { ClassStructGenerator } from "./generators/class-struct/index.js";
 import { ConstantGenerator } from "./generators/constant.js";

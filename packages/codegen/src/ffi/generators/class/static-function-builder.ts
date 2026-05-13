@@ -4,7 +4,6 @@
  * Builds static function code for classes.
  */
 
-import type { GirClass, GirFunction } from "@gtkx/gir";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { filterSupportedFunctions } from "../../../core/utils/filtering.js";
@@ -15,6 +14,7 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../core/writers/index.js";
+import type { GirClass, GirFunction } from "../../../gir/index.js";
 
 function collectParentStaticFunctionNames(cls: GirClass): Set<string> {
     const names = new Set<string>();

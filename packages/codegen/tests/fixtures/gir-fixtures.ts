@@ -16,7 +16,7 @@ import {
     GirSignal,
     GirType,
     type RepositoryLike,
-} from "@gtkx/gir";
+} from "../../src/gir/index.js";
 
 function qualifiedName(ns: string, name: string): string {
     return `${ns}.${name}`;

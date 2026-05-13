@@ -5,8 +5,8 @@
  * Extracts common patterns from RecordGenerator, InterfaceGenerator, ClassGenerator.
  */
 
-import type { GirConstructor, GirFunction, GirMethod, GirParameter, GirType } from "@gtkx/gir";
 import type { Writer } from "../../builders/writer.js";
+import type { GirConstructor, GirFunction, GirMethod, GirParameter, GirType } from "../../gir/index.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import {
     FFI_VOID,

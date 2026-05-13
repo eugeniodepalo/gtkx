@@ -4,7 +4,6 @@
  * Generates standalone exported functions using the builder library.
  */
 
-import type { GirFunction } from "@gtkx/gir";
 import { type FileBuilder, variableStatement, type Writer } from "../../builders/index.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
@@ -12,6 +11,7 @@ import { formatJsDoc } from "../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, hasVarargs } from "../../core/utils/filtering.js";
 import { toCamelCase, toValidIdentifier } from "../../core/utils/naming.js";
 import { addTypeImports, createMethodBodyWriter, type MethodBodyWriter } from "../../core/writers/index.js";
+import type { GirFunction } from "../../gir/index.js";
 
 /**
  * Generates standalone exported functions into a FileBuilder.

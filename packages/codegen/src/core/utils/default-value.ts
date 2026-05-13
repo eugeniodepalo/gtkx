@@ -4,7 +4,7 @@
  * Converts GIR DefaultValue to TypeScript initializer strings.
  */
 
-import type { DefaultValue, GirClass, GirProperty, GirRepository } from "@gtkx/gir";
+import type { DefaultValue, GirClass, GirProperty, GirRepository } from "../../gir/index.js";
 import { toConstantCase, toPascalCase } from "./naming.js";
 
 /**

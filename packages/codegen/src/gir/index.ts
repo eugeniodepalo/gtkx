@@ -6,7 +6,7 @@
  *
  * @example
  * ```typescript
- * import { GirRepository } from "@gtkx/gir";
+ * import { GirRepository } from "../gir/index.js";
  *
  * const repo = await GirRepository.load(["Gtk-4.0"], {
  *     girPath: ["/usr/share/gir-1.0"]

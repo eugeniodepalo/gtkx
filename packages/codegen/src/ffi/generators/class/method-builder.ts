@@ -4,7 +4,6 @@
  * Builds instance method code for classes.
  */
 
-import type { GirMethod, GirParameter } from "@gtkx/gir";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -22,6 +21,7 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../core/writers/index.js";
+import type { GirMethod, GirParameter } from "../../../gir/index.js";
 
 /**
  * Builds method code for a class.

@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { describe, expect, it } from "vitest";
-import { GirParser } from "../../src/internal/parser.js";
+import { GirParser } from "../../../src/gir/internal/parser.js";
 
 const createMinimalGir = (namespaceContent: string, name = "Test", version = "1.0") => `<?xml version="1.0"?>
 <repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"

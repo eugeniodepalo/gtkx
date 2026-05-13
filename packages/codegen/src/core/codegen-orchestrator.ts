@@ -1,6 +1,6 @@
 import { readdir } from "node:fs/promises";
-import { GirRepository } from "@gtkx/gir";
 import { FfiGenerator } from "../ffi/ffi-generator.js";
+import { GirRepository } from "../gir/index.js";
 import { ReactGenerator } from "../react/react-generator.js";
 import { CodegenMetadata } from "./codegen-metadata.js";
 import type { GeneratedFile } from "./generated-file-set.js";

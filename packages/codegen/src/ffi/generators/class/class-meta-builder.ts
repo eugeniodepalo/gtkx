@@ -5,13 +5,13 @@
  * This metadata is consumed by React generators - nothing is written to output files.
  */
 
-import type { GirClass, GirRepository } from "@gtkx/gir";
 import type { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import { getContainerMethodNames, getHiddenPropNames } from "../../../core/config/index.js";
 import { normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
 import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
 import { isWidgetType } from "../../../core/utils/widget-detection.js";
+import type { GirClass, GirRepository } from "../../../gir/index.js";
 
 export type ClassMetaAnalyzers = {
     readonly property: PropertyAnalyzer;

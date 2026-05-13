@@ -5,7 +5,6 @@
  * Interfaces in GObject are like mixins/traits that classes can implement.
  */
 
-import type { GirInterface, GirMethod, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../builders/file-builder.js";
 import { classDecl } from "../../builders/index.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
@@ -21,6 +20,7 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../core/writers/index.js";
+import type { GirInterface, GirMethod, GirRepository } from "../../gir/index.js";
 
 /**
  * Generates interface classes.

@@ -10,7 +10,7 @@ const { repositoryLoadMock, ffiGenerateMock, reactGenerateMock, reactCtorSpy } =
     reactCtorSpy: vi.fn(),
 }));
 
-vi.mock("@gtkx/gir", () => ({
+vi.mock("../../src/gir/index.js", () => ({
     GirRepository: { load: repositoryLoadMock },
 }));
 

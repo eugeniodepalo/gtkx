@@ -4,11 +4,11 @@
  * Generates constant definitions using the builder library.
  */
 
-import type { GirConstant } from "@gtkx/gir";
 import { type FileBuilder, variableStatement } from "../../builders/index.js";
 import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
 import { UNSAFE_PRIMITIVE_NAMES } from "../../core/type-system/ffi-types.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
+import type { GirConstant } from "../../gir/index.js";
 
 /**
  * Generates constant declarations into a FileBuilder.

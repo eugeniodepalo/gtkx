@@ -14,7 +14,7 @@
  * site.
  */
 
-import type { GirRecord, GirRepository } from "@gtkx/gir";
+import type { GirRecord, GirRepository } from "../../gir/index.js";
 import { isPrimitiveFieldType } from "../type-system/ffi-types.js";
 
 function resolveRecord(typeName: string, repo: GirRepository, currentNamespace: string): GirRecord | null {

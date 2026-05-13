@@ -1,6 +1,6 @@
-import type { GirNamespace, GirRepository } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
 import { FfiGenerator } from "../../src/ffi/ffi-generator.js";
+import type { GirNamespace, GirRepository } from "../../src/gir/index.js";
 import {
     createButtonClass,
     createNormalizedClass,

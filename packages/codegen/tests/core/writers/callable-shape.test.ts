@@ -1,8 +1,8 @@
-import { GirParameter, GirType } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
 import type { FfiMapper } from "../../../src/core/type-system/ffi-mapper.js";
 import type { MappedType } from "../../../src/core/type-system/ffi-types.js";
 import { buildCallableShape } from "../../../src/core/writers/callable-shape.js";
+import { GirParameter, GirType } from "../../../src/gir/index.js";
 
 const VOID_RETURN: MappedType = { ts: "void", ffi: { type: "void" }, imports: [] };
 

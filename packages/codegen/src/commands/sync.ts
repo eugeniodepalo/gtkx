@@ -1,8 +1,8 @@
 import { copyFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { GirRepository } from "@gtkx/gir";
 import { defineCommand } from "citty";
 import { intro, log, outro } from "../core/utils/progress.js";
+import { GirRepository } from "../gir/index.js";
 import { GIRS_DIR, SYSTEM_GIRS_DIR } from "./constants.js";
 
 /** Default root namespace keys whose transitive dependencies form the full GIR set. */

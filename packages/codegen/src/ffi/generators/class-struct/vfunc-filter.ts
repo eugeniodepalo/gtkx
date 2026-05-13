@@ -8,8 +8,8 @@
  * broken descriptor into `registerClass`.
  */
 
-import type { GirCallback, GirField } from "@gtkx/gir";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
+import type { GirCallback, GirField } from "../../../gir/index.js";
 
 /**
  * Why a vfunc cannot be safely emitted.

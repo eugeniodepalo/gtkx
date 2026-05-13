@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { GirMethod } from "../../src/model/callables.js";
-import { GirInterface } from "../../src/model/interface.js";
-import { GirProperty } from "../../src/model/property.js";
-import type { RepositoryLike } from "../../src/model/repository-like.js";
-import { GirSignal } from "../../src/model/signal.js";
-import { GirType } from "../../src/model/type.js";
+import { GirMethod } from "../../../src/gir/model/callables.js";
+import { GirInterface } from "../../../src/gir/model/interface.js";
+import { GirProperty } from "../../../src/gir/model/property.js";
+import type { RepositoryLike } from "../../../src/gir/model/repository-like.js";
+import { GirSignal } from "../../../src/gir/model/signal.js";
+import { GirType } from "../../../src/gir/model/type.js";
 
 function makeType(name = "none"): GirType {
     return new GirType({ name, isArray: false, elementType: null, nullable: false });

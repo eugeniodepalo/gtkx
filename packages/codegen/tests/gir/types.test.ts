@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { GirEnumeration, GirEnumerationMember } from "../src/model/enumeration.js";
-import { GirProperty, parseDefaultValue } from "../src/model/property.js";
-import { GirRecord } from "../src/model/record.js";
-import { GirType } from "../src/model/type.js";
+import { GirEnumeration, GirEnumerationMember } from "../../src/gir/model/enumeration.js";
+import { GirProperty, parseDefaultValue } from "../../src/gir/model/property.js";
+import { GirRecord } from "../../src/gir/model/record.js";
+import { GirType } from "../../src/gir/model/type.js";
 
 describe("GirType", () => {
     it("detects intrinsic types", () => {
@@ -107,7 +107,7 @@ describe("GirRecord", () => {
     });
 
     it("detects plain structs", async () => {
-        const { GirField } = await import("../src/model/field.js");
+        const { GirField } = await import("../../src/gir/model/field.js");
         const record = new GirRecord({
             name: "Point",
             qualifiedName: "Gdk.Point",

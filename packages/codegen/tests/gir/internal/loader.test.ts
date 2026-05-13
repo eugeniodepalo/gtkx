@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { GirLoader } from "../../src/internal/loader.js";
+import { GirLoader } from "../../../src/gir/internal/loader.js";
 
 const minimalGir = (name: string, version: string, deps: Array<{ name: string; version: string }> = []) => {
     const includes = deps.map((d) => `    <include name="${d.name}" version="${d.version}"/>`).join("\n");

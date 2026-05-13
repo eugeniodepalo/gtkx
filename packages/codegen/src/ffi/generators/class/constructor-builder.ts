@@ -7,7 +7,6 @@
  * dispatches based on metadata registered via `registerConstructionMeta`.
  */
 
-import type { GirClass, GirConstructor, GirProperty, GirRepository } from "@gtkx/gir";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -22,6 +21,7 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../core/writers/index.js";
+import type { GirClass, GirConstructor, GirProperty, GirRepository } from "../../../gir/index.js";
 
 type SettablePropParam = {
     paramName: string;

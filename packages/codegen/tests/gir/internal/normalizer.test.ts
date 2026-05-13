@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GirNormalizer } from "../../src/internal/normalizer.js";
-import type { RawNamespace } from "../../src/internal/raw-types.js";
+import { GirNormalizer } from "../../../src/gir/internal/normalizer.js";
+import type { RawNamespace } from "../../../src/gir/internal/raw-types.js";
 
 const createRawNamespace = (overrides: Partial<RawNamespace> = {}): RawNamespace => ({
     name: "Test",

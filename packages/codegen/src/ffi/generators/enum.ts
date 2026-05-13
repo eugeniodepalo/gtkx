@@ -4,11 +4,11 @@
  * Generates enum definitions using the builder library.
  */
 
-import type { GirEnumeration } from "@gtkx/gir";
 import { enumDecl, type FileBuilder } from "../../builders/index.js";
 import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
 import { toConstantCase, toPascalCase } from "../../core/utils/naming.js";
+import type { GirEnumeration } from "../../gir/index.js";
 
 /**
  * Generates enum declarations into a FileBuilder.

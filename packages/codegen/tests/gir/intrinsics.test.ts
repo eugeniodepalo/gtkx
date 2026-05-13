@@ -8,7 +8,7 @@ import {
     NUMERIC_TYPES,
     STRING_TYPES,
     VOID_TYPES,
-} from "../src/intrinsics.js";
+} from "../../src/gir/intrinsics.js";
 
 describe("isIntrinsicType", () => {
     describe("void types", () => {

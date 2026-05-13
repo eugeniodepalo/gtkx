@@ -193,9 +193,6 @@ importers:
       '@clack/prompts':
         specifier: ^1.4.0
         version: 1.4.0
-      '@gtkx/gir':
-        specifier: workspace:*
-        version: link:../gir
       '@gtkx/native':
         specifier: workspace:*
         version: link:../native
@@ -208,6 +205,9 @@ importers:
       citty:
         specifier: ^0.2.2
         version: 0.2.2
+      fast-xml-parser:
+        specifier: ^5.7.3
+        version: 5.8.0
       ts-morph:
         specifier: ^28.0.0
         version: 28.0.0
@@ -257,12 +257,6 @@ importers:
         specifier: workspace:*
         version: link:../vitest
 
-  packages/gir:
-    dependencies:
-      fast-xml-parser:
-        specifier: ^5.8.0
-        version: 5.8.0
-
   packages/mcp:
     dependencies:
       '@modelcontextprotocol/sdk':
@@ -297,9 +291,6 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
-      '@gtkx/gir':
-        specifier: workspace:*
-        version: link:../gir
       '@gtkx/native':
         specifier: workspace:*
         version: link:../native

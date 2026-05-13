@@ -1,4 +1,3 @@
-import { GirCallback, type GirNamespace, type GirRepository } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
 import {
     canAllocateRecord,
@@ -6,6 +5,7 @@ import {
     isGeneratableFieldType,
     shouldGenerateRecord,
 } from "../../../src/core/utils/record-filter.js";
+import { GirCallback, type GirNamespace, type GirRepository } from "../../../src/gir/index.js";
 import {
     createNormalizedField,
     createNormalizedNamespace,

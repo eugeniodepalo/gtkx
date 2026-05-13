@@ -4,7 +4,7 @@
  * Functions for detecting widget types.
  */
 
-import type { GirRepository } from "@gtkx/gir";
+import type { GirRepository } from "../../gir/index.js";
 
 /**
  * Checks if a type name refers to a widget type (Gtk.Widget or subclass).

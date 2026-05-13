@@ -9,7 +9,7 @@
  * call-arg emitter, and body emitter all operate on a single coherent plan.
  */
 
-import type { GirParameter } from "@gtkx/gir";
+import type { GirParameter } from "../../gir/index.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType, TypeImport } from "../type-system/ffi-types.js";
 import { isVararg } from "../utils/filtering.js";

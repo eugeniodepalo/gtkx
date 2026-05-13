@@ -11,7 +11,6 @@
                 "@gtkx/codegen#build",
                 "@gtkx/css#build",
                 "@gtkx/ffi#build",
-                "@gtkx/gir#build",
                 "@gtkx/mcp#build",
                 "@gtkx/native#build",
                 "@gtkx/react#build",
@@ -24,11 +23,7 @@
         },
         "//#codegen:run": {
             "dependsOn": ["@gtkx/codegen#build"],
-            "inputs": [
-                "$TURBO_ROOT$/girs/**",
-                "$TURBO_ROOT$/packages/gir/src/**",
-                "$TURBO_ROOT$/packages/codegen/src/**"
-            ],
+            "inputs": ["$TURBO_ROOT$/girs/**", "$TURBO_ROOT$/packages/codegen/src/**"],
             "outputs": ["packages/ffi/src/generated/**", "packages/react/src/generated/**"],
             "outputLogs": "new-only"
         },

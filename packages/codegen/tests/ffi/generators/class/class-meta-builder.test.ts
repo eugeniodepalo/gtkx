@@ -1,6 +1,6 @@
-import type { GirRepository } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "../../../../src/ffi/generators/class/class-meta-builder.js";
+import type { GirRepository } from "../../../../src/gir/index.js";
 import {
     createNormalizedClass,
     createNormalizedNamespace,

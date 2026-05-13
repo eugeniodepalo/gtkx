@@ -6,8 +6,8 @@
  * instead of using callbacks.
  */
 
-import type { GirCallback, GirField, GirNamespace, GirParameter, GirRepository, GirType } from "@gtkx/gir";
-import { isIntrinsicType, isStringType } from "@gtkx/gir";
+import type { GirCallback, GirField, GirNamespace, GirParameter, GirRepository, GirType } from "../../gir/index.js";
+import { isIntrinsicType, isStringType } from "../../gir/index.js";
 import { normalizeClassName, toCamelCase, toPascalCase, toValidIdentifier } from "../utils/naming.js";
 import { splitQualifiedName } from "../utils/qualified-name.js";
 import { canAllocateRecord, shouldGenerateRecord } from "../utils/record-filter.js";

@@ -4,7 +4,7 @@
  * Provides analysis of async/finish method pairs in GIR data.
  */
 
-import type { GirMethod } from "@gtkx/gir";
+import type { GirMethod } from "../../gir/index.js";
 
 /**
  * Result of async method analysis.

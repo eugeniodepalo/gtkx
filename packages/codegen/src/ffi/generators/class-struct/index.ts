@@ -16,7 +16,6 @@
  * remain auditable.
  */
 
-import type { GirField, GirRecord, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../../builders/file-builder.js";
 import { variableStatement } from "../../../builders/index.js";
 import type { Writer } from "../../../builders/writer.js";
@@ -25,6 +24,7 @@ import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import { log } from "../../../core/utils/progress.js";
 import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
+import type { GirField, GirRecord, GirRepository } from "../../../gir/index.js";
 import { FieldBuilder } from "../record/field-builder.js";
 import { classifyVfunc, VFUNC_SKIP_REASON_LABEL } from "./vfunc-filter.js";
 

@@ -10,7 +10,6 @@
  * Construct-only properties get a getter-only accessor (no setter).
  */
 
-import type { GirClass, GirMethod, GirProperty, GirRepository } from "@gtkx/gir";
 import { accessor } from "../../../builders/index.js";
 import type { AccessorBuilder } from "../../../builders/members/accessor.js";
 import type { Writer } from "../../../builders/writer.js";
@@ -32,6 +31,7 @@ import { toCamelCase } from "../../../core/utils/naming.js";
 import { CallExpressionBuilder } from "../../../core/writers/call-expression-builder.js";
 import type { FfiDescriptorRegistry } from "../../../core/writers/descriptor-registry.js";
 import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
+import type { GirClass, GirMethod, GirProperty, GirRepository } from "../../../gir/index.js";
 
 export class PropertyAccessorBuilder {
     private readonly existingMethodNames: Set<string>;

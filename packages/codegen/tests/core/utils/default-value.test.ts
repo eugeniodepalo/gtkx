@@ -1,6 +1,6 @@
-import type { DefaultValue, GirClass, GirProperty, GirRepository } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
 import { collectPropertiesWithDefaults, convertDefaultValue } from "../../../src/core/utils/default-value.js";
+import type { DefaultValue, GirClass, GirProperty, GirRepository } from "../../../src/gir/index.js";
 
 type FakeNamespace = {
     name: string;

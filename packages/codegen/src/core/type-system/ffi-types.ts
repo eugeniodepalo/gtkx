@@ -5,8 +5,8 @@
  * This module owns all FFI-specific type logic, separate from the pure GIR data layer.
  */
 
-import type { TypeKind } from "@gtkx/gir";
 import type { CallbackType, Type } from "@gtkx/native";
+import type { TypeKind } from "../../gir/index.js";
 
 export type ImportType = TypeKind;
 
