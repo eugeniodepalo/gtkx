@@ -209,17 +209,37 @@ export class FfiGenerator {
     }
 
     private generateIndexFile(files: GeneratedFile[]): string {
-        const exportLines = files
-            .map((f) => {
-                const relativeName = f.path.replace(this.namespacePrefix, "").replace(/\.ts$/, "");
-                return relativeName;
-            })
+        const fileNames = files
+            .map((f) => f.path.replace(this.namespacePrefix, "").replace(/\.ts$/, ""))
             .filter((name) => name !== "index")
-            .sort((a, b) => a.localeCompare(b))
-            .map((name) => `export * from "./${name}.js";`)
-            .join("\n");
+            .sort((a, b) => a.localeCompare(b));
 
-        return exportLines ? `${exportLines}\n` : "";
+        if (fileNames.length === 0) return "";
+
+        const namespaceAliases = fileNames.map((name, index) => ({
+            modulePath: `./${name}.js`,
+            alias: `__ns_${index}`,
+        }));
+
+        const reExports = fileNames.map((name) => `export * from "./${name}.js";`);
+        const namespaceImports = namespaceAliases.map(
+            ({ modulePath, alias }) => `import * as ${alias} from "${modulePath}";`,
+        );
+        const intersectionType = namespaceAliases.map(({ alias }) => `typeof ${alias}`).join(" & ");
+        const assignArgs = namespaceAliases.map(({ alias }) => alias).join(", ");
+        const namespaceVar = this.options.namespace;
+
+        return [
+            ...reExports,
+            "",
+            ...namespaceImports,
+            "",
+            `const ${namespaceVar}: ${intersectionType} = Object.assign({}, ${assignArgs});`,
+            "",
+            `export { ${namespaceVar} };`,
+            `export default ${namespaceVar};`,
+            "",
+        ].join("\n");
     }
 
     private registerRecords(namespace: GirNamespace): void {

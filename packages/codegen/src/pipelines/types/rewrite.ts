@@ -19,7 +19,7 @@ export function namespaceFromRawFilename(filename: string): string | null {
 
 /**
  * Rewrites a single ts-for-gir generated `.d.ts` file in-place to use the
- * gtkx import shape. Drops the per-namespace import-shim augmentation, then
+ * gtkx import shape. Drops the per-namespace import-shim augmentation and
  * rewrites every `./node-<ns>-<ver>.js` module specifier into
  * `@gtkx/ffi/<ns>`.
  */
@@ -35,6 +35,33 @@ export function rewriteNamespaceDeclarations(sourceFile: SourceFile): void {
             decl.setModuleSpecifier(`@gtkx/ffi/${match[1]}`);
         }
     }
+}
+
+const DEFAULT_IMPORT_PATTERN = /^import type (\w+) from (['"]@gtkx\/ffi\/[a-z0-9]+['"]);?$/gm;
+const LEGACY_MODULE_KEYWORD_PATTERN = /^(\s*)module\s+(\w+)\s*\{/gm;
+
+/**
+ * Converts each `import type <Name> from '@gtkx/ffi/<ns>'` line into the
+ * equivalent `import type * as <Name> from '@gtkx/ffi/<ns>'` so that type
+ * expressions like `Gdk.RGBA` inside the .d.ts resolve against the imported
+ * module's class declarations rather than the default-export value type.
+ */
+export function rewriteDefaultImportsToNamespace(source: string): string {
+    return source.replace(DEFAULT_IMPORT_PATTERN, (_match, name: string, specifier: string) => {
+        return `import type * as ${name} from ${specifier};`;
+    });
+}
+
+/**
+ * Replaces the legacy `module <Name> { ... }` keyword form ts-for-gir 3.x
+ * emits for per-class signal/constructor companion blocks with the modern
+ * `namespace <Name> { ... }` form. The former is rejected under strict TS
+ * 6+ as a stylistic legacy of internal modules.
+ */
+export function rewriteModuleKeywordToNamespace(source: string): string {
+    return source.replace(LEGACY_MODULE_KEYWORD_PATTERN, (_match, indent: string, name: string) => {
+        return `${indent}namespace ${name} {`;
+    });
 }
 
 /**

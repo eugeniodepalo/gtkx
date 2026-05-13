@@ -146,6 +146,12 @@
             "outputs": [],
             "outputLogs": "new-only"
         },
+        "@gtkx/ffi#conformance": {
+            "dependsOn": ["^build", "//#codegen:run"],
+            "inputs": ["src/generated/**/*.d.ts", "tsconfig.conformance.json"],
+            "outputs": [],
+            "outputLogs": "new-only"
+        },
         "@gtkx/react#typecheck": {
             "dependsOn": ["^build", "//#codegen:run"],
             "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],

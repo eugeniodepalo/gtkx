@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runTsForGir } from "./invoke-cli.js";
-import { loadAndRewrite } from "./rewrite.js";
+import { loadAndRewrite, rewriteDefaultImportsToNamespace, rewriteModuleKeywordToNamespace } from "./rewrite.js";
 
 /**
  * Runs the full types pipeline: spawns ts-for-gir against the GIR directory,
@@ -34,7 +34,9 @@ export async function runTypesPipeline(girsDir: string, outDir: string): Promise
         for (const { namespace, sourceFile } of rewritten) {
             const nsDir = join(outDir, namespace);
             await mkdir(nsDir, { recursive: true });
-            await writeFile(join(nsDir, `${namespace}.d.ts`), sourceFile.getFullText(), "utf-8");
+            const withNamespaceImports = rewriteDefaultImportsToNamespace(sourceFile.getFullText());
+            const finalSource = rewriteModuleKeywordToNamespace(withNamespaceImports);
+            await writeFile(join(nsDir, `${namespace}.d.ts`), finalSource, "utf-8");
             namespacesWritten.push(namespace);
         }
 
