@@ -1,6 +1,6 @@
 import { findObjectProperty } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
-import { GIconIface } from "../src/generated/gio/icon-iface.js";
+import { IconIface } from "../src/generated/gio/icon-iface.js";
 import { ParamFlags } from "../src/generated/gobject/enums.js";
 import {
     paramSpecBoolean,
@@ -12,7 +12,7 @@ import {
     typeParent,
 } from "../src/generated/gobject/functions.js";
 import { Object as GObject } from "../src/generated/gobject/object.js";
-import { GObjectClass } from "../src/generated/gobject/object-class.js";
+import { ObjectClass } from "../src/generated/gobject/object-class.js";
 import { Value as GValue } from "../src/generated/gobject/value.js";
 import * as Gtk from "../src/generated/gtk/index.js";
 import { findNativeClass, instanceIsA, registerClass } from "../src/index.js";
@@ -30,8 +30,8 @@ const gtkBoxGType = (): number => typeFromName("GtkBox");
 const gObjectGType = (): number => typeFromName("GObject");
 
 const noopPropertyAccessors = [
-    { ...GObjectClass.setProperty, fn: () => undefined },
-    { ...GObjectClass.getProperty, fn: () => undefined },
+    { ...ObjectClass.setProperty, fn: () => undefined },
+    { ...ObjectClass.getProperty, fn: () => undefined },
 ];
 
 describe("registerClass", () => {
@@ -200,7 +200,7 @@ describe("registerClass", () => {
 
         registerClass(CustomObject, gObjectGType(), {
             gtypeName: name,
-            vfuncs: [{ ...GObjectClass.setProperty, fn: () => undefined }],
+            vfuncs: [{ ...ObjectClass.setProperty, fn: () => undefined }],
         });
 
         const customGtype = typeFromName(name);
@@ -220,12 +220,12 @@ describe("registerClass", () => {
             properties: [{ pspec }],
             vfuncs: [
                 {
-                    ...GObjectClass.setProperty,
+                    ...ObjectClass.setProperty,
                     fn: (..._args: unknown[]) => {
                         setCalls.push("set_property invoked");
                     },
                 },
-                { ...GObjectClass.getProperty, fn: () => undefined },
+                { ...ObjectClass.getProperty, fn: () => undefined },
             ],
         });
 
@@ -244,7 +244,7 @@ describe("registerClass", () => {
         expect(() =>
             registerClass(CustomObject, gObjectGType(), {
                 gtypeName: uniqueName("GtkxMisalignedVfunc"),
-                vfuncs: [{ ...GObjectClass.setProperty, byteOffset: 1, fn: () => undefined }],
+                vfuncs: [{ ...ObjectClass.setProperty, byteOffset: 1, fn: () => undefined }],
             }),
         ).toThrow(/not aligned to a pointer/);
     });
@@ -257,7 +257,7 @@ describe("registerClass", () => {
                 gtypeName: uniqueName("GtkxOversizedVfunc"),
                 vfuncs: [
                     {
-                        ...GObjectClass.setProperty,
+                        ...ObjectClass.setProperty,
                         byteOffset: 1_000_000,
                         argTypes: [],
                         fn: () => undefined,
@@ -301,7 +301,7 @@ describe("registerClass", () => {
                     gtype: giconGtype,
                     vfuncs: [
                         {
-                            ...GIconIface.hash,
+                            ...IconIface.hash,
                             fn: () => {
                                 hashCalls.push(1);
                                 return 0xfeed_face;
@@ -337,7 +337,7 @@ describe("registerClass", () => {
                 interfaces: [
                     {
                         gtype: giconGtype,
-                        vfuncs: [{ ...GIconIface.hash, byteOffset: 1, fn: () => 0 }],
+                        vfuncs: [{ ...IconIface.hash, byteOffset: 1, fn: () => 0 }],
                     },
                 ],
             }),
@@ -353,7 +353,7 @@ describe("registerClass", () => {
                 interfaces: [
                     {
                         gtype: 0,
-                        vfuncs: [{ ...GIconIface.hash, fn: () => 0 }],
+                        vfuncs: [{ ...IconIface.hash, fn: () => 0 }],
                     },
                 ],
             }),
@@ -366,8 +366,8 @@ describe("registerClass", () => {
             registerClass(CustomObject, gObjectGType(), {
                 gtypeName: "GtkxKindDiscriminator",
                 vfuncs: [
-                    // @ts-expect-error — GIconIface.hash is a `kind: "interface"` descriptor and cannot flow into `vfuncs`.
-                    { ...GIconIface.hash, fn: () => 0 },
+                    // @ts-expect-error — IconIface.hash is a `kind: "interface"` descriptor and cannot flow into `vfuncs`.
+                    { ...IconIface.hash, fn: () => 0 },
                 ],
             });
         };

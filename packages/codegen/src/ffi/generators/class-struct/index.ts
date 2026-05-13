@@ -17,11 +17,11 @@
  */
 
 import type { FileBuilder } from "../../../builders/file-builder.js";
-import { variableStatement } from "../../../builders/index.js";
+import { interfaceDecl, variableStatement } from "../../../builders/index.js";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
+import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import { log } from "../../../core/utils/progress.js";
 import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
 import type { GirField, GirRecord, GirRepository } from "../../../gir/index.js";
@@ -86,11 +86,11 @@ export class ClassStructGenerator {
      * caller should avoid writing an empty file.
      */
     generate(record: GirRecord): boolean {
-        const exportSymbol = record.cType;
-        if (!exportSymbol) {
+        if (!record.cType) {
             this.logger.warning(`[class-struct] skipping ${record.qualifiedName}: missing c:type`);
             return false;
         }
+        const exportSymbol = normalizeClassName(record.name);
 
         const kind = this.resolveVtableKind(record);
         if (!kind) {
@@ -124,6 +124,7 @@ export class ClassStructGenerator {
         const descriptorType = DESCRIPTOR_TYPE_BY_KIND[kind];
         this.file.addImport("../../native.js", ["t"]);
         this.file.addTypeImport("../../register-class.js", [descriptorType]);
+        this.file.add(interfaceDecl(exportSymbol, { exported: true }));
         this.file.add(
             variableStatement(exportSymbol, {
                 exported: true,

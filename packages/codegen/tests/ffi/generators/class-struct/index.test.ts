@@ -66,7 +66,7 @@ describe("ClassStructGenerator", () => {
         expect(stringify(file)).toBe("");
     });
 
-    it("emits a registry exported under the record's cType", () => {
+    it("emits a registry exported under the record's normalized name", () => {
         const { generator, file } = createTestSetup();
         const record = createNormalizedRecord({
             name: "ObjectClass",
@@ -85,7 +85,7 @@ describe("ClassStructGenerator", () => {
         });
         expect(generator.generate(record)).toBe(true);
         const code = stringify(file);
-        expect(code).toContain("export const GObjectClass");
+        expect(code).toContain("export const ObjectClass");
         expect(code).toContain('vfuncName: "finalize"');
         expect(code).toContain("returnType: t.void");
     });
@@ -154,7 +154,7 @@ describe("ClassStructGenerator", () => {
         expect(generator.generate(record)).toBe(false);
         expect(stringify(file)).toBe("");
         expect(skipMessages).toHaveLength(1);
-        expect(skipMessages[0]).toContain("GObjectClass.constructor");
+        expect(skipMessages[0]).toContain("ObjectClass.constructor");
         expect(skipMessages[0]).toContain('introspectable="0"');
     });
 
