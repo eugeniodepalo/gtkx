@@ -7,7 +7,7 @@
  * `GLib.Quark` etc. resolves against gtkx's runtime module.
  */
 
-import { typeAlias } from "../../builders/index.js";
+import { raw, typeAlias } from "../../builders/index.js";
 import type { FileBuilder } from "../../builders/file-builder.js";
 import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
@@ -20,6 +20,18 @@ import type { GirAlias, GirType } from "../../gir/index.js";
  */
 const SUPPRESSED_ALIASES: Readonly<Record<string, ReadonlySet<string>>> = {
     GObject: new Set(["Type"]),
+};
+
+/**
+ * Type declarations appended to a namespace's aliases file beyond what the
+ * GIR `<alias>` elements provide. Mirrors the ts-for-gir overrides that
+ * Node-GTK and friends rely on (`GType<T>`, `TClosure<R, P>`).
+ */
+const NAMESPACE_TYPE_OVERRIDES: Readonly<Record<string, readonly string[]>> = {
+    GObject: [
+        "export type GType<T = unknown> = { __type__(arg: never): T; name: string };",
+        "export type TClosure<R = unknown, P = unknown> = (...args: P[]) => R;",
+    ],
 };
 
 /**
@@ -45,6 +57,19 @@ export class AliasGenerator {
                 }),
             );
         }
+        const overrides = NAMESPACE_TYPE_OVERRIDES[this.options.namespace] ?? [];
+        for (const declaration of overrides) {
+            this.file.add(raw(declaration));
+        }
+    }
+
+    /**
+     * Returns true when a namespace has overrides to emit even if it has no
+     * GIR aliases of its own. Lets the orchestrator emit an aliases file
+     * containing only overrides (e.g. GObject's `GType<T>` typedef).
+     */
+    static hasOverrides(namespace: string): boolean {
+        return (NAMESPACE_TYPE_OVERRIDES[namespace]?.length ?? 0) > 0;
     }
 }
 

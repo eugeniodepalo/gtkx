@@ -139,7 +139,7 @@ export class FfiGenerator {
             files.push({ path: `${this.namespacePrefix}constants.ts`, content: stringify(file) });
         }
 
-        if (namespace.aliases.size > 0) {
+        if (namespace.aliases.size > 0 || AliasGenerator.hasOverrides(this.options.namespace)) {
             const file = fileBuilder();
             const aliasGenerator = new AliasGenerator(file, { namespace: this.options.namespace });
             aliasGenerator.addAliases([...namespace.aliases.values()]);

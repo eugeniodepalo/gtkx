@@ -319,22 +319,22 @@ describe("CallExpressionBuilder", () => {
     });
 
     describe("errorCheckWriter", () => {
-        it("builds error check code with default GLib.GError reference", () => {
+        it("builds error check code with default GLib.Error reference", () => {
             const builder = new CallExpressionBuilder();
             const output = getWriterOutput(builder.errorCheckWriter());
 
             expect(output).toContain("if (error.value !== null)");
             expect(output).toContain(
-                "throw new NativeError(getNativeObject(error.value as NativeHandle, GLib.GError))",
+                "throw new NativeError(getNativeObject(error.value as NativeHandle, GLib.Error))",
             );
         });
 
-        it("builds error check code with custom GError reference", () => {
+        it("builds error check code with custom Error reference", () => {
             const builder = new CallExpressionBuilder();
-            const output = getWriterOutput(builder.errorCheckWriter("GError"));
+            const output = getWriterOutput(builder.errorCheckWriter("Error"));
 
             expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("throw new NativeError(getNativeObject(error.value as NativeHandle, GError))");
+            expect(output).toContain("throw new NativeError(getNativeObject(error.value as NativeHandle, Error))");
         });
     });
 

@@ -94,7 +94,7 @@ export const toValidIdentifier = (str: string): string => {
     return result;
 };
 
-export const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
+export const CLASS_RENAMES = new Map<string, string>();
 
 export const normalizeClassName = (name: string): string => {
     const pascalName = toPascalCase(name);

@@ -75,11 +75,11 @@ describe("parseParentReference", () => {
     });
 
     describe("special cases", () => {
-        it("handles Error -> GError renaming", () => {
+        it("passes GLib.Error through without renaming", () => {
             const result = parseParentReference(qualifiedName("GLib", "Error"), "Gtk");
-            expect(result.className).toBe("GError");
+            expect(result.className).toBe("Error");
             expect(result.originalName).toBe("Error");
-            expect(result.extendsClause).toBe(" extends GLib.GError");
+            expect(result.extendsClause).toBe(" extends GLib.Error");
         });
 
         it("handles GObject.Object in GObject namespace", () => {

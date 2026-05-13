@@ -1183,15 +1183,13 @@ export class MethodBodyWriter {
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
 
         const isGLibNamespace = currentNamespace === "GLib";
-        const gerrorRef = isGLibNamespace ? "GError" : "GLib.GError";
 
         if (isGLibNamespace) {
-            this.imports.addImport("./error.js", ["GError"]);
-        } else {
-            this.imports.addNamespaceImport("../glib/index.js", "GLib");
+            this.imports.addImport("./error.js", ["Error"]);
+            return "Error";
         }
-
-        return gerrorRef;
+        this.imports.addNamespaceImport("../glib/index.js", "GLib");
+        return "GLib.Error";
     }
 
     private writeErrorCheck(writer: Writer): void {

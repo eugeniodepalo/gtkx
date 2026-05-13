@@ -227,9 +227,9 @@ export class CallExpressionBuilder {
     /**
      * Builds error checking code as a writer function.
      *
-     * @param gerrorRef - The GError class reference (e.g., "GLib.GError" or "GError")
+     * @param gerrorRef - The GError class reference (e.g., "GLib.Error" or "Error")
      */
-    errorCheckWriter(gerrorRef = "GLib.GError"): (writer: Writer) => void {
+    errorCheckWriter(gerrorRef = "GLib.Error"): (writer: Writer) => void {
         return (writer) => {
             writer.writeLine("if (error.value !== null) {");
             writer.withIndent(() => {

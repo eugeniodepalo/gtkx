@@ -319,8 +319,8 @@ describe("filterSupportedMethods", () => {
 });
 
 describe("CLASS_RENAMES", () => {
-    it("contains Error -> GError mapping", () => {
-        expect(CLASS_RENAMES.get("Error")).toBe("GError");
+    it("starts empty so node-gtk-aligned names pass through unchanged", () => {
+        expect(CLASS_RENAMES.size).toBe(0);
     });
 });
 
@@ -338,9 +338,9 @@ describe("normalizeClassName", () => {
         expect(normalizeClassName("Widget")).toBe("Widget");
     });
 
-    it("renames Error to GError", () => {
-        expect(normalizeClassName("Error")).toBe("GError");
-        expect(normalizeClassName("error")).toBe("GError");
+    it("preserves Error without the historical GError prefix", () => {
+        expect(normalizeClassName("Error")).toBe("Error");
+        expect(normalizeClassName("error")).toBe("Error");
     });
 
     it("preserves Object class name", () => {

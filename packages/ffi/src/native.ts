@@ -9,7 +9,7 @@ export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineS
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
 
 import { getInstanceGType, type NativeHandle } from "@gtkx/native";
-import type { GError } from "./generated/glib/error.js";
+import type { Error as GError } from "./generated/glib/error.js";
 import { typeIsA } from "./generated/gobject/functions.js";
 import type { NativeClass, NativeObject } from "./object.js";
 
