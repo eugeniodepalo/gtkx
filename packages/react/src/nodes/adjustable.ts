@@ -27,7 +27,7 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
                 this,
                 this.container,
                 "value-changed",
-                onValueChanged ? (self: T) => onValueChanged(self.getValue(), self) : undefined,
+                onValueChanged ? () => onValueChanged(this.container.getValue()) : undefined,
             );
         }
 

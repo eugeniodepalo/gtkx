@@ -233,6 +233,7 @@ const DndDemo = ({ window }: DemoProps) => {
 
     const contextMenuRef = useRef<Gtk.Popover | null>(null);
     const entryRef = useRef<Gtk.Entry | null>(null);
+    const gestureClickRef = useRef<Gtk.GestureClick | null>(null);
     const buttonRefs = useRef<Map<string, Gtk.Widget>>(new Map());
     const itemHalves = useRef<Map<string, { halfW: number; halfH: number }>>(new Map());
     const itemRadii = useRef<Map<string, number>>(new Map());
@@ -430,9 +431,10 @@ const DndDemo = ({ window }: DemoProps) => {
                     }
                 />
                 <GtkGestureClick
+                    ref={gestureClickRef}
                     button={0}
-                    onPressed={(_nPress: number, pressX: number, pressY: number, self: Gtk.GestureClick) => {
-                        const event = self.getCurrentEvent();
+                    onPressed={(_nPress: number, pressX: number, pressY: number) => {
+                        const event = gestureClickRef.current?.getCurrentEvent();
                         if (event?.triggersContextMenu()) {
                             handleContextMenu(pressX, pressY);
                         }

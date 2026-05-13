@@ -96,15 +96,18 @@ interface MessageRowProps {
 
 const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }: MessageRowProps) => {
     const extraButtonsRef = useRef<Gtk.Box>(null);
+    const rowRef = useRef<Gtk.ListBoxRow>(null);
 
-    const handleStateFlagsChanged = useCallback((_previousFlags: number, self: Gtk.Widget) => {
-        const flags = self.getStateFlags();
+    const handleStateFlagsChanged = useCallback((_previousFlags: number) => {
+        const row = rowRef.current;
+        if (!row) return;
+        const flags = row.getStateFlags();
         const visible = (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0;
         extraButtonsRef.current?.setVisible(visible);
     }, []);
 
     return (
-        <GtkListBoxRow onStateFlagsChanged={handleStateFlagsChanged}>
+        <GtkListBoxRow ref={rowRef} onStateFlagsChanged={handleStateFlagsChanged}>
             <GtkGrid hexpand>
                 <GtkGrid.Child column={0} row={0} rowSpan={5}>
                     <GtkImage

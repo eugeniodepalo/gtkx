@@ -69,7 +69,7 @@ describe("Object.emit() typed signal emission", () => {
         button.emit("clicked");
 
         expect(handler).toHaveBeenCalledOnce();
-        expect(handler).toHaveBeenCalledWith(button);
+        expect(handler).toHaveBeenCalledWith();
     });
 
     it("emits a signal with primitive arguments and forwards them to the handler", () => {
@@ -80,7 +80,7 @@ describe("Object.emit() typed signal emission", () => {
         window.emit("enable-debugging", true);
 
         expect(handler).toHaveBeenCalledOnce();
-        expect(handler).toHaveBeenCalledWith(window, true);
+        expect(handler).toHaveBeenCalledWith(true);
     });
 
     it("returns the boolean result from a return-value signal", () => {
@@ -121,7 +121,7 @@ describe("Object.emit() typed signal emission", () => {
         listBox.emit("row-activated", row);
 
         expect(handler).toHaveBeenCalledOnce();
-        expect(handler).toHaveBeenCalledWith(listBox, row);
+        expect(handler).toHaveBeenCalledWith(row);
     });
 
     it("throws on an unknown signal at the GObject root", () => {

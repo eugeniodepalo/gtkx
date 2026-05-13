@@ -429,7 +429,6 @@ export class SignalBuilder {
     }
 
     private writeHandlerArgs(writer: Writer, paramData: SignalParamData[], useRefVars: boolean): void {
-        writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
         paramData.forEach((p, index) => {
             if (useRefVars && p.mapped.ffi.type === "ref") {
                 writer.write(`_ref${index}`);
@@ -522,9 +521,7 @@ export class SignalBuilder {
     private writeFallbackImplementation(writer: Writer): void {
         writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
         writer.withIndent(() => {
-            writer.writeLine(
-                `return handler(getNativeObject(args[0] as NativeHandle) as ${this.className}, ...args.slice(1));`,
-            );
+            writer.writeLine("return handler(...args.slice(1));");
         });
         writer.writeLine("};");
         const callbackType: FfiTypeDescriptor = {
@@ -571,7 +568,7 @@ export class SignalBuilder {
     }
 
     private buildHandlerParams(signal: GirSignal): string {
-        const params: string[] = [`self: ${this.className}`];
+        const params: string[] = [];
 
         for (const param of filterVarargs(signal.parameters)) {
             const mapped = this.ffiMapper.mapParameter(param);

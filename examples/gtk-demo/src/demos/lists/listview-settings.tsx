@@ -240,7 +240,7 @@ const ListViewSettingsDemo = () => {
                 const schema = source.lookup(schemaId, true);
                 if (!schema) return;
 
-                const variantType = new GLib.VariantType(keyInfo.type);
+                const variantType = GLib.VariantType.new(keyInfo.type);
                 const variant = GLib.variantParse(newText, variantType);
                 if (variant) {
                     const schemaKey = schema.getKey(keyInfo.name);

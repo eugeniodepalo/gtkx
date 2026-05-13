@@ -89,9 +89,10 @@ export const App = () => {
         }
     }, []);
 
-    const handleNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Widget) => {
+    const handleNotify = useCallback((pspec: GObject.ParamSpec) => {
         const propName = pspec.getName();
-        const webView = self as WebKit.WebView;
+        const webView = webViewRef.current;
+        if (!webView) return;
 
         if (propName === "estimated-load-progress") {
             setProgress(webView.getEstimatedLoadProgress());

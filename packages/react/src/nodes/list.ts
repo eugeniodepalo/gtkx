@@ -242,7 +242,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         this.factory = new Gtk.SignalListItemFactory();
         const isTree = this.isTreeMode();
 
-        this.factory.connect("setup", (_self: GObject.Object, obj: GObject.Object) => {
+        this.factory.connect("setup", (obj: GObject.Object) => {
             const listItem = obj as unknown as Gtk.ListItem;
 
             if (isTree) {
@@ -263,7 +263,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             }
         });
 
-        this.factory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
+        this.factory.connect("bind", (obj: GObject.Object) => {
             if (this.disposed) return;
             const listItem = obj as unknown as Gtk.ListItem;
             const position = listItem.getPosition();
@@ -289,7 +289,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             this.scheduleBoundItemsUpdate();
         });
 
-        this.factory.connect("unbind", (_self: GObject.Object, obj: GObject.Object) => {
+        this.factory.connect("unbind", (obj: GObject.Object) => {
             if (this.disposed) return;
             const listItem = obj as unknown as Gtk.ListItem;
 
@@ -306,7 +306,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             this.scheduleBoundItemsUpdate();
         });
 
-        this.factory.connect("teardown", (_self: GObject.Object, obj: GObject.Object) => {
+        this.factory.connect("teardown", (obj: GObject.Object) => {
             if (this.disposed) return;
             const listItem = obj as unknown as Gtk.ListItem;
 

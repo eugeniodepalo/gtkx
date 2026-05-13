@@ -145,7 +145,7 @@ describe("SignalBuilder", () => {
     });
 
     describe("signal handler parameters", () => {
-        it("includes self parameter in signal handler", () => {
+        it("emits a parameterless handler for signals with no own parameters", () => {
             const { builder } = createTestSetup({
                 signals: [createNormalizedSignal({ name: "clicked", parameters: [] })],
             });
@@ -153,7 +153,7 @@ describe("SignalBuilder", () => {
             const structures = builder.buildConnectMethodStructures();
 
             const overload = structures[0].overloads?.[0];
-            expect(overload?.params?.[1]?.type).toContain("self:");
+            expect(overload?.params?.[1]?.type).toBe("() => void");
         });
 
         it("includes signal parameters in handler", () => {

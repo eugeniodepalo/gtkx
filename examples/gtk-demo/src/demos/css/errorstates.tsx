@@ -29,7 +29,7 @@ const ErrorstatesDemo = () => {
     }, [validateMoreDetails]);
 
     const handleLevelChange = useCallback(
-        (_value: number, _self: Gtk.Range) => {
+        (_value: number) => {
             if (!modeSwitch || !levelScale) return;
 
             const active = modeSwitch.getActive();

@@ -166,7 +166,7 @@ describe("render - Adjustment", () => {
             adjustment?.setValue(75);
 
             await waitFor(() => {
-                expect(onValueChanged).toHaveBeenCalledWith(75, ref.current);
+                expect(onValueChanged).toHaveBeenCalledWith(75);
             });
         });
 
@@ -175,7 +175,7 @@ describe("render - Adjustment", () => {
             const onValueChanged1 = vi.fn();
             const onValueChanged2 = vi.fn();
 
-            function App({ onValueChanged }: { onValueChanged: (value: number, self: Gtk.Range) => void }) {
+            function App({ onValueChanged }: { onValueChanged: (value: number) => void }) {
                 return <GtkScale ref={ref} value={50} lower={0} upper={100} onValueChanged={onValueChanged} />;
             }
 
@@ -184,14 +184,14 @@ describe("render - Adjustment", () => {
             adjustment?.setValue(60);
 
             await waitFor(() => {
-                expect(onValueChanged1).toHaveBeenCalledWith(60, ref.current);
+                expect(onValueChanged1).toHaveBeenCalledWith(60);
             });
 
             await render(<App onValueChanged={onValueChanged2} />);
             adjustment?.setValue(70);
 
             await waitFor(() => {
-                expect(onValueChanged2).toHaveBeenCalledWith(70, ref.current);
+                expect(onValueChanged2).toHaveBeenCalledWith(70);
             });
         });
 
@@ -216,7 +216,7 @@ describe("render - Adjustment", () => {
             adjustment?.setValue(60);
 
             await waitFor(() => {
-                expect(onValueChanged).toHaveBeenCalledWith(60, ref.current);
+                expect(onValueChanged).toHaveBeenCalledWith(60);
             });
 
             const callCount = onValueChanged.mock.calls.length;

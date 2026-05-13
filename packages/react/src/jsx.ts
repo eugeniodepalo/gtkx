@@ -755,7 +755,7 @@ export type AdjustableProps = {
     /** The size of the visible portion (for scrollbars) */
     pageSize?: number;
     /** Callback fired when the adjustable value changes */
-    onValueChanged?: ((value: number, self: Gtk.Range | Gtk.ScaleButton | Gtk.SpinButton | Adw.SpinRow) => void) | null;
+    onValueChanged?: ((value: number) => void) | null;
 };
 
 interface StackProps {
@@ -856,7 +856,7 @@ declare module "./generated/jsx.js" {
 
     interface GtkRangeProps extends Omit<AdjustableProps, "onValueChanged"> {
         /** Callback fired when the range value changes */
-        onValueChanged?: ((value: number, self: Gtk.Range) => void) | null;
+        onValueChanged?: ((value: number) => void) | null;
     }
 
     interface GtkScaleProps {
@@ -866,22 +866,22 @@ declare module "./generated/jsx.js" {
 
     interface GtkScaleButtonProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
         /** Callback fired when the scale button value changes */
-        onValueChanged?: ((value: number, self: Gtk.ScaleButton) => void) | null;
+        onValueChanged?: ((value: number) => void) | null;
     }
 
     interface GtkSpinButtonProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
         /** Callback fired when the spin button value changes */
-        onValueChanged?: ((value: number, self: Gtk.SpinButton) => void) | null;
+        onValueChanged?: ((value: number) => void) | null;
     }
 
     interface AdwSpinRowProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
         /** Callback fired when the spin row value changes */
-        onValueChanged?: ((value: number, self: Adw.SpinRow) => void) | null;
+        onValueChanged?: ((value: number) => void) | null;
     }
 
     interface AdwSwitchRowProps {
         /** Callback fired when the switch row active state changes */
-        onActiveChanged?: ((active: boolean, self: Adw.SwitchRow) => void) | null;
+        onActiveChanged?: ((active: boolean) => void) | null;
     }
 
     interface GtkCalendarProps {
@@ -944,12 +944,12 @@ declare module "./generated/jsx.js" {
 
     interface GtkStackProps extends StackProps {
         /** Callback fired when the visible page changes */
-        onPageChanged?: ((page: string | null, self: Gtk.Stack) => void) | null;
+        onPageChanged?: ((page: string | null) => void) | null;
     }
 
     interface AdwViewStackProps extends StackProps {
         /** Callback fired when the visible page changes */
-        onPageChanged?: ((page: string | null, self: Adw.ViewStack) => void) | null;
+        onPageChanged?: ((page: string | null) => void) | null;
     }
 
     interface AdwNavigationViewProps {

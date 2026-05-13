@@ -5,7 +5,7 @@ import { filterProps, hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
 type SpinRowProps = AdjustableProps & {
-    onValueChanged?: ((value: number, self: Adw.SpinRow) => void) | null;
+    onValueChanged?: ((value: number) => void) | null;
 };
 
 export class SpinRowNode extends WidgetNode<Adw.SpinRow, SpinRowProps> {
@@ -26,7 +26,7 @@ export class SpinRowNode extends WidgetNode<Adw.SpinRow, SpinRowProps> {
                 this,
                 this.container,
                 "notify::value",
-                onValueChanged ? (self: Adw.SpinRow) => onValueChanged(self.getValue(), self) : undefined,
+                onValueChanged ? () => onValueChanged(this.container.getValue()) : undefined,
             );
         }
 

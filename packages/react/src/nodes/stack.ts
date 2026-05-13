@@ -6,7 +6,7 @@ import { WidgetNode } from "./widget.js";
 const OWN_PROPS = ["page", "onPageChanged"] as const;
 
 type StackProps = Omit<Pick<GtkStackProps | AdwViewStackProps, (typeof OWN_PROPS)[number]>, "onPageChanged"> & {
-    onPageChanged?: ((page: string | null, self: StackWidget) => void) | null;
+    onPageChanged?: ((page: string | null) => void) | null;
 };
 
 export class StackNode extends WidgetNode<StackWidget, StackProps> {
@@ -28,7 +28,7 @@ export class StackNode extends WidgetNode<StackWidget, StackProps> {
                 this,
                 this.container,
                 "notify::visible-child-name",
-                onPageChanged ? (self: StackWidget) => onPageChanged(self.getVisibleChildName(), self) : undefined,
+                onPageChanged ? () => onPageChanged(this.container.getVisibleChildName()) : undefined,
             );
         }
     }

@@ -467,21 +467,20 @@ describe("widget - signals", () => {
             await userEvent.click(switchWidget);
 
             await waitFor(() => {
-                expect(handleStateSet).toHaveBeenCalledWith(true, expect.anything());
+                expect(handleStateSet).toHaveBeenCalledWith(true);
             });
         });
 
-        it("receives widget as last argument", async () => {
+        it("invokes the parameterless handler without any arguments", async () => {
             const handleClick = vi.fn();
-            const ref = createRef<Gtk.Button>();
 
-            await render(<GtkButton ref={ref} onClicked={handleClick} label="Click" />);
+            await render(<GtkButton onClicked={handleClick} label="Click" />);
 
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
             await userEvent.click(button);
 
             await waitFor(() => {
-                expect(handleClick).toHaveBeenCalledWith(ref.current);
+                expect(handleClick).toHaveBeenCalledWith();
             });
         });
     });
@@ -626,11 +625,10 @@ describe("widget - signals", () => {
                 await userEvent.pointer(button, "down");
 
                 expect(handlePressed).toHaveBeenCalled();
-                const [nPress, x, y, self] = handlePressed.mock.calls[0] as [number, number, number, Gtk.GestureClick];
+                const [nPress, x, y] = handlePressed.mock.calls[0] as [number, number, number];
                 expect(typeof nPress).toBe("number");
                 expect(typeof x).toBe("number");
                 expect(typeof y).toBe("number");
-                expect(self).toBeInstanceOf(Gtk.GestureClick);
             });
         });
 
@@ -708,7 +706,7 @@ describe("widget - signals", () => {
             });
         });
 
-        it("receives widget and property name in callback", async () => {
+        it("receives the changed ParamSpec in callback", async () => {
             const handleNotify = vi.fn();
 
             function App({ text }: { text: string }) {
@@ -718,7 +716,7 @@ describe("widget - signals", () => {
             await render(<App text="Initial" />);
 
             await waitFor(() => {
-                expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec), expect.any(Gtk.Label));
+                expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec));
             });
         });
     });

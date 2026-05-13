@@ -147,8 +147,8 @@ const GLAreaDemo = ({ window }: DemoProps) => {
     }, []);
 
     const handleRender = useCallback(
-        (_context: Gdk.GLContext, self: Gtk.GLArea) => {
-            if (!glStateRef.current && !self.getError()) {
+        (_context: Gdk.GLContext) => {
+            if (!glStateRef.current && !glAreaRef.current?.getError()) {
                 try {
                     glStateRef.current = initGL();
                 } catch {

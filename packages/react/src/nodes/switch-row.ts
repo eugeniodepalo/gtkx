@@ -3,7 +3,7 @@ import { hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
 type SwitchRowProps = {
-    onActiveChanged?: ((active: boolean, self: Adw.SwitchRow) => void) | null;
+    onActiveChanged?: ((active: boolean) => void) | null;
 };
 
 export class SwitchRowNode extends WidgetNode<Adw.SwitchRow, SwitchRowProps> {
@@ -19,7 +19,7 @@ export class SwitchRowNode extends WidgetNode<Adw.SwitchRow, SwitchRowProps> {
                 this,
                 this.container,
                 "notify::active",
-                onActiveChanged ? (self: Adw.SwitchRow) => onActiveChanged(self.getActive(), self) : undefined,
+                onActiveChanged ? () => onActiveChanged(this.container.getActive()) : undefined,
             );
         }
     }
