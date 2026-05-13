@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import { defineCommand } from "citty";
+import { ffiJs } from "./commands/ffi-js.js";
 import { run } from "./commands/run.js";
 import { sync } from "./commands/sync.js";
 import { types } from "./commands/types.js";
@@ -17,5 +18,6 @@ export const main = defineCommand({
         run,
         sync,
         types,
+        "ffi-js": ffiJs,
     },
 });
