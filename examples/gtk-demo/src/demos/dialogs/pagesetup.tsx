@@ -19,7 +19,7 @@ const PageSetupDemo = ({ window, onClose }: DemoProps) => {
             return;
         }
 
-        const dialog = new Gtk.PageSetupUnixDialog({ title: "Page Setup", transientFor: window.current ?? undefined });
+        const dialog = new Gtk.PageSetupUnixDialog({ title: "Page Setup", transient_for: window.current ?? undefined });
         dialogRef.current = dialog;
 
         dialog.connect("response", () => {
