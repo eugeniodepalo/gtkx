@@ -119,10 +119,10 @@ export class ClassStructGenerator {
             });
         }
 
-        if (entries.length === 0) return false;
-
         const descriptorType = DESCRIPTOR_TYPE_BY_KIND[kind];
-        this.file.addImport("../../native.js", ["t"]);
+        if (entries.length > 0) {
+            this.file.addImport("../../native.js", ["t"]);
+        }
         this.file.addTypeImport("../../register-class.js", [descriptorType]);
         this.file.add(interfaceDecl(exportSymbol, { exported: true }));
         this.file.add(

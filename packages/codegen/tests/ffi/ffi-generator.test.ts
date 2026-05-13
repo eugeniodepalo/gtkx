@@ -240,7 +240,7 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(filePathOf(files, "widget-private.ts")).toBe("gtk/widget-private.ts");
     });
 
-    it("skips records that end with Class because they back a class vtable", () => {
+    it("routes records that end with Class through the class-struct generator", () => {
         const klass = createNormalizedRecord({
             name: "WidgetClass",
             qualifiedName: "Gtk.WidgetClass",
@@ -257,10 +257,14 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(filePathOf(files, "widget-class.ts")).toBeUndefined();
+        const filePath = filePathOf(files, "widget-class.ts");
+        expect(filePath).toBe("gtk/widget-class.ts");
+        const file = files.find((f) => f.path === filePath);
+        expect(file?.content).toContain("export interface WidgetClass");
+        expect(file?.content).toContain("export const WidgetClass");
     });
 
-    it("skips records that end with Iface because they back an interface vtable", () => {
+    it("routes records that end with Iface through the class-struct generator", () => {
         const iface = createNormalizedRecord({
             name: "OrientableIface",
             qualifiedName: "Gtk.OrientableIface",
@@ -277,7 +281,11 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(filePathOf(files, "orientable-iface.ts")).toBeUndefined();
+        const filePath = filePathOf(files, "orientable-iface.ts");
+        expect(filePath).toBe("gtk/orientable-iface.ts");
+        const file = files.find((f) => f.path === filePath);
+        expect(file?.content).toContain("export interface OrientableIface");
+        expect(file?.content).toContain("export const OrientableIface");
     });
 
     it("emits a full binding for opaque records that carry a glib type name", () => {
@@ -437,7 +445,7 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(filePathOf(files, "rectangle.ts")).toBe("gdk/rectangle.ts");
     });
 
-    it("skips opaque core type-class records to keep class vtables out of the bindings", () => {
+    it("routes opaque core type-class records through the class-struct generator as stubs", () => {
         const typeClass = createNormalizedRecord({
             name: "TypeClass",
             qualifiedName: "GObject.TypeClass",
@@ -459,7 +467,11 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "GObject",
         }).generateNamespace("GObject");
 
-        expect(filePathOf(files, "type-class.ts")).toBeUndefined();
+        const filePath = filePathOf(files, "type-class.ts");
+        expect(filePath).toBe("gobject/type-class.ts");
+        const file = files.find((f) => f.path === filePath);
+        expect(file?.content).toContain("export interface TypeClass");
+        expect(file?.content).toContain("export const TypeClass");
     });
 
     it("topologically sorts classes so a parent file precedes its children", () => {
