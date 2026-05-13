@@ -1,6 +1,7 @@
 export { ClassDeclarationBuilder, classDecl } from "./declarations/class.js";
 export { enumDecl } from "./declarations/enum.js";
 export { InterfaceDeclarationBuilder, interfaceDecl } from "./declarations/interface.js";
+export { NamespaceDeclarationBuilder, namespaceDecl } from "./declarations/namespace.js";
 export { raw } from "./declarations/raw.js";
 export { typeAlias } from "./declarations/type-alias.js";
 export { variableStatement } from "./declarations/variable.js";

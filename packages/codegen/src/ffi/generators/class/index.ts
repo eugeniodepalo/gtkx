@@ -6,7 +6,7 @@
  */
 
 import type { FileBuilder } from "../../../builders/file-builder.js";
-import { type ClassDeclarationBuilder, classDecl } from "../../../builders/index.js";
+import { type ClassDeclarationBuilder, classDecl, interfaceDecl, namespaceDecl } from "../../../builders/index.js";
 import { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
@@ -20,8 +20,9 @@ import { analyzeAsyncMethods } from "../../../core/utils/async-analysis.js";
 import { collectParentFactoryMethodNames, collectParentMethodNames } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { isMethodSuppressed } from "../../../core/utils/method-suppression.js";
-import { generateConflictingMethodName, normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
+import { generateConflictingMethodName, normalizeClassName, toKebabCase, toPascalCase } from "../../../core/utils/naming.js";
 import { type ParentInfo, parseParentReference } from "../../../core/utils/parent-reference.js";
+import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
 import { addMethodStructure, type MethodStructure } from "../../../core/writers/index.js";
 import type { GirClass, GirMethod, GirRepository } from "../../../gir/index.js";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
@@ -121,6 +122,8 @@ export class ClassGenerator {
 
         const cls = this.buildClassDeclaration(parentInfo);
 
+        this.emitConstructorPropertiesNamespace(parentInfo);
+
         const allMethodStructures: MethodStructure[] = [
             ...factoryMethods,
             ...this.staticBuilder.buildStructures(),
@@ -155,6 +158,39 @@ export class ClassGenerator {
         const controllerMeta = this.classMetaBuilder.buildCodegenControllerMeta();
 
         return { widgetMeta, controllerMeta };
+    }
+
+    private emitConstructorPropertiesNamespace(parentInfo: ParentInfo): void {
+        const extendsList: string[] = [];
+
+        if (parentInfo.hasParent) {
+            const parentExpr =
+                parentInfo.isCrossNamespace && parentInfo.namespace
+                    ? `${parentInfo.namespace}.${parentInfo.className}`
+                    : parentInfo.className;
+            extendsList.push(`${parentExpr}.ConstructorProperties`);
+        }
+
+        for (const ifaceQualifiedName of this.cls.implements) {
+            const { namespace: ns, name: originalIfaceName } = splitQualifiedName(ifaceQualifiedName);
+            const ifaceName = toPascalCase(originalIfaceName);
+            if (ns === this.options.namespace) {
+                extendsList.push(`${ifaceName}.ConstructorProperties`);
+                this.file.addImport(`./${toKebabCase(originalIfaceName)}.js`, [ifaceName]);
+            } else {
+                extendsList.push(`${ns}.${ifaceName}.ConstructorProperties`);
+                this.file.addNamespaceImport(`../${ns.toLowerCase()}/index.js`, ns);
+            }
+        }
+
+        const ns = namespaceDecl(this.className, { exported: true });
+        ns.add(
+            interfaceDecl("ConstructorProperties", {
+                exported: true,
+                extends: extendsList,
+            }),
+        );
+        this.file.add(ns);
     }
 
     private buildClassDeclaration(parentInfo: ParentInfo): ClassDeclarationBuilder {

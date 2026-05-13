@@ -6,14 +6,15 @@
  */
 
 import type { FileBuilder } from "../../builders/file-builder.js";
-import { classDecl } from "../../builders/index.js";
+import { classDecl, interfaceDecl, namespaceDecl } from "../../builders/index.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
 import { collectGObjectMethodNames } from "../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
 import { filterSupportedMethods } from "../../core/utils/filtering.js";
-import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
+import { generateConflictingMethodName, toCamelCase, toKebabCase, toPascalCase } from "../../core/utils/naming.js";
+import { splitQualifiedName } from "../../core/utils/qualified-name.js";
 import {
     addMethodStructure,
     createMethodBodyWriter,
@@ -70,6 +71,8 @@ export class InterfaceGenerator {
             doc: doc?.[0]?.description,
         });
 
+        this.emitConstructorPropertiesNamespace(iface, interfaceName);
+
         const gobjectMethodNames = collectGObjectMethodNames(this.repository);
         const methodStructures: MethodStructure[] = [
             ...this.buildMethodStructures(iface.methods, iface.name, gobjectMethodNames),
@@ -94,6 +97,34 @@ export class InterfaceGenerator {
         }
 
         return true;
+    }
+
+    private emitConstructorPropertiesNamespace(iface: GirInterface, interfaceName: string): void {
+        const extendsList: string[] = [];
+        for (const prereqQualifiedName of iface.prerequisites) {
+            const { namespace: ns, name: originalName } = splitQualifiedName(prereqQualifiedName);
+            const prereqName = toPascalCase(originalName);
+            if (ns === this.options.namespace) {
+                extendsList.push(`${prereqName}.ConstructorProperties`);
+                this.file.addImport(`./${toKebabCase(originalName)}.js`, [prereqName]);
+            } else {
+                extendsList.push(`${ns}.${prereqName}.ConstructorProperties`);
+                this.file.addNamespaceImport(`../${ns.toLowerCase()}/index.js`, ns);
+            }
+        }
+        if (extendsList.length === 0) {
+            const isGObjectNamespace = this.options.namespace === "GObject";
+            extendsList.push(isGObjectNamespace ? "Object.ConstructorProperties" : "GObject.Object.ConstructorProperties");
+        }
+
+        const ns = namespaceDecl(interfaceName, { exported: true });
+        ns.add(
+            interfaceDecl("ConstructorProperties", {
+                exported: true,
+                extends: extendsList,
+            }),
+        );
+        this.file.add(ns);
     }
 
     private buildMethodStructures(
