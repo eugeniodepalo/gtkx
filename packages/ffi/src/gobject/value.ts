@@ -63,8 +63,7 @@ declare module "../generated/gobject/value.js" {
          * @param targetGType - The GType identifier of the boxed type
          * @returns An owned copy of the boxed value wrapped in the target type, or null
          */
-        // biome-ignore lint/suspicious/noExplicitAny: T is invariant in NativeClass; using NativeObject<any> lets generic subclasses infer cleanly.
-        getBoxed<T extends NativeObject<any>>(targetType: NativeClass<T>, targetGType: number): T | null;
+        getBoxed<T extends NativeObject>(targetType: NativeClass<T>, targetGType: number): T | null;
 
         /**
          * Gets the contents of a G_TYPE_STRV (`gchar**`) GValue as a JS string array.
@@ -225,8 +224,7 @@ Value.prototype.holds = function (gtype: number): boolean {
     return this.getType() === gtype;
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: matches the declared interface signature; abstract subclasses require NativeObject<any>.
-Value.prototype.getBoxed = function <T extends NativeObject<any>>(
+Value.prototype.getBoxed = function <T extends NativeObject>(
     targetType: NativeClass<T>,
     targetGType: number,
 ): T | null {

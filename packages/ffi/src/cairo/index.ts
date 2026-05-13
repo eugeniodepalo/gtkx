@@ -1,11 +1,11 @@
 export * from "../generated/cairo/enums.js";
 export { FontFace } from "../generated/cairo/font-face.js";
 export * from "../generated/cairo/functions.js";
-export { Glyph, type GlyphInit } from "../generated/cairo/glyph.js";
-export { Rectangle, type RectangleInit } from "../generated/cairo/rectangle.js";
-export { RectangleInt, type RectangleIntInit } from "../generated/cairo/rectangle-int.js";
+export { Glyph } from "../generated/cairo/glyph.js";
+export { Rectangle } from "../generated/cairo/rectangle.js";
+export { RectangleInt } from "../generated/cairo/rectangle-int.js";
 export { ScaledFont } from "../generated/cairo/scaled-font.js";
-export { TextCluster, type TextClusterInit } from "../generated/cairo/text-cluster.js";
+export { TextCluster } from "../generated/cairo/text-cluster.js";
 
 import "./device.js";
 import "./font-face.js";

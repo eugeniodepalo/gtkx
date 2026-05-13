@@ -131,10 +131,8 @@ export function findNativeObject(handle: NativeHandle): NativeObject | null {
  * const rgba = getNativeObject(rgbaHandle, Gdk.RGBA);
  * ```
  */
-// biome-ignore lint/suspicious/noExplicitAny: matches NativeClass's bound to keep TProps inference working across abstract subclasses.
-export function getNativeObject<T extends NativeObject<any>>(handle: NativeHandle, targetType: NativeClass<T>): T;
-// biome-ignore lint/suspicious/noExplicitAny: matches NativeClass's bound to keep TProps inference working across abstract subclasses.
-export function getNativeObject<T extends NativeObject<any>>(
+export function getNativeObject<T extends NativeObject>(handle: NativeHandle, targetType: NativeClass<T>): T;
+export function getNativeObject<T extends NativeObject>(
     handle: NativeHandle | null | undefined,
     targetType: NativeClass<T>,
 ): T | null;

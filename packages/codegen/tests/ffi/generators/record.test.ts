@@ -238,7 +238,7 @@ describe("RecordGenerator", () => {
     });
 
     describe("constructor generation", () => {
-        it("generates constructor with init parameter when no main constructor", () => {
+        it("emits the record class without a per-class init type when no main constructor exists", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -256,7 +256,8 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("RectangleInit");
+            expect(code).toContain("export class Rectangle extends NativeObject");
+            expect(code).not.toContain("RectangleInit");
         });
 
         it("emits a static factory for the GIR `new` constructor", () => {
@@ -390,7 +391,7 @@ describe("RecordGenerator", () => {
     });
 
     describe("init interface generation", () => {
-        it("generates init interface when no main constructor", () => {
+        it("emits no per-record init type alias when no main constructor", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -408,10 +409,10 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("export type RectangleInit");
+            expect(code).not.toContain("RectangleInit");
         });
 
-        it("includes writable fields in init interface", () => {
+        it("emits no per-record init type alias even when writable fields exist", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -435,8 +436,7 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("x?:");
-            expect(code).toContain("y?:");
+            expect(code).not.toContain("RectangleInit");
         });
 
         it("generates init interface when main constructor takes no parameters and fields are writable", () => {
@@ -464,8 +464,7 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("export type RectangleInit");
-            expect(code).toContain("extends NativeObject<TProps>");
+            expect(code).toContain("export class Rectangle extends NativeObject");
         });
 
         it("emits the GIR `<constructor>` as a static factory even when it takes parameters", () => {

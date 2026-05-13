@@ -12,30 +12,22 @@ const GVALUE_SIZE = 24;
  *
  * Holds the opaque {@link NativeHandle} pointing at the underlying GObject,
  * boxed struct, or fundamental value. Construction is uniform across all
- * subclasses: callers pass a typed `props` object whose shape is narrowed
- * by the subclass's `TProps` generic parameter, and the constructor walks
- * the JS prototype chain reading registered {@link ConstructionMeta} from
- * `CONSTRUCTION_META` to perform the appropriate native allocation
- * (`g_object_new_with_properties` for GObjects, `g_malloc0` plus field
- * writes for boxed types). The handle is assigned in-place on `this`; no
- * subclass should reassign it.
+ * subclasses: callers pass a `props` object keyed by the snake_case
+ * `ConstructorProperties` names from the ts-for-gir-published `.d.ts`
+ * contract, and the constructor walks the JS prototype chain reading
+ * registered {@link ConstructionMeta} from `CONSTRUCTION_META` to perform
+ * the appropriate native allocation (`g_object_new_with_properties` for
+ * GObjects, `g_malloc0` plus field writes for boxed types). The handle is
+ * assigned in-place on `this`; no subclass should reassign it.
  *
  * Use {@link wrapHandle} (re-exported from `@gtkx/ffi`) to wrap a handle
  * produced elsewhere (returned from an FFI call, received over a signal)
  * without invoking the native allocator a second time.
- *
- * @typeParam TProps - Shape of the props object accepted by `new`. Narrows
- *   per subclass to provide IntelliSense for construct-time properties.
  */
-export abstract class NativeObject<TProps extends object = object> {
+export abstract class NativeObject {
     handle!: NativeHandle;
-    /**
-     * Phantom marker exposing `TProps` in the instance type so subclass
-     * generics participate in variance. Never assigned at runtime.
-     */
-    declare readonly __props: TProps;
 
-    constructor(props: TProps = {} as TProps) {
+    constructor(props: object = {}) {
         const ctor = this.constructor as NativeClass;
         const meta = CONSTRUCTION_META.get(ctor);
         if (!meta) {
@@ -76,17 +68,8 @@ export function setInstanceRegistrar(registrar: InstanceRegistrar): void {
 
 /**
  * Constructor type for a {@link NativeObject} subclass.
- *
- * The `NativeObject<any>` upper bound is deliberate: subclasses declare
- * their own `TProps` generic and the constructor parameter is contravariant
- * in it, so a `<TProps = object>` default would prevent passing
- * more-specific subclass references through helpers like `getBoxed` or
- * {@link getNativeObject}.
  */
-export type NativeClass<
-    // biome-ignore lint/suspicious/noExplicitAny: see jsdoc above for why `any` is necessary.
-    T extends NativeObject<any> = NativeObject<any>,
-> = (abstract new (
+export type NativeClass<T extends NativeObject = NativeObject> = (abstract new (
     // biome-ignore lint/suspicious/noExplicitAny: constructor parameters must be bivariant to accept arbitrary subclass shapes.
     ...args: any[]
 ) => T) & {
@@ -106,8 +89,7 @@ export type NativeClass<
  * @param cls - Target wrapper class
  * @param handle - Native handle to wrap
  */
-// biome-ignore lint/suspicious/noExplicitAny: matches NativeClass's bound.
-export function wrapHandle<T extends NativeObject<any>>(cls: NativeClass<T>, handle: NativeHandle): T {
+export function wrapHandle<T extends NativeObject>(cls: NativeClass<T>, handle: NativeHandle): T {
     const instance = Object.create(cls.prototype) as T;
     instance.handle = handle;
     return instance;

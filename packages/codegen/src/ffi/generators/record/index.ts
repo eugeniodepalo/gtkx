@@ -1,23 +1,16 @@
 /**
  * Record Generator
  *
- * Generates record (struct/boxed type) classes. Records emit a generic
- * class header, an `__girName` static, field accessors, methods, static
- * factory methods for every GIR `<constructor>`, and a module-load
- * `registerConstructionMeta` call describing the boxed layout. The actual
- * allocation happens inside `NativeObject`'s generic constructor.
+ * Generates record (struct/boxed type) classes. Records emit a class
+ * extending `NativeObject`, field accessors, methods, static factory
+ * methods for every GIR `<constructor>`, and a module-load
+ * `registerConstructionMeta` call describing the boxed layout. The
+ * actual allocation happens inside `NativeObject`'s constructor.
  */
 
 import type { GirField, GirFunction, GirMethod, GirRecord, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../../builders/file-builder.js";
-import {
-    accessor,
-    type ClassDeclarationBuilder,
-    classDecl,
-    method,
-    param,
-    typeAlias,
-} from "../../../builders/index.js";
+import { accessor, type ClassDeclarationBuilder, classDecl, method, param } from "../../../builders/index.js";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -86,7 +79,6 @@ export class RecordGenerator {
         this.methodBody.setSelfNames(this.selfNames);
 
         const initFields = this.collectInitializableFields(record);
-        this.emitInitTypeAlias(recordName, initFields);
 
         const cls = this.generateClass(record, recordName);
 
@@ -126,33 +118,13 @@ export class RecordGenerator {
         return this.fieldBuilder.getInitializableFields(record.fields);
     }
 
-    private emitInitTypeAlias(recordName: string, initFields: readonly GirField[]): void {
-        const propStrings: string[] = [];
-        for (const field of initFields) {
-            let fieldName = toValidMemberName(toCamelCase(field.name));
-            if (fieldName === "id") fieldName = "id_";
-            const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-            if (typeMapping.unsafe) continue;
-            addTypeImports(this.file, typeMapping.imports, this.selfNames);
-            propStrings.push(`${fieldName}?: ${typeMapping.ts}`);
-        }
-
-        const body = propStrings.length > 0 ? `{ ${propStrings.join("; ")} }` : "{}";
-        this.file.add(typeAlias(`${recordName}Init`, body, { exported: true }));
-    }
-
     private generateClass(record: GirRecord, recordName: string): ClassDeclarationBuilder {
         this.file.addImport("../../object.js", ["NativeObject"]);
-
-        const initTypeName = `${recordName}Init`;
-        const typeParams = `<TProps extends ${initTypeName} = ${initTypeName}>`;
-        const extendsExpr = `NativeObject<TProps>`;
 
         const doc = buildJsDocStructure(record.doc, this.options.namespace);
         const cls = classDecl(recordName, {
             exported: true,
-            typeParams,
-            extends: extendsExpr,
+            extends: "NativeObject",
             doc: doc?.[0]?.description,
         });
 
