@@ -15,6 +15,7 @@ import { normalizeClassName, toKebabCase, toPascalCase } from "../core/utils/nam
 import { splitQualifiedName } from "../core/utils/qualified-name.js";
 import { isClassVtable, shouldGenerateRecord } from "../core/utils/record-filter.js";
 import type { GirClass, GirNamespace, GirRepository } from "../gir/index.js";
+import { AliasGenerator } from "./generators/alias.js";
 import { ClassGenerator } from "./generators/class/index.js";
 import { ClassStructGenerator } from "./generators/class-struct/index.js";
 import { ConstantGenerator } from "./generators/constant.js";
@@ -135,6 +136,13 @@ export class FfiGenerator {
             const constantGenerator = new ConstantGenerator(file, { namespace: this.options.namespace });
             constantGenerator.addConstants([...namespace.constants.values()]);
             files.push({ path: `${this.namespacePrefix}constants.ts`, content: stringify(file) });
+        }
+
+        if (namespace.aliases.size > 0) {
+            const file = fileBuilder();
+            const aliasGenerator = new AliasGenerator(file, { namespace: this.options.namespace });
+            aliasGenerator.addAliases([...namespace.aliases.values()]);
+            files.push({ path: `${this.namespacePrefix}aliases.ts`, content: stringify(file) });
         }
 
         const indexContent = this.generateIndexFile(files);

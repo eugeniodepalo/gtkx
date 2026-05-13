@@ -278,6 +278,7 @@ export function createNormalizedNamespace(overrides: Partial<NormalizedNamespace
         callbacks: new Map(),
         functions: new Map(),
         constants: new Map(),
+        aliases: new Map(),
         ...overrides,
     });
 }
