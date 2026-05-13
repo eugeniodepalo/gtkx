@@ -205,9 +205,17 @@ export class PropertyAccessorBuilder {
     private buildSetBody(prop: GirProperty, typeMapping: MappedType): ((writer: Writer) => void) | undefined {
         const delegate = this.resolveDelegateSetter(prop);
         if (delegate) {
-            const { methodName } = delegate;
+            const { methodName, method } = delegate;
+            const setterParam = method.parameters[0];
+            const setterParamNullable = setterParam?.nullable ?? false;
+            const propertyNullable = prop.defaultValue?.kind === "null";
+            const needsCast = propertyNullable && !setterParamNullable && setterParam !== undefined;
+            const paramMapping = setterParam
+                ? this.ffiMapper.mapType(setterParam.type, false, setterParam.type.transferOwnership)
+                : null;
+            const callArgument = needsCast && paramMapping ? `value as ${paramMapping.ts}` : "value";
             return (writer) => {
-                writer.writeLine(`this.${methodName}(value);`);
+                writer.writeLine(`this.${methodName}(${callArgument});`);
             };
         }
 
@@ -253,11 +261,13 @@ export class PropertyAccessorBuilder {
 
     private computeGetterReturnType(prop: GirProperty, typeMapping: MappedType): string {
         let returnType = typeMapping.ts;
+        let alreadyNullable = false;
 
         const delegate = this.resolveDelegateGetter(prop, typeMapping);
         if (delegate) {
             if (delegate.method.returnType.nullable) {
                 returnType = `${returnType} | null`;
+                alreadyNullable = true;
             }
         } else {
             const getterInfo = this.getGValueGetterInfo(prop, typeMapping);
@@ -267,27 +277,42 @@ export class PropertyAccessorBuilder {
                 !(typeMapping.nullable ?? false)
             ) {
                 returnType = `${returnType} | null`;
+                alreadyNullable = true;
             }
+        }
+
+        if (!alreadyNullable && prop.defaultValue?.kind === "null") {
+            returnType = `${returnType} | null`;
         }
 
         return returnType;
     }
 
     private resolveSetterType(prop: GirProperty, typeMapping: MappedType): string {
+        let result: string;
+        let alreadyNullable = false;
         const delegate = this.resolveDelegateSetter(prop);
         if (delegate) {
             const paramType = delegate.method.parameters[0];
             if (paramType) {
                 const paramMapping = this.ffiMapper.mapType(paramType.type, false, paramType.type.transferOwnership);
                 addTypeImports(this.imports, paramMapping.imports, this.selfNames);
-                let result = paramMapping.ts;
+                result = paramMapping.ts;
                 if (paramType.nullable) {
                     result = `${result} | null`;
+                    alreadyNullable = true;
                 }
-                return result;
+            } else {
+                result = typeMapping.ts;
             }
+        } else {
+            result = typeMapping.ts;
         }
-        return typeMapping.ts;
+
+        if (!alreadyNullable && prop.defaultValue?.kind === "null") {
+            result = `${result} | null`;
+        }
+        return result;
     }
 
     private buildSyntheticGetBody(prop: GirProperty, typeMapping: MappedType): ((writer: Writer) => void) | null {
