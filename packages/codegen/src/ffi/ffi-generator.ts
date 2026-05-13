@@ -16,6 +16,7 @@ import { splitQualifiedName } from "../core/utils/qualified-name.js";
 import { isClassVtable, shouldGenerateRecord } from "../core/utils/record-filter.js";
 import type { GirClass, GirNamespace, GirRepository } from "../gir/index.js";
 import { AliasGenerator } from "./generators/alias.js";
+import { CallbackGenerator } from "./generators/callback.js";
 import { ClassGenerator } from "./generators/class/index.js";
 import { ClassStructGenerator } from "./generators/class-struct/index.js";
 import { ConstantGenerator } from "./generators/constant.js";
@@ -143,6 +144,13 @@ export class FfiGenerator {
             const aliasGenerator = new AliasGenerator(file, { namespace: this.options.namespace });
             aliasGenerator.addAliases([...namespace.aliases.values()]);
             files.push({ path: `${this.namespacePrefix}aliases.ts`, content: stringify(file) });
+        }
+
+        if (namespace.callbacks.size > 0) {
+            const file = fileBuilder();
+            const callbackGenerator = new CallbackGenerator(file, { namespace: this.options.namespace });
+            callbackGenerator.addCallbacks([...namespace.callbacks.values()]);
+            files.push({ path: `${this.namespacePrefix}callbacks.ts`, content: stringify(file) });
         }
 
         const indexContent = this.generateIndexFile(files);
