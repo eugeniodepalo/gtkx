@@ -13,7 +13,7 @@ import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType } from "../../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
+import { kebabToSnake, normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
 import {
     addTypeImports,
@@ -124,7 +124,7 @@ export class ConstructorBuilder {
             const mapped: MappedType = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
             addTypeImports(this.imports, mapped.imports, this.selfNames);
 
-            const paramName = toValidIdentifier(toCamelCase(prop.name));
+            const paramName = toValidIdentifier(kebabToSnake(prop.name));
             const isNullable = mapped.nullable === true;
 
             result.push({

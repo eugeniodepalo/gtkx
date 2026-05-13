@@ -35,7 +35,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
     if (!application) {
         initRuntime();
         application = new Gtk.Application({
-            applicationId: "org.gtkx.testing",
+            application_id: "org.gtkx.testing",
             flags: Gio.ApplicationFlags.NON_UNIQUE,
         });
         application.register(null);

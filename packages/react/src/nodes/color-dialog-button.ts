@@ -16,8 +16,7 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
         _props: ColorDialogButtonProps,
         containerClass: typeof Gtk.ColorDialogButton,
     ): Container | null {
-        const props: Gtk.ColorDialogButtonProps = { dialog: new Gtk.ColorDialog() };
-        return new containerClass(props);
+        return new containerClass({ dialog: new Gtk.ColorDialog() });
     }
 
     constructor(

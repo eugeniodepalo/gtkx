@@ -154,17 +154,34 @@ function collectGObjectProps(
     values: NativeHandle[],
     seen: Set<string>,
 ): void {
-    for (const camelName of Object.keys(propMap)) {
-        if (seen.has(camelName)) continue;
-        seen.add(camelName);
-        const value = props[camelName];
+    for (const propKey of Object.keys(propMap)) {
+        if (seen.has(propKey)) continue;
+        seen.add(propKey);
+        const value = lookupPropValue(props, propKey);
         if (value === undefined) continue;
-        const meta = propMap[camelName];
+        const meta = propMap[propKey];
         if (!meta) continue;
         const gvalue = createGValueForProp(meta, value);
         names.push(meta.girName);
         values.push(gvalue);
     }
+}
+
+/**
+ * Resolves a meta-registered prop key against a user-supplied prop bag.
+ *
+ * Meta keys are snake_case to match the ts-for-gir `ConstructorProperties`
+ * contract. Direct callers and tests sometimes use the equivalent camelCase
+ * spelling at the construction site; this helper tries both forms so the
+ * runtime accepts either without losing the strict-equal type guarantee at
+ * the `.d.ts` boundary.
+ */
+function lookupPropValue(props: Record<string, unknown>, snakeKey: string): unknown {
+    const snakeValue = props[snakeKey];
+    if (snakeValue !== undefined) return snakeValue;
+    if (!snakeKey.includes("_")) return undefined;
+    const camelKey = snakeKey.replace(/_([a-z0-9])/g, (_, ch: string) => ch.toUpperCase());
+    return props[camelKey];
 }
 
 function createGValueForProp(meta: GObjectPropMeta, value: unknown): NativeHandle {
