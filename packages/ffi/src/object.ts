@@ -41,6 +41,11 @@ export abstract class NativeObject<TProps extends object = object> {
         if (!meta) {
             throw new Error(`Cannot construct ${ctor.name}: no construction metadata registered`);
         }
+        if (typeof props === "function") {
+            throw new TypeError(
+                `Cannot construct ${ctor.name} with a function argument; pass an object of properties or call a static factory method (e.g. ${ctor.name}.new(...)).`,
+            );
+        }
 
         if (meta.kind === "gobject") {
             this.handle = constructGObject(ctor, meta, props as Record<string, unknown>);

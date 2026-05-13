@@ -204,7 +204,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
 
         this.props.onAnimationStart?.();
 
-        const callback = new Adw.CallbackAnimationTarget((progress: number) => {
+        const callback = Adw.CallbackAnimationTarget.new((progress: number) => {
             const interpolated = this.interpolate(from, to, progress);
             this.currentValues = interpolated;
             this.applyValues(interpolated);
