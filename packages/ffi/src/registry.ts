@@ -1,8 +1,15 @@
 import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import { typeParent } from "./generated/gobject/functions.js";
-import { type NativeClass, type NativeObject, setInstanceRegistrar, wrapHandle } from "./object.js";
+import {
+    type NativeClass,
+    type NativeObject,
+    setClassGTypeLookup,
+    setInstanceRegistrar,
+    wrapHandle,
+} from "./object.js";
 
 const classRegistry = new Map<number, NativeClass>();
+const gtypeByClass = new WeakMap<NativeClass, number>();
 
 /**
  * Registers a native class for type resolution.
@@ -23,7 +30,18 @@ const classRegistry = new Map<number, NativeClass>();
  * ```
  */
 export function registerNativeClass(cls: NativeClass, gtype: number): void {
-    if (gtype !== 0) classRegistry.set(gtype, cls);
+    if (gtype !== 0) {
+        classRegistry.set(gtype, cls);
+        gtypeByClass.set(cls, gtype);
+    }
+}
+
+/**
+ * Returns the GLib type identifier registered for `cls`, or `0` when the
+ * class has not been registered (e.g. boxed value types).
+ */
+export function getClassGType(cls: NativeClass): number {
+    return gtypeByClass.get(cls) ?? 0;
 }
 
 /**
@@ -86,6 +104,7 @@ export function registerNativeObject(obj: NativeObject): void {
 }
 
 setInstanceRegistrar(registerNativeObject);
+setClassGTypeLookup(getClassGType);
 
 /**
  * Finds an existing JavaScript wrapper for a native pointer.

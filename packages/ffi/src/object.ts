@@ -1,4 +1,4 @@
-import { alloc, call, getInstanceGType, type NativeHandle, write } from "@gtkx/native";
+import { alloc, call, type NativeHandle, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
 import { t } from "./helpers.js";
 
@@ -51,11 +51,10 @@ export abstract class NativeObject {
         if (meta.kind === "gobject") {
             this.handle = constructGObject(ctor, meta, props as Record<string, unknown>);
             registerInstance(this);
-            this.__gtype__ = getInstanceGType(this.handle);
         } else {
             this.handle = constructBoxed(meta, props as Record<string, unknown>);
-            this.__gtype__ = 0;
         }
+        this.__gtype__ = classGTypeLookup(ctor);
     }
 
     /**
@@ -85,6 +84,23 @@ export function setInstanceRegistrar(registrar: InstanceRegistrar): void {
     registerInstance = registrar;
 }
 
+type ClassGTypeLookup = (cls: NativeClass) => number;
+
+let classGTypeLookup: ClassGTypeLookup = () => 0;
+
+/**
+ * Installs the lookup that resolves a registered class's GLib type identifier.
+ *
+ * Called once by `./registry.js` at module load. Exposed only so the FFI
+ * bootstrap can wire its layers together without creating an import cycle
+ * between `object.ts` and `registry.ts`.
+ *
+ * @internal
+ */
+export function setClassGTypeLookup(lookup: ClassGTypeLookup): void {
+    classGTypeLookup = lookup;
+}
+
 /**
  * Constructor type for a {@link NativeObject} subclass.
  */
@@ -111,8 +127,7 @@ export type NativeClass<T extends NativeObject = NativeObject> = (abstract new (
 export function wrapHandle<T extends NativeObject>(cls: NativeClass<T>, handle: NativeHandle): T {
     const instance = Object.create(cls.prototype) as T;
     instance.handle = handle;
-    const meta = CONSTRUCTION_META.get(cls);
-    instance.__gtype__ = meta?.kind === "gobject" ? getInstanceGType(handle) : 0;
+    instance.__gtype__ = classGTypeLookup(cls);
     return instance;
 }
 
