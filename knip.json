@@ -10,7 +10,8 @@
         },
         "packages/codegen": {
             "entry": ["src/cli.ts"],
-            "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
+            "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"],
+            "ignoreDependencies": ["@ts-for-gir/lib"]
         },
         "packages/css": {
             "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
@@ -30,7 +31,7 @@
             "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
         },
         "packages/native": {
-            "entry": ["index.ts", "types.ts"],
+            "entry": ["types.ts"],
             "project": ["*.ts", "tests/**/*.{ts,tsx}"]
         },
         "packages/react": {

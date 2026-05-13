@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { defineCommand } from "citty";
 import { run } from "./commands/run.js";
 import { sync } from "./commands/sync.js";
+import { types } from "./commands/types.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -15,5 +16,6 @@ export const main = defineCommand({
     subCommands: {
         run,
         sync,
+        types,
     },
 });

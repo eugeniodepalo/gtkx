@@ -4,6 +4,7 @@
 coverage
 dist
 generated
+generated-new
 generated.lock
 generated.state
 gschemas.compiled
