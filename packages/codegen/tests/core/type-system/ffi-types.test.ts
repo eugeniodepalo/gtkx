@@ -290,8 +290,8 @@ describe("isMemoryWritableType", () => {
 });
 
 describe("getPrimitiveTypeSize", () => {
-    it("returns 1 for gboolean", () => {
-        expect(getPrimitiveTypeSize("gboolean")).toBe(1);
+    it("returns 4 for gboolean", () => {
+        expect(getPrimitiveTypeSize("gboolean")).toBe(4);
     });
 
     it("returns correct sizes for integer types", () => {

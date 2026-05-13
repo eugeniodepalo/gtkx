@@ -708,7 +708,7 @@ export const boxedSelfType = (
 const FFI_TYPE_BYTE_SIZES: Record<string, number> = {
     int8: 1,
     uint8: 1,
-    boolean: 1,
+    boolean: 4,
     int16: 2,
     uint16: 2,
     int32: 4,
@@ -725,10 +725,6 @@ const FFI_TYPE_BYTE_SIZES: Record<string, number> = {
 export const getFfiTypeByteSize = (ffiType: string): number => FFI_TYPE_BYTE_SIZES[ffiType] ?? 8;
 
 export const getPrimitiveTypeSize = (typeName: string): number => {
-    if (typeName === "gboolean") {
-        return 1;
-    }
-
     const entry = PRIMITIVE_TYPE_MAP.get(typeName);
     if (entry) {
         return getFfiTypeByteSize(entry.ffi.type);
