@@ -142,13 +142,13 @@ export class SignalBuilder {
             {
                 name: "emit",
                 parameters: [
-                    { name: "signal", type: "string" },
+                    { name: "sigName", type: "string" },
                     { name: "args", type: "any[]", isRestParameter: true },
                 ],
-                returnType: "any",
+                returnType: "void",
                 docs: [
                     {
-                        description: `Synchronously emits a signal on this ${this.className}.\n\nArguments are auto-marshalled into GValues based on the signal's GIR-defined parameter types.\nReturns the unmarshalled return value, or undefined for void-return signals.\n\n@param signal - The signal name to emit\n@param args - Arguments matching the signal's parameter list\n@returns The signal's return value, or undefined if it returns void`,
+                        description: `Synchronously emits a signal on this ${this.className}.\n\nArguments are auto-marshalled into GValues based on the signal's GIR-defined parameter types.\n\n@param sigName - The signal name to emit\n@param args - Arguments matching the signal's parameter list`,
                     },
                 ],
                 statements: this.writeEmitMethodBody(ownSignals),
@@ -587,23 +587,21 @@ export class SignalBuilder {
         const overloads: NonNullable<MethodStructure["overloads"]> = [];
 
         for (const signal of ownSignals) {
-            const paramData = this.buildParamData(filterVarargs(signal.parameters));
-            const returnTs = this.resolveReturnTsType(signal);
-            const params: NonNullable<MethodStructure["overloads"]>[number]["params"] = [
-                { name: "signal", type: `"${signal.name}"` },
-            ];
-            for (const p of paramData) {
-                params.push({ name: p.paramName, type: p.mapped.ts });
-            }
-            overloads.push({ params, returnType: returnTs });
+            overloads.push({
+                params: [
+                    { name: "sigName", type: `"${signal.name}"` },
+                    { name: "args", type: "any[]", isRestParameter: true },
+                ],
+                returnType: "void",
+            });
         }
 
         overloads.push({
             params: [
-                { name: "signal", type: "string" },
+                { name: "sigName", type: "string" },
                 { name: "args", type: "any[]", isRestParameter: true },
             ],
-            returnType: "any",
+            returnType: "void",
         });
 
         return overloads;
@@ -640,11 +638,12 @@ export class SignalBuilder {
 
         return (writer) => {
             if (ownSignals.length === 0) {
-                writer.writeLine("return super.emit(signal, ...args);");
+                writer.writeLine("super.emit(sigName, ...args);");
+                writer.writeLine("return;");
                 return;
             }
 
-            writer.writeLine("switch (signal) {");
+            writer.writeLine("switch (sigName) {");
             writer.withIndent(() => {
                 for (const signal of ownSignals) {
                     this.writeEmitSignalCase(writer, signal, gobjectPrefix);
@@ -652,9 +651,10 @@ export class SignalBuilder {
                 writer.writeLine("default:");
                 writer.withIndent(() => {
                     if (isRootGObject) {
-                        writer.writeLine(`throw new Error(\`Unknown signal '\${signal}' on ${this.className}\`);`);
+                        writer.writeLine(`throw new Error(\`Unknown signal '\${sigName}' on ${this.className}\`);`);
                     } else {
-                        writer.writeLine("return super.emit(signal, ...args);");
+                        writer.writeLine("super.emit(sigName, ...args);");
+                        writer.writeLine("return;");
                     }
                 });
             });
@@ -689,11 +689,10 @@ export class SignalBuilder {
                 writer.writeLine(`const __returnValue = new ${gobjectPrefix}Value();`);
                 writer.writeLine(`__returnValue.init(${this.gtypeInitExpression(returnMapped.ffi, gobjectPrefix)});`);
                 writer.writeLine(`${gobjectPrefix}signalEmitv(__values, __signalId, 0, __returnValue);`);
-                writer.writeLine(`return __returnValue.toJS() as ${returnMapped.ts};`);
             } else {
                 writer.writeLine(`${gobjectPrefix}signalEmitv(__values, __signalId, 0);`);
-                writer.writeLine("return undefined;");
             }
+            writer.writeLine("return;");
         });
         writer.writeLine("}");
     }

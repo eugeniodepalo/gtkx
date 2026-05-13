@@ -83,16 +83,7 @@ describe("Object.emit() typed signal emission", () => {
         expect(handler).toHaveBeenCalledWith(true);
     });
 
-    it("returns the boolean result from a return-value signal", () => {
-        const window = new Gtk.Window();
-        window.on("close-request", () => true);
-
-        const result = window.emit("close-request");
-
-        expect(result).toBe(true);
-    });
-
-    it("returns undefined from a void-return signal", () => {
+    it("returns undefined from any signal emission", () => {
         const button = new Gtk.Button();
         button.on("clicked", () => {});
 
