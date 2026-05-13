@@ -22,7 +22,7 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
     }, []);
 
     const handleParsingError = useCallback(
-        (_provider: Gtk.CssProvider, section: Gtk.CssSection, error: GLib.GError) => {
+        (_provider: Gtk.CssProvider, section: Gtk.CssSection, error: GLib.Error) => {
             const textView = textViewRef.current;
             if (!textView) return;
 

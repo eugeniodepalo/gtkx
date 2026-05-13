@@ -1379,7 +1379,7 @@ const ShadertoyDemo = () => {
 
         if (gl.getShaderiv(fragmentShader, gl.COMPILE_STATUS) === 0) {
             const log = gl.getShaderInfoLog(fragmentShader);
-            area.setError(GLib.GError.newLiteral(0, 0, `Fragment shader compile error:\n${log}`));
+            area.setError(GLib.Error.newLiteral(0, 0, `Fragment shader compile error:\n${log}`));
             gl.deleteShader(fragmentShader);
             return false;
         }
@@ -1406,7 +1406,7 @@ const ShadertoyDemo = () => {
 
         if (gl.getProgramiv(program, gl.LINK_STATUS) === 0) {
             const log = gl.getProgramInfoLog(program);
-            area.setError(GLib.GError.newLiteral(0, 0, `Program link error:\n${log}`));
+            area.setError(GLib.Error.newLiteral(0, 0, `Program link error:\n${log}`));
             gl.deleteProgram(program);
             return false;
         }
