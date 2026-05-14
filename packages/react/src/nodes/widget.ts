@@ -1,8 +1,4 @@
-import { getNativeObject, type NativeObject } from "@gtkx/ffi";
-import type * as GObject from "@gtkx/ffi/gobject";
-import { ParamSpecString, Type, typeFundamental } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { findObjectProperty } from "@gtkx/native";
 import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
@@ -24,29 +20,6 @@ import type { SignalHandler } from "./internal/signal-store.js";
 import { attachChild, detachChild, unparentWidget } from "./internal/widget.js";
 
 const EXCLUDED_PROPS = ["children"];
-
-// biome-ignore lint/complexity/noBannedTypes: WeakMap key for prototype-bound caching
-type Ctor = Function;
-
-const paramSpecCache = new WeakMap<Ctor, Map<string, GObject.ParamSpec | null>>();
-
-function findProperty(obj: NativeObject, key: string): GObject.ParamSpec | null {
-    const ctor = obj.constructor;
-    let perCtor = paramSpecCache.get(ctor);
-    if (!perCtor) {
-        perCtor = new Map();
-        paramSpecCache.set(ctor, perCtor);
-    }
-    if (perCtor.has(key)) {
-        return perCtor.get(key) ?? null;
-    }
-
-    const propertyName = key.replaceAll(/([A-Z])/g, "-$1").toLowerCase();
-    const pspecHandle = findObjectProperty(obj.handle, propertyName);
-    const pspec = pspecHandle ? (getNativeObject(pspecHandle) as GObject.ParamSpec) : null;
-    perCtor.set(key, pspec);
-    return pspec;
-}
 
 export class WidgetNode<
     T extends Gtk.Widget = Gtk.Widget,
@@ -174,13 +147,6 @@ export class WidgetNode<
         }
         if (newValue !== undefined) {
             pendingProperties.push({ name, oldValue, newValue });
-            return;
-        }
-        if (oldValue !== undefined) {
-            const defaultValue = this.getPropertyDefaultValue(name);
-            if (defaultValue !== undefined) {
-                pendingProperties.push({ name, oldValue, newValue: defaultValue });
-            }
         }
     }
 
@@ -306,41 +272,13 @@ export class WidgetNode<
         }
     }
 
-    private getPropertyDefaultValue(key: string): unknown {
-        if (!resolvePropMeta(this.container, key)) return undefined;
-
-        const pspec = findProperty(this.container, key);
-        if (!pspec) return undefined;
-
-        const value = pspec.getDefaultValue();
-        const gtype = value.getType();
-        const fundamental = typeFundamental(gtype);
-
-        if (fundamental === Type.BOOLEAN) return value.getBoolean();
-        if (fundamental === Type.INT) return value.getInt();
-        if (fundamental === Type.UINT) return value.getUint();
-        if (fundamental === Type.LONG) return value.getLong();
-        if (fundamental === Type.ULONG) return value.getUlong();
-        if (fundamental === Type.INT64) return value.getInt64();
-        if (fundamental === Type.UINT64) return value.getUint64();
-        if (fundamental === Type.FLOAT) return value.getFloat();
-        if (fundamental === Type.DOUBLE) return value.getDouble();
-        if (fundamental === Type.STRING) return value.getString();
-        if (fundamental === Type.ENUM) return value.getEnum();
-        if (fundamental === Type.FLAGS) return value.getFlags();
-
-        return undefined;
-    }
-
     private setProperty(key: string, value: unknown): void {
         const propName = resolvePropMeta(this.container, key);
         if (!propName) return;
 
         const target = this.container as Record<string, unknown>;
 
-        if (findProperty(this.container, key) instanceof ParamSpecString) {
-            if (target[propName] === value) return;
-        }
+        if (typeof value === "string" && target[propName] === value) return;
 
         target[propName] = value;
     }
