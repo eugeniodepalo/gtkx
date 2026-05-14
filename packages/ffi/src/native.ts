@@ -12,7 +12,7 @@ import { getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { Error as GError } from "./generated/glib/glib.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { typeIsA } from "./generated/gobject/gobject.js";
-import type { NativeClass, NativeObject } from "./object.js";
+import { type NativeClass, type NativeObject, setHandle, tryGetHandle } from "./object.js";
 
 export { getInstanceGType } from "@gtkx/native";
 export type { NativeHandle } from "./object.js";
@@ -106,11 +106,12 @@ export function getNativeInterface<T extends NativeObject>(
     iface: NativeClass<T>,
     ifaceGType: GType,
 ): T | null {
-    if (!obj.handle) return null;
+    const handle = tryGetHandle(obj);
+    if (!handle) return null;
     if ((ifaceGType as unknown as number) === 0) return null;
-    if (!instanceIsA(obj.handle, ifaceGType)) return null;
+    if (!instanceIsA(handle, ifaceGType)) return null;
 
     const instance = Object.create(iface.prototype) as T;
-    instance.handle = obj.handle;
+    setHandle(instance, handle);
     return instance;
 }

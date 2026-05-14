@@ -2,6 +2,7 @@ import { findObjectProperty, type NativeHandle } from "@gtkx/native";
 import type { GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { Object as GObject, Value } from "../generated/gobject/gobject.js";
 import { call, t } from "../native.js";
+import { getHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 
 declare module "../generated/gobject/gobject.js" {
@@ -117,7 +118,7 @@ ObjectWithStatics.newWithProperties = (objectType: GType, names: string[], value
                     sizeParamIndex: 1,
                     elementSize: GVALUE_SIZE,
                 }),
-                value: values.map((v) => v.handle),
+                value: values.map((v) => getHandle(v)),
             },
         ],
         GOBJECT_BORROWED,
@@ -158,7 +159,7 @@ GObject.prototype.disconnect = function disconnect(handlerId: number): void {
         LIB,
         "g_signal_handler_disconnect",
         [
-            { type: GOBJECT_BORROWED, value: this.handle },
+            { type: GOBJECT_BORROWED, value: getHandle(this) },
             { type: t.uint64, value: handlerId },
         ],
         t.void,
@@ -198,7 +199,7 @@ const offImpl = function (this: GObject, sigName: string, callback: Listener): N
 GObject.prototype.off = offImpl as unknown as GObject["off"];
 
 const resolvePropertyValueType = (obj: GObject, propertyName: string): GType => {
-    const pspecHandle = findObjectProperty(obj.handle, propertyName);
+    const pspecHandle = findObjectProperty(getHandle(obj), propertyName);
     if (!pspecHandle) {
         const className = obj.constructor.name || "GObject";
         throw new Error(`No property '${propertyName}' on ${className}`);
@@ -214,9 +215,9 @@ GObject.prototype.getProperty = function getProperty(propertyName: string): unkn
         LIB,
         "g_object_get_property",
         [
-            { type: GOBJECT_BORROWED, value: this.handle },
+            { type: GOBJECT_BORROWED, value: getHandle(this) },
             { type: t.string("borrowed"), value: propertyName },
-            { type: GVALUE_BORROWED_TYPE, value: gvalue.handle },
+            { type: GVALUE_BORROWED_TYPE, value: getHandle(gvalue) },
         ],
         t.void,
     );
@@ -230,9 +231,9 @@ GObject.prototype.setProperty = function setProperty(propertyName: string, value
         LIB,
         "g_object_set_property",
         [
-            { type: GOBJECT_BORROWED, value: this.handle },
+            { type: GOBJECT_BORROWED, value: getHandle(this) },
             { type: t.string("borrowed"), value: propertyName },
-            { type: GVALUE_BORROWED_TYPE, value: gvalue.handle },
+            { type: GVALUE_BORROWED_TYPE, value: getHandle(gvalue) },
         ],
         t.void,
     );

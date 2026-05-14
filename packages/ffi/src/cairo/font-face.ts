@@ -2,6 +2,7 @@ import type { NativeHandle } from "@gtkx/native";
 import type { FontSlant, FontType, FontWeight, Status } from "../generated/cairo/cairo.js";
 import { FontFace } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
+import { getHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import { FONT_FACE_T, FONT_FACE_T_NONE, INT_TYPE, LIB } from "./common.js";
 
@@ -42,14 +43,19 @@ FontFaceWithStatics.createToy = (family: string, slant: FontSlant, weight: FontW
 };
 
 FontFace.prototype.status = function (): Status {
-    return call(LIB, "cairo_font_face_status", [{ type: FONT_FACE_T_NONE, value: this.handle }], INT_TYPE) as Status;
+    return call(
+        LIB,
+        "cairo_font_face_status",
+        [{ type: FONT_FACE_T_NONE, value: getHandle(this) }],
+        INT_TYPE,
+    ) as Status;
 };
 
 FontFace.prototype.getType = function (): FontType {
     return call(
         LIB,
         "cairo_font_face_get_type",
-        [{ type: FONT_FACE_T_NONE, value: this.handle }],
+        [{ type: FONT_FACE_T_NONE, value: getHandle(this) }],
         INT_TYPE,
     ) as FontType;
 };
@@ -58,7 +64,7 @@ FontFace.prototype.toyGetFamily = function (): string {
     return call(
         LIB,
         "cairo_toy_font_face_get_family",
-        [{ type: FONT_FACE_T_NONE, value: this.handle }],
+        [{ type: FONT_FACE_T_NONE, value: getHandle(this) }],
         t.string("borrowed"),
     ) as string;
 };
@@ -67,7 +73,7 @@ FontFace.prototype.toyGetSlant = function (): FontSlant {
     return call(
         LIB,
         "cairo_toy_font_face_get_slant",
-        [{ type: FONT_FACE_T_NONE, value: this.handle }],
+        [{ type: FONT_FACE_T_NONE, value: getHandle(this) }],
         INT_TYPE,
     ) as FontSlant;
 };
@@ -76,7 +82,7 @@ FontFace.prototype.toyGetWeight = function (): FontWeight {
     return call(
         LIB,
         "cairo_toy_font_face_get_weight",
-        [{ type: FONT_FACE_T_NONE, value: this.handle }],
+        [{ type: FONT_FACE_T_NONE, value: getHandle(this) }],
         INT_TYPE,
     ) as FontWeight;
 };
@@ -121,7 +127,7 @@ FontFace.prototype.ftGetSynthesize = function (): number {
     return call(
         LIB,
         "cairo_ft_font_face_get_synthesize",
-        [{ type: FONT_FACE_T_NONE, value: this.handle }],
+        [{ type: FONT_FACE_T_NONE, value: getHandle(this) }],
         INT_TYPE,
     ) as number;
 };
@@ -131,7 +137,7 @@ FontFace.prototype.ftSetSynthesize = function (flags: number): void {
         LIB,
         "cairo_ft_font_face_set_synthesize",
         [
-            { type: FONT_FACE_T_NONE, value: this.handle },
+            { type: FONT_FACE_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: flags },
         ],
         t.void,
@@ -143,7 +149,7 @@ FontFace.prototype.ftUnsetSynthesize = function (flags: number): void {
         LIB,
         "cairo_ft_font_face_unset_synthesize",
         [
-            { type: FONT_FACE_T_NONE, value: this.handle },
+            { type: FONT_FACE_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: flags },
         ],
         t.void,

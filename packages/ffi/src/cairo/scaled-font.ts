@@ -2,6 +2,7 @@ import { createRef, type NativeHandle } from "@gtkx/native";
 import type { FontOptions, FontType, Status, TextClusterFlags } from "../generated/cairo/cairo.js";
 import { FontFace, ScaledFont } from "../generated/cairo/cairo.js";
 import { alloc, call, read, t } from "../native.js";
+import { getHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import {
     allocGlyphBuffer,
@@ -57,10 +58,10 @@ const scaledFontCreate = (fontFace: FontFace, fontMatrix: Matrix, ctm: Matrix, o
         LIB,
         "cairo_scaled_font_create",
         [
-            { type: FONT_FACE_T_NONE, value: fontFace.handle },
-            { type: MATRIX_T, value: fontMatrix.handle },
-            { type: MATRIX_T, value: ctm.handle },
-            { type: FONT_OPTIONS_T, value: options.handle },
+            { type: FONT_FACE_T_NONE, value: getHandle(fontFace) },
+            { type: MATRIX_T, value: getHandle(fontMatrix) },
+            { type: MATRIX_T, value: getHandle(ctm) },
+            { type: FONT_OPTIONS_T, value: getHandle(options) },
         ],
         SCALED_FONT_T,
     ) as NativeHandle;
@@ -73,7 +74,7 @@ ScaledFont.prototype.status = function (): Status {
     return call(
         LIB,
         "cairo_scaled_font_status",
-        [{ type: SCALED_FONT_T_NONE, value: this.handle }],
+        [{ type: SCALED_FONT_T_NONE, value: getHandle(this) }],
         INT_TYPE,
     ) as Status;
 };
@@ -84,7 +85,7 @@ ScaledFont.prototype.extents = function (): FontExtents {
         LIB,
         "cairo_scaled_font_extents",
         [
-            { type: SCALED_FONT_T_NONE, value: this.handle },
+            { type: SCALED_FONT_T_NONE, value: getHandle(this) },
             {
                 type: t.boxed("cairo_font_extents_t", "borrowed", LIB),
                 value: ext,
@@ -101,7 +102,7 @@ ScaledFont.prototype.textExtents = function (text: string): TextExtents {
         LIB,
         "cairo_scaled_font_text_extents",
         [
-            { type: SCALED_FONT_T_NONE, value: this.handle },
+            { type: SCALED_FONT_T_NONE, value: getHandle(this) },
             { type: t.string("full"), value: text },
             {
                 type: t.boxed("cairo_text_extents_t", "borrowed", LIB),
@@ -120,7 +121,7 @@ ScaledFont.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: 
         LIB,
         "cairo_scaled_font_glyph_extents",
         [
-            { type: SCALED_FONT_T_NONE, value: this.handle },
+            { type: SCALED_FONT_T_NONE, value: getHandle(this) },
             { type: GLYPH_BUF_T, value: buf },
             { type: INT_TYPE, value: glyphs.length },
             {
@@ -137,7 +138,7 @@ ScaledFont.prototype.getFontFace = function (): FontFace {
     const ptr = call(
         LIB,
         "cairo_scaled_font_get_font_face",
-        [{ type: SCALED_FONT_T_NONE, value: this.handle }],
+        [{ type: SCALED_FONT_T_NONE, value: getHandle(this) }],
         FONT_FACE_T_NONE,
     ) as NativeHandle;
     return getNativeObject(ptr, FontFace) as FontFace;
@@ -149,8 +150,8 @@ ScaledFont.prototype.getFontOptions = function (): FontOptions {
         LIB,
         "cairo_scaled_font_get_font_options",
         [
-            { type: SCALED_FONT_T_NONE, value: this.handle },
-            { type: FONT_OPTIONS_T, value: options.handle },
+            { type: SCALED_FONT_T_NONE, value: getHandle(this) },
+            { type: FONT_OPTIONS_T, value: getHandle(options) },
         ],
         t.void,
     );
@@ -163,7 +164,7 @@ function readMatrixVia(self: ScaledFont, fnName: string): Matrix {
         LIB,
         fnName,
         [
-            { type: SCALED_FONT_T_NONE, value: self.handle },
+            { type: SCALED_FONT_T_NONE, value: getHandle(self) },
             { type: MATRIX_T, value: handle },
         ],
         t.void,
@@ -187,7 +188,7 @@ ScaledFont.prototype.getType = function (): FontType {
     return call(
         LIB,
         "cairo_scaled_font_get_type",
-        [{ type: SCALED_FONT_T_NONE, value: this.handle }],
+        [{ type: SCALED_FONT_T_NONE, value: getHandle(this) }],
         INT_TYPE,
     ) as FontType;
 };
@@ -218,7 +219,7 @@ ScaledFont.prototype.textToGlyphs = function (
         LIB,
         "cairo_scaled_font_text_to_glyphs",
         [
-            { type: SCALED_FONT_T_NONE, value: this.handle },
+            { type: SCALED_FONT_T_NONE, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
             { type: t.string("full"), value: text },
@@ -275,11 +276,11 @@ ScaledFont.prototype.ftLockFace = function (): NativeHandle {
     return call(
         LIB,
         "cairo_ft_scaled_font_lock_face",
-        [{ type: SCALED_FONT_T_NONE, value: this.handle }],
+        [{ type: SCALED_FONT_T_NONE, value: getHandle(this) }],
         t.boxed("FT_Face", "borrowed", LIB),
     ) as NativeHandle;
 };
 
 ScaledFont.prototype.ftUnlockFace = function (): void {
-    call(LIB, "cairo_ft_scaled_font_unlock_face", [{ type: SCALED_FONT_T_NONE, value: this.handle }], t.void);
+    call(LIB, "cairo_ft_scaled_font_unlock_face", [{ type: SCALED_FONT_T_NONE, value: getHandle(this) }], t.void);
 };

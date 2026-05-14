@@ -2,7 +2,7 @@ import { createRef, type NativeHandle } from "@gtkx/native";
 import { registerConstructionMeta } from "../construction-meta.js";
 import type { Status } from "../generated/cairo/cairo.js";
 import { alloc, call, read, t } from "../native.js";
-import { NativeObject, wrapHandle } from "../object.js";
+import { getHandle, NativeObject, wrapHandle } from "../object.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T } from "./common.js";
 
 declare module "../generated/cairo/cairo.js" {
@@ -38,27 +38,27 @@ export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
  */
 export class Matrix extends NativeObject {
     get xx(): number {
-        return read(this.handle, DOUBLE_TYPE, 0) as number;
+        return read(getHandle(this), DOUBLE_TYPE, 0) as number;
     }
 
     get yx(): number {
-        return read(this.handle, DOUBLE_TYPE, 8) as number;
+        return read(getHandle(this), DOUBLE_TYPE, 8) as number;
     }
 
     get xy(): number {
-        return read(this.handle, DOUBLE_TYPE, 16) as number;
+        return read(getHandle(this), DOUBLE_TYPE, 16) as number;
     }
 
     get yy(): number {
-        return read(this.handle, DOUBLE_TYPE, 24) as number;
+        return read(getHandle(this), DOUBLE_TYPE, 24) as number;
     }
 
     get x0(): number {
-        return read(this.handle, DOUBLE_TYPE, 32) as number;
+        return read(getHandle(this), DOUBLE_TYPE, 32) as number;
     }
 
     get y0(): number {
-        return read(this.handle, DOUBLE_TYPE, 40) as number;
+        return read(getHandle(this), DOUBLE_TYPE, 40) as number;
     }
 
     translate(tx: number, ty: number): void {
@@ -66,7 +66,7 @@ export class Matrix extends NativeObject {
             LIB,
             "cairo_matrix_translate",
             [
-                { type: MATRIX_T, value: this.handle },
+                { type: MATRIX_T, value: getHandle(this) },
                 { type: DOUBLE_TYPE, value: tx },
                 { type: DOUBLE_TYPE, value: ty },
             ],
@@ -79,7 +79,7 @@ export class Matrix extends NativeObject {
             LIB,
             "cairo_matrix_scale",
             [
-                { type: MATRIX_T, value: this.handle },
+                { type: MATRIX_T, value: getHandle(this) },
                 { type: DOUBLE_TYPE, value: sx },
                 { type: DOUBLE_TYPE, value: sy },
             ],
@@ -92,7 +92,7 @@ export class Matrix extends NativeObject {
             LIB,
             "cairo_matrix_rotate",
             [
-                { type: MATRIX_T, value: this.handle },
+                { type: MATRIX_T, value: getHandle(this) },
                 { type: DOUBLE_TYPE, value: radians },
             ],
             t.void,
@@ -100,7 +100,7 @@ export class Matrix extends NativeObject {
     }
 
     invert(): Status {
-        return call(LIB, "cairo_matrix_invert", [{ type: MATRIX_T, value: this.handle }], INT_TYPE) as Status;
+        return call(LIB, "cairo_matrix_invert", [{ type: MATRIX_T, value: getHandle(this) }], INT_TYPE) as Status;
     }
 
     multiply(other: Matrix): Matrix {
@@ -110,8 +110,8 @@ export class Matrix extends NativeObject {
             "cairo_matrix_multiply",
             [
                 { type: MATRIX_T, value: handle },
-                { type: MATRIX_T, value: this.handle },
-                { type: MATRIX_T, value: other.handle },
+                { type: MATRIX_T, value: getHandle(this) },
+                { type: MATRIX_T, value: getHandle(other) },
             ],
             t.void,
         );
@@ -125,7 +125,7 @@ export class Matrix extends NativeObject {
             LIB,
             "cairo_matrix_transform_point",
             [
-                { type: MATRIX_T, value: this.handle },
+                { type: MATRIX_T, value: getHandle(this) },
                 { type: t.ref(DOUBLE_TYPE), value: xRef },
                 { type: t.ref(DOUBLE_TYPE), value: yRef },
             ],
@@ -141,7 +141,7 @@ export class Matrix extends NativeObject {
             LIB,
             "cairo_matrix_transform_distance",
             [
-                { type: MATRIX_T, value: this.handle },
+                { type: MATRIX_T, value: getHandle(this) },
                 { type: t.ref(DOUBLE_TYPE), value: dxRef },
                 { type: t.ref(DOUBLE_TYPE), value: dyRef },
             ],

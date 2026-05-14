@@ -3,7 +3,7 @@ import type { Object as GObject, GType, ParamSpec } from "../generated/gobject/g
 import { typeFromName, typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
 import type { NativeClass, NativeObject } from "../native.js";
 import { call, read, t } from "../native.js";
-import { setValueFactory } from "../object.js";
+import { getHandle, setValueFactory } from "../object.js";
 import { findNativeClass, getNativeObject } from "../registry.js";
 import { Type } from "./types.js";
 
@@ -210,7 +210,7 @@ function initValue(gtype: GType, populate: (v: Value) => void): Value {
 }
 
 Value.prototype.getType = function (): GType {
-    return read(this.handle, t.uint64, 0) as unknown as GType;
+    return read(getHandle(this), t.uint64, 0) as unknown as GType;
 };
 
 Value.prototype.getTypeName = function (): string {
@@ -234,7 +234,7 @@ const getBoxedImpl = function <T extends NativeObject>(
     const ptr = call(
         "libgobject-2.0.so.0",
         "g_value_dup_boxed",
-        [{ type: t.boxed("GValue", "borrowed", "libgobject-2.0.so.0"), value: this.handle }],
+        [{ type: t.boxed("GValue", "borrowed", "libgobject-2.0.so.0"), value: getHandle(this) }],
         t.boxed(glibTypeName, "full", "libgobject-2.0.so.0"),
     );
     if (ptr === null) return null;
@@ -243,7 +243,7 @@ const getBoxedImpl = function <T extends NativeObject>(
 Value.prototype.getBoxed = getBoxedImpl as unknown as Value["getBoxed"];
 
 Value.prototype.getStrv = function (): string[] {
-    return (g_value_get_boxed_strv(this.handle) as string[] | null) ?? [];
+    return (g_value_get_boxed_strv(getHandle(this)) as string[] | null) ?? [];
 };
 
 type FundamentalGetter = (value: Value) => unknown;
@@ -306,7 +306,7 @@ Value.prototype.toJS = function (): unknown {
     const fundamentalValue = valueFromFundamental(this, fundamental);
     if (fundamentalValue !== undefined) return fundamentalValue;
 
-    if (fundamental === Type.POINTER) return readPointerValue(this.handle);
+    if (fundamental === Type.POINTER) return readPointerValue(getHandle(this));
     if (fundamental === Type.BOXED) return readBoxedValue(this, gtype);
 
     throw new Error(`Unsupported GType for Value.toJS: ${typeName(gtype) ?? String(gtype)}`);
@@ -349,7 +349,7 @@ ValueWithStatics.newFromString = (value) => initValue(Type.STRING, (v) => v.setS
 ValueWithStatics.newFromObject = (value: GObject | null): Value => {
     const v = new Value();
     if (value) {
-        const gtype = getInstanceGType(value.handle) as unknown as GType;
+        const gtype = getInstanceGType(getHandle(value)) as unknown as GType;
         v.init(gtype);
     } else {
         v.init(Type.OBJECT);
@@ -368,10 +368,10 @@ ValueWithStatics.newFromBoxed = (value: NativeObject, gtype: GType): Value => {
             "libgobject-2.0.so.0",
             "g_value_set_boxed",
             [
-                { type: GVALUE_ARG, value: v.handle },
+                { type: GVALUE_ARG, value: getHandle(v) },
                 {
                     type: t.boxed(glibTypeName, "borrowed", "libgobject-2.0.so.0"),
-                    value: value.handle,
+                    value: getHandle(value),
                     optional: true,
                 },
             ],
@@ -381,7 +381,7 @@ ValueWithStatics.newFromBoxed = (value: NativeObject, gtype: GType): Value => {
 };
 
 ValueWithStatics.newFromStrv = (value: string[]): Value =>
-    initValue(getStrvGType(), (v) => g_value_set_boxed_strv(v.handle, value));
+    initValue(getStrvGType(), (v) => g_value_set_boxed_strv(getHandle(v), value));
 
 ValueWithStatics.newFromVariant = (value: NativeObject): Value =>
     initValue(Type.VARIANT, (v) => v.setVariant(value as unknown as Parameters<Value["setVariant"]>[0]));

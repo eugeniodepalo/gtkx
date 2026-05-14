@@ -2,7 +2,7 @@ import type { NativeHandle } from "@gtkx/native";
 import type { RegionOverlap, Status } from "../generated/cairo/cairo.js";
 import { RectangleInt, Region } from "../generated/cairo/cairo.js";
 import { alloc, call, t, write } from "../native.js";
-import { wrapHandle } from "../object.js";
+import { getHandle, wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import { INT_TYPE, LIB, RECT_INT_T, REGION_T, REGION_T_NONE } from "./common.js";
 
@@ -39,7 +39,7 @@ class RegionImpl extends Region {
         const handle = call(
             LIB,
             "cairo_region_create_rectangle",
-            [{ type: RECT_INT_T, value: rect.handle }],
+            [{ type: RECT_INT_T, value: getHandle(rect) }],
             REGION_T,
         ) as NativeHandle;
         return wrapHandle(RegionImpl, handle);
@@ -77,12 +77,17 @@ class RegionImpl extends Region {
 export { RegionImpl as Region };
 
 Region.prototype.copy = function (): Region {
-    const ptr = call(LIB, "cairo_region_copy", [{ type: REGION_T_NONE, value: this.handle }], REGION_T) as NativeHandle;
+    const ptr = call(
+        LIB,
+        "cairo_region_copy",
+        [{ type: REGION_T_NONE, value: getHandle(this) }],
+        REGION_T,
+    ) as NativeHandle;
     return getNativeObject(ptr, Region) as Region;
 };
 
 Region.prototype.status = function (): Status {
-    return call(LIB, "cairo_region_status", [{ type: REGION_T_NONE, value: this.handle }], INT_TYPE) as Status;
+    return call(LIB, "cairo_region_status", [{ type: REGION_T_NONE, value: getHandle(this) }], INT_TYPE) as Status;
 };
 
 Region.prototype.getExtents = function (): RectangleInt {
@@ -91,8 +96,8 @@ Region.prototype.getExtents = function (): RectangleInt {
         LIB,
         "cairo_region_get_extents",
         [
-            { type: REGION_T_NONE, value: this.handle },
-            { type: RECT_INT_T, value: rect.handle },
+            { type: REGION_T_NONE, value: getHandle(this) },
+            { type: RECT_INT_T, value: getHandle(rect) },
         ],
         t.void,
     );
@@ -100,7 +105,12 @@ Region.prototype.getExtents = function (): RectangleInt {
 };
 
 Region.prototype.numRectangles = function (): number {
-    return call(LIB, "cairo_region_num_rectangles", [{ type: REGION_T_NONE, value: this.handle }], INT_TYPE) as number;
+    return call(
+        LIB,
+        "cairo_region_num_rectangles",
+        [{ type: REGION_T_NONE, value: getHandle(this) }],
+        INT_TYPE,
+    ) as number;
 };
 
 Region.prototype.getRectangle = function (nth: number): RectangleInt {
@@ -109,9 +119,9 @@ Region.prototype.getRectangle = function (nth: number): RectangleInt {
         LIB,
         "cairo_region_get_rectangle",
         [
-            { type: REGION_T_NONE, value: this.handle },
+            { type: REGION_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: nth },
-            { type: RECT_INT_T, value: rect.handle },
+            { type: RECT_INT_T, value: getHandle(rect) },
         ],
         t.void,
     );
@@ -119,7 +129,7 @@ Region.prototype.getRectangle = function (nth: number): RectangleInt {
 };
 
 Region.prototype.isEmpty = function (): boolean {
-    return call(LIB, "cairo_region_is_empty", [{ type: REGION_T_NONE, value: this.handle }], t.boolean) as boolean;
+    return call(LIB, "cairo_region_is_empty", [{ type: REGION_T_NONE, value: getHandle(this) }], t.boolean) as boolean;
 };
 
 Region.prototype.containsPoint = function (x: number, y: number): boolean {
@@ -127,7 +137,7 @@ Region.prototype.containsPoint = function (x: number, y: number): boolean {
         LIB,
         "cairo_region_contains_point",
         [
-            { type: REGION_T_NONE, value: this.handle },
+            { type: REGION_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: x },
             { type: INT_TYPE, value: y },
         ],
@@ -140,8 +150,8 @@ Region.prototype.containsRectangle = function (rect: RectangleInt): RegionOverla
         LIB,
         "cairo_region_contains_rectangle",
         [
-            { type: REGION_T_NONE, value: this.handle },
-            { type: RECT_INT_T, value: rect.handle },
+            { type: REGION_T_NONE, value: getHandle(this) },
+            { type: RECT_INT_T, value: getHandle(rect) },
         ],
         INT_TYPE,
     ) as RegionOverlap;
@@ -152,8 +162,8 @@ Region.prototype.equal = function (other: Region): boolean {
         LIB,
         "cairo_region_equal",
         [
-            { type: REGION_T_NONE, value: this.handle },
-            { type: REGION_T_NONE, value: other.handle },
+            { type: REGION_T_NONE, value: getHandle(this) },
+            { type: REGION_T_NONE, value: getHandle(other) },
         ],
         t.boolean,
     ) as boolean;
@@ -164,7 +174,7 @@ Region.prototype.translate = function (dx: number, dy: number): void {
         LIB,
         "cairo_region_translate",
         [
-            { type: REGION_T_NONE, value: this.handle },
+            { type: REGION_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: dx },
             { type: INT_TYPE, value: dy },
         ],
@@ -177,8 +187,8 @@ const regionBinaryOp = (self: Region, fn: string, other: Region): void => {
         LIB,
         fn,
         [
-            { type: REGION_T_NONE, value: self.handle },
-            { type: REGION_T_NONE, value: other.handle },
+            { type: REGION_T_NONE, value: getHandle(self) },
+            { type: REGION_T_NONE, value: getHandle(other) },
         ],
         INT_TYPE,
     );
@@ -189,8 +199,8 @@ const regionRectOp = (self: Region, fn: string, rect: RectangleInt): void => {
         LIB,
         fn,
         [
-            { type: REGION_T_NONE, value: self.handle },
-            { type: RECT_INT_T, value: rect.handle },
+            { type: REGION_T_NONE, value: getHandle(self) },
+            { type: RECT_INT_T, value: getHandle(rect) },
         ],
         INT_TYPE,
     );

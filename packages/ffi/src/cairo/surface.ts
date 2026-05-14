@@ -2,6 +2,7 @@ import { createRef, type NativeHandle } from "@gtkx/native";
 import type { Content, Format, RectangleInt, Status, SurfaceType } from "../generated/cairo/cairo.js";
 import { Device, Surface } from "../generated/cairo/cairo.js";
 import { alloc, call, read, t, write } from "../native.js";
+import { getHandle, setHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import {
     callGetXY,
@@ -29,7 +30,7 @@ declare module "../generated/cairo/cairo.js" {
 }
 
 Surface.prototype.finish = function (): void {
-    call(LIB, "cairo_surface_finish", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
+    call(LIB, "cairo_surface_finish", [{ type: SURFACE_T_NONE, value: getHandle(this) }], t.void);
 };
 
 const CONTENT_MAP = {
@@ -47,7 +48,7 @@ Surface.prototype.createSimilar = function (
         LIB,
         "cairo_surface_create_similar",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: CONTENT_MAP[content] },
             { type: INT_TYPE, value: width },
             { type: INT_TYPE, value: height },
@@ -58,11 +59,11 @@ Surface.prototype.createSimilar = function (
 };
 
 Surface.prototype.flush = function (): void {
-    call(LIB, "cairo_surface_flush", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
+    call(LIB, "cairo_surface_flush", [{ type: SURFACE_T_NONE, value: getHandle(this) }], t.void);
 };
 
 Surface.prototype.markDirty = function (): void {
-    call(LIB, "cairo_surface_mark_dirty", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
+    call(LIB, "cairo_surface_mark_dirty", [{ type: SURFACE_T_NONE, value: getHandle(this) }], t.void);
 };
 
 Surface.prototype.writeToPng = function (filename: string): void {
@@ -70,7 +71,7 @@ Surface.prototype.writeToPng = function (filename: string): void {
         LIB,
         "cairo_surface_write_to_png",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: t.string("full"), value: filename },
         ],
         INT_TYPE,
@@ -78,11 +79,21 @@ Surface.prototype.writeToPng = function (filename: string): void {
 };
 
 Surface.prototype.getType = function (): SurfaceType {
-    return call(LIB, "cairo_surface_get_type", [{ type: SURFACE_T_NONE, value: this.handle }], INT_TYPE) as SurfaceType;
+    return call(
+        LIB,
+        "cairo_surface_get_type",
+        [{ type: SURFACE_T_NONE, value: getHandle(this) }],
+        INT_TYPE,
+    ) as SurfaceType;
 };
 
 Surface.prototype.getContent = function (): Content {
-    return call(LIB, "cairo_surface_get_content", [{ type: SURFACE_T_NONE, value: this.handle }], INT_TYPE) as Content;
+    return call(
+        LIB,
+        "cairo_surface_get_content",
+        [{ type: SURFACE_T_NONE, value: getHandle(this) }],
+        INT_TYPE,
+    ) as Content;
 };
 
 declare module "../generated/cairo/cairo.js" {
@@ -104,7 +115,7 @@ declare module "../generated/cairo/cairo.js" {
 }
 
 Surface.prototype.status = function (): Status {
-    return call(LIB, "cairo_surface_status", [{ type: SURFACE_T_NONE, value: this.handle }], INT_TYPE) as Status;
+    return call(LIB, "cairo_surface_status", [{ type: SURFACE_T_NONE, value: getHandle(this) }], INT_TYPE) as Status;
 };
 
 Surface.prototype.createSimilarImage = function (format: Format, width: number, height: number): ImageSurface {
@@ -112,7 +123,7 @@ Surface.prototype.createSimilarImage = function (format: Format, width: number, 
         LIB,
         "cairo_surface_create_similar_image",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: format },
             { type: INT_TYPE, value: width },
             { type: INT_TYPE, value: height },
@@ -120,7 +131,7 @@ Surface.prototype.createSimilarImage = function (format: Format, width: number, 
         SURFACE_T,
     ) as NativeHandle;
     const surface = Object.create(ImageSurface.prototype) as ImageSurface;
-    surface.handle = ptr;
+    setHandle(surface, ptr);
     return surface;
 };
 
@@ -129,7 +140,7 @@ Surface.prototype.createForRectangle = function (x: number, y: number, width: nu
         LIB,
         "cairo_surface_create_for_rectangle",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
             { type: DOUBLE_TYPE, value: width },
@@ -145,7 +156,7 @@ Surface.prototype.setDeviceOffset = function (xOffset: number, yOffset: number):
         LIB,
         "cairo_surface_set_device_offset",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: xOffset },
             { type: DOUBLE_TYPE, value: yOffset },
         ],
@@ -154,7 +165,7 @@ Surface.prototype.setDeviceOffset = function (xOffset: number, yOffset: number):
 };
 
 Surface.prototype.getDeviceOffset = function (): { x: number; y: number } {
-    return callGetXY("cairo_surface_get_device_offset", { type: SURFACE_T_NONE, value: this.handle });
+    return callGetXY("cairo_surface_get_device_offset", { type: SURFACE_T_NONE, value: getHandle(this) });
 };
 
 Surface.prototype.setDeviceScale = function (xScale: number, yScale: number): void {
@@ -162,7 +173,7 @@ Surface.prototype.setDeviceScale = function (xScale: number, yScale: number): vo
         LIB,
         "cairo_surface_set_device_scale",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: xScale },
             { type: DOUBLE_TYPE, value: yScale },
         ],
@@ -171,7 +182,7 @@ Surface.prototype.setDeviceScale = function (xScale: number, yScale: number): vo
 };
 
 Surface.prototype.getDeviceScale = function (): { x: number; y: number } {
-    return callGetXY("cairo_surface_get_device_scale", { type: SURFACE_T_NONE, value: this.handle });
+    return callGetXY("cairo_surface_get_device_scale", { type: SURFACE_T_NONE, value: getHandle(this) });
 };
 
 Surface.prototype.setFallbackResolution = function (xPpi: number, yPpi: number): void {
@@ -179,7 +190,7 @@ Surface.prototype.setFallbackResolution = function (xPpi: number, yPpi: number):
         LIB,
         "cairo_surface_set_fallback_resolution",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: xPpi },
             { type: DOUBLE_TYPE, value: yPpi },
         ],
@@ -188,7 +199,7 @@ Surface.prototype.setFallbackResolution = function (xPpi: number, yPpi: number):
 };
 
 Surface.prototype.getFallbackResolution = function (): { x: number; y: number } {
-    return callGetXY("cairo_surface_get_fallback_resolution", { type: SURFACE_T_NONE, value: this.handle });
+    return callGetXY("cairo_surface_get_fallback_resolution", { type: SURFACE_T_NONE, value: getHandle(this) });
 };
 
 Surface.prototype.markDirtyRectangle = function (x: number, y: number, width: number, height: number): void {
@@ -196,7 +207,7 @@ Surface.prototype.markDirtyRectangle = function (x: number, y: number, width: nu
         LIB,
         "cairo_surface_mark_dirty_rectangle",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: x },
             { type: INT_TYPE, value: y },
             { type: INT_TYPE, value: width },
@@ -207,18 +218,18 @@ Surface.prototype.markDirtyRectangle = function (x: number, y: number, width: nu
 };
 
 Surface.prototype.copyPage = function (): void {
-    call(LIB, "cairo_surface_copy_page", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
+    call(LIB, "cairo_surface_copy_page", [{ type: SURFACE_T_NONE, value: getHandle(this) }], t.void);
 };
 
 Surface.prototype.showPage = function (): void {
-    call(LIB, "cairo_surface_show_page", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
+    call(LIB, "cairo_surface_show_page", [{ type: SURFACE_T_NONE, value: getHandle(this) }], t.void);
 };
 
 Surface.prototype.hasShowTextGlyphs = function (): boolean {
     return call(
         LIB,
         "cairo_surface_has_show_text_glyphs",
-        [{ type: SURFACE_T_NONE, value: this.handle }],
+        [{ type: SURFACE_T_NONE, value: getHandle(this) }],
         t.boolean,
     ) as boolean;
 };
@@ -243,7 +254,7 @@ Surface.prototype.setMimeData = function (mimeType: string, data: Uint8Array): v
         LIB,
         "cairo_surface_set_mime_data",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: t.string("full"), value: mimeType },
             {
                 type: t.boxed("mime_data", "borrowed", LIB),
@@ -264,7 +275,7 @@ Surface.prototype.getMimeData = function (mimeType: string): Uint8Array | null {
         LIB,
         "cairo_surface_get_mime_data",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: t.string("full"), value: mimeType },
             {
                 type: t.ref(t.boxed("guint8*", "borrowed", LIB)),
@@ -288,7 +299,7 @@ Surface.prototype.supportsMimeType = function (mimeType: string): boolean {
         LIB,
         "cairo_surface_supports_mime_type",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: t.string("full"), value: mimeType },
         ],
         t.boolean,
@@ -301,8 +312,8 @@ Surface.prototype.mapToImage = function (extents?: RectangleInt): ImageSurface {
               LIB,
               "cairo_surface_map_to_image",
               [
-                  { type: SURFACE_T_NONE, value: this.handle },
-                  { type: RECT_INT_T, value: extents.handle },
+                  { type: SURFACE_T_NONE, value: getHandle(this) },
+                  { type: RECT_INT_T, value: getHandle(extents) },
               ],
               SURFACE_T_NONE,
           )
@@ -310,13 +321,13 @@ Surface.prototype.mapToImage = function (extents?: RectangleInt): ImageSurface {
               LIB,
               "cairo_surface_map_to_image",
               [
-                  { type: SURFACE_T_NONE, value: this.handle },
+                  { type: SURFACE_T_NONE, value: getHandle(this) },
                   { type: t.uint64, value: 0 },
               ],
               SURFACE_T_NONE,
           );
     const surface = Object.create(ImageSurface.prototype) as ImageSurface;
-    surface.handle = ptr as NativeHandle;
+    setHandle(surface, ptr as NativeHandle);
     return surface;
 };
 
@@ -325,8 +336,8 @@ Surface.prototype.unmapImage = function (image: ImageSurface): void {
         LIB,
         "cairo_surface_unmap_image",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: SURFACE_T_NONE, value: image.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
+            { type: SURFACE_T_NONE, value: getHandle(image) },
         ],
         t.void,
     );
@@ -336,7 +347,7 @@ Surface.prototype.getDevice = function (): Device | null {
     const ptr = call(
         LIB,
         "cairo_surface_get_device",
-        [{ type: SURFACE_T_NONE, value: this.handle }],
+        [{ type: SURFACE_T_NONE, value: getHandle(this) }],
         DEVICE_T,
     ) as NativeHandle | null;
     if (ptr === null) return null;
@@ -356,7 +367,7 @@ export const imageCreateForData = (
     const ptr = call(
         LIB,
         "cairo_image_surface_get_data",
-        [{ type: SURFACE_T_NONE, value: surface.handle }],
+        [{ type: SURFACE_T_NONE, value: getHandle(surface) }],
         t.struct("guint8*", "borrowed"),
     ) as NativeHandle;
     const rowBytes = Math.min(stride, actualStride);

@@ -2,7 +2,7 @@ import { createRef, type NativeHandle } from "@gtkx/native";
 import type { Content } from "../generated/cairo/cairo.js";
 import { Surface } from "../generated/cairo/cairo.js";
 import { alloc, call, read, t, write } from "../native.js";
-import { wrapHandle } from "../object.js";
+import { getHandle, wrapHandle } from "../object.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class RecordingSurface extends Surface {
@@ -52,7 +52,7 @@ export class RecordingSurface extends Surface {
             LIB,
             "cairo_recording_surface_ink_extents",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
                 { type: t.ref(DOUBLE_TYPE), value: xRef },
                 { type: t.ref(DOUBLE_TYPE), value: yRef },
                 { type: t.ref(DOUBLE_TYPE), value: wRef },
@@ -69,7 +69,7 @@ export class RecordingSurface extends Surface {
             LIB,
             "cairo_recording_surface_get_extents",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
                 {
                     type: t.boxed("cairo_rectangle_t", "borrowed", LIB),
                     value: rect,

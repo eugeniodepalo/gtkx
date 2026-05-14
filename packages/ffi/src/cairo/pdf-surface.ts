@@ -1,6 +1,6 @@
 import { Surface } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
-import { wrapHandle } from "../object.js";
+import { getHandle, wrapHandle } from "../object.js";
 import { createFileSurface, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";
 import { enumToString, getEnumList } from "./enum-helpers.js";
 
@@ -45,7 +45,7 @@ export class PdfSurface extends Surface {
             LIB,
             "cairo_pdf_surface_set_size",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
                 { type: DOUBLE_TYPE, value: widthInPoints },
                 { type: DOUBLE_TYPE, value: heightInPoints },
             ],
@@ -58,7 +58,7 @@ export class PdfSurface extends Surface {
             LIB,
             "cairo_pdf_surface_set_metadata",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
                 { type: INT_TYPE, value: metadata },
                 { type: t.string("full"), value: value },
             ],
@@ -71,7 +71,7 @@ export class PdfSurface extends Surface {
             LIB,
             "cairo_pdf_surface_set_page_label",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
                 { type: t.string("full"), value: label },
             ],
             t.void,
@@ -83,7 +83,7 @@ export class PdfSurface extends Surface {
             LIB,
             "cairo_pdf_surface_set_thumbnail_size",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
                 { type: INT_TYPE, value: width },
                 { type: INT_TYPE, value: height },
             ],
@@ -97,7 +97,7 @@ PdfSurface.prototype.restrictToVersion = function (this: PdfSurface, version: Pd
         LIB,
         "cairo_pdf_surface_restrict_to_version",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: version },
         ],
         t.void,
@@ -115,7 +115,7 @@ PdfSurface.prototype.addOutline = function (
         LIB,
         "cairo_pdf_surface_add_outline",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: parentId },
             { type: t.string("full"), value: name },
             { type: t.string("full"), value: linkAttribs },

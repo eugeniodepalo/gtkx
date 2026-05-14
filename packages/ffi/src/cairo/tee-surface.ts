@@ -1,7 +1,7 @@
 import type { NativeHandle } from "@gtkx/native";
 import { Surface } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
-import { wrapHandle } from "../object.js";
+import { getHandle, wrapHandle } from "../object.js";
 import { LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class TeeSurface extends Surface {
@@ -9,7 +9,7 @@ export class TeeSurface extends Surface {
         const handle = call(
             LIB,
             "cairo_tee_surface_create",
-            [{ type: SURFACE_T_NONE, value: primary.handle }],
+            [{ type: SURFACE_T_NONE, value: getHandle(primary) }],
             SURFACE_T,
         ) as NativeHandle;
         return wrapHandle(TeeSurface, handle);
@@ -20,8 +20,8 @@ export class TeeSurface extends Surface {
             LIB,
             "cairo_tee_surface_add",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
-                { type: SURFACE_T_NONE, value: target.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
+                { type: SURFACE_T_NONE, value: getHandle(target) },
             ],
             t.void,
         );
@@ -32,8 +32,8 @@ export class TeeSurface extends Surface {
             LIB,
             "cairo_tee_surface_remove",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
-                { type: SURFACE_T_NONE, value: target.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
+                { type: SURFACE_T_NONE, value: getHandle(target) },
             ],
             t.void,
         );

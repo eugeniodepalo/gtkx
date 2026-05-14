@@ -1,6 +1,6 @@
 import { Surface } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
-import { wrapHandle } from "../object.js";
+import { getHandle, wrapHandle } from "../object.js";
 import { createFileSurface, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";
 import { enumToString, getEnumList } from "./enum-helpers.js";
 
@@ -38,7 +38,7 @@ SvgSurface.prototype.setDocumentUnit = function (this: SvgSurface, unit: SvgUnit
         LIB,
         "cairo_svg_surface_set_document_unit",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: unit },
         ],
         t.void,
@@ -49,7 +49,7 @@ SvgSurface.prototype.getDocumentUnit = function (this: SvgSurface): SvgUnit {
     return call(
         LIB,
         "cairo_svg_surface_get_document_unit",
-        [{ type: SURFACE_T_NONE, value: this.handle }],
+        [{ type: SURFACE_T_NONE, value: getHandle(this) }],
         INT_TYPE,
     ) as SvgUnit;
 };
@@ -59,7 +59,7 @@ SvgSurface.prototype.restrictToVersion = function (this: SvgSurface, version: Sv
         LIB,
         "cairo_svg_surface_restrict_to_version",
         [
-            { type: SURFACE_T_NONE, value: this.handle },
+            { type: SURFACE_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: version },
         ],
         t.void,

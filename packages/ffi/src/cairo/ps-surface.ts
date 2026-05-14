@@ -1,6 +1,6 @@
 import { Surface } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
-import { wrapHandle } from "../object.js";
+import { getHandle, wrapHandle } from "../object.js";
 import { createFileSurface, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";
 import { enumToString, getEnumList } from "./enum-helpers.js";
 
@@ -20,7 +20,7 @@ export class PsSurface extends Surface {
             LIB,
             "cairo_ps_surface_set_size",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
                 { type: DOUBLE_TYPE, value: widthInPoints },
                 { type: DOUBLE_TYPE, value: heightInPoints },
             ],
@@ -33,7 +33,7 @@ export class PsSurface extends Surface {
             LIB,
             "cairo_ps_surface_set_eps",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
                 { type: t.boolean, value: eps },
             ],
             t.void,
@@ -44,7 +44,7 @@ export class PsSurface extends Surface {
         return call(
             LIB,
             "cairo_ps_surface_get_eps",
-            [{ type: SURFACE_T_NONE, value: this.handle }],
+            [{ type: SURFACE_T_NONE, value: getHandle(this) }],
             t.boolean,
         ) as boolean;
     }
@@ -54,7 +54,7 @@ export class PsSurface extends Surface {
             LIB,
             "cairo_ps_surface_restrict_to_level",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
                 { type: INT_TYPE, value: level },
             ],
             t.void,
@@ -66,7 +66,7 @@ export class PsSurface extends Surface {
             LIB,
             "cairo_ps_surface_dsc_comment",
             [
-                { type: SURFACE_T_NONE, value: this.handle },
+                { type: SURFACE_T_NONE, value: getHandle(this) },
                 { type: t.string("full"), value: comment },
             ],
             t.void,
@@ -74,11 +74,11 @@ export class PsSurface extends Surface {
     }
 
     dscBeginSetup(): void {
-        call(LIB, "cairo_ps_surface_dsc_begin_setup", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
+        call(LIB, "cairo_ps_surface_dsc_begin_setup", [{ type: SURFACE_T_NONE, value: getHandle(this) }], t.void);
     }
 
     dscBeginPageSetup(): void {
-        call(LIB, "cairo_ps_surface_dsc_begin_page_setup", [{ type: SURFACE_T_NONE, value: this.handle }], t.void);
+        call(LIB, "cairo_ps_surface_dsc_begin_page_setup", [{ type: SURFACE_T_NONE, value: getHandle(this) }], t.void);
     }
 
     static getLevels(): PsLevel[] {

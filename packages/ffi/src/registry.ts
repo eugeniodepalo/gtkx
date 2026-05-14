@@ -2,6 +2,7 @@ import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import type { GType } from "./generated/gobject/gobject.js";
 import { typeParent } from "./generated/gobject/gobject.js";
 import {
+    getHandle,
     type NativeClass,
     type NativeObject,
     setClassGTypeLookup,
@@ -100,7 +101,7 @@ const cleanupObjectRegistry = new FinalizationRegistry<number>((pointerId) => {
  * @param obj - The native object wrapper to register
  */
 export function registerNativeObject(obj: NativeObject): void {
-    const pointerId = getNativeId(obj.handle);
+    const pointerId = getNativeId(getHandle(obj));
     objectRegistry.set(pointerId, new WeakRef(obj));
     cleanupObjectRegistry.register(obj, pointerId, obj);
 }

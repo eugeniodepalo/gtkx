@@ -49,10 +49,10 @@ export abstract class NativeObject {
         }
 
         if (meta.kind === "gobject") {
-            this.handle = constructGObject(ctor, meta, props as Record<string, unknown>);
+            setHandle(this, constructGObject(ctor, meta, props as Record<string, unknown>));
             registerInstance(this);
         } else {
-            this.handle = constructBoxed(meta, props as Record<string, unknown>);
+            setHandle(this, constructBoxed(meta, props as Record<string, unknown>));
         }
         this.__gtype__ = classGTypeLookup(ctor);
     }
@@ -64,6 +64,50 @@ export abstract class NativeObject {
      * has no behaviour and exists purely to satisfy the contract.
      */
     _init(_config?: object): void {}
+}
+
+const handleMap = new WeakMap<object, NativeHandle>();
+
+/**
+ * Returns the native handle associated with `obj`. Throws when the object
+ * has not been linked to a handle.
+ *
+ * @internal Module-private accessor used by `@gtkx/ffi` and its generated
+ *     bindings to retrieve the opaque native pointer of a wrapped instance.
+ *     End consumers should never call this — it is not part of the public
+ *     `@gtkx/ffi` surface.
+ */
+export function getHandle(obj: object): NativeHandle {
+    const handle = handleMap.get(obj);
+    if (handle === undefined) {
+        const name = (obj as { constructor?: { name?: string } }).constructor?.name ?? "object";
+        throw new Error(`No native handle associated with ${name}`);
+    }
+    return handle;
+}
+
+/**
+ * Returns the native handle associated with `obj`, or `undefined` when the
+ * object is nullish or has not been linked to a handle. Use this when a
+ * caller cannot guarantee that the object has been fully constructed.
+ *
+ * @internal Module-private accessor.
+ */
+export function tryGetHandle(obj: object | null | undefined): NativeHandle | undefined {
+    return obj == null ? undefined : handleMap.get(obj);
+}
+
+/**
+ * Associates a native handle with `obj`. Also mirrors the value onto the
+ * legacy `.handle` field on {@link NativeObject} instances so existing
+ * consumers continue to work during the migration to the WeakMap-backed
+ * accessor.
+ *
+ * @internal Module-private setter used by construction and `wrapHandle`.
+ */
+export function setHandle(obj: object, handle: NativeHandle): void {
+    handleMap.set(obj, handle);
+    (obj as { handle?: NativeHandle }).handle = handle;
 }
 
 type InstanceRegistrar = (obj: NativeObject) => void;
@@ -126,7 +170,7 @@ export type NativeClass<T extends NativeObject = NativeObject> = (abstract new (
  */
 export function wrapHandle<T extends NativeObject>(cls: NativeClass<T>, handle: NativeHandle): T {
     const instance = Object.create(cls.prototype) as T;
-    instance.handle = handle;
+    setHandle(instance, handle);
     instance.__gtype__ = classGTypeLookup(cls);
     return instance;
 }

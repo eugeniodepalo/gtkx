@@ -111,9 +111,8 @@ describe("getNativeInterface", () => {
         expect(orientable).toBeNull();
     });
 
-    it("returns null when handle is null", () => {
+    it("returns null when the object has no associated handle", () => {
         const obj = Object.create(Gtk.Button.prototype) as Gtk.Button;
-        obj.handle = null as never;
         const result = getNativeInterface(obj, Gtk.Orientable, orientableGType());
         expect(result).toBeNull();
     });

@@ -2,7 +2,7 @@ import type { NativeHandle } from "@gtkx/native";
 import type { Content } from "../generated/cairo/cairo.js";
 import { Device, Surface } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
-import { wrapHandle } from "../object.js";
+import { getHandle, wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import { DEVICE_T, DEVICE_T_FULL, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
@@ -27,7 +27,7 @@ export class ScriptDevice extends Device {
             LIB,
             "cairo_script_set_mode",
             [
-                { type: DEVICE_T, value: this.handle },
+                { type: DEVICE_T, value: getHandle(this) },
                 { type: INT_TYPE, value: mode },
             ],
             t.void,
@@ -35,7 +35,7 @@ export class ScriptDevice extends Device {
     }
 
     getMode(): ScriptMode {
-        return call(LIB, "cairo_script_get_mode", [{ type: DEVICE_T, value: this.handle }], INT_TYPE) as ScriptMode;
+        return call(LIB, "cairo_script_get_mode", [{ type: DEVICE_T, value: getHandle(this) }], INT_TYPE) as ScriptMode;
     }
 
     writeComment(comment: string): void {
@@ -45,7 +45,7 @@ export class ScriptDevice extends Device {
             LIB,
             "cairo_script_write_comment",
             [
-                { type: DEVICE_T, value: this.handle },
+                { type: DEVICE_T, value: getHandle(this) },
                 { type: t.string("full"), value: comment },
                 { type: INT_TYPE, value: utf8.length },
             ],
@@ -58,7 +58,7 @@ export class ScriptDevice extends Device {
             LIB,
             "cairo_script_surface_create",
             [
-                { type: DEVICE_T, value: this.handle },
+                { type: DEVICE_T, value: getHandle(this) },
                 { type: INT_TYPE, value: content },
                 { type: DOUBLE_TYPE, value: width },
                 { type: DOUBLE_TYPE, value: height },
@@ -73,8 +73,8 @@ export class ScriptDevice extends Device {
             LIB,
             "cairo_script_surface_create_for_target",
             [
-                { type: DEVICE_T, value: this.handle },
-                { type: SURFACE_T_NONE, value: target.handle },
+                { type: DEVICE_T, value: getHandle(this) },
+                { type: SURFACE_T_NONE, value: getHandle(target) },
             ],
             SURFACE_T,
         ) as NativeHandle;

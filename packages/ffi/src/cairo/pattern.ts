@@ -2,7 +2,7 @@ import { createRef, type NativeHandle } from "@gtkx/native";
 import type { Extend, Filter, PatternType, Status } from "../generated/cairo/cairo.js";
 import { Pattern, Surface } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
-import { wrapHandle } from "../object.js";
+import { getHandle, wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import {
     DOUBLE_TYPE,
@@ -74,7 +74,7 @@ export class SurfacePattern extends Pattern {
         const handle = call(
             LIB,
             "cairo_pattern_create_for_surface",
-            [{ type: SURFACE_T_NONE, value: surface.handle }],
+            [{ type: SURFACE_T_NONE, value: getHandle(surface) }],
             PATTERN_T,
         ) as NativeHandle;
         return wrapHandle(SurfacePattern, handle);
@@ -115,7 +115,7 @@ Pattern.prototype.addColorStopRgb = function (offset: number, red: number, green
         LIB,
         "cairo_pattern_add_color_stop_rgb",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: offset },
             { type: DOUBLE_TYPE, value: red },
             { type: DOUBLE_TYPE, value: green },
@@ -136,7 +136,7 @@ Pattern.prototype.addColorStopRgba = function (
         LIB,
         "cairo_pattern_add_color_stop_rgba",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: offset },
             { type: DOUBLE_TYPE, value: red },
             { type: DOUBLE_TYPE, value: green },
@@ -152,7 +152,7 @@ Pattern.prototype.setFilter = function (filter: Filter): void {
         LIB,
         "cairo_pattern_set_filter",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: filter },
         ],
         t.void,
@@ -160,7 +160,12 @@ Pattern.prototype.setFilter = function (filter: Filter): void {
 };
 
 Pattern.prototype.getFilter = function (): Filter {
-    return call(LIB, "cairo_pattern_get_filter", [{ type: PATTERN_T_NONE, value: this.handle }], INT_TYPE) as Filter;
+    return call(
+        LIB,
+        "cairo_pattern_get_filter",
+        [{ type: PATTERN_T_NONE, value: getHandle(this) }],
+        INT_TYPE,
+    ) as Filter;
 };
 
 Pattern.prototype.setExtend = function (extend: Extend): void {
@@ -168,7 +173,7 @@ Pattern.prototype.setExtend = function (extend: Extend): void {
         LIB,
         "cairo_pattern_set_extend",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: extend },
         ],
         t.void,
@@ -176,7 +181,12 @@ Pattern.prototype.setExtend = function (extend: Extend): void {
 };
 
 Pattern.prototype.getExtend = function (): Extend {
-    return call(LIB, "cairo_pattern_get_extend", [{ type: PATTERN_T_NONE, value: this.handle }], INT_TYPE) as Extend;
+    return call(
+        LIB,
+        "cairo_pattern_get_extend",
+        [{ type: PATTERN_T_NONE, value: getHandle(this) }],
+        INT_TYPE,
+    ) as Extend;
 };
 
 Pattern.prototype.setMatrix = function (matrix: Matrix): void {
@@ -184,8 +194,8 @@ Pattern.prototype.setMatrix = function (matrix: Matrix): void {
         LIB,
         "cairo_pattern_set_matrix",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
-            { type: MATRIX_T, value: matrix.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
+            { type: MATRIX_T, value: getHandle(matrix) },
         ],
         t.void,
     );
@@ -197,7 +207,7 @@ Pattern.prototype.getMatrix = function (): Matrix {
         LIB,
         "cairo_pattern_get_matrix",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: MATRIX_T, value: handle },
         ],
         t.void,
@@ -206,7 +216,12 @@ Pattern.prototype.getMatrix = function (): Matrix {
 };
 
 Pattern.prototype.getType = function (): PatternType {
-    return call(LIB, "cairo_pattern_get_type", [{ type: PATTERN_T_NONE, value: this.handle }], INT_TYPE) as PatternType;
+    return call(
+        LIB,
+        "cairo_pattern_get_type",
+        [{ type: PATTERN_T_NONE, value: getHandle(this) }],
+        INT_TYPE,
+    ) as PatternType;
 };
 
 declare module "../generated/cairo/cairo.js" {
@@ -241,11 +256,11 @@ export class MeshPattern extends Pattern {
 }
 
 Pattern.prototype.meshBeginPatch = function (): void {
-    call(LIB, "cairo_mesh_pattern_begin_patch", [{ type: PATTERN_T_NONE, value: this.handle }], t.void);
+    call(LIB, "cairo_mesh_pattern_begin_patch", [{ type: PATTERN_T_NONE, value: getHandle(this) }], t.void);
 };
 
 Pattern.prototype.meshEndPatch = function (): void {
-    call(LIB, "cairo_mesh_pattern_end_patch", [{ type: PATTERN_T_NONE, value: this.handle }], t.void);
+    call(LIB, "cairo_mesh_pattern_end_patch", [{ type: PATTERN_T_NONE, value: getHandle(this) }], t.void);
 };
 
 Pattern.prototype.meshMoveTo = function (x: number, y: number): void {
@@ -253,7 +268,7 @@ Pattern.prototype.meshMoveTo = function (x: number, y: number): void {
         LIB,
         "cairo_mesh_pattern_move_to",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -266,7 +281,7 @@ Pattern.prototype.meshLineTo = function (x: number, y: number): void {
         LIB,
         "cairo_mesh_pattern_line_to",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -286,7 +301,7 @@ Pattern.prototype.meshCurveTo = function (
         LIB,
         "cairo_mesh_pattern_curve_to",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x1 },
             { type: DOUBLE_TYPE, value: y1 },
             { type: DOUBLE_TYPE, value: x2 },
@@ -303,7 +318,7 @@ Pattern.prototype.meshSetControlPoint = function (pointNum: number, x: number, y
         LIB,
         "cairo_mesh_pattern_set_control_point",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: pointNum },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
@@ -317,7 +332,7 @@ Pattern.prototype.meshSetCornerColorRgb = function (cornerNum: number, r: number
         LIB,
         "cairo_mesh_pattern_set_corner_color_rgb",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: cornerNum },
             { type: DOUBLE_TYPE, value: r },
             { type: DOUBLE_TYPE, value: g },
@@ -338,7 +353,7 @@ Pattern.prototype.meshSetCornerColorRgba = function (
         LIB,
         "cairo_mesh_pattern_set_corner_color_rgba",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: cornerNum },
             { type: DOUBLE_TYPE, value: r },
             { type: DOUBLE_TYPE, value: g },
@@ -355,7 +370,7 @@ Pattern.prototype.meshGetPatchCount = function (): number {
         LIB,
         "cairo_mesh_pattern_get_patch_count",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: t.ref(INT_TYPE), value: countRef },
         ],
         INT_TYPE,
@@ -370,7 +385,7 @@ Pattern.prototype.meshGetControlPoint = function (patchNum: number, pointNum: nu
         LIB,
         "cairo_mesh_pattern_get_control_point",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: patchNum },
             { type: INT_TYPE, value: pointNum },
             { type: t.ref(DOUBLE_TYPE), value: xRef },
@@ -393,7 +408,7 @@ Pattern.prototype.meshGetCornerColorRgba = function (
         LIB,
         "cairo_mesh_pattern_get_corner_color_rgba",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: patchNum },
             { type: INT_TYPE, value: cornerNum },
             { type: t.ref(DOUBLE_TYPE), value: rRef },
@@ -412,7 +427,7 @@ Pattern.prototype.getColorStopCount = function (): number {
         LIB,
         "cairo_pattern_get_color_stop_count",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: t.ref(INT_TYPE), value: countRef },
         ],
         INT_TYPE,
@@ -436,7 +451,7 @@ Pattern.prototype.getColorStopRgba = function (index: number): {
         LIB,
         "cairo_pattern_get_color_stop_rgba",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: index },
             { type: t.ref(DOUBLE_TYPE), value: offsetRef },
             { type: t.ref(DOUBLE_TYPE), value: rRef },
@@ -458,7 +473,7 @@ Pattern.prototype.getRgba = function (): { r: number; g: number; b: number; a: n
         LIB,
         "cairo_pattern_get_rgba",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: t.ref(DOUBLE_TYPE), value: rRef },
             { type: t.ref(DOUBLE_TYPE), value: gRef },
             { type: t.ref(DOUBLE_TYPE), value: bRef },
@@ -475,7 +490,7 @@ Pattern.prototype.getSurface = function (): Surface {
         LIB,
         "cairo_pattern_get_surface",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: t.ref(SURFACE_T_NONE), value: surfRef },
         ],
         INT_TYPE,
@@ -497,7 +512,7 @@ Pattern.prototype.getLinearPoints = function (): {
         LIB,
         "cairo_pattern_get_linear_points",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: t.ref(DOUBLE_TYPE), value: x0Ref },
             { type: t.ref(DOUBLE_TYPE), value: y0Ref },
             { type: t.ref(DOUBLE_TYPE), value: x1Ref },
@@ -526,7 +541,7 @@ Pattern.prototype.getRadialCircles = function (): {
         LIB,
         "cairo_pattern_get_radial_circles",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: t.ref(DOUBLE_TYPE), value: x0Ref },
             { type: t.ref(DOUBLE_TYPE), value: y0Ref },
             { type: t.ref(DOUBLE_TYPE), value: r0Ref },
@@ -547,7 +562,7 @@ Pattern.prototype.getRadialCircles = function (): {
 };
 
 Pattern.prototype.status = function (): Status {
-    return call(LIB, "cairo_pattern_status", [{ type: PATTERN_T_NONE, value: this.handle }], INT_TYPE) as Status;
+    return call(LIB, "cairo_pattern_status", [{ type: PATTERN_T_NONE, value: getHandle(this) }], INT_TYPE) as Status;
 };
 
 export enum Dither {
@@ -571,7 +586,7 @@ Pattern.prototype.meshGetPath = function (patchNum: number): PathData[] {
         LIB,
         "cairo_mesh_pattern_get_path",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: patchNum },
         ],
         PATH_STRUCT_T,
@@ -584,7 +599,7 @@ Pattern.prototype.setDither = function (dither: Dither): void {
         LIB,
         "cairo_pattern_set_dither",
         [
-            { type: PATTERN_T_NONE, value: this.handle },
+            { type: PATTERN_T_NONE, value: getHandle(this) },
             { type: INT_TYPE, value: dither },
         ],
         t.void,
@@ -592,5 +607,10 @@ Pattern.prototype.setDither = function (dither: Dither): void {
 };
 
 Pattern.prototype.getDither = function (): Dither {
-    return call(LIB, "cairo_pattern_get_dither", [{ type: PATTERN_T_NONE, value: this.handle }], INT_TYPE) as Dither;
+    return call(
+        LIB,
+        "cairo_pattern_get_dither",
+        [{ type: PATTERN_T_NONE, value: getHandle(this) }],
+        INT_TYPE,
+    ) as Dither;
 };

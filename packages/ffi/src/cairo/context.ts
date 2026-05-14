@@ -14,7 +14,7 @@ import type {
 } from "../generated/cairo/cairo.js";
 import { Context, FontFace, Pattern, ScaledFont, Surface } from "../generated/cairo/cairo.js";
 import { alloc, call, read, t } from "../native.js";
-import { wrapHandle } from "../object.js";
+import { getHandle, wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import {
     allocClusterBuffer,
@@ -152,7 +152,7 @@ Context.prototype.moveTo = function (x: number, y: number): void {
         LIB,
         "cairo_move_to",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -165,7 +165,7 @@ Context.prototype.lineTo = function (x: number, y: number): void {
         LIB,
         "cairo_line_to",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -178,7 +178,7 @@ Context.prototype.relMoveTo = function (dx: number, dy: number): void {
         LIB,
         "cairo_rel_move_to",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: dx },
             { type: DOUBLE_TYPE, value: dy },
         ],
@@ -191,7 +191,7 @@ Context.prototype.relLineTo = function (dx: number, dy: number): void {
         LIB,
         "cairo_rel_line_to",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: dx },
             { type: DOUBLE_TYPE, value: dy },
         ],
@@ -211,7 +211,7 @@ Context.prototype.relCurveTo = function (
         LIB,
         "cairo_rel_curve_to",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: dx1 },
             { type: DOUBLE_TYPE, value: dy1 },
             { type: DOUBLE_TYPE, value: dx2 },
@@ -228,7 +228,7 @@ Context.prototype.curveTo = function (x1: number, y1: number, x2: number, y2: nu
         LIB,
         "cairo_curve_to",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x1 },
             { type: DOUBLE_TYPE, value: y1 },
             { type: DOUBLE_TYPE, value: x2 },
@@ -245,7 +245,7 @@ Context.prototype.arc = function (xc: number, yc: number, radius: number, angle1
         LIB,
         "cairo_arc",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: xc },
             { type: DOUBLE_TYPE, value: yc },
             { type: DOUBLE_TYPE, value: radius },
@@ -267,7 +267,7 @@ Context.prototype.arcNegative = function (
         LIB,
         "cairo_arc_negative",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: xc },
             { type: DOUBLE_TYPE, value: yc },
             { type: DOUBLE_TYPE, value: radius },
@@ -283,7 +283,7 @@ Context.prototype.rectangle = function (x: number, y: number, width: number, hei
         LIB,
         "cairo_rectangle",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
             { type: DOUBLE_TYPE, value: width },
@@ -294,35 +294,35 @@ Context.prototype.rectangle = function (x: number, y: number, width: number, hei
 };
 
 Context.prototype.closePath = function (): void {
-    call(LIB, "cairo_close_path", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_close_path", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.newPath = function (): void {
-    call(LIB, "cairo_new_path", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_new_path", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.newSubPath = function (): void {
-    call(LIB, "cairo_new_sub_path", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_new_sub_path", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.stroke = function (): void {
-    call(LIB, "cairo_stroke", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_stroke", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.strokePreserve = function (): void {
-    call(LIB, "cairo_stroke_preserve", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_stroke_preserve", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.fill = function (): void {
-    call(LIB, "cairo_fill", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_fill", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.fillPreserve = function (): void {
-    call(LIB, "cairo_fill_preserve", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_fill_preserve", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.paint = function (): void {
-    call(LIB, "cairo_paint", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_paint", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.paintWithAlpha = function (alpha: number): void {
@@ -330,7 +330,7 @@ Context.prototype.paintWithAlpha = function (alpha: number): void {
         LIB,
         "cairo_paint_with_alpha",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: alpha },
         ],
         t.void,
@@ -338,15 +338,15 @@ Context.prototype.paintWithAlpha = function (alpha: number): void {
 };
 
 Context.prototype.clip = function (): void {
-    call(LIB, "cairo_clip", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_clip", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.clipPreserve = function (): void {
-    call(LIB, "cairo_clip_preserve", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_clip_preserve", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.resetClip = function (): void {
-    call(LIB, "cairo_reset_clip", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_reset_clip", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.setSourceRgb = function (red: number, green: number, blue: number): void {
@@ -354,7 +354,7 @@ Context.prototype.setSourceRgb = function (red: number, green: number, blue: num
         LIB,
         "cairo_set_source_rgb",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: red },
             { type: DOUBLE_TYPE, value: green },
             { type: DOUBLE_TYPE, value: blue },
@@ -368,7 +368,7 @@ Context.prototype.setSourceRgba = function (red: number, green: number, blue: nu
         LIB,
         "cairo_set_source_rgba",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: red },
             { type: DOUBLE_TYPE, value: green },
             { type: DOUBLE_TYPE, value: blue },
@@ -383,8 +383,8 @@ Context.prototype.setSource = function (pattern: Pattern): void {
         LIB,
         "cairo_set_source",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: PATTERN_T_NONE, value: pattern.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: PATTERN_T_NONE, value: getHandle(pattern) },
         ],
         t.void,
     );
@@ -395,7 +395,7 @@ Context.prototype.setLineWidth = function (width: number): void {
         LIB,
         "cairo_set_line_width",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: width },
         ],
         t.void,
@@ -403,7 +403,7 @@ Context.prototype.setLineWidth = function (width: number): void {
 };
 
 Context.prototype.getLineWidth = function (): number {
-    return call(LIB, "cairo_get_line_width", [{ type: CAIRO_T, value: this.handle }], DOUBLE_TYPE) as number;
+    return call(LIB, "cairo_get_line_width", [{ type: CAIRO_T, value: getHandle(this) }], DOUBLE_TYPE) as number;
 };
 
 Context.prototype.setLineCap = function (lineCap: LineCap): void {
@@ -411,7 +411,7 @@ Context.prototype.setLineCap = function (lineCap: LineCap): void {
         LIB,
         "cairo_set_line_cap",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: INT_TYPE, value: lineCap },
         ],
         t.void,
@@ -419,7 +419,7 @@ Context.prototype.setLineCap = function (lineCap: LineCap): void {
 };
 
 Context.prototype.getLineCap = function (): LineCap {
-    return call(LIB, "cairo_get_line_cap", [{ type: CAIRO_T, value: this.handle }], INT_TYPE) as LineCap;
+    return call(LIB, "cairo_get_line_cap", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as LineCap;
 };
 
 Context.prototype.setLineJoin = function (lineJoin: LineJoin): void {
@@ -427,7 +427,7 @@ Context.prototype.setLineJoin = function (lineJoin: LineJoin): void {
         LIB,
         "cairo_set_line_join",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: INT_TYPE, value: lineJoin },
         ],
         t.void,
@@ -435,7 +435,7 @@ Context.prototype.setLineJoin = function (lineJoin: LineJoin): void {
 };
 
 Context.prototype.getLineJoin = function (): LineJoin {
-    return call(LIB, "cairo_get_line_join", [{ type: CAIRO_T, value: this.handle }], INT_TYPE) as LineJoin;
+    return call(LIB, "cairo_get_line_join", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as LineJoin;
 };
 
 Context.prototype.setDash = function (dashes: number[], offset: number): void {
@@ -443,7 +443,7 @@ Context.prototype.setDash = function (dashes: number[], offset: number): void {
         LIB,
         "cairo_set_dash",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: t.array(DOUBLE_TYPE, "array", "borrowed"), value: dashes },
             { type: INT_TYPE, value: dashes.length },
             { type: DOUBLE_TYPE, value: offset },
@@ -453,7 +453,7 @@ Context.prototype.setDash = function (dashes: number[], offset: number): void {
 };
 
 Context.prototype.getDashCount = function (): number {
-    return call(LIB, "cairo_get_dash_count", [{ type: CAIRO_T, value: this.handle }], INT_TYPE) as number;
+    return call(LIB, "cairo_get_dash_count", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as number;
 };
 
 Context.prototype.getDash = function (): [number[], number] {
@@ -467,7 +467,7 @@ Context.prototype.getDash = function (): [number[], number] {
         LIB,
         "cairo_get_dash",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: t.boxed("double[]", "borrowed", LIB), value: dashBuf },
             { type: t.ref(DOUBLE_TYPE), value: offsetRef },
         ],
@@ -485,7 +485,7 @@ Context.prototype.setMiterLimit = function (limit: number): void {
         LIB,
         "cairo_set_miter_limit",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: limit },
         ],
         t.void,
@@ -493,7 +493,7 @@ Context.prototype.setMiterLimit = function (limit: number): void {
 };
 
 Context.prototype.getMiterLimit = function (): number {
-    return call(LIB, "cairo_get_miter_limit", [{ type: CAIRO_T, value: this.handle }], DOUBLE_TYPE) as number;
+    return call(LIB, "cairo_get_miter_limit", [{ type: CAIRO_T, value: getHandle(this) }], DOUBLE_TYPE) as number;
 };
 
 Context.prototype.setTolerance = function (tolerance: number): void {
@@ -501,7 +501,7 @@ Context.prototype.setTolerance = function (tolerance: number): void {
         LIB,
         "cairo_set_tolerance",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: tolerance },
         ],
         t.void,
@@ -509,7 +509,7 @@ Context.prototype.setTolerance = function (tolerance: number): void {
 };
 
 Context.prototype.getTolerance = function (): number {
-    return call(LIB, "cairo_get_tolerance", [{ type: CAIRO_T, value: this.handle }], DOUBLE_TYPE) as number;
+    return call(LIB, "cairo_get_tolerance", [{ type: CAIRO_T, value: getHandle(this) }], DOUBLE_TYPE) as number;
 };
 
 Context.prototype.setFillRule = function (fillRule: FillRule): void {
@@ -517,7 +517,7 @@ Context.prototype.setFillRule = function (fillRule: FillRule): void {
         LIB,
         "cairo_set_fill_rule",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: INT_TYPE, value: fillRule },
         ],
         t.void,
@@ -525,15 +525,15 @@ Context.prototype.setFillRule = function (fillRule: FillRule): void {
 };
 
 Context.prototype.getFillRule = function (): FillRule {
-    return call(LIB, "cairo_get_fill_rule", [{ type: CAIRO_T, value: this.handle }], INT_TYPE) as FillRule;
+    return call(LIB, "cairo_get_fill_rule", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as FillRule;
 };
 
 Context.prototype.save = function (): void {
-    call(LIB, "cairo_save", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_save", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.restore = function (): void {
-    call(LIB, "cairo_restore", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_restore", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.translate = function (tx: number, ty: number): void {
@@ -541,7 +541,7 @@ Context.prototype.translate = function (tx: number, ty: number): void {
         LIB,
         "cairo_translate",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: tx },
             { type: DOUBLE_TYPE, value: ty },
         ],
@@ -554,7 +554,7 @@ Context.prototype.scale = function (sx: number, sy: number): void {
         LIB,
         "cairo_scale",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: sx },
             { type: DOUBLE_TYPE, value: sy },
         ],
@@ -567,7 +567,7 @@ Context.prototype.rotate = function (angle: number): void {
         LIB,
         "cairo_rotate",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: angle },
         ],
         t.void,
@@ -579,7 +579,7 @@ Context.prototype.setOperator = function (op: Operator): void {
         LIB,
         "cairo_set_operator",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: INT_TYPE, value: op },
         ],
         t.void,
@@ -587,7 +587,7 @@ Context.prototype.setOperator = function (op: Operator): void {
 };
 
 Context.prototype.getOperator = function (): Operator {
-    return call(LIB, "cairo_get_operator", [{ type: CAIRO_T, value: this.handle }], INT_TYPE) as Operator;
+    return call(LIB, "cairo_get_operator", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as Operator;
 };
 
 Context.prototype.selectFontFace = function (family: string, slant: FontSlant, weight: FontWeight): void {
@@ -595,7 +595,7 @@ Context.prototype.selectFontFace = function (family: string, slant: FontSlant, w
         LIB,
         "cairo_select_font_face",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: t.string("full"), value: family },
             { type: INT_TYPE, value: slant },
             { type: INT_TYPE, value: weight },
@@ -609,7 +609,7 @@ Context.prototype.setFontSize = function (size: number): void {
         LIB,
         "cairo_set_font_size",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: size },
         ],
         t.void,
@@ -621,7 +621,7 @@ Context.prototype.showText = function (text: string): void {
         LIB,
         "cairo_show_text",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: t.string("full"), value: text },
         ],
         t.void,
@@ -633,7 +633,7 @@ Context.prototype.textPath = function (text: string): void {
         LIB,
         "cairo_text_path",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: t.string("full"), value: text },
         ],
         t.void,
@@ -648,7 +648,7 @@ Context.prototype.textExtents = function (text: string): TextExtents {
         LIB,
         "cairo_text_extents",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: t.string("full"), value: text },
             {
                 type: t.boxed("cairo_text_extents_t", "borrowed", LIB),
@@ -666,7 +666,7 @@ Context.prototype.fontExtents = function (): FontExtents {
         LIB,
         "cairo_font_extents",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             {
                 type: t.boxed("cairo_font_extents_t", "borrowed", LIB),
                 value: extents,
@@ -682,8 +682,8 @@ Context.prototype.setFontOptions = function (options: FontOptions): void {
         LIB,
         "cairo_set_font_options",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: FONT_OPTIONS_T, value: options.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: FONT_OPTIONS_T, value: getHandle(options) },
         ],
         t.void,
     );
@@ -695,8 +695,8 @@ Context.prototype.getFontOptions = function (): FontOptions {
         LIB,
         "cairo_get_font_options",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: FONT_OPTIONS_T, value: options.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: FONT_OPTIONS_T, value: getHandle(options) },
         ],
         t.void,
     );
@@ -708,7 +708,7 @@ Context.prototype.setAntialias = function (antialias: Antialias): void {
         LIB,
         "cairo_set_antialias",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: INT_TYPE, value: antialias },
         ],
         t.void,
@@ -716,19 +716,24 @@ Context.prototype.setAntialias = function (antialias: Antialias): void {
 };
 
 Context.prototype.getAntialias = function (): Antialias {
-    return call(LIB, "cairo_get_antialias", [{ type: CAIRO_T, value: this.handle }], INT_TYPE) as Antialias;
+    return call(LIB, "cairo_get_antialias", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as Antialias;
 };
 
 Context.prototype.showPage = function (): void {
-    call(LIB, "cairo_show_page", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_show_page", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.copyPage = function (): void {
-    call(LIB, "cairo_copy_page", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_copy_page", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.getTarget = function (): Surface {
-    const ptr = call(LIB, "cairo_get_target", [{ type: CAIRO_T, value: this.handle }], SURFACE_T_NONE) as NativeHandle;
+    const ptr = call(
+        LIB,
+        "cairo_get_target",
+        [{ type: CAIRO_T, value: getHandle(this) }],
+        SURFACE_T_NONE,
+    ) as NativeHandle;
     return getNativeObject(ptr, Surface) as Surface;
 };
 
@@ -737,8 +742,8 @@ Context.prototype.setSourceSurface = function (surface: Surface, x: number, y: n
         LIB,
         "cairo_set_source_surface",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: SURFACE_T_NONE, value: surface.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: SURFACE_T_NONE, value: getHandle(surface) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -747,7 +752,7 @@ Context.prototype.setSourceSurface = function (surface: Surface, x: number, y: n
 };
 
 Context.prototype.hasCurrentPoint = function (): boolean {
-    return call(LIB, "cairo_has_current_point", [{ type: CAIRO_T, value: this.handle }], t.boolean) as boolean;
+    return call(LIB, "cairo_has_current_point", [{ type: CAIRO_T, value: getHandle(this) }], t.boolean) as boolean;
 };
 
 Context.prototype.getCurrentPoint = function (): [number, number] | null {
@@ -764,7 +769,7 @@ Context.prototype.getCurrentPoint = function (): [number, number] | null {
         LIB,
         "cairo_get_current_point",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: t.ref(DOUBLE_TYPE), value: xRef },
             { type: t.ref(DOUBLE_TYPE), value: yRef },
         ],
@@ -775,7 +780,12 @@ Context.prototype.getCurrentPoint = function (): [number, number] | null {
 };
 
 Context.prototype.getSource = function (): Pattern {
-    const ptr = call(LIB, "cairo_get_source", [{ type: CAIRO_T, value: this.handle }], PATTERN_T_NONE) as NativeHandle;
+    const ptr = call(
+        LIB,
+        "cairo_get_source",
+        [{ type: CAIRO_T, value: getHandle(this) }],
+        PATTERN_T_NONE,
+    ) as NativeHandle;
     return getNativeObject(ptr, Pattern) as Pattern;
 };
 
@@ -788,7 +798,7 @@ const getExtents = (ctx: Context, fn: string): [number, number, number, number] 
         LIB,
         fn,
         [
-            { type: CAIRO_T, value: ctx.handle },
+            { type: CAIRO_T, value: getHandle(ctx) },
             { type: t.ref(DOUBLE_TYPE), value: x1Ref },
             { type: t.ref(DOUBLE_TYPE), value: y1Ref },
             { type: t.ref(DOUBLE_TYPE), value: x2Ref },
@@ -820,7 +830,7 @@ Context.prototype.inStroke = function (x: number, y: number): boolean {
         LIB,
         "cairo_in_stroke",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -833,7 +843,7 @@ Context.prototype.inFill = function (x: number, y: number): boolean {
         LIB,
         "cairo_in_fill",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -846,7 +856,7 @@ Context.prototype.inClip = function (x: number, y: number): boolean {
         LIB,
         "cairo_in_clip",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -875,7 +885,7 @@ Context.prototype.copyClipRectangleList = function (): Array<{
     const listHandle = call(
         LIB,
         "cairo_copy_clip_rectangle_list",
-        [{ type: CAIRO_T, value: this.handle }],
+        [{ type: CAIRO_T, value: getHandle(this) }],
         RECT_LIST_T,
     ) as NativeHandle;
 
@@ -907,8 +917,8 @@ Context.prototype.mask = function (pattern: Pattern): void {
         LIB,
         "cairo_mask",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: PATTERN_T_NONE, value: pattern.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: PATTERN_T_NONE, value: getHandle(pattern) },
         ],
         t.void,
     );
@@ -919,8 +929,8 @@ Context.prototype.maskSurface = function (surface: Surface, x: number, y: number
         LIB,
         "cairo_mask_surface",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: SURFACE_T_NONE, value: surface.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: SURFACE_T_NONE, value: getHandle(surface) },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
         ],
@@ -933,8 +943,8 @@ Context.prototype.setMatrix = function (matrix: Matrix): void {
         LIB,
         "cairo_set_matrix",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: MATRIX_T, value: matrix.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: MATRIX_T, value: getHandle(matrix) },
         ],
         t.void,
     );
@@ -946,7 +956,7 @@ Context.prototype.getMatrix = function (): Matrix {
         LIB,
         "cairo_get_matrix",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: MATRIX_T, value: handle },
         ],
         t.void,
@@ -959,15 +969,15 @@ Context.prototype.transform = function (matrix: Matrix): void {
         LIB,
         "cairo_transform",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: MATRIX_T, value: matrix.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: MATRIX_T, value: getHandle(matrix) },
         ],
         t.void,
     );
 };
 
 Context.prototype.identityMatrix = function (): void {
-    call(LIB, "cairo_identity_matrix", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_identity_matrix", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 const coordTransform = (ctx: Context, fn: string, a: number, b: number): [number, number] => {
@@ -977,7 +987,7 @@ const coordTransform = (ctx: Context, fn: string, a: number, b: number): [number
         LIB,
         fn,
         [
-            { type: CAIRO_T, value: ctx.handle },
+            { type: CAIRO_T, value: getHandle(ctx) },
             { type: t.ref(DOUBLE_TYPE), value: aRef },
             { type: t.ref(DOUBLE_TYPE), value: bRef },
         ],
@@ -1003,7 +1013,7 @@ Context.prototype.deviceToUserDistance = function (dx: number, dy: number): [num
 };
 
 Context.prototype.status = function (): Status {
-    return call(LIB, "cairo_status", [{ type: CAIRO_T, value: this.handle }], INT_TYPE) as Status;
+    return call(LIB, "cairo_status", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as Status;
 };
 
 declare module "../generated/cairo/cairo.js" {
@@ -1032,7 +1042,7 @@ declare module "../generated/cairo/cairo.js" {
 }
 
 Context.prototype.pushGroup = function (): void {
-    call(LIB, "cairo_push_group", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_push_group", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.pushGroupWithContent = function (content: Content): void {
@@ -1040,7 +1050,7 @@ Context.prototype.pushGroupWithContent = function (content: Content): void {
         LIB,
         "cairo_push_group_with_content",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: INT_TYPE, value: content },
         ],
         t.void,
@@ -1048,19 +1058,19 @@ Context.prototype.pushGroupWithContent = function (content: Content): void {
 };
 
 Context.prototype.popGroup = function (): Pattern {
-    const ptr = call(LIB, "cairo_pop_group", [{ type: CAIRO_T, value: this.handle }], PATTERN_T) as NativeHandle;
+    const ptr = call(LIB, "cairo_pop_group", [{ type: CAIRO_T, value: getHandle(this) }], PATTERN_T) as NativeHandle;
     return getNativeObject(ptr, Pattern) as Pattern;
 };
 
 Context.prototype.popGroupToSource = function (): void {
-    call(LIB, "cairo_pop_group_to_source", [{ type: CAIRO_T, value: this.handle }], t.void);
+    call(LIB, "cairo_pop_group_to_source", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
 };
 
 Context.prototype.getGroupTarget = function (): Surface {
     const ptr = call(
         LIB,
         "cairo_get_group_target",
-        [{ type: CAIRO_T, value: this.handle }],
+        [{ type: CAIRO_T, value: getHandle(this) }],
         SURFACE_T_NONE,
     ) as NativeHandle;
     return getNativeObject(ptr, Surface) as Surface;
@@ -1071,8 +1081,8 @@ Context.prototype.setFontFace = function (fontFace: FontFace): void {
         LIB,
         "cairo_set_font_face",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: FONT_FACE_T_NONE, value: fontFace.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: FONT_FACE_T_NONE, value: getHandle(fontFace) },
         ],
         t.void,
     );
@@ -1082,7 +1092,7 @@ Context.prototype.getFontFace = function (): FontFace {
     const ptr = call(
         LIB,
         "cairo_get_font_face",
-        [{ type: CAIRO_T, value: this.handle }],
+        [{ type: CAIRO_T, value: getHandle(this) }],
         FONT_FACE_T_NONE,
     ) as NativeHandle;
     return getNativeObject(ptr, FontFace) as FontFace;
@@ -1093,8 +1103,8 @@ Context.prototype.setFontMatrix = function (matrix: Matrix): void {
         LIB,
         "cairo_set_font_matrix",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: MATRIX_T, value: matrix.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: MATRIX_T, value: getHandle(matrix) },
         ],
         t.void,
     );
@@ -1106,7 +1116,7 @@ Context.prototype.getFontMatrix = function (): Matrix {
         LIB,
         "cairo_get_font_matrix",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: MATRIX_T, value: handle },
         ],
         t.void,
@@ -1119,8 +1129,8 @@ Context.prototype.setScaledFont = function (scaledFont: ScaledFont): void {
         LIB,
         "cairo_set_scaled_font",
         [
-            { type: CAIRO_T, value: this.handle },
-            { type: SCALED_FONT_T_NONE, value: scaledFont.handle },
+            { type: CAIRO_T, value: getHandle(this) },
+            { type: SCALED_FONT_T_NONE, value: getHandle(scaledFont) },
         ],
         t.void,
     );
@@ -1130,7 +1140,7 @@ Context.prototype.getScaledFont = function (): ScaledFont {
     const ptr = call(
         LIB,
         "cairo_get_scaled_font",
-        [{ type: CAIRO_T, value: this.handle }],
+        [{ type: CAIRO_T, value: getHandle(this) }],
         SCALED_FONT_T_NONE,
     ) as NativeHandle;
     return getNativeObject(ptr, ScaledFont) as ScaledFont;
@@ -1142,7 +1152,7 @@ Context.prototype.showGlyphs = function (glyphs: Array<{ index: number; x: numbe
         LIB,
         "cairo_show_glyphs",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: GLYPH_BUF_T, value: buf },
             { type: INT_TYPE, value: glyphs.length },
         ],
@@ -1156,7 +1166,7 @@ Context.prototype.glyphPath = function (glyphs: Array<{ index: number; x: number
         LIB,
         "cairo_glyph_path",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: GLYPH_BUF_T, value: buf },
             { type: INT_TYPE, value: glyphs.length },
         ],
@@ -1171,7 +1181,7 @@ Context.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: num
         LIB,
         "cairo_glyph_extents",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: GLYPH_BUF_T, value: buf },
             { type: INT_TYPE, value: glyphs.length },
             {
@@ -1188,7 +1198,7 @@ Context.prototype.copyPath = function (): PathData[] {
     const pathHandle = call(
         LIB,
         "cairo_copy_path",
-        [{ type: CAIRO_T, value: this.handle }],
+        [{ type: CAIRO_T, value: getHandle(this) }],
         PATH_STRUCT_T,
     ) as NativeHandle;
     return parsePath(pathHandle);
@@ -1198,7 +1208,7 @@ Context.prototype.copyPathFlat = function (): PathData[] {
     const pathHandle = call(
         LIB,
         "cairo_copy_path_flat",
-        [{ type: CAIRO_T, value: this.handle }],
+        [{ type: CAIRO_T, value: getHandle(this) }],
         PATH_STRUCT_T,
     ) as NativeHandle;
     return parsePath(pathHandle);
@@ -1232,7 +1242,7 @@ class ContextImpl extends Context {
         const handle = call(
             LIB,
             "cairo_create",
-            [{ type: SURFACE_T_NONE, value: surface.handle }],
+            [{ type: SURFACE_T_NONE, value: getHandle(surface) }],
             CAIRO_T,
         ) as NativeHandle;
         return wrapHandle(ContextImpl, handle);
@@ -1259,7 +1269,7 @@ Context.prototype.tagBegin = function (tagName: string, attributes: string): voi
         LIB,
         "cairo_tag_begin",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: t.string("full"), value: tagName },
             { type: t.string("full"), value: attributes },
         ],
@@ -1272,7 +1282,7 @@ Context.prototype.tagEnd = function (tagName: string): void {
         LIB,
         "cairo_tag_end",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: t.string("full"), value: tagName },
         ],
         t.void,
@@ -1293,7 +1303,7 @@ Context.prototype.showTextGlyphs = function (
         LIB,
         "cairo_show_text_glyphs",
         [
-            { type: CAIRO_T, value: this.handle },
+            { type: CAIRO_T, value: getHandle(this) },
             { type: t.string("full"), value: text },
             { type: INT_TYPE, value: utf8.length },
             { type: GLYPH_BUF_T, value: glyphBuf },

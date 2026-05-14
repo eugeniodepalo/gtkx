@@ -2,7 +2,7 @@ import type { NativeHandle } from "@gtkx/native";
 import type { Format } from "../generated/cairo/cairo.js";
 import { Surface } from "../generated/cairo/cairo.js";
 import { call, read, t } from "../native.js";
-import { wrapHandle } from "../object.js";
+import { getHandle, setHandle, wrapHandle } from "../object.js";
 import { INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class ImageSurface extends Surface {
@@ -28,7 +28,7 @@ export class ImageSurface extends Surface {
             SURFACE_T,
         ) as NativeHandle;
         const surface = Object.create(ImageSurface.prototype) as ImageSurface;
-        surface.handle = ptr;
+        setHandle(surface, ptr);
         return surface;
     }
 
@@ -48,7 +48,7 @@ export class ImageSurface extends Surface {
         return call(
             LIB,
             "cairo_image_surface_get_width",
-            [{ type: SURFACE_T_NONE, value: this.handle }],
+            [{ type: SURFACE_T_NONE, value: getHandle(this) }],
             INT_TYPE,
         ) as number;
     }
@@ -57,7 +57,7 @@ export class ImageSurface extends Surface {
         return call(
             LIB,
             "cairo_image_surface_get_height",
-            [{ type: SURFACE_T_NONE, value: this.handle }],
+            [{ type: SURFACE_T_NONE, value: getHandle(this) }],
             INT_TYPE,
         ) as number;
     }
@@ -66,7 +66,7 @@ export class ImageSurface extends Surface {
         return call(
             LIB,
             "cairo_image_surface_get_format",
-            [{ type: SURFACE_T_NONE, value: this.handle }],
+            [{ type: SURFACE_T_NONE, value: getHandle(this) }],
             INT_TYPE,
         ) as Format;
     }
@@ -75,7 +75,7 @@ export class ImageSurface extends Surface {
         return call(
             LIB,
             "cairo_image_surface_get_stride",
-            [{ type: SURFACE_T_NONE, value: this.handle }],
+            [{ type: SURFACE_T_NONE, value: getHandle(this) }],
             INT_TYPE,
         ) as number;
     }
@@ -89,7 +89,7 @@ export class ImageSurface extends Surface {
         const ptr = call(
             LIB,
             "cairo_image_surface_get_data",
-            [{ type: SURFACE_T_NONE, value: this.handle }],
+            [{ type: SURFACE_T_NONE, value: getHandle(this) }],
             t.struct("guint8*", "borrowed", totalBytes),
         ) as NativeHandle | null;
         if (ptr === null) return new Uint8Array(0);
