@@ -1,10 +1,16 @@
 import { existsSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { defineCommand } from "citty";
 import { CodegenOrchestrator } from "../core/codegen-orchestrator.js";
 import { intro, log, outro, spinner } from "../core/utils/progress.js";
 import { writeGeneratedDir } from "../core/utils/writer.js";
 import { runTypesPipeline } from "../pipelines/types/index.js";
 import { FFI_OUTPUT_DIR, GIRS_DIR, REACT_OUTPUT_DIR } from "./constants.js";
+
+const enumerateNamespaceRoots = async (girsDir: string): Promise<string[]> => {
+    const files = await readdir(girsDir);
+    return files.filter((f) => f.endsWith(".gir")).map((f) => f.replace(/\.gir$/, ""));
+};
 
 export const run = defineCommand({
     meta: {
@@ -60,7 +66,8 @@ export const run = defineCommand({
         reactSpinner.stop(`Wrote ${result.reactFiles.size} React files`);
 
         const typesSpinner = spinner("Generating ts-for-gir type declarations");
-        const typesResult = await runTypesPipeline(girsDir, ffiOutputDir);
+        const libraries = await enumerateNamespaceRoots(girsDir);
+        const typesResult = await runTypesPipeline(libraries, [girsDir], ffiOutputDir);
         typesSpinner.stop(`Wrote ${typesResult.namespaces.length} type declaration files`);
 
         log.success(`Completed in ${result.stats.duration}ms`);

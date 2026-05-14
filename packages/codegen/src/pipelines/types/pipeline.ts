@@ -5,19 +5,24 @@ import { runTsForGir } from "./invoke-cli.js";
 import { loadAndRewrite, rewriteDefaultImportsToNamespace, rewriteModuleKeywordToNamespace } from "./rewrite.js";
 
 /**
- * Runs the full types pipeline: spawns ts-for-gir against the GIR directory,
- * loads every per-namespace output into ts-morph, rewrites module specifiers
- * into the gtkx shape, and writes one `<ns>/<ns>.d.ts` per namespace under
- * `outDir`. The intermediate ts-for-gir scratch directory is cleaned up
- * regardless of success or failure.
+ * Runs the full types pipeline: spawns ts-for-gir against the explicit module
+ * list, loads every per-namespace output into ts-morph, rewrites module
+ * specifiers into the gtkx shape, and writes one `<ns>/<ns>.d.ts` per
+ * namespace under `outDir`. The intermediate ts-for-gir scratch directory is
+ * cleaned up regardless of success or failure.
  *
- * @param girsDir Directory containing the GIR XML files to process.
+ * @param libraries Explicit GIR module identifiers, e.g. `["Gtk-4.0", "Adw-1"]`.
+ * @param girDirectories Search directories for GIR XML files.
  * @param outDir Final destination for the per-namespace `.d.ts` files.
  */
-export async function runTypesPipeline(girsDir: string, outDir: string): Promise<TypesPipelineResult> {
+export async function runTypesPipeline(
+    libraries: string[],
+    girDirectories: string[],
+    outDir: string,
+): Promise<TypesPipelineResult> {
     const scratchDir = await mkdtemp(join(tmpdir(), "gtkx-tsforgir-"));
     try {
-        await runTsForGir(girsDir, scratchDir);
+        await runTsForGir(libraries, girDirectories, scratchDir);
 
         const filenames = await readdir(scratchDir);
         const rawFilesByName = new Map<string, string>();

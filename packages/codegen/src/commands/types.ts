@@ -1,10 +1,16 @@
 import { existsSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { defineCommand } from "citty";
 import { intro, log, outro, spinner } from "../core/utils/progress.js";
 import { runTypesPipeline } from "../pipelines/types/index.js";
 import { GIRS_DIR } from "./constants.js";
 
 const SCRATCH_TYPES_OUTPUT_DIR = "packages/ffi/src/generated-new";
+
+const enumerateNamespaceRoots = async (girsDir: string): Promise<string[]> => {
+    const files = await readdir(girsDir);
+    return files.filter((f) => f.endsWith(".gir")).map((f) => f.replace(/\.gir$/, ""));
+};
 
 export const types = defineCommand({
     meta: {
@@ -36,7 +42,8 @@ export const types = defineCommand({
         }
 
         const genSpinner = spinner("Running ts-for-gir");
-        const result = await runTypesPipeline(girsDir, outputDir);
+        const libraries = await enumerateNamespaceRoots(girsDir);
+        const result = await runTypesPipeline(libraries, [girsDir], outputDir);
         genSpinner.stop(`Generated ${result.namespaces.length} namespaces`);
 
         log.success(`Wrote ${result.namespaces.length} type declarations to ${outputDir}`);
