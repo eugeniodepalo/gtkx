@@ -426,33 +426,6 @@ export function injectNativeObjectInheritance(source: string): string {
     return `${NATIVE_OBJECT_IMPORT}${rewritten}`;
 }
 
-const GTYPE_STRUCTURAL_PATTERN = /^export\s+type\s+GType<\s*T\s*=\s*unknown\s*>\s*=\s*\{[\s\S]*?\};/m;
-const GTYPE_NUMBER_ALIAS = "export type GType<_T = unknown> = number;";
-const TYPE_INVALID_BIGINT_PATTERN = /^export let TYPE_INVALID\s*:\s*0n$/m;
-const TYPE_INVALID_NUMBER = "export let TYPE_INVALID: GType<undefined>;";
-const TYPE_FROM_NAME_OVERLOAD_PATTERN = /^export function typeFromName\(name:\s*'[^']+'\):\s*typeof TYPE_\w+\s*$/gm;
-
-/**
- * Rewrites the structural `GType<T>` declaration that ts-for-gir emits to a
- * plain `number` alias. The runtime layer marshals every GType as a JavaScript
- * `number` (a 64-bit numeric ID returned by `g_type_from_name` and friends),
- * so a structural object shape forces every cross-boundary site to launder
- * the value through `as unknown as`. Treating `GType` as a numeric alias
- * preserves call-site documentation via the unused type parameter while
- * eliminating cast noise entirely.
- *
- * Also normalizes the `TYPE_INVALID: 0n` bigint-literal declaration to a
- * `GType<undefined>` and drops the per-string `typeFromName` overloads so the
- * generic `typeFromName(name: string): GType` shape wins at every call site.
- */
-export function rewriteGTypeToNumberAlias(source: string): string {
-    if (!GTYPE_STRUCTURAL_PATTERN.test(source)) return source;
-    return source
-        .replace(GTYPE_STRUCTURAL_PATTERN, GTYPE_NUMBER_ALIAS)
-        .replace(TYPE_INVALID_BIGINT_PATTERN, TYPE_INVALID_NUMBER)
-        .replace(TYPE_FROM_NAME_OVERLOAD_PATTERN, "");
-}
-
 const CLASS_STRUCT_INTERFACE_HEAD_PATTERN = /^export[ \t]+interface[ \t]+(\w+(?:Class|Iface|Interface))[ \t]*\{/gm;
 const EXISTING_VALUE_PATTERN = /^export\s+(?:const|let|var)\s+(\w+)\b/gm;
 const PROPERTY_LINE_PATTERN = /^[ \t]*(\w+)\??[ \t]*:[ \t]*([^\n;]+?)(?:;|$)/gm;
@@ -571,8 +544,7 @@ export function loadAndRewrite(rawFilesByName: Map<string, string>): RewriteResu
     for (const [filename, contents] of rawFilesByName) {
         const namespace = namespaceFromRawFilename(filename);
         if (!namespace) continue;
-        let source = rewriteGTypeToNumberAlias(contents);
-        source = unwrapOuterNamespace(source);
+        let source = unwrapOuterNamespace(contents);
         source = rewriteEnumsToConstObjects(source);
         source = rewriteNamespaceDeclarations(source);
         source = injectNativeObjectInheritance(source);

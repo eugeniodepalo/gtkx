@@ -178,7 +178,8 @@ export function registerClass<T extends NativeClass>(
     if (!(klass.prototype instanceof NativeObject)) {
         throw new TypeError(`registerClass: ${klass.name} must extend a NativeObject subclass`);
     }
-    if (parentGType === 0) {
+    const parentGTypeId = parentGType as unknown as number;
+    if (parentGTypeId === 0) {
         throw new Error(`registerClass: ${klass.name} parent GType is invalid (G_TYPE_INVALID)`);
     }
 
@@ -187,7 +188,7 @@ export function registerClass<T extends NativeClass>(
         throw new Error("registerClass: cannot derive a GType name (anonymous class with no gtypeName option)");
     }
 
-    const newGtype = nativeRegisterClass(name, parentGType, toNativeOptions(options));
+    const newGtype = nativeRegisterClass(name, parentGTypeId, toNativeOptions(options)) as unknown as GType;
     registerNativeClass(klass, newGtype);
 
     return klass;
@@ -204,7 +205,7 @@ function toNativeOptions(options: RegisterClassOptions): RegisterClassNativeOpti
         signals: signals?.map(toNativeSignal),
         vfuncs,
         interfaces: interfaces?.map((iface) => ({
-            gtype: iface.gtype,
+            gtype: iface.gtype as unknown as number,
             vfuncs: iface.vfuncs,
         })),
     };
@@ -213,8 +214,8 @@ function toNativeOptions(options: RegisterClassOptions): RegisterClassNativeOpti
 function toNativeSignal(signal: RegisterClassSignal): RegisterClassSignalDefinition {
     return {
         ...signal,
-        returnGType: signal.returnGType,
-        paramGTypes: signal.paramGTypes.slice(),
+        returnGType: signal.returnGType as unknown as number,
+        paramGTypes: signal.paramGTypes.map((gtype) => gtype as unknown as number),
     };
 }
 

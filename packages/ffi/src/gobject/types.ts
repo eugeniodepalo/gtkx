@@ -40,91 +40,91 @@ let variantType: GType | undefined;
  */
 export const Type = {
     get INVALID(): GType {
-        invalidType ??= typeFromName("void");
+        invalidType ??= typeFromName("void") as unknown as GType;
         return invalidType;
     },
     get NONE(): GType {
-        noneType ??= typeFromName("void");
+        noneType ??= typeFromName("void") as unknown as GType;
         return noneType;
     },
     get INTERFACE(): GType {
-        interfaceType ??= typeFromName("GInterface");
+        interfaceType ??= typeFromName("GInterface") as unknown as GType;
         return interfaceType;
     },
     get CHAR(): GType {
-        charType ??= typeFromName("gchar");
+        charType ??= typeFromName("gchar") as unknown as GType;
         return charType;
     },
     get UCHAR(): GType {
-        ucharType ??= typeFromName("guchar");
+        ucharType ??= typeFromName("guchar") as unknown as GType;
         return ucharType;
     },
     get BOOLEAN(): GType {
-        booleanType ??= typeFromName("gboolean");
+        booleanType ??= typeFromName("gboolean") as unknown as GType;
         return booleanType;
     },
     get INT(): GType {
-        intType ??= typeFromName("gint");
+        intType ??= typeFromName("gint") as unknown as GType;
         return intType;
     },
     get UINT(): GType {
-        uintType ??= typeFromName("guint");
+        uintType ??= typeFromName("guint") as unknown as GType;
         return uintType;
     },
     get LONG(): GType {
-        longType ??= typeFromName("glong");
+        longType ??= typeFromName("glong") as unknown as GType;
         return longType;
     },
     get ULONG(): GType {
-        ulongType ??= typeFromName("gulong");
+        ulongType ??= typeFromName("gulong") as unknown as GType;
         return ulongType;
     },
     get INT64(): GType {
-        int64Type ??= typeFromName("gint64");
+        int64Type ??= typeFromName("gint64") as unknown as GType;
         return int64Type;
     },
     get UINT64(): GType {
-        uint64Type ??= typeFromName("guint64");
+        uint64Type ??= typeFromName("guint64") as unknown as GType;
         return uint64Type;
     },
     get ENUM(): GType {
-        enumType ??= typeFromName("GEnum");
+        enumType ??= typeFromName("GEnum") as unknown as GType;
         return enumType;
     },
     get FLAGS(): GType {
-        flagsType ??= typeFromName("GFlags");
+        flagsType ??= typeFromName("GFlags") as unknown as GType;
         return flagsType;
     },
     get FLOAT(): GType {
-        floatType ??= typeFromName("gfloat");
+        floatType ??= typeFromName("gfloat") as unknown as GType;
         return floatType;
     },
     get DOUBLE(): GType {
-        doubleType ??= typeFromName("gdouble");
+        doubleType ??= typeFromName("gdouble") as unknown as GType;
         return doubleType;
     },
     get STRING(): GType {
-        stringType ??= typeFromName("gchararray");
+        stringType ??= typeFromName("gchararray") as unknown as GType;
         return stringType;
     },
     get POINTER(): GType {
-        pointerType ??= typeFromName("gpointer");
+        pointerType ??= typeFromName("gpointer") as unknown as GType;
         return pointerType;
     },
     get BOXED(): GType {
-        boxedType ??= typeFromName("GBoxed");
+        boxedType ??= typeFromName("GBoxed") as unknown as GType;
         return boxedType;
     },
     get PARAM(): GType {
-        paramType ??= typeFromName("GParam");
+        paramType ??= typeFromName("GParam") as unknown as GType;
         return paramType;
     },
     get OBJECT(): GType {
-        objectType ??= typeFromName("GObject");
+        objectType ??= typeFromName("GObject") as unknown as GType;
         return objectType;
     },
     get VARIANT(): GType {
-        variantType ??= typeFromName("GVariant");
+        variantType ??= typeFromName("GVariant") as unknown as GType;
         return variantType;
     },
 };
