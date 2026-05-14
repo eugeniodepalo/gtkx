@@ -92,7 +92,7 @@ describe("needsParamWrap", () => {
 });
 
 describe("writeWrapExpression", () => {
-    it("emits an as-cast when no wrap is needed", () => {
+    it("passes the argument through verbatim when no wrap is needed", () => {
         const info: ParamWrapInfo = {
             needsWrap: false,
             needsTargetClass: false,
@@ -100,7 +100,7 @@ describe("writeWrapExpression", () => {
             isInterface: false,
             tsType: "number",
         };
-        expect(writeWrapExpression("args[0]", info)).toBe("args[0] as number");
+        expect(writeWrapExpression("args[0]", info)).toBe("args[0]");
     });
 
     it("calls getNativeObjectAsInterface with the target class for interface types", () => {
@@ -111,9 +111,7 @@ describe("writeWrapExpression", () => {
             isInterface: true,
             tsType: "Gtk.Editable",
         };
-        expect(writeWrapExpression("args[1]", info)).toBe(
-            "getNativeObjectAsInterface(args[1] as NativeHandle, Gtk.Editable)",
-        );
+        expect(writeWrapExpression("args[1]", info)).toBe("getNativeObjectAsInterface(args[1], Gtk.Editable)");
     });
 
     it("calls getNativeObject with the target class for boxed-like types", () => {
@@ -124,10 +122,10 @@ describe("writeWrapExpression", () => {
             isInterface: false,
             tsType: "GError",
         };
-        expect(writeWrapExpression("args[1]", info)).toBe("getNativeObject(args[1] as NativeHandle, GError)");
+        expect(writeWrapExpression("args[1]", info)).toBe("getNativeObject(args[1], GError)");
     });
 
-    it("falls back to a single-argument getNativeObject cast when no target class is supplied", () => {
+    it("falls back to a single-argument getNativeObject when no target class is supplied", () => {
         const info: ParamWrapInfo = {
             needsWrap: true,
             needsTargetClass: false,
@@ -135,7 +133,7 @@ describe("writeWrapExpression", () => {
             isInterface: false,
             tsType: "Gtk.Widget",
         };
-        expect(writeWrapExpression("args[0]", info)).toBe("getNativeObject(args[0] as NativeHandle) as Gtk.Widget");
+        expect(writeWrapExpression("args[0]", info)).toBe("getNativeObject(args[0])");
     });
 });
 
@@ -164,9 +162,9 @@ describe("buildCallbackWrapperExpression", () => {
     it("emits a direct callback body when the return value does not need unwrapping", () => {
         const out = render(buildCallbackWrapperExpression("handler", wrapInfos));
         expect(out).toContain("handler");
-        expect(out).toContain("? (...args: unknown[]) =>");
-        expect(out).toContain("getNativeObject(args[0] as NativeHandle) as Gtk.Widget,");
-        expect(out).toContain("args[1] as number");
+        expect(out).toContain("? (...args) =>");
+        expect(out).toContain("getNativeObject(args[0]),");
+        expect(out).toContain("args[1]");
         expect(out).toContain(": null");
         expect(out).not.toContain("const _result");
     });
@@ -191,7 +189,7 @@ describe("buildCallbackWrapperExpression", () => {
     it("emits a no-arg callback body when wrapInfos is empty", () => {
         const out = render(buildCallbackWrapperExpression("h", []));
         expect(out).toContain("h\n");
-        expect(out).toContain("? (...args: unknown[]) =>");
+        expect(out).toContain("? (...args) =>");
         expect(out).toContain(": null");
     });
 });

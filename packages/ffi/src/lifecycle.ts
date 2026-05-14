@@ -1,8 +1,8 @@
 import EventEmitter from "node:events";
 import { stop as nativeStop } from "@gtkx/native";
-import { init as initAdwaita } from "./generated/adw/functions.js";
-import { init as initGtk } from "./generated/gtk/functions.js";
-import { finalize as finalizeGtkSource, init as initGtkSource } from "./generated/gtksource/functions.js";
+import { init as initAdwaita } from "./generated/adw/adw.js";
+import { init as initGtk } from "./generated/gtk/gtk.js";
+import { finalize as finalizeGtkSource, init as initGtkSource } from "./generated/gtksource/gtksource.js";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 

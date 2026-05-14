@@ -56,12 +56,12 @@ function loadAllSchemaKeys(): SchemaKeys[] {
             for (const name of keyNames) {
                 try {
                     const variant = settings.getValue(name);
-                    const valueStr = variant.print(false);
+                    const valueStr = variant.print(false) ?? "";
                     const schemaKey = schema.getKey(name);
                     const summary = schemaKey.getSummary() ?? "";
                     const description = schemaKey.getDescription() ?? "";
-                    const defaultValue = schemaKey.getDefaultValue().print(false);
-                    const valueType = schemaKey.getValueType().dupString();
+                    const defaultValue = schemaKey.getDefaultValue().print(false) ?? "";
+                    const valueType = schemaKey.getValueType().dupString() ?? "";
 
                     keys.push({
                         id: `${schemaId}/${name}`,
@@ -162,7 +162,7 @@ const ListViewSettings2Demo = () => {
 
             const settings = Gio.Settings.new(key.schemaId);
             settings.setValue(key.name, variant);
-            keysState.current.set(key.id, variant.print(false));
+            keysState.current.set(key.id, variant.print(false) ?? "");
         } catch {
             entry.errorBell();
             entry.setText(keysState.current.get(key.id) ?? key.value);

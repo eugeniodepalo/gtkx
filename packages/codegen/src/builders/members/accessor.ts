@@ -14,8 +14,8 @@ export type AccessorOptions = {
 };
 
 /**
- * Builder that emits a paired ES6 get/set accessor declaration.
- * When setBody is omitted, only a getter is emitted (read-only accessor).
+ * Builder that emits a paired ES6 get/set accessor declaration. When
+ * setBody is omitted, only a getter is emitted.
  */
 export class AccessorBuilder implements Builder {
     constructor(
@@ -26,15 +26,23 @@ export class AccessorBuilder implements Builder {
     /** @inheritdoc */
     write(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
-        writer.write(`get ${this.name}(): `);
-        writeWritable(writer, this.opts.type);
+        const jsMode = writer.getMode() === "js";
+
+        writer.write(`get ${this.name}()`);
+        if (!jsMode) {
+            writer.write(": ");
+            writeWritable(writer, this.opts.type);
+        }
         writer.write(" ");
         writeBody(writer, this.opts.getBody);
         writer.newLine();
 
         if (this.opts.setBody) {
-            writer.write(`set ${this.name}(value: `);
-            writeWritable(writer, this.opts.setType ?? this.opts.type);
+            writer.write(`set ${this.name}(value`);
+            if (!jsMode) {
+                writer.write(": ");
+                writeWritable(writer, this.opts.setType ?? this.opts.type);
+            }
             writer.write(") ");
             writeBody(writer, this.opts.setBody);
             writer.newLine();

@@ -11,13 +11,16 @@ export type ConstructorOptions = {
     overloads?: OverloadSignature[];
 };
 
-/** Builder that emits a class constructor with parameters, body, and optional overload signatures. */
+/**
+ * Builder that emits a class constructor. In TS mode, overload signatures
+ * precede the implementation; in JS mode they are dropped.
+ */
 export class ConstructorBuilder implements Builder {
     constructor(private readonly opts: ConstructorOptions) {}
 
     /** @inheritdoc */
     write(writer: Writer): void {
-        if (this.opts.overloads) {
+        if (writer.getMode() !== "js" && this.opts.overloads) {
             for (const overload of this.opts.overloads) {
                 writer.write("constructor(");
                 if (overload.params.length > 0) {

@@ -67,18 +67,11 @@ export class SignalBuilder {
     private readonly descriptors: FfiDescriptorRegistry | undefined;
 
     private gtypeCall(): string {
-        const gtypeRef = this.options.namespace === "GObject" ? "GType" : "GObject.GType";
-        const gtypeCast = `as unknown as ${gtypeRef}`;
         const glibGetType = this.cls.glibGetType;
         const glibTypeName = this.cls.glibTypeName;
-        if (this.options.namespace === "GObject") {
-            this.imports.addImport("./aliases.js", ["GType"]);
-        } else {
-            this.imports.addNamespaceImport("../gobject/index.js", "GObject");
-        }
         if (!glibGetType || glibGetType === "intern") {
             if (!glibTypeName) {
-                return `0 ${gtypeCast} /* ${this.className} has no glib:type-name */`;
+                return `0 /* ${this.className} has no glib:type-name */`;
             }
             const binding = this.descriptors?.register({
                 sharedLibrary: "libgobject-2.0.so.0",
@@ -88,10 +81,10 @@ export class SignalBuilder {
             });
             this.imports.addImport("../../native.js", ["t"]);
             if (binding?.varargs === false) {
-                return `${binding.name}("${glibTypeName}") ${gtypeCast}`;
+                return `${binding.name}("${glibTypeName}")`;
             }
             this.imports.addImport("../../native.js", ["call"]);
-            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) ${gtypeCast}`;
+            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64)`;
         }
         const binding = this.descriptors?.register({
             sharedLibrary: this.options.sharedLibrary,
@@ -102,10 +95,10 @@ export class SignalBuilder {
         });
         this.imports.addImport("../../native.js", ["t"]);
         if (binding?.varargs === false) {
-            return `${binding.name}() ${gtypeCast}`;
+            return `${binding.name}()`;
         }
         this.imports.addImport("../../native.js", ["call"]);
-        return `call("${this.options.sharedLibrary}", "${glibGetType}", [], t.uint64) ${gtypeCast}`;
+        return `call("${this.options.sharedLibrary}", "${glibGetType}", [], t.uint64)`;
     }
 
     buildConnectMethodStructures(): MethodStructure[] {
@@ -121,7 +114,7 @@ export class SignalBuilder {
         if (this.options.namespace === "GObject") {
             this.imports.addImport("./param-spec.js", ["ParamSpec"]);
         } else {
-            this.imports.addNamespaceImport("../gobject/index.js", "GObject");
+            this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
         }
 
         const overloads = this.buildOverloads(ownSignals);
@@ -412,7 +405,7 @@ export class SignalBuilder {
             mapped.ffi = this.ffiMapper.enrichStructWithSize(mapped.ffi, String(p.type.name));
             addTypeImports(this.imports, mapped.imports, this.selfNames);
             if (mapped.ffi.type === "ref") {
-                this.imports.addImport("@gtkx/native", ["Ref"]);
+                this.imports.addTypeImport("@gtkx/native", ["Ref"]);
             }
             const wrapInfo = needsParamWrap(mapped);
             if (wrapInfo.isInterface) {
@@ -429,8 +422,7 @@ export class SignalBuilder {
     private writeRefDeclarations(writer: Writer, paramData: SignalParamData[]): void {
         for (const [i, p] of paramData.entries()) {
             if (p.mapped.ffi.type === "ref") {
-                const innerType = p.mapped.innerTsType ?? "unknown";
-                writer.writeLine(`const _ref${i} = { value: args[${i + 1}] as ${innerType} };`);
+                writer.writeLine(`const _ref${i} = { value: args[${i + 1}] };`);
             }
         }
     }
@@ -483,7 +475,7 @@ export class SignalBuilder {
     private writeWrappedHandler(writer: Writer, paramData: SignalParamData[], needsReturnUnwrap: boolean): void {
         const hasRefParams = paramData.some((p) => p.mapped.ffi.type === "ref");
 
-        writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
+        writer.writeLine("const wrappedHandler = (...args) => {");
         writer.withIndent(() => {
             if (hasRefParams) {
                 this.writeRefHandlerBody(writer, paramData, needsReturnUnwrap);
@@ -526,7 +518,7 @@ export class SignalBuilder {
     }
 
     private writeFallbackImplementation(writer: Writer): void {
-        writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
+        writer.writeLine("const wrappedHandler = (...args) => {");
         writer.withIndent(() => {
             writer.writeLine("return handler(...args.slice(1));");
         });
@@ -554,7 +546,7 @@ export class SignalBuilder {
         });
         writer.write("return ");
         callWriter(writer);
-        writer.writeLine(" as number;");
+        writer.writeLine(";");
     }
 
     private writeClosureSignalConnectCall(writer: Writer, callbackType: FfiTypeDescriptor): void {
@@ -571,7 +563,7 @@ export class SignalBuilder {
         });
         writer.write("return ");
         callWriter(writer);
-        writer.writeLine(" as number;");
+        writer.writeLine(";");
     }
 
     private buildHandlerParams(signal: GirSignal): string {
@@ -581,7 +573,7 @@ export class SignalBuilder {
             const mapped = this.ffiMapper.mapParameter(param);
             addTypeImports(this.imports, mapped.imports, this.selfNames);
             if (mapped.ffi.type === "ref") {
-                this.imports.addImport("@gtkx/native", ["Ref"]);
+                this.imports.addTypeImport("@gtkx/native", ["Ref"]);
             }
             const paramName = toValidIdentifier(toCamelCase(param.name));
             params.push(`${paramName}: ${mapped.ts}`);
@@ -671,7 +663,7 @@ export class SignalBuilder {
 
         writer.writeLine(`case "${signal.name}": {`);
         writer.withIndent(() => {
-            writer.writeLine(`const __values: ${gobjectPrefix}Value[] = [`);
+            writer.writeLine("const __values = [");
             writer.withIndent(() => {
                 writer.write(`${gobjectPrefix}Value.newFrom(`);
                 writeFfiTypeExpression(writer, { type: "gobject", ownership: "full" });
@@ -679,7 +671,7 @@ export class SignalBuilder {
                 paramData.forEach((p, index) => {
                     writer.write(`${gobjectPrefix}Value.newFrom(`);
                     writeFfiTypeExpression(writer, p.mapped.ffi);
-                    writer.writeLine(`, args[${index}] as ${p.mapped.ts}),`);
+                    writer.writeLine(`, args[${index}]),`);
                 });
             });
             writer.writeLine("];");
@@ -729,8 +721,7 @@ export class SignalBuilder {
                     : `${gobjectPrefix}typeFromName("GObject")`;
             case "enum":
             case "flags": {
-                const gtypeRef = this.options.namespace === "GObject" ? "GType" : "GObject.GType";
-                return `(call(${JSON.stringify(ffiType.library)}, ${JSON.stringify(ffiType.getTypeFn)}, [], t.uint64) as unknown as ${gtypeRef})`;
+                return `call(${JSON.stringify(ffiType.library)}, ${JSON.stringify(ffiType.getTypeFn)}, [], t.uint64)`;
             }
             default:
                 return `${gobjectPrefix}typeFromName("GObject")`;

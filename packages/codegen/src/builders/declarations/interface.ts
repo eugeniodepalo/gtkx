@@ -28,7 +28,11 @@ export type InterfaceOptions = {
     doc?: string;
 };
 
-/** Builder that emits a TypeScript interface declaration with properties and methods. */
+/**
+ * Builder that emits a TypeScript interface declaration with properties and
+ * methods. In JS mode the declaration is omitted because interfaces have
+ * no runtime presence.
+ */
 export class InterfaceDeclarationBuilder implements Builder {
     private readonly properties: InterfacePropertySignature[] = [];
     private readonly methods: InterfaceMethodSignature[] = [];
@@ -52,6 +56,7 @@ export class InterfaceDeclarationBuilder implements Builder {
 
     /** @inheritdoc */
     write(writer: Writer): void {
+        if (writer.getMode() === "js") return;
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.exported) writer.write("export ");
         writer.write(`interface ${this.name}`);

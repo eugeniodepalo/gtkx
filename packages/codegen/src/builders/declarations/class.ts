@@ -56,9 +56,10 @@ export class ClassDeclarationBuilder implements Builder {
     write(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.exported) writer.write("export ");
-        if (this.opts.abstract) writer.write("abstract ");
+        const jsMode = writer.getMode() === "js";
+        if (!jsMode && this.opts.abstract) writer.write("abstract ");
         writer.write(`class ${this.name}`);
-        if (this.opts.typeParams) {
+        if (!jsMode && this.opts.typeParams) {
             writer.write(this.opts.typeParams);
         }
         if (this.opts.extends) {

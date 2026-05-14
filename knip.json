@@ -19,8 +19,8 @@
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
-            "entry": ["src/generated/*/index.ts"],
-            "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
+            "entry": ["src/generated/*/*.js"],
+            "project": ["src/**/*.{ts,js}", "tests/**/*.{ts,tsx}"]
         },
         "packages/mcp": {
             "entry": ["src/cli.ts"],

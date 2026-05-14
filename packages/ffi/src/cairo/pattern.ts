@@ -1,7 +1,6 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
-import type { Extend, Filter, PatternType, Status } from "../generated/cairo/enums.js";
-import { Pattern } from "../generated/cairo/pattern.js";
-import { Surface } from "../generated/cairo/surface.js";
+import type { Extend, Filter, PatternType, Status } from "../generated/cairo/cairo.js";
+import { Pattern, Surface } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
 import { wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
@@ -20,7 +19,7 @@ import {
 import type { Matrix } from "./matrix.js";
 import { allocMatrix } from "./matrix.js";
 
-declare module "../generated/cairo/pattern.js" {
+declare module "../generated/cairo/cairo.js" {
     interface Pattern {
         setFilter(filter: Filter): void;
         getFilter(): Filter;
@@ -210,7 +209,7 @@ Pattern.prototype.getType = function (): PatternType {
     return call(LIB, "cairo_pattern_get_type", [{ type: PATTERN_T_NONE, value: this.handle }], INT_TYPE) as PatternType;
 };
 
-declare module "../generated/cairo/pattern.js" {
+declare module "../generated/cairo/cairo.js" {
     interface Pattern {
         meshBeginPatch(): void;
         meshEndPatch(): void;
@@ -559,7 +558,7 @@ export enum Dither {
     BEST = 4,
 }
 
-declare module "../generated/cairo/pattern.js" {
+declare module "../generated/cairo/cairo.js" {
     interface Pattern {
         meshGetPath(patchNum: number): PathData[];
         setDither(dither: Dither): void;

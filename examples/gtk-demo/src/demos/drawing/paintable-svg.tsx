@@ -59,7 +59,11 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
         dialog.setFilters(filters);
 
         try {
-            const file = await dialog.openAsync(window.current, null);
+            const file = await (
+                dialog as unknown as {
+                    openAsync(parent: Gtk.Window | null, cancellable: null): Promise<{ getPath(): string | null }>;
+                }
+            ).openAsync(window.current, null);
             const path = file.getPath();
             if (path) {
                 setFilePath(path);

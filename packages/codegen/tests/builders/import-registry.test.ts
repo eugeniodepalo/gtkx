@@ -51,4 +51,23 @@ describe("ImportRegistry", () => {
         reg.add("./foo.js", ["Foo"]);
         expect(reg.isEmpty).toBe(false);
     });
+
+    describe("JS mode", () => {
+        it("drops type-only imports and intra-namespace paths", () => {
+            const reg = new ImportRegistry();
+            reg.setMode("js");
+            reg.addTypeOnly("@gtkx/types", ["Type"]);
+            reg.add("./other.js", ["Other"]);
+            reg.add("@gtkx/native", ["call"]);
+            expect(stringify(reg)).toBe('import { call } from "@gtkx/native";\n');
+        });
+
+        it("drops type-only namespace imports but keeps value namespace imports", () => {
+            const reg = new ImportRegistry();
+            reg.setMode("js");
+            reg.addTypeNamespace("@gtkx/types", "Types");
+            reg.addNamespace("@gtkx/native", "Native");
+            expect(stringify(reg)).toBe('import * as Native from "@gtkx/native";\n');
+        });
+    });
 });

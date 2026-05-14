@@ -192,7 +192,7 @@ export class ClassGenerator {
                 this.file.addImport(`./${toKebabCase(originalIfaceName)}.js`, [ifaceName]);
             } else {
                 extendsList.push(`${ns}.${ifaceName}.ConstructorProperties`);
-                this.file.addNamespaceImport(`../${ns.toLowerCase()}/index.js`, ns);
+                this.file.addNamespaceImport(`../${ns.toLowerCase()}/${ns.toLowerCase()}.js`, ns);
             }
         }
 
@@ -211,7 +211,10 @@ export class ClassGenerator {
         if (parentInfo.hasParent) {
             if (parentInfo.isCrossNamespace && parentInfo.namespace) {
                 extendsBase = `${parentInfo.namespace}.${parentInfo.className}`;
-                this.file.addNamespaceImport(`../${parentInfo.namespace.toLowerCase()}/index.js`, parentInfo.namespace);
+                this.file.addNamespaceImport(
+                    `../${parentInfo.namespace.toLowerCase()}/${parentInfo.namespace.toLowerCase()}.js`,
+                    parentInfo.namespace,
+                );
             } else {
                 extendsBase = parentInfo.className;
                 if (parentInfo.originalName) {
@@ -325,16 +328,9 @@ export class ClassGenerator {
     }
 
     private buildGTypeCall(cIdentifier: string, glibTypeName: string | undefined): string {
-        const gtypeRef = this.options.namespace === "GObject" ? "GType" : "GObject.GType";
-        const gtypeCast = `as unknown as ${gtypeRef}`;
-        if (this.options.namespace === "GObject") {
-            this.file.addImport("./aliases.js", ["GType"]);
-        } else {
-            this.file.addNamespaceImport("../gobject/index.js", "GObject");
-        }
         if (cIdentifier === "intern" || cIdentifier === "") {
             if (!glibTypeName) {
-                return `0 ${gtypeCast} /* ${this.className} has no glib:type-name */`;
+                return `0 /* ${this.className} has no glib:type-name */`;
             }
             const binding = this.file.descriptors.register({
                 sharedLibrary: "libgobject-2.0.so.0",
@@ -344,10 +340,10 @@ export class ClassGenerator {
             });
             this.file.addImport("../../native.js", ["t"]);
             if (binding.varargs === false) {
-                return `${binding.name}("${glibTypeName}") ${gtypeCast}`;
+                return `${binding.name}("${glibTypeName}")`;
             }
             this.file.addImport("../../native.js", ["call"]);
-            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) ${gtypeCast}`;
+            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64)`;
         }
 
         const binding = this.file.descriptors.register({
@@ -360,10 +356,10 @@ export class ClassGenerator {
 
         this.file.addImport("../../native.js", ["t"]);
         if (binding.varargs === false) {
-            return `${binding.name}() ${gtypeCast}`;
+            return `${binding.name}()`;
         }
         this.file.addImport("../../native.js", ["call"]);
-        return `call("${this.options.sharedLibrary}", "${cIdentifier}", [], t.uint64) ${gtypeCast}`;
+        return `call("${this.options.sharedLibrary}", "${cIdentifier}", [], t.uint64)`;
     }
 
     private getFundamentalTypeInfo(): { lib: string; refFn: string; unrefFn: string; typeName?: string } | null {

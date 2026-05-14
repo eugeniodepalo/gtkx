@@ -6,8 +6,7 @@ import {
     type RegisterClassSignalDefinition,
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
-import type { GType } from "./generated/gobject/aliases.js";
-import type { ParamSpec } from "./generated/gobject/param-spec.js";
+import type { GType, ParamSpec } from "./generated/gobject/gobject.js";
 import { type NativeClass, NativeObject } from "./object.js";
 import { registerNativeClass } from "./registry.js";
 

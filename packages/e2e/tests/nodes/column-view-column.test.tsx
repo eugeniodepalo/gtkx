@@ -43,7 +43,7 @@ describe("render - ColumnViewColumn", () => {
             );
 
             const columns = columnViewRef.current?.getColumns();
-            const column = columns?.getObject(0) as Gtk.ColumnViewColumn;
+            const column = columns?.getItem(0) as Gtk.ColumnViewColumn;
             expect(column?.getTitle()).toBe("My Column");
         });
 
@@ -59,7 +59,7 @@ describe("render - ColumnViewColumn", () => {
             );
 
             const columns = columnViewRef.current?.getColumns();
-            const column = columns?.getObject(0) as Gtk.ColumnViewColumn;
+            const column = columns?.getItem(0) as Gtk.ColumnViewColumn;
             expect(column?.getExpand()).toBe(true);
         });
 
@@ -81,7 +81,7 @@ describe("render - ColumnViewColumn", () => {
             );
 
             const columns = columnViewRef.current?.getColumns();
-            const column = columns?.getObject(0) as Gtk.ColumnViewColumn;
+            const column = columns?.getItem(0) as Gtk.ColumnViewColumn;
             expect(column?.getResizable()).toBe(true);
         });
 
@@ -115,11 +115,11 @@ describe("render - ColumnViewColumn", () => {
             }
 
             await render(<App title="Initial" />);
-            let column = columnViewRef.current?.getColumns()?.getObject(0) as Gtk.ColumnViewColumn;
+            let column = columnViewRef.current?.getColumns()?.getItem(0) as Gtk.ColumnViewColumn;
             expect(column?.getTitle()).toBe("Initial");
 
             await render(<App title="Updated" />);
-            column = columnViewRef.current?.getColumns()?.getObject(0) as Gtk.ColumnViewColumn;
+            column = columnViewRef.current?.getColumns()?.getItem(0) as Gtk.ColumnViewColumn;
             expect(column?.getTitle()).toBe("Updated");
         });
 
@@ -154,7 +154,7 @@ describe("render - ColumnViewColumn", () => {
 
     describe("header menu", () => {
         const getColumn = (columnView: Gtk.ColumnView, index: number): Gtk.ColumnViewColumn => {
-            return columnView.getColumns().getObject(index) as Gtk.ColumnViewColumn;
+            return columnView.getColumns().getItem(index) as Gtk.ColumnViewColumn;
         };
 
         it("sets header menu when menu items are added", async () => {
@@ -493,7 +493,7 @@ describe("render - ColumnViewColumn", () => {
             expect(salaryCol.getHeaderMenu()?.getNItems()).toBe(2);
         });
 
-        it("activates menu actions on each column via activateActionVariant", async () => {
+        it("activates menu actions on each column via activateAction", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             const nameSortAsc = vi.fn();
             const nameSortDesc = vi.fn();
@@ -533,22 +533,22 @@ describe("render - ColumnViewColumn", () => {
 
             const columnView = columnViewRef.current as Gtk.ColumnView;
 
-            expect(columnView.activateActionVariant("name.sort-asc", null)).toBe(true);
+            expect(columnView.activateAction("name.sort-asc", null)).toBe(true);
             expect(nameSortAsc).toHaveBeenCalledTimes(1);
 
-            expect(columnView.activateActionVariant("name.sort-desc", null)).toBe(true);
+            expect(columnView.activateAction("name.sort-desc", null)).toBe(true);
             expect(nameSortDesc).toHaveBeenCalledTimes(1);
 
-            expect(columnView.activateActionVariant("role.sort-asc", null)).toBe(true);
+            expect(columnView.activateAction("role.sort-asc", null)).toBe(true);
             expect(roleSortAsc).toHaveBeenCalledTimes(1);
 
-            expect(columnView.activateActionVariant("role.hide", null)).toBe(true);
+            expect(columnView.activateAction("role.hide", null)).toBe(true);
             expect(roleHide).toHaveBeenCalledTimes(1);
 
-            expect(columnView.activateActionVariant("salary.sort-asc", null)).toBe(true);
+            expect(columnView.activateAction("salary.sort-asc", null)).toBe(true);
             expect(salarySortAsc).toHaveBeenCalledTimes(1);
 
-            expect(columnView.activateActionVariant("salary.hide", null)).toBe(true);
+            expect(columnView.activateAction("salary.hide", null)).toBe(true);
             expect(salaryHide).toHaveBeenCalledTimes(1);
 
             expect(nameSortAsc).toHaveBeenCalledTimes(1);

@@ -2,7 +2,8 @@
     "compilerOptions": {
         "rootDir": "src",
         "outDir": "dist",
-        "emitDeclarationOnly": false
+        "emitDeclarationOnly": false,
+        "allowJs": true
     },
     "extends": "../../tsconfig.base.json",
     "include": ["src/**/*"]

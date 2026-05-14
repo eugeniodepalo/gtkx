@@ -184,16 +184,9 @@ export class RecordGenerator {
     }
 
     private buildGTypeCall(cIdentifier: string, glibTypeName: string | undefined, recordName: string): string {
-        const gtypeRef = this.options.namespace === "GObject" ? "GType" : "GObject.GType";
-        const gtypeCast = `as unknown as ${gtypeRef}`;
-        if (this.options.namespace === "GObject") {
-            this.file.addImport("./aliases.js", ["GType"]);
-        } else {
-            this.file.addNamespaceImport("../gobject/index.js", "GObject");
-        }
         if (cIdentifier === "intern" || cIdentifier === "") {
             if (!glibTypeName) {
-                return `0 ${gtypeCast} /* ${recordName} has no glib:type-name */`;
+                return `0 /* ${recordName} has no glib:type-name */`;
             }
             const binding = this.file.descriptors.register({
                 sharedLibrary: "libgobject-2.0.so.0",
@@ -203,10 +196,10 @@ export class RecordGenerator {
             });
             this.file.addImport("../../native.js", ["t"]);
             if (binding.varargs === false) {
-                return `${binding.name}("${glibTypeName}") ${gtypeCast}`;
+                return `${binding.name}("${glibTypeName}")`;
             }
             this.file.addImport("../../native.js", ["call"]);
-            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) ${gtypeCast}`;
+            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64)`;
         }
         const binding = this.file.descriptors.register({
             sharedLibrary: this.options.sharedLibrary,
@@ -217,10 +210,10 @@ export class RecordGenerator {
         });
         this.file.addImport("../../native.js", ["t"]);
         if (binding.varargs === false) {
-            return `${binding.name}() ${gtypeCast}`;
+            return `${binding.name}()`;
         }
         this.file.addImport("../../native.js", ["call"]);
-        return `call("${this.options.sharedLibrary}", "${cIdentifier}", [], t.uint64) ${gtypeCast}`;
+        return `call("${this.options.sharedLibrary}", "${cIdentifier}", [], t.uint64)`;
     }
 
     private buildRecordReturnDescriptor(
@@ -409,7 +402,6 @@ export class RecordGenerator {
                 "../../registry.js",
                 isInterfaceField ? ["getNativeObjectAsInterface"] : ["getNativeObject"],
             );
-            this.file.addImport("../../object.js", ["NativeHandle"]);
         }
 
         if (!isReadable) return;
@@ -443,13 +435,13 @@ export class RecordGenerator {
                 writeFfiTypeExpression(writer, typeMapping.ffi);
                 writer.writeLine(`, ${offset});`);
                 writer.writeLine("if (ptr === null) return null;");
-                writer.writeLine(`return ${wrapFn}(ptr as NativeHandle, ${typeMapping.ts});`);
+                writer.writeLine(`return ${wrapFn}(ptr, ${typeMapping.ts});`);
             };
         }
         return (writer: Writer) => {
             writer.write("return read(this.handle, ");
             writeFfiTypeExpression(writer, typeMapping.ffi);
-            writer.writeLine(`, ${offset}) as ${typeMapping.ts};`);
+            writer.writeLine(`, ${offset});`);
         };
     }
 
@@ -554,7 +546,7 @@ export class RecordGenerator {
                 for (const nested of writableFields) {
                     writer.write(`${nested.fieldName}: read(this.handle, `);
                     writeFfiTypeExpression(writer, nested.mapping.ffi);
-                    writer.writeLine(`, ${nested.offset}) as ${nested.mapping.ts},`);
+                    writer.writeLine(`, ${nested.offset}),`);
                 }
             });
             writer.writeLine(`});`);
@@ -633,7 +625,6 @@ export class RecordGenerator {
 
         if (isReadable) {
             this.file.addImport("../../native.js", ["read", "t"]);
-            this.file.addImport("../../object.js", ["NativeHandle"]);
             const doc = buildJsDocStructure(field.doc, this.options.namespace);
 
             cls.addMethod(
@@ -642,9 +633,7 @@ export class RecordGenerator {
                     returnType: tsTypeName,
                     doc: doc?.[0]?.description,
                     body: (writer) => {
-                        writer.writeLine(
-                            `const array = read(this.handle, ${structTypeExpr}, ${ptrOffset}) as NativeHandle;`,
-                        );
+                        writer.writeLine(`const array = read(this.handle, ${structTypeExpr}, ${ptrOffset});`);
                         writer.writeLine(`const base = index * ${elementSize};`);
                         writer.writeLine(`return new ${tsTypeName}({`);
                         writer.withIndent(() => {
@@ -659,7 +648,7 @@ export class RecordGenerator {
 
                                 writer.write(`${nestedFieldName}: read(array, `);
                                 writeFfiTypeExpression(writer, nestedTypeMapping.ffi);
-                                writer.writeLine(`, base + ${nestedItem.offset}) as ${nestedTypeMapping.ts},`);
+                                writer.writeLine(`, base + ${nestedItem.offset}),`);
                             }
                         });
                         writer.writeLine("});");
@@ -670,15 +659,12 @@ export class RecordGenerator {
 
         if (isWritable) {
             this.file.addImport("../../native.js", ["read", "t", "write"]);
-            this.file.addImport("../../object.js", ["NativeHandle"]);
 
             cls.addMethod(
                 method(setterName, {
                     params: [param("index", "number"), param("value", tsTypeName)],
                     body: (writer) => {
-                        writer.writeLine(
-                            `const array = read(this.handle, ${structTypeExpr}, ${ptrOffset}) as NativeHandle;`,
-                        );
+                        writer.writeLine(`const array = read(this.handle, ${structTypeExpr}, ${ptrOffset});`);
                         writer.writeLine(`const base = index * ${elementSize};`);
                         for (const nestedItem of writableNestedFields) {
                             const nestedField = nestedItem.field;

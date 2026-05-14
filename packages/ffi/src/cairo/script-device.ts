@@ -1,7 +1,6 @@
 import type { NativeHandle } from "@gtkx/native";
-import { Device } from "../generated/cairo/device.js";
-import type { Content } from "../generated/cairo/enums.js";
-import { Surface } from "../generated/cairo/surface.js";
+import type { Content } from "../generated/cairo/cairo.js";
+import { Device, Surface } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
 import { wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import * as Gtk from "../../src/generated/gtk/index.js";
+import * as Gtk from "../../src/generated/gtk/gtk.js";
 import * as gl from "../../src/gl/index.js";
 
 let glReady = false;

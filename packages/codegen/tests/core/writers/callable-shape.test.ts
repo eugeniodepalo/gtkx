@@ -125,7 +125,7 @@ describe("buildCallableShape — input parameters", () => {
         expect(shape.callArgs[1]?.value).toBe("parent?.handle");
     });
 
-    it("uses an unknown-cast handle accessor when the mapped TS type is unknown", () => {
+    it("accesses .handle without a cast when the mapped TS type is unknown", () => {
         const param = makeParam({ name: "anything" });
         const mapper = new FakeFfiMapper().setMapping(param, {
             ts: "unknown",
@@ -141,7 +141,7 @@ describe("buildCallableShape — input parameters", () => {
             ffiMapper: mapper.asMapper(),
         });
 
-        expect(shape.callArgs[0]?.value).toBe("(anything as { handle: NativeHandle }).handle");
+        expect(shape.callArgs[0]?.value).toBe("anything.handle");
     });
 
     it("maps array-of-handle inputs to .map(item => item.handle)", () => {
@@ -183,7 +183,9 @@ describe("buildCallableShape — input parameters", () => {
             ffiMapper: mapper.asMapper(),
         });
 
-        expect(shape.callArgs[0]?.value).toBe("lookup ? Array.from(lookup).map(([k, v]) => [k, v?.handle]) : null");
+        expect(shape.callArgs[0]?.value).toBe(
+            "lookup ? globalThis.Array.from(lookup).map(([k, v]) => [k, v?.handle]) : null",
+        );
     });
 
     it("converts hashtable inputs of primitives to a plain entry array", () => {
@@ -206,7 +208,7 @@ describe("buildCallableShape — input parameters", () => {
             ffiMapper: mapper.asMapper(),
         });
 
-        expect(shape.callArgs[0]?.value).toBe("dict ? Array.from(dict) : null");
+        expect(shape.callArgs[0]?.value).toBe("dict ? globalThis.Array.from(dict) : null");
     });
 });
 

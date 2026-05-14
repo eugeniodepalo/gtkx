@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import * as Gdk from "../../src/generated/gdk/index.js";
-import * as Gtk from "../../src/generated/gtk/index.js";
+import * as Gdk from "../../src/generated/gdk/gdk.js";
+import * as Gtk from "../../src/generated/gtk/gtk.js";
 import "../../src/gobject/object.js";
 import "../../src/gobject/value.js";
 

@@ -27,6 +27,19 @@ import sourceCode from "./clipboard.tsx?raw";
 import floppyBuddyPath from "./floppybuddy.gif";
 import portlandRosePath from "./portland-rose.jpg";
 
+const setClipboardValue = (clipboard: Gdk.Clipboard, value: GObject.Value): void =>
+    (clipboard as unknown as { setValue(value: GObject.Value): void }).setValue(value);
+const readTextureAsync = (clipboard: Gdk.Clipboard): Promise<Gdk.Texture | null> =>
+    (clipboard as unknown as { readTextureAsync(cancellable: null): Promise<Gdk.Texture | null> }).readTextureAsync(
+        null,
+    );
+const readValueAsync = (clipboard: Gdk.Clipboard, type: GType): Promise<GObject.Value> =>
+    (
+        clipboard as unknown as {
+            readValueAsync(type: GType, ioPriority: number, cancellable: null): Promise<GObject.Value>;
+        }
+    ).readValueAsync(type, 0, null);
+
 type SourceType = "Text" | "Color" | "Image" | "File" | "Folder";
 type PastedContentType = "" | "Text" | "Color" | "Image" | "File";
 
@@ -155,10 +168,10 @@ const ClipboardDemo = ({ window }: DemoProps) => {
 
         if (sourceType === "Text") {
             const value = GObject.Value.newFromString(sourceText);
-            clipboard.setValue(value);
+            setClipboardValue(clipboard, value);
         } else if (sourceType === "Color") {
             const value = GObject.Value.newFromBoxed(sourceColor, getGdkRgbaType());
-            clipboard.setValue(value);
+            setClipboardValue(clipboard, value);
         } else if (sourceType === "Image") {
             const paths = [portlandRosePath, floppyBuddyPath, gtkLogoSvgPath];
             const path = paths[selectedImage] ?? portlandRosePath;
@@ -167,18 +180,18 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                 const value = new GObject.Value();
                 value.init(GObject.typeFromName("GdkPaintable"));
                 value.setObject(texture);
-                clipboard.setValue(value);
+                setClipboardValue(clipboard, value);
             } catch {}
         } else if ((sourceType === "File" || sourceType === "Folder") && sourceFile) {
             const value = GObject.Value.newFromObject(sourceFile);
-            clipboard.setValue(value);
+            setClipboardValue(clipboard, value);
         }
     }, [sourceType, sourceText, sourceColor, selectedImage, sourceFile, getClipboard]);
 
     const tryPasteTexture = useCallback(
         async (clipboard: Gdk.Clipboard, formats: Gdk.ContentFormats): Promise<boolean> => {
             if (!formats.containMimeType("image/png")) return false;
-            const texture = await clipboard.readTextureAsync(null);
+            const texture = await readTextureAsync(clipboard);
             if (!texture) return false;
             setPastedContent({ type: "Image", paintable: texture });
             return true;
@@ -189,7 +202,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const tryPastePaintable = useCallback(
         async (clipboard: Gdk.Clipboard, formats: Gdk.ContentFormats): Promise<boolean> => {
             if (!formats.containGtype(getGdkPaintableType())) return false;
-            const value = await clipboard.readValueAsync(getGdkPaintableType(), 0, null);
+            const value = await readValueAsync(clipboard, getGdkPaintableType());
             const obj = value.getObject();
             if (!obj) return false;
             setPastedContent({ type: "Image", paintable: obj as Gdk.Paintable });
@@ -201,7 +214,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const tryPasteColor = useCallback(
         async (clipboard: Gdk.Clipboard, formats: Gdk.ContentFormats): Promise<boolean> => {
             if (!formats.containGtype(getGdkRgbaType())) return false;
-            const value = await clipboard.readValueAsync(getGdkRgbaType(), 0, null);
+            const value = await readValueAsync(clipboard, getGdkRgbaType());
             const rgba = value.getBoxed(Gdk.RGBA, getGdkRgbaType());
             if (!rgba) return false;
             setPastedContent({
@@ -216,10 +229,14 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const tryPasteFile = useCallback(
         async (clipboard: Gdk.Clipboard, formats: Gdk.ContentFormats): Promise<boolean> => {
             if (!formats.containGtype(getGFileType())) return false;
-            const value = await clipboard.readValueAsync(getGFileType(), 0, null);
+            const value = await (
+                clipboard as unknown as {
+                    readValueAsync(type: GObject.GType, ioPriority: number, cancellable: null): Promise<GObject.Value>;
+                }
+            ).readValueAsync(getGFileType(), 0, null);
             const obj = value.getObject();
             if (!(obj instanceof Gio.File)) return false;
-            setPastedContent({ type: "File", filePath: obj.getPath() ?? obj.getUri() });
+            setPastedContent({ type: "File", filePath: obj.getPath() ?? obj.getUri() ?? undefined });
             return true;
         },
         [],
@@ -228,7 +245,9 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const tryPasteText = useCallback(
         async (clipboard: Gdk.Clipboard, formats: Gdk.ContentFormats): Promise<boolean> => {
             if (!formats.containGtype(GObject.Type.STRING)) return false;
-            const text = await clipboard.readTextAsync(null);
+            const text = await (
+                clipboard as unknown as { readTextAsync(cancellable: null): Promise<string | null> }
+            ).readTextAsync(null);
             if (text === null) return false;
             setPastedContent({ type: "Text", text });
             return true;
@@ -252,7 +271,9 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const handleFileSelect = useCallback(async () => {
         const dialog = new Gtk.FileDialog();
         try {
-            const file = await dialog.openAsync(window.current, null);
+            const file = await (
+                dialog as unknown as { openAsync(parent: Gtk.Window | null, cancellable: null): Promise<Gio.File> }
+            ).openAsync(window.current, null);
             setSourceFile(file);
         } catch {}
     }, [window]);
@@ -260,7 +281,11 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const handleFolderSelect = useCallback(async () => {
         const dialog = new Gtk.FileDialog();
         try {
-            const file = await dialog.selectFolderAsync(window.current, null);
+            const file = await (
+                dialog as unknown as {
+                    selectFolderAsync(parent: Gtk.Window | null, cancellable: null): Promise<Gio.File>;
+                }
+            ).selectFolderAsync(window.current, null);
             setSourceFile(file);
         } catch {}
     }, [window]);
@@ -274,7 +299,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                 return true;
             }
             if (obj instanceof Gio.File) {
-                setPastedContent({ type: "File", filePath: obj.getPath() ?? obj.getUri() });
+                setPastedContent({ type: "File", filePath: obj.getPath() ?? obj.getUri() ?? undefined });
                 return true;
             }
         }

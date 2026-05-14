@@ -1,6 +1,6 @@
 import type { NativeHandle } from "@gtkx/native";
-import type { Format } from "../generated/cairo/enums.js";
-import { Surface } from "../generated/cairo/surface.js";
+import type { Format } from "../generated/cairo/cairo.js";
+import { Surface } from "../generated/cairo/cairo.js";
 import { call, read, t } from "../native.js";
 import { wrapHandle } from "../object.js";
 import { INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";

@@ -8,6 +8,11 @@ import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { attachChild, detachChild, isAttachedTo } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
 
+const addClass = (w: Gtk.Widget, name: string): void =>
+    (w as unknown as { addCssClass(s: string): void }).addCssClass(name);
+const removeClass = (w: Gtk.Widget, name: string): void =>
+    (w as unknown as { removeCssClass(s: string): void }).removeCssClass(name);
+
 type SetChildContainer = { setChild: (child: Gtk.Widget | null) => void };
 
 function hasSetChild(obj: unknown): obj is SetChildContainer {
@@ -103,7 +108,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
         const childWidget = this.children[0]?.container ?? null;
 
         if (oldChild && this.classApplied) {
-            oldChild.removeCssClass(this.className);
+            removeClass(oldChild, this.className);
             this.classApplied = false;
         }
 
@@ -124,7 +129,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
 
     private setupAnimatedChild(childWidget: Gtk.Widget): void {
         this.setupCssProvider();
-        childWidget.addCssClass(this.className);
+        addClass(childWidget, this.className);
         this.classApplied = true;
 
         const initial = this.props.initial;
@@ -182,7 +187,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
         }
 
         if (childWidget && this.classApplied) {
-            childWidget.removeCssClass(this.className);
+            removeClass(childWidget, this.className);
         }
         this.classApplied = false;
 
@@ -294,7 +299,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
 
         const childWidget = this.children[0]?.container ?? null;
         if (childWidget && !this.classApplied) {
-            childWidget.addCssClass(this.className);
+            addClass(childWidget, this.className);
             this.classApplied = true;
         }
 

@@ -1,5 +1,5 @@
 import type { NativeHandle } from "@gtkx/native";
-import { Surface } from "../generated/cairo/surface.js";
+import { Surface } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
 import { wrapHandle } from "../object.js";
 import { LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";

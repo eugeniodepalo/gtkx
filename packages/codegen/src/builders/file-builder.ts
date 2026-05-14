@@ -5,9 +5,8 @@ import type { Builder } from "./types.js";
 import { Writer } from "./writer.js";
 
 /**
- * Builds a complete TypeScript source file with an import section, an
- * optional FFI-descriptor preamble (hoisted `fn(...)` consts), and top-level
- * declarations.
+ * Builds a complete source file with an import section, an optional FFI-
+ * descriptor preamble (hoisted `fn(...)` consts), and top-level declarations.
  *
  * The descriptor preamble is populated as a side effect of writing
  * declarations: each call expression that registers with the
@@ -19,8 +18,27 @@ import { Writer } from "./writer.js";
 export class FileBuilder implements Builder {
     private readonly imports = new ImportRegistry();
     private readonly declarations: Builder[] = [];
+    private mode: "ts" | "js" = "ts";
     /** Per-file FFI descriptor registry; emitted between imports and declarations. */
     readonly descriptors = new FfiDescriptorRegistry();
+
+    /**
+     * Configures the file emission mode. Defaults to `"ts"`. When set to
+     * `"js"`, the file's imports drop type-only entries and intra-namespace
+     * `./*` specifiers, and downstream builders that consult the mode emit
+     * runtime JavaScript only (no type annotations, interfaces, or type
+     * aliases).
+     */
+    setMode(mode: "ts" | "js"): this {
+        this.mode = mode;
+        this.imports.setMode(mode);
+        return this;
+    }
+
+    /** Returns the configured emission mode. */
+    getMode(): "ts" | "js" {
+        return this.mode;
+    }
 
     /** Add value imports from a module specifier. */
     addImport(specifier: string, names: string[]): this {
@@ -73,7 +91,8 @@ export class FileBuilder implements Builder {
      * collected before the imports/preamble sections are emitted.
      */
     write(writer: Writer): void {
-        const declarationsBuffer = new Writer();
+        writer.setMode(this.mode);
+        const declarationsBuffer = new Writer().setMode(this.mode);
         for (let i = 0; i < this.declarations.length; i++) {
             if (i > 0) declarationsBuffer.newLine();
             this.declarations[i]?.write(declarationsBuffer);

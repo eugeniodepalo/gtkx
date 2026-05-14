@@ -24,8 +24,11 @@ export type MethodOptions = {
 };
 
 /**
- * Builder that emits a class method declaration with modifiers, parameters,
- * return type, optional body, and optional overload signatures.
+ * Builder that emits a class method declaration.
+ *
+ * In JS mode, overload signatures and return-type annotations are dropped
+ * because the contract lives in the companion `.d.ts`. Methods without a
+ * body emit an empty `{}` block.
  */
 export class MethodBuilder implements Builder {
     constructor(
@@ -35,6 +38,28 @@ export class MethodBuilder implements Builder {
 
     /** @inheritdoc */
     write(writer: Writer): void {
+        if (writer.getMode() === "js") {
+            this.writeJs(writer);
+            return;
+        }
+        this.writeTs(writer);
+    }
+
+    private writeJs(writer: Writer): void {
+        writeJsDoc(writer, this.opts.doc);
+        if (this.opts.isStatic) writer.write("static ");
+
+        writer.write(`${this.name}(`);
+        if (this.opts.params && this.opts.params.length > 0) {
+            writer.writeJoined(", ", this.opts.params);
+        }
+        writer.write(") ");
+
+        writeBody(writer, this.opts.body);
+        writer.newLine();
+    }
+
+    private writeTs(writer: Writer): void {
         if (this.opts.overloads) {
             for (const overload of this.opts.overloads) {
                 this.writeSignature(writer, this.name, overload.params, overload.returnType);

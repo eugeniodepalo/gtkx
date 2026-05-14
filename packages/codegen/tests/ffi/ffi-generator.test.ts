@@ -27,8 +27,13 @@ const baseNamespaces = (overrides: Partial<Record<string, GirNamespace>> = {}): 
     return map;
 };
 
-const filePathOf = (files: Array<{ path: string }>, suffix: string): string | undefined =>
-    files.find((f) => f.path.endsWith(suffix))?.path;
+const namespaceFile = (
+    files: Array<{ path: string; content: string }>,
+    namespace: string,
+): { path: string; content: string } | undefined => {
+    const lower = namespace.toLowerCase();
+    return files.find((f) => f.path === `${lower}/${lower}.js`);
+};
 
 describe("FfiGenerator constructor", () => {
     it("constructs with the supplied repository and namespace", () => {
@@ -83,7 +88,7 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(() => generator.generateNamespace("Gtk")).toThrow(/Invalid shared library/);
     });
 
-    it("emits an enums file when the namespace declares enumerations", () => {
+    it("emits a single namespace file containing enum declarations", () => {
         const enumeration = createNormalizedEnumeration({ qualifiedName: "Gtk.Orientation" });
         const ns = createNormalizedNamespace({
             name: "Gtk",
@@ -96,10 +101,13 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(filePathOf(files, "/enums.ts")).toBe("gtk/enums.ts");
+        expect(files).toHaveLength(1);
+        const file = namespaceFile(files, "Gtk");
+        expect(file?.path).toBe("gtk/gtk.js");
+        expect(file?.content).toContain("export const Orientation");
     });
 
-    it("merges bitfields with enumerations into a single enums file", () => {
+    it("merges bitfields with enumerations into the same namespace file", () => {
         const enumeration = createNormalizedEnumeration({ qualifiedName: "Gtk.Orientation" });
         const flags = createNormalizedEnumeration({
             qualifiedName: "Gtk.DebugFlags",
@@ -117,10 +125,12 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(files.filter((f) => f.path.endsWith("/enums.ts"))).toHaveLength(1);
+        const file = namespaceFile(files, "Gtk");
+        expect(file?.content).toContain("export const Orientation");
+        expect(file?.content).toContain("export const DebugFlags");
     });
 
-    it("emits a functions file only when the namespace has standalone functions", () => {
+    it("emits standalone functions into the namespace file", () => {
         const ns = createNormalizedNamespace({
             name: "Gtk",
             functions: new Map([["init", createNormalizedFunction({ name: "init" })]]),
@@ -132,10 +142,11 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(filePathOf(files, "/functions.ts")).toBe("gtk/functions.ts");
+        const file = namespaceFile(files, "Gtk");
+        expect(file?.content).toContain("export const init");
     });
 
-    it("emits a constants file when the namespace declares constants", () => {
+    it("emits constants into the namespace file", () => {
         const ns = createNormalizedNamespace({
             name: "Gtk",
             constants: new Map([["MAJOR_VERSION", createNormalizedConstant({ qualifiedName: "Gtk.MAJOR_VERSION" })]]),
@@ -147,28 +158,11 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(filePathOf(files, "/constants.ts")).toBe("gtk/constants.ts");
+        const file = namespaceFile(files, "Gtk");
+        expect(file?.content).toContain("export const MAJOR_VERSION");
     });
 
-    it("always emits an index.ts that re-exports every other generated file", () => {
-        const enumeration = createNormalizedEnumeration({ qualifiedName: "Gtk.Orientation" });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            enumerations: new Map([[enumeration.name, enumeration]]),
-        });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const index = files.find((f) => f.path === "gtk/index.ts");
-        expect(index).toBeDefined();
-        expect(index?.content).toContain('export * from "./enums.js";');
-    });
-
-    it("returns an empty index when the namespace produced only the index file", () => {
+    it("emits a single namespace file with no body when there is nothing to declare", () => {
         const ns = createNormalizedNamespace({ name: "Gtk" });
         const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
 
@@ -177,11 +171,12 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        const index = files.find((f) => f.path === "gtk/index.ts");
-        expect(index?.content).toBe("");
+        const file = namespaceFile(files, "Gtk");
+        expect(file?.path).toBe("gtk/gtk.js");
+        expect(file?.content).toBe("");
     });
 
-    it("emits a per-class file for each class in topologically sorted order", () => {
+    it("emits each class once into the namespace file", () => {
         const widget = createWidgetClass();
         const button = createButtonClass();
         const ns = createNormalizedNamespace({
@@ -198,12 +193,12 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        const classPaths = files.map((f) => f.path).filter((p) => p.endsWith("widget.ts") || p.endsWith("button.ts"));
-        expect(classPaths).toContain("gtk/widget.ts");
-        expect(classPaths).toContain("gtk/button.ts");
+        const file = namespaceFile(files, "Gtk");
+        expect(file?.content).toContain("export class Widget");
+        expect(file?.content).toContain("export class Button");
     });
 
-    it("emits an interface file using the kebab-cased interface name", () => {
+    it("emits interfaces by name into the namespace file", () => {
         const orientable = createNormalizedInterface({ name: "Orientable" });
         const ns = createNormalizedNamespace({
             name: "Gtk",
@@ -216,10 +211,11 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(filePathOf(files, "orientable.ts")).toBe("gtk/orientable.ts");
+        const file = namespaceFile(files, "Gtk");
+        expect(file?.content).toContain("export class Orientable");
     });
 
-    it("generates Private-suffixed records that have marshalable public fields", () => {
+    it("emits Private-suffixed records that have marshalable public fields", () => {
         const privateRec = createNormalizedRecord({
             name: "WidgetPrivate",
             qualifiedName: "Gtk.WidgetPrivate",
@@ -237,7 +233,8 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(filePathOf(files, "widget-private.ts")).toBe("gtk/widget-private.ts");
+        const file = namespaceFile(files, "Gtk");
+        expect(file?.content).toContain("export class WidgetPrivate");
     });
 
     it("routes records that end with Class through the class-struct generator", () => {
@@ -257,10 +254,7 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        const filePath = filePathOf(files, "widget-class.ts");
-        expect(filePath).toBe("gtk/widget-class.ts");
-        const file = files.find((f) => f.path === filePath);
-        expect(file?.content).toContain("export interface WidgetClass");
+        const file = namespaceFile(files, "Gtk");
         expect(file?.content).toContain("export const WidgetClass");
     });
 
@@ -281,10 +275,7 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        const filePath = filePathOf(files, "orientable-iface.ts");
-        expect(filePath).toBe("gtk/orientable-iface.ts");
-        const file = files.find((f) => f.path === filePath);
-        expect(file?.content).toContain("export interface OrientableIface");
+        const file = namespaceFile(files, "Gtk");
         expect(file?.content).toContain("export const OrientableIface");
     });
 
@@ -313,7 +304,8 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "GLib",
         }).generateNamespace("GLib");
 
-        expect(filePathOf(files, "bytes.ts")).toBe("glib/bytes.ts");
+        const file = namespaceFile(files, "GLib");
+        expect(file?.content).toContain("export class Bytes");
     });
 
     it("walks nested record fields when deciding whether to fully generate a record", () => {
@@ -343,11 +335,12 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(filePathOf(files, "outer.ts")).toBe("gtk/outer.ts");
-        expect(filePathOf(files, "inner.ts")).toBe("gtk/inner.ts");
+        const file = namespaceFile(files, "Gtk");
+        expect(file?.content).toContain("export class Outer");
+        expect(file?.content).toContain("export class Inner");
     });
 
-    it("emits stub files for records whose fields recurse to an unmarshalable type", () => {
+    it("emits stub classes for records whose fields recurse to an unmarshalable type", () => {
         const inner = createNormalizedRecord({
             name: "Inner",
             qualifiedName: "Gtk.Inner",
@@ -374,8 +367,9 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        expect(filePathOf(files, "outer.ts")).toBe("gtk/outer.ts");
-        expect(filePathOf(files, "inner.ts")).toBe("gtk/inner.ts");
+        const file = namespaceFile(files, "Gtk");
+        expect(file?.content).toContain("export class Outer");
+        expect(file?.content).toContain("export class Inner");
     });
 
     it("emits methods on opaque boxed records that expose safe instance methods", () => {
@@ -411,8 +405,8 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "GLib",
         }).generateNamespace("GLib");
 
-        const bytesFile = files.find((f) => f.path === "glib/bytes.ts");
-        expect(bytesFile?.content).toContain("getSize");
+        const file = namespaceFile(files, "GLib");
+        expect(file?.content).toContain("getSize");
     });
 
     it("generates records that have only primitive fields", () => {
@@ -442,7 +436,8 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gdk",
         }).generateNamespace("Gdk");
 
-        expect(filePathOf(files, "rectangle.ts")).toBe("gdk/rectangle.ts");
+        const file = namespaceFile(files, "Gdk");
+        expect(file?.content).toContain("export class Rectangle");
     });
 
     it("routes opaque core type-class records through the class-struct generator as stubs", () => {
@@ -467,14 +462,11 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "GObject",
         }).generateNamespace("GObject");
 
-        const filePath = filePathOf(files, "type-class.ts");
-        expect(filePath).toBe("gobject/type-class.ts");
-        const file = files.find((f) => f.path === filePath);
-        expect(file?.content).toContain("export interface TypeClass");
+        const file = namespaceFile(files, "GObject");
         expect(file?.content).toContain("export const TypeClass");
     });
 
-    it("topologically sorts classes so a parent file precedes its children", () => {
+    it("topologically sorts classes so a parent declaration precedes its children", () => {
         const widget = createWidgetClass();
         const button = createButtonClass();
         const grandchild = createNormalizedClass({
@@ -500,10 +492,11 @@ describe("FfiGenerator.generateNamespace", () => {
             namespace: "Gtk",
         }).generateNamespace("Gtk");
 
-        const paths = files.map((f) => f.path);
-        const widgetIdx = paths.indexOf("gtk/widget.ts");
-        const buttonIdx = paths.indexOf("gtk/button.ts");
-        const toggleIdx = paths.indexOf("gtk/toggle.ts");
+        const file = namespaceFile(files, "Gtk");
+        const content = file?.content ?? "";
+        const widgetIdx = content.indexOf("export class Widget ");
+        const buttonIdx = content.indexOf("export class Button ");
+        const toggleIdx = content.indexOf("export class Toggle ");
         expect(widgetIdx).toBeGreaterThanOrEqual(0);
         expect(buttonIdx).toBeGreaterThan(widgetIdx);
         expect(toggleIdx).toBeGreaterThan(buttonIdx);

@@ -4,12 +4,25 @@ const INDENT = "    ";
 
 /**
  * Streaming code writer that manages indentation and line tracking.
- * Builders use this to emit formatted TypeScript source code.
+ * Builders use this to emit formatted source code in either TypeScript or
+ * JavaScript mode.
  */
 export class Writer {
     private readonly buffer: string[] = [];
     private currentIndent = 0;
     private atLineStart = true;
+    private mode: "ts" | "js" = "ts";
+
+    /** Configures the emission mode. Defaults to `"ts"`. */
+    setMode(mode: "ts" | "js"): this {
+        this.mode = mode;
+        return this;
+    }
+
+    /** Returns the configured emission mode. */
+    getMode(): "ts" | "js" {
+        return this.mode;
+    }
 
     /** Write a {@link Writable} value at the current position, applying indentation at line starts. */
     write(value: Writable): this {

@@ -28,7 +28,7 @@ import {
     Status,
     SubpixelOrder,
     SurfaceType,
-} from "../../src/generated/cairo/enums.js";
+} from "../../src/generated/cairo/cairo.js";
 
 const createTestSurface = (): Surface => {
     return PdfSurface.create("/dev/null", 200, 200);

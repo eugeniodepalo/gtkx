@@ -40,7 +40,16 @@ const ConstraintsVflDemo = () => {
         ]);
 
         try {
-            layout.addConstraintsFromDescriptionv(VFL_CONSTRAINTS, 8, 8, views);
+            (
+                layout as unknown as {
+                    addConstraintsFromDescription(
+                        lines: string[],
+                        hspacing: number,
+                        vspacing: number,
+                        views: Map<string, Gtk.ConstraintTarget>,
+                    ): unknown;
+                }
+            ).addConstraintsFromDescription(VFL_CONSTRAINTS, 8, 8, views);
         } catch (e) {
             console.error("VFL parsing error:", e);
         }

@@ -48,7 +48,7 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
 
             const startIter = buffer.getStartIter();
             const endIter = buffer.getEndIter();
-            const text = buffer.getText(startIter, endIter, false);
+            const text = buffer.getText(startIter, endIter, false) ?? "";
 
             if (providerRef.current) {
                 providerRef.current.loadFromString(text);
@@ -105,11 +105,11 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
         const win = windowRef.current;
         if (!win) return;
         for (const cls of windowClasses) {
-            win.addCssClass(cls);
+            (win as unknown as { addCssClass(name: string): void }).addCssClass(cls);
         }
         return () => {
             for (const cls of windowClasses) {
-                win.removeCssClass(cls);
+                (win as unknown as { removeCssClass(name: string): void }).removeCssClass(cls);
             }
         };
     }, [windowRef, windowClasses]);

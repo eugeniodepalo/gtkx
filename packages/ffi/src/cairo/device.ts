@@ -1,9 +1,9 @@
-import { Device } from "../generated/cairo/device.js";
-import type { DeviceType, Status } from "../generated/cairo/enums.js";
+import type { DeviceType, Status } from "../generated/cairo/cairo.js";
+import { Device } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
 import { DEVICE_T, INT_TYPE, LIB } from "./common.js";
 
-declare module "../generated/cairo/device.js" {
+declare module "../generated/cairo/cairo.js" {
     interface Device {
         status(): Status;
         finish(): void;

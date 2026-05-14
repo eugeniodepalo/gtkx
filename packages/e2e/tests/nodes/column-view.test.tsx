@@ -44,7 +44,7 @@ const getColumnById = (columnView: Gtk.ColumnView, columnId: string): Gtk.Column
     const nItems = columns.getNItems();
 
     for (let i = 0; i < nItems; i++) {
-        const obj = columns.getObject(i) as Gtk.ColumnViewColumn | null;
+        const obj = columns.getItem(i) as Gtk.ColumnViewColumn | null;
         if (obj) {
             if (obj.getId() === columnId) {
                 return obj;
@@ -1241,7 +1241,7 @@ describe("render - ColumnView", () => {
             const titles: string[] = [];
             const nItems = columns.getNItems();
             for (let i = 0; i < nItems; i++) {
-                const column = columns.getObject(i) as Gtk.ColumnViewColumn | null;
+                const column = columns.getItem(i) as Gtk.ColumnViewColumn | null;
                 if (column) {
                     titles.push(column.getTitle() ?? "");
                 }

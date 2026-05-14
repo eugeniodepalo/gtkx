@@ -42,7 +42,9 @@ const VideoPlayerDemo = ({ window }: DemoProps) => {
         dialog.setDefaultFilter(videoFilter);
 
         try {
-            const file = await dialog.openAsync(window.current, null);
+            const file = await (
+                dialog as unknown as { openAsync(parent: Gtk.Window | null, cancellable: null): Promise<Gio.File> }
+            ).openAsync(window.current, null);
             setVideoFile(file);
         } catch {
             /* User cancelled */

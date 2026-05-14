@@ -1,3 +1,4 @@
+import type * as Gdk from "@gtkx/ffi/gdk";
 import type { GType } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../metadata.js";
@@ -20,7 +21,7 @@ export class EventControllerNode<
         containerClass: typeof Gtk.EventController,
     ): Gtk.EventController {
         if (containerClass === Gtk.DropTarget) {
-            const actions = (props.actions as number | undefined) ?? 0;
+            const actions = (props.actions as Gdk.DragAction | undefined) ?? (0 as Gdk.DragAction);
             return Gtk.DropTarget.new(G_TYPE_INVALID, actions);
         }
 

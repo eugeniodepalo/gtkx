@@ -642,7 +642,7 @@ describe("MethodBodyWriter", () => {
             })(w);
 
             const output = w.toString();
-            expect(output).toContain("const error = createRef<NativeHandle | null>(null)");
+            expect(output).toContain("const error = createRef(null)");
             expect(output).toContain("if (error.value !== null)");
             expect(output).toContain("NativeError");
         });
@@ -714,7 +714,7 @@ describe("MethodBodyWriter", () => {
 
             const output = w.toString();
             expect(output).toContain("const ptr = call(");
-            expect(output).toContain("getNativeObject(ptr as NativeHandle) as Button");
+            expect(output).toContain("return getNativeObject(ptr);");
         });
 
         it("generates factory method with class wrap for boxed types", () => {
@@ -733,7 +733,7 @@ describe("MethodBodyWriter", () => {
             })(w);
 
             const output = w.toString();
-            expect(output).toContain("getNativeObject(ptr as NativeHandle, TextIter)");
+            expect(output).toContain("getNativeObject(ptr, TextIter)");
         });
 
         it("generates factory method with error handling", () => {
@@ -752,7 +752,7 @@ describe("MethodBodyWriter", () => {
             })(w);
 
             const output = w.toString();
-            expect(output).toContain("const error = createRef<NativeHandle | null>(null)");
+            expect(output).toContain("const error = createRef(null)");
             expect(output).toContain("if (error.value !== null)");
             expect(output).toContain("NativeError");
         });

@@ -1,4 +1,4 @@
-import { Surface } from "../generated/cairo/surface.js";
+import { Surface } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
 import { wrapHandle } from "../object.js";
 import { createFileSurface, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";

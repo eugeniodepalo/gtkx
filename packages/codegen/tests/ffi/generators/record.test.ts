@@ -77,9 +77,7 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain(
-                "registerNativeClass(Rectangle, gdk_rectangle_get_type() as unknown as GObject.GType);",
-            );
+            expect(code).toContain("registerNativeClass(Rectangle, gdk_rectangle_get_type());");
             expect(code).toContain("export const gdk_rectangle_get_type");
         });
 
@@ -151,9 +149,7 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain(
-                "registerNativeClass(Rectangle, gdk_rectangle_get_type() as unknown as GObject.GType);",
-            );
+            expect(code).toContain("registerNativeClass(Rectangle, gdk_rectangle_get_type());");
         });
     });
 

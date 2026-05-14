@@ -15,7 +15,11 @@ export type VariableOptions = {
     doc?: string;
 };
 
-/** Builder that emits a variable statement (`const`/`let`) with optional type annotation and initializer. */
+/**
+ * Builder that emits a variable statement (`const`/`let`). In TS mode the
+ * declaration carries the optional `type` annotation; in JS mode the type
+ * is dropped.
+ */
 export class VariableStatementBuilder implements Builder {
     constructor(
         readonly name: string,
@@ -27,7 +31,7 @@ export class VariableStatementBuilder implements Builder {
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.exported) writer.write("export ");
         writer.write(`${this.opts.kind ?? "const"} ${this.name}`);
-        if (this.opts.type) {
+        if (this.opts.type && writer.getMode() !== "js") {
             writer.write(": ");
             writeWritable(writer, this.opts.type);
         }

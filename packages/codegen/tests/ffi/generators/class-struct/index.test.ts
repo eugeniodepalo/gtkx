@@ -54,7 +54,7 @@ function callbackField(
 }
 
 describe("ClassStructGenerator", () => {
-    it("emits an empty stub when the record has no callback fields", () => {
+    it("emits an empty stub const when the record has no callback fields", () => {
         const { generator, file } = createTestSetup();
         const record = createNormalizedRecord({
             name: "OpaqueClass",
@@ -64,7 +64,6 @@ describe("ClassStructGenerator", () => {
         });
         expect(generator.generate(record)).toBe(true);
         const output = stringify(file);
-        expect(output).toContain("export interface OpaqueClass");
         expect(output).toContain("export const OpaqueClass");
     });
 
@@ -155,7 +154,7 @@ describe("ClassStructGenerator", () => {
         });
         expect(generator.generate(record)).toBe(true);
         const output = stringify(file);
-        expect(output).toContain("export interface ObjectClass");
+        expect(output).toContain("export const ObjectClass");
         expect(output).not.toContain('vfuncName: "constructor"');
         expect(skipMessages).toHaveLength(1);
         expect(skipMessages[0]).toContain("ObjectClass.constructor");

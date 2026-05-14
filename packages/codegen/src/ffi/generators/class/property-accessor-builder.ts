@@ -149,17 +149,17 @@ export class PropertyAccessorBuilder {
         getBody: (writer: Writer) => void;
         setBody?: (writer: Writer) => void;
     }): (writer: Writer) => void {
-        const { className, propertyName, returnType, setType, getBody, setBody } = opts;
+        const { className, propertyName, getBody, setBody } = opts;
         return (writer) => {
             writer.writeLine(`globalThis.Object.defineProperty(${className}.prototype, "${propertyName}", {`);
             writer.withIndent(() => {
-                writer.writeLine(`get(this: ${className}): ${returnType} {`);
+                writer.writeLine("get() {");
                 writer.withIndent(() => {
                     getBody(writer);
                 });
                 writer.writeLine("},");
                 if (setBody) {
-                    writer.writeLine(`set(this: ${className}, value: ${setType}) {`);
+                    writer.writeLine("set(value) {");
                     writer.withIndent(() => {
                         setBody(writer);
                     });
@@ -177,25 +177,9 @@ export class PropertyAccessorBuilder {
 
         const delegate = this.resolveDelegateGetter(prop, typeMapping);
         if (delegate) {
-            const { methodName, method } = delegate;
-            const methodReturnTs = this.ffiMapper.mapType(
-                method.returnType,
-                false,
-                method.returnType.transferOwnership,
-            ).ts;
-
-            const needsCast = methodReturnTs !== typeMapping.ts;
-            let returnType = typeMapping.ts;
-            if (method.returnType.nullable) {
-                returnType = `${returnType} | null`;
-            }
-
+            const { methodName } = delegate;
             return (writer) => {
-                if (needsCast) {
-                    writer.writeLine(`return this.${methodName}() as ${returnType};`);
-                } else {
-                    writer.writeLine(`return this.${methodName}();`);
-                }
+                writer.writeLine(`return this.${methodName}();`);
             };
         }
 
@@ -205,17 +189,9 @@ export class PropertyAccessorBuilder {
     private buildSetBody(prop: GirProperty, typeMapping: MappedType): ((writer: Writer) => void) | undefined {
         const delegate = this.resolveDelegateSetter(prop);
         if (delegate) {
-            const { methodName, method } = delegate;
-            const setterParam = method.parameters[0];
-            const setterParamNullable = setterParam?.nullable ?? false;
-            const propertyNullable = prop.defaultValue?.kind === "null";
-            const needsCast = propertyNullable && !setterParamNullable && setterParam !== undefined;
-            const paramMapping = setterParam
-                ? this.ffiMapper.mapType(setterParam.type, false, setterParam.type.transferOwnership)
-                : null;
-            const callArgument = needsCast && paramMapping ? `value as ${paramMapping.ts}` : "value";
+            const { methodName } = delegate;
             return (writer) => {
-                writer.writeLine(`this.${methodName}(${callArgument});`);
+                writer.writeLine(`this.${methodName}(value);`);
             };
         }
 
@@ -326,7 +302,7 @@ export class PropertyAccessorBuilder {
             this.imports.addImport("./value.js", ["Value"]);
             this.imports.addImport("./functions.js", ["typeFromName"]);
         } else {
-            this.imports.addNamespaceImport("../gobject/index.js", "GObject");
+            this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
         }
 
         let returnType = typeMapping.ts;
@@ -355,14 +331,6 @@ export class PropertyAccessorBuilder {
                 writer.writeLine(
                     `return gvalue.${getterInfo.getMethod}(${getterInfo.tsType}, ${gobjectPrefix}typeFromName("${getterInfo.gtypeName}"));`,
                 );
-            } else if (getterInfo.isFundamental) {
-                writer.writeLine(`return gvalue.${getterInfo.getMethod}() as ${returnType};`);
-            } else if (getterInfo.isClass || getterInfo.isInterface) {
-                writer.writeLine(`return gvalue.${getterInfo.getMethod}() as ${returnType};`);
-            } else if (getterInfo.isEnum || getterInfo.isFlags) {
-                writer.writeLine(`return gvalue.${getterInfo.getMethod}() as ${returnType};`);
-            } else if (getterInfo.isString) {
-                writer.writeLine(`return gvalue.${getterInfo.getMethod}() as ${returnType};`);
             } else {
                 writer.writeLine(`return gvalue.${getterInfo.getMethod}();`);
             }
@@ -377,7 +345,7 @@ export class PropertyAccessorBuilder {
             this.imports.addImport("./value.js", ["Value"]);
             this.imports.addImport("./functions.js", ["typeFromName"]);
         } else {
-            this.imports.addNamespaceImport("../gobject/index.js", "GObject");
+            this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
         }
 
         const gobjectPrefix = this.options.namespace === "GObject" ? "" : "GObject.";
@@ -393,14 +361,10 @@ export class PropertyAccessorBuilder {
                 } else {
                     writer.writeLine(`const gvalue = ${gobjectPrefix}Value.${setterInfo.staticConstructor}(value);`);
                 }
-            } else if (setterInfo.isFundamental) {
-                writer.writeLine(`const gvalue = new ${gobjectPrefix}Value();`);
-                writer.writeLine(`gvalue.init(${gobjectPrefix}typeFromName("${setterInfo.gtypeName}"));`);
-                writer.writeLine(`gvalue.${setterInfo.setMethod}(value);`);
             } else {
                 writer.writeLine(`const gvalue = new ${gobjectPrefix}Value();`);
                 writer.writeLine(`gvalue.init(${gobjectPrefix}typeFromName("${setterInfo.gtypeName}"));`);
-                writer.writeLine(`gvalue.${setterInfo.setMethod}(value as number);`);
+                writer.writeLine(`gvalue.${setterInfo.setMethod}(value);`);
             }
 
             callWriter(writer);

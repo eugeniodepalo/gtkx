@@ -14,6 +14,8 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent, waitFor } from "../src/index.js";
 import { isEditable } from "../src/widget.js";
 
+const widgetHasFocus = (w: Gtk.Widget): boolean => (w as unknown as { hasFocus(): boolean }).hasFocus();
+
 describe("userEvent.click", () => {
     it("emits clicked signal on button", async () => {
         const handleClick = vi.fn();
@@ -158,7 +160,7 @@ describe("userEvent.tab", () => {
         await userEvent.tab(first);
 
         const second = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
-        expect(second.hasFocus()).toBe(true);
+        expect(widgetHasFocus(second)).toBe(true);
     });
 
     it("moves focus backward with shift option", async () => {
@@ -174,7 +176,7 @@ describe("userEvent.tab", () => {
         await userEvent.tab(second, { shift: true });
 
         const first = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
-        expect(first.hasFocus()).toBe(true);
+        expect(widgetHasFocus(first)).toBe(true);
     });
 });
 

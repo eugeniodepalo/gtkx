@@ -61,7 +61,7 @@ export class InterfaceGenerator {
         if (isGObjectNamespace) {
             this.file.addImport("./object.js", ["Object"]);
         } else {
-            this.file.addNamespaceImport("../gobject/index.js", "GObject");
+            this.file.addNamespaceImport("../gobject/gobject.js", "GObject");
         }
 
         const doc = buildJsDocStructure(iface.doc, this.options.namespace);
@@ -109,7 +109,7 @@ export class InterfaceGenerator {
                 this.file.addImport(`./${toKebabCase(originalName)}.js`, [prereqName]);
             } else {
                 extendsList.push(`${ns}.${prereqName}.ConstructorProperties`);
-                this.file.addNamespaceImport(`../${ns.toLowerCase()}/index.js`, ns);
+                this.file.addNamespaceImport(`../${ns.toLowerCase()}/${ns.toLowerCase()}.js`, ns);
             }
         }
         if (extendsList.length === 0) {

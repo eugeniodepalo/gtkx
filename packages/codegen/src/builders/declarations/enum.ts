@@ -16,7 +16,18 @@ export type EnumOptions = {
     const?: boolean;
 };
 
-/** Builder that emits a TypeScript enum declaration with named members. */
+/**
+ * Builder that emits an enum.
+ *
+ * In TS mode the output is a classic `enum Name { ... }` declaration. In
+ * JS mode the output is a frozen `const` object literal matching the
+ * `(typeof Foo)[keyof typeof Foo]` shape the .d.ts contract publishes.
+ *
+ * For the JS path, members without an explicit `value` use a running
+ * ordinal that advances by 1 each member; an explicit numeric value
+ * resets the ordinal so the next implicit member continues from that
+ * value plus one.
+ */
 export class EnumDeclarationBuilder implements Builder {
     private readonly members: EnumMember[] = [];
 
@@ -33,6 +44,32 @@ export class EnumDeclarationBuilder implements Builder {
 
     /** @inheritdoc */
     write(writer: Writer): void {
+        if (writer.getMode() === "js") {
+            this.writeJs(writer);
+            return;
+        }
+        this.writeTs(writer);
+    }
+
+    private writeJs(writer: Writer): void {
+        writeJsDoc(writer, this.opts.doc);
+        if (this.opts.exported) writer.write("export ");
+        writer.write(`const ${this.name} = globalThis.Object.freeze(`);
+        writer.writeBlock(() => {
+            let nextOrdinal = 0;
+            for (const member of this.members) {
+                writeJsDoc(writer, member.doc);
+                writer.write(`${member.name}: `);
+                const literal = this.resolveLiteral(member.value, nextOrdinal);
+                writer.write(literal.text);
+                nextOrdinal = literal.nextOrdinal;
+                writer.writeLine(",");
+            }
+        });
+        writer.writeLine(");");
+    }
+
+    private writeTs(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.exported) writer.write("export ");
         if (this.opts.const) writer.write("const ");
@@ -48,6 +85,23 @@ export class EnumDeclarationBuilder implements Builder {
             }
         });
         writer.newLine();
+    }
+
+    private resolveLiteral(
+        value: number | string | undefined,
+        nextOrdinal: number,
+    ): { text: string; nextOrdinal: number } {
+        if (value === undefined) {
+            return { text: String(nextOrdinal), nextOrdinal: nextOrdinal + 1 };
+        }
+        if (typeof value === "number") {
+            return { text: String(value), nextOrdinal: value + 1 };
+        }
+        const parsed = Number(value.trim());
+        if (Number.isFinite(parsed)) {
+            return { text: value, nextOrdinal: parsed + 1 };
+        }
+        return { text: value, nextOrdinal };
     }
 }
 

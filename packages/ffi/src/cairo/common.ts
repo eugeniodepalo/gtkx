@@ -1,5 +1,5 @@
 import { type Arg, createRef, type NativeHandle } from "@gtkx/native";
-import { PathDataType } from "../generated/cairo/enums.js";
+import { PathDataType } from "../generated/cairo/cairo.js";
 import { alloc, call, read, t, write } from "../native.js";
 
 export const LIB = "libcairo.so.2";

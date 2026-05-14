@@ -41,7 +41,7 @@ const ThemesDemo = ({ window }: DemoProps) => {
         const styleManager = Adw.StyleManager.getDefault();
         if (settings && styleManager) {
             originalSettingsRef.current = {
-                themeName: settings.gtkThemeName,
+                themeName: settings.gtkThemeName ?? "",
                 colorScheme: styleManager.getColorScheme(),
             };
         }

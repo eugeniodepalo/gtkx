@@ -9,11 +9,23 @@ type ImportEntry = {
 };
 
 /**
- * Collects and deduplicates import declarations, then writes them sorted by specifier.
- * Handles value imports, type-only imports, and namespace imports.
+ * Collects and deduplicates import declarations, then writes them sorted by
+ * specifier. Handles value imports, type-only imports, namespace imports,
+ * and type-only namespace imports.
+ *
+ * When `mode` is `"js"`, type-only imports and intra-namespace `./*`
+ * specifiers are dropped at write time because the consolidated
+ * per-namespace JavaScript file collapses those imports into same-file
+ * references and has no need for type-only declarations.
  */
 export class ImportRegistry implements Builder {
     private readonly entries = new Map<string, ImportEntry>();
+    private mode: "ts" | "js" = "ts";
+
+    /** Configure the emission mode. */
+    setMode(mode: "ts" | "js"): void {
+        this.mode = mode;
+    }
 
     /** Register value imports for the given module specifier. */
     add(specifier: string, names: string[]): void {
@@ -44,9 +56,18 @@ export class ImportRegistry implements Builder {
         entry.namespaceTypeOnly = true;
     }
 
-    /** Whether the registry contains no import entries. */
+    /** Whether the registry would emit any import statements at write time. */
     get isEmpty(): boolean {
-        return this.entries.size === 0;
+        for (const [specifier, entry] of this.entries) {
+            if (this.mode === "js" && specifier.startsWith("./")) continue;
+            if (entry.namespaceAlias) {
+                if (this.mode === "js" && entry.namespaceTypeOnly) continue;
+                return false;
+            }
+            if (entry.names.size > 0) return false;
+            if (this.mode !== "js" && entry.typeOnlyNames.size > 0) return false;
+        }
+        return true;
     }
 
     /** Write all collected imports, sorted alphabetically by specifier. */
@@ -54,7 +75,10 @@ export class ImportRegistry implements Builder {
         const sorted = [...this.entries.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 
         for (const [specifier, entry] of sorted) {
+            if (this.mode === "js" && specifier.startsWith("./")) continue;
+
             if (entry.namespaceAlias) {
+                if (this.mode === "js" && entry.namespaceTypeOnly) continue;
                 const typePrefix = entry.namespaceTypeOnly ? "type " : "";
                 writer.writeLine(`import ${typePrefix}* as ${entry.namespaceAlias} from "${specifier}";`);
                 continue;
@@ -66,11 +90,13 @@ export class ImportRegistry implements Builder {
             const bothNames = [...entry.names].filter((n) => entry.typeOnlyNames.has(n)).sort(compareNames);
 
             const parts: string[] = [];
-            for (const name of typeOnlyNames) {
-                parts.push(`type ${name}`);
-            }
-            for (const name of bothNames) {
-                parts.push(`type ${name}`);
+            if (this.mode !== "js") {
+                for (const name of typeOnlyNames) {
+                    parts.push(`type ${name}`);
+                }
+                for (const name of bothNames) {
+                    parts.push(`type ${name}`);
+                }
             }
             for (const name of valueNames) {
                 parts.push(name);

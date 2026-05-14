@@ -1,8 +1,6 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
-import type { FontType, Status, TextClusterFlags } from "../generated/cairo/enums.js";
-import { FontFace } from "../generated/cairo/font-face.js";
-import type { FontOptions } from "../generated/cairo/font-options.js";
-import { ScaledFont } from "../generated/cairo/scaled-font.js";
+import type { FontOptions, FontType, Status, TextClusterFlags } from "../generated/cairo/cairo.js";
+import { FontFace, ScaledFont } from "../generated/cairo/cairo.js";
 import { alloc, call, read, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import {
@@ -29,7 +27,7 @@ import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import type { Matrix } from "./matrix.js";
 import { allocMatrix } from "./matrix.js";
 
-declare module "../generated/cairo/scaled-font.js" {
+declare module "../generated/cairo/cairo.js" {
     interface ScaledFont {
         status(): Status;
         extents(): FontExtents;
@@ -54,12 +52,7 @@ type ScaledFontStatic = {
 
 const ScaledFontWithStatics = ScaledFont as typeof ScaledFont & ScaledFontStatic;
 
-ScaledFontWithStatics.create = (
-    fontFace: FontFace,
-    fontMatrix: Matrix,
-    ctm: Matrix,
-    options: FontOptions,
-): ScaledFont => {
+const scaledFontCreate = (fontFace: FontFace, fontMatrix: Matrix, ctm: Matrix, options: FontOptions): ScaledFont => {
     const ptr = call(
         LIB,
         "cairo_scaled_font_create",
@@ -73,6 +66,8 @@ ScaledFontWithStatics.create = (
     ) as NativeHandle;
     return getNativeObject(ptr, ScaledFont) as ScaledFont;
 };
+
+ScaledFontWithStatics.create = scaledFontCreate as unknown as ScaledFontStatic["create"];
 
 ScaledFont.prototype.status = function (): Status {
     return call(
@@ -197,7 +192,7 @@ ScaledFont.prototype.getType = function (): FontType {
     ) as FontType;
 };
 
-declare module "../generated/cairo/scaled-font.js" {
+declare module "../generated/cairo/cairo.js" {
     interface ScaledFont {
         textToGlyphs(x: number, y: number, text: string): [CairoGlyph[], CairoTextCluster[], TextClusterFlags];
         ftLockFace(): NativeHandle;
@@ -273,7 +268,7 @@ ScaledFont.prototype.textToGlyphs = function (
         call(LIB, "cairo_text_cluster_free", [{ type: CLUSTER_BUF_T, value: clustersRef.value }], t.void);
     }
 
-    return [glyphs, clusters, clusterFlagsRef.value];
+    return [glyphs, clusters, clusterFlagsRef.value as 0];
 };
 
 ScaledFont.prototype.ftLockFace = function (): NativeHandle {

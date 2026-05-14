@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 const getBufferText = (buffer: GtkSource.Buffer): string => {
     const startIter = buffer.getStartIter();
     const endIter = buffer.getEndIter();
-    return buffer.getText(startIter, endIter, true);
+    return buffer.getText(startIter, endIter, true) ?? "";
 };
 
 describe("render - SourceView", () => {

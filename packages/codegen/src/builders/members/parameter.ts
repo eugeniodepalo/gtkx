@@ -10,7 +10,10 @@ export type ParameterOptions = {
     defaultValue?: string;
 };
 
-/** Builder that emits a typed parameter declaration (e.g. `name: Type`, `...rest: Type[]`). */
+/**
+ * Builder that emits a parameter declaration. In TS mode the parameter
+ * carries a type annotation; in JS mode the type is dropped.
+ */
 export class ParameterBuilder implements Builder {
     constructor(
         readonly name: string,
@@ -21,6 +24,12 @@ export class ParameterBuilder implements Builder {
     write(writer: Writer): void {
         if (this.opts.rest) writer.write("...");
         writer.write(this.name);
+        if (writer.getMode() === "js") {
+            if (this.opts.defaultValue) {
+                writer.write(` = ${this.opts.defaultValue}`);
+            }
+            return;
+        }
         if (this.opts.optional && !this.opts.defaultValue) writer.write("?");
         writer.write(": ");
         writeWritable(writer, this.opts.type);

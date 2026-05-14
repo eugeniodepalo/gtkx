@@ -1,12 +1,10 @@
 import { findObjectProperty, type NativeHandle } from "@gtkx/native";
-import type { GType } from "../generated/gobject/aliases.js";
-import { Object as GObject } from "../generated/gobject/object.js";
-import type { ParamSpec } from "../generated/gobject/param-spec.js";
-import { Value } from "../generated/gobject/value.js";
+import type { GType, ParamSpec } from "../generated/gobject/gobject.js";
+import { Object as GObject, Value } from "../generated/gobject/gobject.js";
 import { call, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 
-declare module "../generated/gobject/object.js" {
+declare module "../generated/gobject/gobject.js" {
     namespace Object {
         /**
          * Creates a new instance of a GObject subtype and sets its properties
@@ -167,23 +165,14 @@ GObject.prototype.disconnect = function disconnect(handlerId: number): void {
     );
 };
 
-GObject.prototype.on = function on(
-    this: GObject,
-    sigName: string,
-    callback: Listener,
-    after?: boolean,
-): NodeJS.EventEmitter {
-    const handlerId = this.connect(sigName, callback, after);
+const onImpl = function (this: GObject, sigName: string, callback: Listener, after?: boolean): NodeJS.EventEmitter {
+    const handlerId = (this as unknown as { connect(...args: unknown[]): number }).connect(sigName, callback, after);
     trackListener(this, sigName, callback, handlerId);
     return this as unknown as NodeJS.EventEmitter;
 };
+GObject.prototype.on = onImpl as unknown as GObject["on"];
 
-GObject.prototype.once = function once(
-    this: GObject,
-    sigName: string,
-    callback: Listener,
-    after?: boolean,
-): NodeJS.EventEmitter {
+const onceImpl = function (this: GObject, sigName: string, callback: Listener, after?: boolean): NodeJS.EventEmitter {
     let handlerId = 0;
     const wrapped: Listener = (...args: unknown[]) => {
         untrackListener(this, sigName, wrapped);
@@ -191,13 +180,14 @@ GObject.prototype.once = function once(
         this.disconnect(handlerId);
         return callback(...args);
     };
-    handlerId = this.connect(sigName, wrapped, after);
+    handlerId = (this as unknown as { connect(...args: unknown[]): number }).connect(sigName, wrapped, after);
     trackListener(this, sigName, wrapped, handlerId);
     trackListener(this, sigName, callback, handlerId);
     return this as unknown as NodeJS.EventEmitter;
 };
+GObject.prototype.once = onceImpl as unknown as GObject["once"];
 
-GObject.prototype.off = function off(this: GObject, sigName: string, callback: Listener): NodeJS.EventEmitter {
+const offImpl = function (this: GObject, sigName: string, callback: Listener): NodeJS.EventEmitter {
     const handlerId = findHandlerId(this, sigName, callback);
     if (handlerId !== undefined) {
         this.disconnect(handlerId);
@@ -205,6 +195,7 @@ GObject.prototype.off = function off(this: GObject, sigName: string, callback: L
     }
     return this as unknown as NodeJS.EventEmitter;
 };
+GObject.prototype.off = offImpl as unknown as GObject["off"];
 
 const resolvePropertyValueType = (obj: GObject, propertyName: string): GType => {
     const pspecHandle = findObjectProperty(obj.handle, propertyName);

@@ -181,21 +181,15 @@ export class CallExpressionBuilder {
      * For hashtable types, generates: `Array.from(value)` to convert Map to array of tuples.
      * For primitives, just returns the value name.
      */
-    private buildHandleAccessExpression(valueName: string, mappedType: MappedType, nullable: boolean): string {
-        const isUnknownType = mappedType.ts === "unknown";
-        if (isUnknownType) {
-            return nullable
-                ? `(${valueName} as { handle: NativeHandle } | null)?.handle`
-                : `(${valueName} as { handle: NativeHandle }).handle`;
-        }
+    private buildHandleAccessExpression(valueName: string, _mappedType: MappedType, nullable: boolean): string {
         return nullable ? `${valueName}?.handle` : `${valueName}.handle`;
     }
 
     private buildHashTableExpression(valueName: string, mappedType: MappedType): string {
         if (isHandleBackedType(mappedType.ffi.valueType?.type)) {
-            return `${valueName} ? Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
+            return `${valueName} ? globalThis.Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
         }
-        return `${valueName} ? Array.from(${valueName}) : null`;
+        return `${valueName} ? globalThis.Array.from(${valueName}) : null`;
     }
 
     buildValueExpression(valueName: string, mappedType: MappedType, nullable = false): string {
@@ -233,7 +227,7 @@ export class CallExpressionBuilder {
         return (writer) => {
             writer.writeLine("if (error.value !== null) {");
             writer.withIndent(() => {
-                writer.writeLine(`throw new NativeError(getNativeObject(error.value as NativeHandle, ${gerrorRef}));`);
+                writer.writeLine(`throw new NativeError(getNativeObject(error.value, ${gerrorRef}));`);
             });
             writer.writeLine("}");
         };

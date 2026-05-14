@@ -1,9 +1,6 @@
 import { type Type as FfiType, getInstanceGType, type NativeHandle } from "@gtkx/native";
-import type { GType } from "../generated/gobject/aliases.js";
-import { typeFromName, typeFundamental, typeName } from "../generated/gobject/functions.js";
-import type { Object as GObject } from "../generated/gobject/object.js";
-import type { ParamSpec } from "../generated/gobject/param-spec.js";
-import { Value } from "../generated/gobject/value.js";
+import type { Object as GObject, GType, ParamSpec } from "../generated/gobject/gobject.js";
+import { typeFromName, typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
 import type { NativeClass, NativeObject } from "../native.js";
 import { call, read, t } from "../native.js";
 import { setValueFactory } from "../object.js";
@@ -34,7 +31,7 @@ function getStrvGType(): GType {
     return cachedStrvGType;
 }
 
-declare module "../generated/gobject/value.js" {
+declare module "../generated/gobject/gobject.js" {
     interface Value {
         /**
          * Gets the Type of the value stored in this GValue.
@@ -225,7 +222,11 @@ Value.prototype.holds = function (gtype: GType): boolean {
     return this.getType() === gtype;
 };
 
-Value.prototype.getBoxed = function <T extends NativeObject>(targetType: NativeClass<T>, targetGType: GType): T | null {
+const getBoxedImpl = function <T extends NativeObject>(
+    this: Value,
+    targetType: NativeClass<T>,
+    targetGType: GType,
+): T | null {
     const glibTypeName = typeName(targetGType);
     if (!glibTypeName) {
         throw new Error(`Cannot resolve type name for boxed gtype ${String(targetGType)}`);
@@ -239,6 +240,7 @@ Value.prototype.getBoxed = function <T extends NativeObject>(targetType: NativeC
     if (ptr === null) return null;
     return getNativeObject(ptr as NativeHandle, targetType);
 };
+Value.prototype.getBoxed = getBoxedImpl as unknown as Value["getBoxed"];
 
 Value.prototype.getStrv = function (): string[] {
     return (g_value_get_boxed_strv(this.handle) as string[] | null) ?? [];

@@ -54,7 +54,7 @@ const MarkupDemo = () => {
                     if (buffer) {
                         const startIter = buffer.getStartIter();
                         const endIter = buffer.getEndIter();
-                        markupRef.current = buffer.getText(startIter, endIter, false);
+                        markupRef.current = buffer.getText(startIter, endIter, false) ?? "";
                     }
                 }
                 applyMarkup();

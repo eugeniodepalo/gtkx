@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 const getBufferText = (buffer: Gtk.TextBuffer): string => {
     const startIter = buffer.getStartIter();
     const endIter = buffer.getEndIter();
-    return buffer.getText(startIter, endIter, true);
+    return buffer.getText(startIter, endIter, true) ?? "";
 };
 
 const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number): boolean => {

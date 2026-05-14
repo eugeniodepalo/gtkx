@@ -1,21 +1,9 @@
-export * from "../generated/cairo/enums.js";
-export { FontFace } from "../generated/cairo/font-face.js";
-export * from "../generated/cairo/functions.js";
-export { Glyph } from "../generated/cairo/glyph.js";
-export { default } from "../generated/cairo/index.js";
-export { Path } from "../generated/cairo/path.js";
-export { Rectangle } from "../generated/cairo/rectangle.js";
-export { RectangleInt } from "../generated/cairo/rectangle-int.js";
-export { ScaledFont } from "../generated/cairo/scaled-font.js";
-export { TextCluster } from "../generated/cairo/text-cluster.js";
+export * from "../generated/cairo/cairo.js";
 
 import "./device.js";
 import "./font-face.js";
 import "./scaled-font.js";
 
-export { Device } from "../generated/cairo/device.js";
-export { Pattern } from "../generated/cairo/pattern.js";
-export { Surface } from "../generated/cairo/surface.js";
 export type { CairoGlyph, CairoTextCluster, PathData } from "./common.js";
 export { Context, type FontExtents, statusToString, type TextExtents } from "./context.js";
 export { FontOptions } from "./font-options.js";

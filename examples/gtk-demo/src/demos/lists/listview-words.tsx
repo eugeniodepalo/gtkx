@@ -65,7 +65,10 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
         const dialog = new Gtk.FileDialog();
         dialog.setTitle("Open file");
         try {
-            const file = await dialog.openAsync(window.current, null);
+            const dialogWithOpenAsync = dialog as unknown as {
+                openAsync(parent: Gtk.Window | null, cancellable: null): Promise<{ getPath(): string | null }>;
+            };
+            const file = await dialogWithOpenAsync.openAsync(window.current, null);
             const path = file.getPath();
             if (path) {
                 await loadFile(path);

@@ -4,6 +4,8 @@ export {
     loadAndRewrite,
     namespaceFromRawFilename,
     rewriteDefaultImportsToNamespace,
+    rewriteEnumsToConstObjects,
     rewriteModuleKeywordToNamespace,
     rewriteNamespaceDeclarations,
+    unwrapOuterNamespace,
 } from "./rewrite.js";

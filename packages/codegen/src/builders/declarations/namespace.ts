@@ -9,9 +9,10 @@ export type NamespaceOptions = {
 };
 
 /**
- * Builder that emits a TypeScript namespace declaration containing
- * arbitrary nested builders (typically `interface` declarations forming
- * a class-companion namespace).
+ * Builder that emits a TypeScript namespace declaration (typically used to
+ * host class-companion `interface` blocks like `Foo.ConstructorProperties`).
+ * In JS mode the declaration is omitted because the namespace lives in the
+ * companion `.d.ts` contract.
  */
 export class NamespaceDeclarationBuilder implements Builder {
     private readonly members: Builder[] = [];
@@ -34,6 +35,7 @@ export class NamespaceDeclarationBuilder implements Builder {
 
     /** @inheritdoc */
     write(writer: Writer): void {
+        if (writer.getMode() === "js") return;
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.exported) writer.write("export ");
         writer.write(`namespace ${this.name} `);

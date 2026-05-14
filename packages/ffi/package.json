@@ -47,8 +47,8 @@
             "default": "./dist/gtk/index.js"
         },
         "./*": {
-            "types": "./dist/generated/*/index.d.ts",
-            "default": "./dist/generated/*/index.js"
+            "types": "./dist/generated/*/*.d.ts",
+            "default": "./dist/generated/*/*.js"
         }
     },
     "files": [
@@ -59,11 +59,12 @@
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "tsc -b && cp ../../README.md .",
+        "build": "tsc -b && cp ../../README.md . && pnpm run copy-generated-dts",
+        "copy-generated-dts": "node scripts/copy-generated-dts.mjs",
         "conformance": "tsc -p tsconfig.conformance.json",
         "test": "vitest run",
         "coverage": "vitest run --coverage",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "typecheck": "tsc -b --emitDeclarationOnly && pnpm run copy-generated-dts"
     },
     "dependencies": {
         "@gtkx/native": "workspace:*"

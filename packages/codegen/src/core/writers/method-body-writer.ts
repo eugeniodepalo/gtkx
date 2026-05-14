@@ -29,7 +29,6 @@ import {
     buildCallableShape,
     type CallableShape,
     type HiddenOut,
-    isGTypeBrand,
     type ParamMapping,
     type ShapeCallArg,
 } from "./callable-shape.js";
@@ -62,7 +61,8 @@ export const addTypeImports = (
     for (const imp of typeImports) {
         if (!imp.isExternal && skipNames?.has(imp.transformedName)) continue;
         if (imp.isExternal) {
-            imports.addNamespaceImport(`../${imp.namespace.toLowerCase()}/index.js`, imp.namespace);
+            const ns = imp.namespace.toLowerCase();
+            imports.addNamespaceImport(`../${ns}/${ns}.js`, imp.namespace);
         } else {
             switch (imp.kind) {
                 case "enum":
@@ -684,7 +684,7 @@ export class MethodBodyWriter {
         this.writeCallbackWrapperDeclarations(writer, callArguments);
 
         if (options.throws) {
-            writer.writeLine("const error = createRef<NativeHandle | null>(null);");
+            writer.writeLine("const error = createRef(null);");
         }
 
         for (const hidden of shape.hiddenOuts) {
@@ -722,16 +722,12 @@ export class MethodBodyWriter {
         }
 
         if (wrapInfo.needsHashTableWrap) {
-            const tsReturnType = formatNullableReturn(
-                ownClassName ?? shape.originalReturnTsType,
-                shape.originalReturnNullable,
-            );
-            writeCall("tuples", "[unknown, unknown][]");
+            writeCall("tuples", null);
             this.writeRefHandleRewrap(writer, shape);
             if (shape.originalReturnNullable) {
                 writer.writeLine("if (tuples === null) return null;");
             }
-            writer.writeLine(`return new Map(tuples) as ${tsReturnType};`);
+            writer.writeLine("return new Map(tuples);");
             return;
         }
 
@@ -744,7 +740,7 @@ export class MethodBodyWriter {
         shape: CallableShape,
         callArguments: CallArgument[],
     ): (target: string | null, cast: string | null) => void {
-        return (target, cast) => {
+        return (target, _cast) => {
             if (target === null) {
                 writer.write("return ");
             } else {
@@ -758,9 +754,6 @@ export class MethodBodyWriter {
                 selfArg: options.self,
                 hasVarargs: options.hasVarargs,
             })(writer);
-            if (cast !== null) {
-                writer.write(` as ${cast}`);
-            }
             writer.write(";");
             writer.newLine();
         };
@@ -779,15 +772,15 @@ export class MethodBodyWriter {
         }
         if (wrapInfo.needsInterfaceWrap) {
             this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
-            writer.writeLine(`return getNativeObjectAsInterface(ptr as NativeHandle, ${baseReturnType});`);
+            writer.writeLine(`return getNativeObjectAsInterface(ptr, ${baseReturnType});`);
             return;
         }
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
         const needsTypedWrap = wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsStructWrap;
         if (needsTypedWrap) {
-            writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${baseReturnType});`);
+            writer.writeLine(`return getNativeObject(ptr, ${baseReturnType});`);
         } else {
-            writer.writeLine(`return getNativeObject(ptr as NativeHandle) as ${baseReturnType};`);
+            writer.writeLine("return getNativeObject(ptr);");
         }
     }
 
@@ -795,14 +788,10 @@ export class MethodBodyWriter {
         this.writeRefHandleRewrap(writer, shape);
         if (wrapInfo.arrayItemIsInterface) {
             this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
-            writer.writeLine(
-                `return arr.map((item) => getNativeObjectAsInterface(item as NativeHandle, ${wrapInfo.arrayItemType}));`,
-            );
+            writer.writeLine(`return arr.map((item) => getNativeObjectAsInterface(item, ${wrapInfo.arrayItemType}));`);
         } else {
             this.imports.addImport("../../registry.js", ["getNativeObject"]);
-            writer.writeLine(
-                `return arr.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType});`,
-            );
+            writer.writeLine("return arr.map((item) => getNativeObject(item));");
         }
     }
 
@@ -811,13 +800,9 @@ export class MethodBodyWriter {
         options: CallableBodyOptions,
         shape: CallableShape,
         callArguments: CallArgument[],
-        ownClassName: string | undefined,
+        _ownClassName: string | undefined,
         hasReturnValue: boolean,
     ): void {
-        const rawReturnType = shape.originalReturnTsType;
-        const baseReturnType = ownClassName ?? rawReturnType;
-        const tsReturnType = formatNullableReturn(baseReturnType, shape.originalReturnNullable);
-        const needsCast = rawReturnType !== "void" && rawReturnType !== "unknown";
         if (hasReturnValue) {
             writer.write("return ");
         }
@@ -829,9 +814,6 @@ export class MethodBodyWriter {
             selfArg: options.self,
             hasVarargs: options.hasVarargs,
         })(writer);
-        if (hasReturnValue && needsCast) {
-            writer.write(isGTypeBrand(rawReturnType) ? ` as unknown as ${tsReturnType}` : ` as ${tsReturnType}`);
-        }
         writer.write(";");
         writer.newLine();
     }
@@ -919,16 +901,6 @@ export class MethodBodyWriter {
         const resultExpression = `${baseVar}${suffix}`;
         writer.write(`const ${resultExpression} = `);
         writeCall();
-        if (info.needsArrayWrapVar) {
-            writer.write(" as unknown[]");
-        } else if (info.needsHashTableVar) {
-            writer.write(" as [unknown, unknown][]");
-        } else if (!info.needsResultPtr) {
-            const rawReturnType = shape.originalReturnTsType;
-            writer.write(
-                isGTypeBrand(rawReturnType) ? ` as unknown as ${info.tsReturnType}` : ` as ${info.tsReturnType}`,
-            );
-        }
         writer.write(";");
         writer.newLine();
         return resultExpression;
@@ -963,16 +935,16 @@ export class MethodBodyWriter {
         if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
             if (wrapInfo.arrayItemIsInterface) {
                 this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
-                return `${resultExpression}.map((item) => getNativeObjectAsInterface(item as NativeHandle, ${wrapInfo.arrayItemType}))`;
+                return `${resultExpression}.map((item) => getNativeObjectAsInterface(item, ${wrapInfo.arrayItemType}))`;
             }
             this.imports.addImport("../../registry.js", ["getNativeObject"]);
-            return `${resultExpression}.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType})`;
+            return `${resultExpression}.map((item) => getNativeObject(item))`;
         }
 
         if (wrapInfo.needsHashTableWrap) {
             return shape.originalReturnNullable
-                ? `(${resultExpression} === null ? null : new Map(${resultExpression}) as ${baseReturnType})`
-                : `(new Map(${resultExpression}) as ${baseReturnType})`;
+                ? `(${resultExpression} === null ? null : new Map(${resultExpression}))`
+                : `new Map(${resultExpression})`;
         }
 
         return resultExpression;
@@ -1024,7 +996,7 @@ export class MethodBodyWriter {
         if (hidden.kind === "ref-handle") {
             return rewrapBindings.get(hidden.varName) ?? `${hidden.varName}.value`;
         }
-        return `${hidden.varName}.value as ${hidden.tsType}`;
+        return `${hidden.varName}.value`;
     }
 
     private uniqueResultVarName(shape: CallableShape, base: string): string {
@@ -1054,16 +1026,15 @@ export class MethodBodyWriter {
             if (hidden.wrapClassName) {
                 writer.writeLine(`const ${hidden.varName} = new ${hidden.wrapClassName}();`);
             } else {
-                writer.writeLine(`const ${hidden.varName} = createRef<NativeHandle | null>(null);`);
+                writer.writeLine(`const ${hidden.varName} = createRef(null);`);
             }
             return;
         }
         if (hidden.kind === "ref-handle") {
-            writer.writeLine(`const ${hidden.varName} = createRef<NativeHandle | null>(null);`);
+            writer.writeLine(`const ${hidden.varName} = createRef(null);`);
             return;
         }
-        const innerType = hidden.tsType;
-        writer.writeLine(`const ${hidden.varName} = createRef<${innerType}>(${hidden.initialValue});`);
+        writer.writeLine(`const ${hidden.varName} = createRef(${hidden.initialValue});`);
     }
 
     private writeRefHandleRewrap(writer: Writer, shape: CallableShape): Map<string, string> {
@@ -1074,23 +1045,23 @@ export class MethodBodyWriter {
             bindings.set(hidden.varName, wrappedName);
             const className = hidden.wrapClassName;
             if (!className) {
-                writer.writeLine(`const ${wrappedName} = ${hidden.varName}.value as unknown as ${hidden.tsType};`);
+                writer.writeLine(`const ${wrappedName} = ${hidden.varName}.value;`);
                 continue;
             }
             if (hidden.nullable) {
                 writer.writeLine(
                     `const ${wrappedName} = ${hidden.varName}.value === null ? null : ${
                         hidden.wrapAsBoxed
-                            ? `getNativeObject(${hidden.varName}.value as NativeHandle, ${className})`
-                            : `getNativeObject(${hidden.varName}.value as NativeHandle) as ${className}`
+                            ? `getNativeObject(${hidden.varName}.value, ${className})`
+                            : `getNativeObject(${hidden.varName}.value)`
                     };`,
                 );
             } else {
                 writer.writeLine(
                     `const ${wrappedName} = ${
                         hidden.wrapAsBoxed
-                            ? `getNativeObject(${hidden.varName}.value as NativeHandle, ${className})`
-                            : `getNativeObject(${hidden.varName}.value as NativeHandle) as ${className}`
+                            ? `getNativeObject(${hidden.varName}.value, ${className})`
+                            : `getNativeObject(${hidden.varName}.value)`
                     };`,
                 );
             }
@@ -1105,13 +1076,13 @@ export class MethodBodyWriter {
     ): string {
         if (wrapInfo.needsInterfaceWrap) {
             this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
-            return `getNativeObjectAsInterface(${ptrExpr} as NativeHandle, ${baseReturnType})`;
+            return `getNativeObjectAsInterface(${ptrExpr}, ${baseReturnType})`;
         }
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
         if (wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsStructWrap) {
-            return `getNativeObject(${ptrExpr} as NativeHandle, ${baseReturnType})`;
+            return `getNativeObject(${ptrExpr}, ${baseReturnType})`;
         }
-        return `getNativeObject(${ptrExpr} as NativeHandle) as ${baseReturnType}`;
+        return `getNativeObject(${ptrExpr})`;
     }
 
     private toCallArgument(arg: ShapeCallArg, parameters: readonly GirParameter[], shape: CallableShape): CallArgument {
@@ -1195,13 +1166,12 @@ export class MethodBodyWriter {
             this.imports.addImport("./error.js", ["Error"]);
             return "Error";
         }
-        this.imports.addNamespaceImport("../glib/index.js", "GLib");
+        this.imports.addNamespaceImport("../glib/glib.js", "GLib");
         return "GLib.Error";
     }
 
     private writeErrorCheck(writer: Writer): void {
         const gerrorRef = this.setupGErrorImports();
-
         writer.writeLine("if (error.value !== null) {");
         writer.withIndent(() => {
             writer.writeLine(`throw new NativeError(getNativeObject(error.value, ${gerrorRef}));`);
@@ -1256,7 +1226,7 @@ export class MethodBodyWriter {
             this.writeCallbackWrapperDeclarations(writer, args);
 
             if (throws) {
-                writer.writeLine("const error = createRef<NativeHandle | null>(null);");
+                writer.writeLine("const error = createRef(null);");
             }
 
             for (const hidden of hiddenOuts) {
@@ -1272,9 +1242,9 @@ export class MethodBodyWriter {
             }
 
             if (useClassInWrap) {
-                writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${wrapClassName});`);
+                writer.writeLine(`return getNativeObject(ptr, ${wrapClassName});`);
             } else {
-                writer.writeLine(`return getNativeObject(ptr as NativeHandle) as ${wrapClassName};`);
+                writer.writeLine("return getNativeObject(ptr);");
             }
         };
     }

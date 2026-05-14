@@ -9,7 +9,10 @@ export type TypeAliasOptions = {
     doc?: string;
 };
 
-/** Builder that emits a `type Name = ...` type alias declaration. */
+/**
+ * Builder that emits a `type Name = ...` type alias declaration. In JS mode
+ * the declaration is omitted because type aliases have no runtime presence.
+ */
 export class TypeDeclarationBuilder implements Builder {
     constructor(
         readonly name: string,
@@ -19,6 +22,7 @@ export class TypeDeclarationBuilder implements Builder {
 
     /** @inheritdoc */
     write(writer: Writer): void {
+        if (writer.getMode() === "js") return;
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.exported) writer.write("export ");
         writer.write(`type ${this.name} = `);

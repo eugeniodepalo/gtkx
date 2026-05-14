@@ -1,17 +1,18 @@
 /**
  * FFI Generator
  *
- * Top-level orchestrator for generating TypeScript FFI bindings from GIR data.
- * Produces GeneratedFile arrays using FileBuilder.
+ * Top-level orchestrator for generating per-namespace JavaScript FFI bindings
+ * from GIR data. Produces one `<ns>/<ns>.js` file per namespace using a
+ * shared FileBuilder threaded through every sub-generator.
  */
 
-import { fileBuilder } from "../builders/file-builder.js";
+import { type FileBuilder, fileBuilder } from "../builders/file-builder.js";
 import { stringify } from "../builders/stringify.js";
 import { CodegenMetadata } from "../core/codegen-metadata.js";
 import type { GeneratedFile } from "../core/generated-file-set.js";
 import type { FfiGeneratorOptions } from "../core/generator-types.js";
 import { FfiMapper } from "../core/type-system/ffi-mapper.js";
-import { normalizeClassName, toKebabCase, toPascalCase } from "../core/utils/naming.js";
+import { normalizeClassName, toPascalCase } from "../core/utils/naming.js";
 import { splitQualifiedName } from "../core/utils/qualified-name.js";
 import { isClassVtable, shouldGenerateRecord } from "../core/utils/record-filter.js";
 import type { GirClass, GirNamespace, GirRepository } from "../gir/index.js";
@@ -42,15 +43,17 @@ type FfiNamespaceResult = {
 };
 
 /**
- * Generates TypeScript FFI bindings for a GIR namespace.
+ * Generates JavaScript FFI bindings for a GIR namespace.
  *
  * Processes classes, records, interfaces, enums, functions, and constants
- * from GIR data and outputs TypeScript wrappers for `@gtkx/ffi`.
+ * from GIR data and emits a single per-namespace `.js` module for
+ * `@gtkx/ffi`. Type contracts live in companion `.d.ts` files supplied by
+ * the types pipeline.
  */
 export class FfiGenerator {
     private readonly options: FfiNamespaceConfig;
     private readonly ffiMapper: FfiMapper;
-    private readonly namespacePrefix: string;
+    private readonly namespaceDir: string;
     private readonly metadata = new CodegenMetadata();
     private readonly recordNameToFile = new Map<string, string>();
     private readonly interfaceNameToFile = new Map<string, string>();
@@ -58,7 +61,7 @@ export class FfiGenerator {
     constructor(options: FfiNamespaceConfig) {
         this.options = options;
         this.ffiMapper = new FfiMapper(options.repository, options.namespace);
-        this.namespacePrefix = `${options.namespace.toLowerCase()}/`;
+        this.namespaceDir = options.namespace.toLowerCase();
     }
 
     private getNamespaceLibrary(namespaceName: string): string {
@@ -74,7 +77,7 @@ export class FfiGenerator {
     }
 
     /**
-     * Generates all FFI files for a namespace.
+     * Generates a single consolidated FFI file for a namespace.
      */
     generateNamespace(namespaceName: string): FfiNamespaceResult {
         const namespace = this.options.repository.getNamespace(namespaceName);
@@ -89,8 +92,6 @@ export class FfiGenerator {
         this.registerRecords(namespace);
         this.registerInterfaces(namespace);
 
-        const files: GeneratedFile[] = [];
-
         const generatorOptions: FfiGeneratorOptions = {
             namespace: this.options.namespace,
             sharedLibrary: namespace.sharedLibrary,
@@ -98,75 +99,60 @@ export class FfiGenerator {
             gobjectLibrary,
         };
 
+        const file = fileBuilder();
+        file.setMode("js");
+
         const allEnums = [...namespace.enumerations.values(), ...namespace.bitfields.values()];
         if (allEnums.length > 0) {
-            const file = fileBuilder();
             const enumGenerator = new EnumGenerator(file, { namespace: this.options.namespace });
             enumGenerator.addEnums(allEnums);
-            files.push({ path: `${this.namespacePrefix}enums.ts`, content: stringify(file) });
         }
 
-        this.generateRecordFiles(namespace, generatorOptions, files);
-        this.generateClassFiles(namespace, generatorOptions, files);
-        this.generateClassStructFiles(namespace, generatorOptions, files);
+        this.generateRecords(namespace, generatorOptions, file);
+        this.generateClasses(namespace, generatorOptions, file);
+        this.generateClassStructs(namespace, generatorOptions, file);
 
         for (const [, iface] of namespace.interfaces) {
-            const file = fileBuilder();
             const interfaceGenerator = new InterfaceGenerator(
                 this.ffiMapper,
                 file,
                 this.options.repository,
                 generatorOptions,
             );
-
             interfaceGenerator.generate(iface);
-            const fileName = `${toKebabCase(iface.name)}.ts`;
-            files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
         }
 
         const standaloneFunctions = [...namespace.functions.values()];
         if (standaloneFunctions.length > 0) {
-            const file = fileBuilder();
             const functionGenerator = new FunctionGenerator(this.ffiMapper, file, generatorOptions);
             functionGenerator.generate(standaloneFunctions);
-            files.push({ path: `${this.namespacePrefix}functions.ts`, content: stringify(file) });
         }
 
         if (namespace.constants.size > 0) {
-            const file = fileBuilder();
             const constantGenerator = new ConstantGenerator(file, { namespace: this.options.namespace });
             constantGenerator.addConstants([...namespace.constants.values()]);
-            files.push({ path: `${this.namespacePrefix}constants.ts`, content: stringify(file) });
         }
 
         if (namespace.aliases.size > 0 || AliasGenerator.hasOverrides(this.options.namespace)) {
-            const file = fileBuilder();
             const aliasGenerator = new AliasGenerator(file, { namespace: this.options.namespace });
             aliasGenerator.addAliases([...namespace.aliases.values()]);
-            files.push({ path: `${this.namespacePrefix}aliases.ts`, content: stringify(file) });
         }
 
         if (namespace.callbacks.size > 0) {
-            const file = fileBuilder();
             const callbackGenerator = new CallbackGenerator(file, { namespace: this.options.namespace });
             callbackGenerator.addCallbacks([...namespace.callbacks.values()]);
-            files.push({ path: `${this.namespacePrefix}callbacks.ts`, content: stringify(file) });
         }
 
-        const indexContent = this.generateIndexFile(files);
-        files.push({ path: `${this.namespacePrefix}index.ts`, content: indexContent });
+        const path = `${this.namespaceDir}/${this.namespaceDir}.js`;
+        const content = stringify(file);
+        const files: GeneratedFile[] = [{ path, content }];
 
         return { files, metadata: this.metadata };
     }
 
-    private generateRecordFiles(
-        namespace: GirNamespace,
-        generatorOptions: FfiGeneratorOptions,
-        files: GeneratedFile[],
-    ): void {
+    private generateRecords(namespace: GirNamespace, generatorOptions: FfiGeneratorOptions, file: FileBuilder): void {
         for (const [, record] of namespace.records) {
             if (!shouldGenerateRecord(record, this.options.repository, this.options.namespace)) continue;
-            const file = fileBuilder();
             const recordGenerator = new RecordGenerator(
                 this.ffiMapper,
                 file,
@@ -174,34 +160,24 @@ export class FfiGenerator {
                 this.options.repository,
             );
             recordGenerator.generate(record);
-            const fileName = `${toKebabCase(record.name)}.ts`;
-            files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
         }
     }
 
-    private generateClassStructFiles(
+    private generateClassStructs(
         namespace: GirNamespace,
         generatorOptions: FfiGeneratorOptions,
-        files: GeneratedFile[],
+        file: FileBuilder,
     ): void {
         for (const [, record] of namespace.records) {
             if (!isClassVtable(record)) continue;
-            const file = fileBuilder();
             const generator = new ClassStructGenerator(this.ffiMapper, file, generatorOptions, this.options.repository);
-            if (!generator.generate(record)) continue;
-            const fileName = `${toKebabCase(record.name)}.ts`;
-            files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
+            generator.generate(record);
         }
     }
 
-    private generateClassFiles(
-        namespace: GirNamespace,
-        generatorOptions: FfiGeneratorOptions,
-        files: GeneratedFile[],
-    ): void {
+    private generateClasses(namespace: GirNamespace, generatorOptions: FfiGeneratorOptions, file: FileBuilder): void {
         const sortedClasses = this.topologicalSortClasses([...namespace.classes.values()]);
         for (const cls of sortedClasses) {
-            const file = fileBuilder();
             const classGenerator = new ClassGenerator(
                 cls,
                 this.ffiMapper,
@@ -212,9 +188,6 @@ export class FfiGenerator {
 
             const result = classGenerator.generate();
 
-            const fileName = `${toKebabCase(cls.name)}.ts`;
-            files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
-
             if (result.widgetMeta) {
                 this.metadata.addWidgetMeta(result.widgetMeta);
             }
@@ -222,40 +195,6 @@ export class FfiGenerator {
                 this.metadata.addControllerMeta(result.controllerMeta);
             }
         }
-    }
-
-    private generateIndexFile(files: GeneratedFile[]): string {
-        const fileNames = files
-            .map((f) => f.path.replace(this.namespacePrefix, "").replace(/\.ts$/, ""))
-            .filter((name) => name !== "index")
-            .sort((a, b) => a.localeCompare(b));
-
-        if (fileNames.length === 0) return "";
-
-        const namespaceAliases = fileNames.map((name, index) => ({
-            modulePath: `./${name}.js`,
-            alias: `__ns_${index}`,
-        }));
-
-        const reExports = fileNames.map((name) => `export * from "./${name}.js";`);
-        const namespaceImports = namespaceAliases.map(
-            ({ modulePath, alias }) => `import * as ${alias} from "${modulePath}";`,
-        );
-        const intersectionType = namespaceAliases.map(({ alias }) => `typeof ${alias}`).join(" & ");
-        const assignArgs = namespaceAliases.map(({ alias }) => alias).join(", ");
-        const namespaceVar = this.options.namespace;
-
-        return [
-            ...reExports,
-            "",
-            ...namespaceImports,
-            "",
-            `const ${namespaceVar}: ${intersectionType} = Object.assign({}, ${assignArgs});`,
-            "",
-            `export { ${namespaceVar} };`,
-            `export default ${namespaceVar};`,
-            "",
-        ].join("\n");
     }
 
     private registerRecords(namespace: GirNamespace): void {

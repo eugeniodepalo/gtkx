@@ -1,9 +1,12 @@
 import { findObjectProperty } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
-import { IconIface } from "../src/generated/gio/icon-iface.js";
-import type { GType } from "../src/generated/gobject/aliases.js";
-import { ParamFlags } from "../src/generated/gobject/enums.js";
+import { IconIface } from "../src/generated/gio/gio.js";
+import type { GType } from "../src/generated/gobject/gobject.js";
 import {
+    Object as GObject,
+    Value as GValue,
+    ObjectClass,
+    ParamFlags,
     paramSpecBoolean,
     paramSpecString,
     signalEmitv,
@@ -11,11 +14,8 @@ import {
     typeFromName,
     typeName,
     typeParent,
-} from "../src/generated/gobject/functions.js";
-import { Object as GObject } from "../src/generated/gobject/object.js";
-import { ObjectClass } from "../src/generated/gobject/object-class.js";
-import { Value as GValue } from "../src/generated/gobject/value.js";
-import * as Gtk from "../src/generated/gtk/index.js";
+} from "../src/generated/gobject/gobject.js";
+import * as Gtk from "../src/generated/gtk/gtk.js";
 import { findNativeClass, instanceIsA, registerClass } from "../src/index.js";
 import { call, t } from "../src/native.js";
 
@@ -24,7 +24,7 @@ const uniqueName = (prefix: string): string => `${prefix}_${process.pid}_${++suf
 
 const INVALID_GTYPE = 0 as unknown as GType;
 
-const gtypeNone = (): GType => typeFromName("void");
+const gtypeNone = (): GType => typeFromName("void") as unknown as GType;
 const gtypeString = (): GType => typeFromName("gchararray");
 
 const gtkLabelGType = (): GType => typeFromName("GtkLabel");

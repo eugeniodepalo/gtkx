@@ -16,9 +16,13 @@ export type RoleInfo = {
  * @param role - The GTK accessible role
  * @returns Lowercase role name (e.g., "button", "checkbox")
  */
+const ROLE_NAMES_BY_VALUE = new Map<number, string>(
+    Object.entries(Gtk.AccessibleRole).map(([name, value]) => [value as number, name]),
+);
+
 export const formatRole = (role: Gtk.AccessibleRole | undefined): string => {
     if (role === undefined) return "unknown";
-    const name = Gtk.AccessibleRole[role];
+    const name = ROLE_NAMES_BY_VALUE.get(role);
     if (!name) return String(role);
     return name.toLowerCase();
 };

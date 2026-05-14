@@ -61,7 +61,6 @@ export class FunctionGenerator {
         const shape = this.methodBody.buildShape(func.parameters, func.returnType, 0);
         const params = this.methodBody.buildSignatureParameters(shape, hasVarargs(func.parameters));
         addTypeImports(this.file, shape.returnTypeMapping.imports);
-        const fullReturnType = this.methodBody.computeReturnTypeString(shape, undefined);
 
         const bodyWriter = this.methodBody.writeFunctionBody(func, shape, {
             sharedLibrary: this.options.sharedLibrary,
@@ -75,12 +74,8 @@ export class FunctionGenerator {
                 if (i > 0) writer.write(", ");
                 if (p.isRestParameter) writer.write("...");
                 writer.write(p.name);
-                if (p.optional) writer.write("?");
-                writer.write(`: ${p.type}`);
             }
-            writer.write(`): ${fullReturnType}`);
-
-            writer.write(" => ");
+            writer.write(") => ");
             writer.writeBlock(() => {
                 bodyWriter(writer);
             });

@@ -1,4 +1,4 @@
-import { getNativeId } from "@gtkx/ffi";
+import { getClassGType, getNativeId } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
@@ -480,7 +480,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const transitionPositions: number[] = [];
 
         for (let i = 0; i < overlap; i++) {
-            const obj = this.model.getObject(i);
+            const obj = this.model.getItem(i);
             if (!obj) continue;
 
             if (this.rootItemIds[i] !== rootItems[i]?.id) {
@@ -509,7 +509,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     private clearRemovedTreeItems(overlap: number, oldSize: number): void {
         if (!this.model) return;
         for (let i = overlap; i < oldSize; i++) {
-            const obj = this.model.getObject(i);
+            const obj = this.model.getItem(i);
             if (obj) {
                 this.treeChildModels.delete(obj.handle);
                 this.queriedLeaves.delete(obj.handle);
@@ -521,7 +521,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (!this.model) return;
         for (const pos of transitionPositions) {
             if (pos >= newSize) continue;
-            const oldObj = this.model.getObject(pos);
+            const oldObj = this.model.getItem(pos);
             if (oldObj) {
                 this.queriedLeaves.delete(oldObj.handle);
                 this.treeChildModels.delete(oldObj.handle);
@@ -579,7 +579,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (!this.model) return null;
         const nItems = this.model.getNItems();
         for (let i = 0; i < nItems; i++) {
-            const obj = this.model.getObject(i);
+            const obj = this.model.getItem(i);
             if (obj?.handle === item.handle) {
                 return i;
             }
@@ -593,7 +593,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const sections = this.collectSections();
 
         if (!this.sectionStore) {
-            this.sectionStore = Gio.ListStore.new(Gtk.gtk_string_list_get_type() as unknown as GObject.GType);
+            this.sectionStore = Gio.ListStore.new(getClassGType(Gtk.StringList));
             this.flattenModel = new Gtk.FlattenListModel({ model: this.sectionStore as unknown as Gio.ListModel });
 
             this.assignBaseModelToSelection(this.flattenModel);
@@ -651,7 +651,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const childModel = parentRow.getChildren();
         if (childModel) {
             for (let j = 0; j < childModel.getNItems(); j++) {
-                const obj = childModel.getObject(j);
+                const obj = childModel.getItem(j);
                 if (obj?.handle === childItem.handle) {
                     return parentItem.children[j] ?? null;
                 }
@@ -914,7 +914,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const nItems = columns.getNItems();
 
         for (let i = 0; i < nItems; i++) {
-            const obj = columns.getObject(i);
+            const obj = columns.getItem(i);
             if (obj instanceof Gtk.ColumnViewColumn && obj.getId() === id) {
                 return obj;
             }

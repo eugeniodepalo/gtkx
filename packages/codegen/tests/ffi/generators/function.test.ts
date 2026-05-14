@@ -146,11 +146,10 @@ describe("FunctionGenerator", () => {
             generator.generate([func]);
 
             const code = getOutput(file);
-            expect(code).toContain("label: string");
-            expect(code).toContain("count: number");
+            expect(code).toContain("(label, count)");
         });
 
-        it("includes return type for non-void functions", () => {
+        it("emits the function call without a return-type annotation", () => {
             const { generator, file } = createTestSetup();
             const func = createNormalizedFunction({
                 name: "get_value",
@@ -161,10 +160,10 @@ describe("FunctionGenerator", () => {
             generator.generate([func]);
 
             const code = getOutput(file);
-            expect(code).toContain(": number");
+            expect(code).toContain("return gtk_get_value();");
         });
 
-        it("handles nullable return types", () => {
+        it("handles nullable return types without a TS type annotation", () => {
             const { generator, file } = createTestSetup();
             const func = createNormalizedFunction({
                 name: "get_value",
@@ -175,10 +174,10 @@ describe("FunctionGenerator", () => {
             generator.generate([func]);
 
             const code = getOutput(file);
-            expect(code).toContain("string | null");
+            expect(code).toContain("return gtk_get_value();");
         });
 
-        it("emits nullable parameters as required with a `| null` type", () => {
+        it("emits nullable parameters with no `?` or `| null` annotation", () => {
             const { generator, file } = createTestSetup();
             const func = createNormalizedFunction({
                 name: "nullable_param",
@@ -196,7 +195,7 @@ describe("FunctionGenerator", () => {
             generator.generate([func]);
 
             const code = getOutput(file);
-            expect(code).toContain("nullable: string | null");
+            expect(code).toContain("(nullable)");
             expect(code).not.toContain("nullable?:");
         });
 
@@ -214,7 +213,7 @@ describe("FunctionGenerator", () => {
             expect(code).toContain("const gtk_test = t.fn(");
             expect(code).toContain('"libgtk-4.so.1"');
             expect(code).toContain('"gtk_test"');
-            expect(code).toContain("return gtk_test() as number;");
+            expect(code).toContain("return gtk_test();");
         });
 
         it("preserves documentation", () => {
@@ -260,8 +259,7 @@ describe("FunctionGenerator", () => {
 
             const code = getOutput(file);
             expect(code).toContain("withVarargs");
-            expect(code).toContain("format: string");
-            expect(code).toContain("...args: Arg[]");
+            expect(code).toContain("(format, ...args)");
             expect(code).toContain("normal");
         });
     });

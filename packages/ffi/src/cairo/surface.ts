@@ -1,8 +1,6 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
-import { Device } from "../generated/cairo/device.js";
-import type { Content, Format, Status, SurfaceType } from "../generated/cairo/enums.js";
-import type { RectangleInt } from "../generated/cairo/rectangle-int.js";
-import { Surface } from "../generated/cairo/surface.js";
+import type { Content, Format, RectangleInt, Status, SurfaceType } from "../generated/cairo/cairo.js";
+import { Device, Surface } from "../generated/cairo/cairo.js";
 import { alloc, call, read, t, write } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import {
@@ -18,7 +16,7 @@ import {
 } from "./common.js";
 import { ImageSurface } from "./image-surface.js";
 
-declare module "../generated/cairo/surface.js" {
+declare module "../generated/cairo/cairo.js" {
     interface Surface {
         finish(): void;
         createSimilar(content: "COLOR" | "ALPHA" | "COLOR_ALPHA", width: number, height: number): Surface;
@@ -87,7 +85,7 @@ Surface.prototype.getContent = function (): Content {
     return call(LIB, "cairo_surface_get_content", [{ type: SURFACE_T_NONE, value: this.handle }], INT_TYPE) as Content;
 };
 
-declare module "../generated/cairo/surface.js" {
+declare module "../generated/cairo/cairo.js" {
     interface Surface {
         status(): Status;
         createSimilarImage(format: Format, width: number, height: number): ImageSurface;
@@ -225,7 +223,7 @@ Surface.prototype.hasShowTextGlyphs = function (): boolean {
     ) as boolean;
 };
 
-declare module "../generated/cairo/surface.js" {
+declare module "../generated/cairo/cairo.js" {
     interface Surface {
         setMimeData(mimeType: string, data: Uint8Array): void;
         getMimeData(mimeType: string): Uint8Array | null;

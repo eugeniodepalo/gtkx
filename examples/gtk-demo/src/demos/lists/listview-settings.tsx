@@ -106,9 +106,9 @@ function loadKeysForNode(nodeId: string): KeyInfo[] {
 
             result.push({
                 name: keyName,
-                value: value.print(false),
-                defaultValue: defaultValue.print(false),
-                type: valueType.dupString(),
+                value: value.print(false) ?? "",
+                defaultValue: defaultValue.print(false) ?? "",
+                type: valueType.dupString() ?? "",
                 summary: schemaKey.getSummary() ?? "",
                 description: schemaKey.getDescription() ?? "",
             });
@@ -184,7 +184,7 @@ const ListViewSettingsDemo = () => {
 
         const columnsByTitle = new Map<string, Gtk.ColumnViewColumn>();
         for (let i = 0; i < nColumns; i++) {
-            const col = columnsList.getObject(i);
+            const col = columnsList.getItem(i);
             if (col instanceof Gtk.ColumnViewColumn) {
                 const title = col.getTitle();
                 if (title) columnsByTitle.set(title, col);
@@ -216,7 +216,7 @@ const ListViewSettingsDemo = () => {
         cv.insertActionGroup("columnview", actionGroup);
 
         for (let i = 0; i < nColumns; i++) {
-            const col = columnsList.getObject(i);
+            const col = columnsList.getItem(i);
             if (col instanceof Gtk.ColumnViewColumn) {
                 col.setHeaderMenu(menu);
             }
@@ -250,7 +250,7 @@ const ListViewSettingsDemo = () => {
                     }
                     settings.setValue(keyInfo.name, variant);
                     setKeyInfos((prev) =>
-                        prev.map((k) => (k.name === keyInfo.name ? { ...k, value: variant.print(false) } : k)),
+                        prev.map((k) => (k.name === keyInfo.name ? { ...k, value: variant.print(false) ?? "" } : k)),
                     );
                 }
             } catch {

@@ -1,9 +1,27 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
 import { registerConstructionMeta } from "../construction-meta.js";
-import type { Status } from "../generated/cairo/enums.js";
+import type { Status } from "../generated/cairo/cairo.js";
 import { alloc, call, read, t } from "../native.js";
 import { NativeObject, wrapHandle } from "../object.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T } from "./common.js";
+
+declare module "../generated/cairo/cairo.js" {
+    interface Matrix {
+        xx: number;
+        yx: number;
+        xy: number;
+        yy: number;
+        x0: number;
+        y0: number;
+        translate(tx: number, ty: number): void;
+        scale(sx: number, sy: number): void;
+        rotate(radians: number): void;
+        invert(): Status;
+        multiply(other: Matrix): Matrix;
+        transformPoint(x: number, y: number): [number, number];
+        transformDistance(dx: number, dy: number): [number, number];
+    }
+}
 
 export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
     const handle = alloc(48, "cairo_matrix_t", LIB);

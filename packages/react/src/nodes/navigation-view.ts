@@ -53,7 +53,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
         const nItems = stack.getNItems();
 
         for (let i = 0; i < nItems; i++) {
-            const page = stack.getObject(i);
+            const page = stack.getItem(i);
             if (!(page instanceof Adw.NavigationPage)) continue;
             const tag = page.getTag();
             if (tag) {

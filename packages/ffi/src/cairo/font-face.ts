@@ -1,11 +1,11 @@
 import type { NativeHandle } from "@gtkx/native";
-import type { FontSlant, FontType, FontWeight, Status } from "../generated/cairo/enums.js";
-import { FontFace } from "../generated/cairo/font-face.js";
+import type { FontSlant, FontType, FontWeight, Status } from "../generated/cairo/cairo.js";
+import { FontFace } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import { FONT_FACE_T, FONT_FACE_T_NONE, INT_TYPE, LIB } from "./common.js";
 
-declare module "../generated/cairo/font-face.js" {
+declare module "../generated/cairo/cairo.js" {
     interface FontFace {
         status(): Status;
         getType(): FontType;
@@ -81,7 +81,7 @@ FontFace.prototype.toyGetWeight = function (): FontWeight {
     ) as FontWeight;
 };
 
-declare module "../generated/cairo/font-face.js" {
+declare module "../generated/cairo/cairo.js" {
     interface FontFace {
         ftGetSynthesize(): number;
         ftSetSynthesize(flags: number): void;

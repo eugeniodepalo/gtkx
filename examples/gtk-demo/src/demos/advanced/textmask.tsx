@@ -20,7 +20,10 @@ const TextmaskDemo = () => {
         const layout = widget.createPangoLayout("");
         const fontDesc = Pango.FontDescription.fromString("sans bold 34");
         layout.setFontDescription(fontDesc);
-        layout.setText("Pango power!\nPango power!\nPango power!", -1);
+        (layout as unknown as { setText(text: string, length: number): void }).setText(
+            "Pango power!\nPango power!\nPango power!",
+            -1,
+        );
 
         cr.moveTo(30, 20);
         PangoCairo.layoutPath(cr, layout);

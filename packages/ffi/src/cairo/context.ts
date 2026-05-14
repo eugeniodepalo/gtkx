@@ -1,9 +1,9 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
-import { Context } from "../generated/cairo/context.js";
 import type {
     Antialias,
     Content,
     FillRule,
+    FontOptions,
     FontSlant,
     FontWeight,
     LineCap,
@@ -11,12 +11,8 @@ import type {
     Operator,
     Status,
     TextClusterFlags,
-} from "../generated/cairo/enums.js";
-import { FontFace } from "../generated/cairo/font-face.js";
-import type { FontOptions } from "../generated/cairo/font-options.js";
-import { Pattern } from "../generated/cairo/pattern.js";
-import { ScaledFont } from "../generated/cairo/scaled-font.js";
-import { Surface } from "../generated/cairo/surface.js";
+} from "../generated/cairo/cairo.js";
+import { Context, FontFace, Pattern, ScaledFont, Surface } from "../generated/cairo/cairo.js";
 import { alloc, call, read, t } from "../native.js";
 import { wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
@@ -51,7 +47,7 @@ import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import type { Matrix } from "./matrix.js";
 import { allocMatrix } from "./matrix.js";
 
-declare module "../generated/cairo/context.js" {
+declare module "../generated/cairo/cairo.js" {
     interface Context {
         moveTo(x: number, y: number): void;
         lineTo(x: number, y: number): void;
@@ -1010,7 +1006,7 @@ Context.prototype.status = function (): Status {
     return call(LIB, "cairo_status", [{ type: CAIRO_T, value: this.handle }], INT_TYPE) as Status;
 };
 
-declare module "../generated/cairo/context.js" {
+declare module "../generated/cairo/cairo.js" {
     interface Context {
         pushGroup(): void;
         pushGroupWithContent(content: Content): void;
@@ -1245,7 +1241,7 @@ class ContextImpl extends Context {
 
 export { ContextImpl as Context };
 
-declare module "../generated/cairo/context.js" {
+declare module "../generated/cairo/cairo.js" {
     interface Context {
         tagBegin(tagName: string, attributes: string): void;
         tagEnd(tagName: string): void;

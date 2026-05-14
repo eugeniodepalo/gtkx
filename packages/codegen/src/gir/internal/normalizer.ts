@@ -403,7 +403,7 @@ export class GirNormalizer {
 
     private normalizeMethod(raw: RawMethod, currentNamespace: string): GirMethod {
         return new GirMethod({
-            name: raw.name,
+            name: raw.shadows ?? raw.name,
             cIdentifier: raw.cIdentifier,
             returnType: this.normalizeType(raw.returnType, currentNamespace),
             parameters: raw.parameters.map((p) => this.normalizeParameter(p, currentNamespace)),

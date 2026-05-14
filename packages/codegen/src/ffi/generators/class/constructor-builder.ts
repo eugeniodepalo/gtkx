@@ -178,7 +178,7 @@ export class ConstructorBuilder {
                             writer.write(`${prop.paramName}: { girName: "${prop.girName}", ffiType: `);
                             writeFfiTypeExpression(writer, prop.ffiType);
                             if (prop.constructOnly) {
-                                writer.write(", constructOnly: true as const");
+                                writer.write(", constructOnly: true");
                             }
                             writer.writeLine(" },");
                         }
@@ -202,7 +202,7 @@ export class ConstructorBuilder {
     private buildGTypeExpression(cIdentifier: string, glibTypeName: string): string {
         if (cIdentifier === "intern" || cIdentifier === "") {
             this.imports.addImport("../../native.js", ["call", "t"]);
-            return `() => call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) as number`;
+            return `() => call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64)`;
         }
         const descriptors = (this.imports as unknown as { descriptors: DescriptorRegistry }).descriptors;
         const binding = descriptors.register({

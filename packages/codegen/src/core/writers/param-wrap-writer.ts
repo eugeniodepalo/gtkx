@@ -39,15 +39,15 @@ export function needsParamWrap(mappedType: MappedType): ParamWrapInfo {
 
 export function writeWrapExpression(argName: string, wrapInfo: ParamWrapInfo): string {
     if (!wrapInfo.needsWrap) {
-        return `${argName} as ${wrapInfo.tsType}`;
+        return argName;
     }
     if (wrapInfo.needsTargetClass && wrapInfo.targetClass) {
         if (wrapInfo.isInterface) {
-            return `getNativeObjectAsInterface(${argName} as NativeHandle, ${wrapInfo.targetClass})`;
+            return `getNativeObjectAsInterface(${argName}, ${wrapInfo.targetClass})`;
         }
-        return `getNativeObject(${argName} as NativeHandle, ${wrapInfo.targetClass})`;
+        return `getNativeObject(${argName}, ${wrapInfo.targetClass})`;
     }
-    return `getNativeObject(${argName} as NativeHandle) as ${wrapInfo.tsType}`;
+    return `getNativeObject(${argName})`;
 }
 
 function writeUnwrappedCallbackBody(
@@ -87,7 +87,7 @@ export function buildCallbackWrapperExpression(
         writer.write(`${jsParamName}`);
         writer.newLine();
         writer.withIndent(() => {
-            writer.write("? (...args: unknown[]) => ");
+            writer.write("? (...args) => ");
             if (returnUnwrapInfo?.needsUnwrap) {
                 writeUnwrappedCallbackBody(writer, jsParamName, wrapInfos);
             } else {

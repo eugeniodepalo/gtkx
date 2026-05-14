@@ -292,7 +292,7 @@ export class MethodBuilder {
             scope: "async",
         });
         writer.writeLine(",");
-        writer.writeLine("value: (_source: unknown, result: unknown) => {");
+        writer.writeLine("value: (_source, result) => {");
         writer.withIndent(() => this.writeAsyncFinishCallback(writer, ctx));
         writer.writeLine("},");
     }
@@ -311,15 +311,7 @@ export class MethodBuilder {
         writer.newLine();
         writer.withIndent(() => this.writeFinishCallArguments(writer, ctx));
 
-        if (ctx.hasReturnValue) {
-            if (ctx.wrapInfo.needsWrap) {
-                writer.writeLine(");");
-            } else {
-                writer.writeLine(`) as unknown as ${ctx.baseReturnType};`);
-            }
-        } else {
-            writer.writeLine(");");
-        }
+        writer.writeLine(");");
 
         if (ctx.finishMethod.throws) {
             this.writeAsyncErrorCheck(writer);
@@ -379,11 +371,11 @@ export class MethodBuilder {
         }
         if (ctx.wrapInfo.needsInterfaceWrap) {
             this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
-            writer.writeLine(`resolve(getNativeObjectAsInterface(ptr as NativeHandle, ${ctx.baseReturnType}));`);
+            writer.writeLine(`resolve(getNativeObjectAsInterface(ptr, ${ctx.baseReturnType}));`);
         } else if (ctx.wrapInfo.needsBoxedWrap || ctx.wrapInfo.needsFundamentalWrap || ctx.wrapInfo.needsStructWrap) {
-            writer.writeLine(`resolve(getNativeObject(ptr as NativeHandle, ${ctx.baseReturnType}));`);
+            writer.writeLine(`resolve(getNativeObject(ptr, ${ctx.baseReturnType}));`);
         } else {
-            writer.writeLine(`resolve(getNativeObject(ptr as NativeHandle) as ${ctx.baseReturnType});`);
+            writer.writeLine(`resolve(getNativeObject(ptr));`);
         }
     }
 }

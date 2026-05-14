@@ -178,7 +178,7 @@ describe("ClassGenerator", () => {
             generator.generate();
 
             const code = stringify(file);
-            expect(code).toContain("registerNativeClass(Button, gtk_button_get_type() as unknown as GObject.GType);");
+            expect(code).toContain("registerNativeClass(Button, gtk_button_get_type());");
         });
     });
 

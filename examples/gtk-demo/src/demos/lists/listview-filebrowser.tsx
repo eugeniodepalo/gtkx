@@ -114,7 +114,7 @@ const ListViewFilebrowserDemo = () => {
             const count = dirList.getNItems();
 
             for (let i = 0; i < count; i++) {
-                const obj = dirList.getObject(i);
+                const obj = dirList.getItem(i);
                 if (obj instanceof Gio.FileInfo) {
                     items.push({
                         name: obj.getName(),

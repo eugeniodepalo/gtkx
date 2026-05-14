@@ -180,7 +180,7 @@ export class ClassStructGenerator {
         exportSymbol: string,
         entry: VfuncEntry,
         kind: VtableKind,
-        descriptorType: string,
+        _descriptorType: string,
     ): void {
         const callback = entry.field.callback;
         if (!callback) throw new Error(`writeDescriptor called for non-callback field ${entry.field.name}`);
@@ -211,6 +211,6 @@ export class ClassStructGenerator {
             writeFfiTypeExpression(writer, mappedReturn.ffi);
             writer.writeLine(",");
         });
-        writer.write(`} satisfies ${descriptorType}`);
+        writer.write("}");
     }
 }

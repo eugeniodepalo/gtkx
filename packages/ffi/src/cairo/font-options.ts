@@ -1,12 +1,12 @@
 import type { NativeHandle } from "@gtkx/native";
-import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../generated/cairo/enums.js";
-import { FontOptions } from "../generated/cairo/font-options.js";
+import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../generated/cairo/cairo.js";
+import { FontOptions } from "../generated/cairo/cairo.js";
 import { call, t } from "../native.js";
 import { wrapHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import { FONT_OPTIONS_T, FONT_OPTIONS_T_FULL, INT_TYPE, LIB } from "./common.js";
 
-declare module "../generated/cairo/font-options.js" {
+declare module "../generated/cairo/cairo.js" {
     interface FontOptions {
         setHintStyle(hintStyle: HintStyle): void;
         getHintStyle(): HintStyle;
@@ -149,7 +149,7 @@ FontOptions.prototype.copy = function (): FontOptions {
     return getNativeObject(ptr, FontOptions);
 };
 
-declare module "../generated/cairo/font-options.js" {
+declare module "../generated/cairo/cairo.js" {
     interface FontOptions {
         status(): Status;
         hash(): number;

@@ -568,12 +568,9 @@ const initialValueFor = (tsType: string): string => {
         return PRIMITIVE_INITIAL_VALUES[tsType] ?? "0";
     }
     if (tsType.includes("<")) {
-        return `null as unknown as ${tsType}`;
+        return "null";
     }
-    if (isGTypeBrand(tsType)) {
-        return `0 as unknown as ${tsType}`;
-    }
-    return `0 as ${tsType}`;
+    return "0";
 };
 
 /**
@@ -628,21 +625,15 @@ const buildLengthExpression = (
  * values pass `.handle`; arrays of objects map to handles; hashtables
  * convert maps to entry arrays. Primitives pass through verbatim.
  */
-const buildHandleExpression = (valueName: string, mapped: MappedType, nullable: boolean): string => {
-    const isUnknownType = mapped.ts === "unknown";
-    if (isUnknownType) {
-        return nullable
-            ? `(${valueName} as { handle: NativeHandle } | null)?.handle`
-            : `(${valueName} as { handle: NativeHandle }).handle`;
-    }
+const buildHandleExpression = (valueName: string, _mapped: MappedType, nullable: boolean): string => {
     return nullable ? `${valueName}?.handle` : `${valueName}.handle`;
 };
 
 const buildHashTableInputExpression = (valueName: string, mapped: MappedType): string => {
     if (isHandleBackedType(mapped.ffi.valueType?.type)) {
-        return `${valueName} ? Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
+        return `${valueName} ? globalThis.Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
     }
-    return `${valueName} ? Array.from(${valueName}) : null`;
+    return `${valueName} ? globalThis.Array.from(${valueName}) : null`;
 };
 
 const buildInputValueExpression = (valueName: string, mapped: MappedType, nullable: boolean): string => {
@@ -664,17 +655,6 @@ const buildInputValueExpression = (valueName: string, mapped: MappedType, nullab
         return buildHashTableInputExpression(valueName, mapped);
     }
 
-    if (isGTypeBrand(mapped.ts)) {
-        return `${valueName} as unknown as number`;
-    }
-
     return valueName;
 };
 
-/**
- * Returns `true` when the mapped TypeScript expression refers to the structural
- * `GType` brand that ts-for-gir publishes (locally as `GType` or namespace-qualified
- * as `<Namespace>.GType`). Used at FFI call boundaries where the underlying marshal
- * is `uint64` so the brand must be cast to `number` for the FFI signature.
- */
-export const isGTypeBrand = (tsType: string): boolean => tsType === "GType" || tsType.endsWith(".GType");

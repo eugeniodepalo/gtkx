@@ -79,4 +79,34 @@ describe("FileBuilder", () => {
         expect(output).not.toContain("import");
         expect(output).toContain("export enum Foo");
     });
+
+    describe("setMode", () => {
+        it("drops type-only imports and intra-namespace paths in JS mode", () => {
+            const file = fileBuilder()
+                .setMode("js")
+                .addTypeImport("./types.js", ["Type"])
+                .addImport("./other.js", ["other"])
+                .addImport("@gtkx/native", ["call"]);
+
+            const output = stringify(file);
+            expect(output).not.toContain("Type");
+            expect(output).not.toContain("./other.js");
+            expect(output).toContain('import { call } from "@gtkx/native";');
+        });
+
+        it("emits enums as frozen consts in JS mode", () => {
+            const file = fileBuilder()
+                .setMode("js")
+                .add(
+                    enumDecl("Status", { exported: true })
+                        .addMember({ name: "OK", value: 0 })
+                        .addMember({ name: "ERROR", value: 1 }),
+                );
+
+            const output = stringify(file);
+            expect(output).toContain("export const Status = globalThis.Object.freeze(");
+            expect(output).toContain("OK: 0");
+            expect(output).toContain("ERROR: 1");
+        });
+    });
 });

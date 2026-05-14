@@ -1,3 +1,2 @@
-export * from "../generated/gtk/index.js";
-export { default } from "../generated/gtk/index.js";
+export * from "../generated/gtk/gtk.js";
 export * from "./constants.js";

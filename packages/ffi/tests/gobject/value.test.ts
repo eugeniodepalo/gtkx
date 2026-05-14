@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import * as Gdk from "../../src/generated/gdk/index.js";
-import type { GType } from "../../src/generated/gobject/aliases.js";
-import { typeFromName } from "../../src/generated/gobject/functions.js";
-import * as Gtk from "../../src/generated/gtk/index.js";
+import * as Gdk from "../../src/generated/gdk/gdk.js";
+import type { GType } from "../../src/generated/gobject/gobject.js";
+import { typeFromName } from "../../src/generated/gobject/gobject.js";
+import * as Gtk from "../../src/generated/gtk/gtk.js";
 import "../../src/gobject/value.js";
-import { Value } from "../../src/generated/gobject/value.js";
+import { Value } from "../../src/generated/gobject/gobject.js";
 import { Type } from "../../src/gobject/types.js";
 import { call } from "../../src/native.js";
 

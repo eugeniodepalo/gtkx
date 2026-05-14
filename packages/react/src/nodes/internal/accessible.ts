@@ -1,7 +1,7 @@
+import { getClassGType } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
 import { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { gtk_accessible_list_get_type } from "@gtkx/ffi/gtk";
 import type { Props } from "../../types.js";
 
 type CreateValue = (jsValue: unknown) => Value;
@@ -35,7 +35,7 @@ const fromObject: CreateValue = (val) => Value.newFromObject((val as GObject.Obj
 const fromRefList: CreateValue = (val) => {
     const widgets = val as Gtk.Accessible[];
     const list = Gtk.AccessibleList.newFromList(widgets);
-    return Value.newFromBoxed(list, gtk_accessible_list_get_type() as unknown as GObject.GType);
+    return Value.newFromBoxed(list, getClassGType(Gtk.AccessibleList));
 };
 
 const prop = (enumValue: Gtk.AccessibleProperty, createValue: CreateValue): PropertyDef => ({
@@ -115,13 +115,13 @@ function applyDef(widget: Gtk.Widget, def: AccessiblePropDef, newValue: unknown)
 
     switch (def.kind) {
         case "property":
-            widget.updatePropertyValue([def.enumValue], [gvalue]);
+            widget.updateProperty([def.enumValue], [gvalue]);
             break;
         case "state":
-            widget.updateStateValue([def.enumValue], [gvalue]);
+            widget.updateState([def.enumValue], [gvalue]);
             break;
         case "relation":
-            widget.updateRelationValue([def.enumValue], [gvalue]);
+            widget.updateRelation([def.enumValue], [gvalue]);
             break;
     }
 }

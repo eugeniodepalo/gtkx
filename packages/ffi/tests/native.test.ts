@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { Error as GError } from "../src/generated/glib/error.js";
-import type { GType } from "../src/generated/gobject/aliases.js";
-import { typeFromName } from "../src/generated/gobject/functions.js";
-import * as Gtk from "../src/generated/gtk/index.js";
+import { Error as GError } from "../src/generated/glib/glib.js";
+import type { GType } from "../src/generated/gobject/gobject.js";
+import { typeFromName } from "../src/generated/gobject/gobject.js";
+import * as Gtk from "../src/generated/gtk/gtk.js";
 import { getNativeInterface, instanceIsA, NativeError } from "../src/index.js";
 
 const orientableGType = (): GType => typeFromName("GtkOrientable");

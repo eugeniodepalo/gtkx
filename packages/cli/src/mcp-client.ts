@@ -63,9 +63,13 @@ type PendingRequest = {
 const RECONNECT_DELAY_MS = 2000;
 const REQUEST_TIMEOUT_MS = 30000;
 
+const ROLE_NAMES_BY_VALUE = new Map<number, string>(
+    Object.entries(Gtk.AccessibleRole).map(([name, value]) => [value as number, name]),
+);
+
 const formatRole = (role: Gtk.AccessibleRole | undefined): string => {
     if (role === undefined) return "UNKNOWN";
-    return Gtk.AccessibleRole[role] ?? String(role);
+    return ROLE_NAMES_BY_VALUE.get(role) ?? String(role);
 };
 
 const getWidgetText = (widget: Gtk.Widget): string | null => {
@@ -345,7 +349,7 @@ class McpClient {
                     typeof p.value === "string"
                         ? Gtk.AccessibleRole[p.value as keyof typeof Gtk.AccessibleRole]
                         : p.value;
-                widgets = await testing.findAllByRole(app, roleValue, p.options);
+                widgets = await testing.findAllByRole(app, roleValue as Gtk.AccessibleRole, p.options);
                 break;
             }
             case "text":

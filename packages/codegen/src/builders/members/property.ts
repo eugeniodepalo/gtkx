@@ -16,7 +16,13 @@ export type PropertyOptions = {
     abstract?: boolean;
 };
 
-/** Builder that emits a class property declaration with modifiers, type, and optional initializer. */
+/**
+ * Builder that emits a class property declaration.
+ *
+ * In JS mode, properties carrying `declare: true` emit nothing — the runtime
+ * binding is installed via `Object.defineProperty` on the prototype
+ * elsewhere, and emitting `name = undefined` would clobber that accessor.
+ */
 export class PropertyBuilder implements Builder {
     constructor(
         readonly name: string,
@@ -25,6 +31,25 @@ export class PropertyBuilder implements Builder {
 
     /** @inheritdoc */
     write(writer: Writer): void {
+        if (writer.getMode() === "js") {
+            this.writeJs(writer);
+            return;
+        }
+        this.writeTs(writer);
+    }
+
+    private writeJs(writer: Writer): void {
+        if (this.opts.declare) return;
+        writeJsDoc(writer, this.opts.doc);
+        if (this.opts.isStatic) writer.write("static ");
+        writer.write(this.name);
+        if (this.opts.initializer) {
+            writer.write(` = ${this.opts.initializer}`);
+        }
+        writer.writeLine(";");
+    }
+
+    private writeTs(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.isStatic) writer.write("static ");
         if (this.opts.abstract) writer.write("abstract ");

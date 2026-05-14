@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import * as Gtk from "../../src/generated/gtk/index.js";
+import * as Gtk from "../../src/generated/gtk/gtk.js";
 
 describe("on/off", () => {
     it("registers and removes handlers via callback identity", () => {

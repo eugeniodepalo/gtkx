@@ -77,7 +77,7 @@ const clear = async (element: Gtk.Widget): Promise<void> => {
     await tick();
 };
 
-const SELECTABLE_ROLES = new Set([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
+const SELECTABLE_ROLES = new Set<Gtk.AccessibleRole>([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
     if (!widget) return false;
@@ -203,7 +203,7 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
     const nItems = controllers.getNItems();
 
     for (let i = 0; i < nItems; i++) {
-        const controller = controllers.getObject(i);
+        const controller = controllers.getItem(i);
         if (controller instanceof controllerType) {
             return controller;
         }
