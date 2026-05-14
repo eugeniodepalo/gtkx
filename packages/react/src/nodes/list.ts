@@ -1,4 +1,4 @@
-import { getClassGType, getNativeId } from "@gtkx/ffi";
+import { getClassGType } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
@@ -13,6 +13,7 @@ import { EventControllerNode } from "./event-controller.js";
 import type { BoundItem } from "./internal/bound-item.js";
 import { connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
 import { filterProps, hasChanged } from "./internal/props.js";
+import { widgetIdOf } from "./internal/widget-id.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
@@ -81,8 +82,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     private readonly sectionModels: Gtk.StringList[] = [];
     private sectionStore: Gio.ListStore | null = null;
     private flattenModel: Gtk.FlattenListModel | null = null;
-    private readonly treeChildModels = new Map<GObject.Object["handle"], Gtk.StringList>();
-    private readonly queriedLeaves = new Set<GObject.Object["handle"]>();
+    private readonly treeChildModels = new WeakMap<GObject.Object, Gtk.StringList>();
+    private readonly queriedLeaves = new WeakSet<GObject.Object>();
     private rootItemIds: string[] = [];
 
     public override isValidChild(child: Node): boolean {
@@ -162,8 +163,6 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
     public override detachDeletedInstance(): void {
         this.disposed = true;
-        this.treeChildModels.clear();
-        this.queriedLeaves.clear();
         this.treeExpanders.clear();
         this.rootItemIds = [];
         super.detachDeletedInstance();
@@ -249,7 +248,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                 const expander = new Gtk.TreeExpander();
                 listItem.setChild(expander);
                 this.containers.set(expander, UNBOUND_POSITION);
-                this.containerKeys.set(expander, String(getNativeId(expander.handle)));
+                this.containerKeys.set(expander, widgetIdOf(expander));
                 this.treeExpanders.set(listItem, expander);
             } else {
                 const { width, height } = this.getEstimatedItemSize();
@@ -259,7 +258,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                     listItem.setChild(placeholder);
                 }
                 this.containers.set(listItem, UNBOUND_POSITION);
-                this.containerKeys.set(listItem, String(getNativeId(listItem.handle)));
+                this.containerKeys.set(listItem, widgetIdOf(listItem));
             }
         });
 
@@ -484,19 +483,19 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             if (!obj) continue;
 
             if (this.rootItemIds[i] !== rootItems[i]?.id) {
-                this.treeChildModels.delete(obj.handle);
-                this.queriedLeaves.delete(obj.handle);
+                this.treeChildModels.delete(obj);
+                this.queriedLeaves.delete(obj);
                 transitionPositions.push(i);
                 continue;
             }
 
-            const cachedChildModel = this.treeChildModels.get(obj.handle);
+            const cachedChildModel = this.treeChildModels.get(obj);
             const newChildCount = rootItems[i]?.children?.length ?? 0;
 
             if (cachedChildModel && newChildCount > 0) {
                 resizeStringList(cachedChildModel, newChildCount);
             } else if (cachedChildModel && newChildCount === 0) {
-                this.treeChildModels.delete(obj.handle);
+                this.treeChildModels.delete(obj);
                 transitionPositions.push(i);
             } else if (!cachedChildModel && newChildCount > 0) {
                 transitionPositions.push(i);
@@ -511,8 +510,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         for (let i = overlap; i < oldSize; i++) {
             const obj = this.model.getItem(i);
             if (obj) {
-                this.treeChildModels.delete(obj.handle);
-                this.queriedLeaves.delete(obj.handle);
+                this.treeChildModels.delete(obj);
+                this.queriedLeaves.delete(obj);
             }
         }
     }
@@ -523,8 +522,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             if (pos >= newSize) continue;
             const oldObj = this.model.getItem(pos);
             if (oldObj) {
-                this.queriedLeaves.delete(oldObj.handle);
-                this.treeChildModels.delete(oldObj.handle);
+                this.queriedLeaves.delete(oldObj);
+                this.treeChildModels.delete(oldObj);
             }
             this.model.splice(pos, 1, [""]);
         }
@@ -558,20 +557,20 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const position = this.findStringObjectPosition(_item);
 
         if (position === null || position >= rootItems.length) {
-            this.queriedLeaves.add(_item.handle);
+            this.queriedLeaves.add(_item);
             return null;
         }
 
         const item = rootItems[position];
         if (!item?.children || item.children.length === 0) {
-            this.queriedLeaves.add(_item.handle);
+            this.queriedLeaves.add(_item);
             return null;
         }
 
         const childModel = new Gtk.StringList();
         resizeStringList(childModel, item.children.length);
-        this.treeChildModels.set(_item.handle, childModel);
-        this.queriedLeaves.delete(_item.handle);
+        this.treeChildModels.set(_item, childModel);
+        this.queriedLeaves.delete(_item);
         return childModel;
     }
 
@@ -580,7 +579,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const nItems = this.model.getNItems();
         for (let i = 0; i < nItems; i++) {
             const obj = this.model.getItem(i);
-            if (obj?.handle === item.handle) {
+            if (obj === item) {
                 return i;
             }
         }
@@ -652,7 +651,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (childModel) {
             for (let j = 0; j < childModel.getNItems(); j++) {
                 const obj = childModel.getItem(j);
-                if (obj?.handle === childItem.handle) {
+                if (obj === childItem) {
                     return parentItem.children[j] ?? null;
                 }
             }

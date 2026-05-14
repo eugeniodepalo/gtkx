@@ -1,4 +1,4 @@
-import { CONSTRUCTION_META, getInstanceGType, type NativeClass } from "@gtkx/ffi";
+import { CONSTRUCTION_META, type NativeClass } from "@gtkx/ffi";
 import type { GType } from "@gtkx/ffi/gobject";
 import { typeName, typeParent } from "@gtkx/ffi/gobject";
 import { PROPS, SIGNALS } from "./generated/internal.js";
@@ -33,7 +33,7 @@ const memoize = <T>(
     key: string,
     compute: (typeNames: readonly string[]) => T,
 ): T => {
-    const gtype = getInstanceGType(instance.handle);
+    const gtype = instance.__gtype__;
     let perGtype = cache.get(gtype);
     if (!perGtype) {
         perGtype = new Map();
