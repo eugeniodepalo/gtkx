@@ -2,14 +2,13 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runTsForGir } from "./invoke-cli.js";
-import { loadAndRewrite, rewriteDefaultImportsToNamespace, rewriteModuleKeywordToNamespace } from "./rewrite.js";
+import { loadAndRewrite } from "./rewrite.js";
 
 /**
  * Runs the full types pipeline: spawns ts-for-gir against the explicit module
- * list, loads every per-namespace output into ts-morph, rewrites module
- * specifiers into the gtkx shape, and writes one `<ns>/<ns>.d.ts` per
- * namespace under `outDir`. The intermediate ts-for-gir scratch directory is
- * cleaned up regardless of success or failure.
+ * list, applies the gtkx rewrites to every per-namespace output, and writes
+ * one `<ns>/<ns>.d.ts` per namespace under `outDir`. The intermediate
+ * ts-for-gir scratch directory is cleaned up regardless of success or failure.
  *
  * @param libraries Explicit GIR module identifiers, e.g. `["Gtk-4.0", "Adw-1"]`.
  * @param girDirectories Search directories for GIR XML files.
@@ -36,12 +35,10 @@ export async function runTypesPipeline(
 
         await mkdir(outDir, { recursive: true });
         const namespacesWritten: string[] = [];
-        for (const { namespace, sourceFile } of rewritten) {
+        for (const { namespace, content } of rewritten) {
             const nsDir = join(outDir, namespace);
             await mkdir(nsDir, { recursive: true });
-            const withNamespaceImports = rewriteDefaultImportsToNamespace(sourceFile.getFullText());
-            const finalSource = rewriteModuleKeywordToNamespace(withNamespaceImports);
-            await writeFile(join(nsDir, `${namespace}.d.ts`), finalSource, "utf-8");
+            await writeFile(join(nsDir, `${namespace}.d.ts`), content, "utf-8");
             namespacesWritten.push(namespace);
         }
 

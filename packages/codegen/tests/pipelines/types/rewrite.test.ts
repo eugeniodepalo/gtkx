@@ -1,4 +1,3 @@
-import { Project, type SourceFile } from "ts-morph";
 import { describe, expect, it } from "vitest";
 import {
     loadAndRewrite,
@@ -7,14 +6,9 @@ import {
     unwrapOuterNamespace,
 } from "../../../src/pipelines/types/rewrite.js";
 
-function sourceFor(content: string): SourceFile {
-    const project = new Project({ useInMemoryFileSystem: true, skipFileDependencyResolution: true });
-    return project.createSourceFile("node-foo-1.0.d.ts", content, { overwrite: true });
-}
-
 describe("unwrapOuterNamespace", () => {
     it("lifts namespace contents to top level with export keyword", () => {
-        const source = sourceFor(
+        const text = unwrapOuterNamespace(
             [
                 "export namespace foo {",
                 "    enum Status { OK, FAIL }",
@@ -25,9 +19,6 @@ describe("unwrapOuterNamespace", () => {
             ].join("\n"),
         );
 
-        unwrapOuterNamespace(source);
-        const text = source.getFullText();
-
         expect(text).toContain("export enum Status");
         expect(text).toContain("export class Bar");
         expect(text).toContain("export interface Baz");
@@ -36,12 +27,9 @@ describe("unwrapOuterNamespace", () => {
     });
 
     it("preserves statements already carrying an export keyword", () => {
-        const source = sourceFor(
+        const text = unwrapOuterNamespace(
             ["export namespace foo {", "    export const SIZE: number;", "    enum Tag { A }", "}"].join("\n"),
         );
-
-        unwrapOuterNamespace(source);
-        const text = source.getFullText();
 
         expect(text).toContain("export const SIZE: number;");
         expect(text).toContain("export enum Tag");
@@ -49,30 +37,19 @@ describe("unwrapOuterNamespace", () => {
     });
 
     it("leaves files without an outer namespace untouched", () => {
-        const source = sourceFor(["export enum Already { A, B }", "export class Other {}"].join("\n"));
-        const before = source.getFullText();
-
-        unwrapOuterNamespace(source);
-
-        expect(source.getFullText()).toBe(before);
+        const before = ["export enum Already { A, B }", "export class Other {}"].join("\n");
+        expect(unwrapOuterNamespace(before)).toBe(before);
     });
 
     it("ignores non-exported module declarations", () => {
-        const source = sourceFor(["namespace internal {", "    interface Hidden {}", "}"].join("\n"));
-        const before = source.getFullText();
-
-        unwrapOuterNamespace(source);
-
-        expect(source.getFullText()).toBe(before);
+        const before = ["namespace internal {", "    interface Hidden {}", "}"].join("\n");
+        expect(unwrapOuterNamespace(before)).toBe(before);
     });
 });
 
 describe("rewriteEnumsToConstObjects", () => {
     it("replaces top-level enums with const + type pair", () => {
-        const source = sourceFor("export enum Status { OK, FAIL }");
-
-        rewriteEnumsToConstObjects(source);
-        const text = source.getFullText();
+        const text = rewriteEnumsToConstObjects("export enum Status { OK, FAIL }");
 
         expect(text).toContain("export const Status: {");
         expect(text).toContain("readonly OK: 0;");
@@ -82,14 +59,11 @@ describe("rewriteEnumsToConstObjects", () => {
     });
 
     it("preserves explicit numeric values verbatim", () => {
-        const source = sourceFor(
+        const text = rewriteEnumsToConstObjects(
             ["export enum Flags {", "    NONE = 0,", "    READ = 1,", "    WRITE = 2,", "    EXEC = 4,", "}"].join(
                 "\n",
             ),
         );
-
-        rewriteEnumsToConstObjects(source);
-        const text = source.getFullText();
 
         expect(text).toContain("readonly NONE: 0;");
         expect(text).toContain("readonly READ: 1;");
@@ -98,20 +72,16 @@ describe("rewriteEnumsToConstObjects", () => {
     });
 
     it("preserves string-valued enum members", () => {
-        const source = sourceFor(["export enum Color {", '    RED = "red",', '    BLUE = "blue",', "}"].join("\n"));
-
-        rewriteEnumsToConstObjects(source);
-        const text = source.getFullText();
+        const text = rewriteEnumsToConstObjects(
+            ["export enum Color {", '    RED = "red",', '    BLUE = "blue",', "}"].join("\n"),
+        );
 
         expect(text).toContain('readonly RED: "red";');
         expect(text).toContain('readonly BLUE: "blue";');
     });
 
     it("drops export keyword when the original enum had none", () => {
-        const source = sourceFor("enum Internal { ONE, TWO }");
-
-        rewriteEnumsToConstObjects(source);
-        const text = source.getFullText();
+        const text = rewriteEnumsToConstObjects("enum Internal { ONE, TWO }");
 
         expect(text).toContain("const Internal: {");
         expect(text).toContain("type Internal =");
@@ -120,10 +90,9 @@ describe("rewriteEnumsToConstObjects", () => {
     });
 
     it("handles enums nested inside namespaces", () => {
-        const source = sourceFor(["export namespace outer {", "    enum Nested { A, B }", "}"].join("\n"));
-
-        rewriteEnumsToConstObjects(source);
-        const text = source.getFullText();
+        const text = rewriteEnumsToConstObjects(
+            ["export namespace outer {", "    enum Nested { A, B }", "}"].join("\n"),
+        );
 
         expect(text).toContain("const Nested: {");
         expect(text).toContain("readonly A: 0;");
@@ -171,7 +140,7 @@ describe("loadAndRewrite", () => {
         const file = rewritten[0];
         if (!file) throw new Error("missing rewritten file");
         expect(file.namespace).toBe("foo");
-        const text = file.sourceFile.getFullText();
+        const text = file.content;
 
         expect(text).not.toContain("node-foo-1.0-import.d.ts");
         expect(text).toContain("@gtkx/ffi/gobject");
