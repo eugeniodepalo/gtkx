@@ -119,7 +119,7 @@ export class RecordGenerator {
     }
 
     private generateClass(record: GirRecord, recordName: string): ClassDeclarationBuilder {
-        this.file.addImport("../../object.js", ["NativeObject"]);
+        this.file.addImport("../../object.js", ["NativeObject", "getHandle", "tryGetHandle"]);
 
         const doc = buildJsDocStructure(record.doc, this.options.namespace);
         const cls = classDecl(recordName, {
@@ -431,7 +431,7 @@ export class RecordGenerator {
         if (needsObjectWrap) {
             const wrapFn = isInterfaceField ? "getNativeObjectAsInterface" : "getNativeObject";
             return (writer: Writer) => {
-                writer.write("const ptr = read(this.handle, ");
+                writer.write("const ptr = read(getHandle(this),");
                 writeFfiTypeExpression(writer, typeMapping.ffi);
                 writer.writeLine(`, ${offset});`);
                 writer.writeLine("if (ptr === null) return null;");
@@ -439,7 +439,7 @@ export class RecordGenerator {
             };
         }
         return (writer: Writer) => {
-            writer.write("return read(this.handle, ");
+            writer.write("return read(getHandle(this),");
             writeFfiTypeExpression(writer, typeMapping.ffi);
             writer.writeLine(`, ${offset});`);
         };
@@ -452,10 +452,10 @@ export class RecordGenerator {
     ): (writer: Writer) => void {
         this.file.addImport("../../native.js", ["write", "t"]);
         return (writer: Writer) => {
-            writer.write("write(this.handle, ");
+            writer.write("write(getHandle(this),");
             writeFfiTypeExpression(writer, typeMapping.ffi);
             if (needsObjectWrap) {
-                writer.writeLine(`, ${offset}, value?.handle ?? null);`);
+                writer.writeLine(`, ${offset}, tryGetHandle(value));`);
             } else {
                 writer.writeLine(`, ${offset}, value);`);
             }
@@ -544,7 +544,7 @@ export class RecordGenerator {
             writer.writeLine(`return new ${tsTypeName}({`);
             writer.withIndent(() => {
                 for (const nested of writableFields) {
-                    writer.write(`${nested.fieldName}: read(this.handle, `);
+                    writer.write(`${nested.fieldName}: read(getHandle(this),`);
                     writeFfiTypeExpression(writer, nested.mapping.ffi);
                     writer.writeLine(`, ${nested.offset}),`);
                 }
@@ -557,7 +557,7 @@ export class RecordGenerator {
             this.file.addImport("../../native.js", ["write", "t"]);
             setBody = (writer) => {
                 for (const nested of writableFields) {
-                    writer.write(`write(this.handle, `);
+                    writer.write(`write(getHandle(this),`);
                     writeFfiTypeExpression(writer, nested.mapping.ffi);
                     writer.writeLine(`, ${nested.offset}, value.${nested.fieldName});`);
                 }
@@ -633,7 +633,7 @@ export class RecordGenerator {
                     returnType: tsTypeName,
                     doc: doc?.[0]?.description,
                     body: (writer) => {
-                        writer.writeLine(`const array = read(this.handle, ${structTypeExpr}, ${ptrOffset});`);
+                        writer.writeLine(`const array = read(getHandle(this),${structTypeExpr}, ${ptrOffset});`);
                         writer.writeLine(`const base = index * ${elementSize};`);
                         writer.writeLine(`return new ${tsTypeName}({`);
                         writer.withIndent(() => {
@@ -664,7 +664,7 @@ export class RecordGenerator {
                 method(setterName, {
                     params: [param("index", "number"), param("value", tsTypeName)],
                     body: (writer) => {
-                        writer.writeLine(`const array = read(this.handle, ${structTypeExpr}, ${ptrOffset});`);
+                        writer.writeLine(`const array = read(getHandle(this),${structTypeExpr}, ${ptrOffset});`);
                         writer.writeLine(`const base = index * ${elementSize};`);
                         for (const nestedItem of writableNestedFields) {
                             const nestedField = nestedItem.field;
@@ -679,7 +679,7 @@ export class RecordGenerator {
                             writeFfiTypeExpression(writer, nestedTypeMapping.ffi);
                             writer.writeLine(`, base + ${nestedItem.offset}, value.${nestedFieldName});`);
                         }
-                        writer.writeLine(`write(this.handle, ${structTypeExpr}, ${ptrOffset}, array);`);
+                        writer.writeLine(`write(getHandle(this),${structTypeExpr}, ${ptrOffset}, array);`);
                     },
                 }),
             );

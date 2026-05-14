@@ -266,7 +266,7 @@ export class MethodBuilder {
     private writeAsyncCallArguments(writer: Writer, ctx: AsyncWrapperContext): void {
         writer.write("{ type: ");
         writeFfiTypeExpression(writer, ctx.selfTypeDescriptor);
-        writer.writeLine(", value: this.handle },");
+        writer.writeLine(", value: getHandle(this) },");
 
         const asyncArgs = this.methodBody.buildShapeCallArguments(ctx.asyncShape, ctx.asyncParams);
         this.methodBody.writeArgumentsToWriter(writer, asyncArgs);
@@ -327,7 +327,7 @@ export class MethodBuilder {
         writer.withIndent(() => {
             writer.write("{ type: ");
             writeFfiTypeExpression(writer, ctx.selfTypeDescriptor);
-            writer.writeLine(", value: this.handle },");
+            writer.writeLine(", value: getHandle(this) },");
             writer.write("{ type: ");
             writeFfiTypeExpression(writer, { type: "gobject", ownership: "borrowed" });
             writer.writeLine(", value: result },");

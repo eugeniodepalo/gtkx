@@ -226,6 +226,8 @@ export class ClassGenerator {
             this.file.addImport("../../object.js", ["NativeObject"]);
         }
 
+        this.file.addImport("../../object.js", ["getHandle", "tryGetHandle"]);
+
         const doc = buildJsDocStructure(this.cls.doc, this.options.namespace);
         const cls = classDecl(this.className, {
             exported: true,

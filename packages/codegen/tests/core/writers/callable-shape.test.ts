@@ -98,7 +98,7 @@ describe("buildCallableShape — input parameters", () => {
         expect(shape.returnTupleEntries).toEqual([]);
     });
 
-    it("passes .handle for gobject inputs and supports optional chaining when nullable", () => {
+    it("passes getHandle for gobject inputs and tryGetHandle when nullable", () => {
         const required = makeParam({ name: "widget", typeName: "Gtk.Widget" });
         const nullable = makeParam({ name: "parent", typeName: "Gtk.Widget", nullable: true });
         const mapper = new FakeFfiMapper()
@@ -121,11 +121,11 @@ describe("buildCallableShape — input parameters", () => {
             ffiMapper: mapper.asMapper(),
         });
 
-        expect(shape.callArgs[0]?.value).toBe("widget.handle");
-        expect(shape.callArgs[1]?.value).toBe("parent?.handle");
+        expect(shape.callArgs[0]?.value).toBe("getHandle(widget)");
+        expect(shape.callArgs[1]?.value).toBe("tryGetHandle(parent)");
     });
 
-    it("accesses .handle without a cast when the mapped TS type is unknown", () => {
+    it("calls getHandle without a cast when the mapped TS type is unknown", () => {
         const param = makeParam({ name: "anything" });
         const mapper = new FakeFfiMapper().setMapping(param, {
             ts: "unknown",
@@ -141,10 +141,10 @@ describe("buildCallableShape — input parameters", () => {
             ffiMapper: mapper.asMapper(),
         });
 
-        expect(shape.callArgs[0]?.value).toBe("anything.handle");
+        expect(shape.callArgs[0]?.value).toBe("getHandle(anything)");
     });
 
-    it("maps array-of-handle inputs to .map(item => item.handle)", () => {
+    it("maps array-of-handle inputs to .map(item => getHandle(item))", () => {
         const param = makeParam({ name: "widgets", typeName: "Gtk.Widget" });
         const mapper = new FakeFfiMapper().setMapping(param, {
             ts: "Gtk.Widget[]",
@@ -160,7 +160,7 @@ describe("buildCallableShape — input parameters", () => {
             ffiMapper: mapper.asMapper(),
         });
 
-        expect(shape.callArgs[0]?.value).toBe("widgets.map(item => item.handle)");
+        expect(shape.callArgs[0]?.value).toBe("widgets.map(item => getHandle(item))");
     });
 
     it("converts hashtable inputs of handle-backed values to entry arrays", () => {
@@ -184,7 +184,7 @@ describe("buildCallableShape — input parameters", () => {
         });
 
         expect(shape.callArgs[0]?.value).toBe(
-            "lookup ? globalThis.Array.from(lookup).map(([k, v]) => [k, v?.handle]) : null",
+            "lookup ? globalThis.Array.from(lookup).map(([k, v]) => [k, tryGetHandle(v)]) : null",
         );
     });
 
@@ -422,7 +422,7 @@ describe("buildCallableShape — out parameters", () => {
 
         expect(shape.signatureParams).toEqual([{ name: "widget", tsType: "Gtk.Widget", optional: false }]);
         expect(shape.hiddenOuts).toEqual([]);
-        expect(shape.callArgs[0]?.value).toBe("widget.handle");
+        expect(shape.callArgs[0]?.value).toBe("getHandle(widget)");
     });
 
     it("allocates an opaque caller-allocates out param via the public signature", () => {
@@ -448,7 +448,7 @@ describe("buildCallableShape — out parameters", () => {
 
         expect(shape.signatureParams).toEqual([{ name: "ev", tsType: "Gdk.Event", optional: false }]);
         expect(shape.hiddenOuts).toEqual([]);
-        expect(shape.callArgs[0]?.value).toBe("ev.handle");
+        expect(shape.callArgs[0]?.value).toBe("getHandle(ev)");
         expect(shape.returnTupleEntries).toEqual([]);
     });
 
@@ -531,7 +531,7 @@ describe("buildCallableShape — out parameters", () => {
         expect(shape.hiddenOuts).toHaveLength(1);
         expect(shape.hiddenOuts[0]?.kind).toBe("alloc-struct");
         expect(shape.hiddenOuts[0]?.varName).toBe("rectRef");
-        expect(shape.callArgs[0]?.value).toBe("rectRef.handle");
+        expect(shape.callArgs[0]?.value).toBe("getHandle(rectRef)");
     });
 });
 

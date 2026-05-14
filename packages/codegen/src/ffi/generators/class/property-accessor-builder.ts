@@ -380,7 +380,7 @@ export class PropertyAccessorBuilder {
             sharedLibrary: "libgobject-2.0.so.0",
             cIdentifier,
             args: [
-                { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
+                { type: { type: "gobject", ownership: "borrowed" }, value: "getHandle(this)" },
                 { type: { type: "string", ownership: "borrowed" }, value: `"${propName}"` },
                 {
                     type: {
@@ -390,7 +390,7 @@ export class PropertyAccessorBuilder {
                         library: "libgobject-2.0.so.0",
                         getTypeFn: "g_value_get_type",
                     },
-                    value: "gvalue.handle",
+                    value: "getHandle(gvalue)",
                 },
             ],
             returnType: { type: "void" },

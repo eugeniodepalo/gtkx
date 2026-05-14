@@ -135,7 +135,7 @@ export class FieldBuilder {
                             );
                             if (nestedTypeMapping.unsafe) continue;
 
-                            writer.write(`write(this.handle, `);
+                            writer.write(`write(getHandle(this),`);
                             writeFfiTypeExpression(writer, nestedTypeMapping.ffi);
                             writer.writeLine(`, ${nestedOffset}, init.${fieldName}.${nestedFieldName});`);
                         }
@@ -146,7 +146,7 @@ export class FieldBuilder {
                     if (typeMapping.unsafe) continue;
                     this.addFieldTypeImports(typeMapping.imports);
 
-                    writer.write(`if (init.${fieldName} !== undefined) write(this.handle, `);
+                    writer.write(`if (init.${fieldName} !== undefined) write(getHandle(this),`);
                     writeFfiTypeExpression(writer, typeMapping.ffi);
                     writer.writeLine(`, ${offset}, init.${fieldName});`);
                 }

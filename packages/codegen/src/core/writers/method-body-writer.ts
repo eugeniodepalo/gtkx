@@ -612,7 +612,7 @@ export class MethodBodyWriter {
             shape,
             parameters: method.parameters,
             throws: method.throws,
-            self: { type: options.selfTypeDescriptor, value: "this.handle" },
+            self: { type: options.selfTypeDescriptor, value: "getHandle(this)" },
             hasVarargs: hasVarargs(method.parameters),
         });
     }

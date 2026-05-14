@@ -174,20 +174,21 @@ export class CallExpressionBuilder {
     }
 
     /**
-     * Builds a value expression that handles object ID extraction.
+     * Builds a value expression that resolves an object's native handle.
      *
-     * For gobject/boxed/struct types, extracts the `.handle` property (NativeHandle).
-     * For arrays of gobject/boxed/struct types, maps each item to its `.handle`.
-     * For hashtable types, generates: `Array.from(value)` to convert Map to array of tuples.
-     * For primitives, just returns the value name.
+     * For gobject/boxed/struct types, calls the internal `getHandle(value)`
+     * helper (or `tryGetHandle` when nullable). For arrays of handle-backed
+     * types, maps each item through `getHandle`. For hashtable types,
+     * converts the Map to an entry-tuple array with values resolved through
+     * `tryGetHandle`. Primitives pass through verbatim.
      */
     private buildHandleAccessExpression(valueName: string, _mappedType: MappedType, nullable: boolean): string {
-        return nullable ? `${valueName}?.handle` : `${valueName}.handle`;
+        return nullable ? `tryGetHandle(${valueName})` : `getHandle(${valueName})`;
     }
 
     private buildHashTableExpression(valueName: string, mappedType: MappedType): string {
         if (isHandleBackedType(mappedType.ffi.valueType?.type)) {
-            return `${valueName} ? globalThis.Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
+            return `${valueName} ? globalThis.Array.from(${valueName}).map(([k, v]) => [k, tryGetHandle(v)]) : null`;
         }
         return `${valueName} ? globalThis.Array.from(${valueName}) : null`;
     }
@@ -208,7 +209,9 @@ export class CallExpressionBuilder {
             mappedType.ffi.itemType &&
             isHandleBackedType(mappedType.ffi.itemType.type)
         ) {
-            return nullable ? `${valueName}?.map(item => item.handle)` : `${valueName}.map(item => item.handle)`;
+            return nullable
+                ? `${valueName}?.map(item => getHandle(item))`
+                : `${valueName}.map(item => getHandle(item))`;
         }
 
         if (mappedType.ffi.type === "hashtable") {

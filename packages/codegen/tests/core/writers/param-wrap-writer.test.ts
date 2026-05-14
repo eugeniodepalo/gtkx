@@ -172,7 +172,7 @@ describe("buildCallbackWrapperExpression", () => {
     it("emits an unwrapped callback body that captures and rewraps the return value", () => {
         const out = render(buildCallbackWrapperExpression("handler", wrapInfos, { needsUnwrap: true }));
         expect(out).toContain("const _result = handler(");
-        expect(out).toContain("return _result?.handle ?? null;");
+        expect(out).toContain("return _result != null ? getHandle(_result) : null;");
     });
 
     it("emits a single-arg list with no trailing comma between entries", () => {

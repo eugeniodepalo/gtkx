@@ -443,7 +443,7 @@ export class SignalBuilder {
     }
 
     private writeRefReturnTuple(writer: Writer, paramData: SignalParamData[], needsReturnUnwrap: boolean): void {
-        const returnExpr = needsReturnUnwrap ? "_result?.handle" : "_result";
+        const returnExpr = needsReturnUnwrap ? "tryGetHandle(_result)" : "_result";
         writer.write(`return [${returnExpr}`);
         for (const [i, p] of paramData.entries()) {
             if (p.mapped.ffi.type === "ref") {
@@ -468,7 +468,7 @@ export class SignalBuilder {
         writer.withIndent(() => this.writeHandlerArgs(writer, paramData, false));
         writer.writeLine(");");
         if (needsReturnUnwrap) {
-            writer.writeLine("return _result?.handle;");
+            writer.writeLine("return tryGetHandle(_result);");
         }
     }
 
@@ -537,7 +537,7 @@ export class SignalBuilder {
             sharedLibrary: this.options.sharedLibrary,
             cIdentifier: "g_signal_connect_data",
             args: [
-                { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
+                { type: { type: "gobject", ownership: "borrowed" }, value: "getHandle(this)" },
                 { type: { type: "string", ownership: "borrowed" }, value: "signal" },
                 { type: trampolineType, value: "wrappedHandler" },
                 { type: { type: "uint32" }, value: "after ? 1 : 0" },
@@ -554,7 +554,7 @@ export class SignalBuilder {
             sharedLibrary: this.options.sharedLibrary,
             cIdentifier: "g_signal_connect_closure",
             args: [
-                { type: { type: "gobject", ownership: "borrowed" }, value: "this.handle" },
+                { type: { type: "gobject", ownership: "borrowed" }, value: "getHandle(this)" },
                 { type: { type: "string", ownership: "borrowed" }, value: "signal" },
                 { type: callbackType, value: "wrappedHandler" },
                 { type: { type: "boolean" }, value: "after ?? false" },

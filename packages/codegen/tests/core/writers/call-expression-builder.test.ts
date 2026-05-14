@@ -266,7 +266,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("widget", mappedType);
 
-            expect(result).toBe("widget.handle");
+            expect(result).toBe("getHandle(widget)");
         });
 
         it("returns ID extraction expression for boxed type", () => {
@@ -278,7 +278,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("color", mappedType);
 
-            expect(result).toBe("color.handle");
+            expect(result).toBe("getHandle(color)");
         });
 
         it("returns ID extraction expression for struct type", () => {
@@ -290,7 +290,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("allocation", mappedType);
 
-            expect(result).toBe("allocation.handle");
+            expect(result).toBe("getHandle(allocation)");
         });
 
         it("handles complex value names", () => {
@@ -302,7 +302,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("this.child", mappedType);
 
-            expect(result).toBe("this.child.handle");
+            expect(result).toBe("getHandle(this.child)");
         });
 
         it("handles array value names", () => {
@@ -314,7 +314,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("widgets[0]", mappedType);
 
-            expect(result).toBe("widgets[0].handle");
+            expect(result).toBe("getHandle(widgets[0])");
         });
     });
 

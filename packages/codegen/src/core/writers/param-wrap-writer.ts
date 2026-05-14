@@ -62,7 +62,7 @@ function writeUnwrappedCallbackBody(
         writer.newLine();
         writer.withIndent(() => writeWrapExpressionsList(wrapInfos, writer));
         writer.writeLine(");");
-        writer.writeLine("return _result?.handle ?? null;");
+        writer.writeLine("return _result != null ? getHandle(_result) : null;");
     });
     writer.write("}");
 }

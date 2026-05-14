@@ -346,7 +346,7 @@ const handleAllocStructOut = (acc: ShapeAccumulator, ctx: ParamContext): void =>
     });
     acc.callArgs.push({
         ffi: ctx.mapped.ffi,
-        value: `${varName}.handle`,
+        value: `getHandle(${varName})`,
         optional: false,
         sourceParamIndex: ctx.girIndex,
     });
@@ -622,16 +622,17 @@ const buildLengthExpression = (
  * Generates the JS value expression for an input parameter.
  *
  * Mirrors {@link CallExpressionBuilder.buildValueExpression}: gobject/boxed
- * values pass `.handle`; arrays of objects map to handles; hashtables
- * convert maps to entry arrays. Primitives pass through verbatim.
+ * values resolve to their native handle via the internal `getHandle` helper;
+ * arrays of objects map to handles; hashtables convert maps to entry arrays.
+ * Primitives pass through verbatim.
  */
 const buildHandleExpression = (valueName: string, _mapped: MappedType, nullable: boolean): string => {
-    return nullable ? `${valueName}?.handle` : `${valueName}.handle`;
+    return nullable ? `tryGetHandle(${valueName})` : `getHandle(${valueName})`;
 };
 
 const buildHashTableInputExpression = (valueName: string, mapped: MappedType): string => {
     if (isHandleBackedType(mapped.ffi.valueType?.type)) {
-        return `${valueName} ? globalThis.Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
+        return `${valueName} ? globalThis.Array.from(${valueName}).map(([k, v]) => [k, tryGetHandle(v)]) : null`;
     }
     return `${valueName} ? globalThis.Array.from(${valueName}) : null`;
 };
@@ -648,7 +649,7 @@ const buildInputValueExpression = (valueName: string, mapped: MappedType, nullab
     }
 
     if (mapped.ffi.type === "array" && mapped.ffi.itemType && isHandleBackedType(mapped.ffi.itemType.type)) {
-        return nullable ? `${valueName}?.map(item => item.handle)` : `${valueName}.map(item => item.handle)`;
+        return nullable ? `${valueName}?.map(item => getHandle(item))` : `${valueName}.map(item => getHandle(item))`;
     }
 
     if (mapped.ffi.type === "hashtable") {

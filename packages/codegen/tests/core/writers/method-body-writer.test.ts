@@ -621,7 +621,7 @@ describe("MethodBodyWriter", () => {
             })(w);
 
             const output = w.toString();
-            expect(output).toContain("this.handle");
+            expect(output).toContain("getHandle(this)");
         });
 
         it("adds error handling for throwing methods", () => {
@@ -692,7 +692,7 @@ describe("MethodBodyWriter", () => {
             const output = w.toString();
             expect(output).toContain("call(");
             expect(output).toContain('"gtk_init"');
-            expect(output).not.toContain("this.handle");
+            expect(output).not.toContain("getHandle(this)");
         });
     });
 
