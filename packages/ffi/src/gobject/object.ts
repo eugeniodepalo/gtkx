@@ -1,4 +1,5 @@
 import { findObjectProperty, type NativeHandle } from "@gtkx/native";
+import type { GType } from "../generated/gobject/aliases.js";
 import { Object as GObject } from "../generated/gobject/object.js";
 import type { ParamSpec } from "../generated/gobject/param-spec.js";
 import { Value } from "../generated/gobject/value.js";
@@ -20,7 +21,7 @@ declare module "../generated/gobject/object.js" {
          * @param values - The values of each property to be set
          * @returns A new instance of the specified type
          */
-        function newWithProperties(objectType: number, names: string[], values: Value[]): Object;
+        function newWithProperties(objectType: GType, names: string[], values: Value[]): Object;
     }
 
     interface Object {
@@ -100,17 +101,17 @@ const GVALUE_BORROWED_TYPE = t.boxed("GValue", "borrowed", LIB, "g_value_get_typ
 const GOBJECT_BORROWED = t.object("borrowed");
 
 type ObjectStatic = {
-    newWithProperties(objectType: number, names: string[], values: Value[]): GObject;
+    newWithProperties(objectType: GType, names: string[], values: Value[]): GObject;
 };
 
 const ObjectWithStatics = GObject as typeof GObject & ObjectStatic;
 
-ObjectWithStatics.newWithProperties = (objectType: number, names: string[], values: Value[]): GObject => {
+ObjectWithStatics.newWithProperties = (objectType: GType, names: string[], values: Value[]): GObject => {
     const ptr = call(
         LIB,
         "g_object_new_with_properties",
         [
-            { type: t.uint64, value: objectType },
+            { type: t.uint64, value: objectType as unknown as number },
             { type: t.uint32, value: names.length },
             { type: t.sizedArray(t.string("borrowed"), 1), value: names },
             {
@@ -205,7 +206,7 @@ GObject.prototype.off = function off(this: GObject, sigName: string, callback: L
     return this as unknown as NodeJS.EventEmitter;
 };
 
-const resolvePropertyValueType = (obj: GObject, propertyName: string): number => {
+const resolvePropertyValueType = (obj: GObject, propertyName: string): GType => {
     const pspecHandle = findObjectProperty(obj.handle, propertyName);
     if (!pspecHandle) {
         const className = obj.constructor.name || "GObject";

@@ -4,7 +4,7 @@ import type { GirInterface } from "./interface.js";
 /**
  * The kind of a user-defined type (not intrinsic).
  */
-export type TypeKind = "class" | "interface" | "record" | "enum" | "flags" | "callback";
+export type TypeKind = "class" | "interface" | "record" | "enum" | "flags" | "callback" | "alias";
 
 /**
  * Minimal repository interface used by model classes for type graph traversal.

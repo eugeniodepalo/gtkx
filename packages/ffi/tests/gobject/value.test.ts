@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Gdk from "../../src/generated/gdk/index.js";
+import type { GType } from "../../src/generated/gobject/aliases.js";
 import { typeFromName } from "../../src/generated/gobject/functions.js";
 import * as Gtk from "../../src/generated/gtk/index.js";
 import "../../src/gobject/value.js";
@@ -7,8 +8,8 @@ import { Value } from "../../src/generated/gobject/value.js";
 import { Type } from "../../src/gobject/types.js";
 import { call } from "../../src/native.js";
 
-const callGetType = (lib: string, fn: string): number => call(lib, fn, [], { type: "uint64" }) as number;
-const gdkRgbaGType = (): number => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
+const callGetType = (lib: string, fn: string): GType => call(lib, fn, [], { type: "uint64" }) as unknown as GType;
+const gdkRgbaGType = (): GType => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
 
 describe("Value factory methods", () => {
     describe("newFromBoolean", () => {

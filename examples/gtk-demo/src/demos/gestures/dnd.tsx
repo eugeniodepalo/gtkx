@@ -1,5 +1,6 @@
 import { css, cx } from "@gtkx/css";
 import * as Gdk from "@gtkx/ffi/gdk";
+import type { GType } from "@gtkx/ffi/gobject";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
@@ -107,8 +108,8 @@ interface CanvasItem {
     angleDelta: number;
 }
 
-let gdkRgbaTypeCache: number | null = null;
-function getGdkRgbaType(): number {
+let gdkRgbaTypeCache: GType | null = null;
+function getGdkRgbaType(): GType {
     gdkRgbaTypeCache ??= GObject.typeFromName("GdkRGBA");
     return gdkRgbaTypeCache;
 }
@@ -390,7 +391,7 @@ const DndDemo = ({ window }: DemoProps) => {
             if (controller instanceof Gtk.DragSource) {
                 const paintable = Gtk.WidgetPaintable.new(button);
                 const { x, y } = dragHotspotRef.current;
-                controller.setIcon(x, y, paintable);
+                controller.setIcon(paintable, x, y);
                 break;
             }
         }

@@ -35,7 +35,7 @@ const fromObject: CreateValue = (val) => Value.newFromObject((val as GObject.Obj
 const fromRefList: CreateValue = (val) => {
     const widgets = val as Gtk.Accessible[];
     const list = Gtk.AccessibleList.newFromList(widgets);
-    return Value.newFromBoxed(list, gtk_accessible_list_get_type() as number);
+    return Value.newFromBoxed(list, gtk_accessible_list_get_type() as unknown as GObject.GType);
 };
 
 const prop = (enumValue: Gtk.AccessibleProperty, createValue: CreateValue): PropertyDef => ({

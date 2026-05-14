@@ -1,6 +1,7 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as cairo from "@gtkx/ffi/cairo";
 import type * as Gdk from "@gtkx/ffi/gdk";
+import type { GType } from "@gtkx/ffi/gobject";
 import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type * as GtkSource from "@gtkx/ffi/gtksource";
@@ -1018,7 +1019,7 @@ declare module "./generated/jsx.js" {
 
     interface GtkDropTargetProps {
         /** GType values for accepted drop content types */
-        types?: number[];
+        types?: GType[];
     }
 }
 

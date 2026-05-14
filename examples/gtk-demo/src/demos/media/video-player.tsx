@@ -42,7 +42,7 @@ const VideoPlayerDemo = ({ window }: DemoProps) => {
         dialog.setDefaultFilter(videoFilter);
 
         try {
-            const file = await dialog.openAsync(window.current);
+            const file = await dialog.openAsync(window.current, null);
             setVideoFile(file);
         } catch {
             /* User cancelled */

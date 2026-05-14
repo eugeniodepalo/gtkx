@@ -29,6 +29,7 @@ import {
     buildCallableShape,
     type CallableShape,
     type HiddenOut,
+    isGTypeBrand,
     type ParamMapping,
     type ShapeCallArg,
 } from "./callable-shape.js";
@@ -72,6 +73,9 @@ export const addTypeImports = (
                 case "class":
                 case "interface":
                     imports.addImport(`./${toKebabCase(imp.name)}.js`, [imp.transformedName]);
+                    break;
+                case "alias":
+                    imports.addImport("./aliases.js", [imp.transformedName]);
                     break;
                 case "callback":
                     break;
@@ -826,7 +830,7 @@ export class MethodBodyWriter {
             hasVarargs: options.hasVarargs,
         })(writer);
         if (hasReturnValue && needsCast) {
-            writer.write(` as ${tsReturnType}`);
+            writer.write(isGTypeBrand(rawReturnType) ? ` as unknown as ${tsReturnType}` : ` as ${tsReturnType}`);
         }
         writer.write(";");
         writer.newLine();
@@ -920,7 +924,10 @@ export class MethodBodyWriter {
         } else if (info.needsHashTableVar) {
             writer.write(" as [unknown, unknown][]");
         } else if (!info.needsResultPtr) {
-            writer.write(` as ${info.tsReturnType}`);
+            const rawReturnType = shape.originalReturnTsType;
+            writer.write(
+                isGTypeBrand(rawReturnType) ? ` as unknown as ${info.tsReturnType}` : ` as ${info.tsReturnType}`,
+            );
         }
         writer.write(";");
         writer.newLine();

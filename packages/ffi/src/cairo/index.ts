@@ -1,9 +1,9 @@
 export * from "../generated/cairo/enums.js";
 export { FontFace } from "../generated/cairo/font-face.js";
-export { Path } from "../generated/cairo/path.js";
 export * from "../generated/cairo/functions.js";
 export { Glyph } from "../generated/cairo/glyph.js";
 export { default } from "../generated/cairo/index.js";
+export { Path } from "../generated/cairo/path.js";
 export { Rectangle } from "../generated/cairo/rectangle.js";
 export { RectangleInt } from "../generated/cairo/rectangle-int.js";
 export { ScaledFont } from "../generated/cairo/scaled-font.js";

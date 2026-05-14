@@ -37,7 +37,7 @@ const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
     renderer.realizeForDisplay(display);
 
     try {
-        const texture = renderer.renderTexture(renderNode);
+        const texture = renderer.renderTexture(renderNode, null);
         const pngBytes = texture.saveToPngBytes();
         const data = pngBytes.getData();
 

@@ -255,7 +255,7 @@ const handleInputParam = (
     acc.callArgs.push({
         ffi: ctx.mapped.ffi,
         value: buildInputValueExpression(ctx.jsName, ctx.mapped, ctx.isNullable || ctx.isOptional),
-        optional: ctx.isOptional,
+        optional: ctx.isOptional || ctx.isNullable,
         sourceParamIndex: ctx.girIndex,
     });
     recordMapping(acc, ctx, true, null);
@@ -266,7 +266,7 @@ const handleOpaqueCallerAllocates = (acc: ShapeAccumulator, ctx: ParamContext): 
     acc.callArgs.push({
         ffi: ctx.mapped.ffi,
         value: buildInputValueExpression(ctx.jsName, ctx.mapped, ctx.isNullable || ctx.isOptional),
-        optional: ctx.isOptional,
+        optional: ctx.isOptional || ctx.isNullable,
         sourceParamIndex: ctx.girIndex,
     });
     acc.paramMappings.push({
@@ -404,7 +404,7 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
     const trailingOptional = new Set<number>();
     for (let i = filteredParams.length - 1; i >= 0; i--) {
         const param = filteredParams[i];
-        if (!param || !param.optional) break;
+        if (!param?.optional) break;
         trailingOptional.add(i);
     }
 
@@ -458,9 +458,10 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
     }
     for (const { mapping, hiddenOutIndex } of tupleOuts) {
         const passHandleEntry = hiddenOutIndex === null;
-        const tupleNullable = mapping.nullable || (passHandleEntry && mapping.optional);
+        const isInout = mapping.isInout;
+        const tupleNullable = mapping.nullable || (isInout && passHandleEntry && mapping.optional);
         returnTupleEntries.push({
-            kind: mapping.isInout ? "inout-param" : "out-param",
+            kind: isInout ? "inout-param" : "out-param",
             tsType: outParamReturnTsType(mapping),
             nullable: tupleNullable,
         });
@@ -569,6 +570,9 @@ const initialValueFor = (tsType: string): string => {
     if (tsType.includes("<")) {
         return `null as unknown as ${tsType}`;
     }
+    if (isGTypeBrand(tsType)) {
+        return `0 as unknown as ${tsType}`;
+    }
     return `0 as ${tsType}`;
 };
 
@@ -660,5 +664,17 @@ const buildInputValueExpression = (valueName: string, mapped: MappedType, nullab
         return buildHashTableInputExpression(valueName, mapped);
     }
 
+    if (isGTypeBrand(mapped.ts)) {
+        return `${valueName} as unknown as number`;
+    }
+
     return valueName;
 };
+
+/**
+ * Returns `true` when the mapped TypeScript expression refers to the structural
+ * `GType` brand that ts-for-gir publishes (locally as `GType` or namespace-qualified
+ * as `<Namespace>.GType`). Used at FFI call boundaries where the underlying marshal
+ * is `uint64` so the brand must be cast to `number` for the FFI signature.
+ */
+export const isGTypeBrand = (tsType: string): boolean => tsType === "GType" || tsType.endsWith(".GType");

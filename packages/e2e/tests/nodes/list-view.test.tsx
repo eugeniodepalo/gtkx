@@ -268,7 +268,7 @@ describe("render - ListView", () => {
             );
 
             const listView = ref.current as Gtk.ListView;
-            listView.scrollTo(99, Gtk.ListScrollFlags.NONE);
+            listView.scrollTo(99, Gtk.ListScrollFlags.NONE, null);
             await tick();
             await tick();
 
@@ -1386,7 +1386,7 @@ describe("render - ListView (tree)", () => {
             const listView = ref.current as Gtk.ListView;
             const model = listView.getModel() as Gio.ListModel;
             const lastPosition = model.getNItems() - 1;
-            listView.scrollTo(lastPosition, Gtk.ListScrollFlags.NONE);
+            listView.scrollTo(lastPosition, Gtk.ListScrollFlags.NONE, null);
             await tick();
             await tick();
 
@@ -1478,7 +1478,7 @@ describe("render - ListView (tree)", () => {
             const scrolledWindow = scrollRef.current as Gtk.ScrolledWindow;
             const vadj = scrolledWindow.getVadjustment();
 
-            listView.scrollTo(targetPosition, Gtk.ListScrollFlags.FOCUS);
+            listView.scrollTo(targetPosition, Gtk.ListScrollFlags.FOCUS, null);
             await tick();
             await tick();
             await tick();

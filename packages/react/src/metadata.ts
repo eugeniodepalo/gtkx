@@ -1,4 +1,5 @@
 import { CONSTRUCTION_META, getInstanceGType, type NativeClass } from "@gtkx/ffi";
+import type { GType } from "@gtkx/ffi/gobject";
 import { typeName, typeParent } from "@gtkx/ffi/gobject";
 import { PROPS, SIGNALS } from "./generated/internal.js";
 import { camelToSnake } from "./nodes/internal/naming.js";
@@ -14,8 +15,8 @@ const collectTypeNameChain = (gtype: number): readonly string[] => {
     if (cached) return cached;
 
     const chain: string[] = [];
-    let current = gtype;
-    while (current !== 0) {
+    let current: GType = gtype as unknown as GType;
+    while ((current as unknown as number) !== 0) {
         const name = typeName(current);
         if (!name) break;
         chain.push(name);

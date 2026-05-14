@@ -29,7 +29,7 @@ function renderSvgToSurface(path: string, width: number, height: number): ImageS
     }
     try {
         const pixbuf = GdkPixbuf.Pixbuf.newFromFileAtScale(path, width, height, true);
-        pixbuf.savev(getTmpPngPath(), "png");
+        pixbuf.savev(getTmpPngPath(), "png", null, null);
         const surface = ImageSurface.createFromPng(getTmpPngPath());
         surfaceCache = { surface, path, width, height };
         return surface;
@@ -59,7 +59,7 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
         dialog.setFilters(filters);
 
         try {
-            const file = await dialog.openAsync(window.current);
+            const file = await dialog.openAsync(window.current, null);
             const path = file.getPath();
             if (path) {
                 setFilePath(path);

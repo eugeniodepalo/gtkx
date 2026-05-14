@@ -19,7 +19,7 @@ import { camelToSnake } from "./naming.js";
  */
 export function createContainerWithProperties(typeName: string, props: Props): Container {
     const gtype = typeFromName(typeName);
-    if (gtype === 0) {
+    if ((gtype as unknown) === 0) {
         throw new Error(`createContainerWithProperties: unknown GLib type '${typeName}'`);
     }
     const cls = findNativeClass(gtype);

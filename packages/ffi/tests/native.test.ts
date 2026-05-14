@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { Error as GError } from "../src/generated/glib/error.js";
+import type { GType } from "../src/generated/gobject/aliases.js";
 import { typeFromName } from "../src/generated/gobject/functions.js";
 import * as Gtk from "../src/generated/gtk/index.js";
 import { getNativeInterface, instanceIsA, NativeError } from "../src/index.js";
 
-const orientableGType = (): number => typeFromName("GtkOrientable");
+const orientableGType = (): GType => typeFromName("GtkOrientable");
 
 const FILE_ERROR_DOMAIN = 0xbe1;
 const FILE_ERROR_NOENT = 5;
@@ -119,7 +120,7 @@ describe("getNativeInterface", () => {
 
     it("returns null when ifaceGType is zero", () => {
         const box = new Gtk.Box();
-        const result = getNativeInterface(box, Gtk.Orientable, 0);
+        const result = getNativeInterface(box, Gtk.Orientable, 0 as unknown as GType);
         expect(result).toBeNull();
     });
 });

@@ -478,7 +478,7 @@ describe("MethodBodyWriter", () => {
             expect(args[0].value).toBe("myLabel");
         });
 
-        it("does not mark nullable parameters as optional in call arguments", () => {
+        it("marks nullable parameters as FFI-optional so null is encoded as NULL", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const params = [
@@ -491,7 +491,7 @@ describe("MethodBodyWriter", () => {
 
             const args = writer.buildCallArgumentsArray(params);
 
-            expect(args[0].optional).toBeFalsy();
+            expect(args[0].optional).toBe(true);
         });
     });
 

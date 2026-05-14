@@ -1,5 +1,6 @@
 import { getInstanceGType } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
+import type { GType } from "@gtkx/ffi/gobject";
 import { signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { fireEvent } from "./fire-event.js";
@@ -214,7 +215,7 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
 };
 
 const getSignalId = (target: Gtk.EventController, signalName: string): number => {
-    const gtype = getInstanceGType(target.handle);
+    const gtype = getInstanceGType(target.handle) as unknown as GType;
     return signalLookup(signalName, gtype);
 };
 
@@ -313,10 +314,11 @@ const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
     [Gdk.KEY_Meta_R]: Gdk.ModifierType.META_MASK,
 };
 
-let gdkModifierType: number | null = null;
+let gdkModifierType: GType | null = null;
 
 const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
     gdkModifierType ??= typeFromName("GdkModifierType");
+    const modifierType = gdkModifierType;
     const controller = getOrCreateController(element, Gtk.EventControllerKey);
     const actions = parseKeyboardInput(input);
     let modifierState = 0;
@@ -339,7 +341,7 @@ const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
                 Value.newFromObject(controller),
                 Value.newFromUint(action.keyval),
                 Value.newFromUint(0),
-                Value.newFromFlags(gdkModifierType, modifierState),
+                Value.newFromFlags(modifierType, modifierState),
             ],
             getSignalId(controller, signalName),
             0,

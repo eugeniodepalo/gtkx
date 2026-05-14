@@ -33,7 +33,7 @@ const HypertextDemo = () => {
         if (!textView) return null;
         const display = textView.getDisplay();
         const theme = Gtk.IconTheme.getForDisplay(display);
-        return theme.lookupIcon(iconName, size, 1, Gtk.TextDirection.LTR, Gtk.IconLookupFlags.PRELOAD);
+        return theme.lookupIcon(iconName, null, size, 1, Gtk.TextDirection.LTR, Gtk.IconLookupFlags.PRELOAD);
     }, []);
 
     const sayWord = useCallback((word: string): void => {
@@ -143,7 +143,10 @@ const HypertextDemo = () => {
                     </GtkTextView.Tag>
                     {"/ "}
                     <GtkTextView.Anchor key="speaker">
-                        <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer")}>
+                        <GtkImage
+                            iconName="audio-volume-high-symbolic"
+                            cursor={Gdk.Cursor.newFromName("pointer", null)}
+                        >
                             <GtkGestureClick onPressed={() => sayWord("tag")} />
                         </GtkImage>
                     </GtkTextView.Anchor>
@@ -189,7 +192,10 @@ const HypertextDemo = () => {
                     </GtkTextView.Tag>
                     {"/ "}
                     <GtkTextView.Anchor key="speaker">
-                        <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer")}>
+                        <GtkImage
+                            iconName="audio-volume-high-symbolic"
+                            cursor={Gdk.Cursor.newFromName("pointer", null)}
+                        >
                             <GtkGestureClick onPressed={() => sayWord("hypertext")} />
                         </GtkImage>
                     </GtkTextView.Anchor>
@@ -273,7 +279,7 @@ const HypertextDemo = () => {
             const [result, iter] = textView.getIterAtPosition(bufferX, bufferY);
             if (!result) {
                 if (hoveringRef.current) {
-                    textView.setCursor(Gdk.Cursor.newFromName("text"));
+                    textView.setCursor(Gdk.Cursor.newFromName("text", null));
                     hoveringRef.current = false;
                 }
                 return;
@@ -282,7 +288,7 @@ const HypertextDemo = () => {
             const overLink = findLinkAtOffset(iter.getOffset()) !== null;
             if (overLink !== hoveringRef.current) {
                 hoveringRef.current = overLink;
-                textView.setCursor(Gdk.Cursor.newFromName(overLink ? "pointer" : "text"));
+                textView.setCursor(Gdk.Cursor.newFromName(overLink ? "pointer" : "text", null));
             }
         },
         [findLinkAtOffset],

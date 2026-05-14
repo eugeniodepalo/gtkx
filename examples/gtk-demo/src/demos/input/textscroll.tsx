@@ -17,7 +17,7 @@ const AutoScrollTextView = ({ scrollToEnd }: { scrollToEnd: boolean }) => {
 
         const markName = scrollToEnd ? "end" : "scroll";
         const endIter = buffer.getEndIter();
-        buffer.createMark(endIter, scrollToEnd, markName);
+        buffer.createMark(markName, endIter, scrollToEnd);
 
         const timeoutId = setInterval(
             () => {

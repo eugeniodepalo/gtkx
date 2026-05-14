@@ -206,7 +206,7 @@ export const PRIMITIVE_TYPE_MAP = new Map<string, { ts: string; ffi: FfiTypeDesc
     ["gdouble", { ts: "number", ffi: FFI_FLOAT64 }],
     ["float", { ts: "number", ffi: FFI_FLOAT32 }],
     ["double", { ts: "number", ffi: FFI_FLOAT64 }],
-    ["GType", { ts: "number", ffi: FFI_UINT64 }],
+    ["GType", { ts: "GType", ffi: FFI_UINT64 }],
     ["GQuark", { ts: "number", ffi: FFI_UINT32 }],
     ["Quark", { ts: "number", ffi: FFI_UINT32 }],
     ["GLib.Quark", { ts: "number", ffi: FFI_UINT32 }],

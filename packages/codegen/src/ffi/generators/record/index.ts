@@ -184,9 +184,16 @@ export class RecordGenerator {
     }
 
     private buildGTypeCall(cIdentifier: string, glibTypeName: string | undefined, recordName: string): string {
+        const gtypeRef = this.options.namespace === "GObject" ? "GType" : "GObject.GType";
+        const gtypeCast = `as unknown as ${gtypeRef}`;
+        if (this.options.namespace === "GObject") {
+            this.file.addImport("./aliases.js", ["GType"]);
+        } else {
+            this.file.addNamespaceImport("../gobject/index.js", "GObject");
+        }
         if (cIdentifier === "intern" || cIdentifier === "") {
             if (!glibTypeName) {
-                return `0 /* ${recordName} has no glib:type-name */`;
+                return `0 ${gtypeCast} /* ${recordName} has no glib:type-name */`;
             }
             const binding = this.file.descriptors.register({
                 sharedLibrary: "libgobject-2.0.so.0",
@@ -196,10 +203,10 @@ export class RecordGenerator {
             });
             this.file.addImport("../../native.js", ["t"]);
             if (binding.varargs === false) {
-                return `${binding.name}("${glibTypeName}") as number`;
+                return `${binding.name}("${glibTypeName}") ${gtypeCast}`;
             }
             this.file.addImport("../../native.js", ["call"]);
-            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) as number`;
+            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) ${gtypeCast}`;
         }
         const binding = this.file.descriptors.register({
             sharedLibrary: this.options.sharedLibrary,
@@ -210,10 +217,10 @@ export class RecordGenerator {
         });
         this.file.addImport("../../native.js", ["t"]);
         if (binding.varargs === false) {
-            return `${binding.name}() as number`;
+            return `${binding.name}() ${gtypeCast}`;
         }
         this.file.addImport("../../native.js", ["call"]);
-        return `call("${this.options.sharedLibrary}", "${cIdentifier}", [], t.uint64) as number`;
+        return `call("${this.options.sharedLibrary}", "${cIdentifier}", [], t.uint64) ${gtypeCast}`;
     }
 
     private buildRecordReturnDescriptor(

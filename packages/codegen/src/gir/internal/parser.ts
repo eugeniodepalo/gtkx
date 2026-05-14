@@ -165,10 +165,7 @@ export class GirParser {
             functions: this.parseFunctions(namespace.function ?? []),
             enumerations: this.parseEnumerations(namespace.enumeration ?? []),
             bitfields: this.parseEnumerations(namespace.bitfield ?? []),
-            records: this.parseRecords([
-                ...(ensureArray(namespace.record)),
-                ...(ensureArray(namespace.union)),
-            ]),
+            records: this.parseRecords([...ensureArray(namespace.record), ...ensureArray(namespace.union)]),
             callbacks: this.parseCallbacks(namespace.callback ?? []),
             constants: this.parseConstants(namespace.constant ?? []),
             aliases: this.parseAliases(namespace.alias ?? []),
@@ -475,13 +472,16 @@ export class GirParser {
         const destroy = param["@_destroy"] as string | undefined;
         const transferOwnership = param["@_transfer-ownership"] as string | undefined;
         const callerAllocates = param["@_caller-allocates"] as string | undefined;
+        const direction = (attrString(param["@_direction"], "in") as "in" | "out" | "inout") || "in";
+        const isOut = direction === "out";
+        const allowNone = param["@_allow-none"] === "1";
         return {
             name: attrString(param["@_name"]),
             type: this.parseType((param.type ?? param.array) as Record<string, unknown> | undefined),
-            direction: (attrString(param["@_direction"], "in") as "in" | "out" | "inout") || "in",
+            direction,
             callerAllocates: callerAllocates === "1",
-            nullable: param["@_nullable"] === "1" || param["@_allow-none"] === "1",
-            optional: param["@_optional"] === "1",
+            nullable: param["@_nullable"] === "1" || (!isOut && allowNone),
+            optional: param["@_optional"] === "1" || (isOut && allowNone),
             scope: scope as "async" | "call" | "notified" | "forever" | undefined,
             closure: closure === undefined ? undefined : Number.parseInt(closure, 10),
             destroy: destroy === undefined ? undefined : Number.parseInt(destroy, 10),

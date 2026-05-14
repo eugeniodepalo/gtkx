@@ -1,6 +1,7 @@
 import { findObjectProperty } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
 import { IconIface } from "../src/generated/gio/icon-iface.js";
+import type { GType } from "../src/generated/gobject/aliases.js";
 import { ParamFlags } from "../src/generated/gobject/enums.js";
 import {
     paramSpecBoolean,
@@ -21,13 +22,15 @@ import { call, t } from "../src/native.js";
 let suffix = 0;
 const uniqueName = (prefix: string): string => `${prefix}_${process.pid}_${++suffix}`;
 
-const gtypeNone = (): number => typeFromName("void");
-const gtypeString = (): number => typeFromName("gchararray");
+const INVALID_GTYPE = 0 as unknown as GType;
 
-const gtkLabelGType = (): number => typeFromName("GtkLabel");
-const gtkButtonGType = (): number => typeFromName("GtkButton");
-const gtkBoxGType = (): number => typeFromName("GtkBox");
-const gObjectGType = (): number => typeFromName("GObject");
+const gtypeNone = (): GType => typeFromName("void");
+const gtypeString = (): GType => typeFromName("gchararray");
+
+const gtkLabelGType = (): GType => typeFromName("GtkLabel");
+const gtkButtonGType = (): GType => typeFromName("GtkButton");
+const gtkBoxGType = (): GType => typeFromName("GtkBox");
+const gObjectGType = (): GType => typeFromName("GObject");
 
 const noopPropertyAccessors = [
     { ...ObjectClass.setProperty, fn: () => undefined },
@@ -79,7 +82,7 @@ describe("registerClass", () => {
     it("rejects when the parent GType is invalid", () => {
         class CustomLabel extends Gtk.Label {}
 
-        expect(() => registerClass(CustomLabel, 0, { gtypeName: uniqueName("InvalidParent") })).toThrow(
+        expect(() => registerClass(CustomLabel, INVALID_GTYPE, { gtypeName: uniqueName("InvalidParent") })).toThrow(
             /parent GType is invalid/,
         );
     });
@@ -352,7 +355,7 @@ describe("registerClass", () => {
                 gtypeName: uniqueName("GtkxBadInterfaceGtype"),
                 interfaces: [
                     {
-                        gtype: 0,
+                        gtype: INVALID_GTYPE,
                         vfuncs: [{ ...IconIface.hash, fn: () => 0 }],
                     },
                 ],

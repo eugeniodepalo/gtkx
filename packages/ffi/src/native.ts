@@ -10,6 +10,7 @@ export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./he
 
 import { getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { Error as GError } from "./generated/glib/error.js";
+import type { GType } from "./generated/gobject/aliases.js";
 import { typeIsA } from "./generated/gobject/functions.js";
 import type { NativeClass, NativeObject } from "./object.js";
 
@@ -24,12 +25,12 @@ export { type NativeClass, NativeObject } from "./object.js";
  * both class inheritance and interface implementation in a single call.
  *
  * @param handle - Handle to a live GObject-compatible instance
- * @param gtype - Numeric GType identifier
+ * @param gtype - GType identifier of the target type
  */
-export function instanceIsA(handle: NativeHandle, gtype: number): boolean {
+export function instanceIsA(handle: NativeHandle, gtype: GType): boolean {
     const instanceGtype = getInstanceGType(handle);
     if (instanceGtype === 0) return false;
-    return typeIsA(instanceGtype, gtype);
+    return typeIsA(instanceGtype as unknown as GType, gtype);
 }
 
 /**
@@ -103,10 +104,10 @@ export class NativeError extends Error {
 export function getNativeInterface<T extends NativeObject>(
     obj: NativeObject,
     iface: NativeClass<T>,
-    ifaceGType: number,
+    ifaceGType: GType,
 ): T | null {
     if (!obj.handle) return null;
-    if (ifaceGType === 0) return null;
+    if ((ifaceGType as unknown as number) === 0) return null;
     if (!instanceIsA(obj.handle, ifaceGType)) return null;
 
     const instance = Object.create(iface.prototype) as T;

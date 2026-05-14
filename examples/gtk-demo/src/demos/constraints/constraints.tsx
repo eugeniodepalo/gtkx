@@ -26,193 +26,193 @@ const ConstraintsDemo = () => {
 
         layout.addConstraint(
             Gtk.Constraint.newConstant(
+                button1Ref.current,
                 Gtk.ConstraintAttribute.WIDTH,
                 Gtk.ConstraintRelation.LE,
                 200,
                 Gtk.ConstraintStrength.REQUIRED,
-                button1Ref.current,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                button1Ref.current,
                 Gtk.ConstraintAttribute.START,
                 Gtk.ConstraintRelation.EQ,
+                null,
                 Gtk.ConstraintAttribute.START,
                 1,
                 8,
                 Gtk.ConstraintStrength.REQUIRED,
-                button1Ref.current,
-                undefined,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                button1Ref.current,
                 Gtk.ConstraintAttribute.WIDTH,
                 Gtk.ConstraintRelation.EQ,
+                button2Ref.current,
                 Gtk.ConstraintAttribute.WIDTH,
                 1,
                 0,
                 Gtk.ConstraintStrength.REQUIRED,
-                button1Ref.current,
-                button2Ref.current,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                button1Ref.current,
                 Gtk.ConstraintAttribute.END,
                 Gtk.ConstraintRelation.EQ,
+                guide,
                 Gtk.ConstraintAttribute.START,
                 1,
                 0,
                 Gtk.ConstraintStrength.REQUIRED,
-                button1Ref.current,
-                guide,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                guide,
                 Gtk.ConstraintAttribute.END,
                 Gtk.ConstraintRelation.EQ,
+                button2Ref.current,
                 Gtk.ConstraintAttribute.START,
                 1,
                 0,
                 Gtk.ConstraintStrength.REQUIRED,
-                guide,
-                button2Ref.current,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                button2Ref.current,
                 Gtk.ConstraintAttribute.END,
                 Gtk.ConstraintRelation.EQ,
+                null,
                 Gtk.ConstraintAttribute.END,
                 1,
                 -8,
                 Gtk.ConstraintStrength.REQUIRED,
-                button2Ref.current,
-                undefined,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                button3Ref.current,
                 Gtk.ConstraintAttribute.START,
                 Gtk.ConstraintRelation.EQ,
+                null,
                 Gtk.ConstraintAttribute.START,
                 1,
                 8,
                 Gtk.ConstraintStrength.REQUIRED,
-                button3Ref.current,
-                undefined,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                button3Ref.current,
                 Gtk.ConstraintAttribute.END,
                 Gtk.ConstraintRelation.EQ,
+                null,
                 Gtk.ConstraintAttribute.END,
                 1,
                 -8,
                 Gtk.ConstraintStrength.REQUIRED,
-                button3Ref.current,
-                undefined,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
-                Gtk.ConstraintAttribute.TOP,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.TOP,
-                1,
-                8,
-                Gtk.ConstraintStrength.REQUIRED,
                 button1Ref.current,
-                undefined,
-            ),
-        );
-
-        layout.addConstraint(
-            Gtk.Constraint.new(
                 Gtk.ConstraintAttribute.TOP,
                 Gtk.ConstraintRelation.EQ,
+                null,
                 Gtk.ConstraintAttribute.TOP,
                 1,
                 8,
                 Gtk.ConstraintStrength.REQUIRED,
-                button2Ref.current,
-                undefined,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                button2Ref.current,
+                Gtk.ConstraintAttribute.TOP,
+                Gtk.ConstraintRelation.EQ,
+                null,
+                Gtk.ConstraintAttribute.TOP,
+                1,
+                8,
+                Gtk.ConstraintStrength.REQUIRED,
+            ),
+        );
+
+        layout.addConstraint(
+            Gtk.Constraint.new(
+                button1Ref.current,
                 Gtk.ConstraintAttribute.BOTTOM,
                 Gtk.ConstraintRelation.EQ,
+                button3Ref.current,
                 Gtk.ConstraintAttribute.TOP,
                 1,
                 -12,
                 Gtk.ConstraintStrength.REQUIRED,
-                button1Ref.current,
-                button3Ref.current,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                button2Ref.current,
                 Gtk.ConstraintAttribute.BOTTOM,
                 Gtk.ConstraintRelation.EQ,
+                button3Ref.current,
                 Gtk.ConstraintAttribute.TOP,
                 1,
                 -12,
                 Gtk.ConstraintStrength.REQUIRED,
-                button2Ref.current,
-                button3Ref.current,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                button3Ref.current,
                 Gtk.ConstraintAttribute.HEIGHT,
                 Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.HEIGHT,
-                1,
-                0,
-                Gtk.ConstraintStrength.REQUIRED,
-                button3Ref.current,
                 button1Ref.current,
-            ),
-        );
-
-        layout.addConstraint(
-            Gtk.Constraint.new(
-                Gtk.ConstraintAttribute.HEIGHT,
-                Gtk.ConstraintRelation.EQ,
                 Gtk.ConstraintAttribute.HEIGHT,
                 1,
                 0,
                 Gtk.ConstraintStrength.REQUIRED,
-                button3Ref.current,
-                button2Ref.current,
             ),
         );
 
         layout.addConstraint(
             Gtk.Constraint.new(
+                button3Ref.current,
+                Gtk.ConstraintAttribute.HEIGHT,
+                Gtk.ConstraintRelation.EQ,
+                button2Ref.current,
+                Gtk.ConstraintAttribute.HEIGHT,
+                1,
+                0,
+                Gtk.ConstraintStrength.REQUIRED,
+            ),
+        );
+
+        layout.addConstraint(
+            Gtk.Constraint.new(
+                button3Ref.current,
                 Gtk.ConstraintAttribute.BOTTOM,
                 Gtk.ConstraintRelation.EQ,
+                null,
                 Gtk.ConstraintAttribute.BOTTOM,
                 1,
                 -8,
                 Gtk.ConstraintStrength.REQUIRED,
-                button3Ref.current,
-                undefined,
             ),
         );
     }, []);

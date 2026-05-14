@@ -18,6 +18,7 @@ const usePaintable = (): Gdk.Paintable | null => {
         const theme = Gtk.IconTheme.getForDisplay(display);
         const paintable = theme.lookupIcon(
             "image-x-generic-symbolic",
+            null,
             16,
             1,
             Gtk.TextDirection.LTR,

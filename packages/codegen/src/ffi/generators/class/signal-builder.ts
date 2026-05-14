@@ -67,11 +67,18 @@ export class SignalBuilder {
     private readonly descriptors: FfiDescriptorRegistry | undefined;
 
     private gtypeCall(): string {
+        const gtypeRef = this.options.namespace === "GObject" ? "GType" : "GObject.GType";
+        const gtypeCast = `as unknown as ${gtypeRef}`;
         const glibGetType = this.cls.glibGetType;
         const glibTypeName = this.cls.glibTypeName;
+        if (this.options.namespace === "GObject") {
+            this.imports.addImport("./aliases.js", ["GType"]);
+        } else {
+            this.imports.addNamespaceImport("../gobject/index.js", "GObject");
+        }
         if (!glibGetType || glibGetType === "intern") {
             if (!glibTypeName) {
-                return `0 /* ${this.className} has no glib:type-name */`;
+                return `0 ${gtypeCast} /* ${this.className} has no glib:type-name */`;
             }
             const binding = this.descriptors?.register({
                 sharedLibrary: "libgobject-2.0.so.0",
@@ -81,10 +88,10 @@ export class SignalBuilder {
             });
             this.imports.addImport("../../native.js", ["t"]);
             if (binding?.varargs === false) {
-                return `${binding.name}("${glibTypeName}") as number`;
+                return `${binding.name}("${glibTypeName}") ${gtypeCast}`;
             }
             this.imports.addImport("../../native.js", ["call"]);
-            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) as number`;
+            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64) ${gtypeCast}`;
         }
         const binding = this.descriptors?.register({
             sharedLibrary: this.options.sharedLibrary,
@@ -95,10 +102,10 @@ export class SignalBuilder {
         });
         this.imports.addImport("../../native.js", ["t"]);
         if (binding?.varargs === false) {
-            return `${binding.name}() as number`;
+            return `${binding.name}() ${gtypeCast}`;
         }
         this.imports.addImport("../../native.js", ["call"]);
-        return `call("${this.options.sharedLibrary}", "${glibGetType}", [], t.uint64) as number`;
+        return `call("${this.options.sharedLibrary}", "${glibGetType}", [], t.uint64) ${gtypeCast}`;
     }
 
     buildConnectMethodStructures(): MethodStructure[] {
@@ -721,8 +728,10 @@ export class SignalBuilder {
                     ? `${gobjectPrefix}typeFromName(${JSON.stringify(ffiType.typeName)})`
                     : `${gobjectPrefix}typeFromName("GObject")`;
             case "enum":
-            case "flags":
-                return `(call(${JSON.stringify(ffiType.library)}, ${JSON.stringify(ffiType.getTypeFn)}, [], t.uint64) as number)`;
+            case "flags": {
+                const gtypeRef = this.options.namespace === "GObject" ? "GType" : "GObject.GType";
+                return `(call(${JSON.stringify(ffiType.library)}, ${JSON.stringify(ffiType.getTypeFn)}, [], t.uint64) as unknown as ${gtypeRef})`;
+            }
             default:
                 return `${gobjectPrefix}typeFromName("GObject")`;
         }

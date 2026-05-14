@@ -6,6 +6,7 @@ import {
     type RegisterClassSignalDefinition,
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
+import type { GType } from "./generated/gobject/aliases.js";
 import type { ParamSpec } from "./generated/gobject/param-spec.js";
 import { type NativeClass, NativeObject } from "./object.js";
 import { registerNativeClass } from "./registry.js";
@@ -31,7 +32,12 @@ export type RegisterClassProperty = {
  * `defaultHandlerArgTypes` and `defaultHandlerReturnType` describe how to
  * marshal `GValue` arguments to and from JavaScript.
  */
-export type RegisterClassSignal = RegisterClassSignalDefinition;
+export type RegisterClassSignal = Omit<RegisterClassSignalDefinition, "returnGType" | "paramGTypes"> & {
+    /** `GType` of the value returned by the signal (use `Type.NONE` for void). */
+    readonly returnGType: GType;
+    /** `GType`s of the signal's parameters in order. */
+    readonly paramGTypes: readonly GType[];
+};
 
 /**
  * Virtual function override installed on a custom subclass via
@@ -115,7 +121,7 @@ export type RegisterClassInterfaceVfuncDescriptor = Omit<RegisterClassInterfaceV
  */
 export type RegisterClassInterface = {
     /** GType of the interface to implement. */
-    readonly gtype: number;
+    readonly gtype: GType;
     /** Vfunc overrides for the interface's vtable. */
     readonly vfuncs: readonly RegisterClassInterfaceVfunc[];
 };
@@ -167,13 +173,14 @@ export type RegisterClassOptions = {
  */
 export function registerClass<T extends NativeClass>(
     klass: T,
-    parentGType: number,
+    parentGType: GType,
     options: RegisterClassOptions = {},
 ): T {
     if (!(klass.prototype instanceof NativeObject)) {
         throw new TypeError(`registerClass: ${klass.name} must extend a NativeObject subclass`);
     }
-    if (parentGType === 0) {
+    const parentGTypeId = parentGType as unknown as number;
+    if (parentGTypeId === 0) {
         throw new Error(`registerClass: ${klass.name} parent GType is invalid (G_TYPE_INVALID)`);
     }
 
@@ -182,7 +189,7 @@ export function registerClass<T extends NativeClass>(
         throw new Error("registerClass: cannot derive a GType name (anonymous class with no gtypeName option)");
     }
 
-    const newGtype = nativeRegisterClass(name, parentGType, toNativeOptions(options));
+    const newGtype = nativeRegisterClass(name, parentGTypeId, toNativeOptions(options)) as unknown as GType;
     registerNativeClass(klass, newGtype);
 
     return klass;
@@ -196,9 +203,20 @@ function toNativeOptions(options: RegisterClassOptions): RegisterClassNativeOpti
     signals?.forEach(validateSignal);
     return {
         properties: properties?.map(toNativeProperty),
-        signals,
+        signals: signals?.map(toNativeSignal),
         vfuncs,
-        interfaces: interfaces?.map((iface) => ({ gtype: iface.gtype, vfuncs: iface.vfuncs })),
+        interfaces: interfaces?.map((iface) => ({
+            gtype: iface.gtype as unknown as number,
+            vfuncs: iface.vfuncs,
+        })),
+    };
+}
+
+function toNativeSignal(signal: RegisterClassSignal): RegisterClassSignalDefinition {
+    return {
+        ...signal,
+        returnGType: signal.returnGType as unknown as number,
+        paramGTypes: signal.paramGTypes.map((gtype) => gtype as unknown as number),
     };
 }
 

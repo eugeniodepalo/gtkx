@@ -205,7 +205,7 @@ const ListViewSettingsDemo = () => {
         section.append("Description", "columnview.show-description");
 
         const menu = new Gio.Menu();
-        menu.appendSection(section);
+        menu.appendSection(null, section);
 
         const actionGroup = new Gio.SimpleActionGroup();
         actionGroup.addAction(Gio.PropertyAction.new("show-type", typeCol, "visible"));
@@ -241,7 +241,7 @@ const ListViewSettingsDemo = () => {
                 if (!schema) return;
 
                 const variantType = GLib.VariantType.new(keyInfo.type);
-                const variant = GLib.variantParse(newText, variantType);
+                const variant = GLib.variantParse(variantType, newText, null, null);
                 if (variant) {
                     const schemaKey = schema.getKey(keyInfo.name);
                     if (!schemaKey.rangeCheck(variant)) {

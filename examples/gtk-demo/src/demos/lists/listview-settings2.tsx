@@ -140,7 +140,7 @@ const ListViewSettings2Demo = () => {
 
         try {
             const variantType = GLib.VariantType.new(key.valueType);
-            const variant = GLib.variantParse(text, variantType);
+            const variant = GLib.variantParse(variantType, text, null, null);
             if (!variant) {
                 entry.errorBell();
                 entry.setText(keysState.current.get(key.id) ?? key.value);

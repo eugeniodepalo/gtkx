@@ -217,6 +217,21 @@ export class FfiMapper {
 
         const primitive = PRIMITIVE_TYPE_MAP.get(type.name);
         if (primitive) {
+            if (type.name === "GType") {
+                const isExternal = this.currentNamespace !== "GObject";
+                imports.push({
+                    kind: "alias",
+                    name: "GType",
+                    namespace: "GObject",
+                    transformedName: "GType",
+                    isExternal,
+                });
+                return {
+                    ts: isExternal ? "GObject.GType" : "GType",
+                    ffi: primitive.ffi,
+                    imports,
+                };
+            }
             const base: MappedType = { ...primitive, imports };
             return UNSAFE_PRIMITIVE_NAMES.has(type.name) ? { ...base, unsafe: true } : base;
         }
@@ -756,6 +771,11 @@ export class FfiMapper {
                     qualifiedName,
                     this.computeTransferFull(isReturn, transferOwnership),
                     imports,
+                );
+
+            case "alias":
+                throw new Error(
+                    `Alias kind reached mapResolvedType for ${qualifiedName}; aliases must be intercepted earlier.`,
                 );
         }
     }

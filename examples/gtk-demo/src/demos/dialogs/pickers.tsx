@@ -1,5 +1,6 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
+import type { GType } from "@gtkx/ffi/gobject";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
@@ -15,8 +16,8 @@ import { useCallback, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pickers.tsx?raw";
 
-let gFileTypeCache: number | null = null;
-const getGFileType = () => {
+let gFileTypeCache: GType | null = null;
+const getGFileType = (): GType => {
     gFileTypeCache ??= GObject.typeFromName("GFile");
     return gFileTypeCache;
 };
@@ -73,7 +74,7 @@ const PickersDemo = ({ window }: DemoProps) => {
         if (!selectedFile) return;
         try {
             const launcher = Gtk.FileLauncher.new(selectedFile);
-            await launcher.launchAsync(window.current);
+            await launcher.launchAsync(window.current, null);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
         }
@@ -83,7 +84,7 @@ const PickersDemo = ({ window }: DemoProps) => {
         if (!selectedFile) return;
         try {
             const launcher = Gtk.FileLauncher.new(selectedFile);
-            await launcher.openContainingFolderAsync(window.current);
+            await launcher.openContainingFolderAsync(window.current, null);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
         }
@@ -95,7 +96,7 @@ const PickersDemo = ({ window }: DemoProps) => {
         const timeoutId = setTimeout(() => cancellable.cancel(), DIALOG_TIMEOUT_SECONDS * 1000);
         try {
             const printDialog = new Gtk.PrintDialog();
-            await printDialog.printFileAsync(selectedFile, window.current, null, cancellable);
+            await printDialog.printFileAsync(window.current, null, selectedFile, cancellable);
             clearTimeout(timeoutId);
         } catch (e) {
             clearTimeout(timeoutId);
@@ -106,7 +107,7 @@ const PickersDemo = ({ window }: DemoProps) => {
     const handleLaunchUri = useCallback(async () => {
         try {
             const launcher = Gtk.UriLauncher.new("https://www.gtk.org");
-            await launcher.launchAsync(window.current);
+            await launcher.launchAsync(window.current, null);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
         }

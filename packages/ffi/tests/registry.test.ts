@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Gdk from "../src/generated/gdk/index.js";
+import type { GType } from "../src/generated/gobject/aliases.js";
 import { typeFromName } from "../src/generated/gobject/functions.js";
 import * as Gtk from "../src/generated/gtk/index.js";
 import {
@@ -12,10 +13,12 @@ import {
     registerNativeClass,
 } from "../src/index.js";
 
+const INVALID_GTYPE = 0 as unknown as GType;
+
 describe("registerNativeClass", () => {
     it("registers a class by GType", () => {
         class TestClass extends NativeObject {}
-        const fakeGtype = 123456789;
+        const fakeGtype = 123456789 as unknown as GType;
         registerNativeClass(TestClass as NativeClass, fakeGtype);
         expect(findNativeClass(fakeGtype)).toBe(TestClass);
     });
@@ -34,7 +37,7 @@ describe("getNativeClass", () => {
     });
 
     it("returns null for an unregistered GType", () => {
-        const cls = getNativeClass(0);
+        const cls = getNativeClass(INVALID_GTYPE);
         expect(cls).toBeNull();
     });
 });
@@ -51,7 +54,7 @@ describe("findNativeClass", () => {
     });
 
     it("returns null when walkHierarchy is false and type is not registered", () => {
-        const cls = findNativeClass(0, false);
+        const cls = findNativeClass(INVALID_GTYPE, false);
         expect(cls).toBeNull();
     });
 });

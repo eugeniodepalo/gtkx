@@ -1,27 +1,28 @@
+import type { GType } from "../generated/gobject/aliases.js";
 import { typeFromName } from "../generated/gobject/functions.js";
 
-let invalidType: number | undefined;
-let noneType: number | undefined;
-let interfaceType: number | undefined;
-let charType: number | undefined;
-let ucharType: number | undefined;
-let booleanType: number | undefined;
-let intType: number | undefined;
-let uintType: number | undefined;
-let longType: number | undefined;
-let ulongType: number | undefined;
-let int64Type: number | undefined;
-let uint64Type: number | undefined;
-let enumType: number | undefined;
-let flagsType: number | undefined;
-let floatType: number | undefined;
-let doubleType: number | undefined;
-let stringType: number | undefined;
-let pointerType: number | undefined;
-let boxedType: number | undefined;
-let paramType: number | undefined;
-let objectType: number | undefined;
-let variantType: number | undefined;
+let invalidType: GType | undefined;
+let noneType: GType | undefined;
+let interfaceType: GType | undefined;
+let charType: GType | undefined;
+let ucharType: GType | undefined;
+let booleanType: GType | undefined;
+let intType: GType | undefined;
+let uintType: GType | undefined;
+let longType: GType | undefined;
+let ulongType: GType | undefined;
+let int64Type: GType | undefined;
+let uint64Type: GType | undefined;
+let enumType: GType | undefined;
+let flagsType: GType | undefined;
+let floatType: GType | undefined;
+let doubleType: GType | undefined;
+let stringType: GType | undefined;
+let pointerType: GType | undefined;
+let boxedType: GType | undefined;
+let paramType: GType | undefined;
+let objectType: GType | undefined;
+let variantType: GType | undefined;
 
 /**
  * Fundamental GLib type constants.
@@ -38,91 +39,91 @@ let variantType: number | undefined;
  * ```
  */
 export const Type = {
-    get INVALID(): number {
+    get INVALID(): GType {
         invalidType ??= typeFromName("void");
         return invalidType;
     },
-    get NONE(): number {
+    get NONE(): GType {
         noneType ??= typeFromName("void");
         return noneType;
     },
-    get INTERFACE(): number {
+    get INTERFACE(): GType {
         interfaceType ??= typeFromName("GInterface");
         return interfaceType;
     },
-    get CHAR(): number {
+    get CHAR(): GType {
         charType ??= typeFromName("gchar");
         return charType;
     },
-    get UCHAR(): number {
+    get UCHAR(): GType {
         ucharType ??= typeFromName("guchar");
         return ucharType;
     },
-    get BOOLEAN(): number {
+    get BOOLEAN(): GType {
         booleanType ??= typeFromName("gboolean");
         return booleanType;
     },
-    get INT(): number {
+    get INT(): GType {
         intType ??= typeFromName("gint");
         return intType;
     },
-    get UINT(): number {
+    get UINT(): GType {
         uintType ??= typeFromName("guint");
         return uintType;
     },
-    get LONG(): number {
+    get LONG(): GType {
         longType ??= typeFromName("glong");
         return longType;
     },
-    get ULONG(): number {
+    get ULONG(): GType {
         ulongType ??= typeFromName("gulong");
         return ulongType;
     },
-    get INT64(): number {
+    get INT64(): GType {
         int64Type ??= typeFromName("gint64");
         return int64Type;
     },
-    get UINT64(): number {
+    get UINT64(): GType {
         uint64Type ??= typeFromName("guint64");
         return uint64Type;
     },
-    get ENUM(): number {
+    get ENUM(): GType {
         enumType ??= typeFromName("GEnum");
         return enumType;
     },
-    get FLAGS(): number {
+    get FLAGS(): GType {
         flagsType ??= typeFromName("GFlags");
         return flagsType;
     },
-    get FLOAT(): number {
+    get FLOAT(): GType {
         floatType ??= typeFromName("gfloat");
         return floatType;
     },
-    get DOUBLE(): number {
+    get DOUBLE(): GType {
         doubleType ??= typeFromName("gdouble");
         return doubleType;
     },
-    get STRING(): number {
+    get STRING(): GType {
         stringType ??= typeFromName("gchararray");
         return stringType;
     },
-    get POINTER(): number {
+    get POINTER(): GType {
         pointerType ??= typeFromName("gpointer");
         return pointerType;
     },
-    get BOXED(): number {
+    get BOXED(): GType {
         boxedType ??= typeFromName("GBoxed");
         return boxedType;
     },
-    get PARAM(): number {
+    get PARAM(): GType {
         paramType ??= typeFromName("GParam");
         return paramType;
     },
-    get OBJECT(): number {
+    get OBJECT(): GType {
         objectType ??= typeFromName("GObject");
         return objectType;
     },
-    get VARIANT(): number {
+    get VARIANT(): GType {
         variantType ??= typeFromName("GVariant");
         return variantType;
     },

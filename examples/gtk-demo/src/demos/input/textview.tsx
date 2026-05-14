@@ -158,7 +158,7 @@ const TextViewDemo = () => {
         const display = Gdk.Display.getDefault();
         if (!display) return null;
         const iconTheme = Gtk.IconTheme.getForDisplay(display);
-        return iconTheme.lookupIcon("drive-harddisk", 32, 1, Gtk.TextDirection.NONE, 0);
+        return iconTheme.lookupIcon("drive-harddisk", null, 32, 1, Gtk.TextDirection.NONE, 0);
     }, []);
 
     const nuclearPaintable = useMemo(() => createNuclearTexture(), []);
