@@ -27,7 +27,7 @@ const g_value_get_boxed_strv = t.fn(
 
 let cachedStrvGType: GType | undefined;
 function getStrvGType(): GType {
-    cachedStrvGType ??= g_strv_get_type() as unknown as GType;
+    cachedStrvGType ??= g_strv_get_type() as GType;
     return cachedStrvGType;
 }
 
@@ -210,7 +210,7 @@ function initValue(gtype: GType, populate: (v: Value) => void): Value {
 }
 
 Value.prototype.getType = function (): GType {
-    return read(this.handle, t.uint64, 0) as unknown as GType;
+    return read(this.handle, t.uint64, 0) as GType;
 };
 
 Value.prototype.getTypeName = function (): string {
@@ -349,7 +349,7 @@ ValueWithStatics.newFromString = (value) => initValue(Type.STRING, (v) => v.setS
 ValueWithStatics.newFromObject = (value: GObject | null): Value => {
     const v = new Value();
     if (value) {
-        const gtype = getInstanceGType(value.handle) as unknown as GType;
+        const gtype = getInstanceGType(value.handle);
         v.init(gtype);
     } else {
         v.init(Type.OBJECT);
@@ -392,10 +392,10 @@ ValueWithStatics.newFromFlags = (gtype, value) => initValue(gtype, (v) => v.setF
 const resolveBoxedGType = (ffiType: FfiType): GType => {
     if (ffiType.type === "boxed") {
         if (ffiType.getTypeFn && ffiType.library) {
-            return call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as unknown as GType;
+            return call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as GType;
         }
         const gtype = typeFromName(ffiType.innerType);
-        if ((gtype as unknown) === 0) {
+        if (gtype === 0) {
             throw new Error(`Cannot resolve gtype for boxed type '${ffiType.innerType}'`);
         }
         return gtype;
@@ -403,7 +403,7 @@ const resolveBoxedGType = (ffiType: FfiType): GType => {
     if (ffiType.type === "fundamental") {
         if (ffiType.typeName) {
             const gtype = typeFromName(ffiType.typeName);
-            if ((gtype as unknown) !== 0) return gtype;
+            if (gtype !== 0) return gtype;
         }
         throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
     }
@@ -419,7 +419,7 @@ ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
             return Value.newFromString(value as string | null);
 
         case "enum": {
-            const gtype = call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as unknown as GType;
+            const gtype = call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as GType;
             const fundamental = typeFundamental(gtype);
             if (fundamental === Type.FLAGS) {
                 return Value.newFromFlags(gtype, value as number);
@@ -428,7 +428,7 @@ ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
         }
 
         case "flags": {
-            const gtype = call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as unknown as GType;
+            const gtype = call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as GType;
             return Value.newFromFlags(gtype, value as number);
         }
 

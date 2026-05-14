@@ -10,13 +10,13 @@ const propMetaCache = new Map<number, Map<string, string | null>>();
 const signalCache = new Map<number, Map<string, string | null>>();
 const constructOnlyCache = new Map<number, Map<string, boolean>>();
 
-const collectTypeNameChain = (gtype: number): readonly string[] => {
+const collectTypeNameChain = (gtype: GType): readonly string[] => {
     const cached = typeNameChainCache.get(gtype);
     if (cached) return cached;
 
     const chain: string[] = [];
-    let current: GType = gtype as unknown as GType;
-    while ((current as unknown as number) !== 0) {
+    let current = gtype;
+    while (current !== 0) {
         const name = typeName(current);
         if (!name) break;
         chain.push(name);

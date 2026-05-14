@@ -109,7 +109,7 @@ ObjectWithStatics.newWithProperties = (objectType: GType, names: string[], value
         LIB,
         "g_object_new_with_properties",
         [
-            { type: t.uint64, value: objectType as unknown as number },
+            { type: t.uint64, value: objectType },
             { type: t.uint32, value: names.length },
             { type: t.sizedArray(t.string("borrowed"), 1), value: names },
             {

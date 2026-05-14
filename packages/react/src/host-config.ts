@@ -1,5 +1,4 @@
 import { freeze, getInstanceGType, unfreeze } from "@gtkx/ffi";
-import type { GType } from "@gtkx/ffi/gobject";
 import { typeName } from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
@@ -45,7 +44,7 @@ const getOrCreateContainerNode = (container: Container): Node => {
     let node = containerNodeCache.get(container);
 
     if (!node) {
-        const runtimeName = typeName(getInstanceGType(container.handle) as unknown as GType);
+        const runtimeName = typeName(getInstanceGType(container.handle));
         if (!runtimeName) {
             throw new Error("Cannot resolve runtime GLib type name for container");
         }

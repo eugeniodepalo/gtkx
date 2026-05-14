@@ -8,7 +8,7 @@ import { createContainerWithProperties } from "./internal/construct.js";
 import type { SignalHandler } from "./internal/signal-store.js";
 import { WidgetNode } from "./widget.js";
 
-const G_TYPE_INVALID = 0 as unknown as GType;
+const G_TYPE_INVALID = 0;
 
 export class EventControllerNode<
     T extends Gtk.EventController = Gtk.EventController,
