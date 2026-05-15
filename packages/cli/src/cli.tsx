@@ -188,8 +188,8 @@ export const codegen = defineCommand({
         if (result.configFile) {
             console.log(`[gtkx] codegen: config=${result.configFile}`);
         }
-        if (result.config) {
-            console.log(`[gtkx] codegen: libraries=${result.config.libraries.join(", ")}`);
+        if (result.libraries) {
+            console.log(`[gtkx] codegen: libraries=${result.libraries.join(", ")}`);
         }
         if (result.girPath) {
             console.log(`[gtkx] codegen: girPath=${result.girPath.join(":")}`);

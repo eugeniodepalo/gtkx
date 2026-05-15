@@ -18,6 +18,7 @@ vi.mock("../src/codegen/run-codegen.js", () => ({
         configFile: "/project/gtkx.config.ts",
         config: { libraries: ["Gtk-4.0", "Adw-1"] },
         girPath: ["/usr/share/gir-1.0"],
+        libraries: ["Gtk-4.0", "Adw-1"],
         namespaces: 2,
         widgets: 142,
         duration: 250,

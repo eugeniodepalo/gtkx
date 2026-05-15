@@ -1,4 +1,17 @@
 /**
+ * Sentinel {@link GtkxConfig.libraries} value selecting every `.gir` file
+ * found on the resolved GIR search path.
+ */
+export const LIBRARIES_WILDCARD = "*";
+
+/**
+ * Matches a `Name-Version` GIR namespace identifier such as `Gtk-4.0` or
+ * `GLib-2.0`: a leading-alpha alphanumeric name, a `-`, then one or more
+ * dot-separated numeric version components.
+ */
+export const GIR_NAMESPACE_PATTERN = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
+
+/**
  * User-facing configuration for a GTKX project.
  *
  * Authored in `gtkx.config.ts` at the project root. Loaded by the
@@ -18,8 +31,14 @@ export type GtkxConfig = {
      * GLib namespace identifiers (with version) to generate bindings for,
      * e.g. `"Gtk-4.0"`, `"Adw-1"`. Transitive dependencies are resolved
      * automatically from the GIR files on disk.
+     *
+     * Set to `"*"` to generate bindings for every `.gir` file discovered on
+     * the resolved GIR search path, keeping the newest version of each
+     * namespace.
+     *
+     * When omitted, defaults to `["Gtk-4.0", "Adw-1"]`.
      */
-    libraries: string[];
+    libraries?: typeof LIBRARIES_WILDCARD | string[];
 
     /**
      * Additional directories to search for `.gir` files, prepended to the
@@ -55,15 +74,24 @@ export type GtkxConfig = {
  * ```
  */
 export const defineConfig = (config: GtkxConfig): GtkxConfig => {
-    if (!Array.isArray(config.libraries) || config.libraries.length === 0) {
-        throw new Error("gtkx.config.ts: `libraries` must be a non-empty string array");
-    }
+    const { libraries } = config;
 
-    for (const library of config.libraries) {
-        if (typeof library !== "string" || !/^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/.test(library)) {
-            throw new Error(
-                `gtkx.config.ts: invalid library identifier "${library}" — must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
-            );
+    if (libraries !== undefined && libraries !== LIBRARIES_WILDCARD) {
+        if (!Array.isArray(libraries) || libraries.length === 0) {
+            throw new Error('gtkx.config.ts: `libraries` must be "*", a non-empty string array, or omitted');
+        }
+
+        for (const library of libraries) {
+            if (typeof library !== "string" || !GIR_NAMESPACE_PATTERN.test(library)) {
+                if (library === LIBRARIES_WILDCARD) {
+                    throw new Error(
+                        'gtkx.config.ts: to generate every library, set `libraries: "*"` as a bare string, not an array entry',
+                    );
+                }
+                throw new Error(
+                    `gtkx.config.ts: invalid library identifier "${String(library)}" — must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
+                );
+            }
         }
     }
 

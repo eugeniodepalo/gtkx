@@ -7,6 +7,7 @@ import type { GtkxConfig } from "../config.js";
 import { computeInputHash, isCacheValid, writeCacheManifest } from "./codegen-cache.js";
 import { GtkxConfigNotFoundError, loadGtkxConfig } from "./config-loader.js";
 import { resolveGirPath } from "./gir-resolver.js";
+import { resolveLibraries } from "./library-resolver.js";
 import { resolveOutputDirs } from "./output-resolver.js";
 import { transpileCodegenFiles } from "./transpile.js";
 
@@ -38,6 +39,11 @@ export type RunCodegenResult = {
     girPath?: string[];
     /** Path of the loaded `gtkx.config.ts`, when one was used. */
     configFile?: string;
+    /**
+     * Concrete GIR namespace identifiers generated this run, after applying
+     * the `libraries` default and expanding `"*"`. Absent when cached.
+     */
+    libraries?: string[];
 };
 
 /**
@@ -63,7 +69,10 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 
     const { config, configFile } = await loadGtkxConfig(cwd);
     const codegenVersion = readCodegenVersion();
-    const inputHash = computeInputHash(config, codegenVersion);
+
+    const girPath = resolveGirPath(config.girPath);
+    const libraries = resolveLibraries(config.libraries, girPath);
+    const inputHash = computeInputHash(libraries, config.girPath, codegenVersion);
 
     const { ffiOutputDir, reactOutputDir } = resolveOutputDirs(cwd);
 
@@ -71,7 +80,6 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         return { ran: false, namespaces: 0, widgets: 0, duration: 0 };
     }
 
-    const girPath = resolveGirPath(config.girPath);
     if (girPath.length === 0) {
         throw new Error(
             "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.",
@@ -79,14 +87,14 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     }
 
     const orchestrator = new CodegenOrchestrator({
-        libraries: config.libraries,
+        libraries,
         girPath,
     });
     const result = await orchestrator.generate();
 
     const transpiledFfi = transpileCodegenFiles(result.ffiFiles, { emitDeclarations: false });
     writeGeneratedDir(ffiOutputDir, transpiledFfi);
-    await runTypesPipeline(config.libraries, girPath, ffiOutputDir);
+    await runTypesPipeline(libraries, girPath, ffiOutputDir);
 
     if (reactOutputDir !== null && result.reactFiles.size > 0) {
         const transpiledReact = transpileCodegenFiles(result.reactFiles);
@@ -103,6 +111,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         config,
         girPath,
         configFile,
+        libraries,
     };
 };
 
@@ -123,13 +132,15 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
         if (!existsSync(ffiOutputDir)) {
             return true;
         }
+
+        const girPath = resolveGirPath(config.girPath);
+        const libraries = resolveLibraries(config.libraries, girPath);
+        const codegenVersion = readCodegenVersion();
+        const inputHash = computeInputHash(libraries, config.girPath, codegenVersion);
+        return !isCacheValid(cwd, inputHash);
     } catch {
         return true;
     }
-
-    const codegenVersion = readCodegenVersion();
-    const inputHash = computeInputHash(config, codegenVersion);
-    return !isCacheValid(cwd, inputHash);
 };
 
 /**

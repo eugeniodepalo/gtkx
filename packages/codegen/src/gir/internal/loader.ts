@@ -91,11 +91,11 @@ export class GirLoader {
         const searchPaths = `[${this.girPath.join(", ")}]`;
         if (isExplicit) {
             throw new Error(
-                `Library "${namespaceKey}" is listed in gtkx.config.ts but its GIR file ${filename} was not found in ${searchPaths}. Install the package that provides it, or remove it from the \`libraries\` array.`,
+                `Library "${namespaceKey}" was requested for code generation but its GIR file ${filename} was not found in ${searchPaths}. Install the package that provides it, or adjust the \`libraries\` setting in gtkx.config.ts.`,
             );
         }
         throw new Error(
-            `GIR file not found for "${namespaceKey}" in paths: ${searchPaths}. It is a transitive dependency of an explicitly listed library.`,
+            `GIR file not found for "${namespaceKey}" in paths: ${searchPaths}. It is a transitive dependency of a requested library.`,
         );
     }
 

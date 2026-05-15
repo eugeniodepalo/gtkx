@@ -45,7 +45,7 @@ describe("runCodegen", () => {
         writeConfig(cwd);
 
         const version = readCodegenVersion();
-        const inputHash = computeInputHash({ libraries: ["Gtk-4.0"] }, version);
+        const inputHash = computeInputHash(["Gtk-4.0"], undefined, version);
         writeCacheManifest(cwd, inputHash, version);
 
         const result = await runCodegen({ cwd });
@@ -54,6 +54,19 @@ describe("runCodegen", () => {
         expect(result.namespaces).toBe(0);
         expect(result.widgets).toBe(0);
         expect(result.duration).toBe(0);
+    });
+
+    it("resolves the default libraries when the config omits them", async () => {
+        installFfiPackage(cwd);
+        writeConfig(cwd, "export default {};");
+
+        const version = readCodegenVersion();
+        const inputHash = computeInputHash(["Gtk-4.0", "Adw-1"], undefined, version);
+        writeCacheManifest(cwd, inputHash, version);
+
+        const result = await runCodegen({ cwd });
+
+        expect(result.ran).toBe(false);
     });
 
     it("throws when no gtkx.config.ts is present", async () => {

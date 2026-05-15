@@ -3,44 +3,40 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { computeInputHash, isCacheValid, writeCacheManifest } from "../../src/codegen/codegen-cache.js";
-import type { GtkxConfig } from "../../src/config.js";
 
 const CACHE_REL_DIR = join("node_modules", ".cache", "gtkx");
 const MANIFEST_FILE = "codegen-manifest.json";
 
 describe("computeInputHash", () => {
     it("produces a stable hex digest for identical inputs", () => {
-        const config: GtkxConfig = { libraries: ["Gtk-4.0"], girPath: ["/a"] };
-
-        const hash1 = computeInputHash(config, "1.0.0");
-        const hash2 = computeInputHash(config, "1.0.0");
+        const hash1 = computeInputHash(["Gtk-4.0"], ["/a"], "1.0.0");
+        const hash2 = computeInputHash(["Gtk-4.0"], ["/a"], "1.0.0");
 
         expect(hash1).toBe(hash2);
         expect(hash1).toMatch(/^[a-f0-9]{64}$/);
     });
 
     it("changes when libraries change", () => {
-        const a = computeInputHash({ libraries: ["Gtk-4.0"] }, "1.0.0");
-        const b = computeInputHash({ libraries: ["Gtk-4.0", "Adw-1"] }, "1.0.0");
+        const a = computeInputHash(["Gtk-4.0"], undefined, "1.0.0");
+        const b = computeInputHash(["Gtk-4.0", "Adw-1"], undefined, "1.0.0");
         expect(a).not.toBe(b);
     });
 
     it("changes when girPath changes", () => {
-        const a = computeInputHash({ libraries: ["Gtk-4.0"], girPath: ["/a"] }, "1.0.0");
-        const b = computeInputHash({ libraries: ["Gtk-4.0"], girPath: ["/b"] }, "1.0.0");
+        const a = computeInputHash(["Gtk-4.0"], ["/a"], "1.0.0");
+        const b = computeInputHash(["Gtk-4.0"], ["/b"], "1.0.0");
         expect(a).not.toBe(b);
     });
 
     it("treats undefined and empty girPath identically", () => {
-        const a = computeInputHash({ libraries: ["Gtk-4.0"] }, "1.0.0");
-        const b = computeInputHash({ libraries: ["Gtk-4.0"], girPath: [] }, "1.0.0");
+        const a = computeInputHash(["Gtk-4.0"], undefined, "1.0.0");
+        const b = computeInputHash(["Gtk-4.0"], [], "1.0.0");
         expect(a).toBe(b);
     });
 
     it("changes when codegen version changes", () => {
-        const config: GtkxConfig = { libraries: ["Gtk-4.0"] };
-        const a = computeInputHash(config, "1.0.0");
-        const b = computeInputHash(config, "1.0.1");
+        const a = computeInputHash(["Gtk-4.0"], undefined, "1.0.0");
+        const b = computeInputHash(["Gtk-4.0"], undefined, "1.0.1");
         expect(a).not.toBe(b);
     });
 });

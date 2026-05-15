@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { GtkxConfig } from "../config.js";
 
 const CACHE_DIR = join("node_modules", ".cache", "gtkx");
 const MANIFEST_FILE = "codegen-manifest.json";
@@ -15,21 +14,29 @@ type Manifest = {
 /**
  * Computes a stable hash of the inputs that determine codegen output.
  *
- * The hash incorporates the resolved configuration and the codegen package
- * version. GIR file contents are intentionally NOT hashed: codegen is
- * idempotent against the same GIR set on the same system, and re-hashing
- * dozens of MB of XML on every CLI invocation is wasted work.
+ * `libraries` must be the fully resolved namespace list — after the
+ * `libraries` default and `"*"` expansion have been applied — so the hash
+ * reflects the GIR set that will actually be generated.
+ *
+ * GIR file contents are intentionally NOT hashed: codegen is idempotent
+ * against the same GIR set on the same system, and re-hashing dozens of MB of
+ * XML on every CLI invocation is wasted work.
  *
  * Bumping the codegen version invalidates all caches, which is the right
  * forcing function when output formats change.
  *
- * @param config - The resolved user configuration
+ * @param libraries - Resolved GIR namespace identifiers driving this run
+ * @param girPath - The user's configured `girPath`, if any
  * @param codegenVersion - Version of `@gtkx/codegen` driving this run
  * @returns Hex SHA-256 digest of the input hash
  */
-export const computeInputHash = (config: GtkxConfig, codegenVersion: string): string => {
+export const computeInputHash = (
+    libraries: readonly string[],
+    girPath: readonly string[] | undefined,
+    codegenVersion: string,
+): string => {
     const hash = createHash("sha256");
-    hash.update(JSON.stringify({ libraries: config.libraries, girPath: config.girPath ?? [] }));
+    hash.update(JSON.stringify({ libraries, girPath: girPath ?? [] }));
     hash.update("\n");
     hash.update(codegenVersion);
     return hash.digest("hex");

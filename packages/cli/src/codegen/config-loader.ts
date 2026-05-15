@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { loadConfig } from "c12";
 import { defineConfig, type GtkxConfig } from "../config.js";
 
@@ -58,7 +60,7 @@ export const loadGtkxConfig = async (cwd: string): Promise<LoadedConfig> => {
         packageJson: false,
     });
 
-    if (!result.configFile || !result.config || Object.keys(result.config).length === 0) {
+    if (!result.configFile || !result.config || !existsSync(resolve(cwd, result.configFile))) {
         throw new GtkxConfigNotFoundError(cwd);
     }
 

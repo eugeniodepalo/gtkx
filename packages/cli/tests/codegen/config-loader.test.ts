@@ -41,13 +41,32 @@ describe("loadGtkxConfig", () => {
         expect(result.config.girPath).toEqual(["/usr/share/gir-1.0"]);
     });
 
+    it("accepts a config that omits libraries", async () => {
+        writeFileSync(join(cwd, "gtkx.config.ts"), "export default {};\n");
+
+        const result = await loadGtkxConfig(cwd);
+
+        expect(result.config.libraries).toBeUndefined();
+        expect(result.configFile?.endsWith("gtkx.config.ts")).toBe(true);
+    });
+
+    it('accepts the "*" wildcard for libraries', async () => {
+        writeFileSync(join(cwd, "gtkx.config.ts"), 'export default { libraries: "*" };\n');
+
+        const result = await loadGtkxConfig(cwd);
+
+        expect(result.config.libraries).toBe("*");
+    });
+
     it("throws GtkxConfigNotFoundError when no config file exists", async () => {
         await expect(loadGtkxConfig(cwd)).rejects.toBeInstanceOf(GtkxConfigNotFoundError);
     });
 
     it("propagates validation errors from defineConfig", async () => {
         writeFileSync(join(cwd, "gtkx.config.ts"), "export default { libraries: [] };\n");
-        await expect(loadGtkxConfig(cwd)).rejects.toThrow(/`libraries` must be a non-empty string array/);
+        await expect(loadGtkxConfig(cwd)).rejects.toThrow(
+            '`libraries` must be "*", a non-empty string array, or omitted',
+        );
     });
 
     it("rejects an invalid library identifier", async () => {

@@ -29,10 +29,10 @@ describe("GirLoader", () => {
     });
 
     describe("findGirFile", () => {
-        it("throws a config-pointing error when an explicitly listed library is not found", async () => {
+        it("throws a config-pointing error when a requested library is not found", async () => {
             const loader = new GirLoader([dir]);
             await expect(loader.discoverDependencies(["Nonexistent-1.0"])).rejects.toThrow(
-                /Library "Nonexistent-1.0" is listed in gtkx\.config\.ts/,
+                /Library "Nonexistent-1.0" was requested for code generation/,
             );
         });
 

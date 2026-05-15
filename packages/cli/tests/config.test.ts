@@ -13,12 +13,29 @@ describe("defineConfig", () => {
     });
 
     it("rejects an empty libraries array", () => {
-        expect(() => defineConfig({ libraries: [] })).toThrow(/`libraries` must be a non-empty string array/);
+        expect(() => defineConfig({ libraries: [] })).toThrow(
+            '`libraries` must be "*", a non-empty string array, or omitted',
+        );
     });
 
-    it("rejects a non-array libraries field", () => {
+    it("rejects a non-array, non-wildcard libraries field", () => {
         expect(() => defineConfig({ libraries: "Gtk-4.0" as unknown as string[] })).toThrow(
-            /`libraries` must be a non-empty string array/,
+            '`libraries` must be "*", a non-empty string array, or omitted',
+        );
+    });
+
+    it('accepts the "*" wildcard', () => {
+        expect(defineConfig({ libraries: "*" }).libraries).toBe("*");
+    });
+
+    it("accepts a config that omits libraries", () => {
+        expect(() => defineConfig({})).not.toThrow();
+        expect(() => defineConfig({ girPath: ["/usr/share/gir-1.0"] })).not.toThrow();
+    });
+
+    it('rejects "*" used as an array entry and hints at the bare-string form', () => {
+        expect(() => defineConfig({ libraries: ["*"] })).toThrow(
+            'set `libraries: "*"` as a bare string, not an array entry',
         );
     });
 
