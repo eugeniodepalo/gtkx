@@ -2,7 +2,7 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { CodegenOrchestrator, runTypesPipeline, writeGeneratedDir } from "@gtkx/codegen";
+import { CodegenOrchestrator, loadGir, runTypesPipeline, writeGeneratedDir } from "@gtkx/codegen";
 import type { GtkxConfig } from "../config.js";
 import { computeInputHash, isCacheValid, writeCacheManifest } from "./codegen-cache.js";
 import { GtkxConfigNotFoundError, loadGtkxConfig } from "./config-loader.js";
@@ -86,15 +86,13 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         );
     }
 
-    const orchestrator = new CodegenOrchestrator({
-        libraries,
-        girPath,
-    });
-    const result = await orchestrator.generate();
+    const loaded = await loadGir(libraries, girPath);
+    const orchestrator = new CodegenOrchestrator({ repository: loaded.repository });
+    const result = orchestrator.generate();
 
     const transpiledFfi = transpileCodegenFiles(result.ffiFiles, { emitDeclarations: false });
     writeGeneratedDir(ffiOutputDir, transpiledFfi);
-    await runTypesPipeline(libraries, girPath, ffiOutputDir);
+    await runTypesPipeline(loaded, ffiOutputDir);
 
     if (reactOutputDir !== null && result.reactFiles.size > 0) {
         const transpiledReact = transpileCodegenFiles(result.reactFiles);

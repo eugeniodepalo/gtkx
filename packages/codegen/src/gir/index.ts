@@ -6,14 +6,12 @@
  *
  * @example
  * ```typescript
- * import { GirRepository } from "../gir/index.js";
+ * import { loadGir } from "../gir/index.js";
  *
- * const repo = await GirRepository.load(["Gtk-4.0"], {
- *     girPath: ["/usr/share/gir-1.0"]
- * });
+ * const { repository } = await loadGir(["Gtk-4.0"], ["/usr/share/gir-1.0"]);
  *
- * const button = repo.resolveClass("Gtk.Button");
- * button.isSubclassOf("Gtk.Widget"); // true
+ * const button = repository.resolveClass("Gtk.Button");
+ * button?.isSubclassOf("Gtk.Widget"); // true
  * ```
  *
  * @packageDocumentation
@@ -29,6 +27,7 @@ export {
     STRING_TYPES,
     VOID_TYPES,
 } from "./intrinsics.js";
+export { type LoadedGir, loadGir } from "./load.js";
 export { GirAlias } from "./model/alias.js";
 export { GirConstructor, GirFunction, GirMethod } from "./model/callables.js";
 export { GirCallback } from "./model/callback.js";
@@ -46,5 +45,5 @@ export type { RepositoryLike, TypeKind } from "./model/repository-like.js";
 export { GirSignal } from "./model/signal.js";
 export type { ContainerType } from "./model/type.js";
 export { GirType } from "./model/type.js";
-export { type DependencyGraph, GirRepository, type RepositoryOptions } from "./repository.js";
+export { GirRepository } from "./repository.js";
 export { toCamelCase, toPascalCase } from "./utils.js";

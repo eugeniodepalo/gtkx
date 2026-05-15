@@ -1,23 +1,5 @@
 import type { ContainerType } from "../model/type.js";
 
-/**
- * A dependency declared via `<include>` in a GIR file.
- */
-export type RawDependency = {
-    name: string;
-    version: string;
-};
-
-/**
- * Lightweight header extracted from a GIR file without full parsing.
- * Used to build the dependency graph before committing to full XML parsing.
- */
-export type RawRepositoryHeader = {
-    namespaceName: string;
-    namespaceVersion: string;
-    dependencies: RawDependency[];
-};
-
 export type RawNamespace = {
     name: string;
     version: string;

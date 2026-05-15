@@ -1,7 +1,7 @@
-import { GirLoader } from "./internal/loader.js";
+import { girParser } from "@ts-for-gir/lib";
+import { adaptNamespace } from "./internal/adapter.js";
 import type { GirNamespaceIntermediate } from "./internal/normalizer.js";
 import { GirNormalizer } from "./internal/normalizer.js";
-import { GirParser } from "./internal/parser.js";
 import type { RawNamespace } from "./internal/raw-types.js";
 import { isIntrinsicType } from "./intrinsics.js";
 import type { GirAlias } from "./model/alias.js";
@@ -17,19 +17,6 @@ import type { RepositoryLike, TypeKind } from "./model/repository-like.js";
 import type { GirType } from "./model/type.js";
 
 /**
- * Options for loading a GIR repository.
- */
-export type RepositoryOptions = {
-    girPath: string[];
-};
-
-/**
- * A dependency graph entry mapping namespace keys to their file paths
- * and direct dependencies.
- */
-export type DependencyGraph = Map<string, { filePath: string; dependencies: string[] }>;
-
-/**
  * Central registry for GIR data.
  *
  * Loads, resolves, and provides query access to GIR namespaces.
@@ -37,14 +24,10 @@ export type DependencyGraph = Map<string, { filePath: string; dependencies: stri
  *
  * @example
  * ```typescript
- * const repo = await GirRepository.load(["Gtk-4.0", "Adw-1"], {
- *     girPath: ["/usr/share/gir-1.0"]
- * });
+ * const { repository } = await loadGir(["Gtk-4.0"], ["/usr/share/gir-1.0"]);
  *
- * const button = repo.resolveClass("Gtk.Button");
- * button.isSubclassOf("Gtk.Widget"); // true
- * button.getInheritanceChain();
- * // ["Gtk.Button", "Gtk.Widget", "GObject.InitiallyUnowned", "GObject.Object"]
+ * const button = repository.resolveClass("Gtk.Button");
+ * button?.isSubclassOf("Gtk.Widget"); // true
  * ```
  */
 export class GirRepository implements RepositoryLike {
@@ -55,53 +38,30 @@ export class GirRepository implements RepositoryLike {
     }
 
     /**
-     * Discovers all transitive dependencies for the given roots without
-     * performing a full parse. Returns namespace keys and their file paths.
-     *
-     * @param roots - Namespace keys to start from (e.g., `["Gtk-4.0", "Adw-1"]`)
-     * @param options - Search paths for GIR files
-     */
-    static async discoverDependencies(roots: string[], options: RepositoryOptions): Promise<DependencyGraph> {
-        const loader = new GirLoader(options.girPath);
-        return loader.discoverDependencies(roots);
-    }
-
-    /**
-     * Loads GIR files for the given namespace roots and all their transitive
-     * dependencies, returning a fully resolved repository.
-     *
-     * @param roots - Namespace keys to load (e.g., `["Gtk-4.0", "Adw-1"]`)
-     * @param options - Search paths for GIR files
-     */
-    static async load(roots: string[], options: RepositoryOptions): Promise<GirRepository> {
-        const loader = new GirLoader(options.girPath);
-        const loaded = await loader.loadAll(roots);
-
-        const rawNamespaces = new Map<string, RawNamespace>();
-        for (const [name, { raw }] of loaded) {
-            rawNamespaces.set(name, raw);
-        }
-
-        return GirRepository.buildFromRaw(rawNamespaces);
-    }
-
-    /**
      * Creates a repository from inline GIR XML strings.
      * Useful for testing and scenarios where GIR data is already in memory.
      */
     static fromXml(xmlStrings: string[]): GirRepository {
-        const parser = new GirParser();
         const rawNamespaces = new Map<string, RawNamespace>();
 
         for (const xml of xmlStrings) {
-            const raw = parser.parseNamespace(xml);
+            const namespace = girParser(xml).repository.namespace?.[0];
+            if (!namespace) {
+                throw new Error("Failed to parse GIR XML: missing repository or namespace element");
+            }
+            const raw = adaptNamespace(namespace);
             rawNamespaces.set(raw.name, raw);
         }
 
-        return GirRepository.buildFromRaw(rawNamespaces);
+        return GirRepository.fromRawNamespaces(rawNamespaces);
     }
 
-    private static buildFromRaw(rawNamespaces: Map<string, RawNamespace>): GirRepository {
+    /**
+     * Builds a repository from raw namespaces keyed by namespace name.
+     *
+     * @param rawNamespaces - Raw namespaces produced by the GIR adapter
+     */
+    static fromRawNamespaces(rawNamespaces: Map<string, RawNamespace>): GirRepository {
         const normalizer = new GirNormalizer();
         const intermediates = normalizer.normalize(rawNamespaces);
         return GirRepository.buildFromIntermediates(intermediates);

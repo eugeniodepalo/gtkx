@@ -1,14 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { repositoryLoadMock, ffiGenerateMock, reactGenerateMock, reactCtorSpy } = vi.hoisted(() => ({
-    repositoryLoadMock: vi.fn(),
+const { ffiGenerateMock, reactGenerateMock, reactCtorSpy } = vi.hoisted(() => ({
     ffiGenerateMock: vi.fn(),
     reactGenerateMock: vi.fn(),
     reactCtorSpy: vi.fn(),
-}));
-
-vi.mock("../../src/gir/index.js", () => ({
-    GirRepository: { load: repositoryLoadMock },
 }));
 
 vi.mock("../../src/ffi/ffi-generator.js", () => ({
@@ -37,6 +32,7 @@ vi.mock("../../src/react/react-generator.js", () => ({
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../src/core/codegen-metadata.js";
 import { CodegenMetadata } from "../../src/core/codegen-metadata.js";
 import { CodegenOrchestrator } from "../../src/core/codegen-orchestrator.js";
+import type { GirRepository } from "../../src/gir/index.js";
 
 function makeWidgetMeta(jsxName: string, namespace = "Gtk"): CodegenWidgetMeta {
     return {
@@ -72,20 +68,18 @@ function makeControllerMeta(jsxName: string): CodegenControllerMeta {
     };
 }
 
+function makeRepository(namespaces: string[]): GirRepository {
+    return { getNamespaceNames: () => namespaces } as unknown as GirRepository;
+}
+
 function configureMocks(options: {
-    namespaces: string[];
     widgetsByNamespace: Record<string, CodegenWidgetMeta[]>;
     controllersByNamespace?: Record<string, CodegenControllerMeta[]>;
     ffiFiles?: string[];
     reactFiles?: string[];
 }) {
-    repositoryLoadMock.mockReset();
     ffiGenerateMock.mockReset();
     reactGenerateMock.mockReset();
-
-    repositoryLoadMock.mockResolvedValue({
-        getNamespaceNames: () => options.namespaces,
-    });
 
     ffiGenerateMock.mockImplementation((namespace: string) => {
         const meta = new CodegenMetadata();
@@ -114,48 +108,33 @@ function configureMocks(options: {
 
 describe("CodegenOrchestrator", () => {
     beforeEach(() => {
-        repositoryLoadMock.mockReset();
         ffiGenerateMock.mockReset();
         reactGenerateMock.mockReset();
         reactCtorSpy.mockReset();
     });
 
     describe("constructor", () => {
-        it("accepts explicit libraries plus girPath", () => {
-            expect(
-                () =>
-                    new CodegenOrchestrator({
-                        libraries: ["Gtk-4.0"],
-                        girPath: ["/usr/share/gir-1.0"],
-                    }),
-            ).not.toThrow();
+        it("accepts a resolved repository", () => {
+            expect(() => new CodegenOrchestrator({ repository: makeRepository(["Gtk"]) })).not.toThrow();
         });
     });
 
-    describe("generate with libraries + girPath", () => {
-        it("loads the repository, runs FFI per namespace, and runs React with collected meta", async () => {
-            const buttonMeta = makeWidgetMeta("GtkButton");
-            const dropdownMeta = makeWidgetMeta("AdwAvatar", "Adw");
-            const controllerMeta = makeControllerMeta("GtkGestureClick");
-
+    describe("generate", () => {
+        it("runs FFI per namespace and runs React with the collected metadata", () => {
             configureMocks({
-                namespaces: ["Gtk", "Adw"],
-                widgetsByNamespace: { Gtk: [buttonMeta], Adw: [dropdownMeta] },
-                controllersByNamespace: { Gtk: [controllerMeta] },
+                widgetsByNamespace: {
+                    Gtk: [makeWidgetMeta("GtkButton")],
+                    Adw: [makeWidgetMeta("AdwAvatar", "Adw")],
+                },
+                controllersByNamespace: { Gtk: [makeControllerMeta("GtkGestureClick")] },
                 ffiFiles: ["a.ts", "b.ts"],
                 reactFiles: ["x.ts"],
             });
 
-            const orchestrator = new CodegenOrchestrator({
-                libraries: ["Gtk-4.0", "Adw-1"],
-                girPath: ["/usr/share/gir-1.0"],
-            });
+            const orchestrator = new CodegenOrchestrator({ repository: makeRepository(["Gtk", "Adw"]) });
 
-            const result = await orchestrator.generate();
+            const result = orchestrator.generate();
 
-            expect(repositoryLoadMock).toHaveBeenCalledWith(["Gtk-4.0", "Adw-1"], {
-                girPath: ["/usr/share/gir-1.0"],
-            });
             expect(ffiGenerateMock).toHaveBeenCalledTimes(2);
             expect(reactGenerateMock).toHaveBeenCalledTimes(1);
             expect(result.stats).toEqual({
@@ -169,40 +148,29 @@ describe("CodegenOrchestrator", () => {
             expect(result.reactFiles.size).toBe(1);
         });
 
-        it("skips React generation when no widget metadata was collected", async () => {
-            configureMocks({
-                namespaces: ["Gtk"],
-                widgetsByNamespace: { Gtk: [] },
-            });
+        it("skips React generation when no widget metadata was collected", () => {
+            configureMocks({ widgetsByNamespace: { Gtk: [] } });
 
-            const orchestrator = new CodegenOrchestrator({
-                libraries: ["Gtk-4.0"],
-                girPath: ["/usr/share/gir-1.0"],
-            });
+            const orchestrator = new CodegenOrchestrator({ repository: makeRepository(["Gtk"]) });
 
-            const result = await orchestrator.generate();
+            const result = orchestrator.generate();
 
             expect(reactGenerateMock).not.toHaveBeenCalled();
             expect(result.reactFiles.size).toBe(0);
             expect(result.stats.widgets).toBe(0);
         });
 
-        it("deduplicates namespaces collected from widgets when calling React generator", async () => {
-            const w1 = makeWidgetMeta("GtkA", "Gtk");
-            const w2 = makeWidgetMeta("GtkB", "Gtk");
-            const w3 = makeWidgetMeta("AdwC", "Adw");
-
+        it("deduplicates namespaces collected from widgets when calling the React generator", () => {
             configureMocks({
-                namespaces: ["Gtk", "Adw"],
-                widgetsByNamespace: { Gtk: [w1, w2], Adw: [w3] },
+                widgetsByNamespace: {
+                    Gtk: [makeWidgetMeta("GtkA", "Gtk"), makeWidgetMeta("GtkB", "Gtk")],
+                    Adw: [makeWidgetMeta("AdwC", "Adw")],
+                },
             });
 
-            const orchestrator = new CodegenOrchestrator({
-                libraries: ["Gtk-4.0", "Adw-1"],
-                girPath: ["/usr/share/gir-1.0"],
-            });
+            const orchestrator = new CodegenOrchestrator({ repository: makeRepository(["Gtk", "Adw"]) });
 
-            await orchestrator.generate();
+            orchestrator.generate();
 
             const reactCall = reactCtorSpy.mock.calls[0];
             if (!reactCall) throw new Error("ReactGenerator was not constructed");

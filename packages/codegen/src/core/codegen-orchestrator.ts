@@ -1,20 +1,15 @@
 import { FfiGenerator } from "../ffi/ffi-generator.js";
-import { GirRepository } from "../gir/index.js";
+import type { GirRepository } from "../gir/index.js";
 import { ReactGenerator } from "../react/react-generator.js";
 import { CodegenMetadata } from "./codegen-metadata.js";
 import type { GeneratedFile } from "./generated-file-set.js";
 
 /**
  * Configuration for {@link CodegenOrchestrator}.
- *
- * Provide explicit `libraries` + `girPath` describing the GIR namespaces to
- * generate and the directories to resolve them and their dependencies from.
  */
 type CodegenOrchestratorOptions = {
-    /** Explicit GIR namespace identifiers (e.g. `"Gtk-4.0"`). */
-    libraries: string[];
-    /** Search directories for resolving `.gir` files and their dependencies. */
-    girPath: string[];
+    /** The resolved GIR repository to generate bindings from. */
+    repository: GirRepository;
 };
 
 type CodegenResult = {
@@ -30,21 +25,22 @@ type CodegenStats = {
     duration: number;
 };
 
+/**
+ * Drives FFI and React binding generation from a resolved {@link GirRepository}.
+ */
 export class CodegenOrchestrator {
-    private readonly options: CodegenOrchestratorOptions;
+    private readonly repository: GirRepository;
     private readonly metadata = new CodegenMetadata();
     private readonly ffiGeneratedFiles: GeneratedFile[] = [];
     private readonly reactGeneratedFiles: GeneratedFile[] = [];
-    private repository!: GirRepository;
 
     constructor(options: CodegenOrchestratorOptions) {
-        this.options = options;
+        this.repository = options.repository;
     }
 
-    async generate(): Promise<CodegenResult> {
+    generate(): CodegenResult {
         const startTime = performance.now();
 
-        await this.loadRepository();
         this.generateFfi();
         this.generateReact();
 
@@ -62,10 +58,6 @@ export class CodegenOrchestrator {
         const stats = this.computeStats(ffiFiles, reactFiles, duration);
 
         return { ffiFiles, reactFiles, stats };
-    }
-
-    private async loadRepository(): Promise<void> {
-        this.repository = await GirRepository.load(this.options.libraries, { girPath: this.options.girPath });
     }
 
     private generateFfi(): void {

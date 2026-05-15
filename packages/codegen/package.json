@@ -33,10 +33,13 @@
         "coverage": "vitest run --coverage",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
+    "dependencies": {
+        "@ts-for-gir/cli": "3.3.0",
+        "@ts-for-gir/generator-base": "3.3.0",
+        "@ts-for-gir/lib": "3.3.0"
+    },
     "devDependencies": {
         "@clack/prompts": "^1.4.0",
-        "@gtkx/native": "workspace:*",
-        "@ts-for-gir/cli": "^3.3.0",
-        "fast-xml-parser": "^5.7.3"
+        "@gtkx/native": "workspace:*"
     }
 }

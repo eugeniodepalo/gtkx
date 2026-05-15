@@ -1,27 +1,29 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runTsForGir } from "./invoke-cli.js";
+import { GenerationHandler } from "@ts-for-gir/cli";
+import { GeneratorType } from "@ts-for-gir/generator-base";
+import type { LoadedGir } from "../../gir/index.js";
 import { loadAndRewrite } from "./rewrite.js";
 
 /**
- * Runs the full types pipeline: spawns ts-for-gir against the explicit module
- * list, applies the gtkx rewrites to every per-namespace output, and writes
- * one `<ns>/<ns>.d.ts` per namespace under `outDir`. The intermediate
- * ts-for-gir scratch directory is cleaned up regardless of success or failure.
+ * Generates the per-namespace `.d.ts` type bindings from already-loaded GIR
+ * modules and writes them under `outDir`.
  *
- * @param libraries Explicit GIR module identifiers, e.g. `["Gtk-4.0", "Adw-1"]`.
- * @param girDirectories Search directories for GIR XML files.
- * @param outDir Final destination for the per-namespace `.d.ts` files.
+ * Runs ts-for-gir's `GenerationHandler` in-process against the modules in
+ * {@link LoadedGir} — reusing the single GIR parse performed at load time —
+ * emits the raw output into a scratch directory, applies the gtkx rewrites,
+ * and writes one `<ns>/<ns>.d.ts` per namespace. The scratch directory is
+ * removed regardless of success or failure.
+ *
+ * @param loaded - The loaded GIR data set produced by `loadGir`
+ * @param outDir - Final destination for the per-namespace `.d.ts` files
  */
-export async function runTypesPipeline(
-    libraries: string[],
-    girDirectories: string[],
-    outDir: string,
-): Promise<TypesPipelineResult> {
+export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promise<TypesPipelineResult> {
     const scratchDir = await mkdtemp(join(tmpdir(), "gtkx-tsforgir-"));
     try {
-        await runTsForGir(libraries, girDirectories, scratchDir);
+        const handler = new GenerationHandler({ ...loaded.generateConfig, outdir: scratchDir }, GeneratorType.TYPES);
+        await handler.start(loaded.girModules, loaded.girModulesGrouped);
 
         const filenames = await readdir(scratchDir);
         const rawFilesByName = new Map<string, string>();
