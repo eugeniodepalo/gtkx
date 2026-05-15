@@ -1,5 +1,5 @@
 import type { Type } from "@gtkx/native";
-import type { NativeClass } from "./object.js";
+import type { NativeClass } from "./handles.js";
 
 /**
  * Construction metadata describing how a single property is marshalled

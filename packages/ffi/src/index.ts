@@ -5,7 +5,16 @@ export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./he
 export * from "./lifecycle.js";
 export { getNativeInterface, instanceIsA } from "./native.js";
 export * from "./register-class.js";
-export * from "./registry.js";
+export {
+    findNativeClass,
+    findNativeObject,
+    getClassGType,
+    getNativeClass,
+    getNativeObject,
+    getNativeObjectAsInterface,
+    registerNativeClass,
+    registerNativeObject,
+} from "./registry.js";
 import "./cairo/index.js";
 import "./gobject/object.js";
 import "./gobject/value.js";

@@ -3,6 +3,7 @@ import * as Gdk from "../src/generated/gdk/gdk.js";
 import type { GType } from "../src/generated/gobject/gobject.js";
 import { typeFromName } from "../src/generated/gobject/gobject.js";
 import * as Gtk from "../src/generated/gtk/gtk.js";
+import { getHandle, type NativeClass, NativeObject } from "../src/handles.js";
 import {
     findNativeClass,
     getNativeClass,
@@ -10,7 +11,6 @@ import {
     getNativeObjectAsInterface,
     registerNativeClass,
 } from "../src/index.js";
-import { getHandle, type NativeClass, NativeObject } from "../src/object.js";
 
 const INVALID_GTYPE = 0 as unknown as GType;
 

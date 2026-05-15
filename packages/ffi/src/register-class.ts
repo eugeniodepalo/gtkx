@@ -7,7 +7,7 @@ import {
 } from "@gtkx/native";
 import { CONSTRUCTION_META } from "./construction-meta.js";
 import type { GType, ParamSpec } from "./generated/gobject/gobject.js";
-import { getClassStruct, type NativeClass, tryGetHandle } from "./object.js";
+import { getClassStruct, type NativeClass, tryGetHandle } from "./handles.js";
 import { getClassGType, registerNativeClass } from "./registry.js";
 
 /**

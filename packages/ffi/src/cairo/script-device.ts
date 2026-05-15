@@ -1,9 +1,9 @@
 import type { NativeHandle } from "@gtkx/native";
 import type { Content } from "../generated/cairo/cairo.js";
 import { Device, Surface } from "../generated/cairo/cairo.js";
+import { getHandle } from "../handles.js";
 import { call, t } from "../native.js";
-import { getHandle, wrapHandle } from "../object.js";
-import { getNativeObject } from "../registry.js";
+import { getNativeObject, wrapHandle } from "../registry.js";
 import { DEVICE_T, DEVICE_T_FULL, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export enum ScriptMode {

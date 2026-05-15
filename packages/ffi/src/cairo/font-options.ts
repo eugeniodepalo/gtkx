@@ -1,9 +1,9 @@
 import type { NativeHandle } from "@gtkx/native";
 import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../generated/cairo/cairo.js";
 import { FontOptions } from "../generated/cairo/cairo.js";
+import { getHandle } from "../handles.js";
 import { call, t } from "../native.js";
-import { getHandle, wrapHandle } from "../object.js";
-import { getNativeObject } from "../registry.js";
+import { getNativeObject, wrapHandle } from "../registry.js";
 import { FONT_OPTIONS_T, FONT_OPTIONS_T_FULL, INT_TYPE, LIB } from "./common.js";
 
 declare module "../generated/cairo/cairo.js" {

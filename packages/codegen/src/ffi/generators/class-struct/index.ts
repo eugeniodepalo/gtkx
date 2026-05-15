@@ -125,7 +125,7 @@ export class ClassStructGenerator {
 
         const ownerClassName = this.resolveOwnerClassName(record, exportSymbol);
         if (ownerClassName) {
-            this.file.addImport("../../object.js", ["setClassStruct"]);
+            this.file.addImport("../../handles.js", ["setClassStruct"]);
             this.file.addDeferredStatement(`setClassStruct(${ownerClassName}, ${exportSymbol});`);
         }
         if (kind === "interface") {

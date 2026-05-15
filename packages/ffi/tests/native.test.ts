@@ -3,9 +3,9 @@ import { Error as GError } from "../src/generated/glib/glib.js";
 import type { GType } from "../src/generated/gobject/gobject.js";
 import { typeFromName } from "../src/generated/gobject/gobject.js";
 import * as Gtk from "../src/generated/gtk/gtk.js";
+import { getHandle } from "../src/handles.js";
 import { getNativeInterface, instanceIsA } from "../src/index.js";
 import { NativeError } from "../src/native.js";
-import { getHandle } from "../src/object.js";
 
 const orientableGType = (): GType => typeFromName("GtkOrientable");
 

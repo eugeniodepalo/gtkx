@@ -1,8 +1,9 @@
 import type { NativeHandle } from "@gtkx/native";
 import type { Format } from "../generated/cairo/cairo.js";
 import { Surface } from "../generated/cairo/cairo.js";
+import { getHandle, setHandle } from "../handles.js";
 import { call, read, t } from "../native.js";
-import { getHandle, setHandle, wrapHandle } from "../object.js";
+import { wrapHandle } from "../registry.js";
 import { INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class ImageSurface extends Surface {

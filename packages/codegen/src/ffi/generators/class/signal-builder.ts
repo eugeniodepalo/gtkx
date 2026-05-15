@@ -109,7 +109,7 @@ export class SignalBuilder {
             return [];
         }
 
-        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+        this.imports.addTypeImport("../../handles.js", ["NativeHandle"]);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
         if (this.options.namespace === "GObject") {
             this.imports.addImport("./param-spec.js", ["ParamSpec"]);

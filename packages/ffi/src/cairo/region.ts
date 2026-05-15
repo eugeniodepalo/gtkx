@@ -1,9 +1,9 @@
 import type { NativeHandle } from "@gtkx/native";
 import type { RegionOverlap, Status } from "../generated/cairo/cairo.js";
 import { RectangleInt, Region } from "../generated/cairo/cairo.js";
+import { getHandle } from "../handles.js";
 import { alloc, call, t, write } from "../native.js";
-import { getHandle, wrapHandle } from "../object.js";
-import { getNativeObject } from "../registry.js";
+import { getNativeObject, wrapHandle } from "../registry.js";
 import { INT_TYPE, LIB, RECT_INT_T, REGION_T, REGION_T_NONE } from "./common.js";
 
 declare module "../generated/cairo/cairo.js" {

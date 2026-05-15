@@ -1,8 +1,8 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
 import type { FontOptions, FontType, Status, TextClusterFlags } from "../generated/cairo/cairo.js";
 import { FontFace, ScaledFont } from "../generated/cairo/cairo.js";
+import { getHandle } from "../handles.js";
 import { alloc, call, read, t } from "../native.js";
-import { getHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import {
     allocGlyphBuffer,

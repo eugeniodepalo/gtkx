@@ -1,23 +1,33 @@
-import { type Type as FfiType, getInstanceGType, type NativeHandle } from "@gtkx/native";
-import type { Object as GObject, GType, ParamSpec } from "../generated/gobject/gobject.js";
-import { typeFromName, typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
-import type { NativeClass } from "../native.js";
-import { call, read, t } from "../native.js";
-import type { NativeObject } from "../object.js";
-import { getHandle, setValueFactory } from "../object.js";
+import type { Type as FfiType, NativeHandle } from "@gtkx/native";
+import type { Object as GObject, GType } from "../generated/gobject/gobject.js";
+import { typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
+import { getHandle } from "../handles.js";
+import { call, type NativeClass, read, t } from "../native.js";
 import { findNativeClass, getNativeObject } from "../registry.js";
+import {
+    fromJS,
+    getStrvGType,
+    newFrom,
+    newFromBoolean,
+    newFromBoxed,
+    newFromDouble,
+    newFromEnum,
+    newFromFlags,
+    newFromFloat,
+    newFromInt,
+    newFromInt64,
+    newFromLong,
+    newFromObject,
+    newFromString,
+    newFromStrv,
+    newFromUint,
+    newFromUint64,
+    newFromUlong,
+    newFromVariant,
+} from "./gvalue.js";
 import { Type } from "./types.js";
 
 const GVALUE_ARG = t.boxed("GValue", "borrowed", "libgobject-2.0.so.0", "g_value_get_type");
-
-const g_strv_get_type = t.fn("libgobject-2.0.so.0", "g_strv_get_type", [], t.uint64);
-
-const g_value_set_boxed_strv = t.fn(
-    "libgobject-2.0.so.0",
-    "g_value_set_boxed",
-    [{ type: GVALUE_ARG }, { type: t.array(t.string("borrowed")) }],
-    t.void,
-);
 
 const g_value_get_boxed_strv = t.fn(
     "libgobject-2.0.so.0",
@@ -25,12 +35,6 @@ const g_value_get_boxed_strv = t.fn(
     [{ type: GVALUE_ARG }],
     t.array(t.string("borrowed")),
 );
-
-let cachedStrvGType: GType | undefined;
-function getStrvGType(): GType {
-    cachedStrvGType ??= g_strv_get_type() as unknown as GType;
-    return cachedStrvGType;
-}
 
 declare module "../generated/gobject/gobject.js" {
     interface Value {
@@ -203,13 +207,6 @@ declare module "../generated/gobject/gobject.js" {
     }
 }
 
-function initValue(gtype: GType, populate: (v: Value) => void): Value {
-    const v = new Value();
-    v.init(gtype);
-    populate(v);
-    return v;
-}
-
 Value.prototype.getType = function (): GType {
     return read(getHandle(this), t.uint64, 0) as unknown as GType;
 };
@@ -336,226 +333,21 @@ type ValueStatic = {
 
 const ValueWithStatics = Value as typeof Value & ValueStatic;
 
-ValueWithStatics.newFromBoolean = (value) => initValue(Type.BOOLEAN, (v) => v.setBoolean(value));
-ValueWithStatics.newFromInt = (value) => initValue(Type.INT, (v) => v.setInt(value));
-ValueWithStatics.newFromUint = (value) => initValue(Type.UINT, (v) => v.setUint(value));
-ValueWithStatics.newFromLong = (value) => initValue(Type.LONG, (v) => v.setLong(value));
-ValueWithStatics.newFromUlong = (value) => initValue(Type.ULONG, (v) => v.setUlong(value));
-ValueWithStatics.newFromInt64 = (value) => initValue(Type.INT64, (v) => v.setInt64(value));
-ValueWithStatics.newFromUint64 = (value) => initValue(Type.UINT64, (v) => v.setUint64(value));
-ValueWithStatics.newFromFloat = (value) => initValue(Type.FLOAT, (v) => v.setFloat(value));
-ValueWithStatics.newFromDouble = (value) => initValue(Type.DOUBLE, (v) => v.setDouble(value));
-ValueWithStatics.newFromString = (value) => initValue(Type.STRING, (v) => v.setString(value));
-
-ValueWithStatics.newFromObject = (value: GObject | null): Value => {
-    const v = new Value();
-    if (value) {
-        const gtype = getInstanceGType(getHandle(value)) as unknown as GType;
-        v.init(gtype);
-    } else {
-        v.init(Type.OBJECT);
-    }
-    v.setObject(value);
-    return v;
-};
-
-ValueWithStatics.newFromBoxed = (value: object, gtype: GType): Value => {
-    const glibTypeName = typeName(gtype);
-    if (!glibTypeName) {
-        throw new Error(`Cannot resolve type name for boxed gtype ${String(gtype)}`);
-    }
-    return initValue(gtype, (v) => {
-        call(
-            "libgobject-2.0.so.0",
-            "g_value_set_boxed",
-            [
-                { type: GVALUE_ARG, value: getHandle(v) },
-                {
-                    type: t.boxed(glibTypeName, "borrowed", "libgobject-2.0.so.0"),
-                    value: getHandle(value),
-                    optional: true,
-                },
-            ],
-            t.void,
-        );
-    });
-};
-
-ValueWithStatics.newFromStrv = (value: string[]): Value =>
-    initValue(getStrvGType(), (v) => g_value_set_boxed_strv(getHandle(v), value));
-
-ValueWithStatics.newFromVariant = (value: object): Value =>
-    initValue(Type.VARIANT, (v) => v.setVariant(value as unknown as Parameters<Value["setVariant"]>[0]));
-
-ValueWithStatics.newFromEnum = (gtype, value) => initValue(gtype, (v) => v.setEnum(value));
-ValueWithStatics.newFromFlags = (gtype, value) => initValue(gtype, (v) => v.setFlags(value));
-
-const resolveBoxedGType = (ffiType: FfiType): GType => {
-    if (ffiType.type === "boxed") {
-        if (ffiType.getTypeFn && ffiType.library) {
-            return call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as unknown as GType;
-        }
-        const gtype = typeFromName(ffiType.innerType);
-        if ((gtype as unknown) === 0) {
-            throw new Error(`Cannot resolve gtype for boxed type '${ffiType.innerType}'`);
-        }
-        return gtype;
-    }
-    if (ffiType.type === "fundamental") {
-        if (ffiType.typeName) {
-            const gtype = typeFromName(ffiType.typeName);
-            if ((gtype as unknown) !== 0) return gtype;
-        }
-        throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
-    }
-    throw new Error(`resolveBoxedGType: unsupported FFI type '${ffiType.type}'`);
-};
-
-ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
-    switch (ffiType.type) {
-        case "boolean":
-            return Value.newFromBoolean(value as boolean);
-
-        case "string":
-            return Value.newFromString(value as string | null);
-
-        case "enum": {
-            const gtype = call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as unknown as GType;
-            const fundamental = typeFundamental(gtype);
-            if (fundamental === Type.FLAGS) {
-                return Value.newFromFlags(gtype, value as number);
-            }
-            return Value.newFromEnum(gtype, value as number);
-        }
-
-        case "flags": {
-            const gtype = call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as unknown as GType;
-            return Value.newFromFlags(gtype, value as number);
-        }
-
-        case "int8":
-        case "int16":
-        case "int32":
-            return Value.newFromInt(value as number);
-
-        case "uint8":
-        case "uint16":
-        case "uint32":
-            return Value.newFromUint(value as number);
-
-        case "int64":
-            return Value.newFromInt64(value as number);
-
-        case "uint64":
-            return Value.newFromUint64(value as number);
-
-        case "float32":
-            return Value.newFromFloat(value as number);
-
-        case "float64":
-            return Value.newFromDouble(value as number);
-
-        case "gobject":
-            return Value.newFromObject(value as GObject | null);
-
-        case "boxed":
-            return Value.newFromBoxed(value as NativeObject, resolveBoxedGType(ffiType));
-
-        case "array": {
-            if (ffiType.itemType.type === "string" && ffiType.kind === "array") {
-                return Value.newFromStrv(value as string[]);
-            }
-            throw new Error(
-                `Unsupported array type for GValue conversion: ${ffiType.kind} of ${ffiType.itemType.type}`,
-            );
-        }
-
-        case "fundamental":
-            if (ffiType.refFn === "g_variant_ref_sink") {
-                return Value.newFromVariant(value as NativeObject);
-            }
-            return Value.newFromBoxed(value as NativeObject, resolveBoxedGType(ffiType));
-
-        default:
-            throw new Error(`Unsupported FFI type for GValue conversion: ${(ffiType as { type: string }).type}`);
-    }
-};
-
-const newCharValue = (gtype: GType, fundamental: GType, value: unknown): Value => {
-    const v = new Value();
-    v.init(gtype);
-    if (fundamental === Type.CHAR) v.setSchar(value as number);
-    else v.setUchar(value as number);
-    return v;
-};
-
-const newPointerValue = (gtype: GType, value: unknown): Value => {
-    if (value !== null && value !== undefined) {
-        throw new Error("G_TYPE_POINTER properties cannot be set from a non-null JS value");
-    }
-    const v = new Value();
-    v.init(gtype);
-    return v;
-};
-
-const newBoxedValue = (gtype: GType, value: unknown): Value => {
-    if (value === null || value === undefined) {
-        const v = new Value();
-        v.init(gtype);
-        return v;
-    }
-    return Value.newFromBoxed(value as NativeObject, gtype);
-};
-
-const newStrvValue = (gtype: GType, value: unknown): Value => {
-    if (value === null || value === undefined) {
-        const v = new Value();
-        v.init(gtype);
-        return v;
-    }
-    return Value.newFromStrv(value as string[]);
-};
-
-const valueFromFundamentalFactory = (gtype: GType, fundamental: GType, value: unknown): Value | null => {
-    if (fundamental === Type.BOOLEAN) return Value.newFromBoolean(value as boolean);
-    if (fundamental === Type.INT) return Value.newFromInt(value as number);
-    if (fundamental === Type.UINT) return Value.newFromUint(value as number);
-    if (fundamental === Type.LONG) return Value.newFromLong(value as number);
-    if (fundamental === Type.ULONG) return Value.newFromUlong(value as number);
-    if (fundamental === Type.INT64) return Value.newFromInt64(value as number);
-    if (fundamental === Type.UINT64) return Value.newFromUint64(value as number);
-    if (fundamental === Type.FLOAT) return Value.newFromFloat(value as number);
-    if (fundamental === Type.DOUBLE) return Value.newFromDouble(value as number);
-    if (fundamental === Type.STRING) return Value.newFromString(value as string | null);
-    if (fundamental === Type.ENUM) return Value.newFromEnum(gtype, value as number);
-    if (fundamental === Type.FLAGS) return Value.newFromFlags(gtype, value as number);
-    if (fundamental === Type.OBJECT) return Value.newFromObject(value as GObject | null);
-    if (fundamental === Type.VARIANT) return Value.newFromVariant(value as NativeObject);
-    return null;
-};
-
-ValueWithStatics.fromJS = (gtype: GType, value: unknown): Value => {
-    if (gtype === getStrvGType()) return newStrvValue(gtype, value);
-
-    const fundamental = typeFundamental(gtype);
-    const fundamentalValue = valueFromFundamentalFactory(gtype, fundamental, value);
-    if (fundamentalValue) return fundamentalValue;
-
-    if (fundamental === Type.CHAR || fundamental === Type.UCHAR) {
-        return newCharValue(gtype, fundamental, value);
-    }
-
-    if (fundamental === Type.PARAM) {
-        const v = new Value();
-        v.init(gtype);
-        v.setParam(value as ParamSpec | null);
-        return v;
-    }
-
-    if (fundamental === Type.POINTER) return newPointerValue(gtype, value);
-    if (fundamental === Type.BOXED) return newBoxedValue(gtype, value);
-
-    throw new Error(`Unsupported GType for Value.fromJS: ${typeName(gtype) ?? String(gtype)}`);
-};
-
-setValueFactory((meta, value) => getHandle(Value.newFrom(meta.ffiType, value)));
+ValueWithStatics.newFromBoolean = newFromBoolean;
+ValueWithStatics.newFromInt = newFromInt;
+ValueWithStatics.newFromUint = newFromUint;
+ValueWithStatics.newFromLong = newFromLong;
+ValueWithStatics.newFromUlong = newFromUlong;
+ValueWithStatics.newFromInt64 = newFromInt64;
+ValueWithStatics.newFromUint64 = newFromUint64;
+ValueWithStatics.newFromFloat = newFromFloat;
+ValueWithStatics.newFromDouble = newFromDouble;
+ValueWithStatics.newFromString = newFromString;
+ValueWithStatics.newFromObject = newFromObject;
+ValueWithStatics.newFromBoxed = newFromBoxed;
+ValueWithStatics.newFromStrv = newFromStrv;
+ValueWithStatics.newFromVariant = newFromVariant;
+ValueWithStatics.newFromEnum = newFromEnum;
+ValueWithStatics.newFromFlags = newFromFlags;
+ValueWithStatics.newFrom = newFrom;
+ValueWithStatics.fromJS = fromJS;

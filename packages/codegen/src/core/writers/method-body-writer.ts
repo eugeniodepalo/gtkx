@@ -404,7 +404,7 @@ export class MethodBodyWriter {
         addTypeImports(this.imports, shape.imports, this.selfNames);
         for (const mapping of shape.paramMappings) {
             if (mapping.mapped.ffi.type === "ref") {
-                this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+                this.imports.addTypeImport("../../handles.js", ["NativeHandle"]);
             }
         }
         return shape;
@@ -637,7 +637,7 @@ export class MethodBodyWriter {
     }
 
     private writeCallableBody(options: CallableBodyOptions): (writer: Writer) => void {
-        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+        this.imports.addTypeImport("../../handles.js", ["NativeHandle"]);
 
         const { shape } = options;
         const ownClassName = options.ownClassName;
@@ -1197,7 +1197,7 @@ export class MethodBodyWriter {
         useClassInWrap: boolean;
         hiddenOuts?: readonly HiddenOut[];
     }): (writer: Writer) => void {
-        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+        this.imports.addTypeImport("../../handles.js", ["NativeHandle"]);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
         const { sharedLibrary, cIdentifier, args, returnTypeDescriptor, wrapClassName, throws, useClassInWrap } =
             options;

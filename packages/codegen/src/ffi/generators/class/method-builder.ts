@@ -203,7 +203,7 @@ export class MethodBuilder {
         selfTypeDescriptor: SelfTypeDescriptor,
     ): (writer: Writer) => void {
         this.imports.addImport("../../native.js", ["call", "t"]);
-        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+        this.imports.addTypeImport("../../handles.js", ["NativeHandle"]);
 
         const hasReturnValue = returnTypeMapping.ts !== "void";
         const wrapInfo = this.methodBody.needsObjectWrap(returnTypeMapping);

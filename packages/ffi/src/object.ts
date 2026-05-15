@@ -1,29 +1,12 @@
 import { alloc, call, type NativeHandle, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
+import { gvalueFromProp } from "./gobject/gvalue.js";
+import { type NativeClass, type NativeObject, setHandle } from "./handles.js";
 import { t } from "./helpers.js";
-
-export type { NativeHandle } from "@gtkx/native";
+import { getClassGType, registerNativeObject } from "./registry.js";
 
 const GVALUE_BORROWED = t.boxed("GValue", "borrowed", "libgobject-2.0.so.0", "g_value_get_type");
 const GVALUE_SIZE = 24;
-
-/**
- * Internal abstract base for hand-written `@gtkx/ffi` native wrappers such as
- * the cairo `Matrix`. Its constructor delegates to {@link constructNativeObject},
- * the same helper that generated wrapper classes invoke from their own emitted
- * constructors. Also the wrapper type threaded through the identity registry.
- * Not exported from the public `@gtkx/ffi` surface.
- *
- * @internal
- */
-export abstract class NativeObject {
-    /** Runtime GType of the underlying GObject or boxed instance. */
-    __gtype__!: number;
-
-    constructor(props: object = {}) {
-        constructNativeObject(this, props);
-    }
-}
 
 /**
  * Performs the native allocation, handle binding, and identity registration
@@ -54,148 +37,11 @@ export function constructNativeObject(instance: object, props: object = {}): voi
 
     if (meta.kind === "gobject") {
         setHandle(instance, constructGObject(ctor, meta, props as Record<string, unknown>));
-        registerInstance(instance as NativeObject);
+        registerNativeObject(instance as NativeObject);
     } else {
         setHandle(instance, constructBoxed(meta, props as Record<string, unknown>));
     }
-    (instance as { __gtype__: number }).__gtype__ = classGTypeLookup(ctor);
-}
-
-const handleMap = new WeakMap<object, NativeHandle>();
-
-/**
- * Returns the native handle associated with `obj`. Throws when the object
- * has not been linked to a handle.
- *
- * @internal Module-private accessor used by `@gtkx/ffi` and its generated
- *     bindings to retrieve the opaque native pointer of a wrapped instance.
- *     End consumers should never call this — it is not part of the public
- *     `@gtkx/ffi` surface.
- */
-export function getHandle(obj: object): NativeHandle {
-    const handle = handleMap.get(obj);
-    if (handle === undefined) {
-        const name = (obj as { constructor?: { name?: string } }).constructor?.name ?? "object";
-        throw new Error(`No native handle associated with ${name}`);
-    }
-    return handle;
-}
-
-/**
- * Returns the native handle associated with `obj`, or `undefined` when the
- * object is nullish or has not been linked to a handle. Use this when a
- * caller cannot guarantee that the object has been fully constructed.
- *
- * @internal Module-private accessor.
- */
-export function tryGetHandle(obj: object | null | undefined): NativeHandle | undefined {
-    return obj == null ? undefined : handleMap.get(obj);
-}
-
-/**
- * Associates a native handle with `obj`.
- *
- * @internal Module-private setter used by construction and `wrapHandle`.
- */
-export function setHandle(obj: object, handle: NativeHandle): void {
-    handleMap.set(obj, handle);
-}
-
-/**
- * Registry of generated class-struct vtable descriptors, keyed by the JS class
- * they belong to. Populated by codegen at module load via {@link setClassStruct}
- * and consulted by `registerClass` to auto-discover vfunc overrides supplied
- * as plain methods on user subclasses.
- */
-type ClassStructDescriptors = Readonly<Record<string, unknown>>;
-
-const classStructMap = new WeakMap<object, ClassStructDescriptors>();
-
-/**
- * Associates a class-struct vfunc registry with a generated class so that
- * `registerClass` can resolve vfunc overrides by method name on subclasses.
- *
- * @internal Module-private setter invoked once per generated class by the
- *     codegen-emitted bootstrap at the bottom of each namespace file.
- */
-export function setClassStruct(cls: object, descriptors: ClassStructDescriptors): void {
-    classStructMap.set(cls, descriptors);
-}
-
-/**
- * Resolves the class-struct vfunc descriptor map associated with `cls`, or
- * `undefined` when no descriptors have been registered for it.
- *
- * @internal
- */
-export function getClassStruct(cls: object): ClassStructDescriptors | undefined {
-    return classStructMap.get(cls);
-}
-
-type InstanceRegistrar = (obj: NativeObject) => void;
-
-let registerInstance: InstanceRegistrar = () => {};
-
-/**
- * Installs the callback invoked from {@link NativeObject}'s GObject branch to
- * register the newly constructed instance in the identity registry.
- *
- * Called once by `./registry.js` at module load. Exposed only so the FFI
- * bootstrap can wire its layers together without creating an import cycle
- * between `object.ts` and `registry.ts`.
- *
- * @internal
- */
-export function setInstanceRegistrar(registrar: InstanceRegistrar): void {
-    registerInstance = registrar;
-}
-
-type ClassGTypeLookup = (cls: NativeClass) => number;
-
-let classGTypeLookup: ClassGTypeLookup = () => 0;
-
-/**
- * Installs the lookup that resolves a registered class's GLib type identifier.
- *
- * Called once by `./registry.js` at module load. Exposed only so the FFI
- * bootstrap can wire its layers together without creating an import cycle
- * between `object.ts` and `registry.ts`.
- *
- * @internal
- */
-export function setClassGTypeLookup(lookup: ClassGTypeLookup): void {
-    classGTypeLookup = lookup;
-}
-
-/**
- * Constructor type for a generated wrapper class.
- *
- * @internal
- */
-export type NativeClass<T extends object = object> = (abstract new (
-    ...args: never[]
-) => T) & {
-    readonly prototype: T;
-};
-
-/**
- * Wraps an existing native handle as an instance of `cls` without invoking
- * the allocator.
- *
- * Used by the identity registry and signal-callback marshalling to lift
- * raw pointers received from the native layer into typed JavaScript
- * wrappers. The returned instance bypasses the constructor entirely,
- * leaving prototype-defined methods and accessors in place but skipping
- * any allocation or property initialisation.
- *
- * @param cls - Target wrapper class
- * @param handle - Native handle to wrap
- */
-export function wrapHandle<T extends object>(cls: NativeClass<T>, handle: NativeHandle): T {
-    const instance = Object.create(cls.prototype) as T;
-    setHandle(instance, handle);
-    (instance as { __gtype__: number }).__gtype__ = classGTypeLookup(cls);
-    return instance;
+    (instance as { __gtype__: number }).__gtype__ = getClassGType(ctor) as unknown as number;
 }
 
 /**
@@ -264,33 +110,9 @@ function collectGObjectProps(
         if (value === undefined) continue;
         const meta = propMap[propKey];
         if (!meta) continue;
-        const gvalue = createGValueForProp(meta, value);
         names.push(meta.girName);
-        values.push(gvalue);
+        values.push(gvalueFromProp(meta, value));
     }
-}
-
-function createGValueForProp(meta: GObjectPropMeta, value: unknown): NativeHandle {
-    return valueFactory(meta, value);
-}
-
-type ValueFactory = (meta: GObjectPropMeta, value: unknown) => NativeHandle;
-
-let valueFactory: ValueFactory = () => {
-    throw new Error("Value factory not registered; import @gtkx/ffi to initialise the GObject layer");
-};
-
-/**
- * Installs the factory that converts a JavaScript prop value into a
- * `GValue` handle suitable for `g_object_new_with_properties`.
- *
- * Called once by `@gtkx/ffi/gobject/value` at module load. Exposed only so
- * the FFI bootstrap can wire its layers together without import cycles.
- *
- * @internal
- */
-export function setValueFactory(factory: ValueFactory): void {
-    valueFactory = factory;
 }
 
 /**

@@ -1,7 +1,7 @@
 import type { DeviceType, Status } from "../generated/cairo/cairo.js";
 import { Device } from "../generated/cairo/cairo.js";
+import { getHandle } from "../handles.js";
 import { call, t } from "../native.js";
-import { getHandle } from "../object.js";
 import { DEVICE_T, INT_TYPE, LIB } from "./common.js";
 
 declare module "../generated/cairo/cairo.js" {

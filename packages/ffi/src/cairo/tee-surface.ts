@@ -1,7 +1,8 @@
 import type { NativeHandle } from "@gtkx/native";
 import { Surface } from "../generated/cairo/cairo.js";
+import { getHandle } from "../handles.js";
 import { call, t } from "../native.js";
-import { getHandle, wrapHandle } from "../object.js";
+import { wrapHandle } from "../registry.js";
 import { LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 export class TeeSurface extends Surface {

@@ -126,7 +126,8 @@ export class RecordGenerator {
     }
 
     private generateClass(record: GirRecord, recordName: string): ClassDeclarationBuilder {
-        this.file.addImport("../../object.js", ["constructNativeObject", "getHandle", "tryGetHandle"]);
+        this.file.addImport("../../object.js", ["constructNativeObject"]);
+        this.file.addImport("../../handles.js", ["getHandle", "tryGetHandle"]);
 
         const doc = buildJsDocStructure(record.doc, this.options.namespace);
         const cls = classDecl(recordName, {

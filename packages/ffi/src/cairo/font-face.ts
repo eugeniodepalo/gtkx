@@ -1,8 +1,8 @@
 import type { NativeHandle } from "@gtkx/native";
 import type { FontSlant, FontType, FontWeight, Status } from "../generated/cairo/cairo.js";
 import { FontFace } from "../generated/cairo/cairo.js";
+import { getHandle } from "../handles.js";
 import { call, t } from "../native.js";
-import { getHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import { FONT_FACE_T, FONT_FACE_T_NONE, INT_TYPE, LIB } from "./common.js";
 

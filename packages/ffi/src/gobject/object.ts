@@ -1,8 +1,8 @@
 import { findObjectProperty, type NativeHandle } from "@gtkx/native";
 import type { GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { Object as GObject, Value } from "../generated/gobject/gobject.js";
+import { getHandle } from "../handles.js";
 import { call, t } from "../native.js";
-import { getHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 
 declare module "../generated/gobject/gobject.js" {

@@ -1,8 +1,8 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
 import type { Content, Format, RectangleInt, Status, SurfaceType } from "../generated/cairo/cairo.js";
 import { Device, Surface } from "../generated/cairo/cairo.js";
+import { getHandle, setHandle } from "../handles.js";
 import { alloc, call, read, t, write } from "../native.js";
-import { getHandle, setHandle } from "../object.js";
 import { getNativeObject } from "../registry.js";
 import {
     callGetXY,

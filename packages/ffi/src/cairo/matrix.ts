@@ -1,8 +1,9 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
 import { registerConstructionMeta } from "../construction-meta.js";
 import type { Status } from "../generated/cairo/cairo.js";
+import { getHandle, NativeObject } from "../handles.js";
 import { alloc, call, read, t } from "../native.js";
-import { getHandle, NativeObject, wrapHandle } from "../object.js";
+import { wrapHandle } from "../registry.js";
 import { DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T } from "./common.js";
 
 declare module "../generated/cairo/cairo.js" {

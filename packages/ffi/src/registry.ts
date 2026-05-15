@@ -1,14 +1,7 @@
 import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import type { GType } from "./generated/gobject/gobject.js";
 import { typeParent } from "./generated/gobject/gobject.js";
-import {
-    getHandle,
-    type NativeClass,
-    type NativeObject,
-    setClassGTypeLookup,
-    setInstanceRegistrar,
-    wrapHandle,
-} from "./object.js";
+import { getHandle, type NativeClass, type NativeObject, setHandle } from "./handles.js";
 
 const classRegistry = new Map<number, NativeClass>();
 const gtypeByClass = new WeakMap<NativeClass, number>();
@@ -45,6 +38,26 @@ export function registerNativeClass(cls: NativeClass, gtype: GType): void {
  */
 export function getClassGType(cls: NativeClass): GType {
     return (gtypeByClass.get(cls) ?? 0) as unknown as GType;
+}
+
+/**
+ * Wraps an existing native handle as an instance of `cls` without invoking
+ * the allocator.
+ *
+ * Used by the identity registry and signal-callback marshalling to lift
+ * raw pointers received from the native layer into typed JavaScript
+ * wrappers. The returned instance bypasses the constructor entirely,
+ * leaving prototype-defined methods and accessors in place but skipping
+ * any allocation or property initialisation.
+ *
+ * @param cls - Target wrapper class
+ * @param handle - Native handle to wrap
+ */
+export function wrapHandle<T extends object>(cls: NativeClass<T>, handle: NativeHandle): T {
+    const instance = Object.create(cls.prototype) as T;
+    setHandle(instance, handle);
+    (instance as { __gtype__: number }).__gtype__ = getClassGType(cls) as unknown as number;
+    return instance;
 }
 
 /**
@@ -105,9 +118,6 @@ export function registerNativeObject(obj: NativeObject): void {
     objectRegistry.set(pointerId, new WeakRef(obj));
     cleanupObjectRegistry.register(obj, pointerId, obj);
 }
-
-setInstanceRegistrar(registerNativeObject);
-setClassGTypeLookup((cls) => getClassGType(cls) as unknown as number);
 
 /**
  * Finds an existing JavaScript wrapper for a native pointer.

@@ -1,6 +1,7 @@
 import { Surface } from "../generated/cairo/cairo.js";
+import { getHandle } from "../handles.js";
 import { call, t } from "../native.js";
-import { getHandle, wrapHandle } from "../object.js";
+import { wrapHandle } from "../registry.js";
 import { createFileSurface, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";
 import { enumToString, getEnumList } from "./enum-helpers.js";
 

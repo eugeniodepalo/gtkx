@@ -13,9 +13,9 @@ import type {
     TextClusterFlags,
 } from "../generated/cairo/cairo.js";
 import { Context, FontFace, Pattern, ScaledFont, Surface } from "../generated/cairo/cairo.js";
+import { getHandle } from "../handles.js";
 import { alloc, call, read, t } from "../native.js";
-import { getHandle, wrapHandle } from "../object.js";
-import { getNativeObject } from "../registry.js";
+import { getNativeObject, wrapHandle } from "../registry.js";
 import {
     allocClusterBuffer,
     allocGlyphBuffer,
