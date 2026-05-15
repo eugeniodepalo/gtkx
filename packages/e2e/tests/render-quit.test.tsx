@@ -1,4 +1,4 @@
-import { events, isStarted } from "@gtkx/ffi";
+import { isStarted, whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, quit, render, useApplication } from "@gtkx/react";
@@ -13,7 +13,7 @@ describe("render and quit", () => {
             flags: Gio.ApplicationFlags.NON_UNIQUE,
         });
         const stopHandler = vi.fn();
-        events.on("stop", stopHandler);
+        whenStopped().then(stopHandler);
         const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         const Boom = (): null => {

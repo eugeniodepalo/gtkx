@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { events } from "@gtkx/ffi";
+import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import { createServer, type ViteDevServer } from "vite";
 import { RELOAD_EXIT_CODE } from "./dev-protocol.js";
@@ -125,12 +125,14 @@ export const main = async (): Promise<void> => {
     const entryPath = resolve(cwd, entryArg);
     const server = await createViteDevServer(cwd);
 
-    events.on("stop", () => {
-        stopMcpClient();
-        server.close().catch((error: unknown) => {
+    whenStopped()
+        .then(async () => {
+            stopMcpClient();
+            await server.close();
+        })
+        .catch((error: unknown) => {
             console.error("[gtkx-dev-runner] Error closing server:", error);
         });
-    });
 
     server.watcher.on("change", (changedPath) => {
         handleFileChange(server, changedPath).catch((error) => {

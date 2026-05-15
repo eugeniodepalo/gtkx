@@ -1,4 +1,4 @@
-import { initRuntime, stop } from "@gtkx/ffi";
+import { stop } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
 import { toGtkxError } from "./errors.js";
@@ -54,10 +54,9 @@ let container: unknown = null;
 /**
  * Renders a React element tree into a GTK4 application window.
  *
- * Initializes the GTK4 runtime, registers and activates the supplied
- * application, then begins the React reconciliation process. Mirrors the
- * role of `createRoot().render()` in `react-dom`: call once at module
- * top-level in your entry file.
+ * Registers and activates the supplied application, then begins the React
+ * reconciliation process. Mirrors the role of `createRoot().render()` in
+ * `react-dom`: call once at module top-level in your entry file.
  *
  * In the dev server, the entry module runs once per process. Component-level
  * edits are applied via React Refresh; edits that propagate up to the entry
@@ -86,7 +85,6 @@ let container: unknown = null;
  * @see {@link quit} for shutting down the application
  */
 export const render = (element: ReactNode, app: Gtk.Application): void => {
-    initRuntime();
     app.register(null);
     app.activate();
 

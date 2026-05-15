@@ -1,4 +1,4 @@
-import { initRuntime, stop } from "@gtkx/ffi";
+import { stop } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
@@ -33,7 +33,6 @@ const handleError = (error: Error): void => {
 
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
     if (!application) {
-        initRuntime();
         application = new Gtk.Application({
             application_id: "org.gtkx.testing",
             flags: Gio.ApplicationFlags.NON_UNIQUE,

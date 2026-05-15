@@ -1,4 +1,3 @@
-import EventEmitter from "node:events";
 import { stop as nativeStop } from "@gtkx/native";
 import { init as initAdwaita } from "./generated/adw/adw.js";
 import { init as initGtk } from "./generated/gtk/gtk.js";
@@ -7,100 +6,61 @@ import { finalize as finalizeGtkSource, init as initGtkSource } from "./generate
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
-let runtimeReady = false;
 let stopped = false;
+
+let resolveStopped!: () => void;
+const stoppedPromise = new Promise<void>((resolve) => {
+    resolveStopped = resolve;
+});
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(keepAlive, KEEP_ALIVE_INTERVAL);
 };
 
-keepAlive();
-
 /**
- * Event map for application lifecycle events.
- * @internal
- */
-type NativeEventMap = {
-    /** Emitted when extension libraries have been initialized */
-    start: [];
-    /** Emitted when the GTK runtime is shutting down */
-    stop: [];
-};
-
-/**
- * Event emitter for GTK runtime lifecycle events.
+ * Whether the GTK runtime is currently active.
  *
- * Emits "start" the first time {@link initRuntime} is called and "stop"
- * when {@link stop} is invoked.
+ * `true` from the moment `@gtkx/ffi` is imported until {@link stop} is called.
+ */
+export const isStarted = (): boolean => !stopped;
+
+/**
+ * Resolves once the GTK runtime has shut down.
+ *
+ * The returned promise settles exactly once, after {@link stop} has quit the
+ * `GLib` main loop. Useful for releasing process-level resources that outlive
+ * the GTK runtime, such as a dev server or a socket connection.
  *
  * @example
  * ```tsx
- * import { events } from "@gtkx/ffi";
+ * import { whenStopped } from "@gtkx/ffi";
  *
- * events.on("start", () => {
- *   console.log("Runtime started");
- * });
- *
- * events.on("stop", () => {
- *   console.log("Runtime stopping");
+ * whenStopped().then(() => {
+ *   console.log("Runtime stopped");
  * });
  * ```
- */
-export const events = new EventEmitter<NativeEventMap>();
-
-/**
- * Whether the GTK runtime has been fully initialized.
  *
- * `true` once {@link initRuntime} has run and {@link stop} has not yet
- * been called.
+ * @see {@link stop}
  */
-export const isStarted = (): boolean => runtimeReady;
-
-/**
- * Initializes optional GTK extension libraries (Adwaita, GtkSource).
- *
- * The `GLib` main loop is spawned automatically when `@gtkx/ffi` is
- * imported, so most callers should rely on `render` from `@gtkx/react`
- * to trigger initialization. Call this directly only when bootstrapping
- * GTK without the React reconciler.
- */
-export const initRuntime = (): void => {
-    if (runtimeReady) return;
-    runtimeReady = true;
-
-    initGtk();
-
-    try {
-        initAdwaita();
-        initGtkSource();
-    } catch {}
-
-    events.emit("start");
-};
+export const whenStopped = (): Promise<void> => stoppedPromise;
 
 /**
  * Shuts down the GTK runtime.
  *
- * Finalizes extension libraries, emits a `"stop"` event, quits the `GLib`
- * main loop, and clears the keep-alive timer so the Node.js process can
- * exit cleanly. Once stopped, no further FFI calls may be made.
+ * Finalizes extension libraries, quits the `GLib` main loop, resolves the
+ * {@link whenStopped} promise, and clears the keep-alive timer so the Node.js
+ * process can exit cleanly. Subsequent calls are no-ops. Once stopped, no
+ * further FFI calls may be made.
  *
- * @see {@link initRuntime}
- * @see {@link events}
+ * @see {@link whenStopped}
  */
 export const stop = (): void => {
     if (stopped) return;
     stopped = true;
 
-    if (runtimeReady) {
-        runtimeReady = false;
-
-        try {
-            finalizeGtkSource();
-        } catch {}
-
-        events.emit("stop");
-    }
+    try {
+        finalizeGtkSource();
+    } catch {}
 
     nativeStop();
 
@@ -108,4 +68,14 @@ export const stop = (): void => {
         clearTimeout(keepAliveTimeout);
         keepAliveTimeout = null;
     }
+
+    resolveStopped();
 };
+
+keepAlive();
+initGtk();
+
+try {
+    initAdwaita();
+    initGtkSource();
+} catch {}

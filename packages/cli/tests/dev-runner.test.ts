@@ -2,9 +2,9 @@ import { EventEmitter } from "node:events";
 import type { ViteDevServer } from "vite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createServerMock, eventsOn, gioGetDefault, startMcpClientMock, stopMcpClientMock } = vi.hoisted(() => ({
+const { createServerMock, whenStoppedMock, gioGetDefault, startMcpClientMock, stopMcpClientMock } = vi.hoisted(() => ({
     createServerMock: vi.fn(),
-    eventsOn: vi.fn(),
+    whenStoppedMock: vi.fn(),
     gioGetDefault: vi.fn(() => null as { applicationId?: string } | null),
     startMcpClientMock: vi.fn(async () => undefined),
     stopMcpClientMock: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock("vite", () => ({
 }));
 
 vi.mock("@gtkx/ffi", () => ({
-    events: { on: eventsOn },
+    whenStopped: whenStoppedMock,
 }));
 
 vi.mock("@gtkx/ffi/gio", () => ({
@@ -220,6 +220,7 @@ describe("main", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        whenStoppedMock.mockReturnValue(new Promise<void>(() => {}));
         exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
         errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
         logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
@@ -273,17 +274,23 @@ describe("main", () => {
         expect(messages.some((m: string) => m.includes("MCP client not started"))).toBe(true);
     });
 
-    it("registers a stop handler that closes the server and stops the MCP client", async () => {
+    it("tears down the server and MCP client when the runtime stops", async () => {
         process.argv = ["node", "runner", "src/index.tsx"];
         const server = createFakeServer();
         createServerMock.mockResolvedValueOnce(server as unknown as ViteDevServer);
 
+        let resolveStopped!: () => void;
+        whenStoppedMock.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                resolveStopped = resolve;
+            }),
+        );
+
         await main();
 
-        const stopCall = eventsOn.mock.calls.find((call) => call[0] === "stop");
-        expect(stopCall).toBeDefined();
-        const handler = stopCall?.[1] as () => void;
-        handler();
+        resolveStopped();
+        await new Promise((resolve) => setImmediate(resolve));
+
         expect(stopMcpClientMock).toHaveBeenCalled();
         expect(server.close).toHaveBeenCalled();
     });
