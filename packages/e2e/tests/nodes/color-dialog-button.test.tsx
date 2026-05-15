@@ -5,6 +5,15 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
+const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA => {
+    const rgba = new Gdk.RGBA();
+    rgba.red = red;
+    rgba.green = green;
+    rgba.blue = blue;
+    rgba.alpha = alpha;
+    return rgba;
+};
+
 describe("render - ColorDialogButton", () => {
     describe("ColorDialogButtonNode", () => {
         it("creates ColorDialogButton widget", async () => {
@@ -17,7 +26,7 @@ describe("render - ColorDialogButton", () => {
 
         it("creates ColorDialogButton with initial rgba", async () => {
             const ref = createRef<Gtk.ColorDialogButton>();
-            const rgba = new Gdk.RGBA({ red: 1.0, green: 0.5, blue: 0.25, alpha: 1.0 });
+            const rgba = makeRgba(1.0, 0.5, 0.25, 1.0);
 
             await render(<GtkColorDialogButton ref={ref} rgba={rgba} />);
 
@@ -36,14 +45,14 @@ describe("render - ColorDialogButton", () => {
                 return <GtkColorDialogButton ref={ref} rgba={color} />;
             }
 
-            const initialColor = new Gdk.RGBA({ red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0 });
+            const initialColor = makeRgba(1.0, 0.0, 0.0, 1.0);
             await render(<App color={initialColor} />);
 
             const rgba1 = ref.current?.getRgba();
             expect(rgba1?.red).toBeCloseTo(1.0);
             expect(rgba1?.green).toBeCloseTo(0.0);
 
-            const newColor = new Gdk.RGBA({ red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0 });
+            const newColor = makeRgba(0.0, 1.0, 0.0, 1.0);
             await render(<App color={newColor} />);
 
             const rgba2 = ref.current?.getRgba();
