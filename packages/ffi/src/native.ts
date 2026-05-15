@@ -12,11 +12,10 @@ import { getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { Error as GError } from "./generated/glib/glib.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { typeIsA } from "./generated/gobject/gobject.js";
-import { type NativeClass, type NativeObject, setHandle, tryGetHandle } from "./object.js";
+import { type NativeClass, setHandle, tryGetHandle } from "./object.js";
 
 export { getInstanceGType } from "@gtkx/native";
-export type { NativeHandle } from "./object.js";
-export { type NativeClass, NativeObject } from "./object.js";
+export type { NativeClass, NativeHandle } from "./object.js";
 
 /**
  * Tests whether a `GTypeInstance`-compatible handle is an instance of `gtype`.

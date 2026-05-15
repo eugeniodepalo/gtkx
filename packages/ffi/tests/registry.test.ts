@@ -8,11 +8,9 @@ import {
     getNativeClass,
     getNativeObject,
     getNativeObjectAsInterface,
-    type NativeClass,
-    NativeObject,
     registerNativeClass,
 } from "../src/index.js";
-import { getHandle } from "../src/object.js";
+import { getHandle, type NativeClass, NativeObject } from "../src/object.js";
 
 const INVALID_GTYPE = 0 as unknown as GType;
 

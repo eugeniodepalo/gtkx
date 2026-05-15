@@ -1,8 +1,9 @@
 import { type Type as FfiType, getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { Object as GObject, GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { typeFromName, typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
-import type { NativeClass, NativeObject } from "../native.js";
+import type { NativeClass } from "../native.js";
 import { call, read, t } from "../native.js";
+import type { NativeObject } from "../object.js";
 import { getHandle, setValueFactory } from "../object.js";
 import { findNativeClass, getNativeObject } from "../registry.js";
 import { Type } from "./types.js";
