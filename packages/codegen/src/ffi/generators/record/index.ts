@@ -120,7 +120,7 @@ export class RecordGenerator {
             addMethodStructure(cls, struct);
         }
 
-        this.generateFields(record.fields, record.methods, cls);
+        this.generateFields(record.fields, record.methods, cls, record.isUnion);
 
         this.file.add(cls);
 
@@ -165,8 +165,8 @@ export class RecordGenerator {
         const glibTypeName = record.glibTypeName;
 
         this.file.addImport("../../construction-meta.js", ["registerConstructionMeta"]);
-        const structSize = this.fieldBuilder.calculateStructSize(record.fields);
-        const layout = this.fieldBuilder.calculateLayout(record.fields);
+        const structSize = this.fieldBuilder.calculateStructSize(record.fields, record.isUnion);
+        const layout = this.fieldBuilder.calculateLayout(record.fields, false, record.isUnion);
         const layoutByName = new Map<string, { offset: number; bitOffset?: number; bitWidth?: number }>();
         for (const item of layout) {
             layoutByName.set(item.field.name, {
@@ -638,8 +638,9 @@ export class RecordGenerator {
         fields: readonly GirField[],
         methods: readonly GirMethod[],
         cls: ClassDeclarationBuilder,
+        isUnion: boolean,
     ): void {
-        const layout = this.fieldBuilder.calculateLayout(fields);
+        const layout = this.fieldBuilder.calculateLayout(fields, false, isUnion);
         const methodNames = new Set(methods.map((m) => toCamelCase(m.name)));
 
         for (const layoutItem of layout) {

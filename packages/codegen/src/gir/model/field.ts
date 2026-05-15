@@ -2,6 +2,19 @@ import type { GirCallback } from "./callback.js";
 import type { GirType } from "./type.js";
 
 /**
+ * A `<record>` or `<union>` nested directly inside a record or union.
+ *
+ * Inline composites are anonymous aggregates in C. They occupy memory in
+ * the enclosing layout but receive no accessor; only their size feeds the
+ * enclosing record's size. `fields` may itself contain further inline
+ * composites.
+ */
+export type GirInlineComposite = {
+    isUnion: boolean;
+    fields: GirField[];
+};
+
+/**
  * Field within a record or class struct.
  *
  * When a GIR `<field>` contains an inline `<callback>` child (typical of
@@ -14,6 +27,10 @@ import type { GirType } from "./type.js";
  * `bits` is set for C bitfield members (GIR `bits` attribute); it is the
  * field's width in bits and drives bit-packed struct layout and masked
  * accessor generation.
+ *
+ * `inlineComposite` is set for synthetic `private` fields representing a
+ * `<record>` or `<union>` nested directly inside the enclosing aggregate;
+ * such fields receive no accessor and contribute only their size.
  */
 export class GirField {
     readonly name: string;
@@ -23,6 +40,7 @@ export class GirField {
     readonly private: boolean;
     readonly bits?: number;
     readonly callback?: GirCallback;
+    readonly inlineComposite?: GirInlineComposite;
     readonly doc?: string;
 
     constructor(data: {
@@ -33,6 +51,7 @@ export class GirField {
         private: boolean;
         bits?: number;
         callback?: GirCallback;
+        inlineComposite?: GirInlineComposite;
         doc?: string;
     }) {
         this.name = data.name;
@@ -42,6 +61,7 @@ export class GirField {
         this.private = data.private;
         this.bits = data.bits;
         this.callback = data.callback;
+        this.inlineComposite = data.inlineComposite;
         this.doc = data.doc;
     }
 }

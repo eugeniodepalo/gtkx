@@ -76,7 +76,9 @@ function extractDoc(node: Record<string, unknown>): string | undefined {
 }
 
 function ensureArray(value: unknown): Record<string, unknown>[] {
-    return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
+    if (Array.isArray(value)) return value as Record<string, unknown>[];
+    if (value !== null && typeof value === "object") return [value as Record<string, unknown>];
+    return [];
 }
 
 function attrString(value: unknown, fallback = ""): string {
@@ -165,7 +167,10 @@ export class GirParser {
             functions: this.parseFunctions(namespace.function ?? []),
             enumerations: this.parseEnumerations(namespace.enumeration ?? []),
             bitfields: this.parseEnumerations(namespace.bitfield ?? []),
-            records: this.parseRecords([...ensureArray(namespace.record), ...ensureArray(namespace.union)]),
+            records: [
+                ...this.parseRecords(ensureArray(namespace.record), false),
+                ...this.parseRecords(ensureArray(namespace.union), true),
+            ],
             callbacks: this.parseCallbacks(namespace.callback ?? []),
             constants: this.parseConstants(namespace.constant ?? []),
             aliases: this.parseAliases(namespace.alias ?? []),
@@ -297,13 +302,14 @@ export class GirParser {
             }));
     }
 
-    private parseRecords(records: Record<string, unknown>[]): RawRecord[] {
+    private parseRecords(records: Record<string, unknown>[], isUnion: boolean): RawRecord[] {
         if (!records || !Array.isArray(records)) return [];
         return records.map((record) => ({
             name: attrString(record["@_name"]),
             cType: attrString(record["@_c:type"], attrString(record["@_glib:type-name"])),
             opaque: record["@_opaque"] === "1",
             disguised: record["@_disguised"] === "1",
+            isUnion,
             glibTypeName: attrStringOrUndefined(record["@_glib:type-name"]),
             glibGetType: attrStringOrUndefined(record["@_glib:get-type"]),
             isGtypeStructFor: record["@_glib:is-gtype-struct-for"]
@@ -311,12 +317,37 @@ export class GirParser {
                 : undefined,
             copyFunction: attrStringOrUndefined(record["@_copy-function"]),
             freeFunction: attrStringOrUndefined(record["@_free-function"]),
-            fields: this.parseFields(ensureArray(record.field)),
+            fields: this.parseRecordMembers(record),
             methods: this.parseMethods(ensureArray(record.method)),
             constructors: this.parseConstructors(ensureArray(record._constructor)),
             functions: this.parseFunctions(ensureArray(record.function)),
             doc: extractDoc(record),
         }));
+    }
+
+    /**
+     * Parses the field-like members of a record or union: declared `<field>`
+     * elements, followed by inline `<record>` / `<union>` composite members.
+     */
+    private parseRecordMembers(node: Record<string, unknown>): RawField[] {
+        return [
+            ...this.parseFields(ensureArray(node.field)),
+            ...ensureArray(node.record).map((nested) => this.parseInlineComposite(nested, false)),
+            ...ensureArray(node.union).map((nested) => this.parseInlineComposite(nested, true)),
+        ];
+    }
+
+    /**
+     * Parses an inline `<record>` / `<union>` composite into a private,
+     * accessor-less field whose `inlineComposite` carries the nested layout.
+     */
+    private parseInlineComposite(node: Record<string, unknown>, isUnion: boolean): RawField {
+        return {
+            name: attrString(node["@_name"]),
+            type: { name: "gpointer", cType: "gpointer" },
+            private: true,
+            inlineComposite: { isUnion, fields: this.parseRecordMembers(node) },
+        };
     }
 
     private parseEnumerations(enumerations: Record<string, unknown>[]): RawEnumeration[] {

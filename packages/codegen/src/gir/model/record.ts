@@ -10,6 +10,7 @@ export class GirRecord {
     readonly cType: string;
     readonly opaque: boolean;
     readonly disguised: boolean;
+    readonly isUnion: boolean;
     readonly glibTypeName?: string;
     readonly glibGetType?: string;
     readonly isGtypeStructFor?: string;
@@ -27,6 +28,7 @@ export class GirRecord {
         cType: string;
         opaque: boolean;
         disguised: boolean;
+        isUnion: boolean;
         glibTypeName?: string;
         glibGetType?: string;
         isGtypeStructFor?: string;
@@ -43,6 +45,7 @@ export class GirRecord {
         this.cType = data.cType;
         this.opaque = data.opaque;
         this.disguised = data.disguised;
+        this.isUnion = data.isUnion;
         this.glibTypeName = data.glibTypeName;
         this.glibGetType = data.glibGetType;
         this.isGtypeStructFor = data.isGtypeStructFor;

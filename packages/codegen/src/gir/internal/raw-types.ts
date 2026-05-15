@@ -72,6 +72,7 @@ export type RawRecord = {
     cType: string;
     opaque?: boolean;
     disguised?: boolean;
+    isUnion?: boolean;
     glibTypeName?: string;
     glibGetType?: string;
     isGtypeStructFor?: string;
@@ -210,6 +211,19 @@ export type RawSignal = {
     doc?: string;
 };
 
+/**
+ * A `<record>` or `<union>` nested directly inside another record or union.
+ *
+ * Such members are anonymous aggregates in C: they occupy memory in the
+ * enclosing layout but receive no accessor. Only their size contributes to
+ * the enclosing record's size. The `fields` list may itself contain further
+ * inline composites.
+ */
+export type RawInlineComposite = {
+    isUnion: boolean;
+    fields: RawField[];
+};
+
 export type RawField = {
     name: string;
     type: RawType;
@@ -218,5 +232,6 @@ export type RawField = {
     private?: boolean;
     bits?: number;
     callback?: RawCallback;
+    inlineComposite?: RawInlineComposite;
     doc?: string;
 };

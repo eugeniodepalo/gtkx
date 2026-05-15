@@ -905,7 +905,7 @@ export class FfiMapper {
         }
 
         this.structSizeCache.set(cacheKey, 0);
-        const size = this.computeStructSize(record.fields, namespace);
+        const size = this.computeStructSize(record.fields, namespace, record.isUnion);
         if (size > 0) {
             this.structSizeCache.set(cacheKey, size);
             return size;
@@ -914,23 +914,31 @@ export class FfiMapper {
         return undefined;
     }
 
-    private computeStructSize(fields: readonly GirField[], namespace: string): number {
-        let currentOffset = 0;
+    private computeStructSize(fields: readonly GirField[], namespace: string, isUnion: boolean): number {
+        let rawSize = 0;
         let maxAlignment = 1;
 
         for (const field of fields) {
             const size = this.getFieldByteSize(field, namespace);
             const alignment = this.getFieldAlignment(field, namespace);
 
-            currentOffset = Math.ceil(currentOffset / alignment) * alignment;
-            currentOffset += size;
+            if (isUnion) {
+                rawSize = Math.max(rawSize, size);
+            } else {
+                rawSize = Math.ceil(rawSize / alignment) * alignment + size;
+            }
             maxAlignment = Math.max(maxAlignment, alignment);
         }
 
-        return Math.ceil(currentOffset / maxAlignment) * maxAlignment;
+        return Math.ceil(rawSize / maxAlignment) * maxAlignment;
     }
 
     private getFieldByteSize(field: GirField, namespace: string): number {
+        const composite = field.inlineComposite;
+        if (composite) {
+            return this.computeStructSize(composite.fields, namespace, composite.isUnion);
+        }
+
         const type = field.type;
         if (type.cType?.includes("*")) return 8;
         if (this.isCallbackType(type.name, namespace)) return 8;
@@ -944,6 +952,15 @@ export class FfiMapper {
     }
 
     private getFieldAlignment(field: GirField, namespace: string): number {
+        const composite = field.inlineComposite;
+        if (composite) {
+            let alignment = 1;
+            for (const inner of composite.fields) {
+                alignment = Math.max(alignment, this.getFieldAlignment(inner, namespace));
+            }
+            return alignment;
+        }
+
         const type = field.type;
         if (type.cType?.includes("*")) return 8;
         if (this.isCallbackType(type.name, namespace)) return 8;
@@ -1006,7 +1023,7 @@ export class FfiMapper {
             if (cached !== undefined) return cached || 8;
 
             this.structSizeCache.set(cacheKey, 0);
-            const size = this.computeStructSize(record.fields, parts.namespace);
+            const size = this.computeStructSize(record.fields, parts.namespace, record.isUnion);
             if (size > 0) {
                 this.structSizeCache.set(cacheKey, size);
                 return size;

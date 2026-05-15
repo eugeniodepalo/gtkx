@@ -57,11 +57,13 @@ export class FieldBuilder {
     }
 
     /**
-     * Calculates struct memory layout for fields.
-     * By default excludes private fields (for accessors).
-     * Use includePrivate=true for allocation size calculation.
+     * Calculates the memory layout of a record's fields.
+     *
+     * By default excludes private fields (for accessors); pass
+     * `includePrivate=true` for allocation size calculation. When `isUnion`
+     * is set every field is overlaid at offset 0.
      */
-    calculateLayout(fields: readonly GirField[], includePrivate = false): FieldLayout[] {
+    calculateLayout(fields: readonly GirField[], includePrivate = false, isUnion = false): FieldLayout[] {
         const layout: FieldLayout[] = [];
         let currentOffset = 0;
         let bitUnit: { offset: number; bitsUsed: number; capacityBits: number; typeName: string } | null = null;
@@ -69,10 +71,15 @@ export class FieldBuilder {
         for (const field of fields) {
             if (field.private && !includePrivate) continue;
 
-            const size = this.getFieldSize(field.type);
-            const alignment = this.getFieldAlignment(field.type);
+            const size = this.getMemberSize(field);
+            const alignment = this.getMemberAlignment(field);
 
             if (field.bits !== undefined && field.bits > 0) {
+                if (isUnion) {
+                    layout.push({ field, offset: 0, size, alignment, bitOffset: 0, bitWidth: field.bits });
+                    continue;
+                }
+
                 const typeName = String(field.type.name);
                 const capacityBits = size * 8;
 
@@ -99,6 +106,12 @@ export class FieldBuilder {
             }
 
             bitUnit = null;
+
+            if (isUnion) {
+                layout.push({ field, offset: 0, size, alignment });
+                continue;
+            }
+
             currentOffset = Math.ceil(currentOffset / alignment) * alignment;
 
             layout.push({
@@ -115,16 +128,18 @@ export class FieldBuilder {
     }
 
     /**
-     * Calculates total struct size with final alignment padding.
-     * Includes private fields since they're needed for memory allocation.
+     * Calculates the total size of a record with final alignment padding.
+     *
+     * Includes private fields since they are needed for memory allocation.
+     * For a union the size is the largest member rounded up to the widest
+     * member alignment.
      */
-    calculateStructSize(fields: readonly GirField[]): number {
-        const layout = this.calculateLayout(fields, true);
+    calculateStructSize(fields: readonly GirField[], isUnion = false): number {
+        const layout = this.calculateLayout(fields, true, isUnion);
         if (layout.length === 0) return 0;
 
-        const lastField = layout.at(-1);
-        const rawSize = lastField ? lastField.offset + lastField.size : 0;
-        const maxAlignment = Math.max(...layout.map((l) => l.alignment), 1);
+        const rawSize = Math.max(...layout.map((item) => item.offset + item.size));
+        const maxAlignment = Math.max(...layout.map((item) => item.alignment), 1);
 
         return Math.ceil(rawSize / maxAlignment) * maxAlignment;
     }
@@ -244,7 +259,7 @@ export class FieldBuilder {
     getNestedStructLayout(typeName: string): FieldLayout[] | null {
         const record = this.resolveRecord(typeName);
         if (!record) return null;
-        return this.calculateLayout(record.fields);
+        return this.calculateLayout(record.fields, false, record.isUnion);
     }
 
     /**
@@ -311,7 +326,7 @@ export class FieldBuilder {
         const record = this.resolveRecord(typeName);
         if (record && !record.opaque && !record.disguised) {
             this.sizeCache.set(typeName, 0);
-            const size = this.calculateStructSize(record.fields);
+            const size = this.calculateStructSize(record.fields, record.isUnion);
             this.sizeCache.set(typeName, size);
             return size;
         }
@@ -352,9 +367,37 @@ export class FieldBuilder {
         if (record && !record.opaque && !record.disguised) {
             const fields = record.getPublicFields();
             if (fields.length === 0) return 8;
-            return Math.max(...fields.map((f) => this.getFieldAlignment(f.type, visited)));
+            return Math.max(...fields.map((field) => this.getFieldAlignment(field.type, visited)));
         }
 
         return 8;
+    }
+
+    /**
+     * Returns the byte size of a record member. Inline composite members
+     * carry their own nested layout rather than a resolvable type.
+     */
+    private getMemberSize(field: GirField): number {
+        const composite = field.inlineComposite;
+        if (composite) {
+            return this.calculateStructSize(composite.fields, composite.isUnion);
+        }
+        return this.getFieldSize(field.type);
+    }
+
+    /**
+     * Returns the alignment of a record member. The alignment of an inline
+     * composite is the widest alignment among its members.
+     */
+    private getMemberAlignment(field: GirField, visited = new Set<string>()): number {
+        const composite = field.inlineComposite;
+        if (composite) {
+            let alignment = 1;
+            for (const inner of composite.fields) {
+                alignment = Math.max(alignment, this.getMemberAlignment(inner, visited));
+            }
+            return alignment;
+        }
+        return this.getFieldAlignment(field.type, visited);
     }
 }

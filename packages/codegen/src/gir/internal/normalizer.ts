@@ -324,6 +324,7 @@ export class GirNormalizer {
             cType: raw.cType,
             opaque: raw.opaque ?? false,
             disguised: raw.disguised ?? false,
+            isUnion: raw.isUnion ?? false,
             glibTypeName: raw.glibTypeName,
             glibGetType: raw.glibGetType,
             isGtypeStructFor: raw.isGtypeStructFor,
@@ -497,6 +498,12 @@ export class GirNormalizer {
             private: raw.private ?? false,
             bits: raw.bits,
             callback: raw.callback ? this.normalizeInlineCallback(raw.callback, raw.name, currentNamespace) : undefined,
+            inlineComposite: raw.inlineComposite
+                ? {
+                      isUnion: raw.inlineComposite.isUnion,
+                      fields: raw.inlineComposite.fields.map((field) => this.normalizeField(field, currentNamespace)),
+                  }
+                : undefined,
             doc: raw.doc,
         });
     }
