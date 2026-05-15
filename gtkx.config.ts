@@ -6,5 +6,5 @@
  * `@gtkx/cli` being built; `loadGtkxConfig` validates it regardless.
  */
 export default {
-    libraries: ["Gtk-4.0", "Adw-1", "GES-1.0", "GtkSource-5", "Vte-3.91", "WebKit-6.0"],
+    libraries: ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"],
 };
