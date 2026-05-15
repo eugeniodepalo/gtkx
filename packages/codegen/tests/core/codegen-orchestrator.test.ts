@@ -1,7 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { repositoryLoadMock, ffiGenerateMock, reactGenerateMock, reactCtorSpy } = vi.hoisted(() => ({
     repositoryLoadMock: vi.fn(),
@@ -133,24 +130,6 @@ describe("CodegenOrchestrator", () => {
                     }),
             ).not.toThrow();
         });
-
-        it("accepts a girsDir alone", () => {
-            expect(() => new CodegenOrchestrator({ girsDir: "/tmp/girs" })).not.toThrow();
-        });
-
-        it("rejects libraries without girPath", () => {
-            expect(() => new CodegenOrchestrator({ libraries: ["Gtk-4.0"] })).toThrow(
-                /provide either `girsDir` or both `libraries` and `girPath`/,
-            );
-        });
-
-        it("rejects girPath without libraries", () => {
-            expect(() => new CodegenOrchestrator({ girPath: ["/usr/share/gir-1.0"] })).toThrow();
-        });
-
-        it("rejects empty options", () => {
-            expect(() => new CodegenOrchestrator({})).toThrow();
-        });
     });
 
     describe("generate with libraries + girPath", () => {
@@ -228,37 +207,6 @@ describe("CodegenOrchestrator", () => {
             const reactCall = reactCtorSpy.mock.calls[0];
             if (!reactCall) throw new Error("ReactGenerator was not constructed");
             expect(new Set(reactCall[2] as string[])).toEqual(new Set(["Gtk", "Adw"]));
-        });
-    });
-
-    describe("generate with girsDir", () => {
-        let dir: string;
-
-        beforeEach(async () => {
-            dir = await mkdtemp(join(tmpdir(), "codegen-orchestrator-"));
-            await writeFile(join(dir, "Gtk-4.0.gir"), "");
-            await writeFile(join(dir, "Adw-1.gir"), "");
-            await writeFile(join(dir, "ignored.txt"), "");
-        });
-
-        afterEach(async () => {
-            await rm(dir, { recursive: true, force: true });
-        });
-
-        it("enumerates .gir files and uses them as both roots and search path", async () => {
-            configureMocks({
-                namespaces: ["Gtk", "Adw"],
-                widgetsByNamespace: { Gtk: [makeWidgetMeta("GtkButton")], Adw: [] },
-            });
-
-            const orchestrator = new CodegenOrchestrator({ girsDir: dir });
-            await orchestrator.generate();
-
-            const repoCall = repositoryLoadMock.mock.calls[0];
-            if (!repoCall) throw new Error("GirRepository.load was not invoked");
-            const [roots, opts] = repoCall;
-            expect(new Set(roots)).toEqual(new Set(["Gtk-4.0", "Adw-1"]));
-            expect(opts).toEqual({ girPath: [dir] });
         });
     });
 });

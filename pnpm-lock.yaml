@@ -14,9 +14,6 @@ importers:
       '@biomejs/biome':
         specifier: ^2.4.15
         version: 2.4.15
-      '@gtkx/codegen':
-        specifier: workspace:*
-        version: link:packages/codegen
       '@types/node':
         specifier: ^25.7.0
         version: 25.7.0
@@ -35,6 +32,9 @@ importers:
       react:
         specifier: ^19.2.6
         version: 19.2.6
+      tsx:
+        specifier: ^4.20.6
+        version: 4.21.0
       turbo:
         specifier: ^2.9.12
         version: 2.9.12
@@ -199,9 +199,6 @@ importers:
       '@ts-for-gir/cli':
         specifier: ^3.3.0
         version: 3.3.0(@types/node@25.7.0)(typescript@6.0.3)
-      citty:
-        specifier: ^0.2.2
-        version: 0.2.2
       fast-xml-parser:
         specifier: ^5.7.3
         version: 5.8.0

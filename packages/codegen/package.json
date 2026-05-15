@@ -18,16 +18,14 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
+            "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         }
     },
-    "bin": {
-        "gtkx-codegen": "bin/gtkx-codegen.js"
-    },
     "files": [
-        "bin",
-        "dist"
+        "dist",
+        "src"
     ],
     "scripts": {
         "build": "tsc -p tsconfig.lib.json",
@@ -39,7 +37,6 @@
         "@clack/prompts": "^1.4.0",
         "@gtkx/native": "workspace:*",
         "@ts-for-gir/cli": "^3.3.0",
-        "citty": "^0.2.2",
         "fast-xml-parser": "^5.7.3"
     }
 }

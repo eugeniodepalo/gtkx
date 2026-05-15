@@ -2,7 +2,7 @@ import { type ChildProcess, fork } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineCommand } from "citty";
+import { defineCommand, runMain } from "citty";
 import { build } from "./builder.js";
 import { preflightCodegen, runCodegen } from "./codegen/run-codegen.js";
 import { createApp } from "./create.js";
@@ -215,3 +215,7 @@ export const main = defineCommand({
         create,
     },
 });
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+    void runMain(main);
+}

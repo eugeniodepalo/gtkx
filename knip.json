@@ -3,13 +3,15 @@
     "tags": ["-public"],
     "ignoreExportsUsedInFile": true,
     "workspaces": {
-        ".": {},
+        ".": {
+            "entry": ["gtkx.config.ts"]
+        },
         "packages/cli": {
-            "entry": ["src/cli.tsx", "src/global.d.ts"],
-            "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+            "entry": ["src/global.d.ts"],
+            "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
+            "ignoreDependencies": ["@gtkx/react"]
         },
         "packages/codegen": {
-            "entry": ["src/cli.ts"],
             "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
         },
         "packages/css": {

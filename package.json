@@ -8,9 +8,7 @@
     "type": "module",
     "scripts": {
         "build": "turbo build --filter=!website --filter=!gtkx",
-        "codegen": "turbo codegen:run",
-        "codegen:sync": "gtkx-codegen sync",
-        "codegen:run": "gtkx-codegen run",
+        "codegen": "node --conditions=source --import tsx packages/cli/src/cli.tsx codegen",
         "conformance": "turbo conformance --filter=@gtkx/ffi",
         "docs": "turbo build --filter=website",
         "circular": "dpdm --no-warning --no-tree --transform -T --skip-dynamic-imports circular --exit-code circular:1 --exclude '(node_modules|dist|generated|out-tsc)' 'packages/{cli,codegen,css,e2e,ffi,mcp,react,testing,vitest}/src/**/*.{ts,tsx}'",
@@ -23,13 +21,13 @@
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.15",
-        "@gtkx/codegen": "workspace:*",
         "@types/node": "^25.7.0",
         "@types/react": "^19.2.14",
         "@vitest/coverage-v8": "^4.1.5",
         "dpdm": "^4.2.0",
         "knip": "^6.13.1",
         "react": "^19.2.6",
+        "tsx": "^4.20.6",
         "turbo": "^2.9.12",
         "typescript": "^6.0.3",
         "vitest": "^4.1.5"

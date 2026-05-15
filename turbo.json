@@ -21,12 +21,6 @@
             "outputs": [],
             "outputLogs": "new-only"
         },
-        "//#codegen:run": {
-            "dependsOn": ["@gtkx/codegen#build"],
-            "inputs": ["$TURBO_ROOT$/girs/**", "$TURBO_ROOT$/packages/codegen/src/**"],
-            "outputs": ["packages/ffi/src/generated/**", "packages/react/src/generated/**"],
-            "outputLogs": "new-only"
-        },
         "lint": {
             "inputs": [
                 "*.ts",
@@ -113,42 +107,42 @@
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
         "@gtkx/ffi#test": {
-            "dependsOn": ["^build", "native-test", "//#codegen:run"],
+            "dependsOn": ["^build", "native-test"],
             "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
             "outputLogs": "new-only"
         },
         "@gtkx/ffi#coverage": {
-            "dependsOn": ["^build", "native-coverage", "//#codegen:run"],
+            "dependsOn": ["^build", "native-coverage"],
             "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
             "outputs": ["coverage/**"],
             "outputLogs": "new-only"
         },
         "@gtkx/ffi#build": {
-            "dependsOn": ["^build", "//#codegen:run"],
+            "dependsOn": ["^build"],
             "inputs": ["package.json", "src/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
             "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
             "outputLogs": "new-only"
         },
         "@gtkx/react#build": {
-            "dependsOn": ["^build", "//#codegen:run"],
+            "dependsOn": ["^build"],
             "inputs": ["package.json", "src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.lib.json"],
             "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
             "outputLogs": "new-only"
         },
         "@gtkx/ffi#typecheck": {
-            "dependsOn": ["^build", "//#codegen:run"],
+            "dependsOn": ["^build"],
             "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
             "outputs": [],
             "outputLogs": "new-only"
         },
         "@gtkx/ffi#conformance": {
-            "dependsOn": ["^build", "//#codegen:run"],
+            "dependsOn": ["^build"],
             "inputs": ["src/generated/**/*.d.ts", "tsconfig.conformance.json"],
             "outputs": [],
             "outputLogs": "new-only"
         },
         "@gtkx/react#typecheck": {
-            "dependsOn": ["^build", "//#codegen:run"],
+            "dependsOn": ["^build"],
             "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
             "outputs": [],
             "outputLogs": "new-only"
