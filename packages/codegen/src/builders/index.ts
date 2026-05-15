@@ -7,7 +7,7 @@ export { typeAlias } from "./declarations/type-alias.js";
 export { variableStatement } from "./declarations/variable.js";
 export { FileBuilder, fileBuilder } from "./file-builder.js";
 export { accessor } from "./members/accessor.js";
-export { constructorDecl } from "./members/constructor.js";
+export { ConstructorBuilder, constructorDecl } from "./members/constructor.js";
 export { method, type OverloadSignature } from "./members/method.js";
 export { param } from "./members/parameter.js";
 export { property } from "./members/property.js";

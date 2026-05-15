@@ -50,7 +50,7 @@ export const parseParentReference = (parent: string | null | undefined, currentN
             isCrossNamespace: false,
             className: "",
             originalName: "",
-            extendsClause: " extends NativeObject",
+            extendsClause: "",
         };
     }
 

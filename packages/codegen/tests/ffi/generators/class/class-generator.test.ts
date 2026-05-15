@@ -90,7 +90,7 @@ describe("ClassGenerator", () => {
             expect(code).toContain("extends Widget");
         });
 
-        it("generates class extending NativeObject when no parent", () => {
+        it("emits a constructor delegating to constructNativeObject when no parent", () => {
             const gtkNs = createNormalizedNamespace({ name: "Gtk" });
             const widgetClass = createNormalizedClass({
                 name: "Widget",
@@ -105,7 +105,8 @@ describe("ClassGenerator", () => {
             generator.generate();
 
             const code = stringify(file);
-            expect(code).toContain("extends NativeObject");
+            expect(code).toContain("constructNativeObject(this, props)");
+            expect(code).not.toContain("extends NativeObject");
         });
 
         it("emits exported get-type FFI binding when glibGetType is present", () => {

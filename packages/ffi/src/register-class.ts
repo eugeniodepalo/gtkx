@@ -5,8 +5,9 @@ import {
     type RegisterClassSignalDefinition,
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
+import { CONSTRUCTION_META } from "./construction-meta.js";
 import type { GType, ParamSpec } from "./generated/gobject/gobject.js";
-import { type NativeClass, NativeObject, tryGetHandle } from "./object.js";
+import { type NativeClass, tryGetHandle } from "./object.js";
 import { registerNativeClass } from "./registry.js";
 
 /**
@@ -174,8 +175,8 @@ export function registerClass<T extends NativeClass>(
     parentGType: GType,
     options: RegisterClassOptions = {},
 ): T {
-    if (!(klass.prototype instanceof NativeObject)) {
-        throw new TypeError(`registerClass: ${klass.name} must extend a NativeObject subclass`);
+    if (!hasRegisteredAncestor(klass)) {
+        throw new TypeError(`registerClass: ${klass.name} must extend a registered native class`);
     }
     const parentGTypeId = parentGType as unknown as number;
     if (parentGTypeId === 0) {
@@ -191,6 +192,15 @@ export function registerClass<T extends NativeClass>(
     registerNativeClass(klass, newGtype);
 
     return klass;
+}
+
+function hasRegisteredAncestor(klass: NativeClass): boolean {
+    let current: NativeClass | null = klass;
+    while (current && current !== (Function.prototype as unknown as NativeClass)) {
+        if (CONSTRUCTION_META.has(current)) return true;
+        current = Object.getPrototypeOf(current) as NativeClass | null;
+    }
+    return false;
 }
 
 function toNativeOptions(options: RegisterClassOptions): RegisterClassNativeOptions | undefined {

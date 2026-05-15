@@ -70,14 +70,14 @@ describe("registerClass", () => {
         expect(typeFromName(dynamicName)).not.toBe(0);
     });
 
-    it("rejects classes that do not extend a NativeObject", () => {
+    it("rejects classes that do not extend a registered native class", () => {
         class NotANativeObject {}
 
         expect(() =>
             registerClass(NotANativeObject as unknown as Parameters<typeof registerClass>[0], gtkBoxGType(), {
                 gtypeName: uniqueName("ShouldNotRegister"),
             }),
-        ).toThrow(/must extend a NativeObject subclass/);
+        ).toThrow(/must extend a registered native class/);
     });
 
     it("rejects when the parent GType is invalid", () => {

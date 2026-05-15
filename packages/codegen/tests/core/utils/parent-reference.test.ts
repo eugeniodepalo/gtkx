@@ -10,7 +10,7 @@ describe("parseParentReference", () => {
             expect(result.isCrossNamespace).toBe(false);
             expect(result.className).toBe("");
             expect(result.originalName).toBe("");
-            expect(result.extendsClause).toBe(" extends NativeObject");
+            expect(result.extendsClause).toBe("");
         });
 
         it("returns hasParent false for undefined", () => {

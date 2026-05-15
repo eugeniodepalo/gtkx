@@ -170,7 +170,7 @@ export function getNativeObject(
     }
 
     if (targetType) {
-        return wrapHandle(targetType, handle);
+        return wrapHandle(targetType, handle) as NativeObject;
     }
 
     const existing = findNativeObject(handle);
@@ -185,7 +185,7 @@ export function getNativeObject(
         throw new Error(`Expected registered GLib type, got gtype ${String(runtimeGtype)}`);
     }
 
-    const instance = wrapHandle(cls, handle);
+    const instance = wrapHandle(cls, handle) as NativeObject;
     registerNativeObject(instance);
     return instance;
 }

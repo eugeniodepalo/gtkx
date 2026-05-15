@@ -9,7 +9,14 @@
  */
 
 import type { FileBuilder } from "../../../builders/file-builder.js";
-import { accessor, type ClassDeclarationBuilder, classDecl, method, param } from "../../../builders/index.js";
+import {
+    accessor,
+    type ClassDeclarationBuilder,
+    classDecl,
+    constructorDecl,
+    method,
+    param,
+} from "../../../builders/index.js";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -119,14 +126,22 @@ export class RecordGenerator {
     }
 
     private generateClass(record: GirRecord, recordName: string): ClassDeclarationBuilder {
-        this.file.addImport("../../object.js", ["NativeObject", "getHandle", "tryGetHandle"]);
+        this.file.addImport("../../object.js", ["constructNativeObject", "getHandle", "tryGetHandle"]);
 
         const doc = buildJsDocStructure(record.doc, this.options.namespace);
         const cls = classDecl(recordName, {
             exported: true,
-            extends: "NativeObject",
             doc: doc?.[0]?.description,
         });
+
+        cls.setConstructor(
+            constructorDecl({
+                params: [param("props", "object", { defaultValue: "{}" })],
+                body: (writer) => {
+                    writer.writeLine("constructNativeObject(this, props);");
+                },
+            }),
+        );
 
         return cls;
     }

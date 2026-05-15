@@ -52,7 +52,7 @@ describe("RecordGenerator", () => {
             expect(code).toContain("export class Rectangle");
         });
 
-        it("extends NativeObject", () => {
+        it("emits a constructor that delegates to constructNativeObject", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -62,7 +62,8 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("extends NativeObject");
+            expect(code).toContain("constructNativeObject(this, props)");
+            expect(code).not.toContain("extends NativeObject");
         });
 
         it("registers native class with gtype when glibGetType is present", () => {
@@ -256,7 +257,8 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("export class Rectangle extends NativeObject");
+            expect(code).toContain("export class Rectangle");
+            expect(code).not.toContain("extends NativeObject");
             expect(code).not.toContain("RectangleInit");
         });
 
@@ -464,7 +466,8 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("export class Rectangle extends NativeObject");
+            expect(code).toContain("export class Rectangle");
+            expect(code).not.toContain("extends NativeObject");
         });
 
         it("emits the GIR `<constructor>` as a static factory even when it takes parameters", () => {

@@ -8,60 +8,59 @@ const GVALUE_BORROWED = t.boxed("GValue", "borrowed", "libgobject-2.0.so.0", "g_
 const GVALUE_SIZE = 24;
 
 /**
- * Base class for every native object exposed by `@gtkx/ffi`.
+ * Base class used internally by `@gtkx/ffi` for every native wrapper.
  *
- * Holds the opaque {@link NativeHandle} pointing at the underlying GObject,
- * boxed struct, or fundamental value. Construction is uniform across all
- * subclasses: callers pass a `props` object keyed by the snake_case
- * `ConstructorProperties` names from the ts-for-gir-published `.d.ts`
- * contract, and the constructor walks the JS prototype chain reading
- * registered {@link ConstructionMeta} from `CONSTRUCTION_META` to perform
- * the appropriate native allocation (`g_object_new_with_properties` for
- * GObjects, `g_malloc0` plus field writes for boxed types). The handle is
- * assigned in-place on `this`; no subclass should reassign it.
+ * Generated classes no longer extend this class directly — they emit their
+ * own constructor that delegates to {@link constructNativeObject}. The class
+ * is retained for hand-written wrappers (e.g. the cairo `Matrix` helpers)
+ * and for type bounds inside `@gtkx/ffi`. It is intentionally not exported
+ * from the public `@gtkx/ffi` surface.
  *
- * Use {@link wrapHandle} (re-exported from `@gtkx/ffi`) to wrap a handle
- * produced elsewhere (returned from an FFI call, received over a signal)
- * without invoking the native allocator a second time.
+ * @internal
  */
 export abstract class NativeObject {
-    /**
-     * Runtime GType of the underlying GObject or boxed instance.
-     *
-     * Mirrors the `__gtype__` field surfaced on every class in the
-     * ts-for-gir-published `.d.ts` contract, declared as an instance
-     * property (not an accessor) so subclass declarations merge cleanly.
-     */
+    /** Runtime GType of the underlying GObject or boxed instance. */
     __gtype__!: number;
 
     constructor(props: object = {}) {
-        const ctor = this.constructor as NativeClass;
-        const meta = CONSTRUCTION_META.get(ctor);
-        if (!meta) {
-            throw new Error(`Cannot construct ${ctor.name}: no construction metadata registered`);
-        }
-        if (typeof props === "function") {
-            throw new TypeError(
-                `Cannot construct ${ctor.name} with a function argument; pass an object of properties or call a static factory method (e.g. ${ctor.name}.new(...)).`,
-            );
-        }
+        constructNativeObject(this, props);
+    }
+}
 
-        if (meta.kind === "gobject") {
-            setHandle(this, constructGObject(ctor, meta, props as Record<string, unknown>));
-            registerInstance(this);
-        } else {
-            setHandle(this, constructBoxed(meta, props as Record<string, unknown>));
-        }
-        this.__gtype__ = classGTypeLookup(ctor);
+/**
+ * Performs the native allocation, handle binding, and identity registration
+ * for a freshly-created wrapper instance. Generated class constructors call
+ * this exactly once at construction time, threading the unmodified `props`
+ * argument through. The construction strategy is selected via the
+ * registered {@link ConstructionMeta} for the leaf class:
+ *
+ *   - `"gobject"`: dispatches `g_object_new_with_properties`, then registers
+ *     the instance in the identity registry so future handles round-trip to
+ *     the same JS wrapper.
+ *   - `"boxed"`: dispatches `g_malloc0` and writes each provided field into
+ *     the struct.
+ *
+ * @internal Module-private constructor helper invoked by generated bindings.
+ */
+export function constructNativeObject(instance: object, props: object = {}): void {
+    const ctor = instance.constructor as NativeClass;
+    const meta = CONSTRUCTION_META.get(ctor);
+    if (!meta) {
+        throw new Error(`Cannot construct ${ctor.name}: no construction metadata registered`);
+    }
+    if (typeof props === "function") {
+        throw new TypeError(
+            `Cannot construct ${ctor.name} with a function argument; pass an object of properties or call a static factory method (e.g. ${ctor.name}.new(...)).`,
+        );
     }
 
-    /**
-     * Matches the no-op `_init` hook every ts-for-gir-generated class exposes
-     * for GJS introspection compatibility. Native construction has already
-     * completed by the time `_init` would be called, so this implementation
-     * has no behaviour and exists purely to satisfy the contract.
-     */
-    _init(_config?: object): void {}
+    if (meta.kind === "gobject") {
+        setHandle(instance, constructGObject(ctor, meta, props as Record<string, unknown>));
+        registerInstance(instance as NativeObject);
+    } else {
+        setHandle(instance, constructBoxed(meta, props as Record<string, unknown>));
+    }
+    (instance as { __gtype__: number }).__gtype__ = classGTypeLookup(ctor);
 }
 
 const handleMap = new WeakMap<object, NativeHandle>();
@@ -140,10 +139,12 @@ export function setClassGTypeLookup(lookup: ClassGTypeLookup): void {
 }
 
 /**
- * Constructor type for a {@link NativeObject} subclass.
+ * Constructor type for a generated wrapper class.
+ *
+ * @internal
  */
+// biome-ignore lint/suspicious/noExplicitAny: constructor parameters must be bivariant to accept arbitrary subclass shapes.
 export type NativeClass<T extends NativeObject = NativeObject> = (abstract new (
-    // biome-ignore lint/suspicious/noExplicitAny: constructor parameters must be bivariant to accept arbitrary subclass shapes.
     ...args: any[]
 ) => T) & {
     readonly prototype: T;

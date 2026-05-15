@@ -6,7 +6,15 @@
  */
 
 import type { FileBuilder } from "../../../builders/file-builder.js";
-import { type ClassDeclarationBuilder, classDecl, interfaceDecl, namespaceDecl } from "../../../builders/index.js";
+import {
+    type ClassDeclarationBuilder,
+    type ConstructorBuilder as ConstructorMemberBuilder,
+    classDecl,
+    constructorDecl,
+    interfaceDecl,
+    namespaceDecl,
+    param,
+} from "../../../builders/index.js";
 import { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
@@ -207,7 +215,7 @@ export class ClassGenerator {
     }
 
     private buildClassDeclaration(parentInfo: ParentInfo): ClassDeclarationBuilder {
-        let extendsBase: string;
+        let extendsBase: string | undefined;
         if (parentInfo.hasParent) {
             if (parentInfo.isCrossNamespace && parentInfo.namespace) {
                 extendsBase = `${parentInfo.namespace}.${parentInfo.className}`;
@@ -221,9 +229,6 @@ export class ClassGenerator {
                     this.file.addImport(`./${toKebabCase(parentInfo.originalName)}.js`, [parentInfo.className]);
                 }
             }
-        } else {
-            extendsBase = "NativeObject";
-            this.file.addImport("../../object.js", ["NativeObject"]);
         }
 
         this.file.addImport("../../object.js", ["getHandle", "tryGetHandle"]);
@@ -231,12 +236,26 @@ export class ClassGenerator {
         const doc = buildJsDocStructure(this.cls.doc, this.options.namespace);
         const cls = classDecl(this.className, {
             exported: true,
-            extends: extendsBase,
+            ...(extendsBase !== undefined ? { extends: extendsBase } : {}),
             abstract: this.cls.abstract,
             doc: doc?.[0]?.description,
         });
 
+        if (!parentInfo.hasParent) {
+            this.file.addImport("../../object.js", ["constructNativeObject"]);
+            cls.setConstructor(this.buildRootConstructor());
+        }
+
         return cls;
+    }
+
+    private buildRootConstructor(): ConstructorMemberBuilder {
+        return constructorDecl({
+            params: [param("props", "object", { defaultValue: "{}" })],
+            body: (writer) => {
+                writer.writeLine("constructNativeObject(this, props);");
+            },
+        });
     }
 
     private resolveInterfaceNamespace(ifaceQualifiedName: string): string {
