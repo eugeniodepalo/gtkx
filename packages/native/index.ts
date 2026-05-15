@@ -66,8 +66,8 @@ declare const __nativeHandleBrand: unique symbol;
  * GLib main-loop handle).
  *
  * Values of this type are produced exclusively by the functions in this
- * module ({@link alloc}, {@link call}, {@link findObjectProperty}, etc.) and
- * must never be constructed by user code. The underlying value is a raw
+ * module ({@link alloc}, {@link call}, etc.) and must never be constructed
+ * by user code. The underlying value is a raw
  * native external pointer; the brand ensures TypeScript treats it opaquely.
  */
 export type NativeHandle = unknown & { readonly [__nativeHandleBrand]: never };
