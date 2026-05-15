@@ -43,15 +43,26 @@ export class GirLoader {
         return result;
     }
 
+    /**
+     * Walks the GIR dependency graph from the given root namespace keys,
+     * following `<include>` tags transitively.
+     *
+     * A missing GIR file throws — with a `gtkx.config.ts`-pointing message
+     * when the missing key is one of `roots`, and a generic one otherwise.
+     *
+     * @param roots - Explicitly requested namespace keys (e.g. `["Gtk-4.0"]`)
+     * @returns Each discovered key mapped to its file path and direct dependencies
+     */
     async discoverDependencies(roots: string[]): Promise<Map<string, { filePath: string; dependencies: string[] }>> {
         const graph = new Map<string, { filePath: string; dependencies: string[] }>();
+        const explicitRoots = new Set(roots);
         const queue = [...roots];
 
         while (queue.length > 0) {
             const key = queue.shift();
             if (key === undefined || graph.has(key)) continue;
 
-            const filePath = this.findGirFile(key);
+            const filePath = this.findGirFile(key, explicitRoots.has(key));
             const xml = await readFile(filePath, "utf-8");
             const header = this.parser.parseHeader(xml);
 
@@ -69,7 +80,7 @@ export class GirLoader {
         return graph;
     }
 
-    private findGirFile(namespaceKey: string): string {
+    private findGirFile(namespaceKey: string, isExplicit: boolean): string {
         const filename = `${namespaceKey}.gir`;
         for (const dir of this.girPath) {
             const filePath = join(dir, filename);
@@ -77,7 +88,15 @@ export class GirLoader {
                 return filePath;
             }
         }
-        throw new Error(`GIR file not found for "${namespaceKey}" in paths: [${this.girPath.join(", ")}]`);
+        const searchPaths = `[${this.girPath.join(", ")}]`;
+        if (isExplicit) {
+            throw new Error(
+                `Library "${namespaceKey}" is listed in gtkx.config.ts but its GIR file ${filename} was not found in ${searchPaths}. Install the package that provides it, or remove it from the \`libraries\` array.`,
+            );
+        }
+        throw new Error(
+            `GIR file not found for "${namespaceKey}" in paths: ${searchPaths}. It is a transitive dependency of an explicitly listed library.`,
+        );
     }
 
     private topologicalSort(graph: Map<string, { filePath: string; dependencies: string[] }>): string[] {

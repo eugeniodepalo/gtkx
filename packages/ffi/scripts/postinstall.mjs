@@ -5,7 +5,8 @@
  *
  * In the gtkx monorepo the CLI is run from TypeScript source via the `tsx`
  * loader (no build needed); in a downstream project the installed `gtkx`
- * binary is used. A failure only warns — it never fails the install.
+ * binary is used. A codegen failure fails the install — `@gtkx/ffi` is
+ * unusable without its generated bindings.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -22,5 +23,6 @@ const result = existsSync(monorepoCli)
     : spawnSync("gtkx", ["codegen"], { cwd: projectRoot, stdio: "inherit", shell: true });
 
 if (result.error || result.status !== 0) {
-    console.warn("[gtkx] @gtkx/ffi postinstall: codegen did not complete — run `gtkx codegen` manually.");
+    console.error("[gtkx] @gtkx/ffi postinstall: codegen failed — see the error above.");
+    process.exit(1);
 }

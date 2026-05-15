@@ -29,11 +29,17 @@ describe("GirLoader", () => {
     });
 
     describe("findGirFile", () => {
-        it("throws a helpful error when the GIR file is not found in any search path", async () => {
+        it("throws a config-pointing error when an explicitly listed library is not found", async () => {
             const loader = new GirLoader([dir]);
             await expect(loader.discoverDependencies(["Nonexistent-1.0"])).rejects.toThrow(
-                /GIR file not found for "Nonexistent-1.0"/,
+                /Library "Nonexistent-1.0" is listed in gtkx\.config\.ts/,
             );
+        });
+
+        it("throws a generic error when a transitive dependency is not found", async () => {
+            writeFileSync(join(dir, "Foo-1.0.gir"), minimalGir("Foo", "1.0", [{ name: "Bar", version: "2.0" }]));
+            const loader = new GirLoader([dir]);
+            await expect(loader.discoverDependencies(["Foo-1.0"])).rejects.toThrow(/GIR file not found for "Bar-2.0"/);
         });
 
         it("includes all configured search paths in the not-found error message", async () => {
