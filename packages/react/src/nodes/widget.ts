@@ -276,11 +276,9 @@ export class WidgetNode<
         const propName = resolvePropMeta(this.container, key);
         if (!propName) return;
 
-        const target = this.container as Record<string, unknown>;
+        if (typeof value === "string" && Reflect.get(this.container, propName) === value) return;
 
-        if (typeof value === "string" && target[propName] === value) return;
-
-        target[propName] = value;
+        Reflect.set(this.container, propName, value);
     }
 
     private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {

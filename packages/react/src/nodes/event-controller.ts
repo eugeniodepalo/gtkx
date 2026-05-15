@@ -93,7 +93,7 @@ export class EventControllerNode<
         const propName = resolvePropMeta(this.container, name);
 
         if (propName) {
-            (this.container as unknown as Record<string, unknown>)[propName] = value;
+            Reflect.set(this.container, propName, value);
         }
     }
 }

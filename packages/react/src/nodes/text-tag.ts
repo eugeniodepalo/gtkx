@@ -217,12 +217,11 @@ export class TextTagNode
                 const value = newProps[prop];
                 const target = STYLE_PROPS[prop];
                 if (value !== undefined && target) {
-                    const tag = this.tag as unknown as Record<string, unknown>;
-                    const member = tag[target];
+                    const member = Reflect.get(this.tag, target);
                     if (typeof member === "function") {
                         (member as (v: unknown) => void).call(this.tag, value);
                     } else {
-                        tag[target] = value;
+                        Reflect.set(this.tag, target, value);
                     }
                 }
             }

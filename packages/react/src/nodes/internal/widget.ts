@@ -88,6 +88,6 @@ export function resolvePropertySetter(
     }
 
     return (child: Gtk.Widget | null) => {
-        (parentWidget as unknown as Record<string, unknown>)[propName] = child;
+        Reflect.set(parentWidget, propName, child);
     };
 }
