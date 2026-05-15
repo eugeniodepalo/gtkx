@@ -43,6 +43,17 @@ impl FfiEncoder for GObjectType {
 }
 
 impl FfiDecoder for GObjectType {
+    /// Decodes a `GObject` pointer returned across the FFI boundary.
+    ///
+    /// A `GInitiallyUnowned` is claimed with `g_object_ref_sink` whenever the
+    /// caller owns the result: that sinks a still-floating reference, and adds
+    /// an owned reference to an instance already sunk during construction —
+    /// e.g. a `GtkApplicationWindow` whose `application` property parents it
+    /// into the `GtkApplication` before the constructor returns, leaving it
+    /// non-floating with the application holding its only reference. Taking
+    /// such a pointer with `from_glib_full` would steal that reference. A
+    /// plain transfer-full pointer is taken with `from_glib_full`; a borrowed
+    /// one is referenced with `from_glib_none`.
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(object_ptr) = ffi_value.as_non_null_ptr("GObject")? else {
             return Ok(value::Value::Null);
@@ -57,7 +68,13 @@ impl FfiDecoder for GObjectType {
 
         let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
 
-        let object = if is_floating {
+        let gtype = unsafe { (*type_class).g_type };
+        let is_initially_unowned = unsafe {
+            glib::gobject_ffi::g_type_is_a(gtype, glib::gobject_ffi::g_initially_unowned_get_type())
+                != 0
+        };
+
+        let object = if is_floating || (is_initially_unowned && self.ownership.is_full()) {
             unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
             NativeValue::GObject(unsafe { glib::Object::from_glib_full(gobject_ptr) })
         } else if self.ownership.is_full() {
