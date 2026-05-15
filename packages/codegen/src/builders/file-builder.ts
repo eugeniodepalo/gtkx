@@ -18,6 +18,7 @@ import { Writer } from "./writer.js";
 export class FileBuilder implements Builder {
     private readonly imports = new ImportRegistry();
     private readonly declarations: Builder[] = [];
+    private readonly deferredStatements: Builder[] = [];
     private mode: "ts" | "js" = "ts";
     /** Per-file FFI descriptor registry; emitted between imports and declarations. */
     readonly descriptors = new FfiDescriptorRegistry();
@@ -76,6 +77,20 @@ export class FileBuilder implements Builder {
         return this;
     }
 
+    /**
+     * Append a raw text statement emitted after every declaration in the file.
+     *
+     * Use this for module-load wiring whose operands are declared elsewhere in
+     * the same file (e.g. `setClassStruct(Widget, WidgetClass)`, where the
+     * `Widget` class may be emitted after the class-struct registry). Deferring
+     * the call to the file tail sidesteps the temporal-dead-zone error of
+     * referencing a `class` binding before its declaration line.
+     */
+    addDeferredStatement(text: string): this {
+        this.deferredStatements.push(raw(text));
+        return this;
+    }
+
     /** Append a top-level declaration whose body is rendered by a writer callback. */
     addRawBlock(write: (writer: Writer) => void): this {
         this.declarations.push({ write });
@@ -93,9 +108,10 @@ export class FileBuilder implements Builder {
     write(writer: Writer): void {
         writer.setMode(this.mode);
         const declarationsBuffer = new Writer().setMode(this.mode);
-        for (let i = 0; i < this.declarations.length; i++) {
+        const allDeclarations = [...this.declarations, ...this.deferredStatements];
+        for (let i = 0; i < allDeclarations.length; i++) {
             if (i > 0) declarationsBuffer.newLine();
-            this.declarations[i]?.write(declarationsBuffer);
+            allDeclarations[i]?.write(declarationsBuffer);
         }
 
         if (!this.imports.isEmpty) {

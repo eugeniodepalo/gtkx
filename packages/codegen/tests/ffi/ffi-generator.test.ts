@@ -3,6 +3,7 @@ import { FfiGenerator } from "../../src/ffi/ffi-generator.js";
 import type { GirNamespace, GirRepository } from "../../src/gir/index.js";
 import {
     createButtonClass,
+    createNormalizedCallback,
     createNormalizedClass,
     createNormalizedConstant,
     createNormalizedEnumeration,
@@ -241,7 +242,17 @@ describe("FfiGenerator.generateNamespace", () => {
         const klass = createNormalizedRecord({
             name: "WidgetClass",
             qualifiedName: "Gtk.WidgetClass",
-            fields: [createNormalizedField({ name: "padding", type: createNormalizedType({ name: "gint" }) })],
+            fields: [
+                createNormalizedField({
+                    name: "finalize",
+                    type: createNormalizedType({ name: "gpointer", cType: "gpointer" }),
+                    callback: createNormalizedCallback({
+                        name: "finalize",
+                        returnType: createNormalizedType({ name: "none" }),
+                        parameters: [],
+                    }),
+                }),
+            ],
         });
         const ns = createNormalizedNamespace({
             name: "Gtk",
@@ -255,14 +266,24 @@ describe("FfiGenerator.generateNamespace", () => {
         }).generateNamespace("Gtk");
 
         const file = namespaceFile(files, "Gtk");
-        expect(file?.content).toContain("export const WidgetClass");
+        expect(file?.content).toContain("const WidgetClass");
     });
 
     it("routes records that end with Iface through the class-struct generator", () => {
         const iface = createNormalizedRecord({
             name: "OrientableIface",
             qualifiedName: "Gtk.OrientableIface",
-            fields: [createNormalizedField({ name: "padding", type: createNormalizedType({ name: "gint" }) })],
+            fields: [
+                createNormalizedField({
+                    name: "activate",
+                    type: createNormalizedType({ name: "gpointer", cType: "gpointer" }),
+                    callback: createNormalizedCallback({
+                        name: "activate",
+                        returnType: createNormalizedType({ name: "none" }),
+                        parameters: [],
+                    }),
+                }),
+            ],
         });
         const ns = createNormalizedNamespace({
             name: "Gtk",
@@ -276,7 +297,7 @@ describe("FfiGenerator.generateNamespace", () => {
         }).generateNamespace("Gtk");
 
         const file = namespaceFile(files, "Gtk");
-        expect(file?.content).toContain("export const OrientableIface");
+        expect(file?.content).toContain("const OrientableIface");
     });
 
     it("emits a full binding for opaque records that carry a glib type name", () => {
@@ -440,7 +461,7 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(file?.content).toContain("export class Rectangle");
     });
 
-    it("routes opaque core type-class records through the class-struct generator as stubs", () => {
+    it("emits no class-struct registry for opaque core type-class records without vfuncs", () => {
         const typeClass = createNormalizedRecord({
             name: "TypeClass",
             qualifiedName: "GObject.TypeClass",
@@ -463,7 +484,7 @@ describe("FfiGenerator.generateNamespace", () => {
         }).generateNamespace("GObject");
 
         const file = namespaceFile(files, "GObject");
-        expect(file?.content).toContain("export const TypeClass");
+        expect(file?.content).not.toContain("const TypeClass");
     });
 
     it("topologically sorts classes so a parent declaration precedes its children", () => {

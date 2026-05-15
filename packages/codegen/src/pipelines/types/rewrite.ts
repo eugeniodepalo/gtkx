@@ -401,104 +401,6 @@ const parseNumericLiteral = (text: string): number | null => {
     return Number.isFinite(value) ? value : null;
 };
 
-const CLASS_STRUCT_INTERFACE_HEAD_PATTERN = /^export[ \t]+interface[ \t]+(\w+(?:Class|Iface|Interface))[ \t]*\{/gm;
-const EXISTING_VALUE_PATTERN = /^export\s+(?:const|let|var)\s+(\w+)\b/gm;
-const PROPERTY_LINE_PATTERN = /^[ \t]*(\w+)\??[ \t]*:[ \t]*([^\n;]+?)(?:;|$)/gm;
-const REGISTER_CLASS_IMPORT = `import type { RegisterClassVfuncDescriptor as __gtkx_RegisterClassVfuncDescriptor, RegisterClassInterfaceVfuncDescriptor as __gtkx_RegisterClassInterfaceVfuncDescriptor } from "../../register-class.js";\n`;
-
-/**
- * Augments class-struct records (names ending in `Class`, `Iface`, or
- * `Interface`) with a sibling `export const <Name>` declaration whose value
- * type matches the runtime registry the FFI codegen publishes: a map keyed
- * by camelCased vfunc names with `RegisterClassVfuncDescriptor` or
- * `RegisterClassInterfaceVfuncDescriptor` shapes as values.
- *
- * Without this augmentation, consumer code that spreads
- * `ObjectClass.setProperty` cannot satisfy the
- * `RegisterClassVfuncDefinition` parameter constraint because the .d.ts
- * only declares the GIR `interface` companion (with field function
- * signatures), not the runtime registry shape.
- */
-export function injectClassStructRegistryShape(source: string): string {
-    const existingValues = new Set<string>();
-    for (const m of source.matchAll(EXISTING_VALUE_PATTERN)) {
-        const name = m[1];
-        if (name) existingValues.add(name);
-    }
-
-    const registriesToEmit: Array<{ name: string; descriptorType: string; vfuncNames: string[] }> = [];
-    CLASS_STRUCT_INTERFACE_HEAD_PATTERN.lastIndex = 0;
-    for (;;) {
-        const head = CLASS_STRUCT_INTERFACE_HEAD_PATTERN.exec(source);
-        if (head === null) break;
-        const name = head[1];
-        if (!name || !isClassStructName(name)) continue;
-        if (existingValues.has(name)) continue;
-        const bodyStart = head.index + head[0].length;
-        const bodyEnd = findMatchingBrace(source, bodyStart);
-        if (bodyEnd < 0) continue;
-        const body = source.slice(bodyStart, bodyEnd);
-        const vfuncNames = extractVfuncNames(body);
-        const descriptorType = name.endsWith("Class")
-            ? "__gtkx_RegisterClassVfuncDescriptor"
-            : "__gtkx_RegisterClassInterfaceVfuncDescriptor";
-        registriesToEmit.push({ name, descriptorType, vfuncNames });
-    }
-
-    if (registriesToEmit.length === 0) return source;
-
-    let modified = source;
-    for (const { name } of registriesToEmit) {
-        modified = removeClassDeclaration(modified, name);
-    }
-
-    const appended = registriesToEmit
-        .map(({ name, descriptorType, vfuncNames }) => {
-            if (vfuncNames.length === 0) {
-                return `export const ${name}: Record<string, ${descriptorType}>;`;
-            }
-            const lines = vfuncNames.map((vfuncName) => `    readonly ${camelize(vfuncName)}: ${descriptorType};`);
-            return `export const ${name}: {\n${lines.join("\n")}\n};`;
-        })
-        .join("\n\n");
-
-    return `${REGISTER_CLASS_IMPORT}${modified}\n\n${appended}\n`;
-}
-
-const removeClassDeclaration = (source: string, className: string): string => {
-    const pattern = new RegExp(
-        `^[ \\t]*export[ \\t]+(?:declare[ \\t]+)?(?:abstract[ \\t]+)?class[ \\t]+${className}\\b[^{]*\\{`,
-        "m",
-    );
-    const match = source.match(pattern);
-    if (!match || match.index === undefined) return source;
-    const headStart = match.index;
-    const bodyStart = headStart + match[0].length;
-    const bodyEnd = findMatchingBrace(source, bodyStart);
-    if (bodyEnd < 0) return source;
-    return source.slice(0, headStart) + source.slice(bodyEnd + 1).replace(/^[ \t]*\n/, "");
-};
-
-const CLASS_STRUCT_SUFFIXES = ["Class", "Iface", "Interface"] as const;
-
-const isClassStructName = (name: string): boolean =>
-    CLASS_STRUCT_SUFFIXES.some((suffix) => name.endsWith(suffix) && name !== suffix);
-
-const extractVfuncNames = (body: string): string[] => {
-    const names: string[] = [];
-    for (const match of body.matchAll(PROPERTY_LINE_PATTERN)) {
-        const propName = match[1];
-        const propType = match[2];
-        if (!propName || !propType) continue;
-        if (!propType.includes("=>")) continue;
-        names.push(propName);
-    }
-    return names;
-};
-
-const camelize = (snakeOrKebab: string): string =>
-    snakeOrKebab.replace(/[-_]([a-zA-Z0-9])/g, (_, c: string) => c.toUpperCase());
-
 /**
  * Result of running every rewrite over a single ts-for-gir output file.
  */
@@ -522,7 +424,6 @@ export function loadAndRewrite(rawFilesByName: Map<string, string>): RewriteResu
         let source = unwrapOuterNamespace(contents);
         source = rewriteEnumsToConstObjects(source);
         source = rewriteNamespaceDeclarations(source);
-        source = injectClassStructRegistryShape(source);
         source = rewriteDefaultImportsToNamespace(source);
         source = rewriteModuleKeywordToNamespace(source);
         results.push({ namespace, content: source });

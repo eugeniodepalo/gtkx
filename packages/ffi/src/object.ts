@@ -8,13 +8,11 @@ const GVALUE_BORROWED = t.boxed("GValue", "borrowed", "libgobject-2.0.so.0", "g_
 const GVALUE_SIZE = 24;
 
 /**
- * Base class used internally by `@gtkx/ffi` for every native wrapper.
- *
- * Generated classes no longer extend this class directly — they emit their
- * own constructor that delegates to {@link constructNativeObject}. The class
- * is retained for hand-written wrappers (e.g. the cairo `Matrix` helpers)
- * and for type bounds inside `@gtkx/ffi`. It is intentionally not exported
- * from the public `@gtkx/ffi` surface.
+ * Internal abstract base for hand-written `@gtkx/ffi` native wrappers such as
+ * the cairo `Matrix`. Its constructor delegates to {@link constructNativeObject},
+ * the same helper that generated wrapper classes invoke from their own emitted
+ * constructors. Also the wrapper type threaded through the identity registry.
+ * Not exported from the public `@gtkx/ffi` surface.
  *
  * @internal
  */
@@ -103,6 +101,37 @@ export function setHandle(obj: object, handle: NativeHandle): void {
     handleMap.set(obj, handle);
 }
 
+/**
+ * Registry of generated class-struct vtable descriptors, keyed by the JS class
+ * they belong to. Populated by codegen at module load via {@link setClassStruct}
+ * and consulted by `registerClass` to auto-discover vfunc overrides supplied
+ * as plain methods on user subclasses.
+ */
+type ClassStructDescriptors = Readonly<Record<string, unknown>>;
+
+const classStructMap = new WeakMap<object, ClassStructDescriptors>();
+
+/**
+ * Associates a class-struct vfunc registry with a generated class so that
+ * `registerClass` can resolve vfunc overrides by method name on subclasses.
+ *
+ * @internal Module-private setter invoked once per generated class by the
+ *     codegen-emitted bootstrap at the bottom of each namespace file.
+ */
+export function setClassStruct(cls: object, descriptors: ClassStructDescriptors): void {
+    classStructMap.set(cls, descriptors);
+}
+
+/**
+ * Resolves the class-struct vfunc descriptor map associated with `cls`, or
+ * `undefined` when no descriptors have been registered for it.
+ *
+ * @internal
+ */
+export function getClassStruct(cls: object): ClassStructDescriptors | undefined {
+    return classStructMap.get(cls);
+}
+
 type InstanceRegistrar = (obj: NativeObject) => void;
 
 let registerInstance: InstanceRegistrar = () => {};
@@ -143,9 +172,8 @@ export function setClassGTypeLookup(lookup: ClassGTypeLookup): void {
  *
  * @internal
  */
-// biome-ignore lint/suspicious/noExplicitAny: constructor parameters must be bivariant to accept arbitrary subclass shapes.
 export type NativeClass<T extends object = object> = (abstract new (
-    ...args: any[]
+    ...args: never[]
 ) => T) & {
     readonly prototype: T;
 };

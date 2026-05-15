@@ -17,7 +17,7 @@
  */
 
 import type { FileBuilder } from "../../../builders/file-builder.js";
-import { interfaceDecl, variableStatement } from "../../../builders/index.js";
+import { variableStatement } from "../../../builders/index.js";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -39,11 +39,6 @@ export type VtableLogger = {
 };
 
 type VtableKind = "class" | "interface";
-
-const DESCRIPTOR_TYPE_BY_KIND: Record<VtableKind, string> = {
-    class: "RegisterClassVfuncDescriptor",
-    interface: "RegisterClassInterfaceVfuncDescriptor",
-};
 
 type VfuncEntry = {
     readonly key: string;
@@ -119,19 +114,50 @@ export class ClassStructGenerator {
             });
         }
 
-        const descriptorType = DESCRIPTOR_TYPE_BY_KIND[kind];
-        if (entries.length > 0) {
-            this.file.addImport("../../native.js", ["t"]);
-        }
-        this.file.addTypeImport("../../register-class.js", [descriptorType]);
-        this.file.add(interfaceDecl(exportSymbol, { exported: true }));
+        if (entries.length === 0) return false;
+        this.file.addImport("../../native.js", ["t"]);
         this.file.add(
             variableStatement(exportSymbol, {
-                exported: true,
+                exported: false,
                 initializer: (writer) => this.writeRegistryObject(writer, exportSymbol, entries, kind),
             }),
         );
+
+        const ownerClassName = this.resolveOwnerClassName(record, exportSymbol);
+        if (ownerClassName) {
+            this.file.addImport("../../object.js", ["setClassStruct"]);
+            this.file.addDeferredStatement(`setClassStruct(${ownerClassName}, ${exportSymbol});`);
+        }
+        if (kind === "interface") {
+            this.emitInterfaceClassStructRegistration(record, exportSymbol);
+        }
         return true;
+    }
+
+    private emitInterfaceClassStructRegistration(record: GirRecord, exportSymbol: string): void {
+        const owner = record.isGtypeStructFor;
+        if (!owner) return;
+        const [ownerNamespace, ownerName] = owner.includes(".")
+            ? [owner.split(".")[0], owner.split(".")[1]]
+            : [record.qualifiedName.split(".")[0], owner];
+        if (!ownerNamespace || !ownerName) return;
+        const iface = this.repo.getNamespace(ownerNamespace)?.interfaces.get(ownerName);
+        if (!iface?.glibGetType) return;
+        this.file.addImport("../../register-class.js", ["registerInterfaceClassStruct"]);
+        this.file.addDeferredStatement(`registerInterfaceClassStruct(${iface.glibGetType}(), ${exportSymbol});`);
+    }
+
+    private resolveOwnerClassName(record: GirRecord, _exportSymbol: string): string | null {
+        const ownerRef = record.isGtypeStructFor;
+        if (!ownerRef) return null;
+        const [ownerNamespace, rawOwnerName] = ownerRef.includes(".")
+            ? [ownerRef.split(".")[0], ownerRef.split(".")[1]]
+            : [record.qualifiedName.split(".")[0], ownerRef];
+        if (!ownerNamespace || !rawOwnerName) return null;
+        const ns = this.repo.getNamespace(ownerNamespace);
+        if (!ns?.classes.has(rawOwnerName) && !ns?.interfaces.has(rawOwnerName)) return null;
+        if (ownerNamespace !== record.qualifiedName.split(".")[0]) return null;
+        return normalizeClassName(rawOwnerName);
     }
 
     private resolveVtableKindByOwner(record: GirRecord): VtableKind | null {
@@ -163,25 +189,18 @@ export class ClassStructGenerator {
         entries: readonly VfuncEntry[],
         kind: VtableKind,
     ): void {
-        const descriptorType = DESCRIPTOR_TYPE_BY_KIND[kind];
         writer.writeLine("{");
         writer.withIndent(() => {
             for (const entry of entries) {
                 writer.write(`${entry.key}: `);
-                this.writeDescriptor(writer, exportSymbol, entry, kind, descriptorType);
+                this.writeDescriptor(writer, exportSymbol, entry, kind);
                 writer.writeLine(",");
             }
         });
         writer.write("}");
     }
 
-    private writeDescriptor(
-        writer: Writer,
-        exportSymbol: string,
-        entry: VfuncEntry,
-        kind: VtableKind,
-        _descriptorType: string,
-    ): void {
+    private writeDescriptor(writer: Writer, exportSymbol: string, entry: VfuncEntry, kind: VtableKind): void {
         const callback = entry.field.callback;
         if (!callback) throw new Error(`writeDescriptor called for non-callback field ${entry.field.name}`);
 

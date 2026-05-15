@@ -54,7 +54,7 @@ function callbackField(
 }
 
 describe("ClassStructGenerator", () => {
-    it("emits an empty stub const when the record has no callback fields", () => {
+    it("returns false and emits nothing when the record has no callback fields", () => {
         const { generator, file } = createTestSetup();
         const record = createNormalizedRecord({
             name: "OpaqueClass",
@@ -62,12 +62,11 @@ describe("ClassStructGenerator", () => {
             isGtypeStructFor: "Opaque",
             fields: [gpointerField("padding")],
         });
-        expect(generator.generate(record)).toBe(true);
-        const output = stringify(file);
-        expect(output).toContain("export const OpaqueClass");
+        expect(generator.generate(record)).toBe(false);
+        expect(stringify(file)).toBe("");
     });
 
-    it("emits a registry exported under the record's normalized name", () => {
+    it("emits a module-private registry under the record's normalized name", () => {
         const { generator, file } = createTestSetup();
         const record = createNormalizedRecord({
             name: "ObjectClass",
@@ -86,7 +85,8 @@ describe("ClassStructGenerator", () => {
         });
         expect(generator.generate(record)).toBe(true);
         const code = stringify(file);
-        expect(code).toContain("export const ObjectClass");
+        expect(code).toContain("const ObjectClass");
+        expect(code).not.toContain("export const ObjectClass");
         expect(code).toContain('vfuncName: "finalize"');
         expect(code).toContain("returnType: t.void");
     });
@@ -142,6 +142,14 @@ describe("ClassStructGenerator", () => {
             isGtypeStructFor: "Object",
             fields: [
                 callbackField(
+                    "finalize",
+                    createNormalizedCallback({
+                        name: "finalize",
+                        returnType: createNormalizedType({ name: "none" }),
+                        parameters: [],
+                    }),
+                ),
+                callbackField(
                     "constructor",
                     createNormalizedCallback({
                         name: "constructor",
@@ -154,7 +162,7 @@ describe("ClassStructGenerator", () => {
         });
         expect(generator.generate(record)).toBe(true);
         const output = stringify(file);
-        expect(output).toContain("export const ObjectClass");
+        expect(output).toContain("const ObjectClass");
         expect(output).not.toContain('vfuncName: "constructor"');
         expect(skipMessages).toHaveLength(1);
         expect(skipMessages[0]).toContain("ObjectClass.constructor");
@@ -189,7 +197,7 @@ describe("ClassStructGenerator", () => {
         expect(skipMessages.some((m) => m.includes("get_size"))).toBe(true);
     });
 
-    it("emits the registry imports only when at least one vfunc is eligible", () => {
+    it("imports the FFI type helper for an eligible vfunc registry", () => {
         const { generator, file } = createTestSetup();
         const record = createNormalizedRecord({
             name: "ObjectClass",
@@ -209,7 +217,6 @@ describe("ClassStructGenerator", () => {
         generator.generate(record);
         const code = stringify(file);
         expect(code).toContain('import { t } from "../../native.js"');
-        expect(code).toContain('import { type RegisterClassVfuncDescriptor } from "../../register-class.js"');
     });
 
     it("skips records that have no c:type (class struct without an exported C name)", () => {

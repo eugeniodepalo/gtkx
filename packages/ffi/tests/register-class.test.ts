@@ -1,11 +1,9 @@
 import { findObjectProperty } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
-import { IconIface } from "../src/generated/gio/gio.js";
 import type { GType } from "../src/generated/gobject/gobject.js";
 import {
     Object as GObject,
     Value as GValue,
-    ObjectClass,
     ParamFlags,
     paramSpecBoolean,
     paramSpecString,
@@ -28,22 +26,12 @@ const INVALID_GTYPE = 0 as unknown as GType;
 const gtypeNone = (): GType => typeFromName("void") as unknown as GType;
 const gtypeString = (): GType => typeFromName("gchararray");
 
-const gtkLabelGType = (): GType => typeFromName("GtkLabel");
-const gtkButtonGType = (): GType => typeFromName("GtkButton");
-const gtkBoxGType = (): GType => typeFromName("GtkBox");
-const gObjectGType = (): GType => typeFromName("GObject");
-
-const noopPropertyAccessors = [
-    { ...ObjectClass.setProperty, fn: () => undefined },
-    { ...ObjectClass.getProperty, fn: () => undefined },
-];
-
 describe("registerClass", () => {
     it("registers a new GType derived from the parent class", () => {
         const name = uniqueName("GtkxTestSubclass");
         class CustomLabel extends Gtk.Label {}
 
-        registerClass(CustomLabel, gtkLabelGType(), { gtypeName: name });
+        registerClass(CustomLabel, { gtypeName: name });
 
         const gtype = typeFromName(name);
         expect(gtype).not.toBe(0);
@@ -55,7 +43,7 @@ describe("registerClass", () => {
         const name = uniqueName("GtkxResolvableSubclass");
         class CustomButton extends Gtk.Button {}
 
-        registerClass(CustomButton, gtkButtonGType(), { gtypeName: name });
+        registerClass(CustomButton, { gtypeName: name });
 
         const newGtype = typeFromName(name);
         expect(findNativeClass(newGtype)).toBe(CustomButton);
@@ -65,7 +53,7 @@ describe("registerClass", () => {
         const dynamicName = uniqueName("GtkxAutoNameSubclass");
         const klass = { [dynamicName]: class extends Gtk.Box {} }[dynamicName] as typeof Gtk.Box;
 
-        registerClass(klass, gtkBoxGType());
+        registerClass(klass);
 
         expect(typeFromName(dynamicName)).not.toBe(0);
     });
@@ -74,18 +62,10 @@ describe("registerClass", () => {
         class NotANativeObject {}
 
         expect(() =>
-            registerClass(NotANativeObject as unknown as Parameters<typeof registerClass>[0], gtkBoxGType(), {
+            registerClass(NotANativeObject as unknown as Parameters<typeof registerClass>[0], {
                 gtypeName: uniqueName("ShouldNotRegister"),
             }),
         ).toThrow(/must extend a registered native class/);
-    });
-
-    it("rejects when the parent GType is invalid", () => {
-        class CustomLabel extends Gtk.Label {}
-
-        expect(() => registerClass(CustomLabel, INVALID_GTYPE, { gtypeName: uniqueName("InvalidParent") })).toThrow(
-            /parent GType is invalid/,
-        );
     });
 
     it("rejects a name that is already registered with the type system", () => {
@@ -93,19 +73,21 @@ describe("registerClass", () => {
         class FirstUse extends Gtk.Label {}
         class SecondUse extends Gtk.Label {}
 
-        registerClass(FirstUse, gtkLabelGType(), { gtypeName: name });
-        expect(() => registerClass(SecondUse, gtkLabelGType(), { gtypeName: name })).toThrow(/already registered/);
+        registerClass(FirstUse, { gtypeName: name });
+        expect(() => registerClass(SecondUse, { gtypeName: name })).toThrow(/already registered/);
     });
 
     it("installs a GParamSpec property that is discoverable on instances", () => {
         const name = uniqueName("GtkxPropertySubclass");
-        class CustomObject extends GObject {}
+        class CustomObject extends GObject {
+            setProperty(): void {}
+            getProperty(): void {}
+        }
 
         const pspec = paramSpecString("custom-prop", "Custom Prop", "Custom property", "default", ParamFlags.READWRITE);
-        registerClass(CustomObject, gObjectGType(), {
+        registerClass(CustomObject, {
             gtypeName: name,
             properties: [{ pspec }],
-            vfuncs: noopPropertyAccessors,
         });
 
         const customGtype = typeFromName(name);
@@ -116,14 +98,16 @@ describe("registerClass", () => {
 
     it("installs multiple properties in the order provided", () => {
         const name = uniqueName("GtkxMultiPropertySubclass");
-        class CustomObject extends GObject {}
+        class CustomObject extends GObject {
+            setProperty(): void {}
+            getProperty(): void {}
+        }
 
         const stringSpec = paramSpecString("first", null, null, null, ParamFlags.READWRITE);
         const booleanSpec = paramSpecBoolean("second", null, null, false, ParamFlags.READWRITE);
-        registerClass(CustomObject, gObjectGType(), {
+        registerClass(CustomObject, {
             gtypeName: name,
             properties: [{ pspec: stringSpec }, { pspec: booleanSpec }],
-            vfuncs: noopPropertyAccessors,
         });
 
         const customGtype = typeFromName(name);
@@ -137,7 +121,7 @@ describe("registerClass", () => {
         const signalName = "ping";
         class CustomObject extends GObject {}
 
-        registerClass(CustomObject, gObjectGType(), {
+        registerClass(CustomObject, {
             gtypeName: name,
             signals: [
                 {
@@ -161,7 +145,7 @@ describe("registerClass", () => {
 
         const SIGNAL_RUN_LAST = 1 << 1;
         const calls: string[] = [];
-        registerClass(CustomObject, gObjectGType(), {
+        registerClass(CustomObject, {
             gtypeName: name,
             signals: [
                 {
@@ -198,14 +182,13 @@ describe("registerClass", () => {
         expect(calls).toEqual(["hello"]);
     });
 
-    it("installs a vfunc trampoline without crashing class registration", () => {
+    it("auto-discovers a class vfunc override from a subclass method", () => {
         const name = uniqueName("GtkxVfuncSubclass");
-        class CustomObject extends GObject {}
+        class CustomObject extends GObject {
+            setProperty(): void {}
+        }
 
-        registerClass(CustomObject, gObjectGType(), {
-            gtypeName: name,
-            vfuncs: [{ ...ObjectClass.setProperty, fn: () => undefined }],
-        });
+        registerClass(CustomObject, { gtypeName: name });
 
         const customGtype = typeFromName(name);
         expect(customGtype).not.toBe(0);
@@ -213,24 +196,20 @@ describe("registerClass", () => {
         expect(instance).toBeDefined();
     });
 
-    it("invokes the vfunc trampoline when the slot is dispatched by GObject", () => {
+    it("invokes the auto-discovered vfunc trampoline when GObject dispatches the slot", () => {
         const name = uniqueName("GtkxVfuncInvocationSubclass");
-        class CustomObject extends GObject {}
-
         const setCalls: string[] = [];
+        class CustomObject extends GObject {
+            setProperty(..._args: unknown[]): void {
+                setCalls.push("set_property invoked");
+            }
+            getProperty(): void {}
+        }
+
         const pspec = paramSpecString("dispatched-prop", null, null, null, ParamFlags.READWRITE);
-        registerClass(CustomObject, gObjectGType(), {
+        registerClass(CustomObject, {
             gtypeName: name,
             properties: [{ pspec }],
-            vfuncs: [
-                {
-                    ...ObjectClass.setProperty,
-                    fn: (..._args: unknown[]) => {
-                        setCalls.push("set_property invoked");
-                    },
-                },
-                { ...ObjectClass.getProperty, fn: () => undefined },
-            ],
         });
 
         const customGtype = typeFromName(name);
@@ -242,40 +221,11 @@ describe("registerClass", () => {
         expect(setCalls).toEqual(["set_property invoked"]);
     });
 
-    it("rejects a vfunc whose offset is not pointer-aligned", () => {
-        class CustomObject extends GObject {}
-
-        expect(() =>
-            registerClass(CustomObject, gObjectGType(), {
-                gtypeName: uniqueName("GtkxMisalignedVfunc"),
-                vfuncs: [{ ...ObjectClass.setProperty, byteOffset: 1, fn: () => undefined }],
-            }),
-        ).toThrow(/not aligned to a pointer/);
-    });
-
-    it("rejects a vfunc whose offset exceeds the parent's class struct size", () => {
-        class CustomObject extends GObject {}
-
-        expect(() =>
-            registerClass(CustomObject, gObjectGType(), {
-                gtypeName: uniqueName("GtkxOversizedVfunc"),
-                vfuncs: [
-                    {
-                        ...ObjectClass.setProperty,
-                        byteOffset: 1_000_000,
-                        argTypes: [],
-                        fn: () => undefined,
-                    },
-                ],
-            }),
-        ).toThrow(/exceeds class size/);
-    });
-
     it("rejects a signal with a default handler missing argument or return types", () => {
         class CustomObject extends GObject {}
 
         expect(() =>
-            registerClass(CustomObject, gObjectGType(), {
+            registerClass(CustomObject, {
                 gtypeName: uniqueName("GtkxBadDefaultHandler"),
                 signals: [
                     {
@@ -292,28 +242,20 @@ describe("registerClass", () => {
 
     it("registers a class as implementing an interface and dispatches through its vtable", () => {
         const name = uniqueName("GtkxIconImpl");
-        class CustomIcon extends GObject {}
-
         const hashCalls: number[] = [];
+        class CustomIcon extends GObject {
+            hash(): number {
+                hashCalls.push(1);
+                return 0xfeed_face;
+            }
+        }
+
         const giconGtype = typeFromName("GIcon");
         expect(giconGtype).not.toBe(0);
 
-        registerClass(CustomIcon, gObjectGType(), {
+        registerClass(CustomIcon, {
             gtypeName: name,
-            interfaces: [
-                {
-                    gtype: giconGtype,
-                    vfuncs: [
-                        {
-                            ...IconIface.hash,
-                            fn: () => {
-                                hashCalls.push(1);
-                                return 0xfeed_face;
-                            },
-                        },
-                    ],
-                },
-            ],
+            interfaces: [{ gtype: giconGtype }],
         });
 
         const customGtype = typeFromName(name);
@@ -331,50 +273,18 @@ describe("registerClass", () => {
         expect(result).toBe(0xfeed_face);
     });
 
-    it("rejects an interface vfunc whose offset is not pointer-aligned", () => {
-        class CustomObject extends GObject {}
-        const giconGtype = typeFromName("GIcon");
-
-        expect(() =>
-            registerClass(CustomObject, gObjectGType(), {
-                gtypeName: uniqueName("GtkxMisalignedIfaceVfunc"),
-                interfaces: [
-                    {
-                        gtype: giconGtype,
-                        vfuncs: [{ ...IconIface.hash, byteOffset: 1, fn: () => 0 }],
-                    },
-                ],
-            }),
-        ).toThrow(/interface vfunc byte_offset 1 is not aligned to a pointer/);
-    });
-
     it("rejects a registration with an invalid (zero) interface gtype", () => {
-        class CustomObject extends GObject {}
+        class CustomObject extends GObject {
+            hash(): number {
+                return 0;
+            }
+        }
 
         expect(() =>
-            registerClass(CustomObject, gObjectGType(), {
+            registerClass(CustomObject, {
                 gtypeName: uniqueName("GtkxBadInterfaceGtype"),
-                interfaces: [
-                    {
-                        gtype: INVALID_GTYPE,
-                        vfuncs: [{ ...IconIface.hash, fn: () => 0 }],
-                    },
-                ],
+                interfaces: [{ gtype: INVALID_GTYPE }],
             }),
         ).toThrow(/interface gtype must be non-zero/);
-    });
-
-    it("rejects an interface descriptor in the class vfuncs slot at compile time", () => {
-        const _typeOnly = (): void => {
-            class CustomObject extends GObject {}
-            registerClass(CustomObject, gObjectGType(), {
-                gtypeName: "GtkxKindDiscriminator",
-                vfuncs: [
-                    // @ts-expect-error — IconIface.hash is a `kind: "interface"` descriptor and cannot flow into `vfuncs`.
-                    { ...IconIface.hash, fn: () => 0 },
-                ],
-            });
-        };
-        expect(typeof _typeOnly).toBe("function");
     });
 });
