@@ -24,7 +24,6 @@ import {
     SELF_TYPE_GOBJECT,
     type SelfTypeDescriptor,
 } from "../../../core/type-system/ffi-types.js";
-import { analyzeAsyncMethods } from "../../../core/utils/async-analysis.js";
 import { collectParentFactoryMethodNames, collectParentMethodNames } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { isMethodSuppressed } from "../../../core/utils/method-suppression.js";
@@ -118,8 +117,6 @@ export class ClassGenerator {
      * @returns Result with success flag and optional widget/controller metadata.
      */
     generate(): ClassGenerationResult {
-        const asyncAnalysis = analyzeAsyncMethods(this.cls.methods);
-
         const parentMethodNames = collectParentMethodNames(this.cls, this.repository);
         const { interfaceMethodsByNamespace } = this.collectInterfaceMethods(parentMethodNames);
 
@@ -140,9 +137,9 @@ export class ClassGenerator {
         const allMethodStructures: MethodStructure[] = [
             ...factoryMethods,
             ...this.staticBuilder.buildStructures(),
-            ...this.methodBuilder.buildStructures(filteredClassMethods, selfTypeDescriptor, asyncAnalysis),
+            ...this.methodBuilder.buildStructures(filteredClassMethods, selfTypeDescriptor),
             ...Array.from(interfaceMethodsByNamespace.values()).flatMap((methods) =>
-                this.methodBuilder.buildStructures(methods, selfTypeDescriptor, asyncAnalysis),
+                this.methodBuilder.buildStructures(methods, selfTypeDescriptor),
             ),
             ...this.signalBuilder.buildConnectMethodStructures(),
         ];

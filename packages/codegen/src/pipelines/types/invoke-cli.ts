@@ -33,7 +33,6 @@ export async function runTsForGir(libraries: string[], girDirectories: string[],
         "--ignoreVersionConflicts",
         "--noComments=false",
         "--noDebugComments",
-        "--promisify",
     ];
 
     await new Promise<void>((resolve, reject) => {

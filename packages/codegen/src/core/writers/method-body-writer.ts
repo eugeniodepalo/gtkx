@@ -528,10 +528,7 @@ export class MethodBodyWriter {
      * Builds a complete MethodStructure for method declarations.
      */
     buildMethodStructure(method: GirMethod, options: MethodStructureOptions): MethodStructure {
-        let shape = this.buildShape(method.parameters, method.returnType, 1);
-        if (this.shouldStripBooleanReturn(method, shape)) {
-            shape = this.stripBooleanReturn(shape);
-        }
+        const shape = this.buildShape(method.parameters, method.returnType, 1);
         const params = this.buildSignatureParameters(shape, hasVarargs(method.parameters));
         this.addTypeImportsFromMapping(shape.returnTypeMapping);
 
@@ -552,10 +549,7 @@ export class MethodBodyWriter {
 
     buildStaticFunctionStructure(func: GirFunction, options: StaticFunctionStructureOptions): MethodStructure {
         const funcName = toValidMemberName(toCamelCase(func.name));
-        let shape = this.buildShape(func.parameters, func.returnType, 0);
-        if (this.shouldStripBooleanReturn(func, shape)) {
-            shape = this.stripBooleanReturn(shape);
-        }
+        const shape = this.buildShape(func.parameters, func.returnType, 0);
         const params = this.buildSignatureParameters(shape, hasVarargs(func.parameters));
         this.addTypeImportsFromMapping(shape.returnTypeMapping);
 
@@ -576,25 +570,6 @@ export class MethodBodyWriter {
                 className: options.className,
                 returnsOwnClass,
             }),
-        };
-    }
-
-    private shouldStripBooleanReturn(
-        callable: { throws?: boolean; returnType: GirType },
-        shape: CallableShape,
-    ): boolean {
-        if (!callable.throws) return false;
-        if (!shape.hasOriginalReturn) return false;
-        if (callable.returnType.name !== "gboolean") return false;
-        const hasMeaningfulOut = shape.returnTupleEntries.some((e) => e.kind !== "original-return");
-        return hasMeaningfulOut;
-    }
-
-    private stripBooleanReturn(shape: CallableShape): CallableShape {
-        return {
-            ...shape,
-            hasOriginalReturn: false,
-            returnTupleEntries: shape.returnTupleEntries.filter((entry) => entry.kind !== "original-return"),
         };
     }
 

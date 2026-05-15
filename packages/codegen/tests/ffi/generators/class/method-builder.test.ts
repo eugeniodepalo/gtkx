@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
-import { Writer } from "../../../../src/builders/writer.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../../../src/core/type-system/ffi-types.js";
 import { MethodBuilder } from "../../../../src/ffi/generators/class/method-builder.js";
@@ -211,8 +210,8 @@ describe("MethodBuilder", () => {
         });
     });
 
-    describe("async method handling", () => {
-        it("replaces async/finish pair with wrapper and keeps regular methods", () => {
+    describe("async methods", () => {
+        it("emits async and finish methods as plain methods without special handling", () => {
             const { builder } = createTestSetup();
             const methods = [
                 createNormalizedMethod({
@@ -237,32 +236,11 @@ describe("MethodBuilder", () => {
 
             const names = structures.map((s) => s.name);
             expect(names).toContain("loadAsync");
-            expect(names).not.toContain("loadFinish");
+            expect(names).toContain("loadFinish");
             expect(names).toContain("getLabel");
         });
 
-        it("creates async wrapper method for async pair", () => {
-            const { builder } = createTestSetup();
-            const methods = [
-                createNormalizedMethod({
-                    name: "load_async",
-                    cIdentifier: "gtk_button_load_async",
-                    returnType: createNormalizedType({ name: "none" }),
-                    finishFunc: "load_finish",
-                }),
-                createNormalizedMethod({
-                    name: "load_finish",
-                    cIdentifier: "gtk_button_load_finish",
-                    returnType: createNormalizedType({ name: "utf8" }),
-                }),
-            ];
-
-            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
-
-            expect(structures.some((s) => s.name === "loadAsync")).toBe(true);
-        });
-
-        it("async wrapper returns Promise", () => {
+        it("does not generate Promise wrappers for async pairs", () => {
             const { builder } = createTestSetup();
             const methods = [
                 createNormalizedMethod({
@@ -280,8 +258,9 @@ describe("MethodBuilder", () => {
 
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
-            const asyncMethod = structures.find((s) => s.name === "saveAsync");
-            expect(asyncMethod?.returnType).toContain("Promise");
+            for (const structure of structures) {
+                expect(structure.returnType ?? "").not.toContain("Promise");
+            }
         });
     });
 
@@ -376,137 +355,6 @@ describe("MethodBuilder", () => {
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures[0].name).toBe("getBuildableName");
-        });
-    });
-
-    describe("async wrapper body emission", () => {
-        const buildAsyncStructure = (asyncReturnType = "none", finishReturnType = "utf8", finishThrows = false) => {
-            const { builder } = createTestSetup();
-            const methods = [
-                createNormalizedMethod({
-                    name: "load_async",
-                    cIdentifier: "gtk_button_load_async",
-                    returnType: createNormalizedType({ name: asyncReturnType }),
-                    finishFunc: "load_finish",
-                }),
-                createNormalizedMethod({
-                    name: "load_finish",
-                    cIdentifier: "gtk_button_load_finish",
-                    returnType: createNormalizedType({ name: finishReturnType }),
-                    throws: finishThrows,
-                }),
-            ];
-
-            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
-            const asyncStructure = structures.find((s) => s.name === "loadAsync");
-            if (!asyncStructure) throw new Error("loadAsync structure not produced");
-            return asyncStructure;
-        };
-
-        const renderStatements = (structure: { statements: unknown }): string => {
-            const writer = new Writer();
-            (structure.statements as (w: Writer) => void)(writer);
-            return writer.toString();
-        };
-
-        it("emits a Promise body that calls the async C function", () => {
-            const out = renderStatements(buildAsyncStructure());
-            expect(out).toContain("return new Promise(");
-            expect(out).toContain('"libgtk-4.so.1"');
-            expect(out).toContain('"gtk_button_load_async"');
-        });
-
-        it("invokes the finish C function inside the async callback", () => {
-            const out = renderStatements(buildAsyncStructure());
-            expect(out).toContain('"gtk_button_load_finish"');
-        });
-
-        it("uses _reject when the finish method does not throw", () => {
-            const out = renderStatements(buildAsyncStructure("none", "utf8", false));
-            expect(out).toContain("(resolve, _reject) =>");
-        });
-
-        it("uses reject and emits the GError check when the finish method throws", () => {
-            const out = renderStatements(buildAsyncStructure("none", "utf8", true));
-            expect(out).toContain("(resolve, reject) =>");
-            expect(out).toContain("error.value !== null");
-            expect(out).toContain("reject(new NativeError(");
-        });
-
-        it("resolves with the unwrapped value when the finish return is a primitive", () => {
-            const out = renderStatements(buildAsyncStructure("none", "gint"));
-            expect(out).toContain("resolve(value);");
-        });
-
-        it("resolves with no argument when the finish return is void", () => {
-            const out = renderStatements(buildAsyncStructure("none", "none"));
-            expect(out).toContain("resolve();");
-            expect(out).not.toContain("resolve(value)");
-            expect(out).not.toContain("resolve(getNativeObject");
-        });
-    });
-
-    describe("async parameter filtering", () => {
-        it("drops user_data parameters from the async wrapper signature", () => {
-            const { builder } = createTestSetup();
-            const methods = [
-                createNormalizedMethod({
-                    name: "load_async",
-                    cIdentifier: "gtk_button_load_async",
-                    returnType: createNormalizedType({ name: "none" }),
-                    finishFunc: "load_finish",
-                    parameters: [
-                        createNormalizedParameter({
-                            name: "user_data",
-                            type: createNormalizedType({ name: "gpointer" }),
-                        }),
-                        createNormalizedParameter({
-                            name: "label",
-                            type: createNormalizedType({ name: "utf8" }),
-                        }),
-                    ],
-                }),
-                createNormalizedMethod({
-                    name: "load_finish",
-                    cIdentifier: "gtk_button_load_finish",
-                    returnType: createNormalizedType({ name: "none" }),
-                }),
-            ];
-
-            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
-            const asyncStructure = structures.find((s) => s.name === "loadAsync");
-            const paramNames = asyncStructure?.parameters?.map((p: { name: string }) => p.name) ?? [];
-
-            expect(paramNames).not.toContain("user_data");
-            expect(paramNames).toContain("label");
-        });
-
-        it("drops vararg slots from the async wrapper signature", () => {
-            const { builder } = createTestSetup();
-            const methods = [
-                createNormalizedMethod({
-                    name: "load_async",
-                    cIdentifier: "gtk_button_load_async",
-                    returnType: createNormalizedType({ name: "none" }),
-                    finishFunc: "load_finish",
-                    parameters: [
-                        createNormalizedParameter({
-                            name: "...",
-                            type: createNormalizedType({ name: "gpointer" }),
-                        }),
-                    ],
-                }),
-                createNormalizedMethod({
-                    name: "load_finish",
-                    cIdentifier: "gtk_button_load_finish",
-                    returnType: createNormalizedType({ name: "none" }),
-                }),
-            ];
-
-            const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
-            const asyncStructure = structures.find((s) => s.name === "loadAsync");
-
-            expect(asyncStructure?.parameters?.length ?? 0).toBe(0);
         });
     });
 });
