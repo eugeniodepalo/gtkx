@@ -2,7 +2,6 @@ export { runTsForGir } from "./invoke-cli.js";
 export { runTypesPipeline, type TypesPipelineResult } from "./pipeline.js";
 export {
     injectClassStructRegistryShape,
-    injectNativeObjectInheritance,
     loadAndRewrite,
     namespaceFromRawFilename,
     type RewriteResult,

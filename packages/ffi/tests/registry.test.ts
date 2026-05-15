@@ -93,7 +93,12 @@ describe("getNativeObject", () => {
 
     describe("boxed types", () => {
         it("wraps a native boxed type pointer in a class instance", () => {
-            const rgba = new Gdk.RGBA({ red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 });
+            const rgba = new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({
+                red: 1.0,
+                green: 0.5,
+                blue: 0.0,
+                alpha: 1.0,
+            });
             const wrapped = getNativeObject(getHandle(rgba), Gdk.RGBA);
             expect(wrapped).not.toBeNull();
             expect(wrapped?.red).toBeCloseTo(1.0);
@@ -103,7 +108,7 @@ describe("getNativeObject", () => {
         });
 
         it("sets the correct prototype chain", () => {
-            const rgba = new Gdk.RGBA({ red: 0.5 });
+            const rgba = new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red: 0.5 });
             const wrapped = getNativeObject(getHandle(rgba), Gdk.RGBA);
             expect(wrapped).not.toBeNull();
             expect(typeof wrapped?.toString).toBe("function");

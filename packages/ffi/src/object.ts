@@ -144,7 +144,7 @@ export function setClassGTypeLookup(lookup: ClassGTypeLookup): void {
  * @internal
  */
 // biome-ignore lint/suspicious/noExplicitAny: constructor parameters must be bivariant to accept arbitrary subclass shapes.
-export type NativeClass<T extends NativeObject = NativeObject> = (abstract new (
+export type NativeClass<T extends object = object> = (abstract new (
     ...args: any[]
 ) => T) & {
     readonly prototype: T;
@@ -163,10 +163,10 @@ export type NativeClass<T extends NativeObject = NativeObject> = (abstract new (
  * @param cls - Target wrapper class
  * @param handle - Native handle to wrap
  */
-export function wrapHandle<T extends NativeObject>(cls: NativeClass<T>, handle: NativeHandle): T {
+export function wrapHandle<T extends object>(cls: NativeClass<T>, handle: NativeHandle): T {
     const instance = Object.create(cls.prototype) as T;
     setHandle(instance, handle);
-    instance.__gtype__ = classGTypeLookup(cls);
+    (instance as { __gtype__: number }).__gtype__ = classGTypeLookup(cls);
     return instance;
 }
 

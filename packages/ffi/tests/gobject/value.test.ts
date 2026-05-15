@@ -123,7 +123,12 @@ describe("Value factory methods", () => {
 
     describe("newFromBoxed", () => {
         it("creates a GValue holding a boxed type", () => {
-            const rgba = new Gdk.RGBA({ red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 });
+            const rgba = new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({
+                red: 1.0,
+                green: 0.5,
+                blue: 0.0,
+                alpha: 1.0,
+            });
             const v = Value.newFromBoxed(rgba, gdkRgbaGType());
             expect(v).not.toBeNull();
         });
@@ -195,7 +200,12 @@ describe("Value instance methods", () => {
 
     describe("getBoxed", () => {
         it("returns an owned copy of the boxed value", () => {
-            const rgba = new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1.0 });
+            const rgba = new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({
+                red: 0.5,
+                green: 0.25,
+                blue: 0.75,
+                alpha: 1.0,
+            });
             const v = Value.newFromBoxed(rgba, gdkRgbaGType());
             const extracted = v.getBoxed(Gdk.RGBA, gdkRgbaGType());
             expect(extracted).not.toBeNull();
@@ -270,7 +280,12 @@ describe("Value.fromJS / toJS round-trips", () => {
     });
 
     it("round-trips a boxed value resolving the registered wrapper class", () => {
-        const rgba = new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1.0 });
+        const rgba = new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({
+            red: 0.5,
+            green: 0.25,
+            blue: 0.75,
+            alpha: 1.0,
+        });
         const rgbaGType = callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
         const result = Value.fromJS(rgbaGType, rgba).toJS();
         expect(result).toBeInstanceOf(Gdk.RGBA);
@@ -314,7 +329,7 @@ describe("Value.toJS extra coverage", () => {
     });
 
     it("returns a Gdk.RGBA wrapper when reading a boxed value via toJS", () => {
-        const rgba = new Gdk.RGBA({ red: 0.1, green: 0.2, blue: 0.3, alpha: 1.0 });
+        const rgba = new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red: 0.1, green: 0.2, blue: 0.3, alpha: 1.0 });
         const v = Value.newFromBoxed(rgba, gdkRgbaGType());
         const out = v.toJS();
         expect(out).toBeInstanceOf(Gdk.RGBA);
@@ -395,7 +410,7 @@ describe("Value.newFrom (FFI-type-driven factory)", () => {
     });
 
     it("builds a boxed value via getTypeFn resolution", () => {
-        const rgba = new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1 });
+        const rgba = new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red: 0, green: 0, blue: 0, alpha: 1 });
         const v = Value.newFrom(
             {
                 type: "boxed",
@@ -410,13 +425,13 @@ describe("Value.newFrom (FFI-type-driven factory)", () => {
     });
 
     it("builds a boxed value when only innerType is provided", () => {
-        const rgba = new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1 });
+        const rgba = new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red: 0, green: 0, blue: 0, alpha: 1 });
         const v = Value.newFrom({ type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" }, rgba);
         expect(v.getType()).toBe(gdkRgbaGType());
     });
 
     it("throws for boxed types with an unresolvable innerType", () => {
-        const dummy = new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1 });
+        const dummy = new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red: 0, green: 0, blue: 0, alpha: 1 });
         expect(() =>
             Value.newFrom({ type: "boxed", ownership: "borrowed", innerType: "NotARealGType" }, dummy),
         ).toThrow(/Cannot resolve gtype/);
@@ -450,7 +465,7 @@ describe("Value.newFrom (FFI-type-driven factory)", () => {
     });
 
     it("throws for fundamental types without a typeName", () => {
-        const dummy = new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1 });
+        const dummy = new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red: 0, green: 0, blue: 0, alpha: 1 });
         expect(() =>
             Value.newFrom(
                 {

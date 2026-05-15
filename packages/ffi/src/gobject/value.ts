@@ -61,7 +61,7 @@ declare module "../generated/gobject/gobject.js" {
          * @param targetGType - The GType identifier of the boxed type
          * @returns An owned copy of the boxed value wrapped in the target type, or null
          */
-        getBoxed<T extends NativeObject>(targetType: NativeClass<T>, targetGType: GType): T | null;
+        getBoxed<T extends object>(targetType: NativeClass<T>, targetGType: GType): T | null;
 
         /**
          * Gets the contents of a G_TYPE_STRV (`gchar**`) GValue as a JS string array.
@@ -152,7 +152,7 @@ declare module "../generated/gobject/gobject.js" {
          * @param gtype - The GType identifier of the boxed type (use the type
          *     module's exported `*_get_type()` function)
          */
-        function newFromBoxed(value: NativeObject, gtype: GType): Value;
+        function newFromBoxed(value: object, gtype: GType): Value;
         /**
          * Creates a GValue initialized with a null-terminated string array (GStrv).
          * @param value - The string array
@@ -162,7 +162,7 @@ declare module "../generated/gobject/gobject.js" {
          * Creates a GValue initialized with a GVariant.
          * @param value - The GVariant instance
          */
-        function newFromVariant(value: NativeObject): Value;
+        function newFromVariant(value: object): Value;
         /**
          * Creates a GValue initialized with an enum value.
          * @param gtype - The GType of the enum
@@ -222,7 +222,7 @@ Value.prototype.holds = function (gtype: GType): boolean {
     return this.getType() === gtype;
 };
 
-const getBoxedImpl = function <T extends NativeObject>(
+const getBoxedImpl = function <T extends object>(
     this: Value,
     targetType: NativeClass<T>,
     targetGType: GType,
@@ -324,9 +324,9 @@ type ValueStatic = {
     newFromDouble(value: number): Value;
     newFromString(value: string | null): Value;
     newFromObject(value: GObject | null): Value;
-    newFromBoxed(value: NativeObject, gtype: GType): Value;
+    newFromBoxed(value: object, gtype: GType): Value;
     newFromStrv(value: string[]): Value;
-    newFromVariant(value: NativeObject): Value;
+    newFromVariant(value: object): Value;
     newFromEnum(gtype: GType, value: number): Value;
     newFromFlags(gtype: GType, value: number): Value;
     newFrom(ffiType: FfiType, value: unknown): Value;
@@ -358,7 +358,7 @@ ValueWithStatics.newFromObject = (value: GObject | null): Value => {
     return v;
 };
 
-ValueWithStatics.newFromBoxed = (value: NativeObject, gtype: GType): Value => {
+ValueWithStatics.newFromBoxed = (value: object, gtype: GType): Value => {
     const glibTypeName = typeName(gtype);
     if (!glibTypeName) {
         throw new Error(`Cannot resolve type name for boxed gtype ${String(gtype)}`);
@@ -383,7 +383,7 @@ ValueWithStatics.newFromBoxed = (value: NativeObject, gtype: GType): Value => {
 ValueWithStatics.newFromStrv = (value: string[]): Value =>
     initValue(getStrvGType(), (v) => g_value_set_boxed_strv(getHandle(v), value));
 
-ValueWithStatics.newFromVariant = (value: NativeObject): Value =>
+ValueWithStatics.newFromVariant = (value: object): Value =>
     initValue(Type.VARIANT, (v) => v.setVariant(value as unknown as Parameters<Value["setVariant"]>[0]));
 
 ValueWithStatics.newFromEnum = (gtype, value) => initValue(gtype, (v) => v.setEnum(value));

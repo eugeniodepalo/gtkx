@@ -153,8 +153,8 @@ export function findNativeObject(handle: NativeHandle): NativeObject | null {
  * const rgba = getNativeObject(rgbaHandle, Gdk.RGBA);
  * ```
  */
-export function getNativeObject<T extends NativeObject>(handle: NativeHandle, targetType: NativeClass<T>): T;
-export function getNativeObject<T extends NativeObject>(
+export function getNativeObject<T extends object>(handle: NativeHandle, targetType: NativeClass<T>): T;
+export function getNativeObject<T extends object>(
     handle: NativeHandle | null | undefined,
     targetType: NativeClass<T>,
 ): T | null;
@@ -221,7 +221,7 @@ export function getNativeObjectAsInterface<T extends NativeHandle | null | undef
         throw new Error("Cannot resolve runtime GLib type from handle");
     }
     const cls = findNativeClass(runtimeGtype, false) ?? interfaceClass;
-    const instance = wrapHandle(cls, handle);
+    const instance = wrapHandle(cls, handle) as NativeObject;
     registerNativeObject(instance);
     return instance as Result;
 }

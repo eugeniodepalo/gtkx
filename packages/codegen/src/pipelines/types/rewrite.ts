@@ -401,31 +401,6 @@ const parseNumericLiteral = (text: string): number | null => {
     return Number.isFinite(value) ? value : null;
 };
 
-const CLASS_NO_EXTENDS_PATTERN = /^(\s*)(export\s+(?:declare\s+)?(?:abstract\s+)?class\s+\w+)(\s*\{)/gm;
-const NATIVE_OBJECT_IMPORT = `import type { NativeObject as __gtkx_NativeObject } from "../../object.js";\n`;
-
-/**
- * Adds an `extends NativeObject` clause to every class declaration that has
- * no existing extends clause, plus a type-only import for `NativeObject`.
- *
- * The runtime codegen emits every generated class as `class Foo extends
- * NativeObject`. The ts-for-gir-derived `.d.ts` contract elides that
- * inheritance because ts-for-gir is unaware of gtkx's runtime base. Without
- * this augmentation, consumer code that subclasses a generated class
- * (e.g. `class CustomLabel extends Gtk.Label {}`) cannot satisfy
- * constraints like `T extends typeof NativeObject` because the .d.ts class
- * has no inherited `handle` / `__gtype__` / `_init` members.
- */
-export function injectNativeObjectInheritance(source: string): string {
-    let mutated = false;
-    const rewritten = source.replace(CLASS_NO_EXTENDS_PATTERN, (_match, indent: string, head: string, tail: string) => {
-        mutated = true;
-        return `${indent}${head} extends __gtkx_NativeObject${tail}`;
-    });
-    if (!mutated) return source;
-    return `${NATIVE_OBJECT_IMPORT}${rewritten}`;
-}
-
 const CLASS_STRUCT_INTERFACE_HEAD_PATTERN = /^export[ \t]+interface[ \t]+(\w+(?:Class|Iface|Interface))[ \t]*\{/gm;
 const EXISTING_VALUE_PATTERN = /^export\s+(?:const|let|var)\s+(\w+)\b/gm;
 const PROPERTY_LINE_PATTERN = /^[ \t]*(\w+)\??[ \t]*:[ \t]*([^\n;]+?)(?:;|$)/gm;
@@ -547,7 +522,6 @@ export function loadAndRewrite(rawFilesByName: Map<string, string>): RewriteResu
         let source = unwrapOuterNamespace(contents);
         source = rewriteEnumsToConstObjects(source);
         source = rewriteNamespaceDeclarations(source);
-        source = injectNativeObjectInheritance(source);
         source = injectClassStructRegistryShape(source);
         source = rewriteDefaultImportsToNamespace(source);
         source = rewriteModuleKeywordToNamespace(source);

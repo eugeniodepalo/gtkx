@@ -101,11 +101,7 @@ export class NativeError extends Error {
  * }
  * ```
  */
-export function getNativeInterface<T extends NativeObject>(
-    obj: NativeObject,
-    iface: NativeClass<T>,
-    ifaceGType: GType,
-): T | null {
+export function getNativeInterface<T extends object>(obj: object, iface: NativeClass<T>, ifaceGType: GType): T | null {
     const handle = tryGetHandle(obj);
     if (!handle) return null;
     if ((ifaceGType as unknown as number) === 0) return null;

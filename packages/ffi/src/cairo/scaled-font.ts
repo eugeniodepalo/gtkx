@@ -68,7 +68,7 @@ const scaledFontCreate = (fontFace: FontFace, fontMatrix: Matrix, ctm: Matrix, o
     return getNativeObject(ptr, ScaledFont) as ScaledFont;
 };
 
-ScaledFontWithStatics.create = scaledFontCreate as unknown as ScaledFontStatic["create"];
+ScaledFontWithStatics.create = scaledFontCreate as unknown as typeof ScaledFontWithStatics.create;
 
 ScaledFont.prototype.status = function (): Status {
     return call(

@@ -204,7 +204,7 @@ const resolvePropertyValueType = (obj: GObject, propertyName: string): GType => 
         const className = obj.constructor.name || "GObject";
         throw new Error(`No property '${propertyName}' on ${className}`);
     }
-    return (getNativeObject(pspecHandle) as ParamSpec).getDefaultValue().getType();
+    return (getNativeObject(pspecHandle) as unknown as ParamSpec).getDefaultValue().getType();
 };
 
 GObject.prototype.getProperty = function getProperty(propertyName: string): unknown {
