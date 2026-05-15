@@ -8,12 +8,15 @@ export { getNativeInterface, instanceIsA } from "./native.js";
 export * from "./register-class.js";
 export {
     findNativeClass,
+    findNativeClassForInterface,
     findNativeObject,
     getClassGType,
+    getInterfaceGType,
     getNativeClass,
     getNativeObject,
     getNativeObjectAsInterface,
     registerNativeClass,
+    registerNativeInterface,
     registerNativeObject,
 } from "./registry.js";
 import "./cairo/index.js";

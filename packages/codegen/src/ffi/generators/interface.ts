@@ -94,6 +94,8 @@ export class InterfaceGenerator {
                 exported: true,
             });
             this.file.addImport("../../native.js", ["t"]);
+            this.file.addImport("../../registry.js", ["registerNativeInterface"]);
+            this.file.addStatement(`\nregisterNativeInterface(${interfaceName}, ${iface.glibGetType}());`);
         }
 
         return true;

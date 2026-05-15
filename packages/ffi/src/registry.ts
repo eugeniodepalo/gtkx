@@ -1,10 +1,11 @@
 import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import type { GType } from "./generated/gobject/gobject.js";
-import { typeParent } from "./generated/gobject/gobject.js";
+import { typeIsA, typeParent } from "./generated/gobject/gobject.js";
 import { getHandle, type NativeClass, type NativeObject, setHandle } from "./handles.js";
 
 const classRegistry = new Map<number, NativeClass>();
 const gtypeByClass = new WeakMap<NativeClass, number>();
+const interfaceGtypeByClass = new WeakMap<NativeClass, number>();
 
 /**
  * Registers a native class for type resolution.
@@ -33,11 +34,39 @@ export function registerNativeClass(cls: NativeClass, gtype: GType): void {
 }
 
 /**
+ * Registers the GLib interface type identifier for a generated interface
+ * wrapper class.
+ *
+ * Called automatically by generated bindings, once per interface. The
+ * recorded `GType` lets {@link getNativeObjectAsInterface} pick the most
+ * derived registered class that still conforms to the interface when the
+ * runtime type is an unregistered private implementation.
+ *
+ * @param cls - The interface wrapper class
+ * @param gtype - The GLib interface type identifier
+ */
+export function registerNativeInterface(cls: NativeClass, gtype: GType): void {
+    const gtypeId = gtype as unknown as number;
+    if (gtypeId !== 0) {
+        interfaceGtypeByClass.set(cls, gtypeId);
+    }
+}
+
+/**
  * Returns the GLib type identifier registered for `cls`, or the invalid
  * GType (`0`) when the class has not been registered (e.g. boxed value types).
  */
 export function getClassGType(cls: NativeClass): GType {
     return (gtypeByClass.get(cls) ?? 0) as unknown as GType;
+}
+
+/**
+ * Returns the GLib interface type identifier registered for `cls` via
+ * {@link registerNativeInterface}, or the invalid GType (`0`) when `cls` is
+ * not a registered interface wrapper.
+ */
+export function getInterfaceGType(cls: NativeClass): GType {
+    return (interfaceGtypeByClass.get(cls) ?? 0) as unknown as GType;
 }
 
 /**
@@ -92,6 +121,42 @@ export const findNativeClass = (gtype: GType, walkHierarchy = true): NativeClass
         if ((parentGtype as unknown as number) === 0) break;
         const parentCls = getNativeClass(parentGtype);
         if (parentCls) return parentCls;
+        currentGtype = parentGtype;
+    }
+
+    return null;
+};
+
+/**
+ * Finds the registered class to wrap a handle of runtime type `gtype` that is
+ * known to implement `interfaceGtype`.
+ *
+ * Returns the class registered for `gtype` itself when present. Otherwise
+ * walks the parent chain and returns the closest registered ancestor that
+ * also conforms to `interfaceGtype`, ensuring the resulting wrapper carries
+ * the interface's methods. Ancestors that are registered but do not implement
+ * the interface (e.g. a bare `GObject` base) are skipped. Returns null when no
+ * such class is registered, in which case callers fall back to the interface
+ * wrapper class itself.
+ *
+ * @param gtype - The runtime GLib type identifier of the instance
+ * @param interfaceGtype - The GLib interface type the instance implements
+ * @returns The resolved class, or null when none is registered
+ */
+export const findNativeClassForInterface = (gtype: GType, interfaceGtype: GType): NativeClass | null => {
+    const exact = getNativeClass(gtype);
+    if (exact) return exact;
+
+    if ((interfaceGtype as unknown as number) === 0) return null;
+
+    let currentGtype = gtype;
+    while ((currentGtype as unknown as number) !== 0) {
+        const parentGtype = typeParent(currentGtype);
+        if ((parentGtype as unknown as number) === 0) break;
+        const parentCls = getNativeClass(parentGtype);
+        if (parentCls && typeIsA(parentGtype, interfaceGtype)) {
+            return parentCls;
+        }
         currentGtype = parentGtype;
     }
 
@@ -205,9 +270,13 @@ export function getNativeObject(
  * a specific GObject interface.
  *
  * Resolves the runtime GLib type and instantiates the matching registered
- * class when present, falling back to the supplied interface class when
- * no concrete implementation is registered. The result is always assignable
- * to the interface type, so callers can invoke interface methods on it.
+ * class. When the runtime type itself is not registered — common for the
+ * private implementation types GLib hands back from interface-typed APIs
+ * (e.g. the local-file class behind a `Gio.File`) — the parent hierarchy is
+ * walked for the closest registered ancestor that still conforms to the
+ * interface. If no such class is registered, the supplied interface class is
+ * used, so the result is always assignable to the interface type and callers
+ * can invoke interface methods on it.
  *
  * @typeParam T - The handle type (null, undefined, or NativeHandle)
  * @typeParam TClass - The interface class type
@@ -230,7 +299,9 @@ export function getNativeObjectAsInterface<T extends NativeHandle | null | undef
     if ((runtimeGtype as unknown as number) === 0) {
         throw new Error("Cannot resolve runtime GLib type from handle");
     }
-    const cls = findNativeClass(runtimeGtype, false) ?? interfaceClass;
+
+    const interfaceGtype = getInterfaceGType(interfaceClass);
+    const cls = findNativeClassForInterface(runtimeGtype, interfaceGtype) ?? interfaceClass;
     const instance = wrapHandle(cls, handle) as NativeObject;
     registerNativeObject(instance);
     return instance as Result;

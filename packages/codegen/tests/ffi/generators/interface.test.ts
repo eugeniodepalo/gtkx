@@ -91,6 +91,35 @@ describe("InterfaceGenerator", () => {
             expect(code).toContain('"gtk_buildable_get_type"');
         });
 
+        it("registers the interface class for runtime type resolution when glibGetType is present", () => {
+            const { generator, file } = createTestSetup();
+            const iface = createNormalizedInterface({
+                name: "Buildable",
+                glibTypeName: "GtkBuildable",
+                glibGetType: "gtk_buildable_get_type",
+                methods: [],
+            });
+
+            generator.generate(iface);
+
+            const code = stringify(file);
+            expect(code).toContain("registerNativeInterface(Buildable, gtk_buildable_get_type())");
+        });
+
+        it("does not register the interface class when glibGetType is absent", () => {
+            const { generator, file } = createTestSetup();
+            const iface = createNormalizedInterface({
+                name: "Buildable",
+                glibTypeName: "GtkBuildable",
+                methods: [],
+            });
+
+            generator.generate(iface);
+
+            const code = stringify(file);
+            expect(code).not.toContain("registerNativeInterface");
+        });
+
         it("does not emit objectType property", () => {
             const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
