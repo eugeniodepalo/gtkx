@@ -1,8 +1,8 @@
-import { findObjectProperty, type NativeHandle } from "@gtkx/native";
+import { findObjectProperty, getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { GType, ParamSpec } from "../generated/gobject/gobject.js";
-import { Object as GObject, Value } from "../generated/gobject/gobject.js";
+import { Object as GObject, signalEmitv, signalParseName, Value } from "../generated/gobject/gobject.js";
 import { getHandle } from "../handles.js";
-import { call, t } from "../native.js";
+import { alloc, call, read, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 
 declare module "../generated/gobject/gobject.js" {
@@ -197,6 +197,47 @@ const offImpl = function (this: GObject, sigName: string, callback: Listener): N
     return this as unknown as NodeJS.EventEmitter;
 };
 GObject.prototype.off = offImpl as unknown as GObject["off"];
+
+const GTYPE_SIZE = 8;
+const SIGNAL_QUERY_SIZE = 56;
+const SIGNAL_QUERY_N_PARAMS_OFFSET = 40;
+const SIGNAL_QUERY_PARAM_TYPES_OFFSET = 48;
+
+const emitImpl = function (this: GObject, sigName: string, ...args: unknown[]): void {
+    const instanceGType = getInstanceGType(getHandle(this)) as unknown as GType;
+    const [parsed, signalId, detail] = signalParseName(sigName, instanceGType, true);
+    if (!parsed || signalId === 0) {
+        throw new Error(`Unknown signal '${sigName}' on ${this.constructor.name || "GObject"}`);
+    }
+
+    const query = alloc(SIGNAL_QUERY_SIZE) as NativeHandle;
+    call(
+        LIB,
+        "g_signal_query",
+        [
+            { type: t.uint32, value: signalId },
+            { type: t.boxed("GSignalQuery", "borrowed"), value: query },
+        ],
+        t.void,
+    );
+
+    const paramValues: Value[] = [];
+    const paramCount = read(query, t.uint32, SIGNAL_QUERY_N_PARAMS_OFFSET) as number;
+    if (paramCount > 0) {
+        const paramTypes = read(
+            query,
+            t.struct("GTypeArray", "borrowed", paramCount * GTYPE_SIZE),
+            SIGNAL_QUERY_PARAM_TYPES_OFFSET,
+        ) as NativeHandle;
+        for (let i = 0; i < paramCount; i++) {
+            const paramGType = read(paramTypes, t.uint64, i * GTYPE_SIZE) as unknown as GType;
+            paramValues.push(Value.fromJS(paramGType, args[i]));
+        }
+    }
+
+    signalEmitv([Value.newFromObject(this), ...paramValues], signalId, detail);
+};
+GObject.prototype.emit = emitImpl as unknown as GObject["emit"];
 
 const resolvePropertyValueType = (obj: GObject, propertyName: string): GType => {
     const pspecHandle = findObjectProperty(getHandle(obj), propertyName);

@@ -17,9 +17,9 @@ export abstract class NativeObject {
 }
 
 /**
- * Constructor type for a generated wrapper class.
- *
- * @internal
+ * Constructor type for a generated native wrapper class. Used as the key type
+ * of the construction-metadata registry and accepted by the wrapper-resolution
+ * helpers (`getNativeObject`, `registerNativeClass`).
  */
 export type NativeClass<T extends object = object> = (abstract new (
     ...args: never[]

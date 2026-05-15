@@ -1,5 +1,6 @@
 export { Arg, type FfiValue, getInstanceGType, NativeHandle, Type } from "@gtkx/native";
 export * from "./construction-meta.js";
+export type { NativeClass } from "./handles.js";
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
 export * from "./lifecycle.js";
