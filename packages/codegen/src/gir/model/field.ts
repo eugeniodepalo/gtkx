@@ -10,6 +10,10 @@ import type { GirType } from "./type.js";
  * `type` is then synthesized as `gpointer` so struct-layout calculations
  * still yield correct byte offsets while leaving the signature available
  * for vtable-aware codegen.
+ *
+ * `bits` is set for C bitfield members (GIR `bits` attribute); it is the
+ * field's width in bits and drives bit-packed struct layout and masked
+ * accessor generation.
  */
 export class GirField {
     readonly name: string;
@@ -17,6 +21,7 @@ export class GirField {
     readonly writable: boolean;
     readonly readable: boolean;
     readonly private: boolean;
+    readonly bits?: number;
     readonly callback?: GirCallback;
     readonly doc?: string;
 
@@ -26,6 +31,7 @@ export class GirField {
         writable: boolean;
         readable: boolean;
         private: boolean;
+        bits?: number;
         callback?: GirCallback;
         doc?: string;
     }) {
@@ -34,6 +40,7 @@ export class GirField {
         this.writable = data.writable;
         this.readable = data.readable;
         this.private = data.private;
+        this.bits = data.bits;
         this.callback = data.callback;
         this.doc = data.doc;
     }

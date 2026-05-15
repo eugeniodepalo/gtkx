@@ -25,6 +25,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
 
+const makeRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
+    const rectangle = new Gdk.Rectangle();
+    rectangle.x = x;
+    rectangle.y = y;
+    rectangle.width = width;
+    rectangle.height = height;
+    return rectangle;
+};
+
 const itemStyle = css`
     padding: 10px;
     margin: 1px;
@@ -501,16 +510,7 @@ const DndDemo = ({ window }: DemoProps) => {
                     <GtkPopover
                         ref={contextMenuRef}
                         hasArrow={false}
-                        pointingTo={
-                            contextMenu
-                                ? new Gdk.Rectangle({
-                                      x: contextMenu.x,
-                                      y: contextMenu.y,
-                                      width: 1,
-                                      height: 1,
-                                  })
-                                : undefined
-                        }
+                        pointingTo={contextMenu ? makeRectangle(contextMenu.x, contextMenu.y, 1, 1) : undefined}
                         autohide
                         onClosed={() => setContextMenu(null)}
                     >

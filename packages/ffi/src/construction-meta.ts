@@ -17,12 +17,20 @@ export type GObjectPropMeta = {
 /**
  * Construction metadata describing how a single boxed field is marshalled
  * into native memory after `g_malloc0`.
+ *
+ * When `bitWidth` is set the field is a C bitfield: `offset` addresses its
+ * shared storage unit and the value is merged in at `bitOffset` rather than
+ * written directly.
  */
 export type BoxedFieldMeta = {
     /** Byte offset within the struct. */
     offset: number;
     /** FFI type descriptor used by {@link write}. */
     ffiType: Type;
+    /** Bit position within the storage unit, for bitfield members. */
+    bitOffset?: number;
+    /** Width in bits, for bitfield members. */
+    bitWidth?: number;
 };
 
 /**

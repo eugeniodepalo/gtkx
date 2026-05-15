@@ -425,12 +425,15 @@ export class GirParser {
             const type = callback
                 ? { name: "gpointer", cType: "gpointer" }
                 : this.parseType((field.type ?? field.array) as Record<string, unknown> | undefined);
+            const rawBits = field["@_bits"];
+            const bits = rawBits === undefined || rawBits === null ? undefined : Number(rawBits);
             return {
                 name: fieldName,
                 type,
                 writable: field["@_writable"] === "1",
                 readable: field["@_readable"] !== "0",
                 private: field["@_private"] === "1",
+                bits: bits !== undefined && Number.isFinite(bits) && bits > 0 ? bits : undefined,
                 callback,
                 doc: extractDoc(field),
             };

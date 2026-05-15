@@ -1,5 +1,3 @@
-import type { NativeHandle } from "@gtkx/ffi";
-import { read, write } from "@gtkx/ffi";
 import { Antialias, Context, Filter, FontOptions, HintMetrics, HintStyle } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
@@ -29,39 +27,30 @@ import sourceCode from "./fontrendering.tsx?raw";
 
 const PANGO_SCALE = 1024;
 const DEFAULT_TEXT = "Fonts render";
-const GLYPH_INFO_SIZE = 24;
-const U32 = { type: "uint32" } as const;
-const I32 = { type: "int32" } as const;
-const GLYPHS_STRUCT = (numGlyphs: number) =>
-    ({ type: "struct", innerType: "PangoGlyphInfo", size: numGlyphs * GLYPH_INFO_SIZE, ownership: "full" }) as const;
 
-type GlyphData = { glyph: number; width: number; xOffset: number; yOffset: number; attr: number };
-
-const readGlyphsArray = (glyphString: Pango.GlyphString): NativeHandle =>
-    read(glyphString.handle, GLYPHS_STRUCT(glyphString.numGlyphs), 8) as NativeHandle;
-
-const readGlyph = (glyphsArray: NativeHandle, index: number): GlyphData => {
-    const base = index * GLYPH_INFO_SIZE;
-    return {
-        glyph: read(glyphsArray, U32, base) as number,
-        width: read(glyphsArray, I32, base + 4) as number,
-        xOffset: read(glyphsArray, I32, base + 8) as number,
-        yOffset: read(glyphsArray, I32, base + 12) as number,
-        attr: read(glyphsArray, U32, base + 16) as number,
-    };
+const enlargeGlyphWidths = (glyphString: Pango.GlyphString): void => {
+    const glyphs = glyphString.glyphs;
+    for (let i = 0; i < 4; i++) {
+        const info = glyphs[2 * i];
+        if (!info) continue;
+        const geometry = info.geometry;
+        geometry.width = Math.round((geometry.width * 3) / 2);
+        info.geometry = geometry;
+    }
+    glyphString.glyphs = glyphs;
 };
 
-const writeGlyph = (glyphsArray: NativeHandle, index: number, g: GlyphData): void => {
-    const base = index * GLYPH_INFO_SIZE;
-    write(glyphsArray, U32, base, g.glyph);
-    write(glyphsArray, I32, base + 4, g.width);
-    write(glyphsArray, I32, base + 8, g.xOffset);
-    write(glyphsArray, I32, base + 12, g.yOffset);
-    write(glyphsArray, U32, base + 16, g.attr);
-};
-
-const commitGlyphs = (glyphString: Pango.GlyphString, glyphsArray: NativeHandle): void => {
-    write(glyphString.handle, GLYPHS_STRUCT(glyphString.numGlyphs), 8, glyphsArray);
+const applyGlyphOffsets = (glyphString: Pango.GlyphString, row: number): void => {
+    const glyphs = glyphString.glyphs;
+    for (let i = 0; i < 4; i++) {
+        const info = glyphs[2 * i];
+        if (!info) continue;
+        const geometry = info.geometry;
+        geometry.xOffset = Math.round((i * PANGO_SCALE) / 4);
+        geometry.yOffset = Math.round((row * PANGO_SCALE) / 4);
+        info.geometry = geometry;
+    }
+    glyphString.glyphs = glyphs;
 };
 
 type Mode = "text" | "grid";
@@ -118,12 +107,7 @@ const setupGridLayout = (
         [, logicalRect] = layout.getPixelExtents();
     }
 
-    const glyphs = readGlyphsArray(glyphItem.glyphs);
-    for (let i = 0; i < 4; i++) {
-        const g = readGlyph(glyphs, 2 * i);
-        writeGlyph(glyphs, 2 * i, { ...g, width: Math.round((g.width * 3) / 2) });
-    }
-    commitGlyphs(glyphItem.glyphs, glyphs);
+    enlargeGlyphWidths(glyphItem.glyphs);
     return { logicalRect, ch, iter };
 };
 
@@ -134,7 +118,7 @@ const renderSmallSurface = (
     ch: string,
     hintMetrics: boolean,
 ): { iter: Pango.LayoutIter } | null => {
-    const smallCr = new Context(small);
+    const smallCr = Context.create(small);
     smallCr.setFontOptions(fontOptions);
     const smallCtx = PangoCairo.createContext(smallCr);
     PangoCairo.contextSetFontOptions(smallCtx, fontOptions);
@@ -158,28 +142,14 @@ const renderSmallSurface = (
         [, smallLogical] = smallLayout.getPixelExtents();
     }
 
-    const smallGlyphs = readGlyphsArray(smallGlyphItem.glyphs);
-    for (let i = 0; i < 4; i++) {
-        const g = readGlyph(smallGlyphs, 2 * i);
-        writeGlyph(smallGlyphs, 2 * i, { ...g, width: Math.round((g.width * 3) / 2) });
-    }
-    commitGlyphs(smallGlyphItem.glyphs, smallGlyphs);
+    enlargeGlyphWidths(smallGlyphItem.glyphs);
 
     smallCr.setSourceRgb(1, 1, 1);
     smallCr.paint();
     smallCr.setSourceRgb(0, 0, 0);
 
     for (let j = 0; j < 4; j++) {
-        const offsetGlyphs = readGlyphsArray(smallGlyphItem.glyphs);
-        for (let i = 0; i < 4; i++) {
-            const g = readGlyph(offsetGlyphs, 2 * i);
-            writeGlyph(offsetGlyphs, 2 * i, {
-                ...g,
-                xOffset: Math.round((i * PANGO_SCALE) / 4),
-                yOffset: Math.round((j * PANGO_SCALE) / 4),
-            });
-        }
-        commitGlyphs(smallGlyphItem.glyphs, offsetGlyphs);
+        applyGlyphOffsets(smallGlyphItem.glyphs, j);
 
         smallCr.moveTo(0, j * smallLogical.height);
         PangoCairo.showLayout(smallCr, smallLayout);
@@ -288,7 +258,7 @@ const FontRenderingDemo = () => {
 
             const target = cr.getTarget();
             const offscreen = target.createSimilar("COLOR_ALPHA", width, height);
-            const offCr = new Context(offscreen);
+            const offCr = Context.create(offscreen);
 
             offCr.setFontOptions(fontOptions);
 
@@ -314,7 +284,7 @@ const FontRenderingDemo = () => {
             const surfaceHeight = inkPixel.height + 20;
 
             const small = target.createSimilar("COLOR_ALPHA", surfaceWidth, surfaceHeight);
-            const smallCr = new Context(small);
+            const smallCr = Context.create(small);
 
             smallCr.setSourceRgb(1, 1, 1);
             smallCr.paint();
@@ -396,7 +366,7 @@ const FontRenderingDemo = () => {
 
             if (outlineAlpha > 0) {
                 const outlineSurface = target.createSimilar("COLOR_ALPHA", surfaceWidth, surfaceHeight);
-                const outlineCr = new Context(outlineSurface);
+                const outlineCr = Context.create(outlineSurface);
                 outlineCr.setFontOptions(fontOptions);
                 const outlineCtx = PangoCairo.createContext(outlineCr);
                 PangoCairo.contextSetFontOptions(outlineCtx, fontOptions);
@@ -432,7 +402,7 @@ const FontRenderingDemo = () => {
             const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
             const target = cr.getTarget();
             const tmpSurface = target.createSimilar("COLOR_ALPHA", 1, 1);
-            const tmpCr = new Context(tmpSurface);
+            const tmpCr = Context.create(tmpSurface);
             tmpCr.setFontOptions(fontOptions);
 
             const context = PangoCairo.createContext(tmpCr);

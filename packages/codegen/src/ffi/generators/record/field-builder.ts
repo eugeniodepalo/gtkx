@@ -21,12 +21,18 @@ import type { GirField, GirRecord, GirRepository } from "../../../gir/index.js";
 
 /**
  * Field layout information.
+ *
+ * For C bitfield members, `offset` is the byte offset of the shared storage
+ * unit, `bitOffset` is the field's bit position within that unit, and
+ * `bitWidth` is its width in bits. Non-bitfield members leave both undefined.
  */
 type FieldLayout = {
     field: GirField;
     offset: number;
     size: number;
     alignment: number;
+    bitOffset?: number;
+    bitWidth?: number;
 };
 
 /**
@@ -58,6 +64,7 @@ export class FieldBuilder {
     calculateLayout(fields: readonly GirField[], includePrivate = false): FieldLayout[] {
         const layout: FieldLayout[] = [];
         let currentOffset = 0;
+        let bitUnit: { offset: number; bitsUsed: number; capacityBits: number; typeName: string } | null = null;
 
         for (const field of fields) {
             if (field.private && !includePrivate) continue;
@@ -65,6 +72,33 @@ export class FieldBuilder {
             const size = this.getFieldSize(field.type);
             const alignment = this.getFieldAlignment(field.type);
 
+            if (field.bits !== undefined && field.bits > 0) {
+                const typeName = String(field.type.name);
+                const capacityBits = size * 8;
+
+                if (
+                    bitUnit === null ||
+                    bitUnit.typeName !== typeName ||
+                    bitUnit.bitsUsed + field.bits > bitUnit.capacityBits
+                ) {
+                    currentOffset = Math.ceil(currentOffset / alignment) * alignment;
+                    bitUnit = { offset: currentOffset, bitsUsed: 0, capacityBits, typeName };
+                    currentOffset += size;
+                }
+
+                layout.push({
+                    field,
+                    offset: bitUnit.offset,
+                    size,
+                    alignment,
+                    bitOffset: bitUnit.bitsUsed,
+                    bitWidth: field.bits,
+                });
+                bitUnit.bitsUsed += field.bits;
+                continue;
+            }
+
+            bitUnit = null;
             currentOffset = Math.ceil(currentOffset / alignment) * alignment;
 
             layout.push({

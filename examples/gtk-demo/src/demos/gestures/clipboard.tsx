@@ -77,10 +77,19 @@ function drawColorSwatch(cr: Context, width: number, height: number, rgba: Gdk.R
     cr.fill();
 }
 
+const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA => {
+    const rgba = new Gdk.RGBA();
+    rgba.red = red;
+    rgba.green = green;
+    rgba.blue = blue;
+    rgba.alpha = alpha;
+    return rgba;
+};
+
 const ClipboardDemo = ({ window }: DemoProps) => {
     const [sourceType, setSourceType] = useState<SourceType>("Text");
     const [sourceText, setSourceText] = useState("Copy this!");
-    const [sourceColor, setSourceColor] = useState<Gdk.RGBA>(new Gdk.RGBA({ red: 0.5, green: 0, blue: 0.5, alpha: 1 }));
+    const [sourceColor, setSourceColor] = useState<Gdk.RGBA>(makeRgba(0.5, 0, 0.5, 1));
     const [selectedImage, setSelectedImage] = useState(0);
     const [sourceFile, setSourceFile] = useState<Gio.File | null>(null);
     const [pastedContent, setPastedContent] = useState<PastedContent>({ type: "" });
@@ -219,7 +228,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
             if (!rgba) return false;
             setPastedContent({
                 type: "Color",
-                color: new Gdk.RGBA({ red: rgba.red, green: rgba.green, blue: rgba.blue, alpha: rgba.alpha }),
+                color: makeRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha),
             });
             return true;
         },
@@ -307,12 +316,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
         if (rgba) {
             setPastedContent({
                 type: "Color",
-                color: new Gdk.RGBA({
-                    red: rgba.red,
-                    green: rgba.green,
-                    blue: rgba.blue,
-                    alpha: rgba.alpha,
-                }),
+                color: makeRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha),
             });
             return true;
         }
@@ -365,14 +369,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                             valign={Gtk.Align.CENTER}
                             accessibleLabel="Color to copy"
                             onRgbaChanged={(rgba) =>
-                                setSourceColor(
-                                    new Gdk.RGBA({
-                                        red: rgba.red,
-                                        green: rgba.green,
-                                        blue: rgba.blue,
-                                        alpha: rgba.alpha,
-                                    }),
-                                )
+                                setSourceColor(makeRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha))
                             }
                         >
                             <GtkDragSource onPrepare={createColorDragProvider} actions={Gdk.DragAction.COPY} />

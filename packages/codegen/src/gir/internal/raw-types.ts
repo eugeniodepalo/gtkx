@@ -216,6 +216,7 @@ export type RawField = {
     writable?: boolean;
     readable?: boolean;
     private?: boolean;
+    bits?: number;
     callback?: RawCallback;
     doc?: string;
 };

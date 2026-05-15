@@ -1,4 +1,4 @@
-import { alloc, call, type NativeHandle, write } from "@gtkx/native";
+import { alloc, call, type NativeHandle, read, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
 import { gvalueFromProp } from "./gobject/gvalue.js";
 import { type NativeClass, type NativeObject, setHandle } from "./handles.js";
@@ -117,7 +117,8 @@ function collectGObjectProps(
 
 /**
  * Boxed construction: `g_malloc0` then write each writable field declared
- * in the metadata whose key is present in `props`.
+ * in the metadata whose key is present in `props`. Bitfield members are
+ * merged into their storage unit via read-modify-write.
  */
 function constructBoxed(
     meta: Extract<ConstructionMeta, { kind: "boxed" }>,
@@ -129,7 +130,19 @@ function constructBoxed(
         if (value === undefined) continue;
         const field = meta.fields[fieldName];
         if (!field) continue;
-        write(handle, field.ffiType, field.offset, value);
+        if (field.bitWidth === undefined) {
+            write(handle, field.ffiType, field.offset, value);
+            continue;
+        }
+        const mask = (1 << field.bitWidth) - 1;
+        const bitOffset = field.bitOffset ?? 0;
+        const unit = read(handle, field.ffiType, field.offset) as number;
+        write(
+            handle,
+            field.ffiType,
+            field.offset,
+            ((unit & ~(mask << bitOffset)) | (((value as number) & mask) << bitOffset)) >>> 0,
+        );
     }
     return handle;
 }

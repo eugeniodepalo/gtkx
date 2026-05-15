@@ -245,8 +245,17 @@ const PARAGRAPH_SAMPLES = [
 
 type ViewMode = "plain" | "waterfall" | "edit";
 
-const createDefaultFgColor = () => new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1 });
-const createDefaultBgColor = () => new Gdk.RGBA({ red: 1, green: 1, blue: 1, alpha: 1 });
+const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA => {
+    const rgba = new Gdk.RGBA();
+    rgba.red = red;
+    rgba.green = green;
+    rgba.blue = blue;
+    rgba.alpha = alpha;
+    return rgba;
+};
+
+const createDefaultFgColor = () => makeRgba(0, 0, 0, 1);
+const createDefaultBgColor = () => makeRgba(1, 1, 1, 1);
 const createDefaultFontDesc = () => Pango.FontDescription.fromString("Sans 14");
 
 const createInitialCheckStates = (): Map<string, FeatureState> => {
@@ -325,8 +334,8 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
     const swapColors = useCallback(() => {
         const oldFg = fgColor;
         const oldBg = bgColor;
-        setFgColor(new Gdk.RGBA({ red: oldBg.red, green: oldBg.green, blue: oldBg.blue, alpha: 1 }));
-        setBgColor(new Gdk.RGBA({ red: oldFg.red, green: oldFg.green, blue: oldFg.blue, alpha: 1 }));
+        setFgColor(makeRgba(oldBg.red, oldBg.green, oldBg.blue, 1));
+        setBgColor(makeRgba(oldFg.red, oldFg.green, oldFg.blue, 1));
     }, [fgColor, bgColor]);
 
     const resetBasic = useCallback(() => {

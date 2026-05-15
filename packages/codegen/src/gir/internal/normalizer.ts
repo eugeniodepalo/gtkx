@@ -495,6 +495,7 @@ export class GirNormalizer {
             writable: raw.writable ?? false,
             readable: raw.readable ?? true,
             private: raw.private ?? false,
+            bits: raw.bits,
             callback: raw.callback ? this.normalizeInlineCallback(raw.callback, raw.name, currentNamespace) : undefined,
             doc: raw.doc,
         });
