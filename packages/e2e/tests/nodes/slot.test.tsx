@@ -13,7 +13,7 @@ describe("render - Slot", () => {
             <GtkHeaderBar ref={headerBarRef} titleWidget={<GtkLabel ref={titleRef} label="Custom Title" />} />,
         );
 
-        expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(titleRef.current?.handle);
+        expect(headerBarRef.current?.getTitleWidget()).toBe(titleRef.current);
     });
 
     it("calls setSlotName(widget) on parent", async () => {
@@ -22,7 +22,7 @@ describe("render - Slot", () => {
 
         await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef} label="Start Content" />} />);
 
-        expect(panedRef.current?.getStartChild()?.handle).toEqual(labelRef.current?.handle);
+        expect(panedRef.current?.getStartChild()).toBe(labelRef.current);
     });
 
     it("clears slot when child removed", async () => {
@@ -63,11 +63,11 @@ describe("render - Slot", () => {
 
         await render(<App first={true} />);
 
-        expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(label1Ref.current?.handle);
+        expect(headerBarRef.current?.getTitleWidget()).toBe(label1Ref.current);
 
         await render(<App first={false} />);
 
-        expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(label2Ref.current?.handle);
+        expect(headerBarRef.current?.getTitleWidget()).toBe(label2Ref.current);
     });
 
     it("handles Paned.StartChild slot", async () => {
@@ -76,7 +76,7 @@ describe("render - Slot", () => {
 
         await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef} label="Start Child" />} />);
 
-        expect(panedRef.current?.getStartChild()?.handle).toEqual(labelRef.current?.handle);
+        expect(panedRef.current?.getStartChild()).toBe(labelRef.current);
     });
 
     it("handles MenuButton.Popover slot", async () => {
@@ -87,7 +87,7 @@ describe("render - Slot", () => {
             <GtkMenuButton ref={menuButtonRef} popover={<GtkPopover ref={popoverRef}>Popover Content</GtkPopover>} />,
         );
 
-        expect(menuButtonRef.current?.getPopover()?.handle).toEqual(popoverRef.current?.handle);
+        expect(menuButtonRef.current?.getPopover()).toBe(popoverRef.current);
     });
 
     it("handles multiple slots on same parent", async () => {
@@ -103,8 +103,8 @@ describe("render - Slot", () => {
             />,
         );
 
-        expect(panedRef.current?.getStartChild()?.handle).toEqual(startRef.current?.handle);
-        expect(panedRef.current?.getEndChild()?.handle).toEqual(endRef.current?.handle);
+        expect(panedRef.current?.getStartChild()).toBe(startRef.current);
+        expect(panedRef.current?.getEndChild()).toBe(endRef.current);
     });
 
     it("throws when the slot id has no matching property setter on the parent", async () => {

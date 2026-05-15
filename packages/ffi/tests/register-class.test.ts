@@ -18,6 +18,7 @@ import {
 import * as Gtk from "../src/generated/gtk/gtk.js";
 import { findNativeClass, instanceIsA, registerClass } from "../src/index.js";
 import { call, t } from "../src/native.js";
+import { getHandle } from "../src/object.js";
 
 let suffix = 0;
 const uniqueName = (prefix: string): string => `${prefix}_${process.pid}_${++suffix}`;
@@ -109,7 +110,7 @@ describe("registerClass", () => {
 
         const customGtype = typeFromName(name);
         const instance = GObject.newv(customGtype, []);
-        const found = findObjectProperty(instance.handle, "custom-prop");
+        const found = findObjectProperty(getHandle(instance), "custom-prop");
         expect(found).not.toBeNull();
     });
 
@@ -127,8 +128,8 @@ describe("registerClass", () => {
 
         const customGtype = typeFromName(name);
         const instance = GObject.newv(customGtype, []);
-        expect(findObjectProperty(instance.handle, "first")).not.toBeNull();
-        expect(findObjectProperty(instance.handle, "second")).not.toBeNull();
+        expect(findObjectProperty(getHandle(instance), "first")).not.toBeNull();
+        expect(findObjectProperty(getHandle(instance), "second")).not.toBeNull();
     });
 
     it("registers a signal that can be looked up on the new GType", () => {
@@ -317,12 +318,12 @@ describe("registerClass", () => {
 
         const customGtype = typeFromName(name);
         const instance = GObject.newv(customGtype, []);
-        expect(instanceIsA(instance.handle, giconGtype)).toBe(true);
+        expect(instanceIsA(getHandle(instance), giconGtype)).toBe(true);
 
         const result = call(
             "libgio-2.0.so.0",
             "g_icon_hash",
-            [{ type: t.object("borrowed"), value: instance.handle }],
+            [{ type: t.object("borrowed"), value: getHandle(instance) }],
             t.uint32,
         );
 

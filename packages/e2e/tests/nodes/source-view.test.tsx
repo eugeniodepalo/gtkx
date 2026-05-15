@@ -18,7 +18,7 @@ describe("render - SourceView", () => {
             await render(<GtkSourceView ref={ref} />);
 
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.handle).toBeDefined();
+            expect(ref.current).toBeDefined();
         });
 
         it("sets initial text content via children", async () => {

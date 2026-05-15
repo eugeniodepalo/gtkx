@@ -12,6 +12,7 @@ import {
     NativeObject,
     registerNativeClass,
 } from "../src/index.js";
+import { getHandle } from "../src/object.js";
 
 const INVALID_GTYPE = 0 as unknown as GType;
 
@@ -25,7 +26,7 @@ describe("registerNativeClass", () => {
 
     it("allows getNativeObject to find registered types", () => {
         const label = new Gtk.Label({ label: "Test" });
-        const wrapped = getNativeObject(label.handle);
+        const wrapped = getNativeObject(getHandle(label));
         expect(wrapped).toBeInstanceOf(Gtk.Label);
     });
 });
@@ -62,19 +63,19 @@ describe("findNativeClass", () => {
 describe("getNativeObject", () => {
     it("wraps a native pointer in a class instance", () => {
         const label = new Gtk.Label({ label: "Test" });
-        const wrapped = getNativeObject(label.handle);
+        const wrapped = getNativeObject(getHandle(label));
         expect(wrapped).toBeInstanceOf(Gtk.Label);
     });
 
     it("determines correct runtime type via GLib type system", () => {
         const button = new Gtk.Button();
-        const wrapped = getNativeObject(button.handle);
+        const wrapped = getNativeObject(getHandle(button));
         expect(wrapped).toBeInstanceOf(Gtk.Button);
     });
 
     it("wraps with specific type when targetType is provided", () => {
         const box = new Gtk.Box();
-        const wrapped = getNativeObject(box.handle, Gtk.Box);
+        const wrapped = getNativeObject(getHandle(box), Gtk.Box);
         expect(wrapped).toBeInstanceOf(Gtk.Box);
     });
 
@@ -93,7 +94,7 @@ describe("getNativeObject", () => {
     describe("boxed types", () => {
         it("wraps a native boxed type pointer in a class instance", () => {
             const rgba = new Gdk.RGBA({ red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 });
-            const wrapped = getNativeObject(rgba.handle, Gdk.RGBA);
+            const wrapped = getNativeObject(getHandle(rgba), Gdk.RGBA);
             expect(wrapped).not.toBeNull();
             expect(wrapped?.red).toBeCloseTo(1.0);
             expect(wrapped?.green).toBeCloseTo(0.5);
@@ -103,7 +104,7 @@ describe("getNativeObject", () => {
 
         it("sets the correct prototype chain", () => {
             const rgba = new Gdk.RGBA({ red: 0.5 });
-            const wrapped = getNativeObject(rgba.handle, Gdk.RGBA);
+            const wrapped = getNativeObject(getHandle(rgba), Gdk.RGBA);
             expect(wrapped).not.toBeNull();
             expect(typeof wrapped?.toString).toBe("function");
             expect(typeof wrapped?.copy).toBe("function");
@@ -123,13 +124,13 @@ describe("getNativeObject", () => {
     describe("interfaces", () => {
         it("returns interface instance when object implements it", () => {
             const box = new Gtk.Box();
-            const orientable = getNativeObjectAsInterface(box.handle, Gtk.Orientable);
+            const orientable = getNativeObjectAsInterface(getHandle(box), Gtk.Orientable);
             expect(orientable).not.toBeNull();
         });
 
         it("allows calling interface methods on returned instance", () => {
             const box = new Gtk.Box();
-            const orientable = getNativeObjectAsInterface(box.handle, Gtk.Orientable);
+            const orientable = getNativeObjectAsInterface(getHandle(box), Gtk.Orientable);
             expect(orientable).not.toBeNull();
             expect(typeof orientable?.setOrientation).toBe("function");
         });

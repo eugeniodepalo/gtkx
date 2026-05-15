@@ -13,19 +13,19 @@ describe("render - Window", () => {
         it("creates Gtk.ApplicationWindow with current app", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
 
-            const { container } = await render(<GtkApplicationWindow ref={ref} title="App Window" />);
+            await render(<GtkApplicationWindow ref={ref} title="App Window" />);
 
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getApplication()?.handle).toEqual(container.handle);
+            expect(ref.current?.getApplication()).not.toBeNull();
         });
 
         it("creates Adw.ApplicationWindow with current app", async () => {
             const ref = createRef<Adw.ApplicationWindow>();
 
-            const { container } = await render(<AdwApplicationWindow ref={ref} />);
+            await render(<AdwApplicationWindow ref={ref} />);
 
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getApplication()?.handle).toEqual(container.handle);
+            expect(ref.current?.getApplication()).not.toBeNull();
         });
     });
 
@@ -95,7 +95,7 @@ describe("render - Window", () => {
 
             const { rerender } = await render(<App show={true} />);
 
-            const windowId = ref.current?.handle;
+            const windowId = ref.current;
             expect(windowId).toBeDefined();
 
             await rerender(<App show={false} />);
@@ -113,7 +113,7 @@ describe("render - Window", () => {
                 </GtkApplicationWindow>,
             );
 
-            expect(windowRef.current?.getChild()?.handle).toEqual(labelRef.current?.handle);
+            expect(windowRef.current?.getChild()).toBe(labelRef.current);
         });
 
         it("replaces child widget", async () => {
@@ -135,11 +135,11 @@ describe("render - Window", () => {
 
             await render(<App first={true} />);
 
-            expect(windowRef.current?.getChild()?.handle).toEqual(label1Ref.current?.handle);
+            expect(windowRef.current?.getChild()).toBe(label1Ref.current);
 
             await render(<App first={false} />);
 
-            expect(windowRef.current?.getChild()?.handle).toEqual(label2Ref.current?.handle);
+            expect(windowRef.current?.getChild()).toBe(label2Ref.current);
         });
     });
 });

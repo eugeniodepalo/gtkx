@@ -557,4 +557,4 @@ ValueWithStatics.fromJS = (gtype: GType, value: unknown): Value => {
     throw new Error(`Unsupported GType for Value.fromJS: ${typeName(gtype) ?? String(gtype)}`);
 };
 
-setValueFactory((meta, value) => Value.newFrom(meta.ffiType, value).handle);
+setValueFactory((meta, value) => getHandle(Value.newFrom(meta.ffiType, value)));

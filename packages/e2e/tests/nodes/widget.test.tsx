@@ -106,7 +106,7 @@ describe("widget - creation", () => {
 
             await render(<GtkLabel ref={ref} label="Widget Instance" />);
 
-            expect(ref.current?.handle).toBeDefined();
+            expect(ref.current).toBeDefined();
             expect(ref.current?.getLabel()).toBe("Widget Instance");
         });
     });
@@ -1019,7 +1019,7 @@ describe("widget - AboutDialog", () => {
 
             await renderUnwrapped(<App show={true} />);
 
-            const handle = ref.current?.handle;
+            const handle = ref.current;
             expect(handle).toBeDefined();
 
             await renderUnwrapped(<App show={false} />);

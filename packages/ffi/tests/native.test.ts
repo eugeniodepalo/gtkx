@@ -4,6 +4,7 @@ import type { GType } from "../src/generated/gobject/gobject.js";
 import { typeFromName } from "../src/generated/gobject/gobject.js";
 import * as Gtk from "../src/generated/gtk/gtk.js";
 import { getNativeInterface, instanceIsA, NativeError } from "../src/index.js";
+import { getHandle } from "../src/object.js";
 
 const orientableGType = (): GType => typeFromName("GtkOrientable");
 
@@ -75,19 +76,19 @@ describe("instanceIsA", () => {
         const box = new Gtk.Box();
         const widgetGtype = typeFromName("GtkWidget");
 
-        expect(instanceIsA(box.handle, widgetGtype)).toBe(true);
+        expect(instanceIsA(getHandle(box), widgetGtype)).toBe(true);
     });
 
     it("returns true when the instance implements an interface GType", () => {
         const box = new Gtk.Box();
 
-        expect(instanceIsA(box.handle, orientableGType())).toBe(true);
+        expect(instanceIsA(getHandle(box), orientableGType())).toBe(true);
     });
 
     it("returns false when the instance does not derive from the requested GType", () => {
         const label = new Gtk.Label({ label: "Test" });
 
-        expect(instanceIsA(label.handle, orientableGType())).toBe(false);
+        expect(instanceIsA(getHandle(label), orientableGType())).toBe(false);
     });
 });
 

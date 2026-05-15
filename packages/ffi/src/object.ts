@@ -25,8 +25,6 @@ const GVALUE_SIZE = 24;
  * without invoking the native allocator a second time.
  */
 export abstract class NativeObject {
-    handle!: NativeHandle;
-
     /**
      * Runtime GType of the underlying GObject or boxed instance.
      *
@@ -98,16 +96,12 @@ export function tryGetHandle(obj: object | null | undefined): NativeHandle | und
 }
 
 /**
- * Associates a native handle with `obj`. Also mirrors the value onto the
- * legacy `.handle` field on {@link NativeObject} instances so existing
- * consumers continue to work during the migration to the WeakMap-backed
- * accessor.
+ * Associates a native handle with `obj`.
  *
  * @internal Module-private setter used by construction and `wrapHandle`.
  */
 export function setHandle(obj: object, handle: NativeHandle): void {
     handleMap.set(obj, handle);
-    (obj as { handle?: NativeHandle }).handle = handle;
 }
 
 type InstanceRegistrar = (obj: NativeObject) => void;

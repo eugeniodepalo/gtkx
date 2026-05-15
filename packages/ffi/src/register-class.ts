@@ -1,5 +1,4 @@
 import {
-    type NativeHandle,
     registerClass as nativeRegisterClass,
     type RegisterClassNativeOptions,
     type RegisterClassPropertyDefinition,
@@ -7,7 +6,7 @@ import {
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
 import type { GType, ParamSpec } from "./generated/gobject/gobject.js";
-import { type NativeClass, NativeObject } from "./object.js";
+import { type NativeClass, NativeObject, tryGetHandle } from "./object.js";
 import { registerNativeClass } from "./registry.js";
 
 /**
@@ -220,7 +219,7 @@ function toNativeSignal(signal: RegisterClassSignal): RegisterClassSignalDefinit
 }
 
 function toNativeProperty(property: RegisterClassProperty): RegisterClassPropertyDefinition {
-    const handle = (property.pspec as { handle?: NativeHandle }).handle;
+    const handle = tryGetHandle(property.pspec);
     if (!handle) {
         throw new Error("registerClass: property pspec must be a NativeObject wrapping a GParamSpec");
     }
