@@ -4,7 +4,7 @@
  * Generates React/JSX bindings from widget metadata.
  *
  * Creates JSX intrinsic elements, internal implementations, and
- * component registry for `@gtkx/react`.
+ * compound components for `@gtkx/react`.
  */
 
 import { fileBuilder, stringify } from "../builders/index.js";
@@ -13,7 +13,6 @@ import type { GeneratedFile } from "../core/generated-file-set.js";
 import { CompoundsGenerator } from "./generators/compounds-generator.js";
 import { InternalGenerator } from "./generators/internal.js";
 import { JsxTypesGenerator } from "./generators/jsx-types/index.js";
-import { RegistryGenerator } from "./generators/registry.js";
 import { MetadataReader } from "./metadata-reader.js";
 
 export class ReactGenerator {
@@ -50,11 +49,6 @@ export class ReactGenerator {
         const compoundsFile = fileBuilder();
         compoundsGenerator.generate(compoundsFile);
         files.push({ path: "compounds.ts", content: stringify(compoundsFile) });
-
-        const registryFile = fileBuilder();
-        const registryGenerator = new RegistryGenerator(this.namespaceNames);
-        registryGenerator.generate(registryFile);
-        files.push({ path: "registry.ts", content: stringify(registryFile) });
 
         return files;
     }

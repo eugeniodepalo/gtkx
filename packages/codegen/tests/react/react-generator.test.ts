@@ -3,12 +3,12 @@ import { ReactGenerator } from "../../src/react/react-generator.js";
 import { createButtonMeta, createWidgetMeta } from "../fixtures/metadata-fixtures.js";
 
 describe("ReactGenerator", () => {
-    it("emits the four expected files in the conventional order", () => {
+    it("emits the three expected files in the conventional order", () => {
         const generator = new ReactGenerator([createWidgetMeta(), createButtonMeta()], [], ["Gtk"]);
         const files = generator.generate();
 
         const paths = files.map((f) => f.path);
-        expect(paths).toEqual(["internal.ts", "jsx.ts", "compounds.ts", "registry.ts"]);
+        expect(paths).toEqual(["internal.ts", "jsx.ts", "compounds.ts"]);
     });
 
     it("produces a string content field for every emitted file", () => {
@@ -20,23 +20,14 @@ describe("ReactGenerator", () => {
         }
     });
 
-    it("produces non-empty internal, jsx, and registry outputs", () => {
+    it("produces non-empty internal and jsx outputs", () => {
         const generator = new ReactGenerator([createWidgetMeta(), createButtonMeta()], [], ["Gtk"]);
         const files = generator.generate();
 
-        for (const path of ["internal.ts", "jsx.ts", "registry.ts"]) {
+        for (const path of ["internal.ts", "jsx.ts"]) {
             const file = files.find((f) => f.path === path);
             expect(file?.content.length ?? 0).toBeGreaterThan(0);
         }
-    });
-
-    it("includes namespace names in the generated registry output", () => {
-        const generator = new ReactGenerator([createWidgetMeta()], [], ["Gtk", "Adw"]);
-        const files = generator.generate();
-
-        const registry = files.find((f) => f.path === "registry.ts");
-        expect(registry).toBeDefined();
-        expect(registry?.content).toContain("Gtk");
     });
 
     it("works with an empty controllers list", () => {

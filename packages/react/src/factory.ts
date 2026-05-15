@@ -1,17 +1,18 @@
-import { NAMESPACE_REGISTRY } from "./generated/registry.js";
 import type { Node } from "./node.js";
+import { resolveNativeClass } from "./nodes/internal/construct.js";
 import { NODE_REGISTRY, type NodeClass } from "./registry.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
-export const resolveContainerClass = (type: string): ContainerClass | null => {
-    for (const [prefix, namespace] of NAMESPACE_REGISTRY) {
-        if (type.startsWith(prefix)) {
-            const className = type.slice(prefix.length);
-            return namespace[className] as ContainerClass;
-        }
-    }
-    return null;
-};
+/**
+ * Resolves the FFI widget class backing a JSX intrinsic element name.
+ *
+ * Returns `null` for virtual reconciler elements such as `"Slot"` or
+ * `"TextTag"` that have no backing GLib type.
+ *
+ * @param type - JSX intrinsic element name, e.g. `"GtkButton"`
+ */
+export const resolveContainerClass = (type: string): ContainerClass | null =>
+    resolveNativeClass(type) as ContainerClass | null;
 
 // biome-ignore lint/suspicious/noExplicitAny: Required for instanceof checks against GTK class hierarchy
 type ClassKey = abstract new (...args: any[]) => any;
