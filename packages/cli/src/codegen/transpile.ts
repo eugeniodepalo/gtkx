@@ -6,8 +6,8 @@ import ts from "typescript";
 export type TranspiledFile = {
     /** Stripped-types JavaScript output. */
     js: string;
-    /** Generated TypeScript declaration output. */
-    dts: string;
+    /** Generated TypeScript declaration output, when declarations were requested. */
+    dts?: string;
 };
 
 const COMPILER_OPTIONS: ts.CompilerOptions = {
@@ -39,15 +39,20 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
  *
  * @param fileName - Source filename, used by TS for path resolution in the output
  * @param source - The TypeScript source code
- * @returns Object with `.js` and `.d.ts` content as strings
+ * @param emitDeclarations - When `false`, only the `.js` output is produced
+ * @returns Object with `.js` content and, when requested, `.d.ts` content
  * @throws If `ts.transpileDeclaration` reports any error-category diagnostic
  */
-const transpileFile = (fileName: string, source: string): TranspiledFile => {
+const transpileFile = (fileName: string, source: string, emitDeclarations: boolean): TranspiledFile => {
     const jsResult = ts.transpileModule(source, {
         compilerOptions: COMPILER_OPTIONS,
         fileName,
         reportDiagnostics: false,
     });
+
+    if (!emitDeclarations) {
+        return { js: jsResult.outputText };
+    }
 
     const dtsResult = ts.transpileDeclaration(source, {
         compilerOptions: COMPILER_OPTIONS,
@@ -71,15 +76,23 @@ const transpileFile = (fileName: string, source: string): TranspiledFile => {
 };
 
 /**
- * Maps a `.ts` codegen output set to a `.js` + `.d.ts` output set.
+ * Maps a `.ts` codegen output set to a `.js` (and optionally `.d.ts`) output set.
  *
- * Each `*.ts` input produces a `*.js` and a `*.d.ts` entry. Non-`.ts`
- * inputs (if any) are passed through unchanged.
+ * Each `*.ts` input produces a `*.js` entry, plus a `*.d.ts` entry when
+ * `emitDeclarations` is true. Non-`.ts` inputs (if any) are passed through
+ * unchanged. The FFI declarations are produced by ts-for-gir instead, so the
+ * FFI set is transpiled with `emitDeclarations: false`.
  *
  * @param tsFiles - Map of relative paths to TypeScript source content
+ * @param options - When `emitDeclarations` is `false`, only `.js` is emitted
+ *     (defaults to `true`)
  * @returns Map of relative paths to transpiled file content
  */
-export const transpileCodegenFiles = (tsFiles: Map<string, string>): Map<string, string> => {
+export const transpileCodegenFiles = (
+    tsFiles: Map<string, string>,
+    options: { emitDeclarations?: boolean } = {},
+): Map<string, string> => {
+    const emitDeclarations = options.emitDeclarations ?? true;
     const result = new Map<string, string>();
 
     for (const [filePath, source] of tsFiles) {
@@ -88,10 +101,12 @@ export const transpileCodegenFiles = (tsFiles: Map<string, string>): Map<string,
             continue;
         }
 
-        const { js, dts } = transpileFile(filePath, source);
+        const { js, dts } = transpileFile(filePath, source, emitDeclarations);
         const stem = filePath.slice(0, -".ts".length);
         result.set(`${stem}.js`, js);
-        result.set(`${stem}.d.ts`, dts);
+        if (dts !== undefined) {
+            result.set(`${stem}.d.ts`, dts);
+        }
     }
 
     return result;
