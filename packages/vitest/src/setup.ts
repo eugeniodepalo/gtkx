@@ -1,5 +1,5 @@
-import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { type ChildProcess, spawn } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll } from "vitest";
@@ -7,11 +7,22 @@ import { beforeAll } from "vitest";
 const display = 100 + (process.pid % 5000);
 const socketPath = `/tmp/.X11-unix/X${display}`;
 
-const xvfb = spawn("Xvfb", [`:${display}`, "-screen", "0", "1024x768x24"], {
-    stdio: "ignore",
-});
+/**
+ * Spawns a long-lived helper process whose lifetime is bound to this worker.
+ *
+ * `setpriv --pdeathsig SIGKILL` makes the kernel kill the helper the instant
+ * the worker process dies — by any signal, including a `SIGSEGV` from a native
+ * crash or a `SIGKILL` from the OOM killer — paths that `process.on` exit and
+ * signal handlers cannot cover. Without it a crashed worker orphans its `Xvfb`
+ * and `dbus-daemon`, leaking one of each per crash.
+ */
+const spawnWorkerChild = (command: string, args: string[]): ChildProcess => {
+    const child = spawn("setpriv", ["--pdeathsig", "SIGKILL", command, ...args], { stdio: "ignore" });
+    child.unref();
+    return child;
+};
 
-xvfb.unref();
+const xvfb = spawnWorkerChild("Xvfb", [`:${display}`, "-screen", "0", "1024x768x24"]);
 
 const busDir = mkdtempSync(join(tmpdir(), "gtkx-dbus-"));
 const busConfigPath = join(busDir, "session.conf");
@@ -32,11 +43,7 @@ writeFileSync(
 </busconfig>`,
 );
 
-const dbus = spawn("dbus-daemon", [`--config-file=${busConfigPath}`], {
-    stdio: "ignore",
-});
-
-dbus.unref();
+const dbus = spawnWorkerChild("dbus-daemon", [`--config-file=${busConfigPath}`]);
 
 process.env.DBUS_SESSION_BUS_ADDRESS = `unix:path=${busSocketPath}`;
 process.env.DISPLAY = `:${display}`;
@@ -57,6 +64,9 @@ const killChildren = (): void => {
             process.kill(dbus.pid, "SIGTERM");
         } catch {}
     }
+    try {
+        rmSync(busDir, { recursive: true, force: true });
+    } catch {}
 };
 
 process.on("exit", killChildren);
