@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GenerationHandler } from "@ts-for-gir/cli";
 import { GeneratorType } from "@ts-for-gir/generator-base";
+import { isClassVtable } from "../../core/utils/record-filter.js";
 import type { GirRepository, LoadedGir } from "../../gir/index.js";
-import { type EnumValueMap, loadAndRewrite } from "./rewrite.js";
+import { type EnumValueMap, type GtypeStructMap, loadAndRewrite } from "./rewrite.js";
 
 /**
  * Builds the real enum member values for every namespace from the loaded GIR
@@ -39,6 +40,30 @@ const collectEnumValues = (repository: GirRepository): EnumValueMap => {
 };
 
 /**
+ * Collects every gtype-struct (class/interface vtable) record name per
+ * namespace from the loaded GIR repository, keyed as {@link GtypeStructMap}
+ * expects.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Gtype-struct record names keyed lowercase namespace identifier.
+ */
+const collectGtypeStructNames = (repository: GirRepository): GtypeStructMap => {
+    const namespaces = new Map<string, Set<string>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const names = new Set<string>();
+        for (const record of namespace.records.values()) {
+            if (isClassVtable(record)) {
+                names.add(record.name);
+            }
+        }
+        namespaces.set(namespaceName.toLowerCase(), names);
+    }
+    return namespaces;
+};
+
+/**
  * Generates the per-namespace `.d.ts` type bindings from already-loaded GIR
  * modules and writes them under `outDir`.
  *
@@ -65,7 +90,11 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             rawFilesByName.set(filename, contents);
         }
 
-        const rewritten = loadAndRewrite(rawFilesByName, collectEnumValues(loaded.repository));
+        const rewritten = loadAndRewrite(
+            rawFilesByName,
+            collectEnumValues(loaded.repository),
+            collectGtypeStructNames(loaded.repository),
+        );
 
         await mkdir(outDir, { recursive: true });
         const namespacesWritten: string[] = [];

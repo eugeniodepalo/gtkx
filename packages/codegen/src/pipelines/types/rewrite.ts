@@ -413,6 +413,51 @@ const parseNumericLiteral = (text: string): number | null => {
     return Number.isFinite(value) ? value : null;
 };
 
+const GTYPE_STRUCT_CLASS_PATTERN = /(^|\n)([ \t]*)export[ \t]+abstract[ \t]+class[ \t]+(\w+)\b[^{]*\{/g;
+
+/**
+ * Removes the `export abstract class <name> { ... }` value declaration that
+ * ts-for-gir emits for each gtype-struct (a class or interface vtable record).
+ *
+ * node-gtk's runtime never exposes gtype-structs as namespace members, so the
+ * value declaration would make the contract demand a runtime export that does
+ * not — and should not — exist. The companion `export interface <name>` is
+ * left in place so type references elsewhere in the declarations resolve.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param gtypeStructNames - Gtype-struct record names for the namespace.
+ * @returns The source with gtype-struct class declarations removed.
+ */
+export function stripGtypeStructClasses(source: string, gtypeStructNames?: ReadonlySet<string>): string {
+    if (gtypeStructNames === undefined || gtypeStructNames.size === 0) return source;
+
+    const matches: Array<{ start: number; end: number }> = [];
+    GTYPE_STRUCT_CLASS_PATTERN.lastIndex = 0;
+    for (;;) {
+        const result = GTYPE_STRUCT_CLASS_PATTERN.exec(source);
+        if (result === null) break;
+        const name = result[3];
+        if (name === undefined || !gtypeStructNames.has(name)) continue;
+        const bodyEnd = findMatchingBrace(source, result.index + result[0].length);
+        if (bodyEnd < 0) continue;
+        const start = result.index + (result[1] ?? "").length;
+        let end = bodyEnd + 1;
+        if (source[end] === "\n") end += 1;
+        matches.push({ start, end });
+    }
+
+    if (matches.length === 0) return source;
+
+    const parts: string[] = [];
+    let cursor = 0;
+    for (const { start, end } of matches) {
+        parts.push(source.slice(cursor, start));
+        cursor = end;
+    }
+    parts.push(source.slice(cursor));
+    return parts.join("");
+}
+
 /**
  * Real enum member values for one namespace, keyed enum name then member name.
  */
@@ -423,6 +468,12 @@ export type NamespaceEnumValues = ReadonlyMap<string, ReadonlyMap<string, number
  * identifier (e.g. `"gtk"`, `"cairo"`).
  */
 export type EnumValueMap = ReadonlyMap<string, NamespaceEnumValues>;
+
+/**
+ * Gtype-struct record names for every namespace, keyed lowercase namespace
+ * identifier.
+ */
+export type GtypeStructMap = ReadonlyMap<string, ReadonlySet<string>>;
 
 /**
  * Result of running every rewrite over a single ts-for-gir output file.
@@ -443,14 +494,21 @@ export type RewriteResult = {
  * @param enumValues - Real enum member values used to keep rewritten enum
  *     const-objects accurate; namespaces absent from the map fall back to
  *     ts-for-gir initializers and ordinals.
+ * @param gtypeStructNames - Gtype-struct record names whose `export abstract
+ *     class` value declarations are stripped to match node-gtk's runtime.
  */
-export function loadAndRewrite(rawFilesByName: Map<string, string>, enumValues?: EnumValueMap): RewriteResult[] {
+export function loadAndRewrite(
+    rawFilesByName: Map<string, string>,
+    enumValues?: EnumValueMap,
+    gtypeStructNames?: GtypeStructMap,
+): RewriteResult[] {
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
         const namespace = namespaceFromRawFilename(filename);
         if (!namespace) continue;
         let source = unwrapOuterNamespace(contents);
         source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace));
+        source = stripGtypeStructClasses(source, gtypeStructNames?.get(namespace));
         source = rewriteNamespaceDeclarations(source);
         source = rewriteDefaultImportsToNamespace(source);
         source = rewriteModuleKeywordToNamespace(source);
