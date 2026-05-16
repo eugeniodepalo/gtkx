@@ -479,6 +479,26 @@ export function stripPositionalConstructors(source: string): string {
     return stripTaggedMembers(source, "constructor", (memberLine) => memberLine.startsWith("constructor"));
 }
 
+const POSITIONAL_CONSTRUCTOR_LINE = /(^|\n)([ \t]*)constructor\((?!\s*\)|\s*config\?:)[^\n]*\n/g;
+
+/**
+ * Removes the untagged positional `constructor(...)` overloads ts-for-gir
+ * emits for GIR `<interface>` declarations carrying a `<constructor>`.
+ *
+ * ts-for-gir renders such an interface as a `class` with two constructor
+ * overloads: the GObject `constructor(config?: ConstructorProperties)` form
+ * and a positional one mirroring the GIR constructor. The gtkx runtime only
+ * provides the props-object constructor plus `static` factories, matching
+ * node-gtk; the positional overload — emitted without the `@constructor`
+ * JSDoc tag {@link stripPositionalConstructors} keys on — is removed here.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with untagged positional constructor overloads removed.
+ */
+export function stripUntaggedPositionalConstructors(source: string): string {
+    return source.replace(POSITIONAL_CONSTRUCTOR_LINE, "$1");
+}
+
 /**
  * Removes the named instance-method declarations from a class or interface
  * body when the generated runtime omits them because a hand-written override
@@ -855,6 +875,7 @@ export function loadAndRewrite(
         source = stripAnonymousCompositeClasses(source);
         source = stripClassFields(source, classFieldNames?.get(namespace));
         source = stripPositionalConstructors(source);
+        source = stripUntaggedPositionalConstructors(source);
         source = stripSuppressedMethods(source, SUPPRESSED_METHOD_NAMES_BY_NAMESPACE.get(namespace));
         source = stripSuppressedMethods(source, signalActionMethodNames?.get(namespace));
         source = relaxMultiReturnTuples(source);
