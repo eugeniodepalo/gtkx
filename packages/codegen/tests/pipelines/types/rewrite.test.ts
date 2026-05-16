@@ -4,6 +4,7 @@ import {
     type NamespaceAsyncMembers,
     rewriteAsyncSignatures,
     rewriteEnumsToConstObjects,
+    rewriteGTypeDeclaration,
     rewriteModuleKeywordToNamespace,
     unwrapOuterNamespace,
 } from "../../../src/pipelines/types/rewrite.js";
@@ -121,6 +122,30 @@ describe("rewriteModuleKeywordToNamespace", () => {
     it("does not touch declare module declarations or import statements", () => {
         const input = ["import './x.js';", "declare module 'pkg' {", "}"].join("\n");
         expect(rewriteModuleKeywordToNamespace(input)).toBe(input);
+    });
+});
+
+describe("rewriteGTypeDeclaration", () => {
+    it("rewrites the phantom-object GType alias to a branded number", () => {
+        const input = [
+            "export type GType<T = unknown> = {",
+            "    __type__(arg: never): T",
+            "    name: string",
+            "};",
+        ].join("\n");
+
+        expect(rewriteGTypeDeclaration(input)).toBe(
+            "export type GType<T = unknown> = number & { readonly __gtype__?: T };",
+        );
+    });
+
+    it("retypes the TYPE_INVALID bigint literal to GType", () => {
+        expect(rewriteGTypeDeclaration("export let TYPE_INVALID   : 0n")).toBe("export let TYPE_INVALID   : GType");
+    });
+
+    it("leaves sources without the GType declaration untouched", () => {
+        const before = "export type TClosure<R = any, P = any> = (...args: P[]) => R;";
+        expect(rewriteGTypeDeclaration(before)).toBe(before);
     });
 });
 

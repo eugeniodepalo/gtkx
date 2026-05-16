@@ -747,6 +747,33 @@ export function relaxGtypeConstants(source: string): string {
     return source.replace(GTYPE_CONSTANT_PATTERN, "$1number$2");
 }
 
+const GTYPE_OBJECT_ALIAS_PATTERN =
+    /export type GType<T = unknown> = \{\s*__type__\(arg: never\): T\s*name: string\s*\};/;
+const TYPE_INVALID_DECLARATION_PATTERN = /export let TYPE_INVALID(\s*): 0n/;
+
+/**
+ * Rewrites the `GType` type alias from the ts-for-gir phantom-object shape
+ * to a branded number — `number & { readonly __gtype__?: T }`.
+ *
+ * ts-for-gir declares `GType` as an object type carrying a phantom `__type__`
+ * method, but a GType is a plain numeric `gsize` at runtime. The branded form
+ * keeps the phantom `<T>` payload the typed `typeFromName` overloads depend on
+ * while making a runtime `number` directly assignable to a `GType` slot — and
+ * a `GType` usable as an arithmetic operand, `Map` key, or `=== 0` operand.
+ *
+ * The companion `TYPE_INVALID` declaration is retyped from the `0n` bigint
+ * literal to `GType` so the typed `typeFromName("void")` overload yields a
+ * `GType` consistent with the numeric runtime value.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with the `GType` alias rewritten to a branded number.
+ */
+export function rewriteGTypeDeclaration(source: string): string {
+    return source
+        .replace(GTYPE_OBJECT_ALIAS_PATTERN, "export type GType<T = unknown> = number & { readonly __gtype__?: T };")
+        .replace(TYPE_INVALID_DECLARATION_PATTERN, "export let TYPE_INVALID$1: GType");
+}
+
 const MULTI_RETURN_TUPLE_PATTERN = /:\s*\[ \/\* [A-Za-z_$][\w$]* \*\//g;
 
 const findMatchingBracket = (source: string, from: number): number => {
@@ -1093,7 +1120,7 @@ const renameMethodOverload = (body: string, rename: MethodShadowRename): string 
         const params = body.slice(parenStart + 1, parenEnd);
         const arity = params.trim().length === 0 ? 0 : splitParameterList(params).length;
         if (arity !== rename.arity) continue;
-        return body.slice(0, match.index) + `${match[1]}${rename.renamed}(` + body.slice(match.index + match[0].length);
+        return `${body.slice(0, match.index)}${match[1]}${rename.renamed}(${body.slice(match.index + match[0].length)}`;
     }
 };
 
@@ -1423,6 +1450,7 @@ export function loadAndRewrite(
         source = honorConflictSignatures(source);
         source = renameShadowedMethods(source, methodShadowRenames?.get(namespace));
         source = relaxGtypeConstants(source);
+        source = rewriteGTypeDeclaration(source);
         source = relaxNumericConstants(source, numericConstantNames?.get(namespace)?.get(""));
         source = stripEventEmitterSignalOverloads(source);
         source = rewriteAsyncSignatures(source, asyncMembers?.get(namespace));
