@@ -551,12 +551,12 @@ describe("FfiGenerator.generateNamespace", () => {
 });
 
 describe("FfiGenerator async wrappers", () => {
-    const asyncCallbackParameter = () =>
+    const asyncCallbackParameter = (closure = 2) =>
         createNormalizedParameter({
             name: "callback",
             type: createNormalizedType({ name: "Gio.AsyncReadyCallback", nullable: true }),
             scope: "async",
-            closure: 2,
+            closure,
             nullable: true,
         });
 
@@ -612,7 +612,7 @@ describe("FfiGenerator async wrappers", () => {
         });
     };
 
-    it("emits a Promise-returning wrapper for an async method", () => {
+    it("emits a promisify-delegating wrapper for an async method", () => {
         const repo = createMockRepository(baseNamespaces({ Gio: buildGioNamespace("InputStream") }));
 
         const { files } = new FfiGenerator({
@@ -624,10 +624,11 @@ describe("FfiGenerator async wrappers", () => {
         const content = file?.content ?? "";
 
         expect(content).toContain("readAsync(ioPriority) {");
-        expect(content).toContain("return new Promise((resolve, reject) =>");
-        expect(content).toContain("resolve(this.readFinish(");
-        expect(content).toContain("reject(asyncError)");
-        expect(content).toContain("g_input_stream_read_async(");
+        expect(content).toContain(
+            "return promisify(g_input_stream_read_async, this.readFinish.bind(this), undefined, [getHandle(this), ioPriority]);",
+        );
+        expect(content).toMatch(/import \{[^}]*\bpromisify\b[^}]*\} from "\.\.\/\.\.\/runtime\.js";/);
+        expect(content).not.toContain("new Promise");
         expect(content).not.toMatch(/readAsync\([^)]*callback[^)]*\)/);
     });
 
@@ -642,5 +643,87 @@ describe("FfiGenerator async wrappers", () => {
         const content = namespaceFile(files, "gio")?.content ?? "";
         expect(content).toContain("readFinish(res) {");
         expect(content).toContain("g_input_stream_read_finish(");
+    });
+
+    const buildCancellableGioNamespace = (): GirNamespace => {
+        const classType = () => createNormalizedType({ name: "Gio.InputStream" });
+        const asyncReadyCallback = createNormalizedCallback({
+            name: "AsyncReadyCallback",
+            qualifiedName: "Gio.AsyncReadyCallback",
+            parameters: [
+                createNormalizedParameter({
+                    name: "source_object",
+                    type: createNormalizedType({ name: "Gio.InputStream", nullable: true }),
+                    nullable: true,
+                }),
+                createNormalizedParameter({ name: "res", type: classType() }),
+            ],
+        });
+        const cancellable = createNormalizedClass({
+            name: "Cancellable",
+            qualifiedName: "Gio.Cancellable",
+            parent: null,
+            methods: [],
+        });
+        const cls = createNormalizedClass({
+            name: "InputStream",
+            qualifiedName: "Gio.InputStream",
+            parent: null,
+            methods: [
+                createNormalizedMethod({
+                    name: "read_async",
+                    cIdentifier: "g_input_stream_read_async",
+                    finishFunc: "read_finish",
+                    returnType: createNormalizedType({ name: "none" }),
+                    parameters: [
+                        createNormalizedParameter({
+                            name: "io_priority",
+                            type: createNormalizedType({ name: "gint" }),
+                        }),
+                        createNormalizedParameter({
+                            name: "cancellable",
+                            type: createNormalizedType({ name: "Gio.Cancellable", nullable: true }),
+                            nullable: true,
+                        }),
+                        asyncCallbackParameter(3),
+                        createNormalizedParameter({
+                            name: "user_data",
+                            type: createNormalizedType({ name: "gpointer" }),
+                        }),
+                    ],
+                }),
+                createNormalizedMethod({
+                    name: "read_finish",
+                    cIdentifier: "g_input_stream_read_finish",
+                    returnType: createNormalizedType({ name: "gboolean" }),
+                    parameters: [createNormalizedParameter({ name: "res", type: classType() })],
+                }),
+            ],
+        });
+        return createNormalizedNamespace({
+            name: "Gio",
+            sharedLibrary: "libgio-2.0.so.0",
+            classes: new Map([
+                [cls.name, cls],
+                [cancellable.name, cancellable],
+            ]),
+            callbacks: new Map([[asyncReadyCallback.name, asyncReadyCallback]]),
+        });
+    };
+
+    it("passes the cancellable as its own promisify argument", () => {
+        const repo = createMockRepository(baseNamespaces({ Gio: buildCancellableGioNamespace() }));
+
+        const { files } = new FfiGenerator({
+            repository: repo as unknown as GirRepository,
+            namespace: "Gio",
+        }).generateNamespace("Gio");
+
+        const content = namespaceFile(files, "gio")?.content ?? "";
+
+        expect(content).toContain("readAsync(ioPriority, cancellable) {");
+        expect(content).toContain(
+            "return promisify(g_input_stream_read_async, this.readFinish.bind(this), cancellable, [getHandle(this), ioPriority]);",
+        );
     });
 });

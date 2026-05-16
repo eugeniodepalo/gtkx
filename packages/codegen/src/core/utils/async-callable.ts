@@ -65,6 +65,25 @@ export const resolveFinishCallableName = (callable: AsyncCapableCallable): strin
 };
 
 /**
+ * Simple-name suffix of the GIR `Gio.Cancellable` type. A cancellable
+ * parameter is typed either by this bare name (a Gio-local callable) or by
+ * its `Gio.`-qualified form (a callable in any other namespace).
+ */
+const CANCELLABLE = "Cancellable";
+
+/**
+ * Returns the `GCancellable`-typed parameter of an async callable, or `null`
+ * when the callable accepts no cancellable.
+ *
+ * GIO async operations conventionally accept a `GCancellable*` slot ahead of
+ * the trailing callbacks, but a handful do not; callers must tolerate its
+ * absence.
+ */
+export const findCancellableParameter = (callable: AsyncCapableCallable): GirParameter | null => {
+    return callable.parameters.find((p) => p.type.name === CANCELLABLE || p.type.name === `Gio.${CANCELLABLE}`) ?? null;
+};
+
+/**
  * An async callable paired with its resolved companion `*_finish` callable.
  *
  * @typeParam C - The async callable kind (method or function).

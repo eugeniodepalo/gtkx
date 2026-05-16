@@ -10,7 +10,7 @@
 
 import type { Writer } from "../../builders/writer.js";
 import type { FfiTypeDescriptor, MappedType } from "../type-system/ffi-types.js";
-import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
+import type { DescriptorBinding, FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { writeFfiTypeExpression } from "./ffi-type-expression.js";
 
 /**
@@ -120,6 +120,27 @@ export class CallExpressionBuilder {
 
         this.imports?.addImport("../../native.js", ["call", "t"]);
         return this.inlineWriter(options);
+    }
+
+    /**
+     * Registers the FFI descriptor for `options` and returns its hoisted
+     * binding, without emitting a call site.
+     *
+     * Async-wrapper generation needs the curried binding identifier of the
+     * native `*_async` start callable to hand to the `promisify` runtime
+     * helper, rather than an inline call expression. Returns `{ varargs: true }`
+     * for variadic callables (which cannot be hoisted) and `null` when no
+     * descriptor registry is available.
+     *
+     * @param options - Call expression options identifying the descriptor.
+     * @returns The descriptor binding, or `null` when curring is unavailable.
+     */
+    registerBinding(options: CallExpressionOptions): DescriptorBinding | null {
+        const binding = this.registry?.register(options);
+        if (binding?.varargs === false) {
+            this.imports?.addImport("../../native.js", ["t"]);
+        }
+        return binding ?? null;
     }
 
     private curriedWriter(options: CallExpressionOptions, bindingName: string): (writer: Writer) => void {

@@ -16,7 +16,7 @@ import {
     type SelfTypeDescriptor,
     type TypeImport,
 } from "../type-system/ffi-types.js";
-import type { AsyncCapableCallable } from "../utils/async-callable.js";
+import { type AsyncCapableCallable, findCancellableParameter } from "../utils/async-callable.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { hasVarargs, isVararg } from "../utils/filtering.js";
 import { createWrappedName, toCamelCase, toKebabCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
@@ -37,12 +37,7 @@ import {
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { writeFfiTypeExpression } from "./ffi-type-expression.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
-import {
-    buildCallbackWrapperExpression,
-    needsParamWrap,
-    needsReturnUnwrap,
-    writeWrapExpression,
-} from "./param-wrap-writer.js";
+import { buildCallbackWrapperExpression, needsParamWrap, needsReturnUnwrap } from "./param-wrap-writer.js";
 
 /**
  * Collects imports during method body generation.
@@ -713,88 +708,98 @@ export class MethodBodyWriter {
         options: AsyncCallableStructureOptions,
         callbackJsName: string,
     ): (writer: Writer) => void {
-        this.imports.addTypeImport("../../handles.js", ["NativeHandle"]);
+        this.imports.addImport("../../runtime.js", ["promisify"]);
         if (shape.hiddenOuts.length > 0) {
             this.imports.addImport("@gtkx/native", ["createRef"]);
         }
 
-        const callArguments = this.buildShapeCallArguments(shape, options.asyncCallable.parameters);
-        const readyCallbackName = "onAsyncReady";
-        shape.callArgs.forEach((shapeArg, index) => {
-            if (shapeArg.sourceParamIndex === null) return;
-            const mapping = shape.paramMappings.find((m) => m.girIndex === shapeArg.sourceParamIndex);
-            if (mapping?.jsName !== callbackJsName) return;
-            const callArg = callArguments[index];
-            if (callArg) {
-                callArg.value = readyCallbackName;
-                callArg.callbackWrapper = undefined;
-            }
-        });
-
-        const finishCallExpression = this.buildFinishCallExpression(options);
-        const sourceObjectName = "_asyncSource";
-        const asyncResultRawName = "_asyncResultRaw";
+        const split = this.splitAsyncCallArguments(shape, options, callbackJsName);
+        const finishExpression = options.self
+            ? `this.${options.finishMemberName}.bind(this)`
+            : options.finishMemberName;
 
         return (writer) => {
-            writer.write("return new Promise((resolve, reject) => ");
-            writer.writeBlock(() => {
-                writer.write(`const ${readyCallbackName} = (${sourceObjectName}, ${asyncResultRawName}) => `);
-                writer.writeBlock(() => {
-                    writer.writeLine("try {");
-                    writer.withIndent(() => {
-                        writer.writeLine(`resolve(${finishCallExpression});`);
-                    });
-                    writer.writeLine("} catch (asyncError) {");
-                    writer.withIndent(() => {
-                        writer.writeLine("reject(asyncError);");
-                    });
-                    writer.write("}");
-                });
-                writer.writeLine(";");
-                for (const hidden of shape.hiddenOuts) {
-                    this.writeHiddenOutDeclaration(writer, hidden);
-                }
-                this.callExpression.toWriter({
-                    sharedLibrary: options.sharedLibrary,
-                    cIdentifier: options.asyncCallable.cIdentifier,
-                    args: callArguments,
-                    returnType: shape.returnTypeMapping.ffi,
-                    selfArg: options.self,
-                    hasVarargs: hasVarargs(options.asyncCallable.parameters),
-                })(writer);
-                writer.writeLine(";");
-            });
+            for (const hidden of shape.hiddenOuts) {
+                this.writeHiddenOutDeclaration(writer, hidden);
+            }
+            writer.write(
+                `return promisify(${split.asyncFnExpression}, ${finishExpression}, ${split.cancellableExpression}, ` +
+                    `[${split.leadingArgs.join(", ")}]`,
+            );
+            if (split.trailingArgs.length > 0) {
+                writer.write(`, [${split.trailingArgs.join(", ")}]`);
+            }
             writer.writeLine(");");
         };
     }
 
-    private buildFinishCallExpression(options: AsyncCallableStructureOptions): string {
-        const resultArg = this.buildAsyncResultArgument(options);
-        const target = options.self ? `this.${options.finishMemberName}` : options.finishMemberName;
-        return `${target}(${resultArg})`;
+    /**
+     * Splits the FFI call arguments of a GIO async callable into the inputs
+     * the {@link promisify} runtime helper expects: the native `*_async`
+     * binding, the leading arguments preceding the `GCancellable*` slot, the
+     * `cancellable` expression, and any trailing arguments between that slot
+     * and the dropped `GAsyncReadyCallback`.
+     */
+    private splitAsyncCallArguments(
+        shape: CallableShape,
+        options: AsyncCallableStructureOptions,
+        callbackJsName: string,
+    ): {
+        asyncFnExpression: string;
+        leadingArgs: string[];
+        cancellableExpression: string;
+        trailingArgs: string[];
+    } {
+        const callArguments = this.buildShapeCallArguments(shape, options.asyncCallable.parameters);
+        const filteredParams = this.filterParameters(options.asyncCallable.parameters);
+        const cancellableParam = findCancellableParameter(options.asyncCallable);
+        const cancellableGirIndex = cancellableParam ? filteredParams.indexOf(cancellableParam) : -1;
+        const callbackMapping = shape.paramMappings.find((m) => m.jsName === callbackJsName);
+        const callbackGirIndex = callbackMapping?.girIndex ?? -1;
+        const cancellableMapping =
+            cancellableGirIndex >= 0 ? shape.paramMappings.find((m) => m.girIndex === cancellableGirIndex) : undefined;
+
+        const leadingArgs: string[] = options.self ? [options.self.value] : [];
+        const trailingArgs: string[] = [];
+        shape.callArgs.forEach((shapeArg, index) => {
+            const sourceIndex = shapeArg.sourceParamIndex;
+            if (sourceIndex === callbackGirIndex || sourceIndex === cancellableGirIndex) return;
+            const value = callArguments[index]?.value;
+            if (value === undefined) return;
+            const afterCancellable =
+                cancellableGirIndex >= 0 && sourceIndex !== null && sourceIndex > cancellableGirIndex;
+            (afterCancellable ? trailingArgs : leadingArgs).push(value);
+        });
+
+        return {
+            asyncFnExpression: this.resolveAsyncFnExpression(shape, options),
+            leadingArgs,
+            cancellableExpression: cancellableMapping?.jsName ?? "undefined",
+            trailingArgs,
+        };
     }
 
     /**
-     * Builds the wrapped `GAsyncResult` argument passed to the `*_finish`
-     * member, turning the raw native handle delivered to the async callback
-     * into the wrapper instance the finish member expects.
+     * Resolves the JavaScript expression naming the native `*_async` start
+     * callable handed to {@link promisify}.
+     *
+     * A GIO async callable carries a `GAsyncReadyCallback` and a closure
+     * target rather than C varargs, so its descriptor always hoists to a
+     * curried `t.fn(...)` binding whose identifier is returned here.
      */
-    private buildAsyncResultArgument(options: AsyncCallableStructureOptions): string {
-        const rawName = "_asyncResultRaw";
-        const callbackParamMappings = this.ffiMapper.getCallbackParamMappings(options.callbackParameter);
-        const resultMapping = callbackParamMappings?.[1];
-        if (!resultMapping) {
-            return rawName;
+    private resolveAsyncFnExpression(shape: CallableShape, options: AsyncCallableStructureOptions): string {
+        const binding = this.callExpression.registerBinding({
+            sharedLibrary: options.sharedLibrary,
+            cIdentifier: options.asyncCallable.cIdentifier,
+            args: this.buildShapeCallArguments(shape, options.asyncCallable.parameters),
+            returnType: shape.returnTypeMapping.ffi,
+            selfArg: options.self,
+            hasVarargs: hasVarargs(options.asyncCallable.parameters),
+        });
+        if (binding === null || binding.varargs === true) {
+            throw new Error(`Async callable ${options.asyncCallable.cIdentifier} cannot be hoisted to an FFI binding`);
         }
-        const wrapInfo = needsParamWrap(resultMapping.mapped);
-        if (wrapInfo.needsWrap) {
-            this.imports.addImport(
-                "../../registry.js",
-                wrapInfo.isInterface ? ["getNativeObjectAsInterface"] : ["getNativeObject"],
-            );
-            this.addTypeImportsFromMapping(resultMapping.mapped);
-        }
-        return writeWrapExpression(rawName, wrapInfo);
+        return binding.name;
     }
 
     /**
