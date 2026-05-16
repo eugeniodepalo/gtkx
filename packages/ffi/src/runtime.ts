@@ -22,6 +22,7 @@
 // biome-ignore-all assist/source/organizeImports: re-export order is load-bearing for module init.
 
 export { createRef } from "@gtkx/native";
+export { promisify } from "./async.js";
 export type { BoxedFieldMeta, ConstructionMeta, GObjectPropMeta } from "./construction-meta.js";
 export { registerConstructionMeta } from "./construction-meta.js";
 export type { NativeClass, NativeHandle } from "./handles.js";
