@@ -461,26 +461,6 @@ const stripTaggedMembers = (source: string, tag: string, memberFilter?: (memberL
 };
 
 /**
- * Removes every GObject virtual-method (`<virtual-method>`) declaration that
- * ts-for-gir emits into class and interface bodies.
- *
- * ts-for-gir marks each vfunc member with an `@virtual` JSDoc tag and emits it
- * as an ordinary class member (`constructed()`, `dispatchPropertiesChanged()`,
- * `getAccessibleId()`, …). node-gtk's runtime enumerates only
- * `object_info_get_method` / `interface_info_get_method`, never
- * `object_info_get_vfunc`, so it never exposes vfuncs as callable members. The
- * gtkx runtime matches that surface. Stripping the `@virtual`-tagged JSDoc
- * block together with the member line that immediately follows it keeps the
- * contract aligned with what the runtime provides.
- *
- * @param source - The `.d.ts` source to rewrite.
- * @returns The source with virtual-method declarations removed.
- */
-export function stripVirtualMethods(source: string): string {
-    return stripTaggedMembers(source, "virtual");
-}
-
-/**
  * Removes the positional `constructor(...)` overloads that ts-for-gir emits
  * for every GIR `<constructor>`, marked with a `@constructor` JSDoc tag.
  *
@@ -534,10 +514,17 @@ export function stripSuppressedMethods(
     return result;
 }
 
+/**
+ * Regex fragment matching an optional JSDoc block immediately preceding a
+ * member. The inner `(?!\*\/)` guard keeps the lazy body from spanning past
+ * the block's own `*\/` into later declarations.
+ */
+const OPTIONAL_LEADING_JSDOC = "(?:\\/\\*\\*(?:(?!\\*\\/)[\\s\\S])*?\\*\\/[ \\t\\n]*)?";
+
 const stripMethodsFromBody = (body: string, methodNames: ReadonlySet<string>): string => {
     let result = body;
     for (const name of methodNames) {
-        const memberLine = new RegExp(`(^|\\n)([ \\t]*)(?:\\/\\*\\*[\\s\\S]*?\\*\\/[ \\t\\n]*)?${name}[<(][^\\n]*`);
+        const memberLine = new RegExp(`(^|\\n)([ \\t]*)${OPTIONAL_LEADING_JSDOC}${name}[<(][^\\n]*`);
         const match = result.match(memberLine);
         if (match === null || match.index === undefined) continue;
         const start = match.index + (match[1] ?? "").length;
@@ -598,9 +585,7 @@ export function stripClassFields(source: string, fieldNamesByOwner?: NamespaceFi
 const stripFieldsFromBody = (body: string, fieldNames: ReadonlySet<string>): string => {
     let result = body;
     for (const name of fieldNames) {
-        const memberLine = new RegExp(
-            `(^|\\n)([ \\t]*)(?:\\/\\*\\*[\\s\\S]*?\\*\\/[ \\t\\n]*)?${name}(\\?)?:[ \\t][^\\n]*`,
-        );
+        const memberLine = new RegExp(`(^|\\n)([ \\t]*)${OPTIONAL_LEADING_JSDOC}${name}(\\?)?:[ \\t][^\\n]*`);
         const match = result.match(memberLine);
         if (match === null || match.index === undefined) continue;
         const start = match.index + (match[1] ?? "").length;
@@ -805,7 +790,6 @@ export function loadAndRewrite(
         source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace));
         source = stripGtypeStructClasses(source, gtypeStructNames?.get(namespace));
         source = stripClassFields(source, classFieldNames?.get(namespace));
-        source = stripVirtualMethods(source);
         source = stripPositionalConstructors(source);
         source = stripSuppressedMethods(source, SUPPRESSED_METHOD_NAMES_BY_NAMESPACE.get(namespace));
         source = stripSuppressedMethods(source, signalActionMethodNames?.get(namespace));
