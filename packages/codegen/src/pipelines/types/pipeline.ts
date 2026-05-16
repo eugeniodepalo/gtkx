@@ -102,18 +102,66 @@ const collectByOwner = (
 };
 
 /**
- * Collects the camelCased instance-struct field names of every class and
- * interface per namespace.
+ * Collects the camelCased instance-struct field names that ts-for-gir emits
+ * into each class and interface body.
  *
- * The type pipeline uses these to strip the field declarations ts-for-gir
- * emits into GObject class and interface bodies, which node-gtk's runtime
- * never exposes.
+ * A class body carries only its own `<field>` elements; ancestors are reached
+ * through `extends`. An interface body is flattened by ts-for-gir, so it also
+ * carries every field of its transitive prerequisite classes and interfaces.
+ * The type pipeline uses these to strip the field declarations, which
+ * node-gtk's runtime never exposes.
  *
  * @param repository - The loaded GIR repository.
  * @returns Field names keyed lowercase namespace identifier then owner name.
  */
-const collectClassFieldNames = (repository: GirRepository): FieldNameMap =>
-    collectByOwner(repository, (owner) => owner.fieldNames.map(toCamelCase));
+const collectClassFieldNames = (repository: GirRepository): FieldNameMap => {
+    const namespaces = new Map<string, Map<string, Set<string>>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const owners = new Map<string, Set<string>>();
+        for (const cls of namespace.classes.values()) {
+            owners.set(toPascalCase(cls.name), new Set(cls.fieldNames.map(toCamelCase)));
+        }
+        for (const iface of namespace.interfaces.values()) {
+            const names = new Set(iface.fieldNames.map(toCamelCase));
+            for (const prereq of collectPrerequisiteFieldNames(repository, iface.prerequisites)) {
+                names.add(prereq);
+            }
+            owners.set(toPascalCase(iface.name), names);
+        }
+        namespaces.set(namespaceName.toLowerCase(), owners);
+    }
+    return namespaces;
+};
+
+/**
+ * Collects the camelCased field names of every transitive prerequisite class
+ * and interface reachable from the given prerequisite qualified names.
+ */
+const collectPrerequisiteFieldNames = (repository: GirRepository, prerequisites: readonly string[]): Set<string> => {
+    const names = new Set<string>();
+    const visited = new Set<string>();
+    const visit = (qualifiedName: string) => {
+        if (visited.has(qualifiedName)) return;
+        visited.add(qualifiedName);
+        const cls = repository.resolveClass(qualifiedName);
+        if (cls) {
+            for (const ancestorName of cls.getInheritanceChain()) {
+                const ancestor = repository.resolveClass(ancestorName);
+                if (!ancestor) continue;
+                for (const field of ancestor.fieldNames) names.add(toCamelCase(field));
+            }
+            return;
+        }
+        const iface = repository.resolveInterface(qualifiedName);
+        if (!iface) return;
+        for (const field of iface.fieldNames) names.add(toCamelCase(field));
+        for (const prereq of iface.prerequisites) visit(prereq);
+    };
+    for (const prereq of prerequisites) visit(prereq);
+    return names;
+};
 
 /**
  * Collects the camelCased member names that ts-for-gir emits into class and
