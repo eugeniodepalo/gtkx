@@ -7,6 +7,7 @@
 import { type FileBuilder, variableStatement, type Writer } from "../../builders/index.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
+import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
 import { hasVarargs, partitionSupportedFunctions } from "../../core/utils/filtering.js";
 import { toCamelCase, toValidExportName } from "../../core/utils/naming.js";
@@ -50,14 +51,55 @@ export class FunctionGenerator {
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
 
+        const asyncPairs = collectAsyncCallablePairs(supported, functions);
+
         for (const func of supported) {
-            this.addFunction(func);
+            const pair = asyncPairs.get(func.name);
+            if (pair) {
+                this.addAsyncFunction(pair);
+            } else {
+                this.addFunction(func);
+            }
         }
         for (const func of unsupported) {
             this.addFunctionStub(func);
         }
 
         return functions.length > 0;
+    }
+
+    private addAsyncFunction(pair: AsyncCallablePair<GirFunction, GirFunction>): void {
+        const structure = this.methodBody.buildAsyncCallableStructure({
+            asyncCallable: pair.async,
+            finishCallable: pair.finish,
+            callbackParameter: pair.callbackParameter,
+            memberName: toValidExportName(toCamelCase(pair.async.name)),
+            finishMemberName: toValidExportName(toCamelCase(pair.finish.name)),
+            isStatic: false,
+            sharedLibrary: this.options.sharedLibrary,
+            namespace: this.options.namespace,
+        });
+
+        const initializer = (writer: Writer) => {
+            writer.write("(");
+            structure.parameters.forEach((p, i) => {
+                if (i > 0) writer.write(", ");
+                if (p.isRestParameter) writer.write("...");
+                writer.write(p.name);
+            });
+            writer.write(") => ");
+            writer.writeBlock(() => {
+                structure.statements(writer);
+            });
+        };
+
+        this.file.add(
+            variableStatement(structure.name, {
+                exported: true,
+                initializer,
+                doc: formatJsDoc(pair.async.doc, this.options.namespace),
+            }),
+        );
     }
 
     private addFunction(func: GirFunction): void {

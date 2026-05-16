@@ -10,6 +10,7 @@ import { classDecl, interfaceDecl, namespaceDecl } from "../../builders/index.js
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
+import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
 import { collectGObjectMethodNames } from "../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
 import { partitionSupportedFunctions, partitionSupportedMethods } from "../../core/utils/filtering.js";
@@ -87,9 +88,10 @@ export class InterfaceGenerator {
         const inheritedMethods = prerequisiteMethods.filter((m) => !isPropertyCollision(m));
 
         const gobjectMethodNames = collectGObjectMethodNames(this.repository);
+        const finishCandidateMethods = [...iface.methods, ...prerequisiteMethods];
         const methodStructures: MethodStructure[] = [
-            ...this.buildMethodStructures(ownMethods, iface.name, gobjectMethodNames),
-            ...this.buildMethodStructures(inheritedMethods, iface.name, gobjectMethodNames),
+            ...this.buildMethodStructures(ownMethods, iface.name, gobjectMethodNames, finishCandidateMethods),
+            ...this.buildMethodStructures(inheritedMethods, iface.name, gobjectMethodNames, finishCandidateMethods),
             ...this.buildStaticFunctionStructures(iface),
         ];
 
@@ -162,6 +164,7 @@ export class InterfaceGenerator {
         methods: readonly GirMethod[],
         ifaceName: string,
         gobjectMethodNames: Set<string>,
+        finishCandidateMethods: readonly GirMethod[],
     ): MethodStructure[] {
         const { supported, unsupported } = partitionSupportedMethods(
             methods,
@@ -175,16 +178,32 @@ export class InterfaceGenerator {
                 this.methodRenames.set(m.cIdentifier, renamedMethod);
             }
         };
+        const asyncPairs = collectAsyncCallablePairs(supported, finishCandidateMethods);
         return [
             ...supported.map((m) => {
                 applyRename(m);
-                return this.buildMethodStructure(m);
+                const pair = asyncPairs.get(m.name);
+                return pair ? this.buildAsyncMethodStructure(pair) : this.buildMethodStructure(m);
             }),
             ...unsupported.map((m) => {
                 applyRename(m);
                 return this.buildMethodStub(m);
             }),
         ];
+    }
+
+    private buildAsyncMethodStructure(pair: AsyncCallablePair<GirMethod, GirMethod>): MethodStructure {
+        return this.methodBody.buildAsyncCallableStructure({
+            asyncCallable: pair.async,
+            finishCallable: pair.finish,
+            callbackParameter: pair.callbackParameter,
+            memberName: toValidMemberName(this.methodBody.resolveMethodName(pair.async, this.methodRenames)),
+            finishMemberName: toValidMemberName(this.methodBody.resolveMethodName(pair.finish, this.methodRenames)),
+            isStatic: false,
+            sharedLibrary: this.options.sharedLibrary,
+            namespace: this.options.namespace,
+            self: { type: SELF_TYPE_GOBJECT, value: "getHandle(this)" },
+        });
     }
 
     private buildMethodStub(m: GirMethod): MethodStructure {
@@ -204,15 +223,29 @@ export class InterfaceGenerator {
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
+        const asyncPairs = collectAsyncCallablePairs(supported, iface.staticFunctions);
         return [
-            ...supported.map((func) =>
-                this.methodBody.buildStaticFunctionStructure(func, {
+            ...supported.map((func) => {
+                const pair = asyncPairs.get(func.name);
+                if (pair) {
+                    return this.methodBody.buildAsyncCallableStructure({
+                        asyncCallable: pair.async,
+                        finishCallable: pair.finish,
+                        callbackParameter: pair.callbackParameter,
+                        memberName: toValidMemberName(toCamelCase(pair.async.name)),
+                        finishMemberName: toValidMemberName(toCamelCase(pair.finish.name)),
+                        isStatic: true,
+                        sharedLibrary: this.options.sharedLibrary,
+                        namespace: this.options.namespace,
+                    });
+                }
+                return this.methodBody.buildStaticFunctionStructure(func, {
                     className: interfaceName,
                     originalClassName: iface.name,
                     sharedLibrary: this.options.sharedLibrary,
                     namespace: this.options.namespace,
-                }),
-            ),
+                });
+            }),
             ...unsupported.map((func) =>
                 this.methodBody.buildStubStructure(
                     toValidMemberName(toCamelCase(func.name)),

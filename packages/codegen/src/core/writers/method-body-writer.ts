@@ -16,6 +16,7 @@ import {
     type SelfTypeDescriptor,
     type TypeImport,
 } from "../type-system/ffi-types.js";
+import type { AsyncCapableCallable } from "../utils/async-callable.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { hasVarargs, isVararg } from "../utils/filtering.js";
 import { createWrappedName, toCamelCase, toKebabCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
@@ -36,7 +37,12 @@ import {
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { writeFfiTypeExpression } from "./ffi-type-expression.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
-import { buildCallbackWrapperExpression, needsParamWrap, needsReturnUnwrap } from "./param-wrap-writer.js";
+import {
+    buildCallbackWrapperExpression,
+    needsParamWrap,
+    needsReturnUnwrap,
+    writeWrapExpression,
+} from "./param-wrap-writer.js";
 
 /**
  * Collects imports during method body generation.
@@ -170,6 +176,33 @@ type StaticFunctionStructureOptions = {
     sharedLibrary: string;
     /** Current namespace for documentation links */
     namespace: string;
+};
+
+/**
+ * Options for building a Promise-returning wrapper for a GIO-style async
+ * callable.
+ */
+type AsyncCallableStructureOptions = {
+    /** The `*_async` callable to wrap. */
+    asyncCallable: AsyncCapableCallable;
+    /** The companion `*_finish` callable whose return type is the Promise value. */
+    finishCallable: AsyncCapableCallable;
+    /** The `GAsyncReadyCallback` parameter dropped from the wrapper signature. */
+    callbackParameter: GirParameter;
+    /** The TypeScript member name to emit for the wrapper. */
+    memberName: string;
+    /** The TypeScript member name of the companion `*_finish` member. */
+    finishMemberName: string;
+    /** Whether the wrapper is a static member. */
+    isStatic: boolean;
+    /** The shared library (e.g., "libgtk-4.so.1"). */
+    sharedLibrary: string;
+    /** Current namespace for documentation links. */
+    namespace: string;
+    /** Self options for instance-method wrappers; omitted for functions. */
+    self?: { type: SelfTypeDescriptor; value: string };
+    /** Class name when `*_finish` returns the wrapper's own class type. */
+    finishOwnClassName?: string;
 };
 
 /**
@@ -635,6 +668,133 @@ export class MethodBodyWriter {
                 hasVarargs: hasVarargs(method.parameters),
             }),
         };
+    }
+
+    /**
+     * Builds a Promise-returning wrapper MethodStructure for a GIO-style
+     * async callable.
+     *
+     * The emitted member drops the `GAsyncReadyCallback` and `user_data`
+     * parameters from its signature and returns `Promise<R>`, where `R` is the
+     * companion `*_finish` callable's return type. The body starts the native
+     * async operation with an internal callback that resolves the promise with
+     * the result of `*_finish` — or rejects it when `*_finish` throws a
+     * `GError`.
+     *
+     * @param options - Async wrapper structure options.
+     * @returns A MethodStructure whose body returns a Promise.
+     */
+    buildAsyncCallableStructure(options: AsyncCallableStructureOptions): MethodStructure {
+        const { asyncCallable, finishCallable, callbackParameter } = options;
+        const sizeParamOffset = options.self ? 1 : 0;
+        const shape = this.buildShape(asyncCallable.parameters, asyncCallable.returnType, sizeParamOffset);
+
+        const callbackJsName = toValidIdentifier(toCamelCase(callbackParameter.name));
+        const params = this.buildSignatureParameters(shape, hasVarargs(asyncCallable.parameters)).filter(
+            (p) => p.name !== callbackJsName,
+        );
+
+        const finishShape = this.buildShape(finishCallable.parameters, finishCallable.returnType, options.self ? 1 : 0);
+        this.addTypeImportsFromMapping(finishShape.returnTypeMapping);
+        const resultType = this.computeReturnTypeString(finishShape, options.finishOwnClassName);
+
+        return {
+            name: options.memberName,
+            isStatic: options.isStatic || undefined,
+            parameters: params,
+            returnType: `Promise<${resultType === "void" ? "void" : resultType}>`,
+            docs: buildJsDocStructure(asyncCallable.doc, options.namespace),
+            statements: this.writeAsyncCallableBody(shape, options, callbackJsName),
+        };
+    }
+
+    private writeAsyncCallableBody(
+        shape: CallableShape,
+        options: AsyncCallableStructureOptions,
+        callbackJsName: string,
+    ): (writer: Writer) => void {
+        this.imports.addTypeImport("../../handles.js", ["NativeHandle"]);
+        if (shape.hiddenOuts.length > 0) {
+            this.imports.addImport("@gtkx/native", ["createRef"]);
+        }
+
+        const callArguments = this.buildShapeCallArguments(shape, options.asyncCallable.parameters);
+        const readyCallbackName = "onAsyncReady";
+        shape.callArgs.forEach((shapeArg, index) => {
+            if (shapeArg.sourceParamIndex === null) return;
+            const mapping = shape.paramMappings.find((m) => m.girIndex === shapeArg.sourceParamIndex);
+            if (mapping?.jsName !== callbackJsName) return;
+            const callArg = callArguments[index];
+            if (callArg) {
+                callArg.value = readyCallbackName;
+                callArg.callbackWrapper = undefined;
+            }
+        });
+
+        const finishCallExpression = this.buildFinishCallExpression(options);
+        const sourceObjectName = "_asyncSource";
+        const asyncResultRawName = "_asyncResultRaw";
+
+        return (writer) => {
+            writer.write("return new Promise((resolve, reject) => ");
+            writer.writeBlock(() => {
+                writer.write(`const ${readyCallbackName} = (${sourceObjectName}, ${asyncResultRawName}) => `);
+                writer.writeBlock(() => {
+                    writer.writeLine("try {");
+                    writer.withIndent(() => {
+                        writer.writeLine(`resolve(${finishCallExpression});`);
+                    });
+                    writer.writeLine("} catch (asyncError) {");
+                    writer.withIndent(() => {
+                        writer.writeLine("reject(asyncError);");
+                    });
+                    writer.write("}");
+                });
+                writer.writeLine(";");
+                for (const hidden of shape.hiddenOuts) {
+                    this.writeHiddenOutDeclaration(writer, hidden);
+                }
+                this.callExpression.toWriter({
+                    sharedLibrary: options.sharedLibrary,
+                    cIdentifier: options.asyncCallable.cIdentifier,
+                    args: callArguments,
+                    returnType: shape.returnTypeMapping.ffi,
+                    selfArg: options.self,
+                    hasVarargs: hasVarargs(options.asyncCallable.parameters),
+                })(writer);
+                writer.writeLine(";");
+            });
+            writer.writeLine(");");
+        };
+    }
+
+    private buildFinishCallExpression(options: AsyncCallableStructureOptions): string {
+        const resultArg = this.buildAsyncResultArgument(options);
+        const target = options.self ? `this.${options.finishMemberName}` : options.finishMemberName;
+        return `${target}(${resultArg})`;
+    }
+
+    /**
+     * Builds the wrapped `GAsyncResult` argument passed to the `*_finish`
+     * member, turning the raw native handle delivered to the async callback
+     * into the wrapper instance the finish member expects.
+     */
+    private buildAsyncResultArgument(options: AsyncCallableStructureOptions): string {
+        const rawName = "_asyncResultRaw";
+        const callbackParamMappings = this.ffiMapper.getCallbackParamMappings(options.callbackParameter);
+        const resultMapping = callbackParamMappings?.[1];
+        if (!resultMapping) {
+            return rawName;
+        }
+        const wrapInfo = needsParamWrap(resultMapping.mapped);
+        if (wrapInfo.needsWrap) {
+            this.imports.addImport(
+                "../../registry.js",
+                wrapInfo.isInterface ? ["getNativeObjectAsInterface"] : ["getNativeObject"],
+            );
+            this.addTypeImportsFromMapping(resultMapping.mapped);
+        }
+        return writeWrapExpression(rawName, wrapInfo);
     }
 
     /**

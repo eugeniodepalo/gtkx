@@ -6,6 +6,7 @@
 
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
+import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../../core/utils/async-callable.js";
 import { partitionSupportedFunctions } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import {
@@ -62,10 +63,14 @@ export class StaticFunctionBuilder {
         const isInherited = (func: GirFunction): boolean =>
             this.parentStaticFunctionNames.has(toValidMemberName(toCamelCase(func.name)));
 
+        const visibleSupported = supportedFunctions.filter((func) => !isInherited(func));
+        const asyncPairs = collectAsyncCallablePairs(visibleSupported, this.cls.staticFunctions);
+
         return [
-            ...supportedFunctions
-                .filter((func) => !isInherited(func))
-                .map((func) => this.buildStaticFunctionStructure(func)),
+            ...visibleSupported.map((func) => {
+                const pair = asyncPairs.get(func.name);
+                return pair ? this.buildAsyncStaticFunctionStructure(pair) : this.buildStaticFunctionStructure(func);
+            }),
             ...unsupportedFunctions
                 .filter((func) => !isInherited(func))
                 .map((func) => this.buildStaticFunctionStub(func)),
@@ -76,6 +81,19 @@ export class StaticFunctionBuilder {
         return this.methodBody.buildStaticFunctionStructure(func, {
             className: this.className,
             originalClassName: this.cls.name,
+            sharedLibrary: this.options.sharedLibrary,
+            namespace: this.options.namespace,
+        });
+    }
+
+    private buildAsyncStaticFunctionStructure(pair: AsyncCallablePair<GirFunction, GirFunction>): MethodStructure {
+        return this.methodBody.buildAsyncCallableStructure({
+            asyncCallable: pair.async,
+            finishCallable: pair.finish,
+            callbackParameter: pair.callbackParameter,
+            memberName: toValidMemberName(toCamelCase(pair.async.name)),
+            finishMemberName: toValidMemberName(toCamelCase(pair.finish.name)),
+            isStatic: true,
             sharedLibrary: this.options.sharedLibrary,
             namespace: this.options.namespace,
         });

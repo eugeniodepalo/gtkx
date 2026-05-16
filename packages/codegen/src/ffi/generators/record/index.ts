@@ -24,6 +24,7 @@ import {
     type SelfTypeDescriptor,
     UNSAFE_PRIMITIVE_NAMES,
 } from "../../../core/type-system/ffi-types.js";
+import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../../core/utils/async-callable.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { partitionSupportedFunctions, partitionSupportedMethods } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
@@ -385,8 +386,24 @@ export class RecordGenerator {
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
+        const asyncPairs = collectAsyncCallablePairs(supportedFunctions, functions);
         return [
-            ...supportedFunctions.map((func) => this.buildStaticFunctionStructure(func, recordName, originalName)),
+            ...supportedFunctions.map((func) => {
+                const pair = asyncPairs.get(func.name);
+                if (pair) {
+                    return this.methodBody.buildAsyncCallableStructure({
+                        asyncCallable: pair.async,
+                        finishCallable: pair.finish,
+                        callbackParameter: pair.callbackParameter,
+                        memberName: toValidMemberName(toCamelCase(pair.async.name)),
+                        finishMemberName: toValidMemberName(toCamelCase(pair.finish.name)),
+                        isStatic: true,
+                        sharedLibrary: this.options.sharedLibrary,
+                        namespace: this.options.namespace,
+                    });
+                }
+                return this.buildStaticFunctionStructure(func, recordName, originalName);
+            }),
             ...unsupportedFunctions.map((func) =>
                 this.methodBody.buildStubStructure(
                     toValidMemberName(toCamelCase(func.name)),
@@ -418,8 +435,12 @@ export class RecordGenerator {
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
+        const asyncPairs = collectAsyncCallablePairs(supported, methods);
         return [
-            ...supported.map((method) => this.buildMethodStructure(method, meta)),
+            ...supported.map((method) => {
+                const pair = asyncPairs.get(method.name);
+                return pair ? this.buildAsyncMethodStructure(pair, meta) : this.buildMethodStructure(method, meta);
+            }),
             ...unsupported.map((method) =>
                 this.methodBody.buildStubStructure(
                     toValidMemberName(toCamelCase(method.name)),
@@ -432,32 +453,47 @@ export class RecordGenerator {
         ];
     }
 
-    private buildMethodStructure(m: GirMethod, meta: RecordTypeMeta): MethodStructure {
-        const methodName = toCamelCase(m.name);
-        const instanceOwnership = m.instanceParameter?.transferOwnership === "full" ? "full" : "borrowed";
-        const className = meta.glibTypeName;
-        let selfTypeDescriptor: SelfTypeDescriptor;
-        if (className) {
-            selfTypeDescriptor =
-                meta.copyFunction && meta.freeFunction
-                    ? fundamentalSelfType(
-                          this.options.sharedLibrary,
-                          meta.copyFunction,
-                          meta.freeFunction,
-                          instanceOwnership,
-                          className,
-                      )
-                    : boxedSelfType(className, this.options.sharedLibrary, meta.glibGetType, instanceOwnership);
-        } else {
-            selfTypeDescriptor = SELF_TYPE_GOBJECT;
-        }
-
-        return this.methodBody.buildMethodStructure(m, {
-            methodName,
-            selfTypeDescriptor,
+    private buildAsyncMethodStructure(
+        pair: AsyncCallablePair<GirMethod, GirMethod>,
+        meta: RecordTypeMeta,
+    ): MethodStructure {
+        return this.methodBody.buildAsyncCallableStructure({
+            asyncCallable: pair.async,
+            finishCallable: pair.finish,
+            callbackParameter: pair.callbackParameter,
+            memberName: toValidMemberName(toCamelCase(pair.async.name)),
+            finishMemberName: toValidMemberName(toCamelCase(pair.finish.name)),
+            isStatic: false,
             sharedLibrary: this.options.sharedLibrary,
             namespace: this.options.namespace,
-            className,
+            self: { type: this.resolveSelfTypeDescriptor(pair.async, meta), value: "getHandle(this)" },
+        });
+    }
+
+    private resolveSelfTypeDescriptor(m: GirMethod, meta: RecordTypeMeta): SelfTypeDescriptor {
+        const instanceOwnership = m.instanceParameter?.transferOwnership === "full" ? "full" : "borrowed";
+        const className = meta.glibTypeName;
+        if (!className) {
+            return SELF_TYPE_GOBJECT;
+        }
+        return meta.copyFunction && meta.freeFunction
+            ? fundamentalSelfType(
+                  this.options.sharedLibrary,
+                  meta.copyFunction,
+                  meta.freeFunction,
+                  instanceOwnership,
+                  className,
+              )
+            : boxedSelfType(className, this.options.sharedLibrary, meta.glibGetType, instanceOwnership);
+    }
+
+    private buildMethodStructure(m: GirMethod, meta: RecordTypeMeta): MethodStructure {
+        return this.methodBody.buildMethodStructure(m, {
+            methodName: toCamelCase(m.name),
+            selfTypeDescriptor: this.resolveSelfTypeDescriptor(m, meta),
+            sharedLibrary: this.options.sharedLibrary,
+            namespace: this.options.namespace,
+            className: meta.glibTypeName,
         });
     }
 

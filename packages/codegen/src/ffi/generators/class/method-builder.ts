@@ -7,6 +7,7 @@
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import type { SelfTypeDescriptor } from "../../../core/type-system/ffi-types.js";
+import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../../core/utils/async-callable.js";
 import { partitionSupportedMethods } from "../../../core/utils/filtering.js";
 import { toValidMemberName } from "../../../core/utils/naming.js";
 import {
@@ -52,10 +53,34 @@ export class MethodBuilder {
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
 
+        const asyncPairs = collectAsyncCallablePairs(supported, methods);
+
         return [
-            ...supported.map((method) => this.buildMethodStructure(method, selfTypeDescriptor)),
+            ...supported.map((method) => {
+                const pair = asyncPairs.get(method.name);
+                return pair
+                    ? this.buildAsyncMethodStructure(pair, selfTypeDescriptor)
+                    : this.buildMethodStructure(method, selfTypeDescriptor);
+            }),
             ...unsupported.map((method) => this.buildMethodStub(method)),
         ];
+    }
+
+    private buildAsyncMethodStructure(
+        pair: AsyncCallablePair<GirMethod, GirMethod>,
+        selfTypeDescriptor: SelfTypeDescriptor,
+    ): MethodStructure {
+        return this.methodBody.buildAsyncCallableStructure({
+            asyncCallable: pair.async,
+            finishCallable: pair.finish,
+            callbackParameter: pair.callbackParameter,
+            memberName: toValidMemberName(this.methodBody.resolveMethodName(pair.async, this.methodRenames)),
+            finishMemberName: toValidMemberName(this.methodBody.resolveMethodName(pair.finish, this.methodRenames)),
+            isStatic: false,
+            sharedLibrary: this.options.sharedLibrary,
+            namespace: this.options.namespace,
+            self: { type: selfTypeDescriptor, value: "getHandle(this)" },
+        });
     }
 
     private buildMethodStub(method: GirMethod): MethodStructure {
