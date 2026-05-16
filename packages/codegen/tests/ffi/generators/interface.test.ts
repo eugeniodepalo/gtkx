@@ -8,6 +8,7 @@ import {
     createNormalizedMethod,
     createNormalizedNamespace,
     createNormalizedParameter,
+    createNormalizedProperty,
     createNormalizedType,
 } from "../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../fixtures/mock-repository.js";
@@ -381,6 +382,76 @@ describe("InterfaceGenerator", () => {
 
             const code = stringify(file);
             expect(code).toContain(": number");
+        });
+    });
+
+    describe("property accessors", () => {
+        it("emits ES6 get/set accessors in the interface body", () => {
+            const { generator, file } = createTestSetup();
+            const iface = createNormalizedInterface({
+                name: "Buildable",
+                methods: [],
+                properties: [
+                    createNormalizedProperty({
+                        name: "build-name",
+                        type: createNormalizedType({ name: "utf8" }),
+                        getter: undefined,
+                        setter: undefined,
+                    }),
+                ],
+            });
+
+            generator.generate(iface);
+
+            const code = stringify(file);
+            expect(code).toContain("get buildName(): string {");
+            expect(code).toContain('return this.getProperty("build-name");');
+            expect(code).toContain("set buildName(value: string) {");
+            expect(code).toContain('this.setProperty("build-name", value);');
+        });
+
+        it("does not emit Object.defineProperty for interface properties", () => {
+            const { generator, file } = createTestSetup();
+            const iface = createNormalizedInterface({
+                name: "Buildable",
+                methods: [],
+                properties: [
+                    createNormalizedProperty({
+                        name: "build-name",
+                        type: createNormalizedType({ name: "utf8" }),
+                        getter: undefined,
+                        setter: undefined,
+                    }),
+                ],
+            });
+
+            generator.generate(iface);
+
+            const code = stringify(file);
+            expect(code).not.toContain("Object.defineProperty");
+        });
+
+        it("emits a getter-only accessor for construct-only properties", () => {
+            const { generator, file } = createTestSetup();
+            const iface = createNormalizedInterface({
+                name: "Buildable",
+                methods: [],
+                properties: [
+                    createNormalizedProperty({
+                        name: "build-id",
+                        type: createNormalizedType({ name: "utf8" }),
+                        constructOnly: true,
+                        getter: undefined,
+                        setter: undefined,
+                    }),
+                ],
+            });
+
+            generator.generate(iface);
+
+            const code = stringify(file);
+            expect(code).toContain("get buildId(): string {");
+            expect(code).not.toContain("set buildId(");
         });
     });
 

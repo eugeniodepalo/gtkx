@@ -2,7 +2,6 @@ import type { AccessorBuilder } from "../members/accessor.js";
 import type { ConstructorBuilder } from "../members/constructor.js";
 import { writeJsDoc } from "../members/doc.js";
 import type { MethodBuilder } from "../members/method.js";
-import type { PropertyBuilder } from "../members/property.js";
 import type { Builder } from "../types.js";
 import type { Writer } from "../writer.js";
 
@@ -16,9 +15,8 @@ export type ClassOptions = {
     typeParams?: string;
 };
 
-/** Builder that emits a class declaration with properties, constructor, and methods. */
+/** Builder that emits a class declaration with accessors, constructor, and methods. */
 export class ClassDeclarationBuilder implements Builder {
-    private readonly properties: PropertyBuilder[] = [];
     private readonly accessors: AccessorBuilder[] = [];
     private readonly methods: MethodBuilder[] = [];
     private ctor: ConstructorBuilder | null = null;
@@ -31,12 +29,6 @@ export class ClassDeclarationBuilder implements Builder {
     /** Set the class constructor. */
     setConstructor(ctor: ConstructorBuilder): this {
         this.ctor = ctor;
-        return this;
-    }
-
-    /** Add a property to the class body. */
-    addProperty(prop: PropertyBuilder): this {
-        this.properties.push(prop);
         return this;
     }
 
@@ -67,15 +59,6 @@ export class ClassDeclarationBuilder implements Builder {
         }
         writer.write(" ");
         writer.writeBlock(() => {
-            for (const prop of this.properties) {
-                prop.write(writer);
-            }
-
-            const hasMembers = this.accessors.length > 0 || this.ctor || this.methods.length > 0;
-            if (this.properties.length > 0 && hasMembers) {
-                writer.newLine();
-            }
-
             if (this.ctor) {
                 this.ctor.write(writer);
             }

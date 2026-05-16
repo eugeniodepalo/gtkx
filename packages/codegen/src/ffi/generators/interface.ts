@@ -101,18 +101,11 @@ export class InterfaceGenerator {
 
         const reachableMethods = [...iface.methods, ...prerequisiteMethods];
         const accessorEmissions = this.buildPropertyAccessors(interfaceName, reachableMethods, properties);
-        for (const { property } of accessorEmissions) {
-            cls.addProperty(property);
+        for (const { accessor } of accessorEmissions) {
+            cls.addAccessor(accessor);
         }
 
         this.file.add(cls);
-
-        for (const { installer } of accessorEmissions) {
-            this.file.addRawBlock((writer) => {
-                writer.writeLine("");
-                installer(writer);
-            });
-        }
 
         if (iface.glibGetType) {
             this.file.descriptors.register({

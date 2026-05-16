@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { classDecl } from "../../src/builders/declarations/class.js";
 import { enumDecl } from "../../src/builders/declarations/enum.js";
 import { fileBuilder } from "../../src/builders/file-builder.js";
-import { property } from "../../src/builders/members/property.js";
+import { method } from "../../src/builders/members/method.js";
 import { stringify } from "../../src/builders/stringify.js";
 
 describe("FileBuilder", () => {
@@ -11,12 +11,10 @@ describe("FileBuilder", () => {
             .addImport("../../object.js", ["NativeObject", "NativeHandle"])
             .addImport("@gtkx/native", ["call"])
             .add(
-                classDecl("Button", { exported: true, extends: "NativeObject" }).addProperty(
-                    property("glibTypeName", {
-                        isStatic: true,
-                        readonly: true,
-                        type: "string",
-                        initializer: '"GtkButton"',
+                classDecl("Button", { exported: true, extends: "NativeObject" }).addMethod(
+                    method("getLabel", {
+                        returnType: "string",
+                        body: ['return "GtkButton";'],
                     }),
                 ),
             );

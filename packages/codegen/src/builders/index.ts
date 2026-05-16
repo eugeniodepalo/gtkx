@@ -10,6 +10,5 @@ export { accessor } from "./members/accessor.js";
 export { ConstructorBuilder, constructorDecl } from "./members/constructor.js";
 export { method, type OverloadSignature } from "./members/method.js";
 export { param } from "./members/parameter.js";
-export { property } from "./members/property.js";
 export { stringify } from "./stringify.js";
 export { Writer } from "./writer.js";
