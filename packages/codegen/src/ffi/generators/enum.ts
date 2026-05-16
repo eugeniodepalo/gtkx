@@ -7,7 +7,7 @@
 import { enumDecl, type FileBuilder } from "../../builders/index.js";
 import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
-import { toConstantCase, toPascalCase } from "../../core/utils/naming.js";
+import { normalizeClassName, toConstantCase } from "../../core/utils/naming.js";
 import type { GirEnumeration } from "../../gir/index.js";
 
 /**
@@ -35,14 +35,14 @@ export class EnumGenerator {
     }
 
     private addEnum(enumeration: GirEnumeration): void {
-        const enumName = toPascalCase(enumeration.name);
+        const enumName = normalizeClassName(enumeration.name);
         const doc = formatJsDoc(enumeration.doc, this.options.namespace);
         const builder = enumDecl(enumName, { exported: true, doc });
 
         const seenNames = new Set<string>();
         for (const member of enumeration.members) {
             let memberName = toConstantCase(member.name);
-            if (/^\d/.test(memberName)) memberName = `_${memberName}`;
+            if (/^\d/.test(memberName)) memberName = `TODO_${memberName}`;
             if (seenNames.has(memberName)) continue;
             seenNames.add(memberName);
 

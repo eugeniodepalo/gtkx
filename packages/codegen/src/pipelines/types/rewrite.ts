@@ -413,7 +413,7 @@ const parseNumericLiteral = (text: string): number | null => {
     return Number.isFinite(value) ? value : null;
 };
 
-const GTYPE_STRUCT_CLASS_PATTERN = /(^|\n)([ \t]*)export[ \t]+abstract[ \t]+class[ \t]+(\w+)\b[^{]*\{/g;
+const GTYPE_STRUCT_CLASS_PATTERN = /(^|\n)([ \t]*)export[ \t]+(?:abstract[ \t]+)?class[ \t]+(\w+)\b[^{]*\{/g;
 
 /**
  * Removes the `export abstract class <name> { ... }` value declaration that
@@ -458,7 +458,7 @@ export function stripGtypeStructClasses(source: string, gtypeStructNames?: Reado
     return parts.join("");
 }
 
-const MULTI_RETURN_TUPLE_MARKER = "[ /* returnType */";
+const MULTI_RETURN_TUPLE_PATTERN = /:\s*\[ \/\* [A-Za-z_$][\w$]* \*\//g;
 
 const findMatchingBracket = (source: string, from: number): number => {
     let depth = 1;
@@ -487,10 +487,37 @@ const findMatchingBracket = (source: string, from: number): number => {
     return -1;
 };
 
+const EVENT_EMITTER_SIGNAL_LINE = /^[ \t]*(?:on|once|off)\(sigName:[^\n]*\): NodeJS\.EventEmitter[ \t]*\n/gm;
+const SYNTHETIC_GTYPE_FIELD_LINE = /^[ \t]*__gtype__: number[ \t]*\n/gm;
+const SYNTHETIC_GTYPE_SIGNAL_LINE = /^[ \t]*(?:connect|on|once|off|emit)\(sigName: "notify::__gtype__"[^\n]*\n/gm;
+
 /**
- * Replaces the marked multi-return tuple type that ts-for-gir emits for
- * functions and methods with out-parameters (`[ /* returnType *\/ A, /* out *\/ B ]`)
- * with the looser `any[]` array type.
+ * Removes the `on` / `once` / `off` signal-companion overloads that ts-for-gir
+ * emits for every signal-bearing class and interface, together with the
+ * synthetic `__gtype__` field and its `notify::__gtype__` signal overloads.
+ *
+ * The `on` / `once` / `off` overloads describe node-gtk's `EventEmitter`-style
+ * aliases and return `NodeJS.EventEmitter`; the gtkx runtime models signal
+ * handling through `connect` and `emit` only. The `__gtype__` field is a
+ * ts-for-gir synthesis that the gtkx runtime assigns dynamically rather than
+ * declaring on the class shape. Trimming both keeps the contract aligned with
+ * the surface the runtime statically provides.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with the node-gtk-only signal surface removed.
+ */
+export function stripEventEmitterSignalOverloads(source: string): string {
+    return source
+        .replace(EVENT_EMITTER_SIGNAL_LINE, "")
+        .replace(SYNTHETIC_GTYPE_FIELD_LINE, "")
+        .replace(SYNTHETIC_GTYPE_SIGNAL_LINE, "");
+}
+
+/**
+ * Replaces the comment-labelled multi-return tuple type that ts-for-gir emits
+ * for functions and methods with out-parameters
+ * (`: [ /* returnType *\/ A, /* out *\/ B ]`) with the looser `: any[]` array
+ * type.
  *
  * A generated runtime wrapper collects out-parameters into a plain JavaScript
  * array literal, which TypeScript infers as `any[]` rather than a fixed-length
@@ -503,14 +530,17 @@ const findMatchingBracket = (source: string, from: number): number => {
 export function relaxMultiReturnTuples(source: string): string {
     const parts: string[] = [];
     let cursor = 0;
+    MULTI_RETURN_TUPLE_PATTERN.lastIndex = 0;
     for (;;) {
-        const markerIndex = source.indexOf(MULTI_RETURN_TUPLE_MARKER, cursor);
-        if (markerIndex < 0) break;
-        const closeIndex = findMatchingBracket(source, markerIndex + 1);
+        const match = MULTI_RETURN_TUPLE_PATTERN.exec(source);
+        if (match === null) break;
+        const bracketIndex = source.indexOf("[", match.index);
+        const closeIndex = findMatchingBracket(source, bracketIndex + 1);
         if (closeIndex < 0) break;
-        parts.push(source.slice(cursor, markerIndex));
-        parts.push("any[]");
+        parts.push(source.slice(cursor, match.index));
+        parts.push(": any[]");
         cursor = closeIndex + 1;
+        MULTI_RETURN_TUPLE_PATTERN.lastIndex = cursor;
     }
     parts.push(source.slice(cursor));
     return parts.join("");
@@ -568,6 +598,7 @@ export function loadAndRewrite(
         source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace));
         source = stripGtypeStructClasses(source, gtypeStructNames?.get(namespace));
         source = relaxMultiReturnTuples(source);
+        source = stripEventEmitterSignalOverloads(source);
         source = rewriteNamespaceDeclarations(source);
         source = rewriteDefaultImportsToNamespace(source);
         source = rewriteModuleKeywordToNamespace(source);

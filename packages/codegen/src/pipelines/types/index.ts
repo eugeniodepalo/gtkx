@@ -8,5 +8,6 @@ export {
     rewriteEnumsToConstObjects,
     rewriteModuleKeywordToNamespace,
     rewriteNamespaceDeclarations,
+    stripEventEmitterSignalOverloads,
     unwrapOuterNamespace,
 } from "./rewrite.js";

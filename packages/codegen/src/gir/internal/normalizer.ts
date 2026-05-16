@@ -436,7 +436,7 @@ export class GirNormalizer {
 
     private normalizeFunction(raw: RawFunction, currentNamespace: string): GirFunction {
         return new GirFunction({
-            name: raw.name,
+            name: raw.shadows ?? raw.name,
             cIdentifier: raw.cIdentifier,
             returnType: this.normalizeType(raw.returnType, currentNamespace),
             parameters: raw.parameters.map((p) => this.normalizeParameter(p, currentNamespace)),

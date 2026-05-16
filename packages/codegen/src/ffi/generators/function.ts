@@ -43,8 +43,9 @@ export class FunctionGenerator {
      * @returns true if any functions were generated
      */
     generate(functions: GirFunction[]): boolean {
+        const visible = functions.filter((func) => func.shadowedBy === undefined);
         const { supported, unsupported } = partitionSupportedFunctions(
-            functions,
+            visible,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
