@@ -256,6 +256,19 @@ export class FieldBuilder {
         return hasWritableFields;
     }
 
+    /**
+     * Checks if a type resolves to a record (struct or boxed) whose memory
+     * layout can be read field-by-field, so a fixed or counted array of it
+     * can be exposed as an array of plain objects.
+     */
+    hasReadableStructLayout(typeName: string): boolean {
+        if (isPrimitiveFieldType(typeName)) return false;
+        const record = this.resolveRecord(typeName);
+        if (!record || record.opaque || record.disguised) return false;
+        const layout = this.getNestedStructLayout(typeName);
+        return layout !== null && layout.length > 0;
+    }
+
     getNestedStructLayout(typeName: string): FieldLayout[] | null {
         const record = this.resolveRecord(typeName);
         if (!record) return null;

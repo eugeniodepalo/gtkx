@@ -25,6 +25,15 @@ function resolveRecord(typeName: string, repo: GirRepository, currentNamespace: 
     return ns?.records.get(typeName) ?? null;
 }
 
+function qualifyTypeName(typeName: string, currentNamespace: string): string {
+    return typeName.includes(".") ? typeName : `${currentNamespace}.${typeName}`;
+}
+
+function resolvesToEnumOrFlags(typeName: string, repo: GirRepository, currentNamespace: string): boolean {
+    const qualified = qualifyTypeName(typeName, currentNamespace);
+    return repo.resolveEnum(qualified) !== null || repo.resolveFlags(qualified) !== null;
+}
+
 /**
  * Returns `true` for records that back a class or interface vtable.
  *
@@ -63,10 +72,13 @@ export function isGeneratableFieldType(
     if (visited.has(typeName)) return false;
     visited.add(typeName);
 
+    if (resolvesToEnumOrFlags(typeName, repo, currentNamespace)) return true;
+
     const resolved = resolveRecord(typeName, repo, currentNamespace);
     if (!resolved) return false;
 
     if (resolved.glibTypeName) return true;
+    if (resolved.disguised && resolved.fields.length === 0) return true;
     if (resolved.opaque || resolved.disguised) return false;
 
     const publicFields = resolved.getPublicFields().filter((field) => field.callback === undefined);
@@ -106,6 +118,7 @@ export function shouldGenerateRecord(record: GirRecord, _repo: GirRepository, _c
  */
 export function canMarshalRecord(record: GirRecord, repo: GirRepository, currentNamespace: string): boolean {
     if (record.isBoxed()) return true;
+    if (record.disguised && record.fields.length === 0) return true;
     if (record.opaque) return false;
     if (record.fields.length === 0) return false;
 

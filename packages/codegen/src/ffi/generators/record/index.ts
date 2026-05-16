@@ -445,7 +445,10 @@ export class RecordGenerator {
         if (!field.type.isArray || !field.type.elementType) return false;
 
         const elementTypeName = String(field.type.elementType.name);
-        if (this.fieldBuilder.isNestedStructType(elementTypeName)) {
+        if (
+            this.fieldBuilder.isNestedStructType(elementTypeName) ||
+            this.fieldBuilder.hasReadableStructLayout(elementTypeName)
+        ) {
             this.generateArrayFieldAccessors(field, fieldName, offset, fields, cls, methodNames);
         }
         return true;
@@ -788,14 +791,20 @@ export class RecordGenerator {
         const isWritable = field.writable !== false && !methodNames.has(fieldName);
         if (!isReadable) return;
 
+        const fixedSize = field.type.fixedSize;
         const lengthFieldIndex = field.type.sizeParamIndex;
-        if (lengthFieldIndex === undefined) return;
 
-        const publicFields = allFields.filter((f) => !f.private);
-        const lengthField = publicFields[lengthFieldIndex];
-        if (!lengthField) return;
-
-        const lengthFieldName = toValidMemberName(toCamelCase(lengthField.name));
+        let lengthExpr: string;
+        if (fixedSize !== undefined) {
+            lengthExpr = String(fixedSize);
+        } else if (lengthFieldIndex !== undefined) {
+            const publicFields = allFields.filter((f) => !f.private);
+            const lengthField = publicFields[lengthFieldIndex];
+            if (!lengthField) return;
+            lengthExpr = `this.${toValidMemberName(toCamelCase(lengthField.name))}`;
+        } else {
+            return;
+        }
 
         const elementLayout = this.fieldBuilder.getNestedStructLayout(elementTypeName);
         if (!elementLayout) return;
@@ -803,7 +812,7 @@ export class RecordGenerator {
         const plan = this.buildArrayElementPlan(elementLayout);
         if (plan.length === 0) return;
 
-        const structTypeExpr = `t.struct("${elementTypeName}", "full", this.${lengthFieldName} * ${elementSize})`;
+        const structTypeExpr = `t.struct("${elementTypeName}", "full", ${lengthExpr} * ${elementSize})`;
         const doc = buildJsDocStructure(field.doc, this.options.namespace);
 
         this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
@@ -811,7 +820,7 @@ export class RecordGenerator {
         const getBody = (writer: Writer): void => {
             writer.writeLine(`const array = read(getHandle(this),${structTypeExpr}, ${ptrOffset});`);
             writer.writeLine("const result = [];");
-            writer.writeLine(`for (let index = 0; index < this.${lengthFieldName}; index++) {`);
+            writer.writeLine(`for (let index = 0; index < ${lengthExpr}; index++) {`);
             writer.withIndent(() => {
                 writer.writeLine(`const base = index * ${elementSize};`);
                 writer.writeLine("result.push({");
