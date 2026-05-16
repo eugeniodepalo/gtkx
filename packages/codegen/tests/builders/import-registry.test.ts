@@ -52,14 +52,29 @@ describe("ImportRegistry", () => {
         expect(reg.isEmpty).toBe(false);
     });
 
+    it("leaves runtime-module value imports unchanged outside JS mode", () => {
+        const reg = new ImportRegistry();
+        reg.add("../../registry.js", ["getNativeObject"]);
+        expect(stringify(reg)).toBe('import { getNativeObject } from "../../registry.js";\n');
+    });
+
     describe("JS mode", () => {
         it("drops type-only imports and intra-namespace paths", () => {
             const reg = new ImportRegistry();
             reg.setMode("js");
             reg.addTypeOnly("@gtkx/types", ["Type"]);
             reg.add("./other.js", ["Other"]);
-            reg.add("@gtkx/native", ["call"]);
-            expect(stringify(reg)).toBe('import { call } from "@gtkx/native";\n');
+            reg.add("external-lib", ["call"]);
+            expect(stringify(reg)).toBe('import { call } from "external-lib";\n');
+        });
+
+        it("consolidates @gtkx/ffi runtime-module value imports to the runtime barrel", () => {
+            const reg = new ImportRegistry();
+            reg.setMode("js");
+            reg.add("../../registry.js", ["getNativeObject"]);
+            reg.add("../../native.js", ["t"]);
+            reg.add("@gtkx/native", ["createRef"]);
+            expect(stringify(reg)).toBe('import { createRef, getNativeObject, t } from "../../runtime.js";\n');
         });
 
         it("drops type-only namespace imports but keeps value namespace imports", () => {

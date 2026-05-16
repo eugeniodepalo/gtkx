@@ -86,12 +86,12 @@ describe("FileBuilder", () => {
                 .setMode("js")
                 .addTypeImport("./types.js", ["Type"])
                 .addImport("./other.js", ["other"])
-                .addImport("@gtkx/native", ["call"]);
+                .addImport("external-lib", ["call"]);
 
             const output = stringify(file);
             expect(output).not.toContain("Type");
             expect(output).not.toContain("./other.js");
-            expect(output).toContain('import { call } from "@gtkx/native";');
+            expect(output).toContain('import { call } from "external-lib";');
         });
 
         it("emits enums as frozen consts in JS mode", () => {

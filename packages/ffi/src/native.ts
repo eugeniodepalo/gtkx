@@ -11,7 +11,7 @@ export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./he
 import { getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { Error as GError } from "./generated/glib/glib.js";
 import type { GType } from "./generated/gobject/gobject.js";
-import { typeIsA } from "./generated/gobject/gobject.js";
+import { typeIsA } from "./gtype.js";
 import { type NativeClass, setHandle, tryGetHandle } from "./handles.js";
 
 export { getInstanceGType } from "@gtkx/native";

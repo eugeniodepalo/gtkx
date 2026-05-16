@@ -4,7 +4,8 @@ import {
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
 import { CONSTRUCTION_META } from "./construction-meta.js";
-import { type GType, typeInterfaces } from "./generated/gobject/gobject.js";
+import type { GType } from "./generated/gobject/gobject.js";
+import { typeInterfaces } from "./gtype.js";
 import { getClassStruct, type NativeClass } from "./handles.js";
 import { getClassGType, registerNativeClass } from "./registry.js";
 

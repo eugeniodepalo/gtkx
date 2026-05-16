@@ -1,3 +1,4 @@
+import { CONSOLIDATED_RUNTIME_SPECIFIERS, RUNTIME_SPECIFIER } from "../core/writers/runtime-imports.js";
 import type { Builder } from "./types.js";
 import type { Writer } from "./writer.js";
 
@@ -16,7 +17,9 @@ type ImportEntry = {
  * When `mode` is `"js"`, type-only imports and intra-namespace `./*`
  * specifiers are dropped at write time because the consolidated
  * per-namespace JavaScript file collapses those imports into same-file
- * references and has no need for type-only declarations.
+ * references and has no need for type-only declarations. Value imports of
+ * the `@gtkx/ffi` runtime modules are redirected onto {@link RUNTIME_SPECIFIER}
+ * so each generated file carries a single runtime import line.
  */
 export class ImportRegistry implements Builder {
     private readonly entries = new Map<string, ImportEntry>();
@@ -28,12 +31,25 @@ export class ImportRegistry implements Builder {
         this.mode = mode;
     }
 
-    /** Register value imports for the given module specifier. */
+    /**
+     * Register value imports for the given module specifier.
+     *
+     * In `"js"` mode, specifiers in {@link CONSOLIDATED_RUNTIME_SPECIFIERS}
+     * are redirected to {@link RUNTIME_SPECIFIER} so generated files import
+     * the runtime through a single barrel module.
+     */
     add(specifier: string, names: string[]): void {
-        const entry = this.getOrCreate(specifier);
+        const entry = this.getOrCreate(this.resolveValueSpecifier(specifier));
         for (const name of names) {
             entry.names.add(name);
         }
+    }
+
+    private resolveValueSpecifier(specifier: string): string {
+        if (this.mode === "js" && CONSOLIDATED_RUNTIME_SPECIFIERS.has(specifier)) {
+            return RUNTIME_SPECIFIER;
+        }
+        return specifier;
     }
 
     /** Register type-only imports for the given module specifier. */

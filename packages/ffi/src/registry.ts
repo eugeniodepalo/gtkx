@@ -1,6 +1,6 @@
 import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import type { GType } from "./generated/gobject/gobject.js";
-import { typeIsA, typeParent } from "./generated/gobject/gobject.js";
+import { typeIsA, typeParent } from "./gtype.js";
 import { getHandle, type NativeClass, type NativeObject, setHandle } from "./handles.js";
 
 const classRegistry = new Map<number, NativeClass>();
