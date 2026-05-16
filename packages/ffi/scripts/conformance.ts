@@ -9,20 +9,44 @@
  * runtime and surface only as an `undefined` at call time.
  *
  * This script builds an in-memory TypeScript program that asserts, per
- * namespace, that the runtime module satisfies its declared contract:
+ * namespace, that the runtime module is structurally interchangeable with its
+ * declared contract in both directions: a forward assertion that the runtime
+ * satisfies the whole contract, and one reverse assertion per shared class that
+ * the contract's instance type satisfies the runtime's:
  *
  *     import * as impl from "<ns>.js";
- *     impl satisfies typeof import("<ns>.d.ts");
+ *     const _forward = impl satisfies typeof import("<ns>.d.ts");
+ *     // per class C exported by both:
+ *     const _reverseC = (undefined as InstanceType<Contract["C"]>) satisfies
+ *         Pick<InstanceType<(typeof impl)["C"]>, keyof InstanceType<Contract["C"]>>;
  *
  * A custom compiler host hides every co-located generated declaration so that
  * importing `<ns>.js` is typed from the JavaScript itself instead of being
  * shadowed by its hand-supplied declaration; the contract is served separately
- * from memory. A namespace whose runtime omits a declared export or member
- * produces a diagnostic and fails the build.
+ * from memory. A namespace whose runtime omits a declared export or member —
+ * or whose runtime declares a member with a drifting call shape — produces a
+ * diagnostic and fails the build.
  *
- * Because the generated `.js` carries no type annotations, this reliably
- * enforces the existence of every declared class, member, and constant; it
- * does not verify parameter types.
+ * Beyond member existence, the bidirectional assertion verifies call-convention
+ * SHAPE for class and interface methods: parameter arity in both directions,
+ * the length and order of out/inout-parameter return tuples, `Promise` wrapping
+ * of async methods, and void-versus-value returns.
+ *
+ * Two source transforms make that possible without a primitive-precise type
+ * model:
+ *
+ *  - The runtime `.js` is rewritten so a `return` of an array literal is typed
+ *    as a fixed-length tuple (`/** @type {[any, any, …]} *\/`) instead of the
+ *    `any[]` TypeScript otherwise infers, recovering out-parameter tuple arity.
+ *  - The contract `.d.ts` is normalized syntactically: primitives, `void`,
+ *    `null`, `undefined`, tuples, array types, `Promise`, function signatures,
+ *    and unions/intersections are kept, while every other type-reference
+ *    identifier (nominal GObject, boxed, interface, enum, `GType`) is collapsed
+ *    to `any`. This isolates call-convention shape from GObject identity.
+ *
+ * Free functions stay `any`-typed: the runtime cannot statically type a
+ * marshaled FFI result, so their precise parameter and result types are out of
+ * scope for this gate.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -66,6 +90,138 @@ const contractDtsPath = (namespace: string): string => join(VIRTUAL_ROOT, "contr
 const checkTsPath = (namespace: string): string => join(VIRTUAL_ROOT, "check", `${namespace}.conformance.ts`);
 
 /**
+ * Type-reference identifiers the contract normalization keeps verbatim. Every
+ * other identifier is a nominal GObject, boxed, interface, enum or `GType`
+ * reference and is collapsed to `any` so the gate measures call-convention
+ * shape rather than GObject identity.
+ */
+const STRUCTURAL_TYPE_NAMES = new Set(["Array", "ReadonlyArray", "Promise", "PromiseLike"]);
+
+/**
+ * Rewrites a runtime `.js` so every `return` whose argument is a non-empty
+ * array literal is typed as a fixed-length tuple of `any`.
+ *
+ * TypeScript infers a bare array-literal return as `any[]`, discarding the
+ * arity that an out/inout-parameter return tuple carries. Annotating the
+ * parenthesized literal with a JSDoc `@type` cast of matching arity restores
+ * that arity while keeping element types collapsed to `any`. Empty literals are
+ * left untouched: a `return []` is a genuine empty-array fallback, not a tuple.
+ *
+ * @param source - The runtime JavaScript source.
+ * @param fileName - Absolute path of the runtime file, used for parsing.
+ * @returns The source with array-literal returns typed as tuples.
+ */
+const tupleAnnotateArrayReturns = (source: string, fileName: string): string => {
+    const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS);
+    const edits: { start: number; end: number; text: string }[] = [];
+
+    const visit = (node: ts.Node): void => {
+        if (
+            ts.isReturnStatement(node) &&
+            node.expression !== undefined &&
+            ts.isArrayLiteralExpression(node.expression)
+        ) {
+            const elementCount = node.expression.elements.length;
+            if (elementCount > 0 && !node.expression.elements.some(ts.isSpreadElement)) {
+                const tupleType = `[${Array.from({ length: elementCount }, () => "any").join(", ")}]`;
+                edits.push({
+                    start: node.expression.getStart(sourceFile),
+                    end: node.expression.getStart(sourceFile),
+                    text: `/** @type {${tupleType}} */ (`,
+                });
+                edits.push({ start: node.expression.getEnd(), end: node.expression.getEnd(), text: ")" });
+            }
+        }
+        ts.forEachChild(node, visit);
+    };
+
+    visit(sourceFile);
+    if (edits.length === 0) {
+        return source;
+    }
+
+    edits.sort((a, b) => b.start - a.start);
+    let result = source;
+    for (const edit of edits) {
+        result = result.slice(0, edit.start) + edit.text + result.slice(edit.end);
+    }
+    return result;
+};
+
+/**
+ * Normalizes a contract `.d.ts` so the gate measures call-convention shape
+ * rather than GObject identity: every nominal type-reference identifier
+ * collapses to `any`, while parameter arity, return-tuple structure, `Promise`
+ * wrapping, function signatures, primitives and unions/intersections are
+ * preserved by structural recursion.
+ *
+ * A `Promise<T>`, `Array<T>`, `ReadonlyArray<T>` keeps its constructor name so
+ * async wrapping and array-ness survive; its type arguments are still
+ * normalized. A bare nominal reference — `Widget`, `GType`, `File` — becomes
+ * `any`. Compound type nodes (tuples, array types, function types, type
+ * literals, indexed accesses) are recursed into so nested nominal references
+ * inside them collapse as well.
+ *
+ * Literal types — numeric, string, bigint, boolean — are widened to their
+ * primitive keyword: literal precision is a primitive-type concern outside the
+ * scope of a call-convention shape gate, and the untyped runtime exposes such
+ * values only as their primitive. `null` and `undefined` literals are kept.
+ *
+ * @param source - The contract declaration source.
+ * @param fileName - Absolute path of the contract file, used for parsing.
+ * @returns The normalized declaration source.
+ */
+const widenLiteralType = (node: ts.LiteralTypeNode, factory: ts.NodeFactory): ts.TypeNode | undefined => {
+    const literal = node.literal;
+    if (literal.kind === ts.SyntaxKind.NullKeyword) {
+        return undefined;
+    }
+    if (ts.isStringLiteral(literal)) {
+        return factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword);
+    }
+    if (ts.isBigIntLiteral(literal)) {
+        return factory.createKeywordTypeNode(ts.SyntaxKind.BigIntKeyword);
+    }
+    if (ts.isNumericLiteral(literal) || (ts.isPrefixUnaryExpression(literal) && ts.isNumericLiteral(literal.operand))) {
+        return factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword);
+    }
+    if (literal.kind === ts.SyntaxKind.TrueKeyword || literal.kind === ts.SyntaxKind.FalseKeyword) {
+        return factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword);
+    }
+    return undefined;
+};
+
+const normalizeContract = (source: string, fileName: string): string => {
+    const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
+
+    const transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
+        const { factory } = context;
+        const visit = (node: ts.Node): ts.Node => {
+            if (ts.isTypeReferenceNode(node) && !ts.isQualifiedName(node.typeName)) {
+                if (STRUCTURAL_TYPE_NAMES.has(node.typeName.text)) {
+                    return ts.visitEachChild(node, visit, context);
+                }
+                return factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
+            }
+            if (ts.isTypeReferenceNode(node)) {
+                return factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
+            }
+            if (ts.isLiteralTypeNode(node)) {
+                return widenLiteralType(node, factory) ?? node;
+            }
+            return ts.visitEachChild(node, visit, context);
+        };
+        return (file) => ts.visitNode(file, visit) as ts.SourceFile;
+    };
+
+    const result = ts.transform(sourceFile, [transformer]);
+    const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+    const printed = printer.printFile(result.transformed[0] as ts.SourceFile);
+    result.dispose();
+    return printed;
+};
+
+/**
  * Enumerates every generated namespace that has both a runtime and a
  * declaration file under `src/generated/`.
  *
@@ -83,14 +239,70 @@ const collectNamespaces = (): string[] =>
         .sort();
 
 /**
- * Renders the conformance assertion source for a single namespace.
+ * Collects the names of every exported `class` declaration in a source file.
+ *
+ * @param source - The module source.
+ * @param fileName - Absolute path of the source, used for parsing.
+ * @param scriptKind - Whether the source is TypeScript or JavaScript.
+ * @returns The set of exported class identifiers.
+ */
+const collectExportedClassNames = (source: string, fileName: string, scriptKind: ts.ScriptKind): Set<string> => {
+    const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.ESNext, true, scriptKind);
+    const names = new Set<string>();
+    for (const statement of sourceFile.statements) {
+        if (
+            ts.isClassDeclaration(statement) &&
+            statement.name !== undefined &&
+            statement.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) === true
+        ) {
+            names.add(statement.name.text);
+        }
+    }
+    return names;
+};
+
+/**
+ * Renders the bidirectional conformance assertion source for a single
+ * namespace.
+ *
+ * The forward direction (`impl satisfies Contract`) catches a runtime missing a
+ * declared member, a runtime method with surplus required parameters, and a
+ * runtime return tuple shorter than the contract's.
+ *
+ * The reverse direction emits one assertion per class the contract and runtime
+ * both export, comparing the contract's instance type against the runtime's
+ * instance type restricted to the members the contract declares
+ * (`Pick<ImplInstance, keyof ContractInstance>`). One concrete assertion per
+ * class — rather than a single mapped-type comparison — keeps the class name a
+ * literal key, so the relation is resolved eagerly instead of through the
+ * homomorphic mapped-type fast path that elides deferred indexed accesses.
+ * Restricting to shared members catches a contract method with surplus
+ * parameters and a contract return tuple shorter than the runtime's, while
+ * keeping runtime-only instance members — class-struct fields, virtual-method
+ * accessors — out of scope, as the static side and free functions already are.
  *
  * @param namespace - Namespace identifier.
- * @returns TypeScript source asserting the runtime satisfies the contract.
+ * @param sharedClasses - Names of classes exported by both runtime and contract.
+ * @returns TypeScript source asserting runtime and contract agree on shape.
  */
-const checkSource = (namespace: string): string =>
-    `import * as impl from ${JSON.stringify(IMPL_PREFIX + namespace)};\n` +
-    `const _conformance = impl satisfies typeof import(${JSON.stringify(CONTRACT_PREFIX + namespace)});\n`;
+const checkSource = (namespace: string, sharedClasses: readonly string[]): string => {
+    const reverseAssertions = sharedClasses
+        .map((name, index) => {
+            const key = JSON.stringify(name);
+            return (
+                `type _Contract${index} = InstanceType<Contract[${key}]>;\n` +
+                `const _reverse${index} = (undefined as unknown as _Contract${index}) satisfies ` +
+                `Pick<InstanceType<(typeof impl)[${key}]>, keyof _Contract${index}>;`
+            );
+        })
+        .join("\n");
+    return (
+        `import * as impl from ${JSON.stringify(IMPL_PREFIX + namespace)};\n` +
+        `type Contract = typeof import(${JSON.stringify(CONTRACT_PREFIX + namespace)});\n` +
+        `const _forward = impl satisfies Contract;\n` +
+        `${reverseAssertions}\n`
+    );
+};
 
 /**
  * Resolves one module specifier, routing conformance and `@gtkx/ffi/<ns>`
@@ -256,10 +468,21 @@ const main = (): void => {
     const virtualFiles = new Map<string, string>();
     const rootNames: string[] = [];
     for (const namespace of namespaces) {
-        const declaration = readFileSync(join(GENERATED_DIR, namespace, `${namespace}.d.ts`), "utf8");
-        virtualFiles.set(contractDtsPath(namespace), declaration);
+        const declarationPath = join(GENERATED_DIR, namespace, `${namespace}.d.ts`);
+        const declaration = readFileSync(declarationPath, "utf8");
+        const normalizedDeclaration = normalizeContract(declaration, declarationPath);
+        virtualFiles.set(contractDtsPath(namespace), normalizedDeclaration);
+
+        const runtimePath = implJsPath(namespace);
+        const runtime = readFileSync(runtimePath, "utf8");
+        virtualFiles.set(runtimePath, tupleAnnotateArrayReturns(runtime, runtimePath));
+
+        const contractClasses = collectExportedClassNames(normalizedDeclaration, declarationPath, ts.ScriptKind.TS);
+        const runtimeClasses = collectExportedClassNames(runtime, runtimePath, ts.ScriptKind.JS);
+        const sharedClasses = [...contractClasses].filter((name) => runtimeClasses.has(name)).sort();
+
         const checkPath = checkTsPath(namespace);
-        virtualFiles.set(checkPath, checkSource(namespace));
+        virtualFiles.set(checkPath, checkSource(namespace, sharedClasses));
         rootNames.push(checkPath);
     }
 
