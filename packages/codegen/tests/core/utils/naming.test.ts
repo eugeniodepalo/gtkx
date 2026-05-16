@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterSupportedMethods, isMethodDuplicate } from "../../../src/core/utils/filtering.js";
+import { isMethodDuplicate, partitionSupportedMethods } from "../../../src/core/utils/filtering.js";
 import {
     CLASS_RENAMES,
     generateConflictingMethodName,
@@ -237,19 +237,19 @@ describe("isMethodDuplicate", () => {
     });
 });
 
-describe("filterSupportedMethods", () => {
+describe("partitionSupportedMethods", () => {
     it("filters out duplicates", () => {
         const methods = [
             { name: "get_name", cIdentifier: "gtk_widget_get_name", parameters: [] },
             { name: "get_name", cIdentifier: "gtk_widget_get_name", parameters: [] },
         ];
 
-        const result = filterSupportedMethods(
+        const { supported } = partitionSupportedMethods(
             methods,
             () => false,
             () => false,
         );
-        expect(result).toHaveLength(1);
+        expect(supported).toHaveLength(1);
     });
 
     it("filters out methods with unsupported callbacks", () => {
@@ -258,13 +258,13 @@ describe("filterSupportedMethods", () => {
             { name: "unsupported", cIdentifier: "gtk_unsupported", parameters: [{ name: "callback" }] },
         ];
 
-        const result = filterSupportedMethods(
+        const { supported } = partitionSupportedMethods(
             methods,
             (params) => params.length > 0,
             () => false,
         );
-        expect(result).toHaveLength(1);
-        expect(result[0].name).toBe("supported");
+        expect(supported).toHaveLength(1);
+        expect(supported[0].name).toBe("supported");
     });
 
     it("filters out methods with unsafe return types", () => {
@@ -273,13 +273,13 @@ describe("filterSupportedMethods", () => {
             { name: "unsafe", cIdentifier: "gtk_unsafe", parameters: [], returnType: { name: "gpointer" } },
         ];
 
-        const result = filterSupportedMethods(
+        const { supported } = partitionSupportedMethods(
             methods,
             () => false,
             (returnType) => returnType?.name === "gpointer",
         );
-        expect(result).toHaveLength(1);
-        expect(result[0].name).toBe("safe");
+        expect(supported).toHaveLength(1);
+        expect(supported[0].name).toBe("safe");
     });
 
     it("keeps first occurrence when duplicates exist", () => {
@@ -288,18 +288,22 @@ describe("filterSupportedMethods", () => {
             { name: "get_name", cIdentifier: "gtk_widget_get_name", parameters: [{ name: "second" }] },
         ];
 
-        const result = filterSupportedMethods(
+        const { supported } = partitionSupportedMethods(
             methods,
             () => false,
             () => false,
         );
-        expect(result).toHaveLength(1);
-        expect(result[0].parameters[0].name).toBe("first");
+        expect(supported).toHaveLength(1);
+        expect(supported[0].parameters[0].name).toBe("first");
     });
 
     it("returns empty array for empty input", () => {
-        const result = filterSupportedMethods([], () => false);
-        expect(result).toEqual([]);
+        const { supported } = partitionSupportedMethods(
+            [],
+            () => false,
+            () => false,
+        );
+        expect(supported).toEqual([]);
     });
 
     it("handles multiple different methods", () => {
@@ -309,12 +313,12 @@ describe("filterSupportedMethods", () => {
             { name: "method_c", cIdentifier: "c_method_c", parameters: [] },
         ];
 
-        const result = filterSupportedMethods(
+        const { supported } = partitionSupportedMethods(
             methods,
             () => false,
             () => false,
         );
-        expect(result).toHaveLength(3);
+        expect(supported).toHaveLength(3);
     });
 });
 

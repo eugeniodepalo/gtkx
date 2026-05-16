@@ -92,7 +92,7 @@ export const toValidMemberName = (str: string): string => {
 
 export const toValidIdentifier = (str: string): string => {
     const result = toValidMemberName(str);
-    if (RESERVED_WORDS.has(result)) return `${result}_TODO`;
+    if (RESERVED_WORDS.has(result)) return `${result}_`;
     return result;
 };
 

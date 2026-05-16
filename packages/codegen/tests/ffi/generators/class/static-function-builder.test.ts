@@ -177,7 +177,7 @@ describe("StaticFunctionBuilder", () => {
             expect(structures[0].returnType).toBeUndefined();
         });
 
-        it("filters out functions whose parameters are GLib.Closure (untyped, unsafe)", () => {
+        it("emits a stub for functions whose parameters are GLib.Closure (untyped, unsafe)", () => {
             const { builder } = createTestSetup({
                 staticFunctions: [
                     createNormalizedFunction({
@@ -201,8 +201,8 @@ describe("StaticFunctionBuilder", () => {
 
             const structures = builder.buildStructures();
 
-            expect(structures).toHaveLength(1);
-            expect(structures[0].name).toBe("normal");
+            expect(structures).toHaveLength(2);
+            expect(structures.map((s) => s.name).sort()).toEqual(["normal", "withClosure"]);
         });
 
         it("uses normalized class name for return type mapping", () => {

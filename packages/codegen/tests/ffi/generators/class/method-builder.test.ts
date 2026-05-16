@@ -182,7 +182,7 @@ describe("MethodBuilder", () => {
             expect(structures).toHaveLength(1);
         });
 
-        it("filters out methods whose parameters are GLib.Closure (untyped, unsafe)", () => {
+        it("emits a stub for methods whose parameters are GLib.Closure (untyped, unsafe)", () => {
             const { builder } = createTestSetup();
             const methods = [
                 createNormalizedMethod({
@@ -205,8 +205,8 @@ describe("MethodBuilder", () => {
 
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
-            expect(structures).toHaveLength(1);
-            expect(structures[0].name).toBe("normal");
+            expect(structures).toHaveLength(2);
+            expect(structures.map((s) => s.name).sort()).toEqual(["normal", "withClosure"]);
         });
     });
 
