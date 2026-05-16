@@ -73,6 +73,11 @@ export class FfiMapper {
         private readonly currentNamespace: string,
     ) {}
 
+    /** The namespace whose bindings are currently being generated. */
+    getCurrentNamespace(): string {
+        return this.currentNamespace;
+    }
+
     /**
      * Enriches a struct FFI descriptor with its computed size.
      * Used for trampoline callback arguments where the native module needs

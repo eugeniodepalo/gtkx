@@ -1181,7 +1181,8 @@ export class MethodBodyWriter {
     setupGErrorImports(currentNamespace?: string): string {
         this.imports.addImport("../../native.js", ["checkError"]);
 
-        const isGLibNamespace = currentNamespace === "GLib";
+        const namespace = currentNamespace ?? this.ffiMapper.getCurrentNamespace();
+        const isGLibNamespace = namespace === "GLib";
 
         if (isGLibNamespace) {
             this.imports.addImport("./error.js", ["Error"]);
