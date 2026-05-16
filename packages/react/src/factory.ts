@@ -65,7 +65,7 @@ export const createNode = (
     rootContainer: Container,
 ): Node => {
     const gtype: GType = existingContainer
-        ? (existingContainer.__gtype__ as unknown as GType)
+        ? ((existingContainer as unknown as { __gtype__: number }).__gtype__ as unknown as GType)
         : typeFromName(elementType);
 
     const nodeClass = resolveNodeClass(elementType, gtype);

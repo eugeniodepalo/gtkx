@@ -5,7 +5,7 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 const getPolicy = (scrolledWindow: Gtk.ScrolledWindow): [Gtk.PolicyType, Gtk.PolicyType] => {
-    return scrolledWindow.getPolicy();
+    return scrolledWindow.getPolicy() as [Gtk.PolicyType, Gtk.PolicyType];
 };
 
 describe("render - ScrolledWindow", () => {

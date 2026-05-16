@@ -33,7 +33,7 @@ const memoize = <T>(
     key: string,
     compute: (typeNames: readonly string[]) => T,
 ): T => {
-    const gtype = instance.__gtype__;
+    const gtype = (instance as unknown as { __gtype__: number }).__gtype__;
     let perGtype = cache.get(gtype);
     if (!perGtype) {
         perGtype = new Map();

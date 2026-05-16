@@ -67,7 +67,7 @@ function loadSchemaTree(): SchemaTreeNode[] {
     const source = Gio.SettingsSchemaSource.getDefault();
     if (!source) return [];
 
-    const [nonRelocatable] = source.listSchemas(true);
+    const [nonRelocatable] = source.listSchemas(true) as [string[], string[]];
 
     return nonRelocatable.sort().map((id) => {
         const settings = Gio.Settings.new(id);
