@@ -1,4 +1,4 @@
-import { CONSTRUCTION_META, type NativeClass } from "@gtkx/ffi";
+import { CONSTRUCTION_META, getParentClass, type NativeClass } from "@gtkx/ffi";
 import type { GType } from "@gtkx/ffi/gobject";
 import { typeName, typeParent } from "@gtkx/ffi/gobject";
 import { PROPS, SIGNALS } from "./generated/internal.js";
@@ -33,7 +33,7 @@ const memoize = <T>(
     key: string,
     compute: (typeNames: readonly string[]) => T,
 ): T => {
-    const gtype = (instance as unknown as { __gtype__: GType }).__gtype__;
+    const gtype = instance.__gtype__;
     let perGtype = cache.get(gtype);
     if (!perGtype) {
         perGtype = new Map();
@@ -59,12 +59,12 @@ export const isConstructOnlyProp = (instance: Container, key: string): boolean =
     memoize(constructOnlyCache, instance, key, () => {
         const ffiKey = camelToSnake(key);
         let cls: NativeClass | null = instance.constructor as NativeClass;
-        while (cls && cls !== (Function.prototype as unknown as NativeClass)) {
+        while (cls) {
             const meta = CONSTRUCTION_META.get(cls);
             if (meta?.kind === "gobject" && ffiKey in meta.props) {
                 return meta.props[ffiKey]?.constructOnly === true;
             }
-            cls = Object.getPrototypeOf(cls) as NativeClass | null;
+            cls = getParentClass(cls);
         }
         return false;
     });

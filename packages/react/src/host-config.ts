@@ -1,5 +1,4 @@
 import { freeze, unfreeze } from "@gtkx/ffi";
-import type { GType } from "@gtkx/ffi/gobject";
 import { typeName } from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
@@ -45,7 +44,7 @@ const getOrCreateContainerNode = (container: Container): Node => {
     let node = containerNodeCache.get(container);
 
     if (!node) {
-        const runtimeName = typeName((container as unknown as { __gtype__: GType }).__gtype__);
+        const runtimeName = typeName(container.__gtype__);
         if (!runtimeName) {
             throw new Error("Cannot resolve runtime GLib type name for container");
         }
@@ -194,7 +193,15 @@ export function createHostConfig(): HostConfig {
     };
 }
 
+/**
+ * Builds the reconciler `HostTransitionContext`. `React.createContext` and
+ * `react-reconciler` ship independent type declarations for the same runtime
+ * context object: the public `react` type omits the internal `_currentValue`
+ * slots the reconciler mutates, while the reconciler type omits the public
+ * `Provider`/`Consumer` shape. The runtime value satisfies both; the
+ * `unknown` hop is the single boundary reconciling the two declarations.
+ */
 function createReconcilerContext(value: number): ReactReconciler.ReactContext<number> {
-    const context = React.createContext<number>(value);
-    return context as unknown as ReactReconciler.ReactContext<number>;
+    const context: unknown = React.createContext<number>(value);
+    return context as ReactReconciler.ReactContext<number>;
 }

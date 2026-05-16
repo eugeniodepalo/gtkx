@@ -1,6 +1,18 @@
 import type { NativeHandle } from "@gtkx/native";
+import type { GType } from "./generated/gobject/gobject.js";
 
 export type { NativeHandle } from "@gtkx/native";
+
+/**
+ * Structural shape of any wrapped native instance once construction or
+ * `wrapHandle` has stamped its runtime GLib type onto it. Every GObject and
+ * boxed wrapper produced by `@gtkx/ffi` satisfies this interface; consumers
+ * that need the runtime `GType` of an instance read it through this type.
+ */
+export interface GTypeStamped {
+    /** Runtime GType of the underlying GObject or boxed instance. */
+    __gtype__: GType;
+}
 
 /**
  * Internal abstract base for hand-written `@gtkx/ffi` native wrappers such as
@@ -11,9 +23,9 @@ export type { NativeHandle } from "@gtkx/native";
  *
  * @internal
  */
-export abstract class NativeObject {
+export abstract class NativeObject implements GTypeStamped {
     /** Runtime GType of the underlying GObject or boxed instance. */
-    __gtype__!: number;
+    __gtype__!: GType;
 }
 
 /**
@@ -26,6 +38,18 @@ export type NativeClass<T extends object = object> = (abstract new (
 ) => T) & {
     readonly prototype: T;
 };
+
+/**
+ * Returns the superclass of a native wrapper class, or `null` when `cls` is a
+ * root class whose prototype is `Function.prototype` (the JavaScript class
+ * hierarchy root). Encapsulates the single boundary where a prototype-chain
+ * walk over generated classes meets the untyped function root, so callers can
+ * iterate ancestry without comparing against `Function.prototype` themselves.
+ */
+export function getParentClass(cls: NativeClass): NativeClass | null {
+    const parent: unknown = Object.getPrototypeOf(cls);
+    return typeof parent === "function" && parent !== Function.prototype ? (parent as NativeClass) : null;
+}
 
 const handleMap = new WeakMap<object, NativeHandle>();
 

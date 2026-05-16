@@ -2,7 +2,7 @@ import { alloc, call, type NativeHandle, read, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { gvalueFromProp } from "./gobject/gvalue.js";
-import { type NativeClass, type NativeObject, setHandle } from "./handles.js";
+import { type GTypeStamped, getParentClass, type NativeClass, type NativeObject, setHandle } from "./handles.js";
 import { t } from "./helpers.js";
 import { getClassGType, registerNativeObject } from "./registry.js";
 
@@ -42,7 +42,7 @@ export function constructNativeObject(instance: object, props: object = {}): voi
     } else {
         setHandle(instance, constructBoxed(meta, props as Record<string, unknown>));
     }
-    (instance as { __gtype__: GType }).__gtype__ = getClassGType(ctor);
+    (instance as GTypeStamped).__gtype__ = getClassGType(ctor);
 }
 
 /**
@@ -88,13 +88,12 @@ function walkPropsForGObject(
     values: NativeHandle[],
     seen: Set<string>,
 ): void {
-    if (!ctor || ctor === (Function.prototype as unknown as NativeClass)) return;
+    if (!ctor) return;
     const meta = CONSTRUCTION_META.get(ctor);
     if (meta?.kind === "gobject") {
         collectGObjectProps(meta.props, props, names, values, seen);
     }
-    const parent = Object.getPrototypeOf(ctor) as NativeClass | null;
-    walkPropsForGObject(parent, props, names, values, seen);
+    walkPropsForGObject(getParentClass(ctor), props, names, values, seen);
 }
 
 function collectGObjectProps(

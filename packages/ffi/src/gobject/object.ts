@@ -26,6 +26,14 @@ declare module "../generated/gobject/gobject.js" {
 
     interface Object {
         /**
+         * Runtime GType of the underlying GObject, stamped onto every instance
+         * at construction time and when a native handle is wrapped. Reflects
+         * the concrete leaf type, which may be more derived than the static
+         * wrapper type the instance is referenced through.
+         */
+        readonly __gtype__: GType;
+
+        /**
          * Disconnects a signal handler previously connected via
          * {@link Object.connect}, {@link Object.on}, or {@link Object.once}.
          *

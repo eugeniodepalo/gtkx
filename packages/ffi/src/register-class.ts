@@ -6,7 +6,7 @@ import {
 import { CONSTRUCTION_META } from "./construction-meta.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID, typeInterfaces } from "./gtype.js";
-import { getClassStruct, type NativeClass } from "./handles.js";
+import { getClassStruct, getParentClass, type NativeClass } from "./handles.js";
 import { getClassGType, registerNativeClass } from "./registry.js";
 
 /**
@@ -118,19 +118,19 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
 
 function hasRegisteredAncestor(klass: NativeClass): boolean {
     let current: NativeClass | null = klass;
-    while (current && current !== (Function.prototype as unknown as NativeClass)) {
+    while (current) {
         if (CONSTRUCTION_META.has(current)) return true;
-        current = Object.getPrototypeOf(current) as NativeClass | null;
+        current = getParentClass(current);
     }
     return false;
 }
 
 function resolveParentGType(klass: NativeClass): GType {
-    let current = Object.getPrototypeOf(klass) as NativeClass | null;
-    while (current && current !== (Function.prototype as unknown as NativeClass)) {
+    let current = getParentClass(klass);
+    while (current) {
         const gtype = getClassGType(current);
         if (gtype !== G_TYPE_INVALID) return gtype;
-        current = Object.getPrototypeOf(current) as NativeClass | null;
+        current = getParentClass(current);
     }
     return G_TYPE_INVALID;
 }
@@ -202,8 +202,8 @@ function discoverInterfaceVfuncs(
 }
 
 function findClassVfuncDescriptor(klass: NativeClass, methodName: string): RegisterClassVfuncDescriptor | null {
-    let current: NativeClass | null = Object.getPrototypeOf(klass) as NativeClass | null;
-    while (current && current !== (Function.prototype as unknown as NativeClass)) {
+    let current = getParentClass(klass);
+    while (current) {
         const struct = getClassStruct(current);
         if (struct) {
             const entry = struct[methodName];
@@ -211,7 +211,7 @@ function findClassVfuncDescriptor(klass: NativeClass, methodName: string): Regis
                 return entry as RegisterClassVfuncDescriptor;
             }
         }
-        current = Object.getPrototypeOf(current) as NativeClass | null;
+        current = getParentClass(current);
     }
     return null;
 }

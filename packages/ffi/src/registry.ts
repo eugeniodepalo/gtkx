@@ -1,7 +1,7 @@
 import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID, typeIsA, typeParent } from "./gtype.js";
-import { getHandle, type NativeClass, type NativeObject, setHandle } from "./handles.js";
+import { type GTypeStamped, getHandle, type NativeClass, type NativeObject, setHandle } from "./handles.js";
 
 const classRegistry = new Map<GType, NativeClass>();
 const gtypeByClass = new WeakMap<NativeClass, GType>();
@@ -83,7 +83,7 @@ export function getInterfaceGType(cls: NativeClass): GType {
 export function wrapHandle<T extends object>(cls: NativeClass<T>, handle: NativeHandle): T {
     const instance = Object.create(cls.prototype) as T;
     setHandle(instance, handle);
-    (instance as { __gtype__: GType }).__gtype__ = getClassGType(cls);
+    (instance as GTypeStamped).__gtype__ = getClassGType(cls);
     return instance;
 }
 
