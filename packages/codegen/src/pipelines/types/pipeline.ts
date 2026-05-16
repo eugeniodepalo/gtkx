@@ -65,8 +65,45 @@ const collectGtypeStructNames = (repository: GirRepository): GtypeStructMap => {
 };
 
 /**
+ * One class or interface declaration, type-erased to the members the type
+ * pipeline's per-owner collectors need.
+ */
+type OwnerDeclaration = {
+    name: string;
+    signals: readonly { name: string }[];
+    methods: readonly { name: string }[];
+    fieldNames: readonly string[];
+    virtualMethodNames: readonly string[];
+};
+
+/**
+ * Builds a {@link FieldNameMap} by applying `selectNames` to every class and
+ * interface of every namespace in the repository.
+ *
+ * @param repository - The loaded GIR repository.
+ * @param selectNames - Maps one owner declaration to the names to record.
+ * @returns Names keyed lowercase namespace identifier then owner name.
+ */
+const collectByOwner = (
+    repository: GirRepository,
+    selectNames: (owner: OwnerDeclaration) => Iterable<string>,
+): FieldNameMap => {
+    const namespaces = new Map<string, Map<string, Set<string>>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const owners = new Map<string, Set<string>>();
+        for (const owner of [...namespace.classes.values(), ...namespace.interfaces.values()]) {
+            owners.set(toPascalCase(owner.name), new Set(selectNames(owner)));
+        }
+        namespaces.set(namespaceName.toLowerCase(), owners);
+    }
+    return namespaces;
+};
+
+/**
  * Collects the camelCased instance-struct field names of every class and
- * interface per namespace, keyed as {@link FieldNameMap} expects.
+ * interface per namespace.
  *
  * The type pipeline uses these to strip the field declarations ts-for-gir
  * emits into GObject class and interface bodies, which node-gtk's runtime
@@ -75,22 +112,8 @@ const collectGtypeStructNames = (repository: GirRepository): GtypeStructMap => {
  * @param repository - The loaded GIR repository.
  * @returns Field names keyed lowercase namespace identifier then owner name.
  */
-const collectClassFieldNames = (repository: GirRepository): FieldNameMap => {
-    const namespaces = new Map<string, Map<string, Set<string>>>();
-    for (const namespaceName of repository.getNamespaceNames()) {
-        const namespace = repository.getNamespace(namespaceName);
-        if (!namespace) continue;
-        const owners = new Map<string, Set<string>>();
-        for (const cls of namespace.classes.values()) {
-            owners.set(toPascalCase(cls.name), new Set(cls.fieldNames.map(toCamelCase)));
-        }
-        for (const iface of namespace.interfaces.values()) {
-            owners.set(toPascalCase(iface.name), new Set(iface.fieldNames.map(toCamelCase)));
-        }
-        namespaces.set(namespaceName.toLowerCase(), owners);
-    }
-    return namespaces;
-};
+const collectClassFieldNames = (repository: GirRepository): FieldNameMap =>
+    collectByOwner(repository, (owner) => owner.fieldNames.map(toCamelCase));
 
 /**
  * Collects the camelCased member names that ts-for-gir emits into class and
@@ -107,36 +130,12 @@ const collectClassFieldNames = (repository: GirRepository): FieldNameMap => {
  * @param repository - The loaded GIR repository.
  * @returns Strippable member names keyed namespace then owner name.
  */
-const collectSignalActionMethodNames = (repository: GirRepository): FieldNameMap => {
-    const namespaces = new Map<string, Map<string, Set<string>>>();
-    for (const namespaceName of repository.getNamespaceNames()) {
-        const namespace = repository.getNamespace(namespaceName);
-        if (!namespace) continue;
-        const owners = new Map<string, Set<string>>();
-        const collect = (
-            name: string,
-            signals: readonly { name: string }[],
-            virtualMethodNames: readonly string[],
-            methods: readonly { name: string }[],
-        ) => {
-            const methodNames = new Set(methods.map((m) => toCamelCase(m.name)));
-            const names = new Set<string>();
-            for (const candidate of [...signals.map((s) => s.name), ...virtualMethodNames]) {
-                const camel = toCamelCase(candidate);
-                if (!methodNames.has(camel)) names.add(camel);
-            }
-            owners.set(toPascalCase(name), names);
-        };
-        for (const cls of namespace.classes.values()) {
-            collect(cls.name, cls.signals, cls.virtualMethodNames, cls.methods);
-        }
-        for (const iface of namespace.interfaces.values()) {
-            collect(iface.name, iface.signals, iface.virtualMethodNames, iface.methods);
-        }
-        namespaces.set(namespaceName.toLowerCase(), owners);
-    }
-    return namespaces;
-};
+const collectSignalActionMethodNames = (repository: GirRepository): FieldNameMap =>
+    collectByOwner(repository, (owner) => {
+        const methodNames = new Set(owner.methods.map((m) => toCamelCase(m.name)));
+        const candidates = [...owner.signals.map((s) => s.name), ...owner.virtualMethodNames];
+        return candidates.map(toCamelCase).filter((camel) => !methodNames.has(camel));
+    });
 
 /**
  * Generates the per-namespace `.d.ts` type bindings from already-loaded GIR
