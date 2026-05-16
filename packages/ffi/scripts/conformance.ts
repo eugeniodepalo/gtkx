@@ -14,11 +14,21 @@
  * satisfies the whole contract, and one reverse assertion per shared class that
  * the contract's instance type satisfies the runtime's:
  *
- *     import * as impl from "<ns>.js";
+ *     import * as impl from "<ns>";
  *     const _forward = impl satisfies typeof import("<ns>.d.ts");
  *     // per class C exported by both:
  *     const _reverseC = (undefined as InstanceType<Contract["C"]>) satisfies
  *         Pick<InstanceType<(typeof impl)["C"]>, keyof InstanceType<Contract["C"]>>;
+ *
+ * The impl side is the full shipping `@gtkx/ffi/<ns>` surface, not the bare
+ * generated `<ns>.js`. A namespace with a hand-written runtime directory
+ * (`src/<ns>/` with an `index.ts`) ships generated code plus hand-written
+ * overrides and `declare module` augmentations; for those the impl resolves to
+ * `src/<ns>/index.ts`, which re-exports the generated `<ns>.js` and layers the
+ * overrides on top. A namespace without such a directory resolves to the bare
+ * generated `<ns>.js`. Either way the generated `<ns>.js` is still pulled into
+ * the program — directly or transitively through the `index.ts` re-export — so
+ * an override layer cannot mask a genuine gap in the generated code.
  *
  * A custom compiler host hides every co-located generated declaration so that
  * importing `<ns>.js` is typed from the JavaScript itself instead of being
@@ -54,12 +64,13 @@
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "typescript";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const FFI_ROOT = dirname(SCRIPT_DIR);
-const GENERATED_DIR = join(FFI_ROOT, "src", "generated");
+const SRC_DIR = join(FFI_ROOT, "src");
+const GENERATED_DIR = join(SRC_DIR, "generated");
 const VIRTUAL_ROOT = join(FFI_ROOT, "__conformance__");
 
 const IMPL_PREFIX = "gtkx-conformance:impl:";
@@ -94,6 +105,34 @@ const contractDtsPath = (namespace: string): string => join(VIRTUAL_ROOT, "contr
 const checkTsPath = (namespace: string): string => join(VIRTUAL_ROOT, "check", `${namespace}.conformance.ts`);
 
 /**
+ * Path of the hand-written runtime entry for a namespace, if one exists.
+ *
+ * A namespace with a `src/<ns>/index.ts` ships its generated `<ns>.js` re-export
+ * alongside hand-written overrides and `declare module` augmentations; that
+ * `index.ts` is the real `@gtkx/ffi/<ns>` surface. A namespace without one
+ * ships the generated `<ns>.js` unmodified.
+ *
+ * @param namespace - Namespace identifier.
+ * @returns The hand-written entry path, or `undefined` when none exists.
+ */
+const handWrittenEntryPath = (namespace: string): string | undefined => {
+    const entry = join(SRC_DIR, namespace, "index.ts");
+    return existsSync(entry) ? entry : undefined;
+};
+
+/**
+ * Path the impl side of a namespace's conformance assertion resolves to: the
+ * hand-written runtime entry when one exists, otherwise the bare generated
+ * `<ns>.js`. The generated `<ns>.js` is still type-checked either way — the
+ * hand-written entry re-exports it — so the override layer cannot hide a gap
+ * in the generated code.
+ *
+ * @param namespace - Namespace identifier.
+ * @returns The absolute impl entry path.
+ */
+const implEntryPath = (namespace: string): string => handWrittenEntryPath(namespace) ?? implJsPath(namespace);
+
+/**
  * Type-reference identifiers the contract normalization keeps verbatim. Every
  * other identifier is a nominal GObject, boxed, interface, enum or `GType`
  * reference and is collapsed to `any` so the gate measures call-convention
@@ -102,36 +141,36 @@ const checkTsPath = (namespace: string): string => join(VIRTUAL_ROOT, "check", `
 const STRUCTURAL_TYPE_NAMES = new Set(["Array", "ReadonlyArray", "Promise", "PromiseLike"]);
 
 /**
- * Rewrites a runtime `.js` so every `return` whose argument is a non-empty
- * array literal is typed as a fixed-length tuple of `any`.
+ * Picks the JSDoc `@type` annotation for a runtime `return` expression, or
+ * `undefined` to leave the expression untouched.
  *
- * TypeScript infers a bare array-literal return as `any[]`, discarding the
- * arity that an out/inout-parameter return tuple carries. Annotating the
- * parenthesized literal with a JSDoc `@type` cast of matching arity restores
- * that arity while keeping element types collapsed to `any`. Empty literals are
- * left untouched: a `return []` is a genuine empty-array fallback, not a tuple.
+ * The annotation is the type written inside a `/** @type {...} *\/` cast that
+ * wraps the parenthesized return expression.
+ */
+type ReturnAnnotation = (expression: ts.Expression) => string | undefined;
+
+/**
+ * Rewrites a runtime `.js` so each `return` expression an annotation picker
+ * matches is wrapped in a JSDoc `@type` cast, controlling the type TypeScript
+ * infers for the value the runtime returns.
  *
  * @param source - The runtime JavaScript source.
  * @param fileName - Absolute path of the runtime file, used for parsing.
- * @returns The source with array-literal returns typed as tuples.
+ * @param annotate - Picks the cast type for a return expression, or skips it.
+ * @returns The source with matched return expressions annotated.
  */
-const tupleAnnotateArrayReturns = (source: string, fileName: string): string => {
+const annotateReturns = (source: string, fileName: string, annotate: ReturnAnnotation): string => {
     const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS);
     const edits: { start: number; end: number; text: string }[] = [];
 
     const visit = (node: ts.Node): void => {
-        if (
-            ts.isReturnStatement(node) &&
-            node.expression !== undefined &&
-            ts.isArrayLiteralExpression(node.expression)
-        ) {
-            const elementCount = node.expression.elements.length;
-            if (elementCount > 0 && !node.expression.elements.some(ts.isSpreadElement)) {
-                const tupleType = `[${Array.from({ length: elementCount }, () => "any").join(", ")}]`;
+        if (ts.isReturnStatement(node) && node.expression !== undefined) {
+            const annotation = annotate(node.expression);
+            if (annotation !== undefined) {
                 edits.push({
                     start: node.expression.getStart(sourceFile),
                     end: node.expression.getStart(sourceFile),
-                    text: `/** @type {${tupleType}} */ (`,
+                    text: `/** @type {${annotation}} */ (`,
                 });
                 edits.push({ start: node.expression.getEnd(), end: node.expression.getEnd(), text: ")" });
             }
@@ -153,6 +192,32 @@ const tupleAnnotateArrayReturns = (source: string, fileName: string): string => 
 };
 
 /**
+ * Rewrites a runtime `.js` so every `return` whose argument is a non-empty
+ * array literal is typed as a fixed-length tuple of `any`.
+ *
+ * TypeScript infers a bare array-literal return as `any[]`, discarding the
+ * arity that an out/inout-parameter return tuple carries. Annotating the
+ * parenthesized literal with a JSDoc `@type` cast of matching arity restores
+ * that arity while keeping element types collapsed to `any`. Empty literals are
+ * left untouched: a `return []` is a genuine empty-array fallback, not a tuple.
+ *
+ * @param source - The runtime JavaScript source.
+ * @param fileName - Absolute path of the runtime file, used for parsing.
+ * @returns The source with array-literal returns typed as tuples.
+ */
+const tupleAnnotateArrayReturns = (source: string, fileName: string): string =>
+    annotateReturns(source, fileName, (expression) => {
+        if (!ts.isArrayLiteralExpression(expression)) {
+            return undefined;
+        }
+        const elementCount = expression.elements.length;
+        if (elementCount === 0 || expression.elements.some(ts.isSpreadElement)) {
+            return undefined;
+        }
+        return `[${Array.from({ length: elementCount }, () => "any").join(", ")}]`;
+    });
+
+/**
  * Rewrites a runtime `.js` so every `return` whose argument is a
  * `promisify(...)` call is typed as `Promise<any>`.
  *
@@ -170,40 +235,41 @@ const tupleAnnotateArrayReturns = (source: string, fileName: string): string => 
  * @param fileName - Absolute path of the runtime file, used for parsing.
  * @returns The source with `promisify` returns typed as `Promise<any>`.
  */
-const promisifyAnnotateReturns = (source: string, fileName: string): string => {
-    const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS);
-    const edits: { start: number; end: number; text: string }[] = [];
+const promisifyAnnotateReturns = (source: string, fileName: string): string =>
+    annotateReturns(source, fileName, (expression) =>
+        ts.isCallExpression(expression) &&
+        ts.isIdentifier(expression.expression) &&
+        expression.expression.text === "promisify"
+            ? "Promise<any>"
+            : undefined,
+    );
 
-    const visit = (node: ts.Node): void => {
-        if (
-            ts.isReturnStatement(node) &&
-            node.expression !== undefined &&
-            ts.isCallExpression(node.expression) &&
-            ts.isIdentifier(node.expression.expression) &&
-            node.expression.expression.text === "promisify"
-        ) {
-            edits.push({
-                start: node.expression.getStart(sourceFile),
-                end: node.expression.getStart(sourceFile),
-                text: "/** @type {Promise<any>} */ (",
-            });
-            edits.push({ start: node.expression.getEnd(), end: node.expression.getEnd(), text: ")" });
-        }
-        ts.forEachChild(node, visit);
-    };
-
-    visit(sourceFile);
-    if (edits.length === 0) {
-        return source;
-    }
-
-    edits.sort((a, b) => b.start - a.start);
-    let result = source;
-    for (const edit of edits) {
-        result = result.slice(0, edit.start) + edit.text + result.slice(edit.end);
-    }
-    return result;
-};
+/**
+ * Rewrites a runtime `.js` so every `return` whose argument is a
+ * `this.getProperty(...)` call is typed as `any`.
+ *
+ * A generated property accessor delegates to the hand-written `getProperty`
+ * override, which marshals a GValue and is typed `unknown` — the FFI result
+ * cannot be statically typed. The contract `.d.ts` declares each property with
+ * its precise GIR type (`boolean`, `string | null`, …). Annotating the
+ * `getProperty` call with a JSDoc `@type` cast keeps the accessor's
+ * value-versus-void return shape verified while leaving the marshaled value
+ * `any` — bidirectionally assignable — mirroring how `promisify` returns and
+ * array-literal returns collapse their payloads to `any`.
+ *
+ * @param source - The runtime JavaScript source.
+ * @param fileName - Absolute path of the runtime file, used for parsing.
+ * @returns The source with `getProperty` returns typed as `any`.
+ */
+const getPropertyAnnotateReturns = (source: string, fileName: string): string =>
+    annotateReturns(source, fileName, (expression) =>
+        ts.isCallExpression(expression) &&
+        ts.isPropertyAccessExpression(expression.expression) &&
+        expression.expression.expression.kind === ts.SyntaxKind.ThisKeyword &&
+        expression.expression.name.text === "getProperty"
+            ? "any"
+            : undefined,
+    );
 
 /**
  * Normalizes a contract `.d.ts` so the gate measures call-convention shape
@@ -389,10 +455,11 @@ const resolveSpecifier = (
     namespaces: Set<string>,
 ): ts.ResolvedModuleWithFailedLookupLocations => {
     if (specifier.startsWith(IMPL_PREFIX)) {
+        const resolvedFileName = implEntryPath(specifier.slice(IMPL_PREFIX.length));
         return {
             resolvedModule: {
-                resolvedFileName: implJsPath(specifier.slice(IMPL_PREFIX.length)),
-                extension: ts.Extension.Js,
+                resolvedFileName,
+                extension: resolvedFileName.endsWith(".ts") ? ts.Extension.Ts : ts.Extension.Js,
                 isExternalLibraryImport: false,
             },
         };
@@ -532,7 +599,10 @@ const main = (): void => {
 
         const runtimePath = implJsPath(namespace);
         const runtime = readFileSync(runtimePath, "utf8");
-        const annotatedRuntime = promisifyAnnotateReturns(tupleAnnotateArrayReturns(runtime, runtimePath), runtimePath);
+        const annotatedRuntime = getPropertyAnnotateReturns(
+            promisifyAnnotateReturns(tupleAnnotateArrayReturns(runtime, runtimePath), runtimePath),
+            runtimePath,
+        );
         virtualFiles.set(runtimePath, annotatedRuntime);
 
         const contractClasses = collectExportedClassNames(normalizedDeclaration, declarationPath, ts.ScriptKind.TS);
@@ -575,4 +645,17 @@ const main = (): void => {
     console.log(`conformance: ${namespaces.length} namespace(s) verified — runtime .js satisfies .d.ts contract.`);
 };
 
-main();
+export {
+    annotateReturns,
+    getPropertyAnnotateReturns,
+    handWrittenEntryPath,
+    implEntryPath,
+    implJsPath,
+    normalizeContract,
+    promisifyAnnotateReturns,
+    tupleAnnotateArrayReturns,
+};
+
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+    main();
+}
