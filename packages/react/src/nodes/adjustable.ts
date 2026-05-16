@@ -1,9 +1,11 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { AdjustableProps } from "../jsx.js";
-import type { AdjustableWidget } from "../registry.js";
 import { ADJUSTMENT_PROPS, AdjustmentController } from "./internal/adjustment.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
+
+/** Widgets the {@link AdjustableNode} reconciler node specializes. */
+export type AdjustableWidget = Gtk.SpinButton | Gtk.ScaleButton | Gtk.Range;
 
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
     private readonly adjustmentController = new AdjustmentController(this.container);

@@ -2,10 +2,10 @@ import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { StackPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import type { StackWidget } from "../registry.js";
 import { hasChanged } from "./internal/props.js";
 import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { removeChildFromParent } from "./internal/widget.js";
+import type { StackWidget } from "./stack.js";
 import { WidgetNode } from "./widget.js";
 
 export class StackPageNode extends SingleChildVirtualNode<StackPageProps, WidgetNode<StackWidget>, WidgetNode> {

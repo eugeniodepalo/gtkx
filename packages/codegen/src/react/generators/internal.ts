@@ -30,8 +30,15 @@ export class InternalGenerator {
         file.add(
             raw(
                 "/**\n" +
-                    " * Internal metadata for the reconciler.\n" +
-                    " * Runtime prop/signal resolution and construction metadata.\n" +
+                    " * Internal metadata for the reconciler: runtime prop/signal resolution\n" +
+                    " * and construction metadata.\n" +
+                    " *\n" +
+                    " * Also side-effect-imports every FFI namespace that contributes a\n" +
+                    " * reconcilable element, so importing this module registers their GLib\n" +
+                    " * types and the reconciler can resolve any generated intrinsic element\n" +
+                    " * by name. The package marks this module in `sideEffects` so bundlers\n" +
+                    " * preserve those imports.\n" +
+                    " *\n" +
                     " * Not part of the public API.\n" +
                     " */\n",
             ),
@@ -40,6 +47,7 @@ export class InternalGenerator {
         const items = this.collectClassItems();
 
         this.addTypeImports(file);
+        this.addNamespaceImports(file);
         this.generateConstructionMeta(file, items);
         this.generatePropsMap(file, items);
         this.generateSignalsMap(file, items);
@@ -68,6 +76,20 @@ export class InternalGenerator {
     private addTypeImports(file: FileBuilder): void {
         file.addImport("@gtkx/ffi", ["t"]);
         file.addTypeImport("@gtkx/ffi", ["Type"]);
+    }
+
+    private addNamespaceImports(file: FileBuilder): void {
+        const namespaces = new Set<string>();
+        for (const meta of this.reader.getAllCodegenMeta()) {
+            namespaces.add(meta.namespace);
+        }
+        for (const controller of this.controllers) {
+            namespaces.add(controller.namespace);
+        }
+
+        for (const namespace of [...namespaces].sort((a, b) => a.localeCompare(b))) {
+            file.addSideEffectImport(`@gtkx/ffi/${namespace.toLowerCase()}`);
+        }
     }
 
     private generateConstructionMeta(file: FileBuilder, items: readonly ClassItem[]): void {

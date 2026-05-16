@@ -20,6 +20,7 @@ type ImportEntry = {
  */
 export class ImportRegistry implements Builder {
     private readonly entries = new Map<string, ImportEntry>();
+    private readonly sideEffectImports = new Set<string>();
     private mode: "ts" | "js" = "ts";
 
     /** Configure the emission mode. */
@@ -56,8 +57,17 @@ export class ImportRegistry implements Builder {
         entry.namespaceTypeOnly = true;
     }
 
+    /** Register a bare side-effect import (`import "specifier"`) for the given module specifier. */
+    addSideEffect(specifier: string): void {
+        this.sideEffectImports.add(specifier);
+    }
+
     /** Whether the registry would emit any import statements at write time. */
     get isEmpty(): boolean {
+        if (this.sideEffectImports.size > 0) {
+            return false;
+        }
+
         for (const [specifier, entry] of this.entries) {
             if (this.mode === "js" && specifier.startsWith("./")) continue;
             if (entry.namespaceAlias) {
@@ -72,6 +82,10 @@ export class ImportRegistry implements Builder {
 
     /** Write all collected imports, sorted alphabetically by specifier. */
     write(writer: Writer): void {
+        for (const specifier of [...this.sideEffectImports].sort((a, b) => a.localeCompare(b))) {
+            writer.writeLine(`import "${specifier}";`);
+        }
+
         const sorted = [...this.entries.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 
         for (const [specifier, entry] of sorted) {

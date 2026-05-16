@@ -32,7 +32,9 @@
             "default": "./dist/index.js"
         }
     },
-    "sideEffects": false,
+    "sideEffects": [
+        "**/generated/internal.js"
+    ],
     "files": [
         "dist",
         "src",

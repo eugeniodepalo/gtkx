@@ -1,3 +1,5 @@
+import type { GType } from "@gtkx/ffi/gobject";
+import { typeFromName, typeName, typeParent } from "@gtkx/ffi/gobject";
 import type { Node } from "./node.js";
 import { resolveNativeClass } from "./nodes/internal/construct.js";
 import { NODE_REGISTRY, type NodeClass } from "./registry.js";
@@ -14,44 +16,70 @@ import type { Container, ContainerClass, Props } from "./types.js";
 export const resolveContainerClass = (type: string): ContainerClass | null =>
     resolveNativeClass(type) as ContainerClass | null;
 
-// biome-ignore lint/suspicious/noExplicitAny: Required for instanceof checks against GTK class hierarchy
-type ClassKey = abstract new (...args: any[]) => any;
-
-type RegistryKey = string | ClassKey | readonly (string | ClassKey)[];
-
-const matchesSingleKey = (key: string | ClassKey, typeName: string, target: object | null): boolean => {
-    if (typeof key === "string") {
-        return key === typeName;
+const collectTypeNameChain = (gtype: GType): readonly string[] => {
+    const chain: string[] = [];
+    let current: GType = gtype;
+    while ((current as unknown as number) !== 0) {
+        const name = typeName(current);
+        if (!name) {
+            break;
+        }
+        chain.push(name);
+        current = typeParent(current);
     }
-    return !!target && (target instanceof key || target === key || Object.prototype.isPrototypeOf.call(key, target));
+    return chain;
 };
 
-const matchesKey = (key: RegistryKey, typeName: string, target: object | null): boolean => {
-    if (typeof key === "string" || typeof key === "function") {
-        return matchesSingleKey(key, typeName, target);
+const resolveNodeClass = (elementType: string, gtype: GType): NodeClass | null => {
+    if ((gtype as unknown as number) === 0) {
+        return NODE_REGISTRY.get(elementType) ?? null;
     }
-    return key.some((k) => matchesSingleKey(k, typeName, target));
+    for (const ancestorName of collectTypeNameChain(gtype)) {
+        const nodeClass = NODE_REGISTRY.get(ancestorName);
+        if (nodeClass) {
+            return nodeClass;
+        }
+    }
+    return null;
 };
 
+/**
+ * Builds the reconciler {@link Node} for a JSX intrinsic element.
+ *
+ * The backing node class is resolved by walking the element's GLib type
+ * ancestry against {@link NODE_REGISTRY}: the most-derived registered ancestor
+ * wins, falling back to the `"GtkWidget"` catch-all. Virtual elements with no
+ * GLib type are matched by their literal name.
+ *
+ * @param elementType - JSX intrinsic element name, e.g. `"GtkButton"`
+ * @param props - React prop bag for the element
+ * @param existingContainer - Pre-existing container to wrap (root container
+ *   case); when supplied, no new container is constructed
+ * @param rootContainer - The reconciler root container
+ * @throws When no node class matches the element
+ */
 export const createNode = (
-    typeName: string,
+    elementType: string,
     props: Props,
     existingContainer: Container | undefined,
     rootContainer: Container,
 ): Node => {
-    const containerClass = resolveContainerClass(typeName);
+    const gtype: GType = existingContainer
+        ? (existingContainer.__gtype__ as unknown as GType)
+        : typeFromName(elementType);
 
-    for (const [key, NodeClass] of NODE_REGISTRY) {
-        if (!matchesKey(key, typeName, existingContainer ?? containerClass)) continue;
-        return instantiateNode(NodeClass, typeName, props, existingContainer, containerClass, rootContainer);
+    const nodeClass = resolveNodeClass(elementType, gtype);
+    if (!nodeClass) {
+        throw new Error(`Unable to find node class for type '${elementType}'`);
     }
 
-    throw new Error(`Unable to find node class for type '${typeName}'`);
+    const containerClass = existingContainer ? null : resolveContainerClass(elementType);
+    return instantiateNode(nodeClass, elementType, props, existingContainer, containerClass, rootContainer);
 };
 
 const instantiateNode = (
     NodeClass: NodeClass,
-    typeName: string,
+    elementType: string,
     props: Props,
     existingContainer: Container | undefined,
     containerClass: ContainerClass | null,
@@ -59,6 +87,6 @@ const instantiateNode = (
 ): Node => {
     const container =
         existingContainer ??
-        (containerClass && NodeClass.createContainer(typeName, props, containerClass, rootContainer));
-    return new NodeClass(typeName, props, container, rootContainer);
+        (containerClass && NodeClass.createContainer(elementType, props, containerClass, rootContainer));
+    return new NodeClass(elementType, props, container, rootContainer);
 };

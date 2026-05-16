@@ -1,7 +1,6 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import type { PopoverMenuWidget } from "../registry.js";
 import type { Container, Props } from "../types.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
@@ -9,6 +8,9 @@ import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
+
+/** Widgets the {@link PopoverMenuNode} reconciler node specializes. */
+export type PopoverMenuWidget = Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton;
 
 type PopoverMenuChild = MenuNode | SlotNode | ContainerSlotNode | EventControllerNode | WidgetNode;
 

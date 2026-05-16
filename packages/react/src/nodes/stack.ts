@@ -1,7 +1,11 @@
+import type * as Adw from "@gtkx/ffi/adw";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { AdwViewStackProps, GtkStackProps } from "../jsx.js";
-import type { StackWidget } from "../registry.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
+
+/** Widgets the {@link StackNode} reconciler node specializes. */
+export type StackWidget = Gtk.Stack | Adw.ViewStack;
 
 const OWN_PROPS = ["page", "onPageChanged"] as const;
 

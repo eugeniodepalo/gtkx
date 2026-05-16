@@ -39,6 +39,15 @@ describe("InternalGenerator", () => {
         });
     });
 
+    describe("FFI namespace imports", () => {
+        it("side-effect-imports every namespace that contributes a reconcilable element", () => {
+            const adwMeta = createCodegenWidgetMeta({ className: "Bin", jsxName: "AdwBin", namespace: "Adw" });
+            const code = generateCode([createWidgetMeta(), adwMeta]);
+            expect(code).toContain('import "@gtkx/ffi/adw";');
+            expect(code).toContain('import "@gtkx/ffi/gtk";');
+        });
+    });
+
     describe("CONSTRUCTION_META", () => {
         it("generates CONSTRUCTION_META constant", () => {
             const buttonMeta = createButtonMeta({

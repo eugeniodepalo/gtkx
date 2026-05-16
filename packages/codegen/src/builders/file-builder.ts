@@ -65,6 +65,12 @@ export class FileBuilder implements Builder {
         return this;
     }
 
+    /** Add a bare side-effect import (`import "specifier"`) from a module specifier. */
+    addSideEffectImport(specifier: string): this {
+        this.imports.addSideEffect(specifier);
+        return this;
+    }
+
     /** Append a top-level declaration builder to the file. */
     add(declaration: Builder): this {
         this.declarations.push(declaration);
