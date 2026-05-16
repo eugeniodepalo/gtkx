@@ -22,7 +22,7 @@ import {
     type SelfTypeDescriptor,
 } from "../../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
+import { filterSupportedMethods, partitionSupportedFunctions } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import { canAllocateRecord } from "../../../core/utils/record-filter.js";
 import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
@@ -348,7 +348,7 @@ export class RecordGenerator {
         recordName: string,
         originalName: string,
     ): MethodStructure[] {
-        const supportedFunctions = filterSupportedFunctions(
+        const { supported: supportedFunctions } = partitionSupportedFunctions(
             functions,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),

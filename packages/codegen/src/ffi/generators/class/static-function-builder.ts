@@ -6,7 +6,7 @@
 
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { filterSupportedFunctions } from "../../../core/utils/filtering.js";
+import { partitionSupportedFunctions } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import {
     createMethodBodyWriter,
@@ -53,7 +53,7 @@ export class StaticFunctionBuilder {
     }
 
     buildStructures(): MethodStructure[] {
-        const supportedFunctions = filterSupportedFunctions(
+        const { supported: supportedFunctions } = partitionSupportedFunctions(
             this.cls.staticFunctions,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),

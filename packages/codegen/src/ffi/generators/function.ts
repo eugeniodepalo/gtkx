@@ -8,7 +8,7 @@ import { type FileBuilder, variableStatement, type Writer } from "../../builders
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
-import { filterSupportedFunctions, hasVarargs } from "../../core/utils/filtering.js";
+import { hasVarargs, partitionSupportedFunctions } from "../../core/utils/filtering.js";
 import { toCamelCase, toValidIdentifier } from "../../core/utils/naming.js";
 import { addTypeImports, createMethodBodyWriter, type MethodBodyWriter } from "../../core/writers/index.js";
 import type { GirFunction } from "../../gir/index.js";
@@ -43,7 +43,7 @@ export class FunctionGenerator {
      * @returns true if any functions were generated
      */
     generate(functions: GirFunction[]): boolean {
-        const supported = filterSupportedFunctions(
+        const { supported, unsupported } = partitionSupportedFunctions(
             functions,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
@@ -52,8 +52,11 @@ export class FunctionGenerator {
         for (const func of supported) {
             this.addFunction(func);
         }
+        for (const func of unsupported) {
+            this.addFunctionStub(func);
+        }
 
-        return supported.length > 0;
+        return functions.length > 0;
     }
 
     private addFunction(func: GirFunction): void {
@@ -85,6 +88,28 @@ export class FunctionGenerator {
             variableStatement(funcName, {
                 exported: true,
                 initializer,
+                doc: formatJsDoc(func.doc, this.options.namespace),
+            }),
+        );
+    }
+
+    /**
+     * Emits a throwing stub for a function whose signature the FFI layer
+     * cannot marshal.
+     *
+     * node-gtk exposes every namespace function as a property, so the stub
+     * keeps the runtime surface in step with the declared contract and
+     * replaces a silent `undefined` with a descriptive error at call time.
+     */
+    private addFunctionStub(func: GirFunction): void {
+        const funcName = toValidIdentifier(toCamelCase(func.name));
+        const message = `${this.options.namespace}.${func.name} is not callable through the @gtkx/ffi runtime`;
+        this.file.add(
+            variableStatement(funcName, {
+                exported: true,
+                initializer: (writer: Writer) => {
+                    writer.write(`() => { throw new Error(${JSON.stringify(message)}); }`);
+                },
                 doc: formatJsDoc(func.doc, this.options.namespace),
             }),
         );
