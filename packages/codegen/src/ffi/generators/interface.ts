@@ -80,10 +80,16 @@ export class InterfaceGenerator {
 
         this.emitConstructorPropertiesNamespace(iface, interfaceName);
 
+        const properties = this.collectInterfaceProperties(iface);
+        const propertyNames = new Set(properties.map((prop) => toCamelCase(prop.name)));
+        const isPropertyCollision = (m: GirMethod) => propertyNames.has(toCamelCase(m.name));
+        const ownMethods = iface.methods.filter((m) => !isPropertyCollision(m));
+        const inheritedMethods = prerequisiteMethods.filter((m) => !isPropertyCollision(m));
+
         const gobjectMethodNames = collectGObjectMethodNames(this.repository);
         const methodStructures: MethodStructure[] = [
-            ...this.buildMethodStructures(iface.methods, iface.name, gobjectMethodNames),
-            ...this.buildMethodStructures(prerequisiteMethods, iface.name, gobjectMethodNames),
+            ...this.buildMethodStructures(ownMethods, iface.name, gobjectMethodNames),
+            ...this.buildMethodStructures(inheritedMethods, iface.name, gobjectMethodNames),
         ];
 
         for (const struct of methodStructures) {
@@ -91,7 +97,7 @@ export class InterfaceGenerator {
         }
 
         const reachableMethods = [...iface.methods, ...prerequisiteMethods];
-        const accessorEmissions = this.buildPropertyAccessors(iface, interfaceName, methodStructures, reachableMethods);
+        const accessorEmissions = this.buildPropertyAccessors(interfaceName, reachableMethods, properties);
         for (const { property } of accessorEmissions) {
             cls.addProperty(property);
         }
@@ -259,18 +265,16 @@ export class InterfaceGenerator {
     }
 
     private buildPropertyAccessors(
-        iface: GirInterface,
         interfaceName: string,
-        methodStructures: readonly MethodStructure[],
         reachableMethods: readonly GirMethod[],
+        properties: readonly GirProperty[],
     ): PropertyAccessorEmission[] {
-        const properties = this.collectInterfaceProperties(iface);
         if (properties.length === 0) return [];
 
-        const existingMethodNames = new Set(methodStructures.map((struct) => struct.name));
         const methodsByCIdentifier = new Map<string, GirMethod>();
         for (const method of reachableMethods) {
             methodsByCIdentifier.set(method.cIdentifier, method);
+            methodsByCIdentifier.set(method.name, method);
         }
         const builder = new PropertyAccessorBuilder(
             null,
@@ -279,7 +283,7 @@ export class InterfaceGenerator {
             this.repository,
             this.options,
             new Set([interfaceName]),
-            { ownerName: interfaceName, properties, existingMethodNames, methodsByCIdentifier },
+            { ownerName: interfaceName, properties, methodsByCIdentifier },
         );
         return builder.buildAccessors();
     }

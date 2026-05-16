@@ -54,6 +54,7 @@ export type GirClassData = {
     properties: GirProperty[];
     signals: GirSignal[];
     fieldNames: string[];
+    virtualMethodNames: string[];
     doc?: string;
 };
 
@@ -71,6 +72,7 @@ export type GirInterfaceData = {
     properties: GirProperty[];
     signals: GirSignal[];
     fieldNames: string[];
+    virtualMethodNames: string[];
     doc?: string;
 };
 
@@ -301,6 +303,7 @@ export class GirNormalizer {
             properties: raw.properties.map((p) => this.normalizeProperty(p, currentNamespace)),
             signals: raw.signals.map((s) => this.normalizeSignal(s, currentNamespace)),
             fieldNames: raw.fieldNames,
+            virtualMethodNames: raw.virtualMethodNames,
             doc: raw.doc,
         };
     }
@@ -317,6 +320,7 @@ export class GirNormalizer {
             properties: raw.properties.map((p) => this.normalizeProperty(p, currentNamespace)),
             signals: raw.signals.map((s) => this.normalizeSignal(s, currentNamespace)),
             fieldNames: raw.fieldNames,
+            virtualMethodNames: raw.virtualMethodNames,
             doc: raw.doc,
         };
     }

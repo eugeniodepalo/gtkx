@@ -30,6 +30,7 @@ import { isMethodSuppressed } from "../../../core/utils/method-suppression.js";
 import {
     generateConflictingMethodName,
     normalizeClassName,
+    toCamelCase,
     toKebabCase,
     toPascalCase,
 } from "../../../core/utils/naming.js";
@@ -324,9 +325,15 @@ export class ClassGenerator {
         this.methodRenames.set(method.cIdentifier, renamedMethod);
     }
 
+    private collectPropertyNames(): Set<string> {
+        return new Set(this.cls.getAllProperties().map((p) => toCamelCase(p.name)));
+    }
+
     private filterClassMethods(parentMethodNames: Set<string>): GirMethod[] {
+        const propertyNames = this.collectPropertyNames();
         return this.cls.methods.filter((m) => {
             if (isMethodSuppressed(this.cls.qualifiedName, m.cIdentifier)) return false;
+            if (propertyNames.has(toCamelCase(m.name))) return false;
             const needsRename = parentMethodNames.has(m.name) || (m.name === "connect" && this.cls.parent);
             if (needsRename) {
                 const renamedMethod = generateConflictingMethodName(this.cls.name, m.name);

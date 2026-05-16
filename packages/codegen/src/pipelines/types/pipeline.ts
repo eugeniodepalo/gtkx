@@ -93,18 +93,19 @@ const collectClassFieldNames = (repository: GirRepository): FieldNameMap => {
 };
 
 /**
- * Collects the camelCased signal names of every class and interface per
- * namespace, excluding any that also name a real method.
+ * Collects the camelCased member names that ts-for-gir emits into class and
+ * interface bodies but node-gtk's runtime never exposes as callable members:
+ * signal action methods and interface virtual methods.
  *
  * ts-for-gir emits an action-method declaration for every signal (e.g.
- * `committed(text: string): void` for the `committed` signal). node-gtk's
- * runtime exposes signals only through `connect` / `emit`, never as callable
- * members, so the type pipeline strips these action-method declarations. A
- * signal that shares its name with a real GIR method is left intact, because
- * that method is genuinely exposed.
+ * `committed(text: string): void` for the `committed` signal) and for every
+ * interface `<virtual-method>`. node-gtk's runtime exposes signals only
+ * through `connect` / `emit` and enumerates only `interface_info_get_method`,
+ * so neither surface is callable. A name that also names a real GIR method is
+ * left intact, because that method is genuinely exposed.
  *
  * @param repository - The loaded GIR repository.
- * @returns Signal action-method names keyed namespace then owner name.
+ * @returns Strippable member names keyed namespace then owner name.
  */
 const collectSignalActionMethodNames = (repository: GirRepository): FieldNameMap => {
     const namespaces = new Map<string, Map<string, Set<string>>>();
@@ -112,20 +113,25 @@ const collectSignalActionMethodNames = (repository: GirRepository): FieldNameMap
         const namespace = repository.getNamespace(namespaceName);
         if (!namespace) continue;
         const owners = new Map<string, Set<string>>();
-        const collect = (name: string, signals: readonly { name: string }[], methods: readonly { name: string }[]) => {
+        const collect = (
+            name: string,
+            signals: readonly { name: string }[],
+            virtualMethodNames: readonly string[],
+            methods: readonly { name: string }[],
+        ) => {
             const methodNames = new Set(methods.map((m) => toCamelCase(m.name)));
             const names = new Set<string>();
-            for (const signal of signals) {
-                const camel = toCamelCase(signal.name);
+            for (const candidate of [...signals.map((s) => s.name), ...virtualMethodNames]) {
+                const camel = toCamelCase(candidate);
                 if (!methodNames.has(camel)) names.add(camel);
             }
             owners.set(toPascalCase(name), names);
         };
         for (const cls of namespace.classes.values()) {
-            collect(cls.name, cls.signals, cls.methods);
+            collect(cls.name, cls.signals, cls.virtualMethodNames, cls.methods);
         }
         for (const iface of namespace.interfaces.values()) {
-            collect(iface.name, iface.signals, iface.methods);
+            collect(iface.name, iface.signals, iface.virtualMethodNames, iface.methods);
         }
         namespaces.set(namespaceName.toLowerCase(), owners);
     }

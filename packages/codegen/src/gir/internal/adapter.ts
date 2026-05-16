@@ -20,6 +20,7 @@ import type {
     GirSignalElement,
     GirType,
     GirUnionElement,
+    GirVirtualMethodElement,
 } from "@ts-for-gir/lib";
 import type {
     RawAlias,
@@ -143,6 +144,7 @@ function adaptClasses(classes: GirClassElement[]): RawClass[] {
             properties: adaptProperties(cls.property ?? []),
             signals: adaptSignals(cls["glib:signal"] ?? []),
             fieldNames: adaptFieldNames(cls.field ?? []),
+            virtualMethodNames: adaptVirtualMethodNames(cls["virtual-method"] ?? []),
             doc: extractDoc(cls),
         };
     });
@@ -161,6 +163,7 @@ function adaptInterfaces(interfaces: GirInterfaceElement[]): RawInterface[] {
             properties: adaptProperties(iface.property ?? []),
             signals: adaptSignals(iface["glib:signal"] ?? []),
             fieldNames: adaptFieldNames(iface.field ?? []),
+            virtualMethodNames: adaptVirtualMethodNames(iface["virtual-method"] ?? []),
             doc: extractDoc(iface),
         };
     });
@@ -175,6 +178,18 @@ function adaptInterfaces(interfaces: GirInterfaceElement[]): RawInterface[] {
  */
 function adaptFieldNames(fields: GirFieldElement[]): string[] {
     return fields.map((field) => attrsOf(field).name ?? "").filter((name) => name.length > 0);
+}
+
+/**
+ * Extracts the declared `<virtual-method>` element names of a class or
+ * interface.
+ *
+ * The type pipeline uses these to strip the action-method declarations
+ * ts-for-gir emits for interface virtual methods, which node-gtk's runtime
+ * never exposes as callable members.
+ */
+function adaptVirtualMethodNames(methods: GirVirtualMethodElement[]): string[] {
+    return methods.map((method) => attrsOf(method).name ?? "").filter((name) => name.length > 0);
 }
 
 function adaptNames(elements: ReadonlyArray<unknown> | undefined): string[] {

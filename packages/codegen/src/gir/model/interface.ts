@@ -21,6 +21,8 @@ export class GirInterface {
     readonly signals: GirSignal[];
     /** Declared `<field>` element names of the interface struct. */
     readonly fieldNames: string[];
+    /** Declared `<virtual-method>` element names. */
+    readonly virtualMethodNames: string[];
     readonly doc?: string;
 
     private readonly repo: RepositoryLike;
@@ -37,6 +39,7 @@ export class GirInterface {
             properties: GirProperty[];
             signals: GirSignal[];
             fieldNames: string[];
+            virtualMethodNames: string[];
             doc?: string;
         },
         repo: RepositoryLike,
@@ -51,6 +54,7 @@ export class GirInterface {
         this.properties = data.properties;
         this.signals = data.signals;
         this.fieldNames = data.fieldNames;
+        this.virtualMethodNames = data.virtualMethodNames;
         this.doc = data.doc;
         this.repo = repo;
     }

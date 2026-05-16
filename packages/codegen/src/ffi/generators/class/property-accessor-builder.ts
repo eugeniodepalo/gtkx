@@ -28,7 +28,6 @@ import {
 } from "../../../core/type-system/ffi-types.js";
 import {
     collectDirectMembers,
-    collectOwnAndInterfaceMethodNames,
     collectParentMethodNames,
     collectParentPropertyNames,
 } from "../../../core/utils/class-traversal.js";
@@ -65,8 +64,6 @@ export type InterfacePropertySource = {
     readonly ownerName: string;
     /** Properties to install, deduplicated and flattened across prerequisites. */
     readonly properties: readonly GirProperty[];
-    /** Method names already declared on the interface, in camelCase. */
-    readonly existingMethodNames: ReadonlySet<string>;
     /**
      * Getter/setter methods reachable on the interface, keyed by C identifier.
      * A property accessor delegates to one of these when its value type cannot
@@ -76,7 +73,6 @@ export type InterfacePropertySource = {
 };
 
 export class PropertyAccessorBuilder {
-    private readonly existingMethodNames: Set<string>;
     private readonly parentMethodNames: ReadonlySet<string>;
 
     constructor(
@@ -88,16 +84,7 @@ export class PropertyAccessorBuilder {
         private readonly selfNames: ReadonlySet<string> = new Set(),
         private readonly interfaceSource: InterfacePropertySource | null = null,
     ) {
-        if (cls !== null) {
-            this.parentMethodNames = collectParentMethodNames(cls, repository);
-            this.existingMethodNames = collectOwnAndInterfaceMethodNames(cls, repository, toCamelCase);
-            for (const name of this.parentMethodNames) {
-                this.existingMethodNames.add(toCamelCase(name));
-            }
-        } else {
-            this.parentMethodNames = new Set();
-            this.existingMethodNames = new Set(interfaceSource?.existingMethodNames ?? []);
-        }
+        this.parentMethodNames = cls !== null ? collectParentMethodNames(cls, repository) : new Set();
     }
 
     buildAccessors(): PropertyAccessorEmission[] {
@@ -121,8 +108,6 @@ export class PropertyAccessorBuilder {
 
     private buildAccessor(prop: GirProperty): PropertyAccessorEmission | null {
         const camelName = toCamelCase(prop.name);
-
-        if (this.existingMethodNames.has(camelName)) return null;
 
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
         if (typeMapping.unsafe) return null;
