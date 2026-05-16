@@ -3,6 +3,7 @@ export {
     loadAndRewrite,
     namespaceFromRawFilename,
     type RewriteResult,
+    relaxMultiReturnTuples,
     rewriteDefaultImportsToNamespace,
     rewriteEnumsToConstObjects,
     rewriteModuleKeywordToNamespace,

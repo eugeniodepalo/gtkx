@@ -458,6 +458,64 @@ export function stripGtypeStructClasses(source: string, gtypeStructNames?: Reado
     return parts.join("");
 }
 
+const MULTI_RETURN_TUPLE_MARKER = "[ /* returnType */";
+
+const findMatchingBracket = (source: string, from: number): number => {
+    let depth = 1;
+    let i = from;
+    while (i < source.length) {
+        const ch = source[i];
+        if (ch === '"' || ch === "'" || ch === "`") {
+            i = skipStringLiteral(source, i, ch);
+            continue;
+        }
+        if (ch === "/" && source[i + 1] === "/") {
+            i = skipLineComment(source, i);
+            continue;
+        }
+        if (ch === "/" && source[i + 1] === "*") {
+            i = skipBlockComment(source, i);
+            continue;
+        }
+        if (ch === "[") depth++;
+        else if (ch === "]") {
+            depth--;
+            if (depth === 0) return i;
+        }
+        i++;
+    }
+    return -1;
+};
+
+/**
+ * Replaces the marked multi-return tuple type that ts-for-gir emits for
+ * functions and methods with out-parameters (`[ /* returnType *\/ A, /* out *\/ B ]`)
+ * with the looser `any[]` array type.
+ *
+ * A generated runtime wrapper collects out-parameters into a plain JavaScript
+ * array literal, which TypeScript infers as `any[]` rather than a fixed-length
+ * tuple. Relaxing the contract to `any[]` lets the runtime array satisfy the
+ * declared shape, matching node-gtk, which returns out-parameters as an array.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with multi-return tuples relaxed to `any[]`.
+ */
+export function relaxMultiReturnTuples(source: string): string {
+    const parts: string[] = [];
+    let cursor = 0;
+    for (;;) {
+        const markerIndex = source.indexOf(MULTI_RETURN_TUPLE_MARKER, cursor);
+        if (markerIndex < 0) break;
+        const closeIndex = findMatchingBracket(source, markerIndex + 1);
+        if (closeIndex < 0) break;
+        parts.push(source.slice(cursor, markerIndex));
+        parts.push("any[]");
+        cursor = closeIndex + 1;
+    }
+    parts.push(source.slice(cursor));
+    return parts.join("");
+}
+
 /**
  * Real enum member values for one namespace, keyed enum name then member name.
  */
@@ -509,6 +567,7 @@ export function loadAndRewrite(
         let source = unwrapOuterNamespace(contents);
         source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace));
         source = stripGtypeStructClasses(source, gtypeStructNames?.get(namespace));
+        source = relaxMultiReturnTuples(source);
         source = rewriteNamespaceDeclarations(source);
         source = rewriteDefaultImportsToNamespace(source);
         source = rewriteModuleKeywordToNamespace(source);
