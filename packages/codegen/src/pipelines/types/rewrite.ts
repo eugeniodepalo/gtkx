@@ -297,16 +297,22 @@ const LINE_COMMENT_PATTERN = /\/\/[^\n]*/g;
  * the frozen object while preserving consumer-facing usage: `M.Foo.A` reads
  * the constant and `Foo` continues to work as a type in function signatures.
  *
- * Member values are taken from ts-for-gir's declared values verbatim — if a
- * member lacks an explicit initializer, the computed ordinal is used. JSDoc
- * comments preceding members are stripped because the const-object shape
- * cannot host per-property block comments without breaking the type.
+ * Member values are resolved in priority order: the real GIR value from
+ * `enumValues`, then an explicit initializer present in the source, then the
+ * computed ordinal. ts-for-gir emits enums without initializers, so the GIR
+ * values are what keep non-sequential enums (offset enums, bitfields)
+ * accurate against the runtime. JSDoc comments preceding members are stripped
+ * because the const-object shape cannot host per-property block comments.
  *
  * Any JSDoc block authored between the `export` keyword and the `enum`
  * keyword is preserved on the rewritten `const` declaration so the rendered
  * docs stay attached to the new value declaration.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param enumValues - Real enum member values for the namespace, keyed enum
+ *     name then member name; members absent from the map fall back as above.
  */
-export function rewriteEnumsToConstObjects(source: string): string {
+export function rewriteEnumsToConstObjects(source: string, enumValues?: NamespaceEnumValues): string {
     const normalized = source.replace(EXPORT_BEFORE_DOC_ENUM_PATTERN, "$1\nexport $2");
     const matches: Array<{
         start: number;
@@ -335,6 +341,7 @@ export function rewriteEnumsToConstObjects(source: string): string {
                 leadingDoc ?? "",
                 name,
                 body,
+                enumValues?.get(name),
             ),
         });
     }
@@ -359,6 +366,7 @@ const renderEnumReplacement = (
     leadingDoc: string,
     name: string,
     body: string,
+    memberValues?: ReadonlyMap<string, number>,
 ): string => {
     const stripped = body.replace(BLOCK_COMMENT_PATTERN, "").replace(LINE_COMMENT_PATTERN, "");
     let nextOrdinal = 0;
@@ -369,7 +377,11 @@ const renderEnumReplacement = (
         const [memberName, initializer] = splitEnumMember(member);
         if (!memberName || !/^[A-Za-z_]\w*$/.test(memberName)) continue;
         let literal: string;
-        if (initializer !== undefined) {
+        const knownValue = memberValues?.get(memberName);
+        if (knownValue !== undefined) {
+            literal = String(knownValue);
+            nextOrdinal = knownValue + 1;
+        } else if (initializer !== undefined) {
             literal = initializer;
             const numeric = parseNumericLiteral(initializer);
             if (numeric !== null) nextOrdinal = numeric + 1;
@@ -402,6 +414,17 @@ const parseNumericLiteral = (text: string): number | null => {
 };
 
 /**
+ * Real enum member values for one namespace, keyed enum name then member name.
+ */
+export type NamespaceEnumValues = ReadonlyMap<string, ReadonlyMap<string, number>>;
+
+/**
+ * Real enum member values for every namespace, keyed lowercase namespace
+ * identifier (e.g. `"gtk"`, `"cairo"`).
+ */
+export type EnumValueMap = ReadonlyMap<string, NamespaceEnumValues>;
+
+/**
  * Result of running every rewrite over a single ts-for-gir output file.
  */
 export type RewriteResult = {
@@ -415,14 +438,19 @@ export type RewriteResult = {
  * Applies every rewrite to each per-namespace `.d.ts` produced by ts-for-gir.
  * Files outside the per-namespace pattern (ambient shims, the bare `node-gtk`
  * augmentor, `-import` stubs) are ignored.
+ *
+ * @param rawFilesByName - ts-for-gir output keyed by raw filename.
+ * @param enumValues - Real enum member values used to keep rewritten enum
+ *     const-objects accurate; namespaces absent from the map fall back to
+ *     ts-for-gir initializers and ordinals.
  */
-export function loadAndRewrite(rawFilesByName: Map<string, string>): RewriteResult[] {
+export function loadAndRewrite(rawFilesByName: Map<string, string>, enumValues?: EnumValueMap): RewriteResult[] {
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
         const namespace = namespaceFromRawFilename(filename);
         if (!namespace) continue;
         let source = unwrapOuterNamespace(contents);
-        source = rewriteEnumsToConstObjects(source);
+        source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace));
         source = rewriteNamespaceDeclarations(source);
         source = rewriteDefaultImportsToNamespace(source);
         source = rewriteModuleKeywordToNamespace(source);

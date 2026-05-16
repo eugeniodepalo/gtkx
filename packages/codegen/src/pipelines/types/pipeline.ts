@@ -3,8 +3,40 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GenerationHandler } from "@ts-for-gir/cli";
 import { GeneratorType } from "@ts-for-gir/generator-base";
-import type { LoadedGir } from "../../gir/index.js";
-import { loadAndRewrite } from "./rewrite.js";
+import type { GirRepository, LoadedGir } from "../../gir/index.js";
+import { type EnumValueMap, loadAndRewrite } from "./rewrite.js";
+
+/**
+ * Builds the real enum member values for every namespace from the loaded GIR
+ * repository, keyed as {@link EnumValueMap} expects.
+ *
+ * ts-for-gir emits enum members without initializers; supplying these GIR
+ * values lets the enum rewrite reproduce the runtime's actual numbers (offset
+ * enums, bitfields) instead of falling back to ordinal indices.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Enum member values keyed namespace → enum name → member name.
+ */
+const collectEnumValues = (repository: GirRepository): EnumValueMap => {
+    const namespaces = new Map<string, Map<string, Map<string, number>>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const enumerations = new Map<string, Map<string, number>>();
+        for (const enumeration of [...namespace.enumerations.values(), ...namespace.bitfields.values()]) {
+            const members = new Map<string, number>();
+            for (const member of enumeration.members) {
+                const value = Number(member.value);
+                if (Number.isFinite(value)) {
+                    members.set(member.name.toUpperCase(), value);
+                }
+            }
+            enumerations.set(enumeration.name, members);
+        }
+        namespaces.set(namespaceName.toLowerCase(), enumerations);
+    }
+    return namespaces;
+};
 
 /**
  * Generates the per-namespace `.d.ts` type bindings from already-loaded GIR
@@ -33,7 +65,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             rawFilesByName.set(filename, contents);
         }
 
-        const rewritten = loadAndRewrite(rawFilesByName);
+        const rewritten = loadAndRewrite(rawFilesByName, collectEnumValues(loaded.repository));
 
         await mkdir(outDir, { recursive: true });
         const namespacesWritten: string[] = [];
