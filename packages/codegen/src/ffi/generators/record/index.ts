@@ -480,6 +480,7 @@ export class RecordGenerator {
         const doc = buildJsDocStructure(field.doc, this.options.namespace);
 
         const getBody = (writer: Writer): void => {
+            writer.writeLine(`/** @type {${elementMapping.ts}[]} */`);
             writer.writeLine("const result = [];");
             writer.writeLine(`for (let index = 0; index < ${fixedSize}; index++) {`);
             writer.withIndent(() => {
