@@ -59,6 +59,19 @@ jobs:
           cache-cargo: "true"
           cache-pnpm: "true"
 
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Conformance
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm install --frozen-lockfile && pnpm conformance
+          cache-cargo: "true"
+          cache-pnpm: "true"
+
   docs:
     runs-on: ubuntu-latest
     steps:

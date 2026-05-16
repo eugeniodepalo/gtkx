@@ -136,8 +136,7 @@
             "outputLogs": "new-only"
         },
         "@gtkx/ffi#conformance": {
-            "dependsOn": ["^build"],
-            "inputs": ["src/generated/**/*.d.ts", "tsconfig.conformance.json"],
+            "inputs": ["src/generated/**/*.js", "src/generated/**/*.d.ts", "scripts/conformance.ts"],
             "outputs": [],
             "outputLogs": "new-only"
         },
