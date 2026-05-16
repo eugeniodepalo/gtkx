@@ -285,6 +285,7 @@ export class PropertyAccessorBuilder {
         if (!prop.getter) return null;
         const resolved = this.resolveNonConflictingMethodName(prop.getter);
         if (!resolved) return null;
+        if (resolved.methodName === toCamelCase(prop.name)) return null;
         const { method } = resolved;
         const returnMapping = this.ffiMapper.mapType(method.returnType, false, method.returnType.transferOwnership);
         if (returnMapping.unsafe) return null;
@@ -297,6 +298,7 @@ export class PropertyAccessorBuilder {
         if (!prop.setter) return null;
         const resolved = this.resolveNonConflictingMethodName(prop.setter);
         if (!resolved) return null;
+        if (resolved.methodName === toCamelCase(prop.name)) return null;
         if (resolved.method.parameters.length !== 1) return null;
         const setterParam = resolved.method.parameters[0];
         if (!setterParam) return null;
