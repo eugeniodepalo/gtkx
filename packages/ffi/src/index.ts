@@ -1,7 +1,6 @@
-export type { Type } from "@gtkx/native";
 export { CONSTRUCTION_META, type ConstructionMeta } from "./construction-meta.js";
 export { getParentClass, type NativeClass } from "./handles.js";
-export { freeze, t, unfreeze } from "./helpers.js";
+export { freeze, unfreeze } from "./helpers.js";
 export * from "./lifecycle.js";
 export { getNativeInterface } from "./native.js";
 export { type RegisterClassOptions, registerClass } from "./register-class.js";
