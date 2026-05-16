@@ -490,6 +490,9 @@ const findMatchingBracket = (source: string, from: number): number => {
 const EVENT_EMITTER_SIGNAL_LINE = /^[ \t]*(?:on|once|off)\(sigName:[^\n]*\): NodeJS\.EventEmitter[ \t]*\n/gm;
 const SYNTHETIC_GTYPE_FIELD_LINE = /^[ \t]*__gtype__: number[ \t]*\n/gm;
 const SYNTHETIC_GTYPE_SIGNAL_LINE = /^[ \t]*(?:connect|on|once|off|emit)\(sigName: "notify::__gtype__"[^\n]*\n/gm;
+const SYNTHETIC_GTYPE_INSTANCE_LINE = /^[ \t]*gTypeInstance: TypeInstance[ \t]*\n/gm;
+const SYNTHETIC_INIT_LINE = /^[ \t]*_init\(config\?: [\w.]*ConstructorProperties\): void[ \t]*\n/gm;
+const SYNTHETIC_DISCONNECT_LINE = /^[ \t]*disconnect\((?:id|handlerId): number\): void[ \t]*\n/gm;
 
 /**
  * Removes the `on` / `once` / `off` signal-companion overloads that ts-for-gir
@@ -498,10 +501,11 @@ const SYNTHETIC_GTYPE_SIGNAL_LINE = /^[ \t]*(?:connect|on|once|off|emit)\(sigNam
  *
  * The `on` / `once` / `off` overloads describe node-gtk's `EventEmitter`-style
  * aliases and return `NodeJS.EventEmitter`; the gtkx runtime models signal
- * handling through `connect` and `emit` only. The `__gtype__` field is a
- * ts-for-gir synthesis that the gtkx runtime assigns dynamically rather than
- * declaring on the class shape. Trimming both keeps the contract aligned with
- * the surface the runtime statically provides.
+ * handling through `connect` and `emit` only. The `__gtype__` and
+ * `gTypeInstance` fields, the `_init` constructor helper, and the
+ * `disconnect(id)` overload are ts-for-gir syntheses that the gtkx runtime
+ * does not declare on the class shape. Trimming them keeps the contract
+ * aligned with the surface the runtime statically provides.
  *
  * @param source - The `.d.ts` source to rewrite.
  * @returns The source with the node-gtk-only signal surface removed.
@@ -510,7 +514,10 @@ export function stripEventEmitterSignalOverloads(source: string): string {
     return source
         .replace(EVENT_EMITTER_SIGNAL_LINE, "")
         .replace(SYNTHETIC_GTYPE_FIELD_LINE, "")
-        .replace(SYNTHETIC_GTYPE_SIGNAL_LINE, "");
+        .replace(SYNTHETIC_GTYPE_SIGNAL_LINE, "")
+        .replace(SYNTHETIC_GTYPE_INSTANCE_LINE, "")
+        .replace(SYNTHETIC_INIT_LINE, "")
+        .replace(SYNTHETIC_DISCONNECT_LINE, "");
 }
 
 /**
