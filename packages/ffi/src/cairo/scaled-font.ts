@@ -269,7 +269,7 @@ ScaledFont.prototype.textToGlyphs = function (
         call(LIB, "cairo_text_cluster_free", [{ type: CLUSTER_BUF_T, value: clustersRef.value }], t.void);
     }
 
-    return [glyphs, clusters, clusterFlagsRef.value as 0];
+    return [glyphs, clusters, clusterFlagsRef.value as TextClusterFlags];
 };
 
 ScaledFont.prototype.ftLockFace = function (): NativeHandle {

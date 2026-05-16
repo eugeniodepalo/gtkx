@@ -123,7 +123,7 @@ ObjectWithStatics.newWithProperties = (objectType: GType, names: string[], value
         ],
         GOBJECT_BORROWED,
     );
-    return getNativeObject(ptr as NativeHandle) as GObject;
+    return getNativeObject(ptr as NativeHandle) as unknown as GObject;
 };
 
 type Listener = (...args: unknown[]) => unknown;
