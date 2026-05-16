@@ -93,6 +93,46 @@ const collectClassFieldNames = (repository: GirRepository): FieldNameMap => {
 };
 
 /**
+ * Collects the camelCased signal names of every class and interface per
+ * namespace, excluding any that also name a real method.
+ *
+ * ts-for-gir emits an action-method declaration for every signal (e.g.
+ * `committed(text: string): void` for the `committed` signal). node-gtk's
+ * runtime exposes signals only through `connect` / `emit`, never as callable
+ * members, so the type pipeline strips these action-method declarations. A
+ * signal that shares its name with a real GIR method is left intact, because
+ * that method is genuinely exposed.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Signal action-method names keyed namespace then owner name.
+ */
+const collectSignalActionMethodNames = (repository: GirRepository): FieldNameMap => {
+    const namespaces = new Map<string, Map<string, Set<string>>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const owners = new Map<string, Set<string>>();
+        const collect = (name: string, signals: readonly { name: string }[], methods: readonly { name: string }[]) => {
+            const methodNames = new Set(methods.map((m) => toCamelCase(m.name)));
+            const names = new Set<string>();
+            for (const signal of signals) {
+                const camel = toCamelCase(signal.name);
+                if (!methodNames.has(camel)) names.add(camel);
+            }
+            owners.set(toPascalCase(name), names);
+        };
+        for (const cls of namespace.classes.values()) {
+            collect(cls.name, cls.signals, cls.methods);
+        }
+        for (const iface of namespace.interfaces.values()) {
+            collect(iface.name, iface.signals, iface.methods);
+        }
+        namespaces.set(namespaceName.toLowerCase(), owners);
+    }
+    return namespaces;
+};
+
+/**
  * Generates the per-namespace `.d.ts` type bindings from already-loaded GIR
  * modules and writes them under `outDir`.
  *
@@ -124,6 +164,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             collectEnumValues(loaded.repository),
             collectGtypeStructNames(loaded.repository),
             collectClassFieldNames(loaded.repository),
+            collectSignalActionMethodNames(loaded.repository),
         );
 
         await mkdir(outDir, { recursive: true });

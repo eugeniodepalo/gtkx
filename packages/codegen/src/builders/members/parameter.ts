@@ -27,6 +27,8 @@ export class ParameterBuilder implements Builder {
         if (writer.getMode() === "js") {
             if (this.opts.defaultValue) {
                 writer.write(` = ${this.opts.defaultValue}`);
+            } else if (this.opts.optional && !this.opts.rest) {
+                writer.write(" = undefined");
             }
             return;
         }

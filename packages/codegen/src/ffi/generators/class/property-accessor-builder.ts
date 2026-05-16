@@ -67,6 +67,12 @@ export type InterfacePropertySource = {
     readonly properties: readonly GirProperty[];
     /** Method names already declared on the interface, in camelCase. */
     readonly existingMethodNames: ReadonlySet<string>;
+    /**
+     * Getter/setter methods reachable on the interface, keyed by C identifier.
+     * A property accessor delegates to one of these when its value type cannot
+     * be marshaled through the generic `g_object_get_property` path.
+     */
+    readonly methodsByCIdentifier: ReadonlyMap<string, GirMethod>;
 };
 
 export class PropertyAccessorBuilder {
@@ -220,7 +226,9 @@ export class PropertyAccessorBuilder {
     }
 
     private resolveOwnMethod(accessorId: string): GirMethod | null {
-        if (this.cls === null) return null;
+        if (this.cls === null) {
+            return this.interfaceSource?.methodsByCIdentifier.get(accessorId) ?? null;
+        }
         return this.cls.getMethodByCIdentifier(accessorId) ?? this.cls.getMethod(accessorId) ?? null;
     }
 

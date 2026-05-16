@@ -754,6 +754,7 @@ export function loadAndRewrite(
     enumValues?: EnumValueMap,
     gtypeStructNames?: GtypeStructMap,
     classFieldNames?: FieldNameMap,
+    signalActionMethodNames?: FieldNameMap,
 ): RewriteResult[] {
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
@@ -765,6 +766,7 @@ export function loadAndRewrite(
         source = stripClassFields(source, classFieldNames?.get(namespace));
         source = stripVirtualMethods(source);
         source = stripSuppressedMethods(source, SUPPRESSED_METHOD_NAMES_BY_NAMESPACE.get(namespace));
+        source = stripSuppressedMethods(source, signalActionMethodNames?.get(namespace));
         source = relaxMultiReturnTuples(source);
         source = stripEventEmitterSignalOverloads(source);
         source = rewriteNamespaceDeclarations(source);

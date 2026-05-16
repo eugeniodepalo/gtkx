@@ -90,7 +90,8 @@ export class InterfaceGenerator {
             addMethodStructure(cls, struct);
         }
 
-        const accessorEmissions = this.buildPropertyAccessors(iface, interfaceName, methodStructures);
+        const reachableMethods = [...iface.methods, ...prerequisiteMethods];
+        const accessorEmissions = this.buildPropertyAccessors(iface, interfaceName, methodStructures, reachableMethods);
         for (const { property } of accessorEmissions) {
             cls.addProperty(property);
         }
@@ -261,11 +262,16 @@ export class InterfaceGenerator {
         iface: GirInterface,
         interfaceName: string,
         methodStructures: readonly MethodStructure[],
+        reachableMethods: readonly GirMethod[],
     ): PropertyAccessorEmission[] {
         const properties = this.collectInterfaceProperties(iface);
         if (properties.length === 0) return [];
 
         const existingMethodNames = new Set(methodStructures.map((struct) => struct.name));
+        const methodsByCIdentifier = new Map<string, GirMethod>();
+        for (const method of reachableMethods) {
+            methodsByCIdentifier.set(method.cIdentifier, method);
+        }
         const builder = new PropertyAccessorBuilder(
             null,
             this.ffiMapper,
@@ -273,7 +279,7 @@ export class InterfaceGenerator {
             this.repository,
             this.options,
             new Set([interfaceName]),
-            { ownerName: interfaceName, properties, existingMethodNames },
+            { ownerName: interfaceName, properties, existingMethodNames, methodsByCIdentifier },
         );
         return builder.buildAccessors();
     }
