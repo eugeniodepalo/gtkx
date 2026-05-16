@@ -58,11 +58,7 @@ const PickersDemo = ({ window }: DemoProps) => {
         const timeoutId = setTimeout(() => cancellable.cancel(), DIALOG_TIMEOUT_SECONDS * 1000);
         try {
             const fileDialog = new Gtk.FileDialog();
-            const file = await (
-                fileDialog as unknown as {
-                    openAsync(parent: Gtk.Window | null, cancellable: Gio.Cancellable | null): Promise<Gio.File>;
-                }
-            ).openAsync(window.current, cancellable);
+            const file = await fileDialog.open(window.current, cancellable);
             clearTimeout(timeoutId);
             setFile(file);
         } catch (e) {
@@ -78,9 +74,7 @@ const PickersDemo = ({ window }: DemoProps) => {
         if (!selectedFile) return;
         try {
             const launcher = Gtk.FileLauncher.new(selectedFile);
-            await (
-                launcher as unknown as { launchAsync(parent: Gtk.Window | null, cancellable: null): Promise<void> }
-            ).launchAsync(window.current, null);
+            await launcher.launch(window.current, null);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
         }
@@ -90,11 +84,7 @@ const PickersDemo = ({ window }: DemoProps) => {
         if (!selectedFile) return;
         try {
             const launcher = Gtk.FileLauncher.new(selectedFile);
-            await (
-                launcher as unknown as {
-                    openContainingFolderAsync(parent: Gtk.Window | null, cancellable: null): Promise<void>;
-                }
-            ).openContainingFolderAsync(window.current, null);
+            await launcher.openContainingFolder(window.current, null);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
         }
@@ -106,16 +96,7 @@ const PickersDemo = ({ window }: DemoProps) => {
         const timeoutId = setTimeout(() => cancellable.cancel(), DIALOG_TIMEOUT_SECONDS * 1000);
         try {
             const printDialog = new Gtk.PrintDialog();
-            await (
-                printDialog as unknown as {
-                    printFileAsync(
-                        parent: Gtk.Window | null,
-                        setup: Gtk.PageSetup | null,
-                        file: Gio.File,
-                        cancellable: Gio.Cancellable | null,
-                    ): Promise<void>;
-                }
-            ).printFileAsync(window.current, null, selectedFile, cancellable);
+            await printDialog.printFile(window.current, null, selectedFile, cancellable);
             clearTimeout(timeoutId);
         } catch (e) {
             clearTimeout(timeoutId);
@@ -126,9 +107,7 @@ const PickersDemo = ({ window }: DemoProps) => {
     const handleLaunchUri = useCallback(async () => {
         try {
             const launcher = Gtk.UriLauncher.new("https://www.gtk.org");
-            await (
-                launcher as unknown as { launchAsync(parent: Gtk.Window | null, cancellable: null): Promise<void> }
-            ).launchAsync(window.current, null);
+            await launcher.launch(window.current, null);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
         }

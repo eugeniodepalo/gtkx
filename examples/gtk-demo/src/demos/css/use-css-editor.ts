@@ -105,11 +105,11 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
         const win = windowRef.current;
         if (!win) return;
         for (const cls of windowClasses) {
-            (win as unknown as { addCssClass(name: string): void }).addCssClass(cls);
+            win.addCssClass(cls);
         }
         return () => {
             for (const cls of windowClasses) {
-                (win as unknown as { removeCssClass(name: string): void }).removeCssClass(cls);
+                win.removeCssClass(cls);
             }
         };
     }, [windowRef, windowClasses]);

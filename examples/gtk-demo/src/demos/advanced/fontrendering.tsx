@@ -87,10 +87,7 @@ const setupGridLayout = (
     let ch = text[0] ?? " ";
     const layout = new Pango.Layout(context);
     layout.setFontDescription(fontDesc);
-    (layout as unknown as { setText(t: string, l: number): void }).setText(
-        `${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`,
-        -1,
-    );
+    layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
 
     let [, logicalRect] = layout.getPixelExtents();
     const iter = layout.getIter();
@@ -100,10 +97,7 @@ const setupGridLayout = (
 
     if (glyphItem.glyphs.numGlyphs < 8) {
         ch = "a";
-        (layout as unknown as { setText(t: string, l: number): void }).setText(
-            `${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`,
-            -1,
-        );
+        layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
         [, logicalRect] = layout.getPixelExtents();
     }
 
@@ -126,10 +120,7 @@ const renderSmallSurface = (
 
     const smallLayout = new Pango.Layout(smallCtx);
     smallLayout.setFontDescription(fontDesc);
-    (smallLayout as unknown as { setText(t: string, l: number): void }).setText(
-        `${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`,
-        -1,
-    );
+    smallLayout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
 
     let [, smallLogical] = smallLayout.getPixelExtents();
     const smallIter = smallLayout.getIter();
@@ -138,7 +129,7 @@ const renderSmallSurface = (
     if (!smallGlyphItem?.glyphs) return null;
 
     if (smallGlyphItem.glyphs.numGlyphs < 8) {
-        (smallLayout as unknown as { setText(t: string, l: number): void }).setText(`a${ZWNJ}a${ZWNJ}a${ZWNJ}a`, -1);
+        smallLayout.setText(`a${ZWNJ}a${ZWNJ}a${ZWNJ}a`, -1);
         [, smallLogical] = smallLayout.getPixelExtents();
     }
 
@@ -268,7 +259,7 @@ const FontRenderingDemo = () => {
 
             const layout = new Pango.Layout(context);
             layout.setFontDescription(fontDesc);
-            (layout as unknown as { setText(t: string, l: number): void }).setText(text || " ", -1);
+            layout.setText(text || " ", -1);
 
             const [inkRect, logicalRect] = layout.getExtents();
             const baseline = layout.getBaseline();
@@ -296,7 +287,7 @@ const FontRenderingDemo = () => {
 
             const smallLayout = new Pango.Layout(smallContext);
             smallLayout.setFontDescription(fontDesc);
-            (smallLayout as unknown as { setText(t: string, l: number): void }).setText(text || " ", -1);
+            smallLayout.setText(text || " ", -1);
 
             smallCr.setSourceRgba(0, 0, 0, pixelAlpha);
             smallCr.translate(10, 10);
@@ -374,7 +365,7 @@ const FontRenderingDemo = () => {
 
                 const outlineLayout = new Pango.Layout(outlineCtx);
                 outlineLayout.setFontDescription(fontDesc);
-                (outlineLayout as unknown as { setText(t: string, l: number): void }).setText(text || " ", -1);
+                outlineLayout.setText(text || " ", -1);
 
                 outlineCr.translate(10, 10);
                 PangoCairo.layoutPath(outlineCr, outlineLayout);

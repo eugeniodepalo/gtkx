@@ -46,7 +46,7 @@ const PrintingDemo = ({ window, onClose }: DemoProps) => {
 
             const headerLayout = context.createPangoLayout();
             headerLayout.setFontDescription(Pango.FontDescription.fromString("sans 14"));
-            (headerLayout as unknown as { setText(text: string, length: number): void }).setText("printing.tsx", -1);
+            headerLayout.setText("printing.tsx", -1);
 
             let [, logicalRect] = headerLayout.getPixelExtents();
             let textWidth = logicalRect.width;
@@ -64,7 +64,7 @@ const PrintingDemo = ({ window, onClose }: DemoProps) => {
             PangoCairo.showLayout(cr, headerLayout);
 
             const pageStr = `${pageNr + 1}/${numPages}`;
-            (headerLayout as unknown as { setText(text: string, length: number): void }).setText(pageStr, -1);
+            headerLayout.setText(pageStr, -1);
             headerLayout.setWidth(-1);
             [, logicalRect] = headerLayout.getPixelExtents();
             cr.moveTo(width - logicalRect.width - 4, (HEADER_HEIGHT - logicalRect.height) / 2);
@@ -79,10 +79,7 @@ const PrintingDemo = ({ window, onClose }: DemoProps) => {
 
             const startLine = pageNr * linesPerPage;
             for (let i = 0; i < linesPerPage && startLine + i < numLines; i++) {
-                (bodyLayout as unknown as { setText(text: string, length: number): void }).setText(
-                    lines[startLine + i] ?? "",
-                    -1,
-                );
+                bodyLayout.setText(lines[startLine + i] ?? "", -1);
                 PangoCairo.showLayout(cr, bodyLayout);
                 cr.relMoveTo(0, FONT_SIZE);
             }
