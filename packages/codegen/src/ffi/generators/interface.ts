@@ -213,6 +213,7 @@ export class InterfaceGenerator {
             m.doc,
             this.options.namespace,
             false,
+            m.parameters,
         );
     }
 
@@ -253,6 +254,7 @@ export class InterfaceGenerator {
                     func.doc,
                     this.options.namespace,
                     true,
+                    func.parameters,
                 ),
             ),
         ];

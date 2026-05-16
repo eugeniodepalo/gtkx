@@ -329,6 +329,7 @@ export class RecordGenerator {
                     ctor.doc,
                     this.options.namespace,
                     true,
+                    ctor.parameters,
                 ),
             ),
         ];
@@ -411,6 +412,7 @@ export class RecordGenerator {
                     func.doc,
                     this.options.namespace,
                     true,
+                    func.parameters,
                 ),
             ),
         ];
@@ -448,6 +450,7 @@ export class RecordGenerator {
                     method.doc,
                     this.options.namespace,
                     false,
+                    method.parameters,
                 ),
             ),
         ];

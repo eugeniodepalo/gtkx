@@ -117,6 +117,7 @@ export class ConstructorBuilder {
                     ctor.doc,
                     this.options.namespace,
                     true,
+                    ctor.parameters,
                 ),
             );
         }

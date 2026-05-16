@@ -805,11 +805,16 @@ export class MethodBodyWriter {
      * regardless of whether a given call can be marshalled, so generators
      * emit unmarshalable members as throwing stubs rather than dropping them.
      *
+     * The stub carries the same JS-visible parameter list as a marshalable
+     * member would, so its call-convention shape — parameter arity — still
+     * matches the declared contract; only the body differs.
+     *
      * @param memberName - The TypeScript member name to emit.
      * @param qualifiedName - The fully qualified `Namespace.Class.member` name used in the error message.
      * @param doc - Optional GIR documentation text for the member.
      * @param namespace - Current namespace for documentation links.
      * @param isStatic - Whether the member is a static function.
+     * @param parameters - The GIR parameters whose JS-visible arity the stub reproduces.
      * @returns A MethodStructure whose body throws a descriptive error.
      */
     buildStubStructure(
@@ -818,13 +823,14 @@ export class MethodBodyWriter {
         doc: string | undefined,
         namespace: string,
         isStatic: boolean,
+        parameters: readonly GirParameter[] = [],
     ): MethodStructure {
         const message = `${qualifiedName} is not callable through the @gtkx/ffi runtime`;
         this.imports.addImport("../../native.js", ["throwUnsupported"]);
         return {
             name: memberName,
             isStatic: isStatic || undefined,
-            parameters: [],
+            parameters: this.buildParameterList(parameters),
             returnType: undefined,
             docs: buildJsDocStructure(doc, namespace),
             statements: (writer: Writer) => {

@@ -106,6 +106,7 @@ export class StaticFunctionBuilder {
             func.doc,
             this.options.namespace,
             true,
+            func.parameters,
         );
     }
 }

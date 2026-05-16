@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { GenerationHandler } from "@ts-for-gir/cli";
 import { GeneratorType } from "@ts-for-gir/generator-base";
 import { type AsyncCapableCallable, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
-import { toCamelCase, toPascalCase } from "../../core/utils/naming.js";
+import { collectParentMethodNames } from "../../core/utils/class-traversal.js";
+import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
 import { isClassVtable } from "../../core/utils/record-filter.js";
 import type { GirRepository, LoadedGir } from "../../gir/index.js";
 import type { GirMethod } from "../../gir/model/callables.js";
@@ -16,6 +17,8 @@ import {
     type FieldNameMap,
     type GtypeStructMap,
     loadAndRewrite,
+    type MethodShadowRename,
+    type MethodShadowRenameMap,
     type NamespaceAsyncMembers,
 } from "./rewrite.js";
 
@@ -229,6 +232,55 @@ const connectRenameFor = (ownerName: string): string => {
 };
 
 /**
+ * Counts the parameters a method contributes to its declared signature: every
+ * non-`out` GIR parameter, matching the surface ts-for-gir emits once `out`
+ * parameters have been folded into the return tuple.
+ *
+ * @param method - The GIR method.
+ * @returns The declared parameter count.
+ */
+const declaredParameterCount = (method: GirMethod): number =>
+    method.parameters.filter((parameter) => parameter.direction !== "out").length;
+
+/**
+ * Collects, for every class, the methods the gtkx codegen renamed because
+ * their name collides with a method inherited from an ancestor class or
+ * interface.
+ *
+ * The runtime exposes such a method under an owner-prefixed name; the contract
+ * rewrite renames the matching overload to agree. The GObject `connect` method
+ * is excluded — its signal collision is resolved separately.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Method shadow-renames keyed namespace then owner name.
+ */
+const collectMethodShadowRenames = (repository: GirRepository): MethodShadowRenameMap => {
+    const namespaces = new Map<string, Map<string, MethodShadowRename[]>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const owners = new Map<string, MethodShadowRename[]>();
+        for (const cls of namespace.classes.values()) {
+            const parentMethodNames = collectParentMethodNames(cls, repository);
+            const renames: MethodShadowRename[] = [];
+            for (const method of cls.methods) {
+                if (method.name === "connect" || !parentMethodNames.has(method.name)) continue;
+                renames.push({
+                    original: toCamelCase(method.name),
+                    renamed: generateConflictingMethodName(cls.name, method.name),
+                    arity: declaredParameterCount(method),
+                });
+            }
+            if (renames.length > 0) {
+                owners.set(toPascalCase(cls.name), renames);
+            }
+        }
+        namespaces.set(namespaceName.toLowerCase(), owners);
+    }
+    return namespaces;
+};
+
+/**
  * Collects, for every class and interface, the runtime name of a `connect`
  * GIR `<method>` that the gtkx codegen renamed away from its collision with
  * the GObject `connect` signal.
@@ -392,6 +444,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             collectConnectMethodRenames(loaded.repository),
             collectNumericConstantNames(loaded.repository),
             collectAsyncMembers(loaded.repository),
+            collectMethodShadowRenames(loaded.repository),
         );
 
         await mkdir(outDir, { recursive: true });

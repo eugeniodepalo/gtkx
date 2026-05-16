@@ -810,18 +810,61 @@ export function stripEventEmitterSignalOverloads(source: string): string {
 }
 
 /**
+ * Counts the top-level entries of a tuple-type body, treating nested `<>`,
+ * `()`, `[]`, `{}`, string literals and block comments as opaque.
+ *
+ * @param body - The text between a tuple type's brackets.
+ * @returns The number of comma-separated entries.
+ */
+const countTupleEntries = (body: string): number => {
+    let entries = 0;
+    let depth = 0;
+    let hasContent = false;
+    let i = 0;
+    while (i < body.length) {
+        const ch = body[i];
+        if (ch === '"' || ch === "'" || ch === "`") {
+            i = skipStringLiteral(body, i, ch);
+            hasContent = true;
+            continue;
+        }
+        if (ch === "/" && body[i + 1] === "*") {
+            i = skipBlockComment(body, i);
+            continue;
+        }
+        if (ch === "/" && body[i + 1] === "/") {
+            i = skipLineComment(body, i);
+            continue;
+        }
+        if (ch === "<" || ch === "(" || ch === "[" || ch === "{") {
+            depth++;
+            hasContent = true;
+        } else if (ch === ">" || ch === ")" || ch === "]" || ch === "}") {
+            depth = Math.max(0, depth - 1);
+        } else if (ch === "," && depth === 0) {
+            entries++;
+        } else if (ch !== " " && ch !== "\t" && ch !== "\r" && ch !== "\n") {
+            hasContent = true;
+        }
+        i++;
+    }
+    return hasContent ? entries + 1 : 0;
+};
+
+/**
  * Replaces the comment-labelled multi-return tuple type that ts-for-gir emits
  * for functions and methods with out-parameters
- * (`: [ /* returnType *\/ A, /* out *\/ B ]`) with the looser `: any[]` array
- * type.
+ * (`: [ /* returnType *\/ A, /* out *\/ B ]`) with a fixed-length tuple of
+ * `any` of the same arity (`: [any, any]`).
  *
  * A generated runtime wrapper collects out-parameters into a plain JavaScript
- * array literal, which TypeScript infers as `any[]` rather than a fixed-length
- * tuple. Relaxing the contract to `any[]` lets the runtime array satisfy the
- * declared shape, matching node-gtk, which returns out-parameters as an array.
+ * array literal whose length is fixed by the call. Preserving the tuple arity
+ * keeps the contract's call-convention shape — how many values the caller
+ * receives — verifiable, while leaving the element types as `any` so the
+ * untyped, marshaled runtime values still satisfy the contract.
  *
  * @param source - The `.d.ts` source to rewrite.
- * @returns The source with multi-return tuples relaxed to `any[]`.
+ * @returns The source with multi-return tuples reduced to `any`-element tuples.
  */
 export function relaxMultiReturnTuples(source: string): string {
     const parts: string[] = [];
@@ -833,8 +876,10 @@ export function relaxMultiReturnTuples(source: string): string {
         const bracketIndex = source.indexOf("[", match.index);
         const closeIndex = findMatchingBracket(source, bracketIndex + 1);
         if (closeIndex < 0) break;
+        const arity = countTupleEntries(source.slice(bracketIndex + 1, closeIndex));
+        const tuple = arity > 0 ? `[${Array.from({ length: arity }, () => "any").join(", ")}]` : "any[]";
         parts.push(source.slice(cursor, match.index));
-        parts.push(": any[]");
+        parts.push(`: ${tuple}`);
         cursor = closeIndex + 1;
         MULTI_RETURN_TUPLE_PATTERN.lastIndex = cursor;
     }
@@ -842,39 +887,65 @@ export function relaxMultiReturnTuples(source: string): string {
     return parts.join("");
 }
 
-const VOID_CONFLICT_COMMENT = /\/\/ Has conflict: ([A-Za-z_$][\w$]*)\(([^\n]*)\): void(?:\r?\n)/g;
+const CONFLICT_COMMENT = /\/\/ Has conflict: ([A-Za-z_$][\w$]*)\(([^\n]*)\): ([^\n]+)(?:\r?\n)/g;
 
 /**
- * Corrects method return types that ts-for-gir merged from a GIR
+ * Corrects method signatures that ts-for-gir merged from a GIR
  * `<virtual-method>` over the GIR `<method>` of the same name.
  *
  * When a class declares both a `<method>` and a same-named `<virtual-method>`
- * with differing return types, ts-for-gir keeps the virtual method's signature
- * and demotes the real method's signature to a `// Has conflict:` comment. The
- * generated runtime binds the C `<method>`, whose ABI return type is
- * authoritative. Where that commented signature returns `void` — a C function
- * that returns nothing cannot yield a value — the emitted member is rewritten
- * to return `void`, provided its parameter list is unchanged.
+ * with differing signatures, ts-for-gir keeps the virtual method's signature as
+ * the active member and demotes the real method's signature to a
+ * `// Has conflict:` comment. The generated runtime binds the C `<method>`,
+ * whose parameter list and return type are authoritative, so the active member
+ * of that name is rewritten — within its declaring class or interface block —
+ * to the parameter list and return type recorded in the conflict comment.
  *
  * @param source - The `.d.ts` source to rewrite.
- * @returns The source with void-returning conflict signatures honored.
+ * @returns The source with conflict-comment signatures honored.
  */
-export function honorVoidConflictSignatures(source: string): string {
+export function honorConflictSignatures(source: string): string {
     let result = source;
-    VOID_CONFLICT_COMMENT.lastIndex = 0;
+    TYPE_BLOCK_HEADER.lastIndex = 0;
     for (;;) {
-        const match = VOID_CONFLICT_COMMENT.exec(source);
-        if (match === null) break;
-        const name = match[1];
-        const params = match[2];
-        if (name === undefined || params === undefined) continue;
-        const memberPattern = new RegExp(
-            `(\\n[ \\t]*${escapeRegExp(name)}\\(${escapeRegExp(params)}\\)): (?!void(?:\\r?\\n))[^\\n]+`,
-        );
-        result = result.replace(memberPattern, "$1: void");
+        const header = TYPE_BLOCK_HEADER.exec(result);
+        if (header === null) break;
+        const bodyStart = header.index + header[0].length;
+        const bodyEnd = findMatchingBrace(result, bodyStart);
+        if (bodyEnd < 0) continue;
+        const body = result.slice(bodyStart, bodyEnd);
+        const newBody = honorConflictSignaturesInBlock(body);
+        if (newBody !== body) {
+            result = result.slice(0, bodyStart) + newBody + result.slice(bodyEnd);
+        }
+        TYPE_BLOCK_HEADER.lastIndex = bodyStart + newBody.length;
     }
     return result;
 }
+
+/**
+ * Rewrites the active member of every `// Has conflict:` name within a single
+ * class or interface body to the parameter list and return type recorded in
+ * the conflict comment.
+ *
+ * @param body - The class or interface body text.
+ * @returns The body with conflict-comment signatures applied.
+ */
+const honorConflictSignaturesInBlock = (body: string): string => {
+    let result = body;
+    CONFLICT_COMMENT.lastIndex = 0;
+    for (;;) {
+        const match = CONFLICT_COMMENT.exec(body);
+        if (match === null) break;
+        const name = match[1];
+        const params = match[2];
+        const returnType = match[3];
+        if (name === undefined || params === undefined || returnType === undefined) continue;
+        const memberPattern = new RegExp(`(\\n[ \\t]*${escapeRegExp(name)})\\([^\\n]*\\): [^\\n]+`);
+        result = result.replace(memberPattern, `$1(${params}): ${returnType}`);
+    }
+    return result;
+};
 
 /**
  * Escapes regular-expression metacharacters in a literal string fragment.
@@ -935,6 +1006,96 @@ export function renameConflictingConnectMethods(source: string, renames?: Namesp
     }
     return result;
 }
+
+/**
+ * One method that the gtkx runtime renamed away from a collision with an
+ * inherited member of the same name.
+ */
+export type MethodShadowRename = {
+    /** The camelCased GIR method name as ts-for-gir emits it. */
+    original: string;
+    /** The owner-prefixed name the runtime exposes the method under. */
+    renamed: string;
+    /** The method's declared parameter count, used to pick the right overload. */
+    arity: number;
+};
+
+/**
+ * Method shadow-renames for one namespace, keyed owner type name.
+ */
+export type NamespaceMethodShadowRenames = ReadonlyMap<string, readonly MethodShadowRename[]>;
+
+/**
+ * Method shadow-renames for every namespace, keyed lowercase namespace
+ * identifier.
+ */
+export type MethodShadowRenameMap = ReadonlyMap<string, NamespaceMethodShadowRenames>;
+
+/**
+ * Renames, in the contract, every class method the gtkx runtime renamed because
+ * its name collided with an inherited member.
+ *
+ * The gtkx codegen renames a class `<method>` whose name matches a method
+ * inherited from an ancestor class or interface to an owner-prefixed name.
+ * ts-for-gir flattens both the inherited member and the colliding method into
+ * the subclass body as overloads of the original name; this rewrite renames the
+ * colliding overload — identified within its declaring class block by its
+ * declared parameter count — to the name the runtime exposes.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param renames - Method shadow-renames keyed owner type name.
+ * @returns The source with shadowed methods renamed.
+ */
+export function renameShadowedMethods(source: string, renames?: NamespaceMethodShadowRenames): string {
+    if (renames === undefined || renames.size === 0) return source;
+    let result = source;
+    TYPE_BLOCK_HEADER.lastIndex = 0;
+    for (;;) {
+        const header = TYPE_BLOCK_HEADER.exec(result);
+        if (header === null) break;
+        const ownerName = header[2];
+        if (ownerName === undefined) continue;
+        const ownerRenames = renames.get(ownerName);
+        if (ownerRenames === undefined || ownerRenames.length === 0) continue;
+        const bodyStart = header.index + header[0].length;
+        const bodyEnd = findMatchingBrace(result, bodyStart);
+        if (bodyEnd < 0) continue;
+        const body = result.slice(bodyStart, bodyEnd);
+        let newBody = body;
+        for (const rename of ownerRenames) {
+            newBody = renameMethodOverload(newBody, rename);
+        }
+        if (newBody !== body) {
+            result = result.slice(0, bodyStart) + newBody + result.slice(bodyEnd);
+        }
+        TYPE_BLOCK_HEADER.lastIndex = bodyStart + newBody.length;
+    }
+    return result;
+}
+
+/**
+ * Renames the single declaration of `rename.original` within a class body whose
+ * declared parameter count matches `rename.arity`, leaving same-named inherited
+ * overloads untouched.
+ *
+ * @param body - The class body text.
+ * @param rename - The shadow-rename to apply.
+ * @returns The body with the matching overload renamed.
+ */
+const renameMethodOverload = (body: string, rename: MethodShadowRename): string => {
+    const pattern = new RegExp(`(\\n[ \\t]*)${escapeRegExp(rename.original)}\\(`, "g");
+    for (;;) {
+        const match = pattern.exec(body);
+        if (match === null) return body;
+        const parenStart = match.index + match[0].length - 1;
+        const parenEnd = findMatchingParen(body, parenStart + 1);
+        if (parenEnd < 0) continue;
+        const params = body.slice(parenStart + 1, parenEnd);
+        const arity = params.trim().length === 0 ? 0 : splitParameterList(params).length;
+        if (arity !== rename.arity) continue;
+        return body.slice(0, match.index) + `${match[1]}${rename.renamed}(` + body.slice(match.index + match[0].length);
+    }
+};
 
 const OPTIONAL_INOUT_RETURN = /\(([^\n]*)\): (\/\* (\w+) \*\/ [\w.]+)(?<suffix>(?:\[\])?)(?=\r?\n)/g;
 
@@ -1070,14 +1231,14 @@ const rewriteAsyncMemberDeclaration = (
             continue;
         }
         const params = result.slice(parenStart + 1, parenEnd);
-        if (!/\bAsyncReadyCallback\b/.test(params)) {
+        const newParams = dropAsyncCallbackParameter(params);
+        if (newParams === null) {
             pattern.lastIndex = parenEnd + 1;
             continue;
         }
         const afterParams = result.slice(parenEnd + 1);
         const returnMatch = afterParams.match(/^\s*:\s*[^\n;]+/);
         const returnLength = returnMatch ? returnMatch[0].length : 0;
-        const newParams = dropAsyncCallbackParameter(params);
         const replacement = `${headText}(${newParams}): Promise<${finishReturnType}>`;
         result = result.slice(0, match.index) + replacement + result.slice(parenEnd + 1 + returnLength);
         pattern.lastIndex = match.index + replacement.length;
@@ -1086,13 +1247,31 @@ const rewriteAsyncMemberDeclaration = (
 };
 
 /**
- * Removes the trailing `AsyncReadyCallback` parameter (and any following
- * `user_data` parameter) from a parameter list.
+ * Removes the trailing `GAsyncReadyCallback` parameter from an async callable's
+ * parameter list.
+ *
+ * ts-for-gir types that parameter either as `AsyncReadyCallback` — possibly
+ * with a following `user_data` parameter — or, where the callable is merged
+ * from a GIR `<virtual-method>`, as a trailing closure parameter. Both forms
+ * are recognized; the closure form drops only the final parameter so an
+ * earlier progress-callback parameter is retained.
+ *
+ * @param params - The declared parameter list.
+ * @returns The parameter list without the ready-callback parameter, or `null`
+ *     when no ready-callback parameter is present.
  */
-const dropAsyncCallbackParameter = (params: string): string => {
+const dropAsyncCallbackParameter = (params: string): string | null => {
     const entries = splitParameterList(params);
-    const kept = entries.filter((entry) => !/\bAsyncReadyCallback\b/.test(entry) && !/^\s*user_?[dD]ata\b/.test(entry));
-    return kept.join(", ");
+    if (entries.some((entry) => /\bAsyncReadyCallback\b/.test(entry))) {
+        return entries
+            .filter((entry) => !/\bAsyncReadyCallback\b/.test(entry) && !/^\s*user_?[dD]ata\b/.test(entry))
+            .join(", ");
+    }
+    const last = entries.at(-1);
+    if (last !== undefined && /:\s*[\w.]*Closure\b/.test(last)) {
+        return entries.slice(0, -1).join(", ");
+    }
+    return null;
 };
 
 /**
@@ -1223,6 +1402,7 @@ export function loadAndRewrite(
     connectRenames?: ConnectRenameMap,
     numericConstantNames?: FieldNameMap,
     asyncMembers?: AsyncMemberMap,
+    methodShadowRenames?: MethodShadowRenameMap,
 ): RewriteResult[] {
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
@@ -1240,7 +1420,8 @@ export function loadAndRewrite(
         source = relaxMultiReturnTuples(source);
         source = relaxOptionalInoutReturns(source);
         source = renameConflictingConnectMethods(source, connectRenames?.get(namespace));
-        source = honorVoidConflictSignatures(source);
+        source = honorConflictSignatures(source);
+        source = renameShadowedMethods(source, methodShadowRenames?.get(namespace));
         source = relaxGtypeConstants(source);
         source = relaxNumericConstants(source, numericConstantNames?.get(namespace)?.get(""));
         source = stripEventEmitterSignalOverloads(source);

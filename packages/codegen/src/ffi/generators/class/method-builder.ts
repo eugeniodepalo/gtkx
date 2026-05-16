@@ -90,6 +90,7 @@ export class MethodBuilder {
             method.doc,
             this.options.namespace,
             false,
+            method.parameters,
         );
     }
 

@@ -76,6 +76,7 @@ export class ClassStructStaticBuilder {
             method.doc,
             this.options.namespace,
             true,
+            method.parameters,
         );
     }
 

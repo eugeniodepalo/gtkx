@@ -420,6 +420,7 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
     const filteredParams = parameters.filter((p) => !isVararg(p) && !ffiMapper.isClosureTarget(p, parameters));
 
     const { lengthIndices, lengthToDataIndex } = collectLengthParamIndices(
+        parameters,
         filteredParams,
         returnTypeMapping,
         ffiMapper,
@@ -517,6 +518,7 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
 };
 
 const collectLengthParamIndices = (
+    parameters: readonly GirParameter[],
     filteredParams: readonly GirParameter[],
     returnTypeMapping: MappedType,
     ffiMapper: FfiMapper,
@@ -525,17 +527,23 @@ const collectLengthParamIndices = (
     const lengthIndices = new Set<number>();
     const lengthToDataIndex = new Map<number, number>();
 
+    const filteredIndexOf = new Map<GirParameter, number>();
+    filteredParams.forEach((param, index) => {
+        filteredIndexOf.set(param, index);
+    });
+
     const recordSizeParam = (
         sizeParamIndex: number | undefined,
         dataLocalIndex: number | null,
         dataIsInput: boolean,
     ): void => {
         if (sizeParamIndex === undefined) return;
-        const localIndex = sizeParamIndex - sizeParamOffset;
-        if (localIndex < 0 || localIndex >= filteredParams.length) return;
-        const target = filteredParams[localIndex];
-        if (!target) return;
-        const targetIsOut = target.direction === "out" || target.direction === "inout";
+        const rawIndex = sizeParamIndex - sizeParamOffset;
+        const rawTarget = parameters[rawIndex];
+        if (!rawTarget) return;
+        const localIndex = filteredIndexOf.get(rawTarget);
+        if (localIndex === undefined) return;
+        const targetIsOut = rawTarget.direction === "out" || rawTarget.direction === "inout";
         if (!targetIsOut && !dataIsInput) {
             return;
         }
