@@ -78,6 +78,7 @@ export type RawEnumeration = {
     cType: string;
     members: RawEnumerationMember[];
     glibGetType?: string;
+    glibErrorDomain?: string;
     doc?: string;
 };
 

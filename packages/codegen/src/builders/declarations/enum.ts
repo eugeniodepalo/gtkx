@@ -14,6 +14,12 @@ export type EnumOptions = {
     exported?: boolean;
     doc?: string;
     const?: boolean;
+    /**
+     * When set, the JS output wraps the member map in `makeErrorDomain(...)`
+     * using this expression as the domain-quark resolver, producing an enum
+     * usable as the right-hand side of an `instanceof` check.
+     */
+    errorDomainResolver?: string;
 };
 
 /**
@@ -21,7 +27,9 @@ export type EnumOptions = {
  *
  * In TS mode the output is a classic `enum Name { ... }` declaration. In
  * JS mode the output is a frozen `const` object literal matching the
- * `(typeof Foo)[keyof typeof Foo]` shape the .d.ts contract publishes.
+ * `(typeof Foo)[keyof typeof Foo]` shape the .d.ts contract publishes; an
+ * {@link EnumOptions.errorDomainResolver} instead wraps that literal in
+ * `makeErrorDomain(...)`.
  *
  * For the JS path, members without an explicit `value` use a running
  * ordinal that advances by 1 each member; an explicit numeric value
@@ -54,7 +62,9 @@ export class EnumDeclarationBuilder implements Builder {
     private writeJs(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.exported) writer.write("export ");
-        writer.write(`const ${this.name} = globalThis.Object.freeze(`);
+        const { errorDomainResolver } = this.opts;
+        const open = errorDomainResolver ? `makeErrorDomain(${errorDomainResolver}, ` : "globalThis.Object.freeze(";
+        writer.write(`const ${this.name} = ${open}`);
         writer.writeBlock(() => {
             let nextOrdinal = 0;
             for (const member of this.members) {

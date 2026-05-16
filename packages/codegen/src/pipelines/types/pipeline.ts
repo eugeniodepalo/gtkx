@@ -16,6 +16,7 @@ import {
     type AsyncMemberMap,
     type ConnectRenameMap,
     type EnumValueMap,
+    type ErrorDomainMap,
     type FieldNameMap,
     type GtypeStructMap,
     type HashTableMemberEntry,
@@ -55,6 +56,30 @@ const collectEnumValues = (repository: GirRepository): EnumValueMap => {
             enumerations.set(enumeration.name, members);
         }
         namespaces.set(namespaceName.toLowerCase(), enumerations);
+    }
+    return namespaces;
+};
+
+/**
+ * Collects every `GError` error-domain enum name per namespace from the loaded
+ * GIR repository, keyed as {@link ErrorDomainMap} expects.
+ *
+ * The type pipeline rewrites these enums with an `instanceof`-capable
+ * `[Symbol.hasInstance]` member so callers can discriminate thrown errors.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Error-domain enum names keyed lowercase namespace identifier.
+ */
+const collectErrorDomainNames = (repository: GirRepository): ErrorDomainMap => {
+    const namespaces = new Map<string, Set<string>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const names = new Set<string>();
+        for (const enumeration of namespace.enumerations.values()) {
+            if (enumeration.glibErrorDomain) names.add(enumeration.name);
+        }
+        namespaces.set(namespaceName.toLowerCase(), names);
     }
     return namespaces;
 };
@@ -552,6 +577,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             collectAsyncMembers(loaded.repository),
             collectMethodShadowRenames(loaded.repository),
             collectHashTableMembers(loaded.repository),
+            collectErrorDomainNames(loaded.repository),
         );
 
         await mkdir(outDir, { recursive: true });

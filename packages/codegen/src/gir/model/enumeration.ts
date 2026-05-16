@@ -29,6 +29,8 @@ export class GirEnumeration {
     readonly cType: string;
     readonly members: GirEnumerationMember[];
     readonly glibGetType?: string;
+    /** GLib error-domain quark name, present only on `GError` domain enums. */
+    readonly glibErrorDomain?: string;
     readonly doc?: string;
 
     constructor(data: {
@@ -37,6 +39,7 @@ export class GirEnumeration {
         cType: string;
         members: GirEnumerationMember[];
         glibGetType?: string;
+        glibErrorDomain?: string;
         doc?: string;
     }) {
         this.name = data.name;
@@ -44,6 +47,7 @@ export class GirEnumeration {
         this.cType = data.cType;
         this.members = data.members;
         this.glibGetType = data.glibGetType;
+        this.glibErrorDomain = data.glibErrorDomain;
         this.doc = data.doc;
     }
 

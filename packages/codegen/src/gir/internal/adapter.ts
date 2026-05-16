@@ -342,6 +342,7 @@ function adaptEnumerations(enumerations: Array<GirEnumElement | GirBitfieldEleme
             cType: a["c:type"] ?? "",
             members: adaptEnumerationMembers(enumeration.member ?? []),
             glibGetType: a["glib:get-type"],
+            glibErrorDomain: a["glib:error-domain"],
             doc: extractDoc(enumeration),
         };
     });

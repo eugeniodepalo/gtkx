@@ -34,43 +34,29 @@ export function instanceIsA(handle: NativeHandle, gtype: GType): boolean {
 }
 
 /**
- * Error class wrapping GLib GError structures.
+ * Error thrown by generated bindings when a throwing GTK/GLib callable fails.
  *
- * Provides access to the error domain, code, and message from
- * native GTK/GLib errors.
+ * Carries the failing `GError`'s domain quark and code. Discriminate it at the
+ * catch site with `instanceof` against a generated error-domain enum rather
+ * than referencing this class directly.
  *
- * @example
- * ```tsx
- * try {
- *   file.loadContents();
- * } catch (error) {
- *   if (error instanceof NativeError) {
- *     console.log(`GLib error ${error.domain}:${error.code}: ${error.message}`);
- *   }
- * }
- * ```
+ * @internal Thrown by generated bindings; not part of the public API.
  */
 export class NativeError extends Error {
-    readonly gerror: GError;
-
-    getDomain(): number {
-        return this.gerror.domain;
-    }
-
-    getCode(): number {
-        return this.gerror.code;
-    }
+    /** Quark of the GLib error domain the failure belongs to. */
+    readonly domain: number;
+    /** Domain-specific error code. */
+    readonly code: number;
 
     /**
-     * Creates a NativeError from a GError instance.
-     *
-     * @param gerror - GError wrapper instance
+     * @param gerror - The populated `GError` wrapper from a throwing callable.
      */
     constructor(gerror: GError) {
         super(gerror.message ?? "Unknown error");
 
-        this.gerror = gerror;
         this.name = "NativeError";
+        this.domain = gerror.domain;
+        this.code = gerror.code;
 
         if (Error.captureStackTrace) {
             Error.captureStackTrace(this, NativeError);
@@ -93,6 +79,50 @@ export function checkError(error: Ref<NativeHandle | null>, errorClass: NativeCl
     if (error.value !== null) {
         throw new NativeError(getNativeObject(error.value, errorClass));
     }
+}
+
+/**
+ * An error-domain enum: a frozen member map that also acts as the right-hand
+ * side of an `instanceof` check.
+ *
+ * `error instanceof SomeErrorDomain` is true when `error` was thrown from the
+ * matching GLib error domain, letting callers discriminate failures without
+ * referencing the internal error class.
+ *
+ * @typeParam T - The enum's member-name to numeric-value map.
+ */
+export type ErrorDomain<T extends Record<string, number>> = Readonly<T> & {
+    readonly [Symbol.hasInstance]: (
+        value: unknown,
+    ) => value is Error & { readonly domain: number; readonly code: number };
+};
+
+/**
+ * Builds an error-domain enum whose `instanceof` checks match errors thrown
+ * from the given GLib error domain.
+ *
+ * The domain quark is resolved lazily on first `instanceof` check, since the
+ * generated `quark_from_string` binding may be declared after the enum in its
+ * module.
+ *
+ * @param resolveDomain - Resolves the quark of the GLib error domain.
+ * @param members - The enum's member-name to numeric-value map.
+ * @returns A frozen enum object usable as an `instanceof` right-hand side.
+ *
+ * @internal Invoked by generated bindings.
+ */
+export function makeErrorDomain<const T extends Record<string, number>>(
+    resolveDomain: () => number,
+    members: T,
+): ErrorDomain<T> {
+    let domain: number | undefined;
+    const hasInstance = (value: unknown): boolean => {
+        domain ??= resolveDomain();
+        return value instanceof NativeError && value.domain === domain;
+    };
+    const enumObject: Record<string, unknown> = { ...members };
+    Object.defineProperty(enumObject, Symbol.hasInstance, { value: hasInstance });
+    return Object.freeze(enumObject) as ErrorDomain<T>;
 }
 
 /**

@@ -1,6 +1,5 @@
 import { alloc, call, type NativeHandle, read, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
-import type { GType } from "./generated/gobject/gobject.js";
 import { gvalueFromProp } from "./gobject/gvalue.js";
 import { type GTypeStamped, getParentClass, type NativeClass, type NativeObject, setHandle } from "./handles.js";
 import { t } from "./helpers.js";

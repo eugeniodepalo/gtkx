@@ -31,7 +31,7 @@ export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineS
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
 export type { ClassStructTarget } from "./class-struct-pointer.js";
 export { resolveClassStructPointer } from "./class-struct-pointer.js";
-export { checkError, NativeError, throwUnsupported } from "./native.js";
+export { checkError, makeErrorDomain, NativeError, throwUnsupported } from "./native.js";
 export { registerInterfaceClassStruct } from "./register-class.js";
 export {
     getNativeObject,

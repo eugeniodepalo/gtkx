@@ -1,7 +1,6 @@
 import { stop } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
-import { toGtkxError } from "./errors.js";
 import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { reconciler } from "./reconciler.js";
 
@@ -97,11 +96,11 @@ export const render = (element: ReactNode, app: Gtk.Application): void => {
         "",
         (error: unknown) => {
             getSignalStore(app).forceUnblockAll();
-            throw toGtkxError(error);
+            throw error;
         },
         (error: unknown) => {
             getSignalStore(app).forceUnblockAll();
-            console.error(toGtkxError(error).toString());
+            console.error(error);
         },
         () => {},
         () => {},

@@ -365,6 +365,7 @@ export class GirNormalizer {
                     }),
             ),
             glibGetType: raw.glibGetType,
+            glibErrorDomain: raw.glibErrorDomain,
             doc: raw.doc,
         });
     }
