@@ -20,7 +20,7 @@ const packageRoot = dirname(__dirname);
 const generatedSrc = join(packageRoot, "src", "generated");
 const generatedDist = join(packageRoot, "dist", "generated");
 
-async function exists(path) {
+async function exists(path: string): Promise<boolean> {
     try {
         await stat(path);
         return true;
@@ -29,7 +29,7 @@ async function exists(path) {
     }
 }
 
-async function copyNamespaceDts() {
+async function copyNamespaceDts(): Promise<void> {
     if (!(await exists(generatedSrc))) return;
     const namespaces = await readdir(generatedSrc);
     for (const ns of namespaces) {

@@ -10,8 +10,8 @@
         "typecheck": "tsc -b --noEmit",
         "dev": "gtkx dev",
         "start": "node dist/bundle.js",
-        "bundle": "gtkx build && tsx scripts/bundle.ts",
-        "bundle:postject": "tsx scripts/bundle-postject.ts",
+        "bundle": "gtkx build && node scripts/bundle.ts",
+        "bundle:postject": "node scripts/bundle-postject.ts",
         "build:sea": "bash scripts/build-sea.sh",
         "build:flatpak": "pnpm bundle:postject && bash flatpak/build.sh"
     },
@@ -24,7 +24,6 @@
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
         "esbuild": "^0.28.0",
-        "postject": "1.0.0-alpha.6",
-        "tsx": "^4.21.0"
+        "postject": "1.0.0-alpha.6"
     }
 }

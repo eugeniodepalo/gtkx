@@ -13,7 +13,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 const projectRoot = process.env.INIT_CWD ?? process.cwd();
-const monorepoCli = join(projectRoot, "packages", "cli", "src", "cli.tsx");
+const monorepoCli = join(projectRoot, "packages", "cli", "src", "cli.ts");
 
 const result = existsSync(monorepoCli)
     ? spawnSync(process.execPath, ["--conditions=source", "--import", "tsx", monorepoCli, "codegen"], {

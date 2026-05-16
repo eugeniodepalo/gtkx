@@ -38,7 +38,7 @@ const IMPL_PREFIX = "gtkx-conformance:impl:";
 const CONTRACT_PREFIX = "gtkx-conformance:contract:";
 const FFI_PACKAGE_PREFIX = "@gtkx/ffi/";
 
-const TARGET_OPTIONS = {
+const TARGET_OPTIONS: ts.CompilerOptions = {
     allowJs: true,
     checkJs: false,
     noEmit: true,
@@ -55,23 +55,23 @@ const TARGET_OPTIONS = {
     types: ["node"],
 };
 
-const FORMAT_HOST = {
-    getCanonicalFileName: (fileName) => fileName,
+const FORMAT_HOST: ts.FormatDiagnosticsHost = {
+    getCanonicalFileName: (fileName: string) => fileName,
     getCurrentDirectory: () => FFI_ROOT,
     getNewLine: () => ts.sys.newLine,
 };
 
-const implJsPath = (namespace) => join(GENERATED_DIR, namespace, `${namespace}.js`);
-const contractDtsPath = (namespace) => join(VIRTUAL_ROOT, "contract", `${namespace}.d.ts`);
-const checkTsPath = (namespace) => join(VIRTUAL_ROOT, "check", `${namespace}.conformance.ts`);
+const implJsPath = (namespace: string): string => join(GENERATED_DIR, namespace, `${namespace}.js`);
+const contractDtsPath = (namespace: string): string => join(VIRTUAL_ROOT, "contract", `${namespace}.d.ts`);
+const checkTsPath = (namespace: string): string => join(VIRTUAL_ROOT, "check", `${namespace}.conformance.ts`);
 
 /**
  * Enumerates every generated namespace that has both a runtime and a
  * declaration file under `src/generated/`.
  *
- * @returns {string[]} Sorted namespace identifiers.
+ * @returns Sorted namespace identifiers.
  */
-const collectNamespaces = () =>
+const collectNamespaces = (): string[] =>
     readdirSync(GENERATED_DIR, { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)
@@ -85,10 +85,10 @@ const collectNamespaces = () =>
 /**
  * Renders the conformance assertion source for a single namespace.
  *
- * @param {string} namespace - Namespace identifier.
- * @returns {string} TypeScript source asserting the runtime satisfies the contract.
+ * @param namespace - Namespace identifier.
+ * @returns TypeScript source asserting the runtime satisfies the contract.
  */
-const checkSource = (namespace) =>
+const checkSource = (namespace: string): string =>
     `import * as impl from ${JSON.stringify(IMPL_PREFIX + namespace)};\n` +
     `const _conformance = impl satisfies typeof import(${JSON.stringify(CONTRACT_PREFIX + namespace)});\n`;
 
@@ -103,15 +103,22 @@ const checkSource = (namespace) =>
  * result, so the check verifies declared API existence and enum values
  * rather than unknowable FFI-result types.
  *
- * @param {string} specifier - The module specifier text.
- * @param {string} containingFile - Absolute path of the importing file.
- * @param {ts.CompilerOptions} options - Active compiler options.
- * @param {ts.SourceFile | undefined} containingSourceFile - Importing source file.
- * @param {ts.ModuleResolutionHost} host - Resolution host.
- * @param {Set<string>} namespaces - Known namespace identifiers.
- * @returns {ts.ResolvedModuleWithFailedLookupLocations} The resolution result.
+ * @param specifier - The module specifier text.
+ * @param containingFile - Absolute path of the importing file.
+ * @param options - Active compiler options.
+ * @param containingSourceFile - Importing source file.
+ * @param host - Resolution host.
+ * @param namespaces - Known namespace identifiers.
+ * @returns The resolution result.
  */
-const resolveSpecifier = (specifier, containingFile, options, containingSourceFile, host, namespaces) => {
+const resolveSpecifier = (
+    specifier: string,
+    containingFile: string,
+    options: ts.CompilerOptions,
+    containingSourceFile: ts.SourceFile | undefined,
+    host: ts.ModuleResolutionHost,
+    namespaces: Set<string>,
+): ts.ResolvedModuleWithFailedLookupLocations => {
     if (specifier.startsWith(IMPL_PREFIX)) {
         return {
             resolvedModule: {
@@ -162,13 +169,14 @@ const resolveSpecifier = (specifier, containingFile, options, containingSourceFi
  * from their JavaScript, and routes `@gtkx/ffi/<ns>` cross-references to the
  * in-memory contract.
  *
- * @param {Map<string, string>} virtualFiles - Absolute path to file content.
- * @param {Set<string>} namespaces - Known namespace identifiers.
- * @returns {ts.CompilerHost} The configured host.
+ * @param virtualFiles - Absolute path to file content.
+ * @param namespaces - Known namespace identifiers.
+ * @returns The configured host.
  */
-const createConformanceHost = (virtualFiles, namespaces) => {
+const createConformanceHost = (virtualFiles: Map<string, string>, namespaces: Set<string>): ts.CompilerHost => {
     const host = ts.createCompilerHost(TARGET_OPTIONS, true);
-    const isHiddenDeclaration = (fileName) => fileName.endsWith(".d.ts") && fileName.startsWith(`${GENERATED_DIR}/`);
+    const isHiddenDeclaration = (fileName: string): boolean =>
+        fileName.endsWith(".d.ts") && fileName.startsWith(`${GENERATED_DIR}/`);
 
     const baseGetSourceFile = host.getSourceFile.bind(host);
     const baseFileExists = host.fileExists.bind(host);
@@ -233,7 +241,7 @@ const createConformanceHost = (virtualFiles, namespaces) => {
     return host;
 };
 
-const main = () => {
+const main = (): void => {
     if (!existsSync(GENERATED_DIR)) {
         console.error(`conformance: ${GENERATED_DIR} not found — run codegen first.`);
         process.exit(1);
@@ -245,8 +253,8 @@ const main = () => {
         process.exit(1);
     }
 
-    const virtualFiles = new Map();
-    const rootNames = [];
+    const virtualFiles = new Map<string, string>();
+    const rootNames: string[] = [];
     for (const namespace of namespaces) {
         const declaration = readFileSync(join(GENERATED_DIR, namespace, `${namespace}.d.ts`), "utf8");
         virtualFiles.set(contractDtsPath(namespace), declaration);
@@ -265,7 +273,7 @@ const main = () => {
         process.exit(1);
     }
 
-    const violations = [];
+    const violations: ts.Diagnostic[] = [];
     for (const namespace of namespaces) {
         const checkFile = program.getSourceFile(checkTsPath(namespace));
         if (checkFile === undefined) {

@@ -21,8 +21,8 @@ const packageRoot = dirname(__dirname);
 const generatedSrc = join(packageRoot, "src", "generated");
 const generatedDist = join(packageRoot, "dist", "generated");
 
-async function copyGeneratedDts() {
-    let entries;
+async function copyGeneratedDts(): Promise<void> {
+    let entries: string[];
     try {
         entries = await readdir(generatedSrc);
     } catch {

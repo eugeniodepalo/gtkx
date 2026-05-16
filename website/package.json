@@ -4,7 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "typedoc": "node scripts/typedoc.js",
+        "typedoc": "node scripts/typedoc.ts",
         "build": "pnpm typedoc && vitepress build",
         "dev": "vitepress dev",
         "preview": "vitepress preview",

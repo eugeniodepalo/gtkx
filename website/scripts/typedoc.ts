@@ -80,7 +80,7 @@ for (const pkg of packages) {
     execFileSync("npx", args, { cwd: root, stdio: "inherit" });
 }
 
-function escapeJsxTags(dir) {
+function escapeJsxTags(dir: string): void {
     for (const entry of readdirSync(dir)) {
         const fullPath = join(dir, entry);
         if (statSync(fullPath).isDirectory()) {
