@@ -1,5 +1,5 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
-import type { GType } from "@gtkx/ffi/gobject";
+import { G_TYPE_INVALID, type GType } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
@@ -7,8 +7,6 @@ import type { Props } from "../types.js";
 import { createContainerWithProperties } from "./internal/construct.js";
 import type { SignalHandler } from "./internal/signal-store.js";
 import { WidgetNode } from "./widget.js";
-
-const G_TYPE_INVALID = 0 as unknown as GType;
 
 export class EventControllerNode<
     T extends Gtk.EventController = Gtk.EventController,

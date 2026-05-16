@@ -214,7 +214,7 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
 };
 
 const getSignalId = (target: Gtk.EventController, signalName: string): number => {
-    const gtype = (target as unknown as { __gtype__: number }).__gtype__ as unknown as GType;
+    const gtype = (target as unknown as { __gtype__: GType }).__gtype__;
     return signalLookup(signalName, gtype);
 };
 

@@ -35,13 +35,13 @@ const isNativeClass = (value: unknown): value is NativeClass => typeof value ===
 
 const resolveGType = (target: ClassStructTarget): GType => {
     if (typeof target === "number" || typeof target === "bigint") {
-        return target as unknown as GType;
+        return Number(target);
     }
     if (isNativeClass(target)) {
         return getClassGType(target);
     }
     const handle = tryGetHandle(target as object) ?? (target as NativeHandle);
-    return getInstanceGType(handle) as unknown as GType;
+    return getInstanceGType(handle);
 };
 
 /**

@@ -1,6 +1,7 @@
 import type { Type as FfiType, NativeHandle } from "@gtkx/native";
 import type { Object as GObject, GType } from "../generated/gobject/gobject.js";
 import { typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
+import { gtypeFromFfi } from "../gtype.js";
 import { getHandle } from "../handles.js";
 import { call, type NativeClass, read, t } from "../native.js";
 import { findNativeClass, getNativeObject } from "../registry.js";
@@ -208,7 +209,7 @@ declare module "../generated/gobject/gobject.js" {
 }
 
 Value.prototype.getType = function (): GType {
-    return read(getHandle(this), t.uint64, 0) as unknown as GType;
+    return gtypeFromFfi(read(getHandle(this), t.uint64, 0));
 };
 
 Value.prototype.getTypeName = function (): string {

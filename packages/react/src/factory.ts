@@ -18,8 +18,8 @@ export const resolveContainerClass = (type: string): ContainerClass | null =>
 
 const collectTypeNameChain = (gtype: GType): readonly string[] => {
     const chain: string[] = [];
-    let current: GType = gtype;
-    while ((current as unknown as number) !== 0) {
+    let current = gtype;
+    while (current !== 0) {
         const name = typeName(current);
         if (!name) {
             break;
@@ -31,7 +31,7 @@ const collectTypeNameChain = (gtype: GType): readonly string[] => {
 };
 
 const resolveNodeClass = (elementType: string, gtype: GType): NodeClass | null => {
-    if ((gtype as unknown as number) === 0) {
+    if (gtype === 0) {
         return NODE_REGISTRY.get(elementType) ?? null;
     }
     for (const ancestorName of collectTypeNameChain(gtype)) {
@@ -65,7 +65,7 @@ export const createNode = (
     rootContainer: Container,
 ): Node => {
     const gtype: GType = existingContainer
-        ? ((existingContainer as unknown as { __gtype__: number }).__gtype__ as unknown as GType)
+        ? (existingContainer as unknown as { __gtype__: GType }).__gtype__
         : typeFromName(elementType);
 
     const nodeClass = resolveNodeClass(elementType, gtype);

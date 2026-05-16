@@ -1,6 +1,7 @@
 import { findObjectProperty, getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { Object as GObject, signalEmitv, signalParseName, Value } from "../generated/gobject/gobject.js";
+import { gtypeFromFfi } from "../gtype.js";
 import { getHandle } from "../handles.js";
 import { alloc, call, read, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
@@ -110,7 +111,7 @@ ObjectWithStatics.newWithProperties = (objectType: GType, names: string[], value
         LIB,
         "g_object_new_with_properties",
         [
-            { type: t.uint64, value: objectType as unknown as number },
+            { type: t.uint64, value: objectType },
             { type: t.uint32, value: names.length },
             { type: t.sizedArray(t.string("borrowed"), 1), value: names },
             {
@@ -204,7 +205,7 @@ const SIGNAL_QUERY_N_PARAMS_OFFSET = 40;
 const SIGNAL_QUERY_PARAM_TYPES_OFFSET = 48;
 
 const emitImpl = function (this: GObject, sigName: string, ...args: unknown[]): void {
-    const instanceGType = getInstanceGType(getHandle(this)) as unknown as GType;
+    const instanceGType: GType = getInstanceGType(getHandle(this));
     const [parsed, signalId, detail] = signalParseName(sigName, instanceGType, true);
     if (!parsed || signalId === 0) {
         throw new Error(`Unknown signal '${sigName}' on ${this.constructor.name || "GObject"}`);
@@ -230,7 +231,7 @@ const emitImpl = function (this: GObject, sigName: string, ...args: unknown[]): 
             SIGNAL_QUERY_PARAM_TYPES_OFFSET,
         ) as NativeHandle;
         for (let i = 0; i < paramCount; i++) {
-            const paramGType = read(paramTypes, t.uint64, i * GTYPE_SIZE) as unknown as GType;
+            const paramGType = gtypeFromFfi(read(paramTypes, t.uint64, i * GTYPE_SIZE));
             paramValues.push(Value.fromJS(paramGType, args[i]));
         }
     }

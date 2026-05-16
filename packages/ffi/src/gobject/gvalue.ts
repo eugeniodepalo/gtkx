@@ -2,6 +2,7 @@ import { type Type as FfiType, getInstanceGType, type NativeHandle } from "@gtkx
 import type { GObjectPropMeta } from "../construction-meta.js";
 import type { Object as GObject, GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { typeFromName, typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
+import { G_TYPE_INVALID, gtypeFromFfi } from "../gtype.js";
 import { getHandle, type NativeObject } from "../handles.js";
 import { call, t } from "../native.js";
 import { Type } from "./types.js";
@@ -21,7 +22,7 @@ let cachedStrvGType: GType | undefined;
 
 /** Resolves and caches the `GStrv` (`gchar**`) boxed `GType`. */
 export function getStrvGType(): GType {
-    cachedStrvGType ??= g_strv_get_type() as unknown as GType;
+    cachedStrvGType ??= gtypeFromFfi(g_strv_get_type());
     return cachedStrvGType;
 }
 
@@ -86,7 +87,7 @@ export function newFromString(value: string | null): Value {
 export function newFromObject(value: GObject | null): Value {
     const v = new Value();
     if (value) {
-        const gtype = getInstanceGType(getHandle(value)) as unknown as GType;
+        const gtype: GType = getInstanceGType(getHandle(value));
         v.init(gtype);
     } else {
         v.init(Type.OBJECT);
@@ -141,10 +142,10 @@ export function newFromFlags(gtype: GType, value: number): Value {
 function resolveBoxedGType(ffiType: FfiType): GType {
     if (ffiType.type === "boxed") {
         if (ffiType.getTypeFn && ffiType.library) {
-            return call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as unknown as GType;
+            return gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
         }
         const gtype = typeFromName(ffiType.innerType);
-        if ((gtype as unknown) === 0) {
+        if (gtype === G_TYPE_INVALID) {
             throw new Error(`Cannot resolve gtype for boxed type '${ffiType.innerType}'`);
         }
         return gtype;
@@ -152,7 +153,7 @@ function resolveBoxedGType(ffiType: FfiType): GType {
     if (ffiType.type === "fundamental") {
         if (ffiType.typeName) {
             const gtype = typeFromName(ffiType.typeName);
-            if ((gtype as unknown) !== 0) return gtype;
+            if (gtype !== G_TYPE_INVALID) return gtype;
         }
         throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
     }
@@ -172,7 +173,7 @@ export function newFrom(ffiType: FfiType, value: unknown): Value {
             return newFromString(value as string | null);
 
         case "enum": {
-            const gtype = call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as unknown as GType;
+            const gtype = gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
             const fundamental = typeFundamental(gtype);
             if (fundamental === Type.FLAGS) {
                 return newFromFlags(gtype, value as number);
@@ -181,7 +182,7 @@ export function newFrom(ffiType: FfiType, value: unknown): Value {
         }
 
         case "flags": {
-            const gtype = call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as unknown as GType;
+            const gtype = gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
             return newFromFlags(gtype, value as number);
         }
 

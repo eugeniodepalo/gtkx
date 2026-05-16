@@ -5,7 +5,7 @@ import {
 } from "@gtkx/native";
 import { CONSTRUCTION_META } from "./construction-meta.js";
 import type { GType } from "./generated/gobject/gobject.js";
-import { typeInterfaces } from "./gtype.js";
+import { G_TYPE_INVALID, typeInterfaces } from "./gtype.js";
 import { getClassStruct, type NativeClass } from "./handles.js";
 import { getClassGType, registerNativeClass } from "./registry.js";
 
@@ -65,7 +65,7 @@ type DiscoveredInterfaceVfunc = RegisterClassInterfaceVfuncDescriptor & {
 };
 
 type InterfaceVfuncBinding = {
-    readonly gtype: number;
+    readonly gtype: GType;
     readonly vfuncs: readonly DiscoveredInterfaceVfunc[];
 };
 
@@ -96,7 +96,7 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
     }
 
     const parentGType = resolveParentGType(klass);
-    if ((parentGType as unknown as number) === 0) {
+    if (parentGType === G_TYPE_INVALID) {
         throw new Error(`registerClass: ${klass.name} parent GType is invalid (G_TYPE_INVALID)`);
     }
 
@@ -110,7 +110,7 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
     const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentGType, claimedMethodNames);
 
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
-    const newGtype = nativeRegisterClass(name, parentGType as unknown as number, nativeOptions) as unknown as GType;
+    const newGtype: GType = nativeRegisterClass(name, parentGType, nativeOptions);
     registerNativeClass(klass, newGtype);
 
     return klass;
@@ -129,10 +129,10 @@ function resolveParentGType(klass: NativeClass): GType {
     let current = Object.getPrototypeOf(klass) as NativeClass | null;
     while (current && current !== (Function.prototype as unknown as NativeClass)) {
         const gtype = getClassGType(current);
-        if ((gtype as unknown as number) !== 0) return gtype;
+        if (gtype !== G_TYPE_INVALID) return gtype;
         current = Object.getPrototypeOf(current) as NativeClass | null;
     }
-    return 0 as unknown as GType;
+    return G_TYPE_INVALID;
 }
 
 const SKIP_PROTOTYPE_NAMES = new Set(["constructor", "_init"]);
@@ -173,7 +173,7 @@ function discoverInheritedInterfaceVfuncs(
     for (const interfaceGType of typeInterfaces(parentGType)) {
         const vfuncs = discoverInterfaceVfuncs(klass, interfaceGType, claimedMethodNames);
         if (vfuncs.length > 0) {
-            bindings.push({ gtype: interfaceGType as unknown as number, vfuncs });
+            bindings.push({ gtype: interfaceGType, vfuncs });
         }
     }
     return bindings;
@@ -216,10 +216,10 @@ function findClassVfuncDescriptor(klass: NativeClass, methodName: string): Regis
     return null;
 }
 
-const interfaceClassStructByGType = new Map<number, Readonly<Record<string, unknown>>>();
+const interfaceClassStructByGType = new Map<GType, Readonly<Record<string, unknown>>>();
 
 function findInterfaceClassStruct(gtype: GType): Readonly<Record<string, unknown>> | null {
-    return interfaceClassStructByGType.get(gtype as unknown as number) ?? null;
+    return interfaceClassStructByGType.get(gtype) ?? null;
 }
 
 /**
@@ -231,9 +231,8 @@ function findInterfaceClassStruct(gtype: GType): Readonly<Record<string, unknown
  * @internal
  */
 export function registerInterfaceClassStruct(gtype: GType, struct: Readonly<Record<string, unknown>>): void {
-    const id = gtype as unknown as number;
-    if (id === 0) return;
-    interfaceClassStructByGType.set(id, struct);
+    if (gtype === G_TYPE_INVALID) return;
+    interfaceClassStructByGType.set(gtype, struct);
 }
 
 function toNativeOptions(

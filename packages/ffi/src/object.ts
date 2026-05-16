@@ -1,5 +1,6 @@
 import { alloc, call, type NativeHandle, read, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
+import type { GType } from "./generated/gobject/gobject.js";
 import { gvalueFromProp } from "./gobject/gvalue.js";
 import { type NativeClass, type NativeObject, setHandle } from "./handles.js";
 import { t } from "./helpers.js";
@@ -41,7 +42,7 @@ export function constructNativeObject(instance: object, props: object = {}): voi
     } else {
         setHandle(instance, constructBoxed(meta, props as Record<string, unknown>));
     }
-    (instance as { __gtype__: number }).__gtype__ = getClassGType(ctor) as unknown as number;
+    (instance as { __gtype__: GType }).__gtype__ = getClassGType(ctor);
 }
 
 /**

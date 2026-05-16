@@ -11,7 +11,7 @@ export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./he
 import { getInstanceGType, type NativeHandle, type Ref } from "@gtkx/native";
 import type { Error as GError } from "./generated/glib/glib.js";
 import type { GType } from "./generated/gobject/gobject.js";
-import { typeIsA } from "./gtype.js";
+import { G_TYPE_INVALID, typeIsA } from "./gtype.js";
 import { type NativeClass, setHandle, tryGetHandle } from "./handles.js";
 import { getNativeObject } from "./registry.js";
 
@@ -28,9 +28,9 @@ export type { NativeClass, NativeHandle } from "./handles.js";
  * @param gtype - GType identifier of the target type
  */
 export function instanceIsA(handle: NativeHandle, gtype: GType): boolean {
-    const instanceGtype = getInstanceGType(handle);
-    if (instanceGtype === 0) return false;
-    return typeIsA(instanceGtype as unknown as GType, gtype);
+    const instanceGtype: GType = getInstanceGType(handle);
+    if (instanceGtype === G_TYPE_INVALID) return false;
+    return typeIsA(instanceGtype, gtype);
 }
 
 /**
@@ -140,7 +140,7 @@ export function throwUnsupported(message: string): never {
 export function getNativeInterface<T extends object>(obj: object, iface: NativeClass<T>, ifaceGType: GType): T | null {
     const handle = tryGetHandle(obj);
     if (!handle) return null;
-    if ((ifaceGType as unknown as number) === 0) return null;
+    if (ifaceGType === G_TYPE_INVALID) return null;
     if (!instanceIsA(handle, ifaceGType)) return null;
 
     const instance = Object.create(iface.prototype) as T;

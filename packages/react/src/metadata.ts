@@ -5,18 +5,18 @@ import { PROPS, SIGNALS } from "./generated/internal.js";
 import { camelToSnake } from "./nodes/internal/naming.js";
 import type { Container } from "./types.js";
 
-const typeNameChainCache = new Map<number, readonly string[]>();
-const propMetaCache = new Map<number, Map<string, string | null>>();
-const signalCache = new Map<number, Map<string, string | null>>();
-const constructOnlyCache = new Map<number, Map<string, boolean>>();
+const typeNameChainCache = new Map<GType, readonly string[]>();
+const propMetaCache = new Map<GType, Map<string, string | null>>();
+const signalCache = new Map<GType, Map<string, string | null>>();
+const constructOnlyCache = new Map<GType, Map<string, boolean>>();
 
-const collectTypeNameChain = (gtype: number): readonly string[] => {
+const collectTypeNameChain = (gtype: GType): readonly string[] => {
     const cached = typeNameChainCache.get(gtype);
     if (cached) return cached;
 
     const chain: string[] = [];
-    let current: GType = gtype as unknown as GType;
-    while ((current as unknown as number) !== 0) {
+    let current = gtype;
+    while (current !== 0) {
         const name = typeName(current);
         if (!name) break;
         chain.push(name);
@@ -28,12 +28,12 @@ const collectTypeNameChain = (gtype: number): readonly string[] => {
 };
 
 const memoize = <T>(
-    cache: Map<number, Map<string, T>>,
+    cache: Map<GType, Map<string, T>>,
     instance: Container,
     key: string,
     compute: (typeNames: readonly string[]) => T,
 ): T => {
-    const gtype = (instance as unknown as { __gtype__: number }).__gtype__;
+    const gtype = (instance as unknown as { __gtype__: GType }).__gtype__;
     let perGtype = cache.get(gtype);
     if (!perGtype) {
         perGtype = new Map();

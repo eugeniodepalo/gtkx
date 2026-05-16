@@ -33,7 +33,7 @@ export const fireEvent = async (
     signalName: string,
     ...args: Value[]
 ): Promise<void> => {
-    const gtype = (element as unknown as { __gtype__: number }).__gtype__ as unknown as GType;
+    const gtype = (element as unknown as { __gtype__: GType }).__gtype__;
     const signalId = signalLookup(signalName, gtype);
 
     const instanceValue = Value.newFromObject(element);
