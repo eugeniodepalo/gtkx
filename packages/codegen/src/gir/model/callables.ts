@@ -108,4 +108,11 @@ export class GirConstructor extends GirCallable {}
 /**
  * Standalone function or static method.
  */
-export class GirFunction extends GirCallable {}
+export class GirFunction extends GirCallable {
+    readonly finishFunc?: string;
+
+    constructor(data: GirCallableData & { finishFunc?: string }) {
+        super(data);
+        this.finishFunc = data.finishFunc;
+    }
+}

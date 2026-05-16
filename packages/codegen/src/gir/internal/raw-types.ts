@@ -146,6 +146,7 @@ export type RawFunction = {
     throws?: boolean;
     doc?: string;
     returnDoc?: string;
+    finishFunc?: string;
     shadows?: string;
     shadowedBy?: string;
 };

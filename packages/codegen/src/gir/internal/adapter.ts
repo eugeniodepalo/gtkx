@@ -214,7 +214,12 @@ function adaptConstructors(constructors: GirConstructorElement[]): RawConstructo
 }
 
 function adaptFunctions(functions: GirFunctionElement[]): RawFunction[] {
-    return functions.filter((func) => attrsOf(func).introspectable !== "0").map(adaptCallable);
+    return functions
+        .filter((func) => attrsOf(func).introspectable !== "0")
+        .map((func) => ({
+            ...adaptCallable(func),
+            finishFunc: attrsOf(func)["glib:finish-func"] || undefined,
+        }));
 }
 
 function adaptCallable(callable: GirMethodElement | GirConstructorElement | GirFunctionElement): RawConstructor {

@@ -455,6 +455,7 @@ export class GirNormalizer {
             throws: raw.throws ?? false,
             doc: raw.doc,
             returnDoc: raw.returnDoc,
+            finishFunc: raw.finishFunc,
             shadows: raw.shadows,
             shadowedBy: raw.shadowedBy,
         });
