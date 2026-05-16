@@ -104,6 +104,17 @@ export class FileBuilder implements Builder {
     }
 
     /**
+     * Append a writer-rendered block emitted after every declaration in the
+     * file. The block-rendering counterpart of {@link addDeferredStatement};
+     * use it for module-load wiring whose operands (classes, generated
+     * functions) are declared elsewhere in the same file.
+     */
+    addDeferredBlock(write: (writer: Writer) => void): this {
+        this.deferredStatements.push({ write });
+        return this;
+    }
+
+    /**
      * Write the complete file: imports, then any registered FFI descriptor
      * preamble, then declarations separated by blank lines.
      *

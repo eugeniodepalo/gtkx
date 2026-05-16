@@ -65,7 +65,7 @@ describe("SignalBuilder", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            expect(structures.map((s) => s.name)).toEqual(["connect", "emit", "on", "once", "off"]);
+            expect(structures.map((s) => s.name)).toEqual(["connect", "emit"]);
         });
 
         it("includes overloads for each signal", () => {
@@ -184,7 +184,7 @@ describe("SignalBuilder", () => {
     });
 
     describe("integration", () => {
-        it("builds connect method with switch cases for signals", () => {
+        it("builds connect and emit methods for signals", () => {
             const { builder } = createTestSetup({
                 signals: [
                     createNormalizedSignal({
@@ -205,8 +205,24 @@ describe("SignalBuilder", () => {
 
             const connectStructures = builder.buildConnectMethodStructures();
 
-            expect(connectStructures.map((s) => s.name)).toEqual(["connect", "emit", "on", "once", "off"]);
+            expect(connectStructures.map((s) => s.name)).toEqual(["connect", "emit"]);
             expect(connectStructures[0]?.overloads?.length).toBeGreaterThanOrEqual(2);
+        });
+    });
+
+    describe("buildSignalMetaWriter", () => {
+        it("returns null when the class has no signals", () => {
+            const { builder } = createTestSetup({ signals: [] });
+
+            expect(builder.buildSignalMetaWriter()).toBeNull();
+        });
+
+        it("returns a writer when the class has signals", () => {
+            const { builder } = createTestSetup({
+                signals: [createNormalizedSignal({ name: "clicked" })],
+            });
+
+            expect(typeof builder.buildSignalMetaWriter()).toBe("function");
         });
     });
 });

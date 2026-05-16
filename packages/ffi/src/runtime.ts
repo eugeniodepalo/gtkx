@@ -37,6 +37,9 @@ export {
 
 export { registerInterfaceClassStruct } from "./register-class.js";
 
+export type { SignalDescriptor, SignalGObject, SignalGValue, SignalHandler } from "./signals.js";
+export { connectSignal, emitSignal, registerSignalMeta } from "./signals.js";
+
 export { NativeError } from "./native.js";
 
 export { createRef } from "@gtkx/native";

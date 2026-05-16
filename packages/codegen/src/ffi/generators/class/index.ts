@@ -172,6 +172,11 @@ export class ClassGenerator {
             this.file.addRawBlock(metaPlan.constructionMetaWriter);
         }
 
+        const signalMetaWriter = this.signalBuilder.buildSignalMetaWriter();
+        if (signalMetaWriter) {
+            this.file.addDeferredBlock(signalMetaWriter);
+        }
+
         const widgetMeta = this.classMetaBuilder.buildCodegenWidgetMeta();
         const controllerMeta = this.classMetaBuilder.buildCodegenControllerMeta();
 

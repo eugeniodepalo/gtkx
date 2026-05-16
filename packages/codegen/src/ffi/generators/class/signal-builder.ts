@@ -1,9 +1,12 @@
 /**
  * Signal Builder
  *
- * Builds signal connection code for classes.
- * Generates switch-case statements with inlined type info for own signals,
- * delegating inherited signals to super.connect().
+ * Builds the `connect` and `emit` methods for a class as thin delegations to
+ * the runtime signal dispatcher (`connectSignal` / `emitSignal`), plus the
+ * per-class `registerSignalMeta` table describing each own signal's
+ * trampoline descriptor, argument marshalling, and emit types. The repeated
+ * `switch`-case machinery is interpreted at runtime instead of inlined into
+ * every class.
  */
 
 import type { Writer } from "../../../builders/writer.js";
@@ -14,7 +17,6 @@ import { collectDirectMembers, collectParentSignalNames } from "../../../core/ut
 import { filterVarargs } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
-import { CallExpressionBuilder } from "../../../core/writers/call-expression-builder.js";
 import type { FfiDescriptorRegistry } from "../../../core/writers/descriptor-registry.js";
 import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
 import {
@@ -24,12 +26,7 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../core/writers/index.js";
-import {
-    needsParamWrap,
-    needsReturnUnwrap,
-    type ParamWrapInfo,
-    writeWrapExpression,
-} from "../../../core/writers/param-wrap-writer.js";
+import { needsParamWrap, needsReturnUnwrap, type ParamWrapInfo, writeWrapExpression } from "../../../core/writers/param-wrap-writer.js";
 import type { GirClass, GirParameter, GirRepository, GirSignal } from "../../../gir/index.js";
 
 type SignalParamData = {
@@ -43,8 +40,8 @@ type SignalParamData = {
  */
 export class SignalBuilder {
     private readonly className: string;
-    private readonly callExpression: CallExpressionBuilder;
     private readonly methodBody: MethodBodyWriter;
+    private readonly descriptors: FfiDescriptorRegistry | undefined;
 
     constructor(
         private readonly cls: GirClass,
@@ -56,7 +53,6 @@ export class SignalBuilder {
     ) {
         this.className = normalizeClassName(cls.name);
         this.descriptors = (imports as { descriptors?: FfiDescriptorRegistry }).descriptors;
-        this.callExpression = new CallExpressionBuilder(this.descriptors, imports);
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
             sharedLibrary: options.sharedLibrary,
             glibLibrary: options.glibLibrary,
@@ -64,65 +60,36 @@ export class SignalBuilder {
         });
     }
 
-    private readonly descriptors: FfiDescriptorRegistry | undefined;
-
-    private gtypeCall(): string {
-        const glibGetType = this.cls.glibGetType;
-        const glibTypeName = this.cls.glibTypeName;
-        if (!glibGetType || glibGetType === "intern") {
-            if (!glibTypeName) {
-                return `0 /* ${this.className} has no glib:type-name */`;
-            }
-            const binding = this.descriptors?.register({
-                sharedLibrary: "libgobject-2.0.so.0",
-                cIdentifier: "g_type_from_name",
-                args: [{ type: { type: "string", ownership: "borrowed" }, value: "" }],
-                returnType: { type: "uint64" },
-            });
-            this.imports.addImport("../../native.js", ["t"]);
-            if (binding?.varargs === false) {
-                return `${binding.name}("${glibTypeName}")`;
-            }
-            this.imports.addImport("../../native.js", ["call"]);
-            return `call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64)`;
-        }
-        const binding = this.descriptors?.register({
-            sharedLibrary: this.options.sharedLibrary,
-            cIdentifier: glibGetType,
-            args: [],
-            returnType: { type: "uint64" },
-            exported: true,
-        });
-        this.imports.addImport("../../native.js", ["t"]);
-        if (binding?.varargs === false) {
-            return `${binding.name}()`;
-        }
-        this.imports.addImport("../../native.js", ["call"]);
-        return `call("${this.options.sharedLibrary}", "${glibGetType}", [], t.uint64)`;
+    private isRootGObject(): boolean {
+        return this.options.namespace === "GObject" && this.cls.name === "Object";
     }
 
+    /**
+     * Builds the `connect` and `emit` method structures for the class.
+     *
+     * Both delegate to the runtime signal dispatcher; the per-signal data
+     * lives in the table emitted by {@link buildSignalMetaWriter}. Returns an
+     * empty array when the class declares no own signals.
+     */
     buildConnectMethodStructures(): MethodStructure[] {
         const ownSignals = this.collectOwnSignals();
-        const hasSignalConnect = ownSignals.length > 0;
-
-        if (!hasSignalConnect) {
+        if (ownSignals.length === 0) {
             return [];
         }
 
-        this.imports.addTypeImport("../../handles.js", ["NativeHandle"]);
+        this.imports.addImport("../../runtime.js", ["connectSignal", "emitSignal"]);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
-        if (this.options.namespace === "GObject") {
-            this.imports.addImport("./param-spec.js", ["ParamSpec"]);
-        } else {
-            this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
-        }
 
-        const overloads = this.buildOverloads(ownSignals);
-        const isRootGObject = this.options.namespace === "GObject" && this.cls.name === "Object";
+        const cls = this.className;
+        const root = this.isRootGObject();
+        const connectBody = root
+            ? `return connectSignal(this, ${cls}, signal, handler, after);`
+            : `return connectSignal(this, ${cls}, signal, handler, after, (s, h, a) => super.connect(s, h, a));`;
+        const emitBody = root
+            ? `emitSignal(this, ${cls}, sigName, args);`
+            : `emitSignal(this, ${cls}, sigName, args, (s, ...a) => super.emit(s, ...a));`;
 
-        const emitOverloads = this.buildEmitOverloads(ownSignals);
-
-        const structures: MethodStructure[] = [
+        return [
             {
                 name: "connect",
                 parameters: [
@@ -133,11 +100,13 @@ export class SignalBuilder {
                 returnType: "number",
                 docs: [
                     {
-                        description: `Connects a handler to a signal on this ${this.className}.\n\n@param signal - The signal name to connect to\n@param handler - Callback function invoked when signal is emitted\n@param after - If true, handler is called after default handler\n@returns Connection ID for disconnecting`,
+                        description: `Connects a handler to a signal on this ${cls}.\n\n@param signal - The signal name to connect to\n@param handler - Callback function invoked when signal is emitted\n@param after - If true, handler is called after default handler\n@returns Connection ID for disconnecting`,
                     },
                 ],
-                statements: this.writeConnectMethodBody(ownSignals),
-                overloads,
+                statements: (writer) => {
+                    writer.writeLine(connectBody);
+                },
+                overloads: this.buildOverloads(ownSignals),
             },
             {
                 name: "emit",
@@ -145,121 +114,44 @@ export class SignalBuilder {
                     { name: "sigName", type: "string" },
                     { name: "args", type: "any[]", isRestParameter: true },
                 ],
-                returnType: "void",
+                returnType: undefined,
                 docs: [
                     {
-                        description: `Synchronously emits a signal on this ${this.className}.\n\nArguments are auto-marshalled into GValues based on the signal's GIR-defined parameter types.\n\n@param sigName - The signal name to emit\n@param args - Arguments matching the signal's parameter list`,
+                        description: `Synchronously emits a signal on this ${cls}.\n\nArguments are auto-marshalled into GValues based on the signal's GIR-defined parameter types.\n\n@param sigName - The signal name to emit\n@param args - Arguments matching the signal's parameter list`,
                     },
                 ],
-                statements: this.writeEmitMethodBody(ownSignals),
-                overloads: emitOverloads,
+                statements: (writer) => {
+                    writer.writeLine(emitBody);
+                },
+                overloads: this.buildEmitOverloads(ownSignals),
             },
         ];
-
-        if (!isRootGObject) {
-            const onOverloads = this.buildAliasOverloads(ownSignals, "NodeJS.EventEmitter", { withAfter: true });
-            const offOverloads = this.buildAliasOverloads(ownSignals, "NodeJS.EventEmitter", { withAfter: false });
-
-            structures.push(
-                {
-                    name: "on",
-                    parameters: [
-                        { name: "sigName", type: "string" },
-                        { name: "callback", type: "(...args: any[]) => any" },
-                        { name: "after", type: "boolean", optional: true },
-                    ],
-                    returnType: "NodeJS.EventEmitter",
-                    docs: [
-                        {
-                            description: `Connects a callback to a signal on this ${this.className}, tracked for later removal via off().\n\n@param sigName - The signal name\n@param callback - Callback function\n@param after - If true, run after the default handler\n@returns A \`NodeJS.EventEmitter\` for chaining EventEmitter-style calls`,
-                        },
-                    ],
-                    statements: (writer) => {
-                        writer.writeLine("return super.on(sigName, callback, after);");
-                    },
-                    overloads: onOverloads,
-                },
-                {
-                    name: "once",
-                    parameters: [
-                        { name: "sigName", type: "string" },
-                        { name: "callback", type: "(...args: any[]) => any" },
-                        { name: "after", type: "boolean", optional: true },
-                    ],
-                    returnType: "NodeJS.EventEmitter",
-                    docs: [
-                        {
-                            description: `Connects a one-shot callback to a signal on this ${this.className}.\n\n@param sigName - The signal name\n@param callback - Callback function\n@param after - If true, run after the default handler\n@returns A \`NodeJS.EventEmitter\` for chaining EventEmitter-style calls`,
-                        },
-                    ],
-                    statements: (writer) => {
-                        writer.writeLine("return super.once(sigName, callback, after);");
-                    },
-                    overloads: onOverloads,
-                },
-                {
-                    name: "off",
-                    parameters: [
-                        { name: "sigName", type: "string" },
-                        { name: "callback", type: "(...args: any[]) => any" },
-                    ],
-                    returnType: "NodeJS.EventEmitter",
-                    docs: [
-                        {
-                            description: `Disconnects a callback previously registered with on() or once() on this ${this.className}.\n\n@param sigName - The signal name\n@param callback - The exact callback reference\n@returns A \`NodeJS.EventEmitter\` for chaining EventEmitter-style calls`,
-                        },
-                    ],
-                    statements: (writer) => {
-                        writer.writeLine("return super.off(sigName, callback);");
-                    },
-                    overloads: offOverloads,
-                },
-            );
-        }
-
-        return structures;
     }
 
-    private buildAliasOverloads(
-        allSignals: GirSignal[],
-        returnType: string,
-        opts: { withAfter: boolean },
-    ): NonNullable<MethodStructure["overloads"]> {
-        const overloads: NonNullable<MethodStructure["overloads"]> = [];
-        for (const signal of allSignals) {
-            const params = this.buildHandlerParams(signal);
-            let signalReturnType = "void";
-            if (signal.returnType) {
-                const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
-                addTypeImports(this.imports, mapped.imports, this.selfNames);
-                signalReturnType = mapped.ts;
-            }
-            const overloadParams = [
-                { name: "sigName", type: `"${signal.name}"` },
-                { name: "callback", type: `(${params}) => ${signalReturnType}` },
-            ];
-            if (opts.withAfter) {
-                overloadParams.push({ name: "after", type: "boolean", optional: true } as {
-                    name: string;
-                    type: string;
-                    optional?: boolean;
-                });
-            }
-            overloads.push({ params: overloadParams, returnType });
+    /**
+     * Builds the writer that emits the trailing `registerSignalMeta(...)`
+     * module-load call. Returns `null` when the class has no own signals.
+     */
+    buildSignalMetaWriter(): ((writer: Writer) => void) | null {
+        const ownSignals = this.collectOwnSignals();
+        if (ownSignals.length === 0) {
+            return null;
         }
-        const fallbackParams = [
-            { name: "sigName", type: "string" },
-            { name: "callback", type: "(...args: any[]) => any" },
-        ];
-        if (opts.withAfter) {
-            fallbackParams.push({ name: "after", type: "boolean", optional: true } as {
-                name: string;
-                type: string;
-                optional?: boolean;
+
+        this.imports.addImport("../../runtime.js", ["registerSignalMeta"]);
+        const gtypeRef = this.gtypeRef();
+        const gobjectArg = this.gobjectArgExpression();
+
+        return (writer) => {
+            writer.writeLine("");
+            writer.writeLine(`registerSignalMeta(${this.className}, new globalThis.Map([`);
+            writer.withIndent(() => {
+                for (const signal of ownSignals) {
+                    this.writeSignalDescriptorEntry(writer, signal);
+                }
             });
-        }
-        overloads.push({ params: fallbackParams, returnType });
-        return overloads;
+            writer.writeLine(`]), ${gtypeRef}, ${gobjectArg});`);
+        };
     }
 
     collectOwnSignals(): GirSignal[] {
@@ -328,10 +220,23 @@ export class SignalBuilder {
         return { allSignals, hasCrossNamespaceParent };
     }
 
-    private buildOverloads(allSignals: GirSignal[]): MethodStructure["overloads"] {
-        const overloads: NonNullable<MethodStructure["overloads"]> = [];
+    private buildHandlerParams(signal: GirSignal): string {
+        const params: string[] = [];
+        for (const param of filterVarargs(signal.parameters)) {
+            const mapped = this.ffiMapper.mapParameter(param);
+            addTypeImports(this.imports, mapped.imports, this.selfNames);
+            if (mapped.ffi.type === "ref") {
+                this.imports.addTypeImport("@gtkx/native", ["Ref"]);
+            }
+            const paramName = toValidIdentifier(toCamelCase(param.name));
+            params.push(`${paramName}: ${mapped.ts}`);
+        }
+        return params.join(", ");
+    }
 
-        for (const signal of allSignals) {
+    private buildOverloads(ownSignals: GirSignal[]): MethodStructure["overloads"] {
+        const overloads: NonNullable<MethodStructure["overloads"]> = [];
+        for (const signal of ownSignals) {
             const params = this.buildHandlerParams(signal);
             let returnType = "void";
             if (signal.returnType) {
@@ -339,7 +244,6 @@ export class SignalBuilder {
                 addTypeImports(this.imports, mapped.imports, this.selfNames);
                 returnType = mapped.ts;
             }
-
             overloads.push({
                 params: [
                     { name: "signal", type: `"${signal.name}"` },
@@ -349,7 +253,6 @@ export class SignalBuilder {
                 returnType: "number",
             });
         }
-
         overloads.push({
             params: [
                 { name: "signal", type: "string" },
@@ -358,45 +261,28 @@ export class SignalBuilder {
             ],
             returnType: "number",
         });
-
         return overloads;
     }
 
-    private writeConnectMethodBody(ownSignals: GirSignal[]): (writer: Writer) => void {
-        const isRootGObject = this.options.namespace === "GObject" && this.cls.name === "Object";
-
-        return (writer) => {
-            if (ownSignals.length === 0) {
-                writer.writeLine("return super.connect(signal, handler, after);");
-                return;
-            }
-
-            writer.writeLine("switch (signal) {");
-            writer.withIndent(() => {
-                for (const signal of ownSignals) {
-                    this.writeSignalCase(writer, signal);
-                }
-                this.writeDefaultCase(writer, isRootGObject);
+    private buildEmitOverloads(ownSignals: GirSignal[]): NonNullable<MethodStructure["overloads"]> {
+        const overloads: NonNullable<MethodStructure["overloads"]> = [];
+        for (const signal of ownSignals) {
+            overloads.push({
+                params: [
+                    { name: "sigName", type: `"${signal.name}"` },
+                    { name: "args", type: "any[]", isRestParameter: true },
+                ],
+                returnType: "void",
             });
-            writer.writeLine("}");
-        };
-    }
-
-    private writeSignalCase(writer: Writer, signal: GirSignal): void {
-        const filteredParams = filterVarargs(signal.parameters);
-        const paramData = this.buildParamData(filteredParams);
-
-        const returnMapped = signal.returnType
-            ? this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership)
-            : null;
-        const returnUnwrapInfo = needsReturnUnwrap(returnMapped);
-
-        writer.writeLine(`case "${signal.name}": {`);
-        writer.withIndent(() => {
-            this.writeWrappedHandler(writer, paramData, returnUnwrapInfo.needsUnwrap);
-            this.writeCallExpression(writer, signal, paramData);
+        }
+        overloads.push({
+            params: [
+                { name: "sigName", type: "string" },
+                { name: "args", type: "any[]", isRestParameter: true },
+            ],
+            returnType: "void",
         });
-        writer.writeLine("}");
+        return overloads;
     }
 
     private buildParamData(params: GirParameter[]): SignalParamData[] {
@@ -417,6 +303,72 @@ export class SignalBuilder {
                 wrapInfo,
             };
         });
+    }
+
+    private writeSignalDescriptorEntry(writer: Writer, signal: GirSignal): void {
+        const paramData = this.buildParamData(filterVarargs(signal.parameters));
+        const returnMapped = signal.returnType
+            ? this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership)
+            : null;
+        const returnUnwrap = needsReturnUnwrap(returnMapped).needsUnwrap;
+        const hasReturnValue = returnMapped !== null && returnMapped.ts !== "void";
+
+        writer.writeLine(`["${signal.name}", {`);
+        writer.withIndent(() => {
+            writer.write("trampoline: ");
+            writeFfiTypeExpression(writer, this.buildTrampolineType(signal, paramData));
+            writer.writeLine(",");
+
+            writer.write("invoke: ");
+            this.writeInvokeClosure(writer, paramData, returnUnwrap);
+            writer.writeLine(",");
+
+            writer.write("emitTypes: [");
+            paramData.forEach((p, index) => {
+                if (index > 0) writer.write(", ");
+                writeFfiTypeExpression(writer, p.mapped.ffi);
+            });
+            writer.writeLine("],");
+
+            if (hasReturnValue && returnMapped) {
+                writer.writeLine(`returnGType: () => ${this.returnGTypeExpression(returnMapped.ffi)},`);
+            } else {
+                writer.writeLine("returnGType: null,");
+            }
+        });
+        writer.writeLine("}],");
+    }
+
+    private buildTrampolineType(signal: GirSignal, paramData: SignalParamData[]): FfiTypeDescriptor {
+        const argTypes: FfiTypeDescriptor[] = [
+            { type: "gobject", ownership: "borrowed" },
+            ...paramData.map((p) => p.mapped.ffi),
+            { type: "void" },
+        ];
+        const returnType: FfiTypeDescriptor = signal.returnType
+            ? this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership).ffi
+            : { type: "void" };
+        return {
+            type: "trampoline",
+            argTypes,
+            returnType,
+            hasDestroy: true,
+            userDataIndex: 1 + paramData.length,
+        };
+    }
+
+    private writeInvokeClosure(writer: Writer, paramData: SignalParamData[], needsReturnUnwrap: boolean): void {
+        const hasRefParams = paramData.some((p) => p.mapped.ffi.type === "ref");
+
+        writer.writeLine("(handler, args) => {");
+        writer.withIndent(() => {
+            if (hasRefParams) {
+                this.writeRefHandlerBody(writer, paramData, needsReturnUnwrap);
+            } else {
+                this.writeSimpleHandlerBody(writer, paramData, needsReturnUnwrap);
+            }
+        });
+        writer.write("}");
     }
 
     private writeRefDeclarations(writer: Writer, paramData: SignalParamData[]): void {
@@ -472,259 +424,84 @@ export class SignalBuilder {
         }
     }
 
-    private writeWrappedHandler(writer: Writer, paramData: SignalParamData[], needsReturnUnwrap: boolean): void {
-        const hasRefParams = paramData.some((p) => p.mapped.ffi.type === "ref");
-
-        writer.writeLine("const wrappedHandler = (...args) => {");
-        writer.withIndent(() => {
-            if (hasRefParams) {
-                this.writeRefHandlerBody(writer, paramData, needsReturnUnwrap);
-            } else {
-                this.writeSimpleHandlerBody(writer, paramData, needsReturnUnwrap);
+    private gtypeRef(): string {
+        const glibGetType = this.cls.glibGetType;
+        const glibTypeName = this.cls.glibTypeName;
+        if (!glibGetType || glibGetType === "intern") {
+            if (!glibTypeName) {
+                return `() => 0 /* ${this.className} has no glib:type-name */`;
             }
-        });
-        writer.writeLine("};");
-    }
-
-    private writeCallExpression(writer: Writer, signal: GirSignal, paramData: SignalParamData[]): void {
-        const userDataIndex = 1 + paramData.length;
-        const argTypes: FfiTypeDescriptor[] = [
-            { type: "gobject", ownership: "borrowed" },
-            ...paramData.map((p) => p.mapped.ffi),
-            { type: "void" },
-        ];
-        const returnType: FfiTypeDescriptor = signal.returnType
-            ? this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership).ffi
-            : { type: "void" };
-        const trampolineType: FfiTypeDescriptor = {
-            type: "trampoline",
-            argTypes,
-            returnType,
-            hasDestroy: true,
-            userDataIndex,
-        };
-        this.writeTrampolineSignalConnectCall(writer, trampolineType);
-    }
-
-    private writeDefaultCase(writer: Writer, isRootGObject: boolean): void {
-        writer.writeLine("default:");
-        writer.withIndent(() => {
-            if (isRootGObject) {
-                this.writeFallbackImplementation(writer);
-            } else {
-                writer.writeLine("return super.connect(signal, handler, after);");
-            }
-        });
-    }
-
-    private writeFallbackImplementation(writer: Writer): void {
-        writer.writeLine("const wrappedHandler = (...args) => {");
-        writer.withIndent(() => {
-            writer.writeLine("return handler(...args.slice(1));");
-        });
-        writer.writeLine("};");
-        const callbackType: FfiTypeDescriptor = {
-            type: "callback",
-            kind: "closure",
-            argTypes: [{ type: "gobject", ownership: "borrowed" }],
-            returnType: { type: "void" },
-        };
-        this.writeClosureSignalConnectCall(writer, callbackType);
-    }
-
-    private writeTrampolineSignalConnectCall(writer: Writer, trampolineType: FfiTypeDescriptor): void {
-        const callWriter = this.callExpression.toWriter({
-            sharedLibrary: this.options.sharedLibrary,
-            cIdentifier: "g_signal_connect_data",
-            args: [
-                { type: { type: "gobject", ownership: "borrowed" }, value: "getHandle(this)" },
-                { type: { type: "string", ownership: "borrowed" }, value: "signal" },
-                { type: trampolineType, value: "wrappedHandler" },
-                { type: { type: "uint32" }, value: "after ? 1 : 0" },
-            ],
-            returnType: { type: "uint64" },
-        });
-        writer.write("return ");
-        callWriter(writer);
-        writer.writeLine(";");
-    }
-
-    private writeClosureSignalConnectCall(writer: Writer, callbackType: FfiTypeDescriptor): void {
-        const callWriter = this.callExpression.toWriter({
-            sharedLibrary: this.options.sharedLibrary,
-            cIdentifier: "g_signal_connect_closure",
-            args: [
-                { type: { type: "gobject", ownership: "borrowed" }, value: "getHandle(this)" },
-                { type: { type: "string", ownership: "borrowed" }, value: "signal" },
-                { type: callbackType, value: "wrappedHandler" },
-                { type: { type: "boolean" }, value: "after ?? false" },
-            ],
-            returnType: { type: "uint64" },
-        });
-        writer.write("return ");
-        callWriter(writer);
-        writer.writeLine(";");
-    }
-
-    private buildHandlerParams(signal: GirSignal): string {
-        const params: string[] = [];
-
-        for (const param of filterVarargs(signal.parameters)) {
-            const mapped = this.ffiMapper.mapParameter(param);
-            addTypeImports(this.imports, mapped.imports, this.selfNames);
-            if (mapped.ffi.type === "ref") {
-                this.imports.addTypeImport("@gtkx/native", ["Ref"]);
-            }
-            const paramName = toValidIdentifier(toCamelCase(param.name));
-            params.push(`${paramName}: ${mapped.ts}`);
-        }
-
-        return params.join(", ");
-    }
-
-    private buildEmitOverloads(ownSignals: GirSignal[]): NonNullable<MethodStructure["overloads"]> {
-        const overloads: NonNullable<MethodStructure["overloads"]> = [];
-
-        for (const signal of ownSignals) {
-            overloads.push({
-                params: [
-                    { name: "sigName", type: `"${signal.name}"` },
-                    { name: "args", type: "any[]", isRestParameter: true },
-                ],
-                returnType: "void",
-            });
-        }
-
-        overloads.push({
-            params: [
-                { name: "sigName", type: "string" },
-                { name: "args", type: "any[]", isRestParameter: true },
-            ],
-            returnType: "void",
-        });
-
-        return overloads;
-    }
-
-    private writeEmitMethodBody(ownSignals: GirSignal[]): (writer: Writer) => void {
-        const isRootGObject = this.options.namespace === "GObject" && this.cls.name === "Object";
-        const gobjectPrefix = this.options.namespace === "GObject" ? "" : "GObject.";
-
-        if (this.options.namespace === "GObject") {
-            this.imports.addImport("./functions.js", ["signalEmitv", "signalLookup", "typeFromName"]);
-            this.imports.addImport("./value.js", ["Value"]);
-        }
-
-        if (ownSignals.length > 0) {
-            this.imports.addImport("../../native.js", ["t"]);
-        }
-
-        const needsCallImport = ownSignals.some((s) => {
-            if (!s.returnType) return false;
-            const mapped = this.ffiMapper.mapType(s.returnType, true, s.returnType.transferOwnership);
-            return mapped.ffi.type === "enum" || mapped.ffi.type === "flags";
-        });
-        if (needsCallImport) {
             this.imports.addImport("../../native.js", ["call", "t"]);
+            return `() => call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64)`;
         }
-
-        return (writer) => {
-            if (ownSignals.length === 0) {
-                writer.writeLine("super.emit(sigName, ...args);");
-                writer.writeLine("return;");
-                return;
-            }
-
-            writer.writeLine("switch (sigName) {");
-            writer.withIndent(() => {
-                for (const signal of ownSignals) {
-                    this.writeEmitSignalCase(writer, signal, gobjectPrefix);
-                }
-                writer.writeLine("default:");
-                writer.withIndent(() => {
-                    if (isRootGObject) {
-                        writer.writeLine(`throw new Error(\`Unknown signal '\${sigName}' on ${this.className}\`);`);
-                    } else {
-                        writer.writeLine("super.emit(sigName, ...args);");
-                        writer.writeLine("return;");
-                    }
-                });
-            });
-            writer.writeLine("}");
-        };
-    }
-
-    private writeEmitSignalCase(writer: Writer, signal: GirSignal, gobjectPrefix: string): void {
-        const paramData = this.buildParamData(filterVarargs(signal.parameters));
-        const returnMapped = signal.returnType
-            ? this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership)
-            : null;
-        const hasReturnValue = returnMapped !== null && returnMapped.ts !== "void";
-
-        writer.writeLine(`case "${signal.name}": {`);
-        writer.withIndent(() => {
-            writer.writeLine("const __values = [");
-            writer.withIndent(() => {
-                writer.write(`${gobjectPrefix}Value.newFrom(`);
-                writeFfiTypeExpression(writer, { type: "gobject", ownership: "full" });
-                writer.writeLine(", this),");
-                paramData.forEach((p, index) => {
-                    writer.write(`${gobjectPrefix}Value.newFrom(`);
-                    writeFfiTypeExpression(writer, p.mapped.ffi);
-                    writer.writeLine(`, args[${index}]),`);
-                });
-            });
-            writer.writeLine("];");
-            writer.writeLine(`const __signalId = ${gobjectPrefix}signalLookup("${signal.name}", ${this.gtypeCall()});`);
-
-            if (hasReturnValue && returnMapped) {
-                writer.writeLine(`const __returnValue = new ${gobjectPrefix}Value();`);
-                writer.writeLine(`__returnValue.init(${this.gtypeInitExpression(returnMapped.ffi, gobjectPrefix)});`);
-                writer.writeLine(`${gobjectPrefix}signalEmitv(__values, __signalId, 0, __returnValue);`);
-            } else {
-                writer.writeLine(`${gobjectPrefix}signalEmitv(__values, __signalId, 0);`);
-            }
-            writer.writeLine("return;");
+        const binding = this.descriptors?.register({
+            sharedLibrary: this.options.sharedLibrary,
+            cIdentifier: glibGetType,
+            args: [],
+            returnType: { type: "uint64" },
+            exported: true,
         });
-        writer.writeLine("}");
+        this.imports.addImport("../../native.js", ["t"]);
+        if (binding?.varargs === false) {
+            return binding.name;
+        }
+        this.imports.addImport("../../native.js", ["call"]);
+        return `() => call("${this.options.sharedLibrary}", "${glibGetType}", [], t.uint64)`;
     }
 
-    private gtypeInitExpression(ffiType: FfiTypeDescriptor, gobjectPrefix: string): string {
+    private gobjectArgExpression(): string {
+        if (this.options.namespace === "GObject") {
+            this.imports.addImport("./value.js", ["Value"]);
+            this.imports.addImport("./functions.js", ["signalEmitv", "signalLookup"]);
+            return "{ Value, signalEmitv, signalLookup }";
+        }
+        this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
+        return "GObject";
+    }
+
+    private returnGTypeExpression(ffiType: FfiTypeDescriptor): string {
+        const isGObjectNamespace = this.options.namespace === "GObject";
+        const prefix = isGObjectNamespace ? "" : "GObject.";
+        if (ffiType.type === "enum" || ffiType.type === "flags") {
+            this.imports.addImport("../../native.js", ["call", "t"]);
+            return `call(${JSON.stringify(ffiType.library)}, ${JSON.stringify(ffiType.getTypeFn)}, [], t.uint64)`;
+        }
+        if (isGObjectNamespace) {
+            this.imports.addImport("./functions.js", ["typeFromName"]);
+        } else {
+            this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
+        }
+        return `${prefix}typeFromName(${JSON.stringify(this.gtypeName(ffiType))})`;
+    }
+
+    private gtypeName(ffiType: FfiTypeDescriptor): string {
         switch (ffiType.type) {
             case "boolean":
-                return `${gobjectPrefix}typeFromName("gboolean")`;
+                return "gboolean";
             case "int8":
             case "int16":
             case "int32":
-                return `${gobjectPrefix}typeFromName("gint")`;
+                return "gint";
             case "uint8":
             case "uint16":
             case "uint32":
-                return `${gobjectPrefix}typeFromName("guint")`;
+                return "guint";
             case "int64":
-                return `${gobjectPrefix}typeFromName("gint64")`;
+                return "gint64";
             case "uint64":
-                return `${gobjectPrefix}typeFromName("guint64")`;
+                return "guint64";
             case "float32":
-                return `${gobjectPrefix}typeFromName("gfloat")`;
+                return "gfloat";
             case "float64":
-                return `${gobjectPrefix}typeFromName("gdouble")`;
+                return "gdouble";
             case "string":
-                return `${gobjectPrefix}typeFromName("gchararray")`;
-            case "gobject":
-                return `${gobjectPrefix}typeFromName("GObject")`;
+                return "gchararray";
             case "boxed":
-                return `${gobjectPrefix}typeFromName(${JSON.stringify(ffiType.innerType)})`;
+                return typeof ffiType.innerType === "string" ? ffiType.innerType : "GObject";
             case "fundamental":
-                return ffiType.typeName
-                    ? `${gobjectPrefix}typeFromName(${JSON.stringify(ffiType.typeName)})`
-                    : `${gobjectPrefix}typeFromName("GObject")`;
-            case "enum":
-            case "flags": {
-                return `call(${JSON.stringify(ffiType.library)}, ${JSON.stringify(ffiType.getTypeFn)}, [], t.uint64)`;
-            }
+                return ffiType.typeName ?? "GObject";
             default:
-                return `${gobjectPrefix}typeFromName("GObject")`;
+                return "GObject";
         }
     }
 }
