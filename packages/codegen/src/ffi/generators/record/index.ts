@@ -20,6 +20,7 @@ import {
     type MappedType,
     SELF_TYPE_GOBJECT,
     type SelfTypeDescriptor,
+    UNSAFE_PRIMITIVE_NAMES,
 } from "../../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { partitionSupportedFunctions, partitionSupportedMethods } from "../../../core/utils/filtering.js";
@@ -465,7 +466,8 @@ export class RecordGenerator {
         bitWidth?: number,
     ): void {
         const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-        if (typeMapping.unsafe) return;
+        const isRawPointerPrimitive = UNSAFE_PRIMITIVE_NAMES.has(String(field.type.name));
+        if (typeMapping.unsafe && !isRawPointerPrimitive) return;
         addTypeImports(this.file, typeMapping.imports, this.selfNames);
 
         if (bitWidth !== undefined) {

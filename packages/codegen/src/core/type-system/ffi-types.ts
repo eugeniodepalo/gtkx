@@ -482,6 +482,7 @@ export const trampolineType = (
  * Also includes well-known type aliases from GTK libraries.
  */
 const PRIMITIVE_FIELD_TYPES = new Set([
+    "gpointer",
     "gint",
     "guint",
     "gint8",
@@ -538,6 +539,7 @@ const PRIMITIVE_FIELD_TYPES = new Set([
  * Also includes well-known type aliases from GTK libraries.
  */
 const MEMORY_WRITABLE_TYPES = new Set([
+    "gpointer",
     "gboolean",
     "guint8",
     "gint8",
