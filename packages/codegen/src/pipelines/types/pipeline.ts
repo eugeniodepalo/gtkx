@@ -3,15 +3,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GenerationHandler } from "@ts-for-gir/cli";
 import { GeneratorType } from "@ts-for-gir/generator-base";
+import { type AsyncCapableCallable, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
 import { toCamelCase, toPascalCase } from "../../core/utils/naming.js";
 import { isClassVtable } from "../../core/utils/record-filter.js";
 import type { GirRepository, LoadedGir } from "../../gir/index.js";
+import type { GirMethod } from "../../gir/model/callables.js";
 import {
+    type AsyncMemberEntry,
+    type AsyncMemberMap,
     type ConnectRenameMap,
     type EnumValueMap,
     type FieldNameMap,
     type GtypeStructMap,
     loadAndRewrite,
+    type NamespaceAsyncMembers,
 } from "./rewrite.js";
 
 /**
@@ -262,6 +267,96 @@ const collectConnectMethodRenames = (repository: GirRepository): ConnectRenameMa
 };
 
 /**
+ * Builds the {@link AsyncMemberEntry} list for one set of async callables and
+ * their finish-candidate pool, naming each member as the camelCased contract
+ * member that declares it.
+ */
+const buildAsyncEntries = <C extends AsyncCapableCallable, F extends AsyncCapableCallable>(
+    callables: readonly C[],
+    finishCandidates: readonly F[],
+): AsyncMemberEntry[] => {
+    const pairs = collectAsyncCallablePairs(callables, finishCandidates);
+    const entries: AsyncMemberEntry[] = [];
+    for (const { async: asyncCallable, finish } of pairs.values()) {
+        entries.push({
+            asyncMember: toCamelCase(asyncCallable.name),
+            finishMember: toCamelCase(finish.name),
+        });
+    }
+    return entries;
+};
+
+/**
+ * Collects the camelCased flattened methods of an interface — its own methods
+ * plus those of every transitive prerequisite interface — matching the surface
+ * ts-for-gir emits into the interface's contract `class` body.
+ */
+const collectInterfaceFlattenedMethods = (repository: GirRepository, ifaceQualifiedName: string): GirMethod[] => {
+    const methods: GirMethod[] = [];
+    const seen = new Set<string>();
+    const visited = new Set<string>();
+    const visit = (qualifiedName: string): void => {
+        if (visited.has(qualifiedName)) return;
+        visited.add(qualifiedName);
+        const iface = repository.resolveInterface(qualifiedName);
+        if (!iface) return;
+        for (const method of iface.methods) {
+            if (seen.has(method.name)) continue;
+            seen.add(method.name);
+            methods.push(method);
+        }
+        for (const prereq of iface.prerequisites) visit(prereq);
+    };
+    visit(ifaceQualifiedName);
+    return methods;
+};
+
+/**
+ * Collects every GIO-style async callable per namespace, keyed by the owner
+ * type name (the empty string keys namespace-level standalone functions).
+ *
+ * Each async callable is paired with its companion `*_finish` callable so the
+ * type pipeline can retype the async declaration to `Promise<R>` in step with
+ * the Promise-returning runtime wrapper.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Async callable entries keyed namespace then owner name.
+ */
+const collectAsyncMembers = (repository: GirRepository): AsyncMemberMap => {
+    const namespaces = new Map<string, NamespaceAsyncMembers>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const owners = new Map<string, AsyncMemberEntry[]>();
+
+        const record = (owner: string, entries: AsyncMemberEntry[]): void => {
+            if (entries.length === 0) return;
+            const existing = owners.get(owner);
+            if (existing) existing.push(...entries);
+            else owners.set(owner, entries);
+        };
+
+        for (const cls of namespace.classes.values()) {
+            record(toPascalCase(cls.name), buildAsyncEntries(cls.methods, cls.methods));
+            record(toPascalCase(cls.name), buildAsyncEntries(cls.staticFunctions, cls.staticFunctions));
+        }
+        for (const iface of namespace.interfaces.values()) {
+            const flattened = collectInterfaceFlattenedMethods(repository, iface.qualifiedName);
+            record(toPascalCase(iface.name), buildAsyncEntries(flattened, flattened));
+            record(toPascalCase(iface.name), buildAsyncEntries(iface.staticFunctions, iface.staticFunctions));
+        }
+        for (const rec of namespace.records.values()) {
+            record(toPascalCase(rec.name), buildAsyncEntries(rec.methods, rec.methods));
+            record(toPascalCase(rec.name), buildAsyncEntries(rec.staticFunctions, rec.staticFunctions));
+        }
+        record("", buildAsyncEntries([...namespace.functions.values()], [...namespace.functions.values()]));
+
+        namespaces.set(namespaceName.toLowerCase(), owners);
+    }
+    return namespaces;
+};
+
+/**
  * Generates the per-namespace `.d.ts` type bindings from already-loaded GIR
  * modules and writes them under `outDir`.
  *
@@ -296,6 +391,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             collectSignalActionMethodNames(loaded.repository),
             collectConnectMethodRenames(loaded.repository),
             collectNumericConstantNames(loaded.repository),
+            collectAsyncMembers(loaded.repository),
         );
 
         await mkdir(outDir, { recursive: true });

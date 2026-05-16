@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
     loadAndRewrite,
+    type NamespaceAsyncMembers,
+    rewriteAsyncSignatures,
     rewriteEnumsToConstObjects,
     rewriteModuleKeywordToNamespace,
     unwrapOuterNamespace,
@@ -163,5 +165,75 @@ describe("loadAndRewrite", () => {
         );
 
         expect(rewritten).toHaveLength(0);
+    });
+});
+
+describe("rewriteAsyncSignatures", () => {
+    it("retypes a class async method to Promise and drops its callback parameter", () => {
+        const source = [
+            "export class InputStream {",
+            "    readAsync(ioPriority: number, cancellable: Cancellable | null, callback: AsyncReadyCallback | null): void",
+            "    readFinish(result: AsyncResult): number",
+            "}",
+        ].join("\n");
+        const asyncMembers: NamespaceAsyncMembers = new Map([
+            ["InputStream", [{ asyncMember: "readAsync", finishMember: "readFinish" }]],
+        ]);
+
+        const result = rewriteAsyncSignatures(source, asyncMembers);
+
+        expect(result).toContain("readAsync(ioPriority: number, cancellable: Cancellable | null): Promise<number>");
+        expect(result).not.toContain("callback: AsyncReadyCallback");
+        expect(result).toContain("readFinish(result: AsyncResult): number");
+    });
+
+    it("retypes a standalone async function to Promise", () => {
+        const source = [
+            "export function busGet(busType: BusType, cancellable: Cancellable | null, callback: AsyncReadyCallback | null): void",
+            "export function busGetFinish(res: AsyncResult): DBusConnection",
+        ].join("\n");
+        const asyncMembers: NamespaceAsyncMembers = new Map([
+            ["", [{ asyncMember: "busGet", finishMember: "busGetFinish" }]],
+        ]);
+
+        const result = rewriteAsyncSignatures(source, asyncMembers);
+
+        expect(result).toContain(
+            "export function busGet(busType: BusType, cancellable: Cancellable | null): Promise<DBusConnection>",
+        );
+        expect(result).toContain("export function busGetFinish(res: AsyncResult): DBusConnection");
+    });
+
+    it("retypes an interface async method within its class block", () => {
+        const source = [
+            "export class AsyncInitable {",
+            "    initAsync(ioPriority: number, callback: AsyncReadyCallback | null): void",
+            "    initFinish(res: AsyncResult): boolean",
+            "}",
+        ].join("\n");
+        const asyncMembers: NamespaceAsyncMembers = new Map([
+            ["AsyncInitable", [{ asyncMember: "initAsync", finishMember: "initFinish" }]],
+        ]);
+
+        const result = rewriteAsyncSignatures(source, asyncMembers);
+
+        expect(result).toContain("initAsync(ioPriority: number): Promise<boolean>");
+    });
+
+    it("leaves the source untouched when no async members are supplied", () => {
+        const source = "export class Foo {\n    bar(): void\n}";
+        expect(rewriteAsyncSignatures(source, undefined)).toBe(source);
+        expect(rewriteAsyncSignatures(source, new Map())).toBe(source);
+    });
+
+    it("leaves the async method intact when its finish member is absent", () => {
+        const source = ["export class Stream {", "    flushAsync(callback: AsyncReadyCallback | null): void", "}"].join(
+            "\n",
+        );
+        const asyncMembers: NamespaceAsyncMembers = new Map([
+            ["Stream", [{ asyncMember: "flushAsync", finishMember: "flushFinish" }]],
+        ]);
+
+        expect(rewriteAsyncSignatures(source, asyncMembers)).toBe(source);
     });
 });

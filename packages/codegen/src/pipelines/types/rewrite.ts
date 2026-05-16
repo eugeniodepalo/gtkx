@@ -961,6 +961,221 @@ export function relaxOptionalInoutReturns(source: string): string {
 }
 
 /**
+ * One GIO-style async callable paired with its companion `*_finish` callable,
+ * each named as the contract member that declares it.
+ */
+export type AsyncMemberEntry = {
+    /** The contract member name of the `*_async` callable. */
+    asyncMember: string;
+    /** The contract member name of the companion `*_finish` callable. */
+    finishMember: string;
+};
+
+/**
+ * Async callable entries for one namespace, keyed by owner type name. The empty
+ * string keys the namespace-level standalone functions.
+ */
+export type NamespaceAsyncMembers = ReadonlyMap<string, readonly AsyncMemberEntry[]>;
+
+/**
+ * Async callable entries for every namespace, keyed lowercase namespace
+ * identifier.
+ */
+export type AsyncMemberMap = ReadonlyMap<string, NamespaceAsyncMembers>;
+
+/**
+ * Extracts the declared return type of a contract member, searching the given
+ * region of the source.
+ *
+ * @param region - The source region to search (a class/interface body, or the
+ *     whole file for namespace-level functions).
+ * @param memberName - The member to locate.
+ * @param isFunction - Whether the member is a top-level `export function`.
+ * @returns The declared return type text, or `null` when the member is absent.
+ */
+const findMemberReturnType = (region: string, memberName: string, isFunction: boolean): string | null => {
+    const head = isFunction
+        ? `(?:^|\\n)[ \\t]*export[ \\t]+function[ \\t]+${escapeRegExp(memberName)}\\s*\\(`
+        : `(?:^|\\n)[ \\t]*${escapeRegExp(memberName)}\\s*\\(`;
+    const headMatch = region.match(new RegExp(head));
+    if (headMatch === null || headMatch.index === undefined) return null;
+    const parenStart = region.indexOf("(", headMatch.index);
+    if (parenStart < 0) return null;
+    const parenEnd = findMatchingParen(region, parenStart + 1);
+    if (parenEnd < 0) return null;
+    const afterParams = region.slice(parenEnd + 1);
+    const returnMatch = afterParams.match(/^\s*:\s*([^\n;]+)/);
+    if (returnMatch?.[1] === undefined) return null;
+    return returnMatch[1].trim().replace(/;$/, "").trim();
+};
+
+/**
+ * Returns the index of the `)` matching the implicit `(` at `from - 1`,
+ * treating strings and comments as opaque. Returns `-1` when unmatched.
+ */
+const findMatchingParen = (source: string, from: number): number => {
+    let depth = 1;
+    let i = from;
+    while (i < source.length) {
+        const ch = source[i];
+        if (ch === '"' || ch === "'" || ch === "`") {
+            i = skipStringLiteral(source, i, ch);
+            continue;
+        }
+        if (ch === "/" && source[i + 1] === "/") {
+            i = skipLineComment(source, i);
+            continue;
+        }
+        if (ch === "/" && source[i + 1] === "*") {
+            i = skipBlockComment(source, i);
+            continue;
+        }
+        if (ch === "(") depth++;
+        else if (ch === ")") {
+            depth--;
+            if (depth === 0) return i;
+        }
+        i++;
+    }
+    return -1;
+};
+
+/**
+ * Rewrites an async callable's declaration: drops its trailing
+ * `GAsyncReadyCallback` parameter and retypes its return from `void` to
+ * `Promise<finishReturnType>`.
+ *
+ * The async callable is matched within `region` by its member name followed by
+ * a parameter list whose final entry is the `AsyncReadyCallback` parameter.
+ */
+const rewriteAsyncMemberDeclaration = (
+    region: string,
+    memberName: string,
+    finishReturnType: string,
+    isFunction: boolean,
+): string => {
+    const head = isFunction
+        ? `((?:^|\\n)[ \\t]*export[ \\t]+function[ \\t]+${escapeRegExp(memberName)}\\s*)\\(`
+        : `((?:^|\\n)[ \\t]*${escapeRegExp(memberName)}\\s*)\\(`;
+    const pattern = new RegExp(head, "g");
+    let result = region;
+    for (;;) {
+        const match = pattern.exec(result);
+        if (match === null) break;
+        const headText = match[1] ?? "";
+        const parenStart = match.index + headText.length;
+        const parenEnd = findMatchingParen(result, parenStart + 1);
+        if (parenEnd < 0) {
+            pattern.lastIndex = parenStart + 1;
+            continue;
+        }
+        const params = result.slice(parenStart + 1, parenEnd);
+        if (!/\bAsyncReadyCallback\b/.test(params)) {
+            pattern.lastIndex = parenEnd + 1;
+            continue;
+        }
+        const afterParams = result.slice(parenEnd + 1);
+        const returnMatch = afterParams.match(/^\s*:\s*[^\n;]+/);
+        const returnLength = returnMatch ? returnMatch[0].length : 0;
+        const newParams = dropAsyncCallbackParameter(params);
+        const replacement = `${headText}(${newParams}): Promise<${finishReturnType}>`;
+        result = result.slice(0, match.index) + replacement + result.slice(parenEnd + 1 + returnLength);
+        pattern.lastIndex = match.index + replacement.length;
+    }
+    return result;
+};
+
+/**
+ * Removes the trailing `AsyncReadyCallback` parameter (and any following
+ * `user_data` parameter) from a parameter list.
+ */
+const dropAsyncCallbackParameter = (params: string): string => {
+    const entries = splitParameterList(params);
+    const kept = entries.filter((entry) => !/\bAsyncReadyCallback\b/.test(entry) && !/^\s*user_?[dD]ata\b/.test(entry));
+    return kept.join(", ");
+};
+
+/**
+ * Splits a parameter-list string into top-level parameter entries, treating
+ * nested `<>`, `()`, `[]`, `{}` and string literals as opaque.
+ */
+const splitParameterList = (params: string): string[] => {
+    const entries: string[] = [];
+    let depth = 0;
+    let start = 0;
+    let i = 0;
+    while (i < params.length) {
+        const ch = params[i];
+        if (ch === '"' || ch === "'" || ch === "`") {
+            i = skipStringLiteral(params, i, ch);
+            continue;
+        }
+        if (ch === "<" || ch === "(" || ch === "[" || ch === "{") depth++;
+        else if (ch === ">" || ch === ")" || ch === "]" || ch === "}") depth = Math.max(0, depth - 1);
+        else if (ch === "," && depth === 0) {
+            entries.push(params.slice(start, i).trim());
+            start = i + 1;
+        }
+        i++;
+    }
+    const tail = params.slice(start).trim();
+    if (tail.length > 0) entries.push(tail);
+    return entries;
+};
+
+/**
+ * Rewrites every GIO-style async callable declaration in the contract so it
+ * matches the Promise-returning runtime wrapper.
+ *
+ * Each `*_async` member's trailing `GAsyncReadyCallback` parameter is dropped
+ * and its return type is changed from `void` to `Promise<R>`, where `R` is the
+ * declared return type of its companion `*_finish` member. Class and interface
+ * members are rewritten within their owner block; standalone functions are
+ * rewritten at the file's top level.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param asyncMembers - Async callable entries keyed by owner type name.
+ * @returns The source with async callable signatures made Promise-returning.
+ */
+export function rewriteAsyncSignatures(source: string, asyncMembers?: NamespaceAsyncMembers): string {
+    if (asyncMembers === undefined || asyncMembers.size === 0) return source;
+
+    let result = source;
+
+    const functionEntries = asyncMembers.get("");
+    if (functionEntries) {
+        for (const { asyncMember, finishMember } of functionEntries) {
+            const finishReturn = findMemberReturnType(result, finishMember, true);
+            if (finishReturn === null) continue;
+            result = rewriteAsyncMemberDeclaration(result, asyncMember, finishReturn, true);
+        }
+    }
+
+    for (const [owner, entries] of asyncMembers) {
+        if (owner === "" || entries.length === 0) continue;
+        for (const blockKeyword of ["interface", "class"]) {
+            const header = new RegExp(
+                `(^|\\n)[ \\t]*export[ \\t]+(?:abstract[ \\t]+)?${blockKeyword}[ \\t]+${owner}\\b[^{]*\\{`,
+            );
+            const headerMatch = result.match(header);
+            if (headerMatch === null || headerMatch.index === undefined) continue;
+            const bodyStart = headerMatch.index + headerMatch[0].length;
+            const bodyEnd = findMatchingBrace(result, bodyStart);
+            if (bodyEnd < 0) continue;
+            let body = result.slice(bodyStart, bodyEnd);
+            for (const { asyncMember, finishMember } of entries) {
+                const finishReturn = findMemberReturnType(body, finishMember, false);
+                if (finishReturn === null) continue;
+                body = rewriteAsyncMemberDeclaration(body, asyncMember, finishReturn, false);
+            }
+            result = result.slice(0, bodyStart) + body + result.slice(bodyEnd);
+        }
+    }
+
+    return result;
+}
+
+/**
  * Real enum member values for one namespace, keyed enum name then member name.
  */
 export type NamespaceEnumValues = ReadonlyMap<string, ReadonlyMap<string, number>>;
@@ -1007,6 +1222,7 @@ export function loadAndRewrite(
     signalActionMethodNames?: FieldNameMap,
     connectRenames?: ConnectRenameMap,
     numericConstantNames?: FieldNameMap,
+    asyncMembers?: AsyncMemberMap,
 ): RewriteResult[] {
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
@@ -1028,6 +1244,7 @@ export function loadAndRewrite(
         source = relaxGtypeConstants(source);
         source = relaxNumericConstants(source, numericConstantNames?.get(namespace)?.get(""));
         source = stripEventEmitterSignalOverloads(source);
+        source = rewriteAsyncSignatures(source, asyncMembers?.get(namespace));
         source = rewriteNamespaceDeclarations(source);
         source = rewriteDefaultImportsToNamespace(source);
         source = rewriteModuleKeywordToNamespace(source);

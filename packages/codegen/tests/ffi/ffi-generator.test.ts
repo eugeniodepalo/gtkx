@@ -12,9 +12,11 @@ import {
     createNormalizedInterface,
     createNormalizedMethod,
     createNormalizedNamespace,
+    createNormalizedParameter,
     createNormalizedRecord,
     createNormalizedType,
     createWidgetClass,
+    qualifiedName,
 } from "../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../fixtures/mock-repository.js";
 
@@ -545,5 +547,100 @@ describe("FfiGenerator.generateNamespace", () => {
             .sort();
 
         expect(second).toEqual(first);
+    });
+});
+
+describe("FfiGenerator async wrappers", () => {
+    const asyncCallbackParameter = () =>
+        createNormalizedParameter({
+            name: "callback",
+            type: createNormalizedType({ name: "Gio.AsyncReadyCallback", nullable: true }),
+            scope: "async",
+            closure: 2,
+            nullable: true,
+        });
+
+    const buildGioNamespace = (className: string): GirNamespace => {
+        const classType = () => createNormalizedType({ name: qualifiedName("Gio", className) });
+        const asyncReadyCallback = createNormalizedCallback({
+            name: "AsyncReadyCallback",
+            qualifiedName: "Gio.AsyncReadyCallback",
+            parameters: [
+                createNormalizedParameter({
+                    name: "source_object",
+                    type: createNormalizedType({ name: qualifiedName("Gio", className), nullable: true }),
+                    nullable: true,
+                }),
+                createNormalizedParameter({ name: "res", type: classType() }),
+            ],
+        });
+        const cls = createNormalizedClass({
+            name: className,
+            qualifiedName: qualifiedName("Gio", className),
+            parent: null,
+            methods: [
+                createNormalizedMethod({
+                    name: "read_async",
+                    cIdentifier: "g_input_stream_read_async",
+                    finishFunc: "read_finish",
+                    returnType: createNormalizedType({ name: "none" }),
+                    parameters: [
+                        createNormalizedParameter({
+                            name: "io_priority",
+                            type: createNormalizedType({ name: "gint" }),
+                        }),
+                        asyncCallbackParameter(),
+                        createNormalizedParameter({
+                            name: "user_data",
+                            type: createNormalizedType({ name: "gpointer" }),
+                        }),
+                    ],
+                }),
+                createNormalizedMethod({
+                    name: "read_finish",
+                    cIdentifier: "g_input_stream_read_finish",
+                    returnType: createNormalizedType({ name: "gboolean" }),
+                    parameters: [createNormalizedParameter({ name: "res", type: classType() })],
+                }),
+            ],
+        });
+        return createNormalizedNamespace({
+            name: "Gio",
+            sharedLibrary: "libgio-2.0.so.0",
+            classes: new Map([[cls.name, cls]]),
+            callbacks: new Map([[asyncReadyCallback.name, asyncReadyCallback]]),
+        });
+    };
+
+    it("emits a Promise-returning wrapper for an async method", () => {
+        const repo = createMockRepository(baseNamespaces({ Gio: buildGioNamespace("InputStream") }));
+
+        const { files } = new FfiGenerator({
+            repository: repo as unknown as GirRepository,
+            namespace: "Gio",
+        }).generateNamespace("Gio");
+
+        const file = namespaceFile(files, "gio");
+        const content = file?.content ?? "";
+
+        expect(content).toContain("readAsync(ioPriority) {");
+        expect(content).toContain("return new Promise((resolve, reject) =>");
+        expect(content).toContain("resolve(this.readFinish(");
+        expect(content).toContain("reject(asyncError)");
+        expect(content).toContain("g_input_stream_read_async(");
+        expect(content).not.toMatch(/readAsync\([^)]*callback[^)]*\)/);
+    });
+
+    it("keeps the companion finish method on the class", () => {
+        const repo = createMockRepository(baseNamespaces({ Gio: buildGioNamespace("InputStream") }));
+
+        const { files } = new FfiGenerator({
+            repository: repo as unknown as GirRepository,
+            namespace: "Gio",
+        }).generateNamespace("Gio");
+
+        const content = namespaceFile(files, "gio")?.content ?? "";
+        expect(content).toContain("readFinish(res) {");
+        expect(content).toContain("g_input_stream_read_finish(");
     });
 });
