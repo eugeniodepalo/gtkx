@@ -1241,6 +1241,15 @@ export class RecordGenerator {
         const isWritable = field.writable !== false && !methodNames.has(fieldName);
         if (!isReadable) return;
 
+        const [elementNamespace, elementName] = elementTypeName.includes(".")
+            ? elementTypeName.split(".")
+            : [this.options.namespace, elementTypeName];
+        const elementRecord =
+            elementNamespace && elementName
+                ? this.repo?.getNamespace(elementNamespace)?.records.get(elementName)
+                : undefined;
+        const wrapElement = elementRecord?.isBoxed() === true;
+
         const fixedSize = field.type.fixedSize;
         const lengthFieldIndex = field.type.sizeParamIndex;
 
@@ -1273,7 +1282,7 @@ export class RecordGenerator {
             writer.writeLine(`for (let index = 0; index < ${lengthExpr}; index++) {`);
             writer.withIndent(() => {
                 writer.writeLine(`const base = index * ${elementSize};`);
-                writer.writeLine("result.push({");
+                writer.writeLine(wrapElement ? `result.push(Object.assign(new ${tsTypeName}(), {` : "result.push({");
                 writer.withIndent(() => {
                     for (const entry of plan) {
                         if (entry.kind === "primitive") {
@@ -1307,7 +1316,7 @@ export class RecordGenerator {
                         }
                     }
                 });
-                writer.writeLine("});");
+                writer.writeLine(wrapElement ? "}));" : "});");
             });
             writer.writeLine("}");
             writer.writeLine("return result;");

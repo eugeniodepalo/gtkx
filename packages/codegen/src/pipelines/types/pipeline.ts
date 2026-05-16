@@ -191,6 +191,33 @@ const collectSignalActionMethodNames = (repository: GirRepository): FieldNameMap
         return candidates.map(toCamelCase).filter((camel) => !methodNames.has(camel));
     });
 
+/**
+ * Collects, per namespace, the names of `<constant>` elements whose GIR value
+ * is numeric and whose declared type is not a string.
+ *
+ * The gtkx runtime emits these as numeric literals, but ts-for-gir may type
+ * them after an opaque GIR type. The type pipeline relaxes those declarations
+ * to `number` so the runtime value satisfies the contract.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Numeric constant names keyed lowercase namespace identifier.
+ */
+const collectNumericConstantNames = (repository: GirRepository): FieldNameMap => {
+    const namespaces = new Map<string, Map<string, Set<string>>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const names = new Set<string>();
+        for (const constant of namespace.constants.values()) {
+            const typeName = String(constant.type.name);
+            if (typeName === "utf8" || typeName === "filename") continue;
+            if (!Number.isNaN(Number(constant.value))) names.add(constant.name);
+        }
+        namespaces.set(namespaceName.toLowerCase(), new Map([["", names]]));
+    }
+    return namespaces;
+};
+
 const connectRenameFor = (ownerName: string): string => {
     const prefix = toCamelCase(ownerName);
     return `${prefix.charAt(0).toLowerCase()}${prefix.slice(1)}Connect`;
@@ -268,6 +295,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             collectClassFieldNames(loaded.repository),
             collectSignalActionMethodNames(loaded.repository),
             collectConnectMethodRenames(loaded.repository),
+            collectNumericConstantNames(loaded.repository),
         );
 
         await mkdir(outDir, { recursive: true });

@@ -1065,7 +1065,7 @@ export class MethodBodyWriter {
         const hidden = shape.hiddenOuts[mapping.hiddenOutIndex];
         if (!hidden) return "undefined";
 
-        if (hidden.kind === "alloc-struct") {
+        if (hidden.kind === "alloc-struct" || hidden.kind === "factory-struct") {
             return hidden.varName;
         }
         if (hidden.kind === "ref-handle") {
@@ -1097,6 +1097,10 @@ export class MethodBodyWriter {
     }
 
     private writeHiddenOutDeclaration(writer: Writer, hidden: HiddenOut): void {
+        if (hidden.kind === "factory-struct") {
+            writer.writeLine(`const ${hidden.varName} = ${hidden.factoryCIdentifier}();`);
+            return;
+        }
         if (hidden.kind === "alloc-struct") {
             if (hidden.wrapClassName) {
                 writer.writeLine(`const ${hidden.varName} = new ${hidden.wrapClassName}();`);

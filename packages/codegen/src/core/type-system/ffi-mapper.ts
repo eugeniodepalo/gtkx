@@ -456,6 +456,38 @@ export class FfiMapper {
     }
 
     /**
+     * Finds a zero-argument factory `<function>` that constructs a value of
+     * `typeName` (e.g. `hb_map_create` for `HarfBuzz.map_t`).
+     *
+     * Opaque records have no allocatable layout, but many libraries expose a
+     * `<type>_create` function that constructs an instance. The shape builder
+     * uses this to surface caller-allocates out parameters of such types as
+     * returns rather than caller-supplied arguments.
+     *
+     * The factory must reside in the same namespace as the type, so the
+     * generated module exposes it as a sibling export the body can call
+     * directly.
+     *
+     * @param typeName - The record type name, optionally namespace-qualified.
+     * @returns The factory's generated member name, or `null` when none exists.
+     */
+    findFactoryCIdentifier(typeName: string): string | null {
+        const resolved = typeName.includes(".")
+            ? splitQualifiedName(typeName)
+            : { namespace: this.currentNamespace, name: typeName };
+        if (resolved.namespace !== this.currentNamespace) return null;
+        const ns = this.repo.getNamespace(resolved.namespace);
+        if (!ns) return null;
+        const baseName = resolved.name.endsWith("_t") ? resolved.name.slice(0, -2) : resolved.name;
+        const factoryGirName = `${baseName}_create`;
+        const factory = ns.functions.get(factoryGirName);
+        if (!factory || factory.parameters.length > 0) return null;
+        const returnName = String(factory.returnType.name);
+        if (returnName !== resolved.name && !returnName.endsWith(`.${resolved.name}`)) return null;
+        return toCamelCase(factoryGirName);
+    }
+
+    /**
      * Checks if a type is a callback.
      */
     isCallback(typeName: string): boolean {

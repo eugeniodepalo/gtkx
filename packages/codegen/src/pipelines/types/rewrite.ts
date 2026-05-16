@@ -720,6 +720,29 @@ const GTYPE_CONSTANT_PATTERN = /^(export const [A-Z][A-Z0-9_]*: )GType(\s*)$/gm;
  * @param source - The `.d.ts` source to rewrite.
  * @returns The source with `GType`-typed numeric constants relaxed.
  */
+const NUMERIC_CONSTANT_PATTERN = /^(export const (\w+): )([^\n]+?)(\s*)$/gm;
+const PRIMITIVE_CONSTANT_TYPES: ReadonlySet<string> = new Set(["number", "string", "boolean"]);
+
+/**
+ * Relaxes a top-level `export const <NAME>: <Type>` declaration to `: number`
+ * when the GIR `<constant>` carries a numeric value.
+ *
+ * ts-for-gir types some numeric constants after an opaque GIR type, but the
+ * gtkx runtime emits the numeric literal from the GIR `<constant>` value, as
+ * node-gtk does. The looser type keeps the contract aligned with the runtime.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param numericConstants - Names of numeric-valued constants for the namespace.
+ * @returns The source with numeric constant types relaxed.
+ */
+export function relaxNumericConstants(source: string, numericConstants?: ReadonlySet<string>): string {
+    if (numericConstants === undefined || numericConstants.size === 0) return source;
+    return source.replace(NUMERIC_CONSTANT_PATTERN, (match, prefix: string, name: string, type: string, ws: string) => {
+        if (!numericConstants.has(name) || PRIMITIVE_CONSTANT_TYPES.has(type.trim())) return match;
+        return `${prefix}number${ws}`;
+    });
+}
+
 export function relaxGtypeConstants(source: string): string {
     return source.replace(GTYPE_CONSTANT_PATTERN, "$1number$2");
 }
@@ -983,6 +1006,7 @@ export function loadAndRewrite(
     classFieldNames?: FieldNameMap,
     signalActionMethodNames?: FieldNameMap,
     connectRenames?: ConnectRenameMap,
+    numericConstantNames?: FieldNameMap,
 ): RewriteResult[] {
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
@@ -1002,6 +1026,7 @@ export function loadAndRewrite(
         source = renameConflictingConnectMethods(source, connectRenames?.get(namespace));
         source = honorVoidConflictSignatures(source);
         source = relaxGtypeConstants(source);
+        source = relaxNumericConstants(source, numericConstantNames?.get(namespace)?.get(""));
         source = stripEventEmitterSignalOverloads(source);
         source = rewriteNamespaceDeclarations(source);
         source = rewriteDefaultImportsToNamespace(source);

@@ -38,7 +38,9 @@ export type HiddenOutKind =
     /** Out non-caller-allocates boxed/gobject: `createRef<NativeHandle | null>(null)`, wrap pointer post-call. */
     | "ref-handle"
     /** Out caller-allocates boxed/struct: `new T()` inside the body, pass `.handle`. */
-    | "alloc-struct";
+    | "alloc-struct"
+    /** Out caller-allocates opaque: a `<type>_create` factory call inside the body. */
+    | "factory-struct";
 
 /**
  * A parameter that does NOT appear in the public signature.
@@ -66,6 +68,8 @@ export type HiddenOut = {
     wrapClassName?: string;
     /** True if `wrapClassName` refers to a boxed type (passed to getNativeObject). */
     wrapAsBoxed?: boolean;
+    /** C identifier of the factory function (only for `factory-struct`). */
+    factoryCIdentifier?: string;
 };
 
 /**
@@ -201,6 +205,7 @@ type ParamContext = {
     isLengthParam: boolean;
     isOpaqueCallerAllocates: boolean;
     isCallerAllocatesStruct: boolean;
+    factoryCIdentifier: string | undefined;
     tsType: string;
 };
 
@@ -329,6 +334,31 @@ const handleRefPrimitiveOut = (acc: ShapeAccumulator, ctx: ParamContext): void =
     recordMapping(acc, ctx, ctx.isInout, hiddenIndex);
 };
 
+const handleFactoryCallerAllocates = (acc: ShapeAccumulator, ctx: ParamContext): void => {
+    const hiddenIndex = acc.hiddenOuts.length;
+    const varName = `${ctx.jsName}Ref`;
+    const wrapInfo = extractBoxedWrapInfo(ctx.mapped);
+    acc.hiddenOuts.push({
+        varName,
+        tsType: ctx.mapped.ts,
+        initialValue: "",
+        ffi: ctx.mapped.ffi,
+        kind: "factory-struct",
+        isLengthParam: ctx.isLengthParam,
+        nullable: false,
+        wrapClassName: wrapInfo.className,
+        wrapAsBoxed: wrapInfo.isBoxed,
+        factoryCIdentifier: ctx.factoryCIdentifier,
+    });
+    acc.callArgs.push({
+        ffi: ctx.mapped.ffi,
+        value: `getHandle(${varName})`,
+        optional: false,
+        sourceParamIndex: ctx.girIndex,
+    });
+    recordMapping(acc, ctx, false, hiddenIndex);
+};
+
 const handleAllocStructOut = (acc: ShapeAccumulator, ctx: ParamContext): void => {
     const hiddenIndex = acc.hiddenOuts.length;
     const varName = `${ctx.jsName}Ref`;
@@ -366,6 +396,10 @@ const dispatchOutParam = (acc: ShapeAccumulator, ctx: ParamContext): void => {
         return;
     }
     if (ctx.isOpaqueCallerAllocates) {
+        if (ctx.factoryCIdentifier !== undefined && !ctx.isLengthParam) {
+            handleFactoryCallerAllocates(acc, ctx);
+            return;
+        }
         handleOpaqueCallerAllocates(acc, ctx);
         return;
     }
@@ -430,6 +464,7 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
             isLengthParam: lengthIndices.has(girIndex),
             isOpaqueCallerAllocates: isOpaque,
             isCallerAllocatesStruct: isOut && param.callerAllocates && isBoxedOrStructFfi(mapped.ffi) && !isOpaque,
+            factoryCIdentifier: isOpaque ? (ffiMapper.findFactoryCIdentifier(param.type.name) ?? undefined) : undefined,
             tsType: formatNullableType(
                 mapped.ts,
                 param.nullable,
