@@ -1,3 +1,5 @@
+import { SUPPRESSED_METHOD_NAMES_BY_NAMESPACE } from "../../core/utils/method-suppression.js";
+
 const RAW_FILE_PATTERN = /^node-(.+?)-\d+(?:\.\d+)*\.d\.ts$/;
 
 /**
@@ -413,6 +415,98 @@ const parseNumericLiteral = (text: string): number | null => {
     return Number.isFinite(value) ? value : null;
 };
 
+const VIRTUAL_DOC_PATTERN = /[ \t]*\/\*\*(?:(?!\*\/)[\s\S])*?@virtual\b(?:(?!\*\/)[\s\S])*?\*\//g;
+
+/**
+ * Removes every GObject virtual-method (`<virtual-method>`) declaration that
+ * ts-for-gir emits into class and interface bodies.
+ *
+ * ts-for-gir marks each vfunc member with an `@virtual` JSDoc tag and emits it
+ * as an ordinary class member (`constructed()`, `dispatchPropertiesChanged()`,
+ * `getAccessibleId()`, …). node-gtk's runtime enumerates only
+ * `object_info_get_method` / `interface_info_get_method`, never
+ * `object_info_get_vfunc`, so it never exposes vfuncs as callable members. The
+ * gtkx runtime matches that surface. Stripping the `@virtual`-tagged JSDoc
+ * block together with the member line that immediately follows it keeps the
+ * contract aligned with what the runtime provides.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with virtual-method declarations removed.
+ */
+export function stripVirtualMethods(source: string): string {
+    const parts: string[] = [];
+    let cursor = 0;
+    VIRTUAL_DOC_PATTERN.lastIndex = 0;
+    for (;;) {
+        const match = VIRTUAL_DOC_PATTERN.exec(source);
+        if (match === null) break;
+        const docStart = match.index;
+        const lineStart = source.lastIndexOf("\n", docStart) + 1;
+        const docEnd = docStart + match[0].length;
+        let memberEnd = docEnd;
+        while (memberEnd < source.length && source[memberEnd] !== "\n") memberEnd += 1;
+        if (memberEnd < source.length) memberEnd += 1;
+        while (memberEnd < source.length && source[memberEnd] !== "\n") memberEnd += 1;
+        if (memberEnd < source.length) memberEnd += 1;
+        parts.push(source.slice(cursor, lineStart));
+        cursor = memberEnd;
+        VIRTUAL_DOC_PATTERN.lastIndex = cursor;
+    }
+    parts.push(source.slice(cursor));
+    return parts.join("");
+}
+
+/**
+ * Removes the named instance-method declarations from a class or interface
+ * body when the generated runtime omits them because a hand-written override
+ * supplies them from the FFI runtime layer.
+ *
+ * The strip is scoped to the `interface <Owner>` and `class <Owner>` blocks so
+ * that an identically named method on an unrelated declaration is left intact.
+ * A method-member line is matched by its name followed by either `(` or `<`
+ * (the latter covering a generic method head). The preceding JSDoc block, when
+ * present, is removed together with the member line.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param suppressedByOwner - Suppressed method names keyed by owner name.
+ * @returns The source with the suppressed method declarations removed.
+ */
+export function stripSuppressedMethods(
+    source: string,
+    suppressedByOwner?: ReadonlyMap<string, ReadonlySet<string>>,
+): string {
+    if (suppressedByOwner === undefined || suppressedByOwner.size === 0) return source;
+
+    let result = source;
+    for (const [owner, methodNames] of suppressedByOwner) {
+        for (const blockKeyword of ["interface", "class"]) {
+            const header = new RegExp(`(^|\\n)[ \\t]*export[ \\t]+${blockKeyword}[ \\t]+${owner}\\b[^{]*\\{`);
+            const headerMatch = result.match(header);
+            if (headerMatch === null || headerMatch.index === undefined) continue;
+            const bodyStart = headerMatch.index + headerMatch[0].length;
+            const bodyEnd = findMatchingBrace(result, bodyStart);
+            if (bodyEnd < 0) continue;
+            const body = result.slice(bodyStart, bodyEnd);
+            result = result.slice(0, bodyStart) + stripMethodsFromBody(body, methodNames) + result.slice(bodyEnd);
+        }
+    }
+    return result;
+}
+
+const stripMethodsFromBody = (body: string, methodNames: ReadonlySet<string>): string => {
+    let result = body;
+    for (const name of methodNames) {
+        const memberLine = new RegExp(`(^|\\n)([ \\t]*)(?:\\/\\*\\*[\\s\\S]*?\\*\\/[ \\t\\n]*)?${name}[<(][^\\n]*`);
+        const match = result.match(memberLine);
+        if (match === null || match.index === undefined) continue;
+        const start = match.index + (match[1] ?? "").length;
+        let end = match.index + match[0].length;
+        if (result[end] === "\n") end += 1;
+        result = result.slice(0, start) + result.slice(end);
+    }
+    return result;
+};
+
 const GTYPE_STRUCT_CLASS_PATTERN = /(^|\n)([ \t]*)export[ \t]+(?:abstract[ \t]+)?class[ \t]+(\w+)\b[^{]*\{/g;
 
 /**
@@ -604,6 +698,8 @@ export function loadAndRewrite(
         let source = unwrapOuterNamespace(contents);
         source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace));
         source = stripGtypeStructClasses(source, gtypeStructNames?.get(namespace));
+        source = stripVirtualMethods(source);
+        source = stripSuppressedMethods(source, SUPPRESSED_METHOD_NAMES_BY_NAMESPACE.get(namespace));
         source = relaxMultiReturnTuples(source);
         source = stripEventEmitterSignalOverloads(source);
         source = rewriteNamespaceDeclarations(source);

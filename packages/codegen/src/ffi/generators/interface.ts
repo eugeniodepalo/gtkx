@@ -190,20 +190,10 @@ export class InterfaceGenerator {
         const seenMethodNames = new Set(existingMethodNames);
         const visitedInterfaces = new Set<string>();
 
-        const collectFromPrerequisite = (prereqName: string) => {
-            if (visitedInterfaces.has(prereqName)) return;
-            visitedInterfaces.add(prereqName);
-
-            const prereq = this.repository.resolveInterface(prereqName);
-            if (!prereq) return;
-
-            for (const prereqPrereq of prereq.prerequisites) {
-                collectFromPrerequisite(prereqPrereq);
-            }
-
-            for (const m of prereq.methods) {
+        const collectMethods = (ownerName: string, ownerMethods: readonly GirMethod[]) => {
+            for (const m of ownerMethods) {
                 if (seenMethodNames.has(m.name)) {
-                    const renamedMethod = generateConflictingMethodName(prereq.name, m.name);
+                    const renamedMethod = generateConflictingMethodName(ownerName, m.name);
                     this.methodRenames.set(m.cIdentifier, renamedMethod);
                     methods.push(m);
                 } else {
@@ -211,6 +201,40 @@ export class InterfaceGenerator {
                     methods.push(m);
                 }
             }
+        };
+
+        const collectFromClass = (className: string) => {
+            if (visitedInterfaces.has(className)) return;
+            visitedInterfaces.add(className);
+
+            const cls = this.repository.resolveClass(className);
+            if (!cls) return;
+
+            for (const ancestorName of cls.getInheritanceChain()) {
+                const ancestor = this.repository.resolveClass(ancestorName);
+                if (!ancestor) continue;
+                collectMethods(ancestor.name, ancestor.methods);
+                for (const implemented of ancestor.getAllImplementedInterfaces()) {
+                    collectFromPrerequisite(implemented);
+                }
+            }
+        };
+
+        const collectFromPrerequisite = (prereqName: string) => {
+            if (visitedInterfaces.has(prereqName)) return;
+
+            const prereq = this.repository.resolveInterface(prereqName);
+            if (!prereq) {
+                collectFromClass(prereqName);
+                return;
+            }
+            visitedInterfaces.add(prereqName);
+
+            for (const prereqPrereq of prereq.prerequisites) {
+                collectFromPrerequisite(prereqPrereq);
+            }
+
+            collectMethods(prereq.name, prereq.methods);
         };
 
         for (const prereqName of iface.prerequisites) {

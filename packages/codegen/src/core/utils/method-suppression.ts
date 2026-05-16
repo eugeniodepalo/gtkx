@@ -23,3 +23,18 @@ const SUPPRESSED_METHODS_BY_CLASS: ReadonlyMap<string, ReadonlySet<string>> = ne
  */
 export const isMethodSuppressed = (qualifiedName: string, cIdentifier: string): boolean =>
     SUPPRESSED_METHODS_BY_CLASS.get(qualifiedName)?.has(cIdentifier) ?? false;
+
+/**
+ * Per-class registry of camelCase method names that the generated runtime
+ * does not expose because a hand-written, higher-level override supplies them
+ * from the FFI runtime layer.
+ *
+ * The outer key is the lowercase namespace identifier (e.g. `"gobject"`); the
+ * inner key is the class or interface name (e.g. `"Object"`); the value is the
+ * set of JavaScript method names whose declarations are stripped from the
+ * ts-for-gir `.d.ts` contract so it describes the generated runtime exactly.
+ */
+export const SUPPRESSED_METHOD_NAMES_BY_NAMESPACE: ReadonlyMap<
+    string,
+    ReadonlyMap<string, ReadonlySet<string>>
+> = new Map([["gobject", new Map([["Object", new Set(["getProperty", "setProperty"])]])]]);
