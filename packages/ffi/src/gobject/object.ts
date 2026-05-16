@@ -43,17 +43,17 @@ declare module "../generated/gobject/gobject.js" {
          * @param sigName - The signal name
          * @param callback - The callback function
          * @param after - If true, run after the default handler
-         * @returns A `NodeJS.EventEmitter` for chaining EventEmitter-style calls
+         * @returns This object, for EventEmitter-style chaining
          */
         // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        on(sigName: string, callback: (...args: any[]) => any, after?: boolean): NodeJS.EventEmitter;
+        on(sigName: string, callback: (...args: any[]) => any, after?: boolean): Object;
 
         /**
          * Like {@link Object.on}, but the handler is automatically disconnected
          * after the first emission.
          */
         // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        once(sigName: string, callback: (...args: any[]) => any, after?: boolean): NodeJS.EventEmitter;
+        once(sigName: string, callback: (...args: any[]) => any, after?: boolean): Object;
 
         /**
          * Disconnects a callback previously registered with
@@ -61,10 +61,10 @@ declare module "../generated/gobject/gobject.js" {
          *
          * @param sigName - The signal name
          * @param callback - The exact callback reference passed to `on`/`once`
-         * @returns A `NodeJS.EventEmitter` for chaining EventEmitter-style calls
+         * @returns This object, for EventEmitter-style chaining
          */
         // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        off(sigName: string, callback: (...args: any[]) => any): NodeJS.EventEmitter;
+        off(sigName: string, callback: (...args: any[]) => any): Object;
 
         /**
          * Reads a property by name and returns it as a plain JavaScript value.
@@ -124,10 +124,23 @@ ObjectWithStatics.newWithProperties = (objectType: GType, names: string[], value
         ],
         GOBJECT_BORROWED,
     );
-    return getNativeObject(ptr as NativeHandle) as unknown as GObject;
+    return getNativeObject<GObject>(ptr as NativeHandle);
 };
 
-type Listener = (...args: unknown[]) => unknown;
+// biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
+type Listener = (...args: any[]) => any;
+
+/**
+ * The subset of the {@link GObject} surface the EventEmitter-style impls
+ * rely on: the generated `connect` primitive plus the augmented members
+ * (`disconnect`, `on`, `once`, `off`) declared above. Extending `GObject`
+ * keeps `this` assignable to the declared method types so the prototype
+ * assignments need no cast.
+ */
+type GObjectWithConnect = GObject & {
+    connect(sigName: string, callback: Listener, after?: boolean): number;
+};
+
 const listenerTable = new WeakMap<GObject, Map<string, Map<Listener, number>>>();
 
 const trackListener = (instance: GObject, signal: string, handler: Listener, handlerId: number): void => {
@@ -167,14 +180,14 @@ GObject.prototype.disconnect = function disconnect(handlerId: number): void {
     );
 };
 
-const onImpl = function (this: GObject, sigName: string, callback: Listener, after?: boolean): NodeJS.EventEmitter {
-    const handlerId = (this as unknown as { connect(...args: unknown[]): number }).connect(sigName, callback, after);
+function onImpl(this: GObjectWithConnect, sigName: string, callback: Listener, after?: boolean): GObject {
+    const handlerId = this.connect(sigName, callback, after);
     trackListener(this, sigName, callback, handlerId);
-    return this as unknown as NodeJS.EventEmitter;
-};
-GObject.prototype.on = onImpl as unknown as GObject["on"];
+    return this;
+}
+GObject.prototype.on = onImpl;
 
-const onceImpl = function (this: GObject, sigName: string, callback: Listener, after?: boolean): NodeJS.EventEmitter {
+function onceImpl(this: GObjectWithConnect, sigName: string, callback: Listener, after?: boolean): GObject {
     let handlerId = 0;
     const wrapped: Listener = (...args: unknown[]) => {
         untrackListener(this, sigName, wrapped);
@@ -182,29 +195,29 @@ const onceImpl = function (this: GObject, sigName: string, callback: Listener, a
         this.disconnect(handlerId);
         return callback(...args);
     };
-    handlerId = (this as unknown as { connect(...args: unknown[]): number }).connect(sigName, wrapped, after);
+    handlerId = this.connect(sigName, wrapped, after);
     trackListener(this, sigName, wrapped, handlerId);
     trackListener(this, sigName, callback, handlerId);
-    return this as unknown as NodeJS.EventEmitter;
-};
-GObject.prototype.once = onceImpl as unknown as GObject["once"];
+    return this;
+}
+GObject.prototype.once = onceImpl;
 
-const offImpl = function (this: GObject, sigName: string, callback: Listener): NodeJS.EventEmitter {
+function offImpl(this: GObjectWithConnect, sigName: string, callback: Listener): GObject {
     const handlerId = findHandlerId(this, sigName, callback);
     if (handlerId !== undefined) {
         this.disconnect(handlerId);
         untrackListener(this, sigName, callback);
     }
-    return this as unknown as NodeJS.EventEmitter;
-};
-GObject.prototype.off = offImpl as unknown as GObject["off"];
+    return this;
+}
+GObject.prototype.off = offImpl;
 
 const GTYPE_SIZE = 8;
 const SIGNAL_QUERY_SIZE = 56;
 const SIGNAL_QUERY_N_PARAMS_OFFSET = 40;
 const SIGNAL_QUERY_PARAM_TYPES_OFFSET = 48;
 
-const emitImpl = function (this: GObject, sigName: string, ...args: unknown[]): void {
+function emitImpl(this: GObject, sigName: string, ...args: unknown[]): void {
     const instanceGType: GType = getInstanceGType(getHandle(this));
     const [parsed, signalId, detail] = signalParseName(sigName, instanceGType, true);
     if (!parsed || signalId === 0) {
@@ -237,8 +250,8 @@ const emitImpl = function (this: GObject, sigName: string, ...args: unknown[]): 
     }
 
     signalEmitv([Value.newFromObject(this), ...paramValues], signalId, detail);
-};
-GObject.prototype.emit = emitImpl as unknown as GObject["emit"];
+}
+GObject.prototype.emit = emitImpl;
 
 const resolvePropertyValueType = (obj: GObject, propertyName: string): GType => {
     const pspecHandle = findObjectProperty(getHandle(obj), propertyName);
@@ -246,37 +259,32 @@ const resolvePropertyValueType = (obj: GObject, propertyName: string): GType => 
         const className = obj.constructor.name || "GObject";
         throw new Error(`No property '${propertyName}' on ${className}`);
     }
-    return (getNativeObject(pspecHandle) as unknown as ParamSpec).getDefaultValue().getType();
+    return getNativeObject<ParamSpec>(pspecHandle).getDefaultValue().getType();
+};
+
+const dispatchPropertyCall = (fnName: string, obj: GObject, propertyName: string, gvalue: Value): void => {
+    call(
+        LIB,
+        fnName,
+        [
+            { type: GOBJECT_BORROWED, value: getHandle(obj) },
+            { type: t.string("borrowed"), value: propertyName },
+            { type: GVALUE_BORROWED_TYPE, value: getHandle(gvalue) },
+        ],
+        t.void,
+    );
 };
 
 GObject.prototype.getProperty = function getProperty(propertyName: string): unknown {
     const valueType = resolvePropertyValueType(this, propertyName);
     const gvalue = new Value();
     gvalue.init(valueType);
-    call(
-        LIB,
-        "g_object_get_property",
-        [
-            { type: GOBJECT_BORROWED, value: getHandle(this) },
-            { type: t.string("borrowed"), value: propertyName },
-            { type: GVALUE_BORROWED_TYPE, value: getHandle(gvalue) },
-        ],
-        t.void,
-    );
+    dispatchPropertyCall("g_object_get_property", this, propertyName, gvalue);
     return gvalue.toJS();
 };
 
 GObject.prototype.setProperty = function setProperty(propertyName: string, value: unknown): void {
     const valueType = resolvePropertyValueType(this, propertyName);
     const gvalue = Value.fromJS(valueType, value);
-    call(
-        LIB,
-        "g_object_set_property",
-        [
-            { type: GOBJECT_BORROWED, value: getHandle(this) },
-            { type: t.string("borrowed"), value: propertyName },
-            { type: GVALUE_BORROWED_TYPE, value: getHandle(gvalue) },
-        ],
-        t.void,
-    );
+    dispatchPropertyCall("g_object_set_property", this, propertyName, gvalue);
 };

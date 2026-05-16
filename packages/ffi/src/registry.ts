@@ -217,10 +217,14 @@ export function findNativeObject(handle: NativeHandle): NativeObject | null {
  * type and reuses the registered wrapper instance, preserving object
  * identity (`===`) for shared GObject pointers.
  *
+ * The runtime type is resolved dynamically; the optional generic type
+ * parameter lets a caller state the wrapper type it expects when the
+ * resolved class is statically known to be that type or a subtype.
+ *
  * @example
  * ```tsx
  * // Automatic type resolution (identity-tracked GObject)
- * const widget = getNativeObject(widgetHandle);
+ * const widget = getNativeObject<Gtk.Widget>(widgetHandle);
  *
  * // Explicit type (boxed value, no identity tracking)
  * const rgba = getNativeObject(rgbaHandle, Gdk.RGBA);
@@ -232,18 +236,15 @@ export function getNativeObject<T extends object>(
     targetType: NativeClass<T>,
 ): T | null;
 export function getNativeObject(handle: null | undefined): null;
-export function getNativeObject(handle: NativeHandle): NativeObject;
-export function getNativeObject(handle: NativeHandle | null | undefined): NativeObject | null;
-export function getNativeObject(
-    handle: NativeHandle | null | undefined,
-    targetType?: NativeClass,
-): NativeObject | null {
+export function getNativeObject<T extends object = NativeObject>(handle: NativeHandle): T;
+export function getNativeObject<T extends object = NativeObject>(handle: NativeHandle | null | undefined): T | null;
+export function getNativeObject(handle: NativeHandle | null | undefined, targetType?: NativeClass): object | null {
     if (handle === null || handle === undefined) {
         return null;
     }
 
     if (targetType) {
-        return wrapHandle(targetType, handle) as NativeObject;
+        return wrapHandle(targetType, handle);
     }
 
     const existing = findNativeObject(handle);
