@@ -3,12 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GenerationHandler } from "@ts-for-gir/cli";
 import { GeneratorType } from "@ts-for-gir/generator-base";
+import { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { type AsyncCapableCallable, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
 import { collectParentMethodNames } from "../../core/utils/class-traversal.js";
 import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
 import { isClassVtable } from "../../core/utils/record-filter.js";
 import type { GirRepository, LoadedGir } from "../../gir/index.js";
 import type { GirMethod } from "../../gir/model/callables.js";
+import type { GirType } from "../../gir/model/type.js";
 import {
     type AsyncMemberEntry,
     type AsyncMemberMap,
@@ -16,10 +18,13 @@ import {
     type EnumValueMap,
     type FieldNameMap,
     type GtypeStructMap,
+    type HashTableMemberEntry,
+    type HashTableMemberMap,
     loadAndRewrite,
     type MethodShadowRename,
     type MethodShadowRenameMap,
     type NamespaceAsyncMembers,
+    type NamespaceHashTableMembers,
 } from "./rewrite.js";
 
 /**
@@ -409,6 +414,107 @@ const collectAsyncMembers = (repository: GirRepository): AsyncMemberMap => {
 };
 
 /**
+ * Reports whether a type is a keyed `GHashTable` — a `GLib.HashTable` carrying
+ * a concrete key and value type other than the opaque `gpointer`.
+ *
+ * The opaque `GLib.HashTable` API models its tables as `gpointer`-to-`gpointer`
+ * and is left as the bare handle type; only keyed tables marshal to a `Map`.
+ */
+const isKeyedHashTable = (type: GirType): boolean => {
+    if (!type.isHashTable()) return false;
+    const keyType = type.getKeyType();
+    const valueType = type.getValueType();
+    return keyType !== null && keyType.name !== "gpointer" && valueType !== null && valueType.name !== "gpointer";
+};
+
+/**
+ * Builds the {@link HashTableMemberEntry} for a callable carrying a keyed
+ * `GHashTable` parameter or return, or `null` when it carries none.
+ *
+ * The `Map<K, V>` substitution type is derived from the keyed table — a
+ * parameter table or, failing that, the return table — through the FFI mapper,
+ * so it matches the namespace-relative form ts-for-gir emits in the contract.
+ */
+const buildHashTableEntry = (
+    callable: AsyncCapableCallable,
+    member: string,
+    isFunction: boolean,
+    mapper: FfiMapper,
+): HashTableMemberEntry | null => {
+    const parameterTable = callable.parameters.find((parameter) => isKeyedHashTable(parameter.type));
+    if (parameterTable !== undefined) {
+        return { member, isFunction, mapType: mapper.mapType(parameterTable.type).ts };
+    }
+    if (isKeyedHashTable(callable.returnType)) {
+        return { member, isFunction, mapType: mapper.mapType(callable.returnType, true).ts };
+    }
+    return null;
+};
+
+/**
+ * Collects every contract member carrying a keyed `GHashTable` parameter or
+ * return, per namespace, keyed by the owner type name (the empty string keys
+ * namespace-level standalone functions).
+ *
+ * Each entry pairs the contract member name with the `Map<K, V>` type the gtkx
+ * runtime marshals the table to, so the type pipeline can retype the bare
+ * `GLib.HashTable` the ts-for-gir output emits.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Keyed-`GHashTable` member entries keyed namespace then owner name.
+ */
+const collectHashTableMembers = (repository: GirRepository): HashTableMemberMap => {
+    const namespaces = new Map<string, NamespaceHashTableMembers>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const mapper = new FfiMapper(repository, namespaceName);
+        const owners = new Map<string, HashTableMemberEntry[]>();
+
+        const record = (owner: string, entry: HashTableMemberEntry | null): void => {
+            if (entry === null) return;
+            const existing = owners.get(owner);
+            if (existing) existing.push(entry);
+            else owners.set(owner, [entry]);
+        };
+
+        for (const cls of namespace.classes.values()) {
+            const owner = toPascalCase(cls.name);
+            for (const method of cls.methods) {
+                record(owner, buildHashTableEntry(method, toCamelCase(method.name), false, mapper));
+            }
+            for (const fn of cls.staticFunctions) {
+                record(owner, buildHashTableEntry(fn, toCamelCase(fn.name), false, mapper));
+            }
+        }
+        for (const iface of namespace.interfaces.values()) {
+            const owner = toPascalCase(iface.name);
+            for (const method of collectInterfaceFlattenedMethods(repository, iface.qualifiedName)) {
+                record(owner, buildHashTableEntry(method, toCamelCase(method.name), false, mapper));
+            }
+            for (const fn of iface.staticFunctions) {
+                record(owner, buildHashTableEntry(fn, toCamelCase(fn.name), false, mapper));
+            }
+        }
+        for (const rec of namespace.records.values()) {
+            const owner = toPascalCase(rec.name);
+            for (const method of rec.methods) {
+                record(owner, buildHashTableEntry(method, toCamelCase(method.name), false, mapper));
+            }
+            for (const fn of rec.staticFunctions) {
+                record(owner, buildHashTableEntry(fn, toCamelCase(fn.name), false, mapper));
+            }
+        }
+        for (const fn of namespace.functions.values()) {
+            record("", buildHashTableEntry(fn, toCamelCase(fn.name), true, mapper));
+        }
+
+        namespaces.set(namespaceName.toLowerCase(), owners);
+    }
+    return namespaces;
+};
+
+/**
  * Generates the per-namespace `.d.ts` type bindings from already-loaded GIR
  * modules and writes them under `outDir`.
  *
@@ -445,6 +551,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             collectNumericConstantNames(loaded.repository),
             collectAsyncMembers(loaded.repository),
             collectMethodShadowRenames(loaded.repository),
+            collectHashTableMembers(loaded.repository),
         );
 
         await mkdir(outDir, { recursive: true });
