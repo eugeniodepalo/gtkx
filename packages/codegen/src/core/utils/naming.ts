@@ -58,6 +58,7 @@ const RESERVED_WORDS = new Set([
 
 export const toCamelCase = (str: string): string =>
     str
+        .replace(/^_+([a-zA-Z])/, "$1")
         .replace(/^(.+\w)_+$/, "$1")
         .replaceAll(/[-_]+([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
         .replaceAll(/[-_]+(\d)/g, (_, digit) => digit);

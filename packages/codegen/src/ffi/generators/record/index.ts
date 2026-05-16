@@ -17,6 +17,8 @@ import {
     boxedSelfType,
     type FfiTypeDescriptor,
     fundamentalSelfType,
+    getPrimitiveTypeSize,
+    isPrimitiveFieldType,
     type MappedType,
     SELF_TYPE_GOBJECT,
     type SelfTypeDescriptor,
@@ -451,8 +453,64 @@ export class RecordGenerator {
             this.fieldBuilder.hasReadableStructLayout(elementTypeName)
         ) {
             this.generateArrayFieldAccessors(field, fieldName, offset, fields, cls, methodNames);
+            return true;
+        }
+        if (field.type.fixedSize !== undefined && isPrimitiveFieldType(elementTypeName)) {
+            this.generateFixedPrimitiveArrayAccessor(field, fieldName, offset, cls, methodNames);
         }
         return true;
+    }
+
+    private generateFixedPrimitiveArrayAccessor(
+        field: GirField,
+        fieldName: string,
+        offset: number,
+        cls: ClassDeclarationBuilder,
+        methodNames: Set<string>,
+    ): void {
+        const elementType = field.type.elementType;
+        const fixedSize = field.type.fixedSize;
+        if (!elementType || fixedSize === undefined) return;
+        if (field.readable === false || methodNames.has(fieldName)) return;
+
+        const elementMapping = this.ffiMapper.mapType(elementType, false, elementType.transferOwnership);
+        const elementSize = getPrimitiveTypeSize(String(elementType.name));
+        const isWritable = field.writable !== false && !methodNames.has(fieldName);
+        this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
+
+        const getBody = (writer: Writer): void => {
+            writer.writeLine("const result = [];");
+            writer.writeLine(`for (let index = 0; index < ${fixedSize}; index++) {`);
+            writer.withIndent(() => {
+                writer.write("result.push(read(getHandle(this), ");
+                writeFfiTypeExpression(writer, elementMapping.ffi);
+                writer.writeLine(`, ${offset} + index * ${elementSize}));`);
+            });
+            writer.writeLine("}");
+            writer.writeLine("return result;");
+        };
+
+        const setBody = isWritable
+            ? (writer: Writer): void => {
+                  writer.writeLine(`for (let index = 0; index < ${fixedSize}; index++) {`);
+                  writer.withIndent(() => {
+                      writer.write("write(getHandle(this), ");
+                      writeFfiTypeExpression(writer, elementMapping.ffi);
+                      writer.writeLine(`, ${offset} + index * ${elementSize}, value[index]);`);
+                  });
+                  writer.writeLine("}");
+              }
+            : undefined;
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: `${elementMapping.ts}[]`,
+                getBody,
+                setBody,
+                doc: doc?.[0]?.description,
+            }),
+        );
     }
 
     private buildPrimitiveFieldAccessor(

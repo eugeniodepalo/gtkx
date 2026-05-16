@@ -59,9 +59,19 @@ const buildGrapheneAugmentation = (): string =>
         )
         .join("\n");
 
+const buildGdkAugmentation = (): string =>
+    [
+        "RGBA.create = (value) => {",
+        "    const instance = new RGBA();",
+        "    instance.parse(value);",
+        "    return instance;",
+        "};",
+    ].join("\n");
+
 const AUGMENTATIONS: ReadonlyMap<string, () => string> = new Map([
     ["GObject", buildGObjectAugmentation],
     ["Graphene", buildGrapheneAugmentation],
+    ["Gdk", buildGdkAugmentation],
 ]);
 
 /**
