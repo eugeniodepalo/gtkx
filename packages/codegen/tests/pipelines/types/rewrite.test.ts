@@ -6,6 +6,8 @@ import {
     rewriteEnumsToConstObjects,
     rewriteGTypeDeclaration,
     rewriteModuleKeywordToNamespace,
+    stripEventEmitterSignalOverloads,
+    stripSignalActionMethods,
     unwrapOuterNamespace,
 } from "../../../src/pipelines/types/rewrite.js";
 
@@ -260,5 +262,93 @@ describe("rewriteAsyncSignatures", () => {
         ]);
 
         expect(rewriteAsyncSignatures(source, asyncMembers)).toBe(source);
+    });
+});
+
+describe("stripEventEmitterSignalOverloads", () => {
+    it("corrects on/once/off return type to the declaring class and keeps the members", () => {
+        const source = [
+            "export class Button {",
+            '    on(sigName: "clicked", callback: (...args: any[]) => void, after?: boolean): NodeJS.EventEmitter',
+            '    once(sigName: "clicked", callback: (...args: any[]) => void, after?: boolean): NodeJS.EventEmitter',
+            '    off(sigName: "clicked", callback: (...args: any[]) => void): NodeJS.EventEmitter',
+            "}",
+        ].join("\n");
+
+        const result = stripEventEmitterSignalOverloads(source);
+
+        expect(result).toContain('on(sigName: "clicked", callback: (...args: any[]) => void, after?: boolean): Button');
+        expect(result).toContain(
+            'once(sigName: "clicked", callback: (...args: any[]) => void, after?: boolean): Button',
+        );
+        expect(result).toContain('off(sigName: "clicked", callback: (...args: any[]) => void): Button');
+        expect(result).not.toContain("NodeJS.EventEmitter");
+    });
+
+    it("corrects on/once/off return type within an interface block", () => {
+        const source = [
+            "export interface Editable {",
+            '    on(sigName: "changed", callback: (...args: any[]) => void, after?: boolean): NodeJS.EventEmitter',
+            "}",
+        ].join("\n");
+
+        expect(stripEventEmitterSignalOverloads(source)).toContain(
+            'on(sigName: "changed", callback: (...args: any[]) => void, after?: boolean): Editable',
+        );
+    });
+
+    it("removes the synthetic _init, gTypeInstance, __gtype__, and notify::__gtype__ lines", () => {
+        const source = [
+            "export class Widget {",
+            "    _init(config?: Widget.ConstructorProperties): void",
+            "    gTypeInstance: TypeInstance",
+            "    __gtype__: number",
+            '    connect(sigName: "notify::__gtype__", callback: (...args: any[]) => void): number',
+            "    realMethod(): void",
+            "}",
+        ].join("\n");
+
+        const result = stripEventEmitterSignalOverloads(source);
+
+        expect(result).not.toContain("_init(config?:");
+        expect(result).not.toContain("gTypeInstance: TypeInstance");
+        expect(result).not.toContain("__gtype__: number");
+        expect(result).not.toContain("notify::__gtype__");
+        expect(result).toContain("realMethod(): void");
+    });
+
+    it("keeps the disconnect overload", () => {
+        const source = ["export class Widget {", "    disconnect(id: number): void", "}"].join("\n");
+
+        expect(stripEventEmitterSignalOverloads(source)).toContain("disconnect(id: number): void");
+    });
+});
+
+describe("stripSignalActionMethods", () => {
+    it("removes signal-action method declarations scoped to their owner block", () => {
+        const source = [
+            "export class Button {",
+            "    /** Activates the button. */",
+            "    clicked(): void",
+            "    realMethod(): void",
+            "}",
+            "export class Label {",
+            "    clicked(): void",
+            "}",
+        ].join("\n");
+        const stripped = new Map([["Button", new Set(["clicked"])]]);
+
+        const result = stripSignalActionMethods(source, stripped);
+
+        const buttonBody = result.slice(result.indexOf("class Button"), result.indexOf("class Label"));
+        expect(buttonBody).not.toContain("clicked(): void");
+        expect(buttonBody).toContain("realMethod(): void");
+        expect(result.slice(result.indexOf("class Label"))).toContain("clicked(): void");
+    });
+
+    it("leaves the source untouched when no signal-action methods are supplied", () => {
+        const source = "export class Foo {\n    bar(): void\n}";
+        expect(stripSignalActionMethods(source, undefined)).toBe(source);
+        expect(stripSignalActionMethods(source, new Map())).toBe(source);
     });
 });

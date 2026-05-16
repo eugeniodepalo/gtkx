@@ -1,4 +1,4 @@
-import { SUPPRESSED_METHOD_NAMES_BY_NAMESPACE } from "../../core/utils/method-suppression.js";
+import { DIVERGENT_OVERRIDE_METHODS_BY_NAMESPACE } from "../../core/utils/method-suppression.js";
 
 const RAW_FILE_PATTERN = /^node-(.+?)-\d+(?:\.\d+)*\.d\.ts$/;
 
@@ -314,7 +314,11 @@ const LINE_COMMENT_PATTERN = /\/\/[^\n]*/g;
  * @param enumValues - Real enum member values for the namespace, keyed enum
  *     name then member name; members absent from the map fall back as above.
  */
-export function rewriteEnumsToConstObjects(source: string, enumValues?: NamespaceEnumValues): string {
+export function rewriteEnumsToConstObjects(
+    source: string,
+    enumValues?: NamespaceEnumValues,
+    errorDomainNames?: ReadonlySet<string>,
+): string {
     const normalized = source.replace(EXPORT_BEFORE_DOC_ENUM_PATTERN, "$1\nexport $2");
     const matches: Array<{
         start: number;
@@ -344,6 +348,7 @@ export function rewriteEnumsToConstObjects(source: string, enumValues?: Namespac
                 name,
                 body,
                 enumValues?.get(name),
+                errorDomainNames?.has(name) ?? false,
             ),
         });
     }
@@ -369,6 +374,7 @@ const renderEnumReplacement = (
     name: string,
     body: string,
     memberValues?: ReadonlyMap<string, number>,
+    isErrorDomain = false,
 ): string => {
     const stripped = body.replace(BLOCK_COMMENT_PATTERN, "").replace(LINE_COMMENT_PATTERN, "");
     let nextOrdinal = 0;
@@ -396,6 +402,17 @@ const renderEnumReplacement = (
         memberLines.push(`    readonly ${memberName}: ${literal};`);
     }
     const memberBlock = memberLines.join("\n");
+    if (isErrorDomain) {
+        const hasInstance =
+            "{ readonly [Symbol.hasInstance]: (value: unknown) =>" +
+            " value is Error & { readonly domain: number; readonly code: number } }";
+        return [
+            `${lineStart}${indent}${leadingDoc}${exportKw}const ${name}: {`,
+            memberBlock,
+            `} & ${hasInstance};`,
+            `${indent}${exportKw}type ${name} = (typeof ${name})[Exclude<keyof typeof ${name}, symbol>];`,
+        ].join("\n");
+    }
     return [
         `${lineStart}${indent}${leadingDoc}${exportKw}const ${name}: {`,
         memberBlock,
@@ -472,6 +489,9 @@ const stripTaggedMembers = (source: string, tag: string, memberFilter?: (memberL
  * factories. The props-object `constructor(config?: ConstructorProperties)`
  * overload — emitted without a `@constructor` tag — is left in place.
  *
+ * ts-for-gir bug: it emits a positional `constructor` overload for every GIR
+ * `<constructor>`, a shape neither node-gtk nor the gtkx runtime provides.
+ *
  * @param source - The `.d.ts` source to rewrite.
  * @returns The source with positional constructor overloads removed.
  */
@@ -492,6 +512,9 @@ const POSITIONAL_CONSTRUCTOR_LINE = /(^|\n)([ \t]*)constructor\((?!\s*\)|\s*conf
  * node-gtk; the positional overload — emitted without the `@constructor`
  * JSDoc tag {@link stripPositionalConstructors} keys on — is removed here.
  *
+ * ts-for-gir bug: it emits a positional `constructor` overload for an
+ * `<interface>`'s `<constructor>`, untagged, that the runtime never provides.
+ *
  * @param source - The `.d.ts` source to rewrite.
  * @returns The source with untagged positional constructor overloads removed.
  */
@@ -500,28 +523,20 @@ export function stripUntaggedPositionalConstructors(source: string): string {
 }
 
 /**
- * Removes the named instance-method declarations from a class or interface
- * body when the generated runtime omits them because a hand-written override
- * supplies them from the FFI runtime layer.
+ * Removes the named instance-method declarations from each `interface <Owner>`
+ * and `class <Owner>` block, dropping any JSDoc block that precedes them.
  *
- * The strip is scoped to the `interface <Owner>` and `class <Owner>` blocks so
- * that an identically named method on an unrelated declaration is left intact.
- * A method-member line is matched by its name followed by either `(` or `<`
- * (the latter covering a generic method head). The preceding JSDoc block, when
- * present, is removed together with the member line.
+ * The strip is scoped to the named block so an identically named method on an
+ * unrelated declaration is left intact. A method-member line is matched by its
+ * name followed by either `(` or `<` (the latter covering a generic head).
  *
  * @param source - The `.d.ts` source to rewrite.
- * @param suppressedByOwner - Suppressed method names keyed by owner name.
- * @returns The source with the suppressed method declarations removed.
+ * @param strippedByOwner - Method names keyed by owner class/interface name.
+ * @returns The source with the named method declarations removed.
  */
-export function stripSuppressedMethods(
-    source: string,
-    suppressedByOwner?: ReadonlyMap<string, ReadonlySet<string>>,
-): string {
-    if (suppressedByOwner === undefined || suppressedByOwner.size === 0) return source;
-
+const stripBlockMethods = (source: string, strippedByOwner: ReadonlyMap<string, ReadonlySet<string>>): string => {
     let result = source;
-    for (const [owner, methodNames] of suppressedByOwner) {
+    for (const [owner, methodNames] of strippedByOwner) {
         for (const blockKeyword of ["interface", "class"]) {
             const header = new RegExp(`(^|\\n)[ \\t]*export[ \\t]+${blockKeyword}[ \\t]+${owner}\\b[^{]*\\{`);
             const headerMatch = result.match(header);
@@ -534,6 +549,56 @@ export function stripSuppressedMethods(
         }
     }
     return result;
+};
+
+/**
+ * Removes the signal-action and virtual-method declarations ts-for-gir emits
+ * into a class or interface body for which the gtkx runtime exposes no
+ * corresponding instance method.
+ *
+ * ts-for-gir renders every `<glib:signal>` and every `<virtual-method>` as a
+ * camelCased instance method even when no `<method>` of that name exists; the
+ * gtkx runtime emits only real `<method>` wrappers, never a signal-action or
+ * virtual-method accessor. This is a ts-for-gir bug relative to the node-gtk
+ * surface gtkx targets: node-gtk's `makeObject` enumerates only properties,
+ * methods, and constants. The drift names are computed per owner as the signal
+ * and virtual-method names that have no same-named real method.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param strippedByOwner - Signal-action method names keyed by owner name.
+ * @returns The source with the signal-action method declarations removed.
+ */
+export function stripSignalActionMethods(
+    source: string,
+    strippedByOwner?: ReadonlyMap<string, ReadonlySet<string>>,
+): string {
+    if (strippedByOwner === undefined || strippedByOwner.size === 0) return source;
+    return stripBlockMethods(source, strippedByOwner);
+}
+
+/**
+ * Removes the contract declaration of a GIR method that a hand-written FFI
+ * runtime override supplies under the same name but with a signature that
+ * diverges from the GIR shape.
+ *
+ * Where a suppressed method whose override preserves the GIR call shape keeps
+ * its contract declaration — the override and the declaration merge cleanly —
+ * a divergent override cannot: its `declare module` declaration would form an
+ * incompatible overload set with the ts-for-gir declaration. Dropping the
+ * ts-for-gir declaration leaves the override's declaration as the single,
+ * authoritative one. The member still ships on `@gtkx/ffi/<ns>` through the
+ * override, and the conformance gate verifies it there.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param strippedByOwner - Divergent-override method names keyed by owner name.
+ * @returns The source with the divergent-override declarations removed.
+ */
+export function stripDivergentOverrideMethods(
+    source: string,
+    strippedByOwner?: ReadonlyMap<string, ReadonlySet<string>>,
+): string {
+    if (strippedByOwner === undefined || strippedByOwner.size === 0) return source;
+    return stripBlockMethods(source, strippedByOwner);
 }
 
 /**
@@ -579,6 +644,9 @@ export type FieldNameMap = ReadonlyMap<string, NamespaceFieldNames>;
  * `object_info_get_field` — so it never exposes instance-struct fields. The
  * gtkx runtime matches that surface. Boxed-struct fields are left intact
  * because node-gtk's `makeStruct` does expose them.
+ *
+ * ts-for-gir bug: it surfaces instance-struct `<field>` layout members on the
+ * class type, members no GObject-introspection runtime makes accessible.
  *
  * @param source - The `.d.ts` source to rewrite.
  * @param fieldNamesByOwner - Field names keyed by class/interface name.
@@ -629,6 +697,9 @@ const GTYPE_STRUCT_CLASS_PATTERN = /(^|\n)([ \t]*)export[ \t]+(?:abstract[ \t]+)
  * not — and should not — exist. The companion `export interface <name>` is
  * left in place so type references elsewhere in the declarations resolve.
  *
+ * ts-for-gir bug: it emits a runtime `class` value for each gtype-struct
+ * vtable record, an export no GObject-introspection runtime provides.
+ *
  * @param source - The `.d.ts` source to rewrite.
  * @param gtypeStructNames - Gtype-struct record names for the namespace.
  * @returns The source with gtype-struct class declarations removed.
@@ -676,6 +747,9 @@ const ANONYMOUS_COMPOSITE_CLASS_PATTERN =
  * member. The companion `export interface` is left in place so the field
  * type still resolves.
  *
+ * ts-for-gir bug: it emits a runtime `class` value for each synthetic
+ * anonymous-composite name, an export the runtime never provides.
+ *
  * @param source - The `.d.ts` source to rewrite.
  * @returns The source with synthetic anonymous-composite classes removed.
  */
@@ -707,19 +781,6 @@ export function stripAnonymousCompositeClasses(source: string): string {
 
 const GTYPE_CONSTANT_PATTERN = /^(export const [A-Z][A-Z0-9_]*: )GType(\s*)$/gm;
 
-/**
- * Relaxes a top-level `export const <NAME>: GType` declaration to
- * `: number`.
- *
- * ts-for-gir types a handful of plain numeric type-system bitmask constants
- * as `GType`, but the gtkx runtime emits them as the numeric literal taken
- * straight from the GIR `<constant>` value. node-gtk likewise exposes them
- * as plain numbers, so the looser type keeps the contract aligned with the
- * runtime surface.
- *
- * @param source - The `.d.ts` source to rewrite.
- * @returns The source with `GType`-typed numeric constants relaxed.
- */
 const NUMERIC_CONSTANT_PATTERN = /^(export const (\w+): )([^\n]+?)(\s*)$/gm;
 const PRIMITIVE_CONSTANT_TYPES: ReadonlySet<string> = new Set(["number", "string", "boolean"]);
 
@@ -730,6 +791,9 @@ const PRIMITIVE_CONSTANT_TYPES: ReadonlySet<string> = new Set(["number", "string
  * ts-for-gir types some numeric constants after an opaque GIR type, but the
  * gtkx runtime emits the numeric literal from the GIR `<constant>` value, as
  * node-gtk does. The looser type keeps the contract aligned with the runtime.
+ *
+ * ts-for-gir bug: it types a plain numeric GIR `<constant>` after a nominal
+ * GIR type rather than after the numeric literal value the constant holds.
  *
  * @param source - The `.d.ts` source to rewrite.
  * @param numericConstants - Names of numeric-valued constants for the namespace.
@@ -743,6 +807,21 @@ export function relaxNumericConstants(source: string, numericConstants?: Readonl
     });
 }
 
+/**
+ * Relaxes a top-level `export const <NAME>: GType` declaration to `: number`.
+ *
+ * ts-for-gir types a handful of plain numeric type-system bitmask constants as
+ * `GType`, but the gtkx runtime emits them as the numeric literal taken
+ * straight from the GIR `<constant>` value. node-gtk likewise exposes them as
+ * plain numbers, so the looser type keeps the contract aligned with the
+ * runtime surface.
+ *
+ * ts-for-gir bug: it types these numeric type-system constants as the nominal
+ * `GType` rather than as the plain `number` their GIR value is.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with `GType`-typed numeric constants relaxed.
+ */
 export function relaxGtypeConstants(source: string): string {
     return source.replace(GTYPE_CONSTANT_PATTERN, "$1number$2");
 }
@@ -803,37 +882,64 @@ const findMatchingBracket = (source: string, from: number): number => {
     return -1;
 };
 
-const EVENT_EMITTER_SIGNAL_LINE = /^[ \t]*(?:on|once|off)\(sigName:[^\n]*\): NodeJS\.EventEmitter[ \t]*\n/gm;
+/**
+ * Matches the header of an exported `class` or `interface` block, capturing
+ * the leading newline (or start) in group 1 and the type name in group 2.
+ */
+const TYPE_BLOCK_HEADER = /(^|\n)[ \t]*export[ \t]+(?:abstract[ \t]+)?(?:interface|class)[ \t]+(\w+)\b[^{]*\{/g;
+
+const EVENT_EMITTER_SIGNAL_RETURN = /(\n[ \t]*(?:on|once|off)\(sigName:[^\n]*\): )NodeJS\.EventEmitter\b/g;
 const SYNTHETIC_GTYPE_FIELD_LINE = /^[ \t]*__gtype__: number[ \t]*\n/gm;
 const SYNTHETIC_GTYPE_SIGNAL_LINE = /^[ \t]*(?:connect|on|once|off|emit)\(sigName: "notify::__gtype__"[^\n]*\n/gm;
 const SYNTHETIC_GTYPE_INSTANCE_LINE = /^[ \t]*gTypeInstance: TypeInstance[ \t]*\n/gm;
 const SYNTHETIC_INIT_LINE = /^[ \t]*_init\(config\?: [\w.]*ConstructorProperties\): void[ \t]*\n/gm;
-const SYNTHETIC_DISCONNECT_LINE = /^[ \t]*disconnect\((?:id|handlerId): number\): void[ \t]*\n/gm;
 
 /**
- * Removes the `on` / `once` / `off` signal-companion overloads that ts-for-gir
- * emits for every signal-bearing class and interface, together with the
- * synthetic `__gtype__` field and its `notify::__gtype__` signal overloads.
+ * Aligns the ts-for-gir signal-companion surface with the gtkx runtime.
  *
- * The `on` / `once` / `off` overloads describe node-gtk's `EventEmitter`-style
- * aliases and return `NodeJS.EventEmitter`; the gtkx runtime models signal
- * handling through `connect` and `emit` only. The `__gtype__` and
- * `gTypeInstance` fields, the `_init` constructor helper, and the
- * `disconnect(id)` overload are ts-for-gir syntheses that the gtkx runtime
- * does not declare on the class shape. Trimming them keeps the contract
- * aligned with the surface the runtime statically provides.
+ * ts-for-gir emits `on` / `once` / `off` signal aliases typed against
+ * `NodeJS.EventEmitter`; the gtkx runtime supplies them through hand-written
+ * GObject overrides that return the receiver for chaining. The
+ * `NodeJS.EventEmitter` return type is a ts-for-gir bug relative to the gtkx
+ * runtime — its `on` / `once` / `off` are not Node `EventEmitter` aliases — so
+ * it is corrected to the declaring class or interface, the type the runtime
+ * override actually returns, scoped per owner block. The members themselves
+ * are kept because they are genuine public API.
+ *
+ * ts-for-gir also synthesizes a `_init(config?)` constructor helper, a
+ * `gTypeInstance: TypeInstance` field, a bare `__gtype__: number` field, and
+ * `notify::__gtype__` signal overloads. `_init`, `gTypeInstance` and the
+ * `notify::__gtype__` signal are GJS-isms with no node-gtk or gtkx counterpart
+ * and are removed. The runtime-stamped `__gtype__` is genuine API, but the
+ * hand-written GObject override declares it authoritatively — as a `readonly`
+ * branded `GType` — so the loosely-typed ts-for-gir `__gtype__: number` line
+ * is removed in favor of that override declaration.
  *
  * @param source - The `.d.ts` source to rewrite.
- * @returns The source with the node-gtk-only signal surface removed.
+ * @returns The source with the signal-companion surface aligned to the runtime.
  */
 export function stripEventEmitterSignalOverloads(source: string): string {
-    return source
-        .replace(EVENT_EMITTER_SIGNAL_LINE, "")
+    let result = source;
+    TYPE_BLOCK_HEADER.lastIndex = 0;
+    for (;;) {
+        const header = TYPE_BLOCK_HEADER.exec(result);
+        if (header === null) break;
+        const ownerName = header[2];
+        if (ownerName === undefined) continue;
+        const bodyStart = header.index + header[0].length;
+        const bodyEnd = findMatchingBrace(result, bodyStart);
+        if (bodyEnd < 0) continue;
+        const body = result.slice(bodyStart, bodyEnd);
+        const newBody = body.replace(EVENT_EMITTER_SIGNAL_RETURN, `$1${ownerName}`);
+        if (newBody === body) continue;
+        result = result.slice(0, bodyStart) + newBody + result.slice(bodyEnd);
+        TYPE_BLOCK_HEADER.lastIndex = bodyStart + newBody.length;
+    }
+    return result
         .replace(SYNTHETIC_GTYPE_FIELD_LINE, "")
         .replace(SYNTHETIC_GTYPE_SIGNAL_LINE, "")
         .replace(SYNTHETIC_GTYPE_INSTANCE_LINE, "")
-        .replace(SYNTHETIC_INIT_LINE, "")
-        .replace(SYNTHETIC_DISCONNECT_LINE, "");
+        .replace(SYNTHETIC_INIT_LINE, "");
 }
 
 /**
@@ -928,6 +1034,10 @@ const CONFLICT_COMMENT = /\/\/ Has conflict: ([A-Za-z_$][\w$]*)\(([^\n]*)\): ([^
  * of that name is rewritten — within its declaring class or interface block —
  * to the parameter list and return type recorded in the conflict comment.
  *
+ * ts-for-gir bug: on a `<method>`/`<virtual-method>` name clash it promotes the
+ * virtual method's signature over the real `<method>` the runtime actually
+ * binds, leaving the authoritative signature only in a comment.
+ *
  * @param source - The `.d.ts` source to rewrite.
  * @returns The source with conflict-comment signatures honored.
  */
@@ -984,7 +1094,6 @@ function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-const TYPE_BLOCK_HEADER = /(^|\n)[ \t]*export[ \t]+(?:abstract[ \t]+)?(?:interface|class)[ \t]+(\w+)\b[^{]*\{/g;
 const METHOD_CONNECT_LINE = /(\n[ \t]*)connect\((?!sigName:)([^\n]*)/g;
 
 /**
@@ -1003,9 +1112,17 @@ export type ConnectRenameMap = ReadonlyMap<string, NamespaceConnectRenames>;
  *
  * GObject-derived types carry a `connect` signal-subscription method, so the
  * runtime renames any colliding GIR `<method>` named `connect` to an
- * owner-prefixed name. ts-for-gir leaves the method on the type alongside the
- * signal overload; this rewrite applies the runtime's rename, resolved per
- * type so a flattened inherited method takes its declaring ancestor's name.
+ * owner-prefixed name. This rewrite applies the runtime's rename in the
+ * contract, resolved per type so a flattened inherited method takes its
+ * declaring ancestor's name.
+ *
+ * This is a deliberate gtkx divergence from node-gtk, not a ts-for-gir bug
+ * fix. node-gtk lets a colliding GIR `<method>` named `connect` overwrite the
+ * inherited signal-subscription `connect` on the prototype, so one of the two
+ * — typically the signal `connect` — becomes unreachable (e.g. on
+ * `Gio.Socket`). gtkx instead keeps both: the colliding GIR method is exposed
+ * under an owner-prefixed name and the signal `connect` stays in place. The
+ * contract is rewritten to reflect that gtkx-specific reachable surface.
  *
  * @param source - The `.d.ts` source to rewrite.
  * @param renames - Renamed `connect` names keyed owner type name.
@@ -1068,6 +1185,16 @@ export type MethodShadowRenameMap = ReadonlyMap<string, NamespaceMethodShadowRen
  * the subclass body as overloads of the original name; this rewrite renames the
  * colliding overload — identified within its declaring class block by its
  * declared parameter count — to the name the runtime exposes.
+ *
+ * This is a deliberate gtkx divergence from node-gtk, not a ts-for-gir bug
+ * fix. node-gtk lets a subclass's colliding GIR `<method>` shadow the inherited
+ * member of the same name on the prototype, leaving the inherited one
+ * unreachable. gtkx keeps both: the collider is exposed under an owner-prefixed
+ * name and the inherited member stays in place. The clash is only ever between
+ * two distinct C functions that happen to share a GIR `name`; a true
+ * polymorphic override — the same method re-listed by a subclass — is not a
+ * clash and is not renamed, because the GIR `<class>` element lists only the
+ * class's own `<method>` entries and never re-declares an inherited method.
  *
  * @param source - The `.d.ts` source to rewrite.
  * @param renames - Method shadow-renames keyed owner type name.
@@ -1133,6 +1260,10 @@ const OPTIONAL_INOUT_RETURN = /\(([^\n]*)\): (\/\* (\w+) \*\/ [\w.]+)(?<suffix>(
  * ts-for-gir types such a return after the parameter's element type, but the
  * generated runtime yields `null` when the optional parameter is omitted. The
  * return type is widened with `| null` so the runtime value satisfies it.
+ *
+ * ts-for-gir bug: it types an optional-parameter-derived out/inout return as
+ * non-nullable, ignoring the `null` the runtime yields when the parameter is
+ * omitted.
  *
  * @param source - The `.d.ts` source to rewrite.
  * @returns The source with optional-inout returns made nullable.
@@ -1514,6 +1645,13 @@ export type EnumValueMap = ReadonlyMap<string, NamespaceEnumValues>;
 export type GtypeStructMap = ReadonlyMap<string, ReadonlySet<string>>;
 
 /**
+ * Error-domain enum names for every namespace, keyed lowercase namespace
+ * identifier. Enums named here are rewritten with an `instanceof`-capable
+ * `[Symbol.hasInstance]` member.
+ */
+export type ErrorDomainMap = ReadonlyMap<string, ReadonlySet<string>>;
+
+/**
  * Result of running every rewrite over a single ts-for-gir output file.
  */
 export type RewriteResult = {
@@ -1546,20 +1684,21 @@ export function loadAndRewrite(
     asyncMembers?: AsyncMemberMap,
     methodShadowRenames?: MethodShadowRenameMap,
     hashTableMembers?: HashTableMemberMap,
+    errorDomainNames?: ErrorDomainMap,
 ): RewriteResult[] {
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
         const namespace = namespaceFromRawFilename(filename);
         if (!namespace) continue;
         let source = unwrapOuterNamespace(contents);
-        source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace));
+        source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace), errorDomainNames?.get(namespace));
         source = stripGtypeStructClasses(source, gtypeStructNames?.get(namespace));
         source = stripAnonymousCompositeClasses(source);
         source = stripClassFields(source, classFieldNames?.get(namespace));
         source = stripPositionalConstructors(source);
         source = stripUntaggedPositionalConstructors(source);
-        source = stripSuppressedMethods(source, SUPPRESSED_METHOD_NAMES_BY_NAMESPACE.get(namespace));
-        source = stripSuppressedMethods(source, signalActionMethodNames?.get(namespace));
+        source = stripSignalActionMethods(source, signalActionMethodNames?.get(namespace));
+        source = stripDivergentOverrideMethods(source, DIVERGENT_OVERRIDE_METHODS_BY_NAMESPACE.get(namespace));
         source = relaxMultiReturnTuples(source);
         source = relaxOptionalInoutReturns(source);
         source = renameConflictingConnectMethods(source, connectRenames?.get(namespace));
