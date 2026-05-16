@@ -188,7 +188,6 @@ export function collectGObjectMethodNames(repo: GirRepository): Set<string> {
         }
     }
     names.add("connect");
-    names.add("create");
     return names;
 }
 
