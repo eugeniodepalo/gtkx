@@ -25,7 +25,7 @@
  * does not verify parameter types.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
@@ -97,6 +97,12 @@ const checkSource = (namespace) =>
  * specifiers to their in-memory targets and delegating everything else to
  * standard resolution against the declaration-hiding host.
  *
+ * An FFI-runtime import made by a generated module — anything that is not a
+ * sibling generated namespace — is deliberately left unresolved so its
+ * bindings type as `any`. The runtime cannot statically type a marshaled FFI
+ * result, so the check verifies declared API existence and enum values
+ * rather than unknowable FFI-result types.
+ *
  * @param {string} specifier - The module specifier text.
  * @param {string} containingFile - Absolute path of the importing file.
  * @param {ts.CompilerOptions} options - Active compiler options.
@@ -130,6 +136,13 @@ const resolveSpecifier = (specifier, containingFile, options, containingSourceFi
                 isExternalLibraryImport: false,
             },
         };
+    }
+
+    if (containingFile.startsWith(`${GENERATED_DIR}/`)) {
+        const resolvedPath = specifier.startsWith(".") ? resolve(dirname(containingFile), specifier) : undefined;
+        if (resolvedPath === undefined || !resolvedPath.startsWith(`${GENERATED_DIR}/`)) {
+            return { resolvedModule: undefined };
+        }
     }
 
     return ts.resolveModuleName(
