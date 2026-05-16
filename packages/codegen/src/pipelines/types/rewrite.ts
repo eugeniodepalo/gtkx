@@ -863,6 +863,80 @@ function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const TYPE_BLOCK_HEADER = /(^|\n)[ \t]*export[ \t]+(?:abstract[ \t]+)?(?:interface|class)[ \t]+(\w+)\b[^{]*\{/g;
+const METHOD_CONNECT_LINE = /(\n[ \t]*)connect\((?!sigName:)([^\n]*)/g;
+
+/**
+ * Renamed `connect`-method names for one namespace, keyed owner type name.
+ */
+export type NamespaceConnectRenames = ReadonlyMap<string, string>;
+
+/**
+ * Renamed `connect`-method names for every namespace, keyed lowercase
+ * namespace identifier.
+ */
+export type ConnectRenameMap = ReadonlyMap<string, NamespaceConnectRenames>;
+
+/**
+ * Renames the GIR `connect` method in the contract to match the gtkx runtime.
+ *
+ * GObject-derived types carry a `connect` signal-subscription method, so the
+ * runtime renames any colliding GIR `<method>` named `connect` to an
+ * owner-prefixed name. ts-for-gir leaves the method on the type alongside the
+ * signal overload; this rewrite applies the runtime's rename, resolved per
+ * type so a flattened inherited method takes its declaring ancestor's name.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param renames - Renamed `connect` names keyed owner type name.
+ * @returns The source with method-`connect` declarations renamed.
+ */
+export function renameConflictingConnectMethods(source: string, renames?: NamespaceConnectRenames): string {
+    if (renames === undefined || renames.size === 0) return source;
+    let result = source;
+    TYPE_BLOCK_HEADER.lastIndex = 0;
+    for (;;) {
+        const header = TYPE_BLOCK_HEADER.exec(result);
+        if (header === null) break;
+        const ownerName = header[2];
+        if (ownerName === undefined) continue;
+        const renamed = renames.get(ownerName);
+        if (renamed === undefined) continue;
+        const bodyStart = header.index + header[0].length;
+        const bodyEnd = findMatchingBrace(result, bodyStart);
+        if (bodyEnd < 0) continue;
+        const body = result.slice(bodyStart, bodyEnd);
+        const newBody = body.replace(METHOD_CONNECT_LINE, `$1${renamed}($2`);
+        if (newBody === body) continue;
+        result = result.slice(0, bodyStart) + newBody + result.slice(bodyEnd);
+        TYPE_BLOCK_HEADER.lastIndex = bodyStart + newBody.length;
+    }
+    return result;
+}
+
+const OPTIONAL_INOUT_RETURN = /\(([^\n]*)\): (\/\* (\w+) \*\/ [\w.]+)(?<suffix>(?:\[\])?)(?=\r?\n)/g;
+
+/**
+ * Relaxes the return type of a callable whose sole out/inout-derived return
+ * comes from an optional parameter.
+ *
+ * ts-for-gir types such a return after the parameter's element type, but the
+ * generated runtime yields `null` when the optional parameter is omitted. The
+ * return type is widened with `| null` so the runtime value satisfies it.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with optional-inout returns made nullable.
+ */
+export function relaxOptionalInoutReturns(source: string): string {
+    return source.replace(
+        OPTIONAL_INOUT_RETURN,
+        (match, params: string, returnType: string, paramName: string, suffix: string) => {
+            const optionalParam = new RegExp(`\\b${escapeRegExp(paramName)}\\?:`);
+            if (!optionalParam.test(params)) return match;
+            return `(${params}): ${returnType}${suffix} | null`;
+        },
+    );
+}
+
 /**
  * Real enum member values for one namespace, keyed enum name then member name.
  */
@@ -908,6 +982,7 @@ export function loadAndRewrite(
     gtypeStructNames?: GtypeStructMap,
     classFieldNames?: FieldNameMap,
     signalActionMethodNames?: FieldNameMap,
+    connectRenames?: ConnectRenameMap,
 ): RewriteResult[] {
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
@@ -923,6 +998,8 @@ export function loadAndRewrite(
         source = stripSuppressedMethods(source, SUPPRESSED_METHOD_NAMES_BY_NAMESPACE.get(namespace));
         source = stripSuppressedMethods(source, signalActionMethodNames?.get(namespace));
         source = relaxMultiReturnTuples(source);
+        source = relaxOptionalInoutReturns(source);
+        source = renameConflictingConnectMethods(source, connectRenames?.get(namespace));
         source = honorVoidConflictSignatures(source);
         source = relaxGtypeConstants(source);
         source = stripEventEmitterSignalOverloads(source);

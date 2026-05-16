@@ -477,6 +477,19 @@ export class RecordGenerator {
         if (!field.type.isArray || !field.type.elementType) return false;
 
         const elementTypeName = String(field.type.elementType.name);
+
+        if (field.type.fixedSize === undefined && field.type.sizeParamIndex === undefined) {
+            const mapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+            if (
+                !mapping.unsafe &&
+                mapping.ffi.type === "array" &&
+                mapping.ffi.kind === "array" &&
+                this.generateZeroTerminatedArrayFieldAccessor(field, fieldName, offset, mapping, cls, methodNames)
+            ) {
+                return true;
+            }
+        }
+
         if (
             this.fieldBuilder.isNestedStructType(elementTypeName) ||
             this.fieldBuilder.hasReadableStructLayout(elementTypeName)
@@ -488,12 +501,8 @@ export class RecordGenerator {
             this.generateFixedPrimitiveArrayAccessor(field, fieldName, offset, cls, methodNames);
             return true;
         }
-        if (
-            field.type.fixedSize === undefined &&
-            field.type.sizeParamIndex !== undefined &&
-            isPrimitiveFieldType(elementTypeName)
-        ) {
-            this.generateSizedPrimitiveArrayAccessor(field, fieldName, offset, fields, cls, methodNames);
+        if (field.type.fixedSize === undefined && field.type.sizeParamIndex !== undefined) {
+            this.generateSizedArrayFieldAccessor(field, fieldName, offset, fields, cls, methodNames);
             return true;
         }
         if (field.type.fixedSize === undefined && STRING_ELEMENT_TYPE_NAMES.has(elementTypeName)) {
@@ -503,6 +512,52 @@ export class RecordGenerator {
         if (this.isLinkedListField(field)) {
             this.generateLinkedListFieldAccessor(field, fieldName, offset, cls, methodNames);
         }
+        return true;
+    }
+
+    /**
+     * Emits an accessor for a struct field holding a NULL-terminated array.
+     *
+     * The array is read or written whole through its mapped FFI descriptor,
+     * mirroring node-gtk, which surfaces such fields as arrays.
+     *
+     * @returns `true` when an accessor was emitted.
+     */
+    private generateZeroTerminatedArrayFieldAccessor(
+        field: GirField,
+        fieldName: string,
+        offset: number,
+        mapping: MappedType,
+        cls: ClassDeclarationBuilder,
+        methodNames: Set<string>,
+    ): boolean {
+        if (field.readable === false || methodNames.has(fieldName)) return false;
+        const isWritable = field.writable !== false && !methodNames.has(fieldName);
+        addTypeImports(this.file, mapping.imports, this.selfNames);
+        this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
+
+        const getBody = (writer: Writer): void => {
+            writer.write("return read(getHandle(this), ");
+            writeFfiTypeExpression(writer, mapping.ffi);
+            writer.writeLine(`, ${offset});`);
+        };
+        const setBody = isWritable
+            ? (writer: Writer): void => {
+                  writer.write("write(getHandle(this), ");
+                  writeFfiTypeExpression(writer, mapping.ffi);
+                  writer.writeLine(`, ${offset}, value);`);
+              }
+            : undefined;
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: `${mapping.ts}`,
+                getBody,
+                setBody,
+                doc: doc?.[0]?.description,
+            }),
+        );
         return true;
     }
 
@@ -628,13 +683,13 @@ export class RecordGenerator {
     }
 
     /**
-     * Emits a read-only accessor for a struct field holding a pointer to a
-     * primitive array whose element count lives in a sibling length field.
+     * Emits a read-only accessor for a struct field holding a pointer to an
+     * array whose element count lives in a sibling length field.
      *
      * The pointer is dereferenced and `length` elements are read, mirroring
-     * node-gtk, which surfaces such fields as numeric arrays.
+     * node-gtk, which surfaces such fields as arrays.
      */
-    private generateSizedPrimitiveArrayAccessor(
+    private generateSizedArrayFieldAccessor(
         field: GirField,
         fieldName: string,
         offset: number,
@@ -653,9 +708,17 @@ export class RecordGenerator {
         const lengthMember = toValidMemberName(toCamelCase(lengthField.name));
 
         const elementMapping = this.ffiMapper.mapType(elementType, false, elementType.transferOwnership);
-        const elementSize = getPrimitiveTypeSize(String(elementType.name));
+        const elementFfiKind = elementMapping.ffi.type;
+        const isPointerElement =
+            elementFfiKind === "gobject" || elementFfiKind === "boxed" || elementFfiKind === "fundamental";
+        const elementSize = isPointerElement ? 8 : getPrimitiveTypeSize(String(elementType.name));
         if (elementSize <= 0) return;
+        if (elementMapping.unsafe && !isPointerElement) return;
+        addTypeImports(this.file, elementMapping.imports, this.selfNames);
         this.file.addImport("../../native.js", ["read", "t"]);
+        if (isPointerElement) {
+            this.file.addImport("../../registry.js", ["getNativeObject"]);
+        }
         const doc = buildJsDocStructure(field.doc, this.options.namespace);
 
         const getBody = (writer: Writer): void => {
@@ -665,9 +728,14 @@ export class RecordGenerator {
             writer.writeLine("const result = [];");
             writer.writeLine(`for (let index = 0; index < this.${lengthMember}; index++) {`);
             writer.withIndent(() => {
-                writer.write("result.push(read(base, ");
-                writeFfiTypeExpression(writer, elementMapping.ffi);
-                writer.writeLine(`, index * ${elementSize}));`);
+                if (isPointerElement) {
+                    writer.writeLine(`const elementPtr = read(base, t.object("borrowed"), index * ${elementSize});`);
+                    writer.writeLine("result.push(getNativeObject(elementPtr));");
+                } else {
+                    writer.write("result.push(read(base, ");
+                    writeFfiTypeExpression(writer, elementMapping.ffi);
+                    writer.writeLine(`, index * ${elementSize}));`);
+                }
             });
             writer.writeLine("}");
             writer.writeLine("return result;");
@@ -1311,7 +1379,7 @@ export class RecordGenerator {
                 this.fieldBuilder.isGeneratableFieldType(typeName)
             ) {
                 const mapping = this.ffiMapper.mapType(item.field.type, false, item.field.type.transferOwnership);
-                if (mapping.unsafe) continue;
+                if (mapping.unsafe && !UNSAFE_PRIMITIVE_NAMES.has(typeName)) continue;
                 plan.push({
                     kind: "primitive",
                     leaf: {

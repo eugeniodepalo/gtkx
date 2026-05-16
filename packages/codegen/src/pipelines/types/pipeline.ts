@@ -6,7 +6,13 @@ import { GeneratorType } from "@ts-for-gir/generator-base";
 import { toCamelCase, toPascalCase } from "../../core/utils/naming.js";
 import { isClassVtable } from "../../core/utils/record-filter.js";
 import type { GirRepository, LoadedGir } from "../../gir/index.js";
-import { type EnumValueMap, type FieldNameMap, type GtypeStructMap, loadAndRewrite } from "./rewrite.js";
+import {
+    type ConnectRenameMap,
+    type EnumValueMap,
+    type FieldNameMap,
+    type GtypeStructMap,
+    loadAndRewrite,
+} from "./rewrite.js";
 
 /**
  * Builds the real enum member values for every namespace from the loaded GIR
@@ -185,6 +191,49 @@ const collectSignalActionMethodNames = (repository: GirRepository): FieldNameMap
         return candidates.map(toCamelCase).filter((camel) => !methodNames.has(camel));
     });
 
+const connectRenameFor = (ownerName: string): string => {
+    const prefix = toCamelCase(ownerName);
+    return `${prefix.charAt(0).toLowerCase()}${prefix.slice(1)}Connect`;
+};
+
+/**
+ * Collects, for every class and interface, the runtime name of a `connect`
+ * GIR `<method>` that the gtkx codegen renamed away from its collision with
+ * the GObject `connect` signal.
+ *
+ * ts-for-gir flattens an inherited `connect` method into each subclass body,
+ * so the rename is keyed by the type that ultimately exposes the method and
+ * resolved against the ancestor that declares it.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Renamed `connect` names keyed namespace then owner name.
+ */
+const collectConnectMethodRenames = (repository: GirRepository): ConnectRenameMap => {
+    const namespaces = new Map<string, Map<string, string>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const renames = new Map<string, string>();
+        for (const cls of namespace.classes.values()) {
+            let current: ReturnType<typeof cls.getParent> | typeof cls = cls;
+            while (current) {
+                if (current.methods.some((m) => m.name === "connect")) {
+                    renames.set(toPascalCase(cls.name), connectRenameFor(current.name));
+                    break;
+                }
+                current = current.getParent();
+            }
+        }
+        for (const iface of namespace.interfaces.values()) {
+            if (iface.methods.some((m) => m.name === "connect")) {
+                renames.set(toPascalCase(iface.name), connectRenameFor(iface.name));
+            }
+        }
+        namespaces.set(namespaceName.toLowerCase(), renames);
+    }
+    return namespaces;
+};
+
 /**
  * Generates the per-namespace `.d.ts` type bindings from already-loaded GIR
  * modules and writes them under `outDir`.
@@ -218,6 +267,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             collectGtypeStructNames(loaded.repository),
             collectClassFieldNames(loaded.repository),
             collectSignalActionMethodNames(loaded.repository),
+            collectConnectMethodRenames(loaded.repository),
         );
 
         await mkdir(outDir, { recursive: true });
