@@ -5,7 +5,6 @@ import { MetadataReader } from "../../../src/react/metadata-reader.js";
 import {
     createButtonMeta,
     createCodegenWidgetMeta,
-    createPropertyAnalysis,
     createSignalAnalysis,
     createWidgetMeta,
 } from "../../fixtures/metadata-fixtures.js";
@@ -48,96 +47,16 @@ describe("InternalGenerator", () => {
         });
     });
 
-    describe("CONSTRUCTION_META", () => {
-        it("generates CONSTRUCTION_META constant", () => {
-            const buttonMeta = createButtonMeta({
-                properties: [
-                    createPropertyAnalysis({
-                        name: "label",
-                        camelName: "label",
-                        isWritable: true,
-                        ffiType: { type: "string", ownership: "borrowed" },
-                    }),
-                ],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            expect(code).toContain("CONSTRUCTION_META");
-        });
-
-        it("includes writable props with ffiType", () => {
-            const buttonMeta = createButtonMeta({
-                properties: [
-                    createPropertyAnalysis({
-                        name: "label",
-                        camelName: "label",
-                        isWritable: true,
-                        ffiType: { type: "string", ownership: "borrowed" },
-                    }),
-                ],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            expect(code).toContain("GtkButton");
-            expect(code).toContain('"label"');
-            expect(code).toContain("girName");
-            expect(code).toContain("ffiType");
-        });
-
-        it("marks construct-only props with constructOnly flag", () => {
-            const buttonMeta = createButtonMeta({
-                properties: [
-                    createPropertyAnalysis({
-                        name: "orientation",
-                        camelName: "orientation",
-                        isWritable: true,
-                        isConstructOnly: true,
-                        ffiType: { type: "int32" },
-                    }),
-                ],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            expect(code).toContain("constructOnly: true");
-        });
-
-        it("excludes non-writable props", () => {
-            const buttonMeta = createButtonMeta({
-                properties: [
-                    createPropertyAnalysis({
-                        name: "label",
-                        camelName: "label",
-                        isWritable: false,
-                        ffiType: { type: "string", ownership: "borrowed" },
-                    }),
-                ],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            const metaStart = code.indexOf("CONSTRUCTION_META");
-            const nextExport = code.indexOf("export const", metaStart + 1);
-            const metaSection = code.slice(metaStart, nextExport);
-            expect(metaSection).not.toContain("GtkButton");
-        });
-
-        it("excludes props without ffiType", () => {
-            const buttonMeta = createButtonMeta({
-                properties: [
-                    createPropertyAnalysis({
-                        name: "label",
-                        camelName: "label",
-                        isWritable: true,
-                    }),
-                ],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            const metaStart = code.indexOf("CONSTRUCTION_META");
-            const nextExport = code.indexOf("export const", metaStart + 1);
-            const metaSection = code.slice(metaStart, nextExport);
-            expect(metaSection).not.toContain("GtkButton");
-        });
-
-        it("has correct type annotation", () => {
+    describe("low-level FFI imports", () => {
+        it("does not import the FFI descriptor builder or Type", () => {
             const code = generateCode();
-            expect(code).toContain(
-                "Record<string, Record<string, { girName: string; ffiType: Type; constructOnly?: true }>>",
-            );
+            expect(code).not.toContain('import { t } from "@gtkx/ffi"');
+            expect(code).not.toContain("import type { Type }");
+        });
+
+        it("does not emit a CONSTRUCTION_META map", () => {
+            const code = generateCode();
+            expect(code).not.toContain("CONSTRUCTION_META");
         });
     });
 
@@ -217,11 +136,6 @@ describe("InternalGenerator", () => {
     });
 
     describe("export statements", () => {
-        it("exports CONSTRUCTION_META", () => {
-            const code = generateCode();
-            expect(code).toContain("export const CONSTRUCTION_META");
-        });
-
         it("exports PROPS", () => {
             const code = generateCode();
             expect(code).toContain("export const PROPS");

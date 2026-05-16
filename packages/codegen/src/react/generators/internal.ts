@@ -2,15 +2,14 @@
  * Internal Generator
  *
  * Generates internal.ts for the reconciler.
- * Contains runtime prop/signal resolution and construction metadata.
+ * Contains runtime prop/signal resolution maps.
  */
 
 import type { FileBuilder } from "../../builders/index.js";
 import { raw, variableStatement } from "../../builders/index.js";
-import { Writer } from "../../builders/writer.js";
+import type { Writer } from "../../builders/writer.js";
 import type { CodegenControllerMeta } from "../../core/codegen-metadata.js";
 import type { PropertyAnalysis, SignalAnalysis } from "../../core/generator-types.js";
-import { renderFfiTypeExpression } from "../../core/writers/ffi-type-expression.js";
 
 import { type MetadataReader, sortWidgetsByClassName } from "../metadata-reader.js";
 
@@ -30,8 +29,7 @@ export class InternalGenerator {
         file.add(
             raw(
                 "/**\n" +
-                    " * Internal metadata for the reconciler: runtime prop/signal resolution\n" +
-                    " * and construction metadata.\n" +
+                    " * Internal metadata for the reconciler: runtime prop/signal resolution.\n" +
                     " *\n" +
                     " * Also side-effect-imports every FFI namespace that contributes a\n" +
                     " * reconcilable element, so importing this module registers their GLib\n" +
@@ -46,9 +44,7 @@ export class InternalGenerator {
 
         const items = this.collectClassItems();
 
-        this.addTypeImports(file);
         this.addNamespaceImports(file);
-        this.generateConstructionMeta(file, items);
         this.generatePropsMap(file, items);
         this.generateSignalsMap(file, items);
     }
@@ -73,11 +69,6 @@ export class InternalGenerator {
         return items;
     }
 
-    private addTypeImports(file: FileBuilder): void {
-        file.addImport("@gtkx/ffi", ["t"]);
-        file.addTypeImport("@gtkx/ffi", ["Type"]);
-    }
-
     private addNamespaceImports(file: FileBuilder): void {
         const namespaces = new Set<string>();
         for (const meta of this.reader.getAllCodegenMeta()) {
@@ -90,25 +81,6 @@ export class InternalGenerator {
         for (const namespace of [...namespaces].sort((a, b) => a.localeCompare(b))) {
             file.addSideEffectImport(`@gtkx/ffi/${namespace.toLowerCase()}`);
         }
-    }
-
-    private generateConstructionMeta(file: FileBuilder, items: readonly ClassItem[]): void {
-        this.emitMap(file, "CONSTRUCTION_META", {
-            type: "Record<string, Record<string, { girName: string; ffiType: Type; constructOnly?: true }>>",
-            doc: "Construction metadata for all writable properties. Used by the reconciler to create widgets via g_object_new_with_properties.",
-            items,
-            collect: (item) => {
-                const entries: Array<[string, string]> = [];
-                for (const prop of item.properties) {
-                    if (!prop.isWritable || !prop.ffiType) continue;
-                    const ffiExpr = renderFfiTypeExpression(prop.ffiType, () => new Writer());
-                    const base = `{ girName: "${prop.name}", ffiType: ${ffiExpr}`;
-                    const value = prop.isConstructOnly ? `${base}, constructOnly: true as const }` : `${base} }`;
-                    entries.push([`"${prop.camelName}"`, value]);
-                }
-                return entries;
-            },
-        });
     }
 
     private generatePropsMap(file: FileBuilder, items: readonly ClassItem[]): void {

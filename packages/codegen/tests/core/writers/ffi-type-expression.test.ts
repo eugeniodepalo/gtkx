@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { Writer } from "../../../src/builders/writer.js";
 import type { FfiTypeDescriptor } from "../../../src/core/type-system/ffi-types.js";
-import { renderFfiTypeExpression, writeFfiTypeExpression } from "../../../src/core/writers/ffi-type-expression.js";
+import { writeFfiTypeExpression } from "../../../src/core/writers/ffi-type-expression.js";
 
-const render = (descriptor: FfiTypeDescriptor): string => renderFfiTypeExpression(descriptor, () => new Writer());
+const render = (descriptor: FfiTypeDescriptor): string => {
+    const writer = new Writer();
+    writeFfiTypeExpression(writer, descriptor);
+    return writer.toString();
+};
 
 describe("writeFfiTypeExpression — primitives", () => {
     it.each([
@@ -296,20 +300,5 @@ describe("writeFfiTypeExpression — fallback", () => {
         const unknown = { type: "mystery", payload: "x" } as unknown as FfiTypeDescriptor;
         writeFfiTypeExpression(writer, unknown);
         expect(writer.toString()).toBe(JSON.stringify(unknown));
-    });
-});
-
-describe("renderFfiTypeExpression", () => {
-    it("returns the rendered string built by the supplied writer factory", () => {
-        let factoryCalls = 0;
-        const factory = () => {
-            factoryCalls++;
-            return new Writer();
-        };
-
-        const result = renderFfiTypeExpression({ type: "int32" }, factory);
-
-        expect(result).toBe("t.int32");
-        expect(factoryCalls).toBe(1);
     });
 });

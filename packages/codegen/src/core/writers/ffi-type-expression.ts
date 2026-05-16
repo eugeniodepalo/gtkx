@@ -253,18 +253,3 @@ function writeTypeArray(writer: Writer, types: readonly FfiTypeDescriptor[]): vo
     }
     writer.write("]");
 }
-
-/**
- * Renders a type expression to a string. Convenience wrapper around
- * {@link writeFfiTypeExpression} for callers that want a string instead of
- * streaming into a Writer.
- *
- * @param descriptor - FFI type descriptor to render
- * @param writerFactory - Factory returning a fresh Writer
- * @returns The rendered expression
- */
-export function renderFfiTypeExpression(descriptor: FfiTypeDescriptor, writerFactory: () => Writer): string {
-    const writer = writerFactory();
-    writeFfiTypeExpression(writer, descriptor);
-    return writer.toString();
-}
