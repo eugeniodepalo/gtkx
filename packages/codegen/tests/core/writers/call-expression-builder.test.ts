@@ -13,12 +13,6 @@ function getCallExpressionOutput(builder: CallExpressionBuilder, options: CallEx
     return writer.toString();
 }
 
-function getWriterOutput(fn: (writer: Writer) => void): string {
-    const writer = new Writer();
-    fn(writer);
-    return writer.toString();
-}
-
 type RecordedImport = { specifier: string; names: readonly string[] };
 function makeImports(): { calls: RecordedImport[]; sink: { addImport(s: string, n: string[]): void } } {
     const calls: RecordedImport[] = [];
@@ -315,24 +309,6 @@ describe("CallExpressionBuilder", () => {
             const result = builder.buildValueExpression("widgets[0]", mappedType);
 
             expect(result).toBe("getHandle(widgets[0])");
-        });
-    });
-
-    describe("errorCheckWriter", () => {
-        it("builds error check code with default GLib.Error reference", () => {
-            const builder = new CallExpressionBuilder();
-            const output = getWriterOutput(builder.errorCheckWriter());
-
-            expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("throw new NativeError(getNativeObject(error.value, GLib.Error))");
-        });
-
-        it("builds error check code with custom Error reference", () => {
-            const builder = new CallExpressionBuilder();
-            const output = getWriterOutput(builder.errorCheckWriter("Error"));
-
-            expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("throw new NativeError(getNativeObject(error.value, Error))");
         });
     });
 

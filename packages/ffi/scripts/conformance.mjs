@@ -155,8 +155,7 @@ const resolveSpecifier = (specifier, containingFile, options, containingSourceFi
  */
 const createConformanceHost = (virtualFiles, namespaces) => {
     const host = ts.createCompilerHost(TARGET_OPTIONS, true);
-    const isHiddenDeclaration = (fileName) =>
-        fileName.endsWith(".d.ts") && fileName.startsWith(`${GENERATED_DIR}/`);
+    const isHiddenDeclaration = (fileName) => fileName.endsWith(".d.ts") && fileName.startsWith(`${GENERATED_DIR}/`);
 
     const baseGetSourceFile = host.getSourceFile.bind(host);
     const baseFileExists = host.fileExists.bind(host);
@@ -260,10 +259,7 @@ const main = () => {
             console.error(`conformance: internal error — check module for '${namespace}' was not created.`);
             process.exit(1);
         }
-        violations.push(
-            ...program.getSyntacticDiagnostics(checkFile),
-            ...program.getSemanticDiagnostics(checkFile),
-        );
+        violations.push(...program.getSyntacticDiagnostics(checkFile), ...program.getSemanticDiagnostics(checkFile));
     }
 
     if (violations.length > 0) {

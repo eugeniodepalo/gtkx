@@ -19,29 +19,21 @@
  * only ever called after module load, so the late re-export is safe.
  */
 
-export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
-export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
-
-export type { NativeClass, NativeHandle } from "./handles.js";
-export { getClassStruct, getHandle, setClassStruct, setHandle, tryGetHandle } from "./handles.js";
-
+export { createRef } from "@gtkx/native";
 export type { BoxedFieldMeta, ConstructionMeta, GObjectPropMeta } from "./construction-meta.js";
 export { registerConstructionMeta } from "./construction-meta.js";
-
+export type { NativeClass, NativeHandle } from "./handles.js";
+export { getClassStruct, getHandle, setClassStruct, setHandle, tryGetHandle } from "./handles.js";
+export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
+export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
+export { checkError, NativeError } from "./native.js";
+export { constructNativeObject } from "./object.js";
+export { registerInterfaceClassStruct } from "./register-class.js";
 export {
     getNativeObject,
     getNativeObjectAsInterface,
     registerNativeClass,
     registerNativeInterface,
 } from "./registry.js";
-
-export { registerInterfaceClassStruct } from "./register-class.js";
-
 export type { SignalDescriptor, SignalGObject, SignalGValue, SignalHandler } from "./signals.js";
 export { connectSignal, emitSignal, registerSignalMeta } from "./signals.js";
-
-export { NativeError } from "./native.js";
-
-export { createRef } from "@gtkx/native";
-
-export { constructNativeObject } from "./object.js";

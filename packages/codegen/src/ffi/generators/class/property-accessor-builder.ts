@@ -34,8 +34,6 @@ import {
 } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { normalizeClassName, toCamelCase } from "../../../core/utils/naming.js";
-import { CallExpressionBuilder } from "../../../core/writers/call-expression-builder.js";
-import type { FfiDescriptorRegistry } from "../../../core/writers/descriptor-registry.js";
 import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
 import type { GirClass, GirMethod, GirProperty, GirRepository } from "../../../gir/index.js";
 
@@ -59,7 +57,6 @@ export type PropertyAccessorEmission = {
 export class PropertyAccessorBuilder {
     private readonly existingMethodNames: Set<string>;
     private readonly parentMethodNames: ReadonlySet<string>;
-    private readonly callExpression: CallExpressionBuilder;
 
     constructor(
         private readonly cls: GirClass,
@@ -74,8 +71,6 @@ export class PropertyAccessorBuilder {
         for (const name of this.parentMethodNames) {
             this.existingMethodNames.add(toCamelCase(name));
         }
-        const descriptors = (imports as { descriptors?: FfiDescriptorRegistry }).descriptors;
-        this.callExpression = new CallExpressionBuilder(descriptors, imports);
     }
 
     buildAccessors(): PropertyAccessorEmission[] {
@@ -292,109 +287,17 @@ export class PropertyAccessorBuilder {
     }
 
     private buildSyntheticGetBody(prop: GirProperty, typeMapping: MappedType): ((writer: Writer) => void) | null {
-        const getterInfo = this.getGValueGetterInfo(prop, typeMapping);
-        if (!getterInfo) return null;
-
-        const isGObjectNamespace = this.options.namespace === "GObject";
-        const gobjectPrefix = isGObjectNamespace ? "" : "GObject.";
-
-        if (isGObjectNamespace) {
-            this.imports.addImport("./value.js", ["Value"]);
-            this.imports.addImport("./functions.js", ["typeFromName"]);
-        } else {
-            this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
-        }
-
-        let returnType = typeMapping.ts;
-        if (
-            (getterInfo.isInterface || getterInfo.isBoxed || getterInfo.isFundamental) &&
-            !(typeMapping.nullable ?? false)
-        ) {
-            returnType = `${returnType} | null`;
-        }
-
-        const callWriter = this.buildGObjectPropertyCall("g_object_get_property", prop.name);
-
+        if (!this.getGValueGetterInfo(prop, typeMapping)) return null;
         return (writer) => {
-            writer.writeLine(`const gvalue = new ${gobjectPrefix}Value();`);
-
-            if (getterInfo.gtypeName) {
-                writer.writeLine(`gvalue.init(${gobjectPrefix}typeFromName("${getterInfo.gtypeName}"));`);
-            } else {
-                writer.writeLine(`gvalue.init(${gobjectPrefix}typeFromName("GObject"));`);
-            }
-
-            callWriter(writer);
-            writer.writeLine(";");
-
-            if (getterInfo.isBoxed) {
-                writer.writeLine(
-                    `return gvalue.${getterInfo.getMethod}(${getterInfo.tsType}, ${gobjectPrefix}typeFromName("${getterInfo.gtypeName}"));`,
-                );
-            } else {
-                writer.writeLine(`return gvalue.${getterInfo.getMethod}();`);
-            }
+            writer.writeLine(`return this.getProperty("${prop.name}");`);
         };
     }
 
     private buildSyntheticSetBody(prop: GirProperty, typeMapping: MappedType): ((writer: Writer) => void) | undefined {
-        const setterInfo = this.getGValueSetterInfo(prop, typeMapping);
-        if (!setterInfo) return undefined;
-
-        if (this.options.namespace === "GObject") {
-            this.imports.addImport("./value.js", ["Value"]);
-            this.imports.addImport("./functions.js", ["typeFromName"]);
-        } else {
-            this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
-        }
-
-        const gobjectPrefix = this.options.namespace === "GObject" ? "" : "GObject.";
-
-        const callWriter = this.buildGObjectPropertyCall("g_object_set_property", prop.name);
-
+        if (!this.getGValueSetterInfo(prop, typeMapping)) return undefined;
         return (writer) => {
-            if (setterInfo.staticConstructor) {
-                if (setterInfo.staticConstructor === "newFromBoxed" && setterInfo.gtypeName) {
-                    writer.writeLine(
-                        `const gvalue = ${gobjectPrefix}Value.${setterInfo.staticConstructor}(value, ${gobjectPrefix}typeFromName("${setterInfo.gtypeName}"));`,
-                    );
-                } else {
-                    writer.writeLine(`const gvalue = ${gobjectPrefix}Value.${setterInfo.staticConstructor}(value);`);
-                }
-            } else {
-                writer.writeLine(`const gvalue = new ${gobjectPrefix}Value();`);
-                writer.writeLine(`gvalue.init(${gobjectPrefix}typeFromName("${setterInfo.gtypeName}"));`);
-                writer.writeLine(`gvalue.${setterInfo.setMethod}(value);`);
-            }
-
-            callWriter(writer);
-            writer.writeLine(";");
+            writer.writeLine(`this.setProperty("${prop.name}", value);`);
         };
-    }
-
-    private buildGObjectPropertyCall(
-        cIdentifier: "g_object_get_property" | "g_object_set_property",
-        propName: string,
-    ): (writer: Writer) => void {
-        return this.callExpression.toWriter({
-            sharedLibrary: "libgobject-2.0.so.0",
-            cIdentifier,
-            args: [
-                { type: { type: "gobject", ownership: "borrowed" }, value: "getHandle(this)" },
-                { type: { type: "string", ownership: "borrowed" }, value: `"${propName}"` },
-                {
-                    type: {
-                        type: "boxed",
-                        ownership: "borrowed",
-                        innerType: "GValue",
-                        library: "libgobject-2.0.so.0",
-                        getTypeFn: "g_value_get_type",
-                    },
-                    value: "getHandle(gvalue)",
-                },
-            ],
-            returnType: { type: "void" },
-        });
     }
 
     private getGValueGetterInfo(prop: GirProperty, typeMapping: MappedType): GValueGetterInfo | null {

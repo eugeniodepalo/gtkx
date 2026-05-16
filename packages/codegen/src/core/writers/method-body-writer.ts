@@ -1132,8 +1132,7 @@ export class MethodBodyWriter {
      * Sets up GError import tracking and returns the appropriate GError reference.
      */
     setupGErrorImports(currentNamespace?: string): string {
-        this.imports.addImport("../../native.js", ["NativeError"]);
-        this.imports.addImport("../../registry.js", ["getNativeObject"]);
+        this.imports.addImport("../../native.js", ["checkError"]);
 
         const isGLibNamespace = currentNamespace === "GLib";
 
@@ -1147,11 +1146,7 @@ export class MethodBodyWriter {
 
     private writeErrorCheck(writer: Writer): void {
         const gerrorRef = this.setupGErrorImports();
-        writer.writeLine("if (error.value !== null) {");
-        writer.withIndent(() => {
-            writer.writeLine(`throw new NativeError(getNativeObject(error.value, ${gerrorRef}));`);
-        });
-        writer.writeLine("}");
+        writer.writeLine(`checkError(error, ${gerrorRef});`);
     }
 
     /**

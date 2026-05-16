@@ -26,7 +26,12 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../core/writers/index.js";
-import { needsParamWrap, needsReturnUnwrap, type ParamWrapInfo, writeWrapExpression } from "../../../core/writers/param-wrap-writer.js";
+import {
+    needsParamWrap,
+    needsReturnUnwrap,
+    type ParamWrapInfo,
+    writeWrapExpression,
+} from "../../../core/writers/param-wrap-writer.js";
 import type { GirClass, GirParameter, GirRepository, GirSignal } from "../../../gir/index.js";
 
 type SignalParamData = {

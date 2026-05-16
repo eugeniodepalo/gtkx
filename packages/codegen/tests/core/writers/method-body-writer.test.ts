@@ -643,8 +643,7 @@ describe("MethodBodyWriter", () => {
 
             const output = w.toString();
             expect(output).toContain("const error = createRef(null)");
-            expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("NativeError");
+            expect(output).toContain("checkError(error, GLib.Error)");
         });
 
         it("wraps gobject return values", () => {
@@ -753,8 +752,7 @@ describe("MethodBodyWriter", () => {
 
             const output = w.toString();
             expect(output).toContain("const error = createRef(null)");
-            expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("NativeError");
+            expect(output).toContain("checkError(error, GLib.Error)");
         });
     });
 

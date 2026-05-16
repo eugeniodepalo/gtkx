@@ -221,21 +221,6 @@ export class CallExpressionBuilder {
         return valueName;
     }
 
-    /**
-     * Builds error checking code as a writer function.
-     *
-     * @param gerrorRef - The GError class reference (e.g., "GLib.Error" or "Error")
-     */
-    errorCheckWriter(gerrorRef = "GLib.Error"): (writer: Writer) => void {
-        return (writer) => {
-            writer.writeLine("if (error.value !== null) {");
-            writer.withIndent(() => {
-                writer.writeLine(`throw new NativeError(getNativeObject(error.value, ${gerrorRef}));`);
-            });
-            writer.writeLine("}");
-        };
-    }
-
     private collectArguments(
         options: CallExpressionOptions,
     ): Array<{ type: FfiTypeDescriptor; value: string; optional?: boolean }> {

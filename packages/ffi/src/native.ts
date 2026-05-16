@@ -8,11 +8,12 @@
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
 
-import { getInstanceGType, type NativeHandle } from "@gtkx/native";
+import { getInstanceGType, type NativeHandle, type Ref } from "@gtkx/native";
 import type { Error as GError } from "./generated/glib/glib.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { typeIsA } from "./gtype.js";
 import { type NativeClass, setHandle, tryGetHandle } from "./handles.js";
+import { getNativeObject } from "./registry.js";
 
 export { getInstanceGType } from "@gtkx/native";
 export type { NativeClass, NativeHandle } from "./handles.js";
@@ -74,6 +75,23 @@ export class NativeError extends Error {
         if (Error.captureStackTrace) {
             Error.captureStackTrace(this, NativeError);
         }
+    }
+}
+
+/**
+ * Throws a {@link NativeError} when a `GError` out-parameter holds an error.
+ *
+ * Generated bindings for throwing callables pass the populated error ref and
+ * the GLib `Error` wrapper class. A no-op when the ref is empty.
+ *
+ * @param error - Out-parameter ref populated by the FFI call
+ * @param errorClass - The GLib `Error` wrapper class
+ *
+ * @internal Module-private helper invoked by generated bindings.
+ */
+export function checkError(error: Ref<NativeHandle | null>, errorClass: NativeClass<GError>): void {
+    if (error.value !== null) {
+        throw new NativeError(getNativeObject(error.value, errorClass));
     }
 }
 
