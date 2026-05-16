@@ -63,6 +63,10 @@ class FakeFfiMapper {
         return this.locallyAllocatable.has(typeName);
     }
 
+    findFactoryCIdentifier(): string | null {
+        return null;
+    }
+
     asMapper(): FfiMapper {
         return this as unknown as FfiMapper;
     }

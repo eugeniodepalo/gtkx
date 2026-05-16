@@ -15,11 +15,11 @@
  */
 
 import type { GType } from "./generated/gobject/gobject.js";
-import type { NativeHandle } from "./handles.js";
+import type { NativeClass, NativeHandle } from "./handles.js";
 import { tryGetHandle } from "./handles.js";
 import { t } from "./helpers.js";
 import { getInstanceGType } from "./native.js";
-import { getClassGType, type NativeClass } from "./registry.js";
+import { getClassGType } from "./registry.js";
 
 const LIB = "libgobject-2.0.so.0";
 

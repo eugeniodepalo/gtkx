@@ -164,16 +164,16 @@ describe("FfiGenerator.generateNamespace", () => {
     });
 
     it("emits a single namespace file with no body when there is nothing to declare", () => {
-        const ns = createNormalizedNamespace({ name: "Gtk" });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
+        const ns = createNormalizedNamespace({ name: "Pango", sharedLibrary: "libpango-1.0.so.0" });
+        const repo = createMockRepository(baseNamespaces({ Pango: ns }));
 
         const { files } = new FfiGenerator({
             repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
+            namespace: "Pango",
+        }).generateNamespace("Pango");
 
-        const file = namespaceFile(files, "Gtk");
-        expect(file?.path).toBe("gtk/gtk.js");
+        const file = namespaceFile(files, "Pango");
+        expect(file?.path).toBe("pango/pango.js");
         expect(file?.content).toBe("");
     });
 

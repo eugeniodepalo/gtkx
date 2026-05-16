@@ -52,6 +52,9 @@ describe("GirNormalizer", () => {
                     functions: [],
                     properties: [],
                     signals: [],
+                    fieldNames: [],
+                    fields: [],
+                    virtualMethodNames: [],
                 },
             ],
         });
@@ -75,6 +78,9 @@ describe("GirNormalizer", () => {
                     functions: [],
                     properties: [],
                     signals: [],
+                    fieldNames: [],
+                    fields: [],
+                    virtualMethodNames: [],
                 },
             ],
         });
@@ -91,6 +97,9 @@ describe("GirNormalizer", () => {
                     functions: [],
                     properties: [],
                     signals: [],
+                    fieldNames: [],
+                    fields: [],
+                    virtualMethodNames: [],
                 },
             ],
         });
@@ -119,6 +128,9 @@ describe("GirNormalizer", () => {
                     functions: [],
                     properties: [],
                     signals: [],
+                    fieldNames: [],
+                    fields: [],
+                    virtualMethodNames: [],
                 },
                 {
                     name: "Button",
@@ -130,6 +142,9 @@ describe("GirNormalizer", () => {
                     functions: [],
                     properties: [],
                     signals: [],
+                    fieldNames: [],
+                    fields: [],
+                    virtualMethodNames: [],
                 },
             ],
         });
@@ -161,6 +176,9 @@ describe("GirNormalizer", () => {
                     functions: [],
                     properties: [],
                     signals: [],
+                    fieldNames: [],
+                    fields: [],
+                    virtualMethodNames: [],
                 },
             ],
         });
