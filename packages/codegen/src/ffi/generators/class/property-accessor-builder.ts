@@ -110,10 +110,13 @@ export class PropertyAccessorBuilder {
         const camelName = toCamelCase(prop.name);
 
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
-        if (typeMapping.unsafe) return null;
+
+        if (typeMapping.unsafe) {
+            return this.buildGenericAccessor(prop, camelName);
+        }
 
         const getBody = this.buildGetBody(prop, typeMapping);
-        if (!getBody) return null;
+        if (!getBody) return this.buildGenericAccessor(prop, camelName);
 
         const returnType = this.computeGetterReturnType(prop, typeMapping);
 
@@ -149,6 +152,37 @@ export class PropertyAccessorBuilder {
             setBody,
         });
 
+        return { property: declaredProperty, installer };
+    }
+
+    /**
+     * Builds a read-only accessor for a property whose value type the runtime
+     * marshaling layer cannot statically map.
+     *
+     * The getter delegates to the generic `getProperty` GValue path, which
+     * resolves any GObject property at run time. The declared field type is
+     * `unknown`, which satisfies the concrete type the `.d.ts` contract
+     * declares for the property.
+     */
+    private buildGenericAccessor(prop: GirProperty, camelName: string): PropertyAccessorEmission {
+        const docs = buildJsDocStructure(prop.doc, this.options.namespace);
+        const declaredProperty = property(camelName, {
+            type: "unknown",
+            declare: true,
+            readonly: true,
+            doc: docs?.[0]?.description,
+        });
+        const ownerName = this.cls !== null ? this.cls.name : (this.interfaceSource?.ownerName ?? "");
+        const className = normalizeClassName(ownerName);
+        const installer = this.buildInstaller({
+            className,
+            propertyName: camelName,
+            returnType: "unknown",
+            setType: "unknown",
+            getBody: (writer) => {
+                writer.writeLine(`return this.getProperty(${JSON.stringify(prop.name)});`);
+            },
+        });
         return { property: declaredProperty, installer };
     }
 
