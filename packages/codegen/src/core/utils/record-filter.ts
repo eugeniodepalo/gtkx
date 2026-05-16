@@ -34,6 +34,12 @@ function resolvesToEnumOrFlags(typeName: string, repo: GirRepository, currentNam
     return repo.resolveEnum(qualified) !== null || repo.resolveFlags(qualified) !== null;
 }
 
+function resolvesToClassOrInterface(typeName: string, repo: GirRepository, currentNamespace: string): boolean {
+    const qualified = qualifyTypeName(typeName, currentNamespace);
+    const kind = repo.getTypeKind(qualified);
+    return kind === "class" || kind === "interface";
+}
+
 /**
  * Returns `true` for records that back a class or interface vtable.
  *
@@ -73,6 +79,7 @@ export function isGeneratableFieldType(
     visited.add(typeName);
 
     if (resolvesToEnumOrFlags(typeName, repo, currentNamespace)) return true;
+    if (resolvesToClassOrInterface(typeName, repo, currentNamespace)) return true;
 
     const resolved = resolveRecord(typeName, repo, currentNamespace);
     if (!resolved) return false;

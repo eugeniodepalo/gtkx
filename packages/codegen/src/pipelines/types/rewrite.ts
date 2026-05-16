@@ -379,7 +379,9 @@ const renderEnumReplacement = (
         const [memberName, initializer] = splitEnumMember(member);
         if (!memberName || !/^[A-Za-z_]\w*$/.test(memberName)) continue;
         let literal: string;
-        const knownValue = memberValues?.get(memberName);
+        const knownValue =
+            memberValues?.get(memberName) ??
+            (memberName.startsWith("TODO_") ? memberValues?.get(memberName.slice("TODO_".length)) : undefined);
         if (knownValue !== undefined) {
             literal = String(knownValue);
             nextOrdinal = knownValue + 1;

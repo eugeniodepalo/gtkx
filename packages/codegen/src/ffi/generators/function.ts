@@ -9,7 +9,7 @@ import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
 import { hasVarargs, partitionSupportedFunctions } from "../../core/utils/filtering.js";
-import { toCamelCase, toValidIdentifier } from "../../core/utils/naming.js";
+import { toCamelCase, toValidExportName } from "../../core/utils/naming.js";
 import { addTypeImports, createMethodBodyWriter, type MethodBodyWriter } from "../../core/writers/index.js";
 import type { GirFunction } from "../../gir/index.js";
 
@@ -61,7 +61,7 @@ export class FunctionGenerator {
     }
 
     private addFunction(func: GirFunction): void {
-        const funcName = toValidIdentifier(toCamelCase(func.name));
+        const funcName = toValidExportName(toCamelCase(func.name));
         const shape = this.methodBody.buildShape(func.parameters, func.returnType, 0);
         const params = this.methodBody.buildSignatureParameters(shape, hasVarargs(func.parameters));
         addTypeImports(this.file, shape.returnTypeMapping.imports);
@@ -103,7 +103,7 @@ export class FunctionGenerator {
      * replaces a silent `undefined` with a descriptive error at call time.
      */
     private addFunctionStub(func: GirFunction): void {
-        const funcName = toValidIdentifier(toCamelCase(func.name));
+        const funcName = toValidExportName(toCamelCase(func.name));
         const message = `${this.options.namespace}.${func.name} is not callable through the @gtkx/ffi runtime`;
         this.file.add(
             variableStatement(funcName, {

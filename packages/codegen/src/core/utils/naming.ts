@@ -58,6 +58,7 @@ const RESERVED_WORDS = new Set([
 
 export const toCamelCase = (str: string): string =>
     str
+        .replace(/^(.+\w)_+$/, "$1")
         .replaceAll(/[-_]+([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
         .replaceAll(/[-_]+(\d)/g, (_, digit) => digit);
 
@@ -93,6 +94,20 @@ export const toValidMemberName = (str: string): string => {
 export const toValidIdentifier = (str: string): string => {
     const result = toValidMemberName(str);
     if (RESERVED_WORDS.has(result)) return `${result}_`;
+    return result;
+};
+
+/**
+ * Produces a valid identifier for an exported namespace member, matching
+ * ts-for-gir's `<name>_TODO` suffix for names that collide with a reserved
+ * word (e.g. the Pango `break` function becomes `break_TODO`).
+ *
+ * @param str - The raw member name.
+ * @returns The collision-safe exported member name.
+ */
+export const toValidExportName = (str: string): string => {
+    const result = toValidMemberName(str);
+    if (RESERVED_WORDS.has(result)) return `${result}_TODO`;
     return result;
 };
 
