@@ -12,7 +12,7 @@ import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
 import { collectGObjectMethodNames } from "../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
-import { partitionSupportedMethods } from "../../core/utils/filtering.js";
+import { partitionSupportedFunctions, partitionSupportedMethods } from "../../core/utils/filtering.js";
 import {
     generateConflictingMethodName,
     toCamelCase,
@@ -90,6 +90,7 @@ export class InterfaceGenerator {
         const methodStructures: MethodStructure[] = [
             ...this.buildMethodStructures(ownMethods, iface.name, gobjectMethodNames),
             ...this.buildMethodStructures(inheritedMethods, iface.name, gobjectMethodNames),
+            ...this.buildStaticFunctionStructures(iface),
         ];
 
         for (const struct of methodStructures) {
@@ -194,6 +195,34 @@ export class InterfaceGenerator {
             this.options.namespace,
             false,
         );
+    }
+
+    private buildStaticFunctionStructures(iface: GirInterface): MethodStructure[] {
+        const interfaceName = toPascalCase(iface.name);
+        const { supported, unsupported } = partitionSupportedFunctions(
+            iface.staticFunctions,
+            (params) => this.methodBody.hasUnsupportedCallbacks(params),
+            (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
+        );
+        return [
+            ...supported.map((func) =>
+                this.methodBody.buildStaticFunctionStructure(func, {
+                    className: interfaceName,
+                    originalClassName: iface.name,
+                    sharedLibrary: this.options.sharedLibrary,
+                    namespace: this.options.namespace,
+                }),
+            ),
+            ...unsupported.map((func) =>
+                this.methodBody.buildStubStructure(
+                    toValidMemberName(toCamelCase(func.name)),
+                    `${this.options.namespace}.${iface.name}.${func.name}`,
+                    func.doc,
+                    this.options.namespace,
+                    true,
+                ),
+            ),
+        ];
     }
 
     private buildMethodStructure(m: GirMethod): MethodStructure {

@@ -1,4 +1,4 @@
-import type { GirMethod } from "./callables.js";
+import type { GirFunction, GirMethod } from "./callables.js";
 import type { GirProperty } from "./property.js";
 import type { RepositoryLike } from "./repository-like.js";
 import type { GirSignal } from "./signal.js";
@@ -17,6 +17,7 @@ export class GirInterface {
     readonly glibGetType?: string;
     readonly prerequisites: string[];
     readonly methods: GirMethod[];
+    readonly staticFunctions: GirFunction[];
     readonly properties: GirProperty[];
     readonly signals: GirSignal[];
     /** Declared `<field>` element names of the interface struct. */
@@ -36,6 +37,7 @@ export class GirInterface {
             glibGetType?: string;
             prerequisites: string[];
             methods: GirMethod[];
+            staticFunctions: GirFunction[];
             properties: GirProperty[];
             signals: GirSignal[];
             fieldNames: string[];
@@ -51,6 +53,7 @@ export class GirInterface {
         this.glibGetType = data.glibGetType;
         this.prerequisites = data.prerequisites;
         this.methods = data.methods;
+        this.staticFunctions = data.staticFunctions;
         this.properties = data.properties;
         this.signals = data.signals;
         this.fieldNames = data.fieldNames;

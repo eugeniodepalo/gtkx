@@ -69,6 +69,7 @@ export type GirInterfaceData = {
     glibGetType?: string;
     prerequisites: string[];
     methods: GirMethod[];
+    staticFunctions: GirFunction[];
     properties: GirProperty[];
     signals: GirSignal[];
     fieldNames: string[];
@@ -317,6 +318,7 @@ export class GirNormalizer {
             glibGetType: raw.glibGetType,
             prerequisites: raw.prerequisites.map((prereq) => this.qualifyTypeName(prereq, currentNamespace)),
             methods: raw.methods.map((m) => this.normalizeMethod(m, currentNamespace)),
+            staticFunctions: raw.functions.map((fn) => this.normalizeFunction(fn, currentNamespace)),
             properties: raw.properties.map((p) => this.normalizeProperty(p, currentNamespace)),
             signals: raw.signals.map((s) => this.normalizeSignal(s, currentNamespace)),
             fieldNames: raw.fieldNames,

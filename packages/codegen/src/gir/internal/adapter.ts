@@ -160,6 +160,7 @@ function adaptInterfaces(interfaces: GirInterfaceElement[]): RawInterface[] {
             glibGetType: a["glib:get-type"],
             prerequisites: adaptNames(iface.prerequisite),
             methods: adaptMethods(iface.method ?? []),
+            functions: adaptFunctions(iface.function ?? []),
             properties: adaptProperties(iface.property ?? []),
             signals: adaptSignals(iface["glib:signal"] ?? []),
             fieldNames: adaptFieldNames(iface.field ?? []),

@@ -46,6 +46,7 @@ export type RawInterface = {
     glibGetType?: string;
     prerequisites: string[];
     methods: RawMethod[];
+    functions: RawFunction[];
     properties: RawProperty[];
     signals: RawSignal[];
     fieldNames: string[];
