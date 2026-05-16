@@ -37,4 +37,12 @@ export const isMethodSuppressed = (qualifiedName: string, cIdentifier: string): 
 export const SUPPRESSED_METHOD_NAMES_BY_NAMESPACE: ReadonlyMap<
     string,
     ReadonlyMap<string, ReadonlySet<string>>
-> = new Map([["gobject", new Map([["Object", new Set(["getProperty", "setProperty"])]])]]);
+> = new Map([
+    [
+        "gobject",
+        new Map([
+            ["Object", new Set(["getProperty", "setProperty"])],
+            ["Value", new Set(["getBoxed"])],
+        ]),
+    ],
+]);

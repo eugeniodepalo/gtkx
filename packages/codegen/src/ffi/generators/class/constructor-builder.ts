@@ -53,16 +53,6 @@ export type ConstructionMetaPlan = {
     constructionMetaWriter: ((writer: Writer) => void) | null;
 };
 
-type DescriptorRegistry = {
-    register(opts: {
-        sharedLibrary: string;
-        cIdentifier: string;
-        args: readonly unknown[];
-        returnType: { type: string };
-        exported?: boolean;
-    }): { name: string };
-};
-
 export class ConstructorBuilder {
     private readonly className: string;
     private readonly methodBody: MethodBodyWriter;
@@ -217,7 +207,12 @@ export class ConstructorBuilder {
             this.imports.addImport("../../native.js", ["call", "t"]);
             return `() => call("libgobject-2.0.so.0", "g_type_from_name", [{ type: t.string("borrowed"), value: "${glibTypeName}" }], t.uint64)`;
         }
-        const descriptors = (this.imports as unknown as { descriptors: DescriptorRegistry }).descriptors;
+        const descriptors = this.imports.descriptors;
+        if (!descriptors) {
+            throw new Error(
+                `Cannot register GType binding for ${cIdentifier}: import collector has no descriptor registry`,
+            );
+        }
         const binding = descriptors.register({
             sharedLibrary: this.options.sharedLibrary,
             cIdentifier,
@@ -225,6 +220,9 @@ export class ConstructorBuilder {
             returnType: { type: "uint64" },
             exported: true,
         });
+        if (binding.varargs) {
+            throw new Error(`GType getter ${cIdentifier} cannot be a variadic descriptor`);
+        }
         this.imports.addImport("../../native.js", ["t"]);
         return binding.name;
     }

@@ -57,7 +57,7 @@ export class SignalBuilder {
         private readonly selfNames: ReadonlySet<string> = new Set(),
     ) {
         this.className = normalizeClassName(cls.name);
-        this.descriptors = (imports as { descriptors?: FfiDescriptorRegistry }).descriptors;
+        this.descriptors = imports.descriptors;
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
             sharedLibrary: options.sharedLibrary,
             glibLibrary: options.glibLibrary,

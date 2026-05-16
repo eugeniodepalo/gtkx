@@ -47,6 +47,13 @@ export type ImportCollector = {
     addImport(specifier: string, names: string[]): void;
     addTypeImport(specifier: string, names: string[]): void;
     addNamespaceImport(specifier: string, alias: string): void;
+    /**
+     * FFI descriptor registry threaded alongside the import collector so
+     * builders can register shared `t.fn(...)` descriptors. Present on the
+     * collector instance the FFI generator constructs; absent for collectors
+     * used in contexts that emit no descriptor bindings.
+     */
+    descriptors?: FfiDescriptorRegistry;
 };
 
 /**

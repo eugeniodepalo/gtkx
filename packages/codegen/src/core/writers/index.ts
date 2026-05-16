@@ -53,7 +53,7 @@ export const createMethodBodyWriter = (
         glibLibrary: options.glibLibrary,
     });
 
-    const descriptors = options.descriptors ?? (imports as { descriptors?: FfiDescriptorRegistry }).descriptors;
+    const descriptors = options.descriptors ?? imports.descriptors;
     const writer = new MethodBodyWriter(ffiMapper, imports, ffiTypeWriter, descriptors);
     if (options.selfNames) {
         writer.setSelfNames(options.selfNames);
