@@ -6,8 +6,5 @@ export default mergeConfig(
     packageVitestConfig(import.meta.url),
     defineConfig({
         plugins: [gtkx()],
-        test: {
-            setupFiles: ["packages/css/tests/setup.ts"],
-        },
     }),
 );
