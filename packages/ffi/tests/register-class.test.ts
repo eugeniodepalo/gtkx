@@ -3,7 +3,6 @@ import { Object as GObject, typeFromName, typeName, typeParent } from "../src/ge
 import * as Gtk from "../src/generated/gtk/gtk.js";
 import { getHandle } from "../src/handles.js";
 import { findNativeClass, instanceIsA, registerClass } from "../src/index.js";
-import { call, t } from "../src/native.js";
 
 let suffix = 0;
 const uniqueName = (prefix: string): string => `${prefix}_${process.pid}_${++suffix}`;
@@ -107,16 +106,8 @@ describe("registerClass", () => {
         const instance = GObject.newv(customGtype, []);
         expect(instanceIsA(getHandle(instance), typeFromName("GtkBuildable"))).toBe(true);
 
-        const builder = GObject.newv(typeFromName("GtkBuilder"), []);
-        call(
-            "libgtk-4.so.1",
-            "gtk_buildable_parser_finished",
-            [
-                { type: t.object("borrowed"), value: getHandle(instance) },
-                { type: t.object("borrowed"), value: getHandle(builder) },
-            ],
-            t.void,
-        );
+        const builder = Gtk.Builder.new();
+        builder.addFromString(`<interface><object class="${name}" id="customWidget"/></interface>`, -1);
 
         expect(parserFinishedCalls).toEqual([1]);
     });
