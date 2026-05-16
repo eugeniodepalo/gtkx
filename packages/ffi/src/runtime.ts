@@ -19,6 +19,8 @@
  * only ever called after module load, so the late re-export is safe.
  */
 
+// biome-ignore-all assist/source/organizeImports: re-export order is load-bearing for module init.
+
 export { createRef } from "@gtkx/native";
 export type { BoxedFieldMeta, ConstructionMeta, GObjectPropMeta } from "./construction-meta.js";
 export { registerConstructionMeta } from "./construction-meta.js";
@@ -27,7 +29,6 @@ export { getClassStruct, getHandle, setClassStruct, setHandle, tryGetHandle } fr
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
 export { checkError, NativeError, throwUnsupported } from "./native.js";
-export { constructNativeObject } from "./object.js";
 export { registerInterfaceClassStruct } from "./register-class.js";
 export {
     getNativeObject,
@@ -37,3 +38,4 @@ export {
 } from "./registry.js";
 export type { SignalDescriptor, SignalGObject, SignalGValue, SignalHandler } from "./signals.js";
 export { connectSignal, emitSignal, registerSignalMeta } from "./signals.js";
+export { constructNativeObject } from "./object.js";
