@@ -136,12 +136,7 @@
             "outputLogs": "new-only"
         },
         "@gtkx/ffi#conformance": {
-            "inputs": [
-                "src/**/*.ts",
-                "src/generated/**/*.js",
-                "src/generated/**/*.d.ts",
-                "scripts/conformance.ts"
-            ],
+            "inputs": ["src/**/*.ts", "src/generated/**/*.js", "src/generated/**/*.d.ts", "scripts/conformance.ts"],
             "outputs": [],
             "outputLogs": "new-only"
         },
