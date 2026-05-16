@@ -22,7 +22,7 @@ import {
     type SelfTypeDescriptor,
 } from "../../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { filterSupportedMethods, partitionSupportedFunctions } from "../../../core/utils/filtering.js";
+import { partitionSupportedFunctions, partitionSupportedMethods } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import { canAllocateRecord } from "../../../core/utils/record-filter.js";
 import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
@@ -348,12 +348,23 @@ export class RecordGenerator {
         recordName: string,
         originalName: string,
     ): MethodStructure[] {
-        const { supported: supportedFunctions } = partitionSupportedFunctions(
+        const { supported: supportedFunctions, unsupported: unsupportedFunctions } = partitionSupportedFunctions(
             functions,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
-        return supportedFunctions.map((func) => this.buildStaticFunctionStructure(func, recordName, originalName));
+        return [
+            ...supportedFunctions.map((func) => this.buildStaticFunctionStructure(func, recordName, originalName)),
+            ...unsupportedFunctions.map((func) =>
+                this.methodBody.buildStubStructure(
+                    toValidMemberName(toCamelCase(func.name)),
+                    `${this.options.namespace}.${originalName}.${func.name}`,
+                    func.doc,
+                    this.options.namespace,
+                    true,
+                ),
+            ),
+        ];
     }
 
     private buildStaticFunctionStructure(
@@ -370,12 +381,23 @@ export class RecordGenerator {
     }
 
     private buildMethodStructures(methods: readonly GirMethod[], meta: RecordTypeMeta): MethodStructure[] {
-        const supportedMethods = filterSupportedMethods(
+        const { supported, unsupported } = partitionSupportedMethods(
             methods,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
-        return supportedMethods.map((method) => this.buildMethodStructure(method, meta));
+        return [
+            ...supported.map((method) => this.buildMethodStructure(method, meta)),
+            ...unsupported.map((method) =>
+                this.methodBody.buildStubStructure(
+                    toValidMemberName(toCamelCase(method.name)),
+                    `${this.options.namespace}.${method.name}`,
+                    method.doc,
+                    this.options.namespace,
+                    false,
+                ),
+            ),
+        ];
     }
 
     private buildMethodStructure(m: GirMethod, meta: RecordTypeMeta): MethodStructure {

@@ -26,7 +26,7 @@ export type { NativeClass, NativeHandle } from "./handles.js";
 export { getClassStruct, getHandle, setClassStruct, setHandle, tryGetHandle } from "./handles.js";
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
-export { checkError, NativeError } from "./native.js";
+export { checkError, NativeError, throwUnsupported } from "./native.js";
 export { constructNativeObject } from "./object.js";
 export { registerInterfaceClassStruct } from "./register-class.js";
 export {

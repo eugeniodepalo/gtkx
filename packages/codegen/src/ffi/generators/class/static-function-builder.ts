@@ -53,15 +53,23 @@ export class StaticFunctionBuilder {
     }
 
     buildStructures(): MethodStructure[] {
-        const { supported: supportedFunctions } = partitionSupportedFunctions(
+        const { supported: supportedFunctions, unsupported: unsupportedFunctions } = partitionSupportedFunctions(
             this.cls.staticFunctions,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
 
-        return supportedFunctions
-            .filter((func) => !this.parentStaticFunctionNames.has(toValidMemberName(toCamelCase(func.name))))
-            .map((func) => this.buildStaticFunctionStructure(func));
+        const isInherited = (func: GirFunction): boolean =>
+            this.parentStaticFunctionNames.has(toValidMemberName(toCamelCase(func.name)));
+
+        return [
+            ...supportedFunctions
+                .filter((func) => !isInherited(func))
+                .map((func) => this.buildStaticFunctionStructure(func)),
+            ...unsupportedFunctions
+                .filter((func) => !isInherited(func))
+                .map((func) => this.buildStaticFunctionStub(func)),
+        ];
     }
 
     private buildStaticFunctionStructure(func: GirFunction): MethodStructure {
@@ -71,5 +79,15 @@ export class StaticFunctionBuilder {
             sharedLibrary: this.options.sharedLibrary,
             namespace: this.options.namespace,
         });
+    }
+
+    private buildStaticFunctionStub(func: GirFunction): MethodStructure {
+        return this.methodBody.buildStubStructure(
+            toValidMemberName(toCamelCase(func.name)),
+            `${this.options.namespace}.${this.cls.name}.${func.name}`,
+            func.doc,
+            this.options.namespace,
+            true,
+        );
     }
 }

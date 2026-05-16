@@ -7,7 +7,8 @@
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import type { SelfTypeDescriptor } from "../../../core/type-system/ffi-types.js";
-import { isMethodDuplicate } from "../../../core/utils/filtering.js";
+import { partitionSupportedMethods } from "../../../core/utils/filtering.js";
+import { toValidMemberName } from "../../../core/utils/naming.js";
 import {
     createMethodBodyWriter,
     type ImportCollector,
@@ -45,19 +46,26 @@ export class MethodBuilder {
      * @returns Array of method structures
      */
     buildStructures(methods: readonly GirMethod[], selfTypeDescriptor: SelfTypeDescriptor): MethodStructure[] {
-        const seen = new Set<string>();
-        const result: MethodStructure[] = [];
+        const { supported, unsupported } = partitionSupportedMethods(
+            methods,
+            (params) => this.methodBody.hasUnsupportedCallbacks(params),
+            (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
+        );
 
-        for (const method of methods) {
-            if (isMethodDuplicate(method.name, method.cIdentifier, seen)) continue;
-            if (this.methodBody.hasUnsupportedCallbacks(method.parameters)) continue;
-            if (this.methodBody.isReturnTypeUnsafe(method.returnType)) continue;
+        return [
+            ...supported.map((method) => this.buildMethodStructure(method, selfTypeDescriptor)),
+            ...unsupported.map((method) => this.buildMethodStub(method)),
+        ];
+    }
 
-            const structure = this.buildMethodStructure(method, selfTypeDescriptor);
-            if (structure) result.push(structure);
-        }
-
-        return result;
+    private buildMethodStub(method: GirMethod): MethodStructure {
+        return this.methodBody.buildStubStructure(
+            toValidMemberName(this.methodBody.resolveMethodName(method, this.methodRenames)),
+            `${this.options.namespace}.${method.name}`,
+            method.doc,
+            this.options.namespace,
+            false,
+        );
     }
 
     private buildMethodStructure(method: GirMethod, selfTypeDescriptor: SelfTypeDescriptor): MethodStructure {

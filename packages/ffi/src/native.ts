@@ -96,6 +96,25 @@ export function checkError(error: Ref<NativeHandle | null>, errorClass: NativeCl
 }
 
 /**
+ * Throws an `Error` reporting that a callable cannot be marshalled through the
+ * `@gtkx/ffi` runtime.
+ *
+ * Generated bindings expose every method and function the contract declares,
+ * including ones whose signature the FFI layer cannot marshal. Those members
+ * delegate to this helper so a call surfaces a descriptive error instead of a
+ * silent `undefined`. The `never` return type lets a delegating method body
+ * (`return throwUnsupported(...)`) be inferred as `never`.
+ *
+ * @param message - Description of the unsupported callable.
+ * @returns Never returns; always throws.
+ *
+ * @internal Module-private helper invoked by generated bindings.
+ */
+export function throwUnsupported(message: string): never {
+    throw new Error(message);
+}
+
+/**
  * Gets a native object as a specific interface type if it implements that interface.
  *
  * Uses GLib's type system to check if the object implements the specified

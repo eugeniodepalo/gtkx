@@ -57,7 +57,9 @@ const RESERVED_WORDS = new Set([
 ]);
 
 export const toCamelCase = (str: string): string =>
-    str.replaceAll(/[-_]([a-z])/g, (_, letter) => letter.toUpperCase()).replaceAll(/[-_](\d)/g, (_, digit) => digit);
+    str
+        .replaceAll(/[-_]+([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
+        .replaceAll(/[-_]+(\d)/g, (_, digit) => digit);
 
 export const kebabToSnake = (str: string): string => str.replaceAll("-", "_");
 

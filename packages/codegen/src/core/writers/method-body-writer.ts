@@ -574,6 +574,42 @@ export class MethodBodyWriter {
     }
 
     /**
+     * Builds a throwing-stub MethodStructure for a method or static function
+     * whose signature the FFI layer cannot marshal.
+     *
+     * node-gtk exposes every method and static function as a property
+     * regardless of whether a given call can be marshalled, so generators
+     * emit unmarshalable members as throwing stubs rather than dropping them.
+     *
+     * @param memberName - The TypeScript member name to emit.
+     * @param qualifiedName - The fully qualified `Namespace.Class.member` name used in the error message.
+     * @param doc - Optional GIR documentation text for the member.
+     * @param namespace - Current namespace for documentation links.
+     * @param isStatic - Whether the member is a static function.
+     * @returns A MethodStructure whose body throws a descriptive error.
+     */
+    buildStubStructure(
+        memberName: string,
+        qualifiedName: string,
+        doc: string | undefined,
+        namespace: string,
+        isStatic: boolean,
+    ): MethodStructure {
+        const message = `${qualifiedName} is not callable through the @gtkx/ffi runtime`;
+        this.imports.addImport("../../native.js", ["throwUnsupported"]);
+        return {
+            name: memberName,
+            isStatic: isStatic || undefined,
+            parameters: [],
+            returnType: undefined,
+            docs: buildJsDocStructure(doc, namespace),
+            statements: (writer: Writer) => {
+                writer.write(`return throwUnsupported(${JSON.stringify(message)});`);
+            },
+        };
+    }
+
+    /**
      * Writes method body using the precomputed shape.
      */
     writeMethodBody(

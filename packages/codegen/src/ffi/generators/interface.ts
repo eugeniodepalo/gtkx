@@ -12,8 +12,14 @@ import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
 import { collectGObjectMethodNames } from "../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
-import { filterSupportedMethods } from "../../core/utils/filtering.js";
-import { generateConflictingMethodName, toCamelCase, toKebabCase, toPascalCase } from "../../core/utils/naming.js";
+import { partitionSupportedMethods } from "../../core/utils/filtering.js";
+import {
+    generateConflictingMethodName,
+    toCamelCase,
+    toKebabCase,
+    toPascalCase,
+    toValidMemberName,
+} from "../../core/utils/naming.js";
 import { splitQualifiedName } from "../../core/utils/qualified-name.js";
 import {
     addMethodStructure,
@@ -136,19 +142,38 @@ export class InterfaceGenerator {
         ifaceName: string,
         gobjectMethodNames: Set<string>,
     ): MethodStructure[] {
-        const supportedMethods = filterSupportedMethods(
+        const { supported, unsupported } = partitionSupportedMethods(
             methods,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
-        return supportedMethods.map((m) => {
+        const applyRename = (m: GirMethod) => {
             const methodName = toCamelCase(m.name);
             if (gobjectMethodNames.has(methodName)) {
                 const renamedMethod = generateConflictingMethodName(ifaceName, m.name);
                 this.methodRenames.set(m.cIdentifier, renamedMethod);
             }
-            return this.buildMethodStructure(m);
-        });
+        };
+        return [
+            ...supported.map((m) => {
+                applyRename(m);
+                return this.buildMethodStructure(m);
+            }),
+            ...unsupported.map((m) => {
+                applyRename(m);
+                return this.buildMethodStub(m);
+            }),
+        ];
+    }
+
+    private buildMethodStub(m: GirMethod): MethodStructure {
+        return this.methodBody.buildStubStructure(
+            toValidMemberName(this.methodBody.resolveMethodName(m, this.methodRenames)),
+            `${this.options.namespace}.${m.name}`,
+            m.doc,
+            this.options.namespace,
+            false,
+        );
     }
 
     private buildMethodStructure(m: GirMethod): MethodStructure {
