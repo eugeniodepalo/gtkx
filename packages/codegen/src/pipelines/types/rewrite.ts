@@ -415,7 +415,50 @@ const parseNumericLiteral = (text: string): number | null => {
     return Number.isFinite(value) ? value : null;
 };
 
-const VIRTUAL_DOC_PATTERN = /[ \t]*\/\*\*(?:(?!\*\/)[\s\S])*?@virtual\b(?:(?!\*\/)[\s\S])*?\*\//g;
+const taggedDocPattern = (tag: string): RegExp =>
+    new RegExp(`[ \\t]*\\/\\*\\*(?:(?!\\*\\/)[\\s\\S])*?@${tag}\\b(?:(?!\\*\\/)[\\s\\S])*?\\*\\/`, "g");
+
+/**
+ * Removes each member declaration whose preceding JSDoc block carries the
+ * given tag, together with the single member line that follows it.
+ *
+ * When `memberFilter` is supplied, a tagged block is removed only if the
+ * trimmed text of the member line that follows it satisfies the predicate;
+ * the JSDoc block is then dropped together with that line.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param tag - JSDoc tag (without the leading `@`) marking members to strip.
+ * @param memberFilter - Optional predicate over the trimmed member line.
+ * @returns The source with the tagged member declarations removed.
+ */
+const stripTaggedMembers = (source: string, tag: string, memberFilter?: (memberLine: string) => boolean): string => {
+    const pattern = taggedDocPattern(tag);
+    const parts: string[] = [];
+    let cursor = 0;
+    for (;;) {
+        const match = pattern.exec(source);
+        if (match === null) break;
+        const docStart = match.index;
+        const lineStart = source.lastIndexOf("\n", docStart) + 1;
+        const docEnd = docStart + match[0].length;
+        let memberLineStart = docEnd;
+        while (memberLineStart < source.length && source[memberLineStart] !== "\n") memberLineStart += 1;
+        if (memberLineStart < source.length) memberLineStart += 1;
+        let memberEnd = memberLineStart;
+        while (memberEnd < source.length && source[memberEnd] !== "\n") memberEnd += 1;
+        const memberLine = source.slice(memberLineStart, memberEnd);
+        if (memberEnd < source.length) memberEnd += 1;
+        if (memberFilter && !memberFilter(memberLine.trim())) {
+            pattern.lastIndex = docEnd;
+            continue;
+        }
+        parts.push(source.slice(cursor, lineStart));
+        cursor = memberEnd;
+        pattern.lastIndex = cursor;
+    }
+    parts.push(source.slice(cursor));
+    return parts.join("");
+};
 
 /**
  * Removes every GObject virtual-method (`<virtual-method>`) declaration that
@@ -434,26 +477,24 @@ const VIRTUAL_DOC_PATTERN = /[ \t]*\/\*\*(?:(?!\*\/)[\s\S])*?@virtual\b(?:(?!\*\
  * @returns The source with virtual-method declarations removed.
  */
 export function stripVirtualMethods(source: string): string {
-    const parts: string[] = [];
-    let cursor = 0;
-    VIRTUAL_DOC_PATTERN.lastIndex = 0;
-    for (;;) {
-        const match = VIRTUAL_DOC_PATTERN.exec(source);
-        if (match === null) break;
-        const docStart = match.index;
-        const lineStart = source.lastIndexOf("\n", docStart) + 1;
-        const docEnd = docStart + match[0].length;
-        let memberEnd = docEnd;
-        while (memberEnd < source.length && source[memberEnd] !== "\n") memberEnd += 1;
-        if (memberEnd < source.length) memberEnd += 1;
-        while (memberEnd < source.length && source[memberEnd] !== "\n") memberEnd += 1;
-        if (memberEnd < source.length) memberEnd += 1;
-        parts.push(source.slice(cursor, lineStart));
-        cursor = memberEnd;
-        VIRTUAL_DOC_PATTERN.lastIndex = cursor;
-    }
-    parts.push(source.slice(cursor));
-    return parts.join("");
+    return stripTaggedMembers(source, "virtual");
+}
+
+/**
+ * Removes the positional `constructor(...)` overloads that ts-for-gir emits
+ * for every GIR `<constructor>`, marked with a `@constructor` JSDoc tag.
+ *
+ * node-gtk's runtime constructor accepts a single GObject construct-properties
+ * object; the GIR constructors are exposed only as `static` factory methods.
+ * The gtkx runtime matches that: a props-object constructor plus `static`
+ * factories. The props-object `constructor(config?: ConstructorProperties)`
+ * overload — emitted without a `@constructor` tag — is left in place.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with positional constructor overloads removed.
+ */
+export function stripPositionalConstructors(source: string): string {
+    return stripTaggedMembers(source, "constructor", (memberLine) => memberLine.startsWith("constructor"));
 }
 
 /**
@@ -765,6 +806,7 @@ export function loadAndRewrite(
         source = stripGtypeStructClasses(source, gtypeStructNames?.get(namespace));
         source = stripClassFields(source, classFieldNames?.get(namespace));
         source = stripVirtualMethods(source);
+        source = stripPositionalConstructors(source);
         source = stripSuppressedMethods(source, SUPPRESSED_METHOD_NAMES_BY_NAMESPACE.get(namespace));
         source = stripSuppressedMethods(source, signalActionMethodNames?.get(namespace));
         source = relaxMultiReturnTuples(source);
