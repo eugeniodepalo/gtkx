@@ -16,7 +16,8 @@
  * installer (no setter, declared as `readonly`).
  */
 
-import { property } from "../../../builders/index.js";
+import { accessor, property } from "../../../builders/index.js";
+import type { AccessorBuilder } from "../../../builders/members/accessor.js";
 import type { PropertyBuilder } from "../../../builders/members/property.js";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
@@ -51,6 +52,12 @@ export type PropertyAccessorEmission = {
      * flushed to the file.
      */
     readonly installer: (writer: Writer) => void;
+    /**
+     * ES6 get/set accessor carrying the same runtime behaviour as the
+     * `installer`, suitable for adding directly to a class body so the
+     * member is visible to a JavaScript type checker.
+     */
+    readonly accessor: AccessorBuilder;
 };
 
 /**
@@ -151,8 +158,15 @@ export class PropertyAccessorBuilder {
             getBody,
             setBody,
         });
+        const accessorMember = accessor(camelName, {
+            type: returnType,
+            setType: resolvedSetType,
+            getBody,
+            setBody,
+            doc: docs?.[0]?.description,
+        });
 
-        return { property: declaredProperty, installer };
+        return { property: declaredProperty, installer, accessor: accessorMember };
     }
 
     /**
@@ -174,16 +188,22 @@ export class PropertyAccessorBuilder {
         });
         const ownerName = this.cls !== null ? this.cls.name : (this.interfaceSource?.ownerName ?? "");
         const className = normalizeClassName(ownerName);
+        const getBody = (writer: Writer): void => {
+            writer.writeLine(`return this.getProperty(${JSON.stringify(prop.name)});`);
+        };
         const installer = this.buildInstaller({
             className,
             propertyName: camelName,
             returnType: "unknown",
             setType: "unknown",
-            getBody: (writer) => {
-                writer.writeLine(`return this.getProperty(${JSON.stringify(prop.name)});`);
-            },
+            getBody,
         });
-        return { property: declaredProperty, installer };
+        const accessorMember = accessor(camelName, {
+            type: "unknown",
+            getBody,
+            doc: docs?.[0]?.description,
+        });
+        return { property: declaredProperty, installer, accessor: accessorMember };
     }
 
     private buildInstaller(opts: {

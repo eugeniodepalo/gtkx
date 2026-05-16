@@ -150,18 +150,11 @@ export class ClassGenerator {
         }
 
         const propertyEmissions = this.propertyAccessorBuilder.buildAccessors();
-        for (const { property } of propertyEmissions) {
-            cls.addProperty(property);
+        for (const { accessor } of propertyEmissions) {
+            cls.addAccessor(accessor);
         }
 
         this.file.add(cls);
-
-        for (const { installer } of propertyEmissions) {
-            this.file.addRawBlock((writer) => {
-                writer.writeLine("");
-                installer(writer);
-            });
-        }
 
         if (this.cls.glibGetType) {
             const getTypeCall = this.buildGTypeCall(this.cls.glibGetType, this.cls.glibTypeName);

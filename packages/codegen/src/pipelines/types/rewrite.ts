@@ -641,6 +641,67 @@ export function stripGtypeStructClasses(source: string, gtypeStructNames?: Reado
     return parts.join("");
 }
 
+const ANONYMOUS_COMPOSITE_CLASS_PATTERN =
+    /(^|\n)([ \t]*)export[ \t]+(?:abstract[ \t]+)?class[ \t]+_\w+__\w+__(?:union|struct)\b[^{]*\{/g;
+
+/**
+ * Removes the `export class _<Owner>__<field>__union` value declarations that
+ * ts-for-gir synthesises for anonymous unions and structs nested inside a
+ * record's field layout.
+ *
+ * These synthetic names exist only so the field's type has a referenceable
+ * symbol; node-gtk never exposes the anonymous composite as a namespace
+ * member. The companion `export interface` is left in place so the field
+ * type still resolves.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with synthetic anonymous-composite classes removed.
+ */
+export function stripAnonymousCompositeClasses(source: string): string {
+    const matches: Array<{ start: number; end: number }> = [];
+    ANONYMOUS_COMPOSITE_CLASS_PATTERN.lastIndex = 0;
+    for (;;) {
+        const result = ANONYMOUS_COMPOSITE_CLASS_PATTERN.exec(source);
+        if (result === null) break;
+        const bodyEnd = findMatchingBrace(source, result.index + result[0].length);
+        if (bodyEnd < 0) continue;
+        const start = result.index + (result[1] ?? "").length;
+        let end = bodyEnd + 1;
+        if (source[end] === "\n") end += 1;
+        matches.push({ start, end });
+    }
+
+    if (matches.length === 0) return source;
+
+    const parts: string[] = [];
+    let cursor = 0;
+    for (const { start, end } of matches) {
+        parts.push(source.slice(cursor, start));
+        cursor = end;
+    }
+    parts.push(source.slice(cursor));
+    return parts.join("");
+}
+
+const GTYPE_CONSTANT_PATTERN = /^(export const [A-Z][A-Z0-9_]*: )GType(\s*)$/gm;
+
+/**
+ * Relaxes a top-level `export const <NAME>: GType` declaration to
+ * `: number`.
+ *
+ * ts-for-gir types a handful of plain numeric type-system bitmask constants
+ * as `GType`, but the gtkx runtime emits them as the numeric literal taken
+ * straight from the GIR `<constant>` value. node-gtk likewise exposes them
+ * as plain numbers, so the looser type keeps the contract aligned with the
+ * runtime surface.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with `GType`-typed numeric constants relaxed.
+ */
+export function relaxGtypeConstants(source: string): string {
+    return source.replace(GTYPE_CONSTANT_PATTERN, "$1number$2");
+}
+
 const MULTI_RETURN_TUPLE_PATTERN = /:\s*\[ \/\* [A-Za-z_$][\w$]* \*\//g;
 
 const findMatchingBracket = (source: string, from: number): number => {
@@ -789,11 +850,13 @@ export function loadAndRewrite(
         let source = unwrapOuterNamespace(contents);
         source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace));
         source = stripGtypeStructClasses(source, gtypeStructNames?.get(namespace));
+        source = stripAnonymousCompositeClasses(source);
         source = stripClassFields(source, classFieldNames?.get(namespace));
         source = stripPositionalConstructors(source);
         source = stripSuppressedMethods(source, SUPPRESSED_METHOD_NAMES_BY_NAMESPACE.get(namespace));
         source = stripSuppressedMethods(source, signalActionMethodNames?.get(namespace));
         source = relaxMultiReturnTuples(source);
+        source = relaxGtypeConstants(source);
         source = stripEventEmitterSignalOverloads(source);
         source = rewriteNamespaceDeclarations(source);
         source = rewriteDefaultImportsToNamespace(source);
