@@ -25,8 +25,7 @@ import {
     ULONG_TYPE,
 } from "./common.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
-import type { Matrix } from "./matrix.js";
-import { allocMatrix } from "./matrix.js";
+import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
 declare module "../generated/cairo/cairo.js" {
     interface ScaledFont {
@@ -36,24 +35,34 @@ declare module "../generated/cairo/cairo.js" {
         glyphExtents(glyphs: Array<{ index: number; x: number; y: number }>): TextExtents;
         getFontFace(): FontFace;
         getFontOptions(): FontOptions;
-        getFontMatrix(): Matrix;
-        getCtm(): Matrix;
-        getScaleMatrix(): Matrix;
+        getFontMatrix(): CairoMatrix;
+        getCtm(): CairoMatrix;
+        getScaleMatrix(): CairoMatrix;
         getType(): FontType;
     }
 
     namespace ScaledFont {
-        function create(fontFace: FontFace, fontMatrix: Matrix, ctm: Matrix, options: FontOptions): ScaledFont;
+        function create(
+            fontFace: FontFace,
+            fontMatrix: CairoMatrix,
+            ctm: CairoMatrix,
+            options: FontOptions,
+        ): ScaledFont;
     }
 }
 
 type ScaledFontStatic = {
-    create(fontFace: FontFace, fontMatrix: Matrix, ctm: Matrix, options: FontOptions): ScaledFont;
+    create(fontFace: FontFace, fontMatrix: CairoMatrix, ctm: CairoMatrix, options: FontOptions): ScaledFont;
 };
 
 const ScaledFontWithStatics = ScaledFont as typeof ScaledFont & ScaledFontStatic;
 
-const scaledFontCreate = (fontFace: FontFace, fontMatrix: Matrix, ctm: Matrix, options: FontOptions): ScaledFont => {
+const scaledFontCreate = (
+    fontFace: FontFace,
+    fontMatrix: CairoMatrix,
+    ctm: CairoMatrix,
+    options: FontOptions,
+): ScaledFont => {
     const ptr = call(
         LIB,
         "cairo_scaled_font_create",
@@ -68,7 +77,7 @@ const scaledFontCreate = (fontFace: FontFace, fontMatrix: Matrix, ctm: Matrix, o
     return getNativeObject(ptr, ScaledFont) as ScaledFont;
 };
 
-ScaledFontWithStatics.create = scaledFontCreate as unknown as typeof ScaledFontWithStatics.create;
+ScaledFontWithStatics.create = scaledFontCreate;
 
 ScaledFont.prototype.status = function (): Status {
     return call(
@@ -158,7 +167,7 @@ ScaledFont.prototype.getFontOptions = function (): FontOptions {
     return options;
 };
 
-function readMatrixVia(self: ScaledFont, fnName: string): Matrix {
+function readMatrixVia(self: ScaledFont, fnName: string): CairoMatrix {
     const { handle, obj } = allocMatrix();
     call(
         LIB,
@@ -172,15 +181,15 @@ function readMatrixVia(self: ScaledFont, fnName: string): Matrix {
     return obj;
 }
 
-ScaledFont.prototype.getFontMatrix = function (): Matrix {
+ScaledFont.prototype.getFontMatrix = function (): CairoMatrix {
     return readMatrixVia(this, "cairo_scaled_font_get_font_matrix");
 };
 
-ScaledFont.prototype.getCtm = function (): Matrix {
+ScaledFont.prototype.getCtm = function (): CairoMatrix {
     return readMatrixVia(this, "cairo_scaled_font_get_ctm");
 };
 
-ScaledFont.prototype.getScaleMatrix = function (): Matrix {
+ScaledFont.prototype.getScaleMatrix = function (): CairoMatrix {
     return readMatrixVia(this, "cairo_scaled_font_get_scale_matrix");
 };
 

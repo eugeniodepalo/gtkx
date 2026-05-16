@@ -11,7 +11,7 @@ import { ColumnViewColumnNode } from "./column-view-column.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import type { BoundItem } from "./internal/bound-item.js";
-import { connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
+import { asLifecycleItem, connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { widgetIdOf } from "./internal/widget-id.js";
 import { SlotNode } from "./slot.js";
@@ -242,7 +242,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const isTree = this.isTreeMode();
 
         this.factory.connect("setup", (obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
+            const listItem = asLifecycleItem<Gtk.ListItem>(obj);
 
             if (isTree) {
                 const expander = new Gtk.TreeExpander();
@@ -264,12 +264,12 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         this.factory.connect("bind", (obj: GObject.Object) => {
             if (this.disposed) return;
-            const listItem = obj as unknown as Gtk.ListItem;
+            const listItem = asLifecycleItem<Gtk.ListItem>(obj);
             const position = listItem.getPosition();
 
             if (isTree) {
                 const expander = this.treeExpanders.get(listItem);
-                const row = (listItem as unknown as { getItem(): GObject.Object | null }).getItem() as Gtk.TreeListRow;
+                const row = listItem.getItem() as Gtk.TreeListRow;
                 if (expander) {
                     expander.setListRow(row);
                     this.applyEstimatedItemSize(expander);
@@ -290,7 +290,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         this.factory.connect("unbind", (obj: GObject.Object) => {
             if (this.disposed) return;
-            const listItem = obj as unknown as Gtk.ListItem;
+            const listItem = asLifecycleItem<Gtk.ListItem>(obj);
 
             if (isTree) {
                 const expander = this.treeExpanders.get(listItem);
@@ -307,7 +307,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         this.factory.connect("teardown", (obj: GObject.Object) => {
             if (this.disposed) return;
-            const listItem = obj as unknown as Gtk.ListItem;
+            const listItem = asLifecycleItem<Gtk.ListItem>(obj);
 
             if (isTree) {
                 const expander = this.treeExpanders.get(listItem);
@@ -593,7 +593,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         if (!this.sectionStore) {
             this.sectionStore = Gio.ListStore.new(getClassGType(Gtk.StringList));
-            this.flattenModel = new Gtk.FlattenListModel({ model: this.sectionStore as unknown as Gio.ListModel });
+            this.flattenModel = new Gtk.FlattenListModel({ model: this.sectionStore });
 
             this.assignBaseModelToSelection(this.flattenModel);
 
@@ -616,7 +616,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                 const sectionModel = new Gtk.StringList();
                 resizeStringList(sectionModel, itemCount);
                 this.sectionModels.push(sectionModel);
-                this.sectionStore.append(sectionModel as unknown as GObject.Object);
+                this.sectionStore.append(sectionModel);
             } else {
                 const existing = this.sectionModels[i];
                 if (existing) resizeStringList(existing, itemCount);

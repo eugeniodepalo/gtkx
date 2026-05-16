@@ -35,11 +35,13 @@ export class TextSegmentNode extends BufferOffsetNode<TextSegmentProps, TextSegm
     }
 }
 
+const hasCallableMember = (node: Node, name: keyof TextContentParent): boolean =>
+    name in node && typeof Reflect.get(node, name) === "function";
+
 export function isTextContentParent(node: Node): node is TextSegmentParent {
-    const candidate = node as unknown as TextContentParent;
     return (
-        typeof candidate.onChildInserted === "function" &&
-        typeof candidate.onChildRemoved === "function" &&
-        typeof candidate.onChildTextChanged === "function"
+        hasCallableMember(node, "onChildInserted") &&
+        hasCallableMember(node, "onChildRemoved") &&
+        hasCallableMember(node, "onChildTextChanged")
     );
 }

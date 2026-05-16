@@ -1,4 +1,5 @@
 import type { Type as FfiType, NativeHandle } from "@gtkx/native";
+import type * as GLib from "../generated/glib/glib.js";
 import type { Object as GObject, GType } from "../generated/gobject/gobject.js";
 import { typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
 import { gtypeFromFfi } from "../gtype.js";
@@ -168,7 +169,7 @@ declare module "../generated/gobject/gobject.js" {
          * Creates a GValue initialized with a GVariant.
          * @param value - The GVariant instance
          */
-        function newFromVariant(value: object): Value;
+        function newFromVariant(value: GLib.Variant): Value;
         /**
          * Creates a GValue initialized with an enum value.
          * @param gtype - The GType of the enum
@@ -221,7 +222,7 @@ Value.prototype.holds = function (gtype: GType): boolean {
     return this.getType() === gtype;
 };
 
-const getBoxedImpl = function <T extends object>(
+Value.prototype.getBoxed = function getBoxed<T extends object>(
     this: Value,
     targetType: NativeClass<T>,
     targetGType: GType,
@@ -239,7 +240,6 @@ const getBoxedImpl = function <T extends object>(
     if (ptr === null) return null;
     return getNativeObject(ptr as NativeHandle, targetType);
 };
-Value.prototype.getBoxed = getBoxedImpl as unknown as Value["getBoxed"];
 
 Value.prototype.getStrv = function (): string[] {
     return (g_value_get_boxed_strv(getHandle(this)) as string[] | null) ?? [];
@@ -325,7 +325,7 @@ type ValueStatic = {
     newFromObject(value: GObject | null): Value;
     newFromBoxed(value: object, gtype: GType): Value;
     newFromStrv(value: string[]): Value;
-    newFromVariant(value: object): Value;
+    newFromVariant(value: GLib.Variant): Value;
     newFromEnum(gtype: GType, value: number): Value;
     newFromFlags(gtype: GType, value: number): Value;
     newFrom(ffiType: FfiType, value: unknown): Value;

@@ -1,5 +1,6 @@
 import { type Type as FfiType, getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { GObjectPropMeta } from "../construction-meta.js";
+import type * as GLib from "../generated/glib/glib.js";
 import type { Object as GObject, GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { typeFromName, typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
 import { G_TYPE_INVALID, gtypeFromFfi } from "../gtype.js";
@@ -125,8 +126,8 @@ export function newFromStrv(value: string[]): Value {
 }
 
 /** Creates a `GValue` initialized with a `GVariant`. */
-export function newFromVariant(value: object): Value {
-    return initValue(Type.VARIANT, (v) => v.setVariant(value as unknown as Parameters<Value["setVariant"]>[0]));
+export function newFromVariant(value: GLib.Variant): Value {
+    return initValue(Type.VARIANT, (v) => v.setVariant(value));
 }
 
 /** Creates a `GValue` initialized with an enum payload of the given `GType`. */
@@ -225,7 +226,7 @@ export function newFrom(ffiType: FfiType, value: unknown): Value {
 
         case "fundamental":
             if (ffiType.refFn === "g_variant_ref_sink") {
-                return newFromVariant(value as NativeObject);
+                return newFromVariant(value as GLib.Variant);
             }
             return newFromBoxed(value as NativeObject, resolveBoxedGType(ffiType));
 
@@ -283,7 +284,7 @@ function valueFromFundamentalFactory(gtype: GType, fundamental: GType, value: un
     if (fundamental === Type.ENUM) return newFromEnum(gtype, value as number);
     if (fundamental === Type.FLAGS) return newFromFlags(gtype, value as number);
     if (fundamental === Type.OBJECT) return newFromObject(value as GObject | null);
-    if (fundamental === Type.VARIANT) return newFromVariant(value as NativeObject);
+    if (fundamental === Type.VARIANT) return newFromVariant(value as GLib.Variant);
     return null;
 }
 
