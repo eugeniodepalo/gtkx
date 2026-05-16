@@ -1,7 +1,4 @@
 import { stop as nativeStop } from "@gtkx/native";
-import { init as initAdwaita } from "./generated/adw/adw.js";
-import { init as initGtk } from "./generated/gtk/gtk.js";
-import { finalize as finalizeGtkSource, init as initGtkSource } from "./generated/gtksource/gtksource.js";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
@@ -25,18 +22,19 @@ const keepAlive = (): void => {
 export const isStarted = (): boolean => !stopped;
 
 /**
- * Resolves once the GTK runtime has shut down.
+ * Resolves when the GTK runtime begins shutting down.
  *
- * The returned promise settles exactly once, after {@link stop} has quit the
- * `GLib` main loop. Useful for releasing process-level resources that outlive
- * the GTK runtime, such as a dev server or a socket connection.
+ * The returned promise settles exactly once, when {@link stop} is called and
+ * before native dispatch is torn down. Generated namespace modules register
+ * their library finalizers on it; application code may also use it to release
+ * resources tied to the runtime's lifetime, such as a dev server.
  *
  * @example
  * ```tsx
  * import { whenStopped } from "@gtkx/ffi";
  *
  * whenStopped().then(() => {
- *   console.log("Runtime stopped");
+ *   console.log("Runtime stopping");
  * });
  * ```
  *
@@ -47,20 +45,19 @@ export const whenStopped = (): Promise<void> => stoppedPromise;
 /**
  * Shuts down the GTK runtime.
  *
- * Finalizes extension libraries, quits the `GLib` main loop, resolves the
- * {@link whenStopped} promise, and clears the keep-alive timer so the Node.js
- * process can exit cleanly. Subsequent calls are no-ops. Once stopped, no
- * further FFI calls may be made.
+ * Resolves the {@link whenStopped} promise so registered library finalizers
+ * run, awaits them, then stops native dispatch and clears the keep-alive timer
+ * so the Node.js process can exit cleanly. Subsequent calls are no-ops. Once
+ * stopped, no further FFI calls may be made.
  *
  * @see {@link whenStopped}
  */
-export const stop = (): void => {
+export const stop = async (): Promise<void> => {
     if (stopped) return;
     stopped = true;
 
-    try {
-        finalizeGtkSource();
-    } catch {}
+    resolveStopped();
+    await stoppedPromise;
 
     nativeStop();
 
@@ -68,14 +65,6 @@ export const stop = (): void => {
         clearTimeout(keepAliveTimeout);
         keepAliveTimeout = null;
     }
-
-    resolveStopped();
 };
 
 keepAlive();
-initGtk();
-
-try {
-    initAdwaita();
-    initGtkSource();
-} catch {}

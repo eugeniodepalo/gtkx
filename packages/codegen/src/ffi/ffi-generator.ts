@@ -12,7 +12,7 @@ import { CodegenMetadata } from "../core/codegen-metadata.js";
 import type { GeneratedFile } from "../core/generated-file-set.js";
 import type { FfiGeneratorOptions } from "../core/generator-types.js";
 import { FfiMapper } from "../core/type-system/ffi-mapper.js";
-import { normalizeClassName, toPascalCase } from "../core/utils/naming.js";
+import { normalizeClassName, toCamelCase, toPascalCase, toValidExportName } from "../core/utils/naming.js";
 import { splitQualifiedName } from "../core/utils/qualified-name.js";
 import { isClassVtable, shouldGenerateRecord } from "../core/utils/record-filter.js";
 import type { GirClass, GirNamespace, GirRepository } from "../gir/index.js";
@@ -145,11 +145,43 @@ export class FfiGenerator {
         }
 
         const path = `${this.namespaceDir}/${this.namespaceDir}.js`;
-        const augmentation = getRuntimeAugmentation(this.options.namespace);
-        const content = augmentation ? `${stringify(file)}\n${augmentation}\n` : stringify(file);
+        const trailer = [getRuntimeAugmentation(this.options.namespace), this.namespaceBootstrap(namespace, file)]
+            .filter((part) => part.length > 0)
+            .join("\n");
+        const content = trailer ? `${stringify(file)}\n${trailer}\n` : stringify(file);
         const files: GeneratedFile[] = [{ path, content }];
 
         return { files, metadata: this.metadata };
+    }
+
+    /**
+     * Builds the namespace's self-bootstrap statements: a call to its module
+     * initializer and a teardown registration for its finalizer.
+     *
+     * GTK-style libraries expose zero-argument top-level `init` and `finalize`
+     * functions (`gtk_init`, `gtk_source_finalize`, ...). Emitting `init()`
+     * makes importing the namespace initialize its runtime; registering
+     * `finalize` on {@link whenStopped} runs it during shutdown — both with no
+     * separate bootstrap step.
+     *
+     * @param namespace - The namespace being generated.
+     * @param file - The file builder, used to add the `whenStopped` import.
+     * @returns The trailing statements, or an empty string when none apply.
+     */
+    private namespaceBootstrap(namespace: GirNamespace, file: FileBuilder): string {
+        let initCall = "";
+        let finalizeCall = "";
+        for (const func of namespace.functions.values()) {
+            if (func.parameters.length > 0) continue;
+            const name = toValidExportName(toCamelCase(func.name));
+            if (func.name === "init") {
+                initCall = `${name}();`;
+            } else if (func.name === "finalize") {
+                file.addImport("../../lifecycle.js", ["whenStopped"]);
+                finalizeCall = `whenStopped().then(${name});`;
+            }
+        }
+        return [initCall, finalizeCall].filter((line) => line.length > 0).join("\n");
     }
 
     private generateRecords(namespace: GirNamespace, generatorOptions: FfiGeneratorOptions, file: FileBuilder): void {
