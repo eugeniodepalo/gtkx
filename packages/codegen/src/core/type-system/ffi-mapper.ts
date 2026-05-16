@@ -446,8 +446,13 @@ export class FfiMapper {
         const ns = this.repo.getNamespace(resolved.namespace);
         if (!ns) return false;
         const record = ns.records.get(resolved.name);
-        if (!record) return false;
-        return canAllocateRecord(record);
+        if (record) return canAllocateRecord(record);
+
+        const aliasTarget = ns.aliases.get(resolved.name)?.targetType.name;
+        if (typeof aliasTarget === "string" && aliasTarget !== typeName) {
+            return this.canAllocateLocally(aliasTarget);
+        }
+        return false;
     }
 
     /**
