@@ -98,15 +98,27 @@ export class ConstructorBuilder {
      * generic constructor uses the registered metadata to allocate.
      */
     build(): { metaPlan: ConstructionMetaPlan; factoryMethods: MethodStructure[] } {
-        const supportedConstructors = this.methodBody.selectConstructors(this.cls.constructors).supported;
+        const { supported, unsupported } = this.methodBody.selectConstructors(this.cls.constructors);
 
         const settableProps = this.collectSettableProps();
         const metaPlan = this.buildConstructionMetaPlan(settableProps);
         const factoryMethods: MethodStructure[] = [];
 
-        for (const ctor of supportedConstructors) {
+        for (const ctor of supported) {
             if (this.conflictsWithParentFactoryMethod(ctor)) continue;
             factoryMethods.push(this.buildStaticFactoryMethodStructure(ctor));
+        }
+        for (const ctor of unsupported) {
+            if (this.conflictsWithParentFactoryMethod(ctor)) continue;
+            factoryMethods.push(
+                this.methodBody.buildStubStructure(
+                    toCamelCase(ctor.name),
+                    `${this.options.namespace}.${this.cls.name}.${ctor.name}`,
+                    ctor.doc,
+                    this.options.namespace,
+                    true,
+                ),
+            );
         }
 
         return { metaPlan, factoryMethods };

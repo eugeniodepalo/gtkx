@@ -193,8 +193,10 @@ export type MethodStructure = {
  * Result of constructor selection analysis.
  */
 export type ConstructorSelection = {
-    /** Constructors that don't have unsupported callbacks */
+    /** Constructors whose every parameter marshals safely. */
     supported: GirConstructor[];
+    /** Constructors with at least one parameter the runtime cannot marshal. */
+    unsupported: GirConstructor[];
     /** The main constructor (first non-vararg supported constructor) */
     main: GirConstructor | undefined;
 };
@@ -289,9 +291,18 @@ export class MethodBodyWriter {
      * Selects supported constructors and identifies the main constructor.
      */
     selectConstructors(constructors: readonly GirConstructor[]): ConstructorSelection {
-        const supported = constructors.filter((c) => !c.shadowedBy && !this.hasUnsupportedCallbacks(c.parameters));
+        const candidates = constructors.filter((c) => !c.shadowedBy);
+        const supported: GirConstructor[] = [];
+        const unsupported: GirConstructor[] = [];
+        for (const ctor of candidates) {
+            if (this.hasUnsupportedCallbacks(ctor.parameters)) {
+                unsupported.push(ctor);
+            } else {
+                supported.push(ctor);
+            }
+        }
         const main = supported.find((c) => !c.parameters.some(isVararg));
-        return { supported, main };
+        return { supported, unsupported, main };
     }
 
     /**
