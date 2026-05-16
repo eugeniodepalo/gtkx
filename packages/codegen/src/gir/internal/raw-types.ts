@@ -34,6 +34,7 @@ export type RawClass = {
     functions: RawFunction[];
     properties: RawProperty[];
     signals: RawSignal[];
+    fieldNames: string[];
     doc?: string;
 };
 
@@ -46,6 +47,7 @@ export type RawInterface = {
     methods: RawMethod[];
     properties: RawProperty[];
     signals: RawSignal[];
+    fieldNames: string[];
     doc?: string;
 };
 

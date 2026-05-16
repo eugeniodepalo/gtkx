@@ -142,6 +142,7 @@ function adaptClasses(classes: GirClassElement[]): RawClass[] {
             functions: adaptFunctions(cls.function ?? []),
             properties: adaptProperties(cls.property ?? []),
             signals: adaptSignals(cls["glib:signal"] ?? []),
+            fieldNames: adaptFieldNames(cls.field ?? []),
             doc: extractDoc(cls),
         };
     });
@@ -159,9 +160,21 @@ function adaptInterfaces(interfaces: GirInterfaceElement[]): RawInterface[] {
             methods: adaptMethods(iface.method ?? []),
             properties: adaptProperties(iface.property ?? []),
             signals: adaptSignals(iface["glib:signal"] ?? []),
+            fieldNames: adaptFieldNames(iface.field ?? []),
             doc: extractDoc(iface),
         };
     });
+}
+
+/**
+ * Extracts the declared `<field>` element names of a class or interface.
+ *
+ * Only the names are kept: the type pipeline uses them to strip the
+ * instance-struct field declarations that ts-for-gir emits into GObject
+ * class and interface bodies, which node-gtk's runtime never exposes.
+ */
+function adaptFieldNames(fields: GirFieldElement[]): string[] {
+    return fields.map((field) => attrsOf(field).name ?? "").filter((name) => name.length > 0);
 }
 
 function adaptNames(elements: ReadonlyArray<unknown> | undefined): string[] {

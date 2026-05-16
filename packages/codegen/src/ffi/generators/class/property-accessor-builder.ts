@@ -54,35 +54,59 @@ export type PropertyAccessorEmission = {
     readonly installer: (writer: Writer) => void;
 };
 
+/**
+ * Source for an interface property-accessor pass: the resolved interface name
+ * used as the `defineProperty` target and the flattened property list (the
+ * interface's own properties plus those inherited from prerequisite classes
+ * and interfaces).
+ */
+export type InterfacePropertySource = {
+    /** Interface name targeted by the emitted `defineProperty` installer. */
+    readonly ownerName: string;
+    /** Properties to install, deduplicated and flattened across prerequisites. */
+    readonly properties: readonly GirProperty[];
+    /** Method names already declared on the interface, in camelCase. */
+    readonly existingMethodNames: ReadonlySet<string>;
+};
+
 export class PropertyAccessorBuilder {
     private readonly existingMethodNames: Set<string>;
     private readonly parentMethodNames: ReadonlySet<string>;
 
     constructor(
-        private readonly cls: GirClass,
+        private readonly cls: GirClass | null,
         private readonly ffiMapper: FfiMapper,
         private readonly imports: ImportCollector,
         private readonly repository: GirRepository,
         private readonly options: FfiGeneratorOptions,
         private readonly selfNames: ReadonlySet<string> = new Set(),
+        private readonly interfaceSource: InterfacePropertySource | null = null,
     ) {
-        this.parentMethodNames = collectParentMethodNames(cls, repository);
-        this.existingMethodNames = collectOwnAndInterfaceMethodNames(cls, repository, toCamelCase);
-        for (const name of this.parentMethodNames) {
-            this.existingMethodNames.add(toCamelCase(name));
+        if (cls !== null) {
+            this.parentMethodNames = collectParentMethodNames(cls, repository);
+            this.existingMethodNames = collectOwnAndInterfaceMethodNames(cls, repository, toCamelCase);
+            for (const name of this.parentMethodNames) {
+                this.existingMethodNames.add(toCamelCase(name));
+            }
+        } else {
+            this.parentMethodNames = new Set();
+            this.existingMethodNames = new Set(interfaceSource?.existingMethodNames ?? []);
         }
     }
 
     buildAccessors(): PropertyAccessorEmission[] {
-        const directProps = collectDirectMembers({
-            cls: this.cls,
-            repo: this.repository,
-            getClassMembers: (c) => c.properties,
-            getInterfaceMembers: (i) => i.properties,
-            getParentNames: collectParentPropertyNames,
-            transformName: toCamelCase,
-            isHidden: () => false,
-        });
+        const directProps =
+            this.cls !== null
+                ? collectDirectMembers({
+                      cls: this.cls,
+                      repo: this.repository,
+                      getClassMembers: (c) => c.properties,
+                      getInterfaceMembers: (i) => i.properties,
+                      getParentNames: collectParentPropertyNames,
+                      transformName: toCamelCase,
+                      isHidden: () => false,
+                  })
+                : (this.interfaceSource?.properties ?? []);
 
         return directProps
             .map((prop) => this.buildAccessor(prop))
@@ -122,7 +146,8 @@ export class PropertyAccessorBuilder {
             doc: docs?.[0]?.description,
         });
 
-        const className = normalizeClassName(this.cls.name);
+        const ownerName = this.cls !== null ? this.cls.name : (this.interfaceSource?.ownerName ?? "");
+        const className = normalizeClassName(ownerName);
         const resolvedSetType = setType && setType !== returnType ? setType : returnType;
         const installer = this.buildInstaller({
             className,
@@ -145,8 +170,9 @@ export class PropertyAccessorBuilder {
         setBody?: (writer: Writer) => void;
     }): (writer: Writer) => void {
         const { className, propertyName, getBody, setBody } = opts;
+        const objectRef = this.options.namespace === "GObject" ? "globalThis.Object" : "Object";
         return (writer) => {
-            writer.writeLine(`globalThis.Object.defineProperty(${className}.prototype, "${propertyName}", {`);
+            writer.writeLine(`${objectRef}.defineProperty(${className}.prototype, "${propertyName}", {`);
             writer.withIndent(() => {
                 writer.writeLine("get() {");
                 writer.withIndent(() => {
@@ -194,6 +220,7 @@ export class PropertyAccessorBuilder {
     }
 
     private resolveOwnMethod(accessorId: string): GirMethod | null {
+        if (this.cls === null) return null;
         return this.cls.getMethodByCIdentifier(accessorId) ?? this.cls.getMethod(accessorId) ?? null;
     }
 

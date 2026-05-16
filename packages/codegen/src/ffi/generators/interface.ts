@@ -27,7 +27,8 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../core/writers/index.js";
-import type { GirInterface, GirMethod, GirRepository } from "../../gir/index.js";
+import type { GirInterface, GirMethod, GirProperty, GirRepository } from "../../gir/index.js";
+import { PropertyAccessorBuilder, type PropertyAccessorEmission } from "./class/property-accessor-builder.js";
 
 /**
  * Generates interface classes.
@@ -37,7 +38,7 @@ export class InterfaceGenerator {
     private readonly methodRenames = new Map<string, string>();
 
     constructor(
-        ffiMapper: FfiMapper,
+        private readonly ffiMapper: FfiMapper,
         private readonly file: FileBuilder,
         private readonly repository: GirRepository,
         private readonly options: FfiGeneratorOptions,
@@ -89,7 +90,19 @@ export class InterfaceGenerator {
             addMethodStructure(cls, struct);
         }
 
+        const accessorEmissions = this.buildPropertyAccessors(iface, interfaceName, methodStructures);
+        for (const { property } of accessorEmissions) {
+            cls.addProperty(property);
+        }
+
         this.file.add(cls);
+
+        for (const { installer } of accessorEmissions) {
+            this.file.addRawBlock((writer) => {
+                writer.writeLine("");
+                installer(writer);
+            });
+        }
 
         if (iface.glibGetType) {
             this.file.descriptors.register({
@@ -242,5 +255,80 @@ export class InterfaceGenerator {
         }
 
         return methods;
+    }
+
+    private buildPropertyAccessors(
+        iface: GirInterface,
+        interfaceName: string,
+        methodStructures: readonly MethodStructure[],
+    ): PropertyAccessorEmission[] {
+        const properties = this.collectInterfaceProperties(iface);
+        if (properties.length === 0) return [];
+
+        const existingMethodNames = new Set(methodStructures.map((struct) => struct.name));
+        const builder = new PropertyAccessorBuilder(
+            null,
+            this.ffiMapper,
+            this.file,
+            this.repository,
+            this.options,
+            new Set([interfaceName]),
+            { ownerName: interfaceName, properties, existingMethodNames },
+        );
+        return builder.buildAccessors();
+    }
+
+    private collectInterfaceProperties(iface: GirInterface): GirProperty[] {
+        const properties: GirProperty[] = [];
+        const seenNames = new Set<string>();
+        const visited = new Set<string>();
+
+        const addProperties = (ownerProperties: readonly GirProperty[]) => {
+            for (const prop of ownerProperties) {
+                if (seenNames.has(prop.name)) continue;
+                seenNames.add(prop.name);
+                properties.push(prop);
+            }
+        };
+
+        const collectFromClass = (className: string) => {
+            if (visited.has(className)) return;
+            visited.add(className);
+
+            const cls = this.repository.resolveClass(className);
+            if (!cls) return;
+
+            for (const ancestorName of cls.getInheritanceChain()) {
+                const ancestor = this.repository.resolveClass(ancestorName);
+                if (!ancestor) continue;
+                addProperties(ancestor.properties);
+                for (const implemented of ancestor.getAllImplementedInterfaces()) {
+                    collectFromPrerequisite(implemented);
+                }
+            }
+        };
+
+        const collectFromPrerequisite = (prereqName: string) => {
+            if (visited.has(prereqName)) return;
+
+            const prereq = this.repository.resolveInterface(prereqName);
+            if (!prereq) {
+                collectFromClass(prereqName);
+                return;
+            }
+            visited.add(prereqName);
+
+            for (const prereqPrereq of prereq.prerequisites) {
+                collectFromPrerequisite(prereqPrereq);
+            }
+            addProperties(prereq.properties);
+        };
+
+        addProperties(iface.properties);
+        for (const prereqName of iface.prerequisites) {
+            collectFromPrerequisite(prereqName);
+        }
+
+        return properties;
     }
 }

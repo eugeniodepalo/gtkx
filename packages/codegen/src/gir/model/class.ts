@@ -27,6 +27,8 @@ export class GirClass {
     readonly staticFunctions: GirFunction[];
     readonly properties: GirProperty[];
     readonly signals: GirSignal[];
+    /** Declared `<field>` element names of the class instance struct. */
+    readonly fieldNames: string[];
     readonly doc?: string;
 
     private readonly repo: RepositoryLike;
@@ -50,6 +52,7 @@ export class GirClass {
             staticFunctions: GirFunction[];
             properties: GirProperty[];
             signals: GirSignal[];
+            fieldNames: string[];
             doc?: string;
         },
         repo: RepositoryLike,
@@ -71,6 +74,7 @@ export class GirClass {
         this.staticFunctions = data.staticFunctions;
         this.properties = data.properties;
         this.signals = data.signals;
+        this.fieldNames = data.fieldNames;
         this.doc = data.doc;
         this.repo = repo;
     }

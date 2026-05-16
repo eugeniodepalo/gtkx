@@ -3,9 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GenerationHandler } from "@ts-for-gir/cli";
 import { GeneratorType } from "@ts-for-gir/generator-base";
+import { toCamelCase, toPascalCase } from "../../core/utils/naming.js";
 import { isClassVtable } from "../../core/utils/record-filter.js";
 import type { GirRepository, LoadedGir } from "../../gir/index.js";
-import { type EnumValueMap, type GtypeStructMap, loadAndRewrite } from "./rewrite.js";
+import { type EnumValueMap, type FieldNameMap, type GtypeStructMap, loadAndRewrite } from "./rewrite.js";
 
 /**
  * Builds the real enum member values for every namespace from the loaded GIR
@@ -64,6 +65,34 @@ const collectGtypeStructNames = (repository: GirRepository): GtypeStructMap => {
 };
 
 /**
+ * Collects the camelCased instance-struct field names of every class and
+ * interface per namespace, keyed as {@link FieldNameMap} expects.
+ *
+ * The type pipeline uses these to strip the field declarations ts-for-gir
+ * emits into GObject class and interface bodies, which node-gtk's runtime
+ * never exposes.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Field names keyed lowercase namespace identifier then owner name.
+ */
+const collectClassFieldNames = (repository: GirRepository): FieldNameMap => {
+    const namespaces = new Map<string, Map<string, Set<string>>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const owners = new Map<string, Set<string>>();
+        for (const cls of namespace.classes.values()) {
+            owners.set(toPascalCase(cls.name), new Set(cls.fieldNames.map(toCamelCase)));
+        }
+        for (const iface of namespace.interfaces.values()) {
+            owners.set(toPascalCase(iface.name), new Set(iface.fieldNames.map(toCamelCase)));
+        }
+        namespaces.set(namespaceName.toLowerCase(), owners);
+    }
+    return namespaces;
+};
+
+/**
  * Generates the per-namespace `.d.ts` type bindings from already-loaded GIR
  * modules and writes them under `outDir`.
  *
@@ -94,6 +123,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             rawFilesByName,
             collectEnumValues(loaded.repository),
             collectGtypeStructNames(loaded.repository),
+            collectClassFieldNames(loaded.repository),
         );
 
         await mkdir(outDir, { recursive: true });

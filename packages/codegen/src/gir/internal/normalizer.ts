@@ -53,6 +53,7 @@ export type GirClassData = {
     staticFunctions: GirFunction[];
     properties: GirProperty[];
     signals: GirSignal[];
+    fieldNames: string[];
     doc?: string;
 };
 
@@ -69,6 +70,7 @@ export type GirInterfaceData = {
     methods: GirMethod[];
     properties: GirProperty[];
     signals: GirSignal[];
+    fieldNames: string[];
     doc?: string;
 };
 
@@ -298,6 +300,7 @@ export class GirNormalizer {
             staticFunctions: raw.functions.map((f) => this.normalizeFunction(f, currentNamespace)),
             properties: raw.properties.map((p) => this.normalizeProperty(p, currentNamespace)),
             signals: raw.signals.map((s) => this.normalizeSignal(s, currentNamespace)),
+            fieldNames: raw.fieldNames,
             doc: raw.doc,
         };
     }
@@ -313,6 +316,7 @@ export class GirNormalizer {
             methods: raw.methods.map((m) => this.normalizeMethod(m, currentNamespace)),
             properties: raw.properties.map((p) => this.normalizeProperty(p, currentNamespace)),
             signals: raw.signals.map((s) => this.normalizeSignal(s, currentNamespace)),
+            fieldNames: raw.fieldNames,
             doc: raw.doc,
         };
     }

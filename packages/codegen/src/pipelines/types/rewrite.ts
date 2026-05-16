@@ -507,6 +507,69 @@ const stripMethodsFromBody = (body: string, methodNames: ReadonlySet<string>): s
     return result;
 };
 
+/**
+ * Field-name sets keyed by class or interface name for one namespace.
+ */
+export type NamespaceFieldNames = ReadonlyMap<string, ReadonlySet<string>>;
+
+/**
+ * Class/interface field-name sets for every namespace, keyed lowercase
+ * namespace identifier.
+ */
+export type FieldNameMap = ReadonlyMap<string, NamespaceFieldNames>;
+
+/**
+ * Removes the instance-struct field declarations that ts-for-gir emits into
+ * GObject class and interface bodies.
+ *
+ * ts-for-gir emits each `<field>` element of a class or interface (the
+ * embedded `parentInstance` parent struct, private `priv` pointers, and any
+ * public layout fields) as a bare `<name>: <type>` member. node-gtk's
+ * `makeObject` enumerates only properties, methods, and constants — never
+ * `object_info_get_field` — so it never exposes instance-struct fields. The
+ * gtkx runtime matches that surface. Boxed-struct fields are left intact
+ * because node-gtk's `makeStruct` does expose them.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @param fieldNamesByOwner - Field names keyed by class/interface name.
+ * @returns The source with instance-struct field declarations removed.
+ */
+export function stripClassFields(source: string, fieldNamesByOwner?: NamespaceFieldNames): string {
+    if (fieldNamesByOwner === undefined || fieldNamesByOwner.size === 0) return source;
+
+    let result = source;
+    for (const [owner, fieldNames] of fieldNamesByOwner) {
+        if (fieldNames.size === 0) continue;
+        for (const blockKeyword of ["interface", "class"]) {
+            const header = new RegExp(`(^|\\n)[ \\t]*export[ \\t]+${blockKeyword}[ \\t]+${owner}\\b[^{]*\\{`);
+            const headerMatch = result.match(header);
+            if (headerMatch === null || headerMatch.index === undefined) continue;
+            const bodyStart = headerMatch.index + headerMatch[0].length;
+            const bodyEnd = findMatchingBrace(result, bodyStart);
+            if (bodyEnd < 0) continue;
+            const body = result.slice(bodyStart, bodyEnd);
+            result = result.slice(0, bodyStart) + stripFieldsFromBody(body, fieldNames) + result.slice(bodyEnd);
+        }
+    }
+    return result;
+}
+
+const stripFieldsFromBody = (body: string, fieldNames: ReadonlySet<string>): string => {
+    let result = body;
+    for (const name of fieldNames) {
+        const memberLine = new RegExp(
+            `(^|\\n)([ \\t]*)(?:\\/\\*\\*[\\s\\S]*?\\*\\/[ \\t\\n]*)?${name}(\\?)?:[ \\t][^\\n]*`,
+        );
+        const match = result.match(memberLine);
+        if (match === null || match.index === undefined) continue;
+        const start = match.index + (match[1] ?? "").length;
+        let end = match.index + match[0].length;
+        if (result[end] === "\n") end += 1;
+        result = result.slice(0, start) + result.slice(end);
+    }
+    return result;
+};
+
 const GTYPE_STRUCT_CLASS_PATTERN = /(^|\n)([ \t]*)export[ \t]+(?:abstract[ \t]+)?class[ \t]+(\w+)\b[^{]*\{/g;
 
 /**
@@ -690,6 +753,7 @@ export function loadAndRewrite(
     rawFilesByName: Map<string, string>,
     enumValues?: EnumValueMap,
     gtypeStructNames?: GtypeStructMap,
+    classFieldNames?: FieldNameMap,
 ): RewriteResult[] {
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
@@ -698,6 +762,7 @@ export function loadAndRewrite(
         let source = unwrapOuterNamespace(contents);
         source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace));
         source = stripGtypeStructClasses(source, gtypeStructNames?.get(namespace));
+        source = stripClassFields(source, classFieldNames?.get(namespace));
         source = stripVirtualMethods(source);
         source = stripSuppressedMethods(source, SUPPRESSED_METHOD_NAMES_BY_NAMESPACE.get(namespace));
         source = relaxMultiReturnTuples(source);
