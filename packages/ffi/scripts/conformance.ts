@@ -32,12 +32,16 @@
  * the length and order of out/inout-parameter return tuples, `Promise` wrapping
  * of async methods, and void-versus-value returns.
  *
- * Two source transforms make that possible without a primitive-precise type
+ * Three source transforms make that possible without a primitive-precise type
  * model:
  *
  *  - The runtime `.js` is rewritten so a `return` of an array literal is typed
  *    as a fixed-length tuple (`/** @type {[any, any, …]} *\/`) instead of the
  *    `any[]` TypeScript otherwise infers, recovering out-parameter tuple arity.
+ *  - The runtime `.js` is also rewritten so a `return promisify(...)` is typed
+ *    as `Promise<any>`, since the `promisify` helper is imported from the
+ *    unresolved FFI runtime barrel and would otherwise infer as `any`,
+ *    erasing the `Promise` wrapping of async methods.
  *  - The contract `.d.ts` is normalized syntactically: primitives, `void`,
  *    `null`, `undefined`, tuples, array types, `Promise`, function signatures,
  *    and unions/intersections are kept, while every other type-reference
@@ -131,6 +135,59 @@ const tupleAnnotateArrayReturns = (source: string, fileName: string): string => 
                 });
                 edits.push({ start: node.expression.getEnd(), end: node.expression.getEnd(), text: ")" });
             }
+        }
+        ts.forEachChild(node, visit);
+    };
+
+    visit(sourceFile);
+    if (edits.length === 0) {
+        return source;
+    }
+
+    edits.sort((a, b) => b.start - a.start);
+    let result = source;
+    for (const edit of edits) {
+        result = result.slice(0, edit.start) + edit.text + result.slice(edit.end);
+    }
+    return result;
+};
+
+/**
+ * Rewrites a runtime `.js` so every `return` whose argument is a
+ * `promisify(...)` call is typed as `Promise<any>`.
+ *
+ * A GIO-style async wrapper delegates to the `promisify` runtime helper.
+ * That helper is imported from the FFI runtime barrel, which the conformance
+ * host leaves unresolved, so its call result infers as `any` — erasing the
+ * `Promise` wrapping the contract `.d.ts` declares for async methods.
+ * Annotating the call expression with a JSDoc `@type` cast restores the
+ * `Promise` shape, keeping async wrapping verified, while the resolved value
+ * stays `any` — bidirectionally assignable — since the marshaled FFI result
+ * is not statically typed, mirroring how array-literal returns collapse their
+ * elements to `any`.
+ *
+ * @param source - The runtime JavaScript source.
+ * @param fileName - Absolute path of the runtime file, used for parsing.
+ * @returns The source with `promisify` returns typed as `Promise<any>`.
+ */
+const promisifyAnnotateReturns = (source: string, fileName: string): string => {
+    const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS);
+    const edits: { start: number; end: number; text: string }[] = [];
+
+    const visit = (node: ts.Node): void => {
+        if (
+            ts.isReturnStatement(node) &&
+            node.expression !== undefined &&
+            ts.isCallExpression(node.expression) &&
+            ts.isIdentifier(node.expression.expression) &&
+            node.expression.expression.text === "promisify"
+        ) {
+            edits.push({
+                start: node.expression.getStart(sourceFile),
+                end: node.expression.getStart(sourceFile),
+                text: "/** @type {Promise<any>} */ (",
+            });
+            edits.push({ start: node.expression.getEnd(), end: node.expression.getEnd(), text: ")" });
         }
         ts.forEachChild(node, visit);
     };
@@ -475,7 +532,8 @@ const main = (): void => {
 
         const runtimePath = implJsPath(namespace);
         const runtime = readFileSync(runtimePath, "utf8");
-        virtualFiles.set(runtimePath, tupleAnnotateArrayReturns(runtime, runtimePath));
+        const annotatedRuntime = promisifyAnnotateReturns(tupleAnnotateArrayReturns(runtime, runtimePath), runtimePath);
+        virtualFiles.set(runtimePath, annotatedRuntime);
 
         const contractClasses = collectExportedClassNames(normalizedDeclaration, declarationPath, ts.ScriptKind.TS);
         const runtimeClasses = collectExportedClassNames(runtime, runtimePath, ts.ScriptKind.JS);
