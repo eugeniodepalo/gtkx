@@ -1,4 +1,5 @@
 import type { GirConstructor, GirFunction, GirMethod } from "./callables.js";
+import type { GirField } from "./field.js";
 import type { GirProperty } from "./property.js";
 import type { RepositoryLike } from "./repository-like.js";
 import type { GirSignal } from "./signal.js";
@@ -29,6 +30,8 @@ export class GirClass {
     readonly signals: GirSignal[];
     /** Declared `<field>` element names of the class instance struct. */
     readonly fieldNames: string[];
+    /** Declared `<field>` elements of the class instance struct. */
+    readonly fields: GirField[];
     /** Declared `<virtual-method>` element names. */
     readonly virtualMethodNames: string[];
     readonly doc?: string;
@@ -55,6 +58,7 @@ export class GirClass {
             properties: GirProperty[];
             signals: GirSignal[];
             fieldNames: string[];
+            fields: GirField[];
             virtualMethodNames: string[];
             doc?: string;
         },
@@ -78,6 +82,7 @@ export class GirClass {
         this.properties = data.properties;
         this.signals = data.signals;
         this.fieldNames = data.fieldNames;
+        this.fields = data.fields;
         this.virtualMethodNames = data.virtualMethodNames;
         this.doc = data.doc;
         this.repo = repo;

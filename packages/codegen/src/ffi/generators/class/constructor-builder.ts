@@ -112,7 +112,7 @@ export class ConstructorBuilder {
             if (this.conflictsWithParentFactoryMethod(ctor)) continue;
             factoryMethods.push(
                 this.methodBody.buildStubStructure(
-                    toCamelCase(ctor.name),
+                    toCamelCase(ctor.shadows ?? ctor.name),
                     `${this.options.namespace}.${this.cls.name}.${ctor.name}`,
                     ctor.doc,
                     this.options.namespace,
@@ -229,12 +229,12 @@ export class ConstructorBuilder {
     }
 
     private conflictsWithParentFactoryMethod(ctor: GirConstructor): boolean {
-        const methodName = toCamelCase(ctor.name);
+        const methodName = toCamelCase(ctor.shadows ?? ctor.name);
         return this.parentFactoryMethodNames.has(methodName);
     }
 
     private buildStaticFactoryMethodStructure(ctor: GirConstructor): MethodStructure {
-        const methodName = toCamelCase(ctor.name);
+        const methodName = toCamelCase(ctor.shadows ?? ctor.name);
         const shape = this.methodBody.buildShape(ctor.parameters, undefined, 0);
         const params = this.methodBody.buildSignatureParameters(shape, false);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);

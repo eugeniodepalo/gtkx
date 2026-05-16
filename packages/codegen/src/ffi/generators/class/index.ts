@@ -39,7 +39,9 @@ import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
 import { addMethodStructure, type MethodStructure } from "../../../core/writers/index.js";
 import type { GirClass, GirMethod, GirRepository } from "../../../gir/index.js";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
+import { ClassStructStaticBuilder } from "./class-struct-static-builder.js";
 import { ConstructorBuilder } from "./constructor-builder.js";
+import { ClassInstanceFieldBuilder } from "./instance-field-builder.js";
 import { MethodBuilder } from "./method-builder.js";
 import { PropertyAccessorBuilder } from "./property-accessor-builder.js";
 import { SignalBuilder } from "./signal-builder.js";
@@ -71,6 +73,8 @@ export class ClassGenerator {
     private readonly constructorBuilder: ConstructorBuilder;
     private readonly methodBuilder: MethodBuilder;
     private readonly staticBuilder: StaticFunctionBuilder;
+    private readonly classStructStaticBuilder: ClassStructStaticBuilder;
+    private readonly instanceFieldBuilder: ClassInstanceFieldBuilder;
     private readonly signalBuilder: SignalBuilder;
     private readonly propertyAccessorBuilder: PropertyAccessorBuilder;
     private readonly classMetaBuilder: ClassMetaBuilder;
@@ -89,6 +93,15 @@ export class ClassGenerator {
         this.constructorBuilder = new ConstructorBuilder(cls, ffiMapper, file, repository, options, selfNames);
         this.methodBuilder = new MethodBuilder(ffiMapper, file, this.methodRenames, options, selfNames);
         this.staticBuilder = new StaticFunctionBuilder(cls, ffiMapper, file, options, selfNames);
+        this.classStructStaticBuilder = new ClassStructStaticBuilder(
+            cls,
+            ffiMapper,
+            file,
+            repository,
+            options,
+            selfNames,
+        );
+        this.instanceFieldBuilder = new ClassInstanceFieldBuilder(cls);
         this.signalBuilder = new SignalBuilder(cls, ffiMapper, file, repository, options, selfNames);
         this.propertyAccessorBuilder = new PropertyAccessorBuilder(
             cls,
@@ -138,6 +151,7 @@ export class ClassGenerator {
         const allMethodStructures: MethodStructure[] = [
             ...factoryMethods,
             ...this.staticBuilder.buildStructures(),
+            ...this.classStructStaticBuilder.buildStructures(),
             ...this.methodBuilder.buildStructures(filteredClassMethods, selfTypeDescriptor),
             ...Array.from(interfaceMethodsByNamespace.values()).flatMap((methods) =>
                 this.methodBuilder.buildStructures(methods, selfTypeDescriptor),
@@ -152,6 +166,13 @@ export class ClassGenerator {
         const propertyEmissions = this.propertyAccessorBuilder.buildAccessors();
         for (const { accessor } of propertyEmissions) {
             cls.addAccessor(accessor);
+        }
+
+        const accessorNames = new Set(propertyEmissions.map(({ accessor }) => accessor.name));
+        for (const fieldAccessor of this.instanceFieldBuilder.buildAccessors()) {
+            if (!accessorNames.has(fieldAccessor.name)) {
+                cls.addAccessor(fieldAccessor);
+            }
         }
 
         this.file.add(cls);

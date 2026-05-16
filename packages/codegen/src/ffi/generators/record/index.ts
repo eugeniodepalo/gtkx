@@ -47,6 +47,12 @@ type RecordTypeMeta = {
 };
 
 /**
+ * GIR primitive type names whose array form (`gchar**`) marshals as a
+ * zero-terminated array of C strings.
+ */
+const STRING_ELEMENT_TYPE_NAMES: ReadonlySet<string> = new Set(["utf8", "filename"]);
+
+/**
  * A leaf field within an array element struct, addressed by an absolute byte
  * offset. Bitfield members additionally carry their bit position and width.
  */
@@ -74,12 +80,15 @@ export class RecordGenerator {
     private readonly methodBody: MethodBodyWriter;
     private selfNames: ReadonlySet<string> = new Set();
 
+    private readonly repo?: GirRepository;
+
     constructor(
         private readonly ffiMapper: FfiMapper,
         private readonly file: FileBuilder,
         private readonly options: FfiGeneratorOptions,
         repo?: GirRepository,
     ) {
+        this.repo = repo;
         this.fieldBuilder = new FieldBuilder(
             ffiMapper,
             file,
@@ -108,10 +117,19 @@ export class RecordGenerator {
 
         const methodStructures: MethodStructure[] = [];
 
+        const fieldMemberNames = new Set(
+            record.fields
+                .filter((field) => !field.private && field.readable !== false)
+                .map((field) => toValidMemberName(toCamelCase(field.name))),
+        );
+        const recordMethods = record.methods.filter(
+            (method) => !fieldMemberNames.has(toValidMemberName(toCamelCase(method.name))),
+        );
+
         methodStructures.push(...this.buildStaticFactoryMethodStructures(record, recordName));
         methodStructures.push(
             ...this.buildStaticFunctionStructures(record.staticFunctions, recordName, record.name),
-            ...this.buildMethodStructures(record.methods, {
+            ...this.buildMethodStructures(recordMethods, {
                 glibTypeName: record.glibTypeName,
                 glibGetType: record.glibGetType,
                 copyFunction: record.copyFunction,
@@ -123,7 +141,7 @@ export class RecordGenerator {
             addMethodStructure(cls, struct);
         }
 
-        this.generateFields(record.fields, record.methods, cls, record.isUnion);
+        this.generateFields(record.fields, recordMethods, cls, record.isUnion);
 
         this.file.add(cls);
 
@@ -294,14 +312,25 @@ export class RecordGenerator {
     }
 
     private buildStaticFactoryMethodStructures(record: GirRecord, recordName: string): MethodStructure[] {
-        const { supported: supportedConstructors } = this.methodBody.selectConstructors(record.constructors);
+        const { supported, unsupported } = this.methodBody.selectConstructors(record.constructors);
         const meta: RecordTypeMeta = {
             glibTypeName: record.glibTypeName,
             glibGetType: record.glibGetType,
             copyFunction: record.copyFunction,
             freeFunction: record.freeFunction,
         };
-        return supportedConstructors.map((ctor) => this.buildStaticFactoryMethodStructure(ctor, recordName, meta));
+        return [
+            ...supported.map((ctor) => this.buildStaticFactoryMethodStructure(ctor, recordName, meta)),
+            ...unsupported.map((ctor) =>
+                this.methodBody.buildStubStructure(
+                    toCamelCase(ctor.shadows ?? ctor.name),
+                    `${this.options.namespace}.${record.name}.${ctor.name}`,
+                    ctor.doc,
+                    this.options.namespace,
+                    true,
+                ),
+            ),
+        ];
     }
 
     private buildStaticFactoryMethodStructure(
@@ -309,7 +338,7 @@ export class RecordGenerator {
         recordName: string,
         meta: RecordTypeMeta,
     ): MethodStructure {
-        const methodName = toCamelCase(ctor.name);
+        const methodName = toCamelCase(ctor.shadows ?? ctor.name);
         const shape = this.methodBody.buildShape(ctor.parameters, undefined, 0);
         const params = this.methodBody.buildSignatureParameters(shape, false);
         this.file.addImport("../../registry.js", ["getNativeObject"]);
@@ -457,8 +486,200 @@ export class RecordGenerator {
         }
         if (field.type.fixedSize !== undefined && isPrimitiveFieldType(elementTypeName)) {
             this.generateFixedPrimitiveArrayAccessor(field, fieldName, offset, cls, methodNames);
+            return true;
+        }
+        if (
+            field.type.fixedSize === undefined &&
+            field.type.sizeParamIndex !== undefined &&
+            isPrimitiveFieldType(elementTypeName)
+        ) {
+            this.generateSizedPrimitiveArrayAccessor(field, fieldName, offset, fields, cls, methodNames);
+            return true;
+        }
+        if (field.type.fixedSize === undefined && STRING_ELEMENT_TYPE_NAMES.has(elementTypeName)) {
+            this.generateStringArrayFieldAccessor(field, fieldName, offset, cls, methodNames);
+            return true;
+        }
+        if (this.isLinkedListField(field)) {
+            this.generateLinkedListFieldAccessor(field, fieldName, offset, cls, methodNames);
         }
         return true;
+    }
+
+    private isLinkedListField(field: GirField): boolean {
+        const cType = field.type.cType ?? "";
+        return cType.startsWith("GList") || cType.startsWith("GSList");
+    }
+
+    private generateLinkedListFieldAccessor(
+        field: GirField,
+        fieldName: string,
+        offset: number,
+        cls: ClassDeclarationBuilder,
+        methodNames: Set<string>,
+    ): void {
+        if (field.readable === false || methodNames.has(fieldName)) return;
+        const mapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        if (mapping.ffi.type !== "array") return;
+        const isWritable = field.writable !== false && !methodNames.has(fieldName);
+        this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
+
+        const getBody = (writer: Writer): void => {
+            writer.write("return read(getHandle(this), ");
+            writeFfiTypeExpression(writer, mapping.ffi);
+            writer.writeLine(`, ${offset});`);
+        };
+        const setBody = isWritable
+            ? (writer: Writer): void => {
+                  writer.write("write(getHandle(this), ");
+                  writeFfiTypeExpression(writer, mapping.ffi);
+                  writer.writeLine(`, ${offset}, value);`);
+              }
+            : undefined;
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: `${mapping.ts}`,
+                getBody,
+                setBody,
+                doc: doc?.[0]?.description,
+            }),
+        );
+    }
+
+    private isCallbackFieldType(typeName: string): boolean {
+        if (!this.repo) return false;
+        const qualified = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
+        return this.repo.getTypeKind(qualified) === "callback";
+    }
+
+    /**
+     * Emits an accessor for a struct field holding a C function pointer.
+     *
+     * The runtime exposes the raw function-pointer slot: the getter reads the
+     * stored pointer and the setter writes one back. This mirrors node-gtk,
+     * which surfaces callback struct fields as members.
+     */
+    private generateCallbackFieldAccessor(
+        field: GirField,
+        fieldName: string,
+        offset: number,
+        cls: ClassDeclarationBuilder,
+        methodNames: Set<string>,
+    ): void {
+        if (field.readable === false || methodNames.has(fieldName)) return;
+        const isWritable = field.writable !== false && !methodNames.has(fieldName);
+        this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
+
+        const getBody = (writer: Writer): void => {
+            writer.writeLine(`return read(getHandle(this), t.uint64, ${offset});`);
+        };
+        const setBody = isWritable
+            ? (writer: Writer): void => {
+                  writer.writeLine(`write(getHandle(this), t.uint64, ${offset}, value);`);
+              }
+            : undefined;
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: "unknown",
+                getBody,
+                setBody,
+                doc: doc?.[0]?.description,
+            }),
+        );
+    }
+
+    private generateStringArrayFieldAccessor(
+        field: GirField,
+        fieldName: string,
+        offset: number,
+        cls: ClassDeclarationBuilder,
+        methodNames: Set<string>,
+    ): void {
+        if (field.readable === false || methodNames.has(fieldName)) return;
+        const isWritable = field.writable !== false && !methodNames.has(fieldName);
+        this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
+
+        const getBody = (writer: Writer): void => {
+            writer.writeLine(
+                `return read(getHandle(this), t.array(t.string("borrowed"), "array", "borrowed"), ${offset});`,
+            );
+        };
+        const setBody = isWritable
+            ? (writer: Writer): void => {
+                  writer.writeLine(
+                      `write(getHandle(this), t.array(t.string("borrowed"), "array", "borrowed"), ${offset}, value);`,
+                  );
+              }
+            : undefined;
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: "string[]",
+                getBody,
+                setBody,
+                doc: doc?.[0]?.description,
+            }),
+        );
+    }
+
+    /**
+     * Emits a read-only accessor for a struct field holding a pointer to a
+     * primitive array whose element count lives in a sibling length field.
+     *
+     * The pointer is dereferenced and `length` elements are read, mirroring
+     * node-gtk, which surfaces such fields as numeric arrays.
+     */
+    private generateSizedPrimitiveArrayAccessor(
+        field: GirField,
+        fieldName: string,
+        offset: number,
+        allFields: readonly GirField[],
+        cls: ClassDeclarationBuilder,
+        methodNames: Set<string>,
+    ): void {
+        if (field.readable === false || methodNames.has(fieldName)) return;
+        const elementType = field.type.elementType;
+        const sizeParamIndex = field.type.sizeParamIndex;
+        if (!elementType || sizeParamIndex === undefined) return;
+
+        const publicFields = allFields.filter((f) => !f.private);
+        const lengthField = publicFields[sizeParamIndex];
+        if (!lengthField) return;
+        const lengthMember = toValidMemberName(toCamelCase(lengthField.name));
+
+        const elementMapping = this.ffiMapper.mapType(elementType, false, elementType.transferOwnership);
+        const elementSize = getPrimitiveTypeSize(String(elementType.name));
+        if (elementSize <= 0) return;
+        this.file.addImport("../../native.js", ["read", "t"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
+
+        const getBody = (writer: Writer): void => {
+            writer.writeLine(`const base = read(getHandle(this), t.object("borrowed"), ${offset});`);
+            writer.writeLine("if (base === null) return [];");
+            writer.writeLine(`/** @type {${elementMapping.ts}[]} */`);
+            writer.writeLine("const result = [];");
+            writer.writeLine(`for (let index = 0; index < this.${lengthMember}; index++) {`);
+            writer.withIndent(() => {
+                writer.write("result.push(read(base, ");
+                writeFfiTypeExpression(writer, elementMapping.ffi);
+                writer.writeLine(`, index * ${elementSize}));`);
+            });
+            writer.writeLine("}");
+            writer.writeLine("return result;");
+        };
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: `${elementMapping.ts}[]`,
+                getBody,
+                doc: doc?.[0]?.description,
+            }),
+        );
     }
 
     private generateFixedPrimitiveArrayAccessor(
@@ -705,17 +926,31 @@ export class RecordGenerator {
         if (this.tryGenerateArrayField(field, fieldName, offset, fields, cls, methodNames)) return;
 
         const typeName = String(field.type.name);
-        if (!this.fieldBuilder.isGeneratableFieldType(typeName)) return;
 
-        const isReadable = field.readable !== false && !methodNames.has(fieldName);
-        const isWritable = field.writable !== false && !methodNames.has(fieldName);
+        if (this.isCallbackFieldType(typeName)) {
+            this.generateCallbackFieldAccessor(field, fieldName, offset, cls, methodNames);
+            return;
+        }
 
         if (this.fieldBuilder.isInlineNestedStruct(field)) {
             this.generateNestedStructAccessors(field, fieldName, offset, cls, methodNames);
             return;
         }
 
-        if (this.fieldBuilder.isNestedStructType(typeName)) return;
+        if (this.fieldBuilder.isNestedStructType(typeName)) {
+            const isPointerToStruct = field.type.cType?.includes("*") === true;
+            if (isPointerToStruct) {
+                this.generatePointerToStructFieldAccessor(field, fieldName, typeName, offset, cls, methodNames);
+            } else {
+                this.generateInlineStructFieldAccessor(field, fieldName, typeName, offset, cls, methodNames);
+            }
+            return;
+        }
+
+        if (!this.fieldBuilder.isGeneratableFieldType(typeName)) return;
+
+        const isReadable = field.readable !== false && !methodNames.has(fieldName);
+        const isWritable = field.writable !== false && !methodNames.has(fieldName);
 
         this.buildPrimitiveFieldAccessor(field, fieldName, offset, isReadable, isWritable, cls, bitOffset, bitWidth);
     }
@@ -743,6 +978,89 @@ export class RecordGenerator {
         }
     }
 
+    /**
+     * Emits an accessor for a struct field holding a pointer to another
+     * struct. The pointer is read or written whole, matching node-gtk, which
+     * exposes such fields as struct-typed members regardless of whether the
+     * pointed-to type is self-referential.
+     */
+    private generatePointerToStructFieldAccessor(
+        field: GirField,
+        fieldName: string,
+        _typeName: string,
+        offset: number,
+        cls: ClassDeclarationBuilder,
+        methodNames: Set<string>,
+    ): void {
+        if (field.readable === false || methodNames.has(fieldName)) return;
+        const mapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        if (mapping.ffi.type !== "struct") return;
+        const isWritable = field.writable !== false && !methodNames.has(fieldName);
+        this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
+
+        const getBody = (writer: Writer): void => {
+            writer.write("return read(getHandle(this), ");
+            writeFfiTypeExpression(writer, mapping.ffi);
+            writer.writeLine(`, ${offset});`);
+        };
+        const setBody = isWritable
+            ? (writer: Writer): void => {
+                  writer.write("write(getHandle(this), ");
+                  writeFfiTypeExpression(writer, mapping.ffi);
+                  writer.writeLine(`, ${offset}, value);`);
+              }
+            : undefined;
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: "unknown",
+                getBody,
+                setBody,
+                doc: doc?.[0]?.description,
+            }),
+        );
+    }
+
+    /**
+     * Emits a read-only accessor for an inline struct field whose element
+     * type cannot be safely flattened into per-leaf accessors.
+     *
+     * The struct is read whole from its byte offset, mirroring node-gtk,
+     * which exposes such fields as a single struct-typed member.
+     */
+    private generateInlineStructFieldAccessor(
+        field: GirField,
+        fieldName: string,
+        typeName: string,
+        offset: number,
+        cls: ClassDeclarationBuilder,
+        methodNames: Set<string>,
+    ): void {
+        if (field.readable === false || methodNames.has(fieldName)) return;
+        const mapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        if (mapping.ffi.type !== "struct") return;
+        const size = this.fieldBuilder.getRecordSize(typeName);
+        if (size <= 0) return;
+        const structFfi = { ...mapping.ffi, size };
+        this.file.addImport("../../native.js", ["read", "t"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
+
+        const getBody = (writer: Writer): void => {
+            writer.write("return read(getHandle(this), ");
+            writeFfiTypeExpression(writer, structFfi);
+            writer.writeLine(`, ${offset});`);
+        };
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: "unknown",
+                getBody,
+                doc: doc?.[0]?.description,
+            }),
+        );
+    }
+
     private generateNestedStructAccessors(
         field: GirField,
         fieldName: string,
@@ -755,7 +1073,10 @@ export class RecordGenerator {
         if (!nestedLayout) return;
 
         const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-        if (typeMapping.unsafe) return;
+        if (typeMapping.unsafe) {
+            this.generateInlineStructFieldAccessor(field, fieldName, typeName, baseOffset, cls, methodNames);
+            return;
+        }
         addTypeImports(this.file, typeMapping.imports, this.selfNames);
 
         const tsTypeName = typeMapping.ts;

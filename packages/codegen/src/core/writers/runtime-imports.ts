@@ -19,6 +19,7 @@ export const RUNTIME_SPECIFIER = "../../runtime.js";
  * exported by the runtime barrel, so redirecting the import is transparent.
  */
 export const CONSOLIDATED_RUNTIME_SPECIFIERS: ReadonlySet<string> = new Set([
+    "../../class-struct-pointer.js",
     "../../construction-meta.js",
     "../../handles.js",
     "../../native.js",

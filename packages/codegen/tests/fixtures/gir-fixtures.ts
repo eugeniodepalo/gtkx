@@ -151,6 +151,7 @@ export function createNormalizedClass(
             properties: [],
             signals: [],
             fieldNames: [],
+            fields: [],
             virtualMethodNames: [],
             ...overrides,
         },

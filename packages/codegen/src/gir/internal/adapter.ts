@@ -144,6 +144,7 @@ function adaptClasses(classes: GirClassElement[]): RawClass[] {
             properties: adaptProperties(cls.property ?? []),
             signals: adaptSignals(cls["glib:signal"] ?? []),
             fieldNames: adaptFieldNames(cls.field ?? []),
+            fields: adaptFields(cls.field ?? []),
             virtualMethodNames: adaptVirtualMethodNames(cls["virtual-method"] ?? []),
             doc: extractDoc(cls),
         };

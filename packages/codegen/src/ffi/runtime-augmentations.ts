@@ -59,6 +59,37 @@ const buildGrapheneAugmentation = (): string =>
         )
         .join("\n");
 
+const buildGtkAugmentation = (): string =>
+    [
+        "const scrollingWidgets = new WeakMap();",
+        "const easeOutCubic = (t) => {",
+        "    const p = t - 1;",
+        "    return p * p * p + 1;",
+        "};",
+        "ScrolledWindow.prototype.scrollTo = function scrollTo(value, vertical = true) {",
+        "    const adj = vertical ? this.getVadjustment() : this.getHadjustment();",
+        "    const clock = this.getFrameClock();",
+        "    const duration = 200;",
+        "    const start = adj.getValue();",
+        "    const end = value;",
+        "    const startTime = clock.getFrameTime();",
+        "    const endTime = startTime + 1000 * duration;",
+        "    const previousTickId = scrollingWidgets.get(this);",
+        "    if (previousTickId) this.removeTickCallback(previousTickId);",
+        "    const tickId = this.addTickCallback((_, frameClock) => {",
+        "        const now = frameClock.getFrameTime();",
+        "        if (now < endTime && adj.getValue() !== end) {",
+        "            adj.setValue(start + easeOutCubic((now - startTime) / (endTime - startTime)) * (end - start));",
+        "            return true;",
+        "        }",
+        "        adj.setValue(end);",
+        "        return false;",
+        "    });",
+        "    scrollingWidgets.set(this, tickId);",
+        "    return tickId;",
+        "};",
+    ].join("\n");
+
 const buildGdkAugmentation = (): string =>
     [
         "RGBA.create = (value) => {",
@@ -72,6 +103,7 @@ const AUGMENTATIONS: ReadonlyMap<string, () => string> = new Map([
     ["GObject", buildGObjectAugmentation],
     ["Graphene", buildGrapheneAugmentation],
     ["Gdk", buildGdkAugmentation],
+    ["Gtk", buildGtkAugmentation],
 ]);
 
 /**

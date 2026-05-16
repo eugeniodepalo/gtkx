@@ -12,6 +12,7 @@ import {
     FFI_VOID,
     type FfiTypeDescriptor,
     type MappedType,
+    SELF_TYPE_GOBJECT,
     type SelfTypeDescriptor,
     type TypeImport,
 } from "../type-system/ffi-types.js";
@@ -165,6 +166,16 @@ type StaticFunctionStructureOptions = {
     className: string;
     /** The original GIR class/record name for return type comparison */
     originalClassName: string;
+    /** The shared library (e.g., "libgtk-4.so.1") */
+    sharedLibrary: string;
+    /** Current namespace for documentation links */
+    namespace: string;
+};
+
+/**
+ * Options for building a gtype-struct method hoisted onto its owning class.
+ */
+type ClassStructStaticOptions = {
     /** The shared library (e.g., "libgtk-4.so.1") */
     sharedLibrary: string;
     /** Current namespace for documentation links */
@@ -580,6 +591,48 @@ export class MethodBodyWriter {
                 sharedLibrary: options.sharedLibrary,
                 className: options.className,
                 returnsOwnClass,
+            }),
+        };
+    }
+
+    /**
+     * Builds a static MethodStructure for a gtype-struct `<method>` hoisted
+     * onto its owning class.
+     *
+     * GIR exposes class-level operations (e.g. the `gtk_widget_class_*`
+     * family) as `<method>` elements on the class's gtype-struct record. Such
+     * a method takes the `GTypeClass *` as its implicit first argument; the
+     * generated static accepts the class, an instance, or a `GType` and
+     * resolves the class-struct pointer at call time.
+     *
+     * @param method - The gtype-struct method.
+     * @param options - Class-struct static structure options.
+     * @returns A static MethodStructure whose first parameter identifies the class.
+     */
+    buildClassStructStaticStructure(method: GirMethod, options: ClassStructStaticOptions): MethodStructure {
+        const methodName = toValidMemberName(toCamelCase(method.name));
+        const shape = this.buildShape(method.parameters, method.returnType, 1);
+        const params = this.buildSignatureParameters(shape, hasVarargs(method.parameters));
+        this.addTypeImportsFromMapping(shape.returnTypeMapping);
+        this.imports.addImport("../../class-struct-pointer.js", ["resolveClassStructPointer"]);
+        this.imports.addTypeImport("../../class-struct-pointer.js", ["ClassStructTarget"]);
+
+        const tsReturnType = this.computeReturnTypeString(shape, undefined);
+
+        return {
+            name: methodName,
+            isStatic: true,
+            parameters: [{ name: "widgetClass", type: "ClassStructTarget" }, ...params],
+            returnType: tsReturnType === "void" ? undefined : tsReturnType,
+            docs: buildJsDocStructure(method.doc, options.namespace),
+            statements: this.writeCallableBody({
+                sharedLibrary: options.sharedLibrary,
+                cIdentifier: method.cIdentifier,
+                shape,
+                parameters: method.parameters,
+                throws: method.throws,
+                self: { type: SELF_TYPE_GOBJECT, value: "resolveClassStructPointer(widgetClass)" },
+                hasVarargs: hasVarargs(method.parameters),
             }),
         };
     }

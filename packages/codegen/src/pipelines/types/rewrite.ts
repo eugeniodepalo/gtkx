@@ -819,6 +819,50 @@ export function relaxMultiReturnTuples(source: string): string {
     return parts.join("");
 }
 
+const VOID_CONFLICT_COMMENT = /\/\/ Has conflict: ([A-Za-z_$][\w$]*)\(([^\n]*)\): void(?:\r?\n)/g;
+
+/**
+ * Corrects method return types that ts-for-gir merged from a GIR
+ * `<virtual-method>` over the GIR `<method>` of the same name.
+ *
+ * When a class declares both a `<method>` and a same-named `<virtual-method>`
+ * with differing return types, ts-for-gir keeps the virtual method's signature
+ * and demotes the real method's signature to a `// Has conflict:` comment. The
+ * generated runtime binds the C `<method>`, whose ABI return type is
+ * authoritative. Where that commented signature returns `void` — a C function
+ * that returns nothing cannot yield a value — the emitted member is rewritten
+ * to return `void`, provided its parameter list is unchanged.
+ *
+ * @param source - The `.d.ts` source to rewrite.
+ * @returns The source with void-returning conflict signatures honored.
+ */
+export function honorVoidConflictSignatures(source: string): string {
+    let result = source;
+    VOID_CONFLICT_COMMENT.lastIndex = 0;
+    for (;;) {
+        const match = VOID_CONFLICT_COMMENT.exec(source);
+        if (match === null) break;
+        const name = match[1];
+        const params = match[2];
+        if (name === undefined || params === undefined) continue;
+        const memberPattern = new RegExp(
+            `(\\n[ \\t]*${escapeRegExp(name)}\\(${escapeRegExp(params)}\\)): (?!void(?:\\r?\\n))[^\\n]+`,
+        );
+        result = result.replace(memberPattern, "$1: void");
+    }
+    return result;
+}
+
+/**
+ * Escapes regular-expression metacharacters in a literal string fragment.
+ *
+ * @param value - The literal text to escape.
+ * @returns The text safe for embedding in a `RegExp`.
+ */
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * Real enum member values for one namespace, keyed enum name then member name.
  */
@@ -879,6 +923,7 @@ export function loadAndRewrite(
         source = stripSuppressedMethods(source, SUPPRESSED_METHOD_NAMES_BY_NAMESPACE.get(namespace));
         source = stripSuppressedMethods(source, signalActionMethodNames?.get(namespace));
         source = relaxMultiReturnTuples(source);
+        source = honorVoidConflictSignatures(source);
         source = relaxGtypeConstants(source);
         source = stripEventEmitterSignalOverloads(source);
         source = rewriteNamespaceDeclarations(source);

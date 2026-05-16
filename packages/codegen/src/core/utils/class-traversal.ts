@@ -113,7 +113,7 @@ export function collectParentFactoryMethodNames(cls: GirClass): Set<string> {
     let current = cls.getParent();
     while (current) {
         for (const ctor of current.constructors) {
-            names.add(toCamelCase(ctor.name));
+            names.add(toCamelCase(ctor.shadows ?? ctor.name));
         }
         current = current.getParent();
     }

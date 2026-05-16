@@ -35,6 +35,7 @@ export type RawClass = {
     properties: RawProperty[];
     signals: RawSignal[];
     fieldNames: string[];
+    fields: RawField[];
     virtualMethodNames: string[];
     doc?: string;
 };
