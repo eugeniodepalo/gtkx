@@ -68,9 +68,9 @@ describe("isGeneratableFieldType", () => {
         expect(isGeneratableFieldType("Mystery", repo, "Gtk")).toBe(false);
     });
 
-    it("returns false for disguised records", () => {
+    it("returns true for disguised pointer-typedef records", () => {
         const repo = buildRepo([createNormalizedRecord({ name: "Forward", disguised: true })]);
-        expect(isGeneratableFieldType("Forward", repo, "Gtk")).toBe(false);
+        expect(isGeneratableFieldType("Forward", repo, "Gtk")).toBe(true);
     });
 
     it("returns false when the type cannot be resolved", () => {
@@ -97,7 +97,7 @@ describe("isGeneratableFieldType", () => {
         const inner = createNormalizedRecord({
             name: "Inner",
             qualifiedName: "Gtk.Inner",
-            disguised: true,
+            opaque: true,
         });
         const outer = createNormalizedRecord({
             name: "Outer",

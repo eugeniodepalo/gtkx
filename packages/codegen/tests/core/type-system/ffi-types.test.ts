@@ -264,10 +264,10 @@ describe("isPrimitiveFieldType", () => {
         expect(isPrimitiveFieldType("guint")).toBe(true);
         expect(isPrimitiveFieldType("gfloat")).toBe(true);
         expect(isPrimitiveFieldType("gboolean")).toBe(true);
+        expect(isPrimitiveFieldType("gpointer")).toBe(true);
     });
 
     it("returns false for non-primitive types", () => {
-        expect(isPrimitiveFieldType("gpointer")).toBe(false);
         expect(isPrimitiveFieldType("GObject")).toBe(false);
     });
 
@@ -287,7 +287,7 @@ describe("isMemoryWritableType", () => {
 
     it("returns false for non-writable types", () => {
         expect(isMemoryWritableType("utf8")).toBe(false);
-        expect(isMemoryWritableType("gpointer")).toBe(false);
+        expect(isMemoryWritableType("GObject")).toBe(false);
     });
 });
 
