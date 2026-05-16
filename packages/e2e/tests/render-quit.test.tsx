@@ -1,4 +1,4 @@
-import { isStarted, whenStopped } from "@gtkx/ffi";
+import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, quit, render, useApplication } from "@gtkx/react";
@@ -52,13 +52,11 @@ describe("render and quit", () => {
         errorSpy.mockRestore();
 
         expect(app.getIsRegistered()).toBe(true);
-        expect(isStarted()).toBe(true);
         expect(resolvedApp).toBe(app);
 
         quit();
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         expect(stopHandler).toHaveBeenCalledTimes(1);
-        expect(isStarted()).toBe(false);
     });
 });

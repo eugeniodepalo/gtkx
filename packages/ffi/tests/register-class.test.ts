@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { Object as GObject, typeFromName, typeName, typeParent } from "../src/generated/gobject/gobject.js";
 import * as Gtk from "../src/generated/gtk/gtk.js";
 import { getHandle } from "../src/handles.js";
-import { findNativeClass, instanceIsA, registerClass } from "../src/index.js";
+import { instanceIsA } from "../src/native.js";
+import { registerClass } from "../src/register-class.js";
+import { findNativeClass } from "../src/registry.js";
 
 let suffix = 0;
 const uniqueName = (prefix: string): string => `${prefix}_${process.pid}_${++suffix}`;

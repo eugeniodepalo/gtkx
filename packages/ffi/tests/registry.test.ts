@@ -10,7 +10,7 @@ import {
     getNativeObject,
     getNativeObjectAsInterface,
     registerNativeClass,
-} from "../src/index.js";
+} from "../src/registry.js";
 
 const INVALID_GTYPE = 0 as unknown as GType;
 

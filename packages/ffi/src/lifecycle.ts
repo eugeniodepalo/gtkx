@@ -15,13 +15,6 @@ const keepAlive = (): void => {
 };
 
 /**
- * Whether the GTK runtime is currently active.
- *
- * `true` from the moment `@gtkx/ffi` is imported until {@link stop} is called.
- */
-export const isStarted = (): boolean => !stopped;
-
-/**
  * Resolves when the GTK runtime begins shutting down.
  *
  * The returned promise settles exactly once, when {@link stop} is called and
