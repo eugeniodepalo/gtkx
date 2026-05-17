@@ -71,7 +71,7 @@ This audit covers the **hand-written runtime** of `@gtkx/ffi` (~7,950 lines acro
 
 The non-generated source is **essentially free of dead code** — `knip`-style analysis is unreliable here because 21 generated files consume the runtime exports through the `runtime.ts` barrel, but a manual cross-reference of each public export found them all reachable (`freeze`/`unfreeze`/`getNativeId` are used by generated bindings; `registerClass`, `findNativeClass`, `getClassGType`, `getParentClass`, `CONSTRUCTION_META` are consumed by `packages/react`). One item to **confirm rather than remove**: `getNativeInterface` (`native.ts:170`, re-exported from `index.ts`) is referenced only by its own tests. It is documented public library API, so it is most likely an intentional consumer-facing surface — verify that intent rather than treating it as dead.
 
-✅ CONFIRMED — `getNativeInterface` is intentional consumer-facing API: it is exported from the package `index.ts` and carries a full doc comment with a usage `@example`. Kept as-is.
+✅ RESOLVED — investigation found `getNativeInterface` had one real consumer beyond its own tests: the gtk-demo clipboard demo. That call site was migrated to the generated `GObject.typeIsA` interface check, after which `getNativeInterface` (and its tests) were removed from `native.ts` and dropped from the `index.ts` public surface.
 
 ### SOLID
 

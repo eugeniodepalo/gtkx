@@ -12,7 +12,7 @@ import { getInstanceGType, type NativeHandle, type Ref } from "@gtkx/native";
 import type { Error as GError } from "./generated/glib/glib.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID, typeIsA } from "./gtype.js";
-import { type NativeClass, setHandle, tryGetHandle } from "./handles.js";
+import type { NativeClass } from "./handles.js";
 import { getNativeObject } from "./registry.js";
 
 export { getInstanceGType } from "@gtkx/native";
@@ -142,38 +142,4 @@ export function makeErrorDomain<const T extends Record<string, number>>(
  */
 export function throwUnsupported(message: string): never {
     throw new Error(message);
-}
-
-/**
- * Gets a native object as a specific interface type if it implements that interface.
- *
- * Uses GLib's type system to check if the object implements the specified
- * interface, and returns a wrapped instance if it does.
- *
- * @typeParam T - The interface type
- * @param obj - The native object to check
- * @param iface - The interface class
- * @param ifaceGType - The interface's GType identifier (use the interface
- *     module's exported `*_get_type()` function)
- * @returns The wrapped interface instance, or null if not implemented
- *
- * @example
- * ```tsx
- * import { gtk_editable_get_type } from "@gtkx/ffi/generated/gtk/editable.js";
- *
- * const editable = getNativeInterface(widget, Gtk.Editable, gtk_editable_get_type());
- * if (editable) {
- *     const text = editable.getText();
- * }
- * ```
- */
-export function getNativeInterface<T extends object>(obj: object, iface: NativeClass<T>, ifaceGType: GType): T | null {
-    const handle = tryGetHandle(obj);
-    if (!handle) return null;
-    if (ifaceGType === G_TYPE_INVALID) return null;
-    if (!instanceIsA(handle, ifaceGType)) return null;
-
-    const instance = Object.create(iface.prototype) as T;
-    setHandle(instance, handle);
-    return instance;
 }

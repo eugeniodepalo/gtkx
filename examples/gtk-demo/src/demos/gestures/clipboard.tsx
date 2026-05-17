@@ -1,4 +1,3 @@
-import { getNativeInterface } from "@gtkx/ffi";
 import type { Context } from "@gtkx/ffi/cairo";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
@@ -282,9 +281,8 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const handleDrop = useCallback((value: GObject.Value) => {
         const obj = value.getObject();
         if (obj) {
-            const paintable = getNativeInterface(obj, Gdk.Paintable, getGdkPaintableType());
-            if (paintable) {
-                setPastedContent({ type: "Image", paintable });
+            if (GObject.typeIsA(obj.__gtype__, getGdkPaintableType())) {
+                setPastedContent({ type: "Image", paintable: obj as Gdk.Paintable });
                 return true;
             }
             if (obj instanceof Gio.File) {

@@ -4,7 +4,7 @@ import type { GType } from "../src/generated/gobject/gobject.js";
 import { typeFromName } from "../src/generated/gobject/gobject.js";
 import * as Gtk from "../src/generated/gtk/gtk.js";
 import { getHandle } from "../src/handles.js";
-import { getNativeInterface, instanceIsA, makeErrorDomain, NativeError } from "../src/native.js";
+import { instanceIsA, makeErrorDomain, NativeError } from "../src/native.js";
 
 const orientableGType = (): GType => typeFromName("GtkOrientable");
 
@@ -112,38 +112,5 @@ describe("instanceIsA", () => {
         const label = new Gtk.Label({ label: "Test" });
 
         expect(instanceIsA(getHandle(label), orientableGType())).toBe(false);
-    });
-});
-
-describe("getNativeInterface", () => {
-    it("returns interface instance when object implements it", () => {
-        const box = new Gtk.Box();
-        const orientable = getNativeInterface(box, Gtk.Orientable, orientableGType());
-        expect(orientable).not.toBeNull();
-    });
-
-    it("allows calling interface methods on returned instance", () => {
-        const box = new Gtk.Box();
-        const orientable = getNativeInterface(box, Gtk.Orientable, orientableGType());
-        expect(orientable).not.toBeNull();
-        expect(typeof orientable?.setOrientation).toBe("function");
-    });
-
-    it("returns null when object does not implement the interface", () => {
-        const label = new Gtk.Label({ label: "Test" });
-        const orientable = getNativeInterface(label, Gtk.Orientable, orientableGType());
-        expect(orientable).toBeNull();
-    });
-
-    it("returns null when the object has no associated handle", () => {
-        const obj = Object.create(Gtk.Button.prototype) as Gtk.Button;
-        const result = getNativeInterface(obj, Gtk.Orientable, orientableGType());
-        expect(result).toBeNull();
-    });
-
-    it("returns null when ifaceGType is zero", () => {
-        const box = new Gtk.Box();
-        const result = getNativeInterface(box, Gtk.Orientable, 0 as unknown as GType);
-        expect(result).toBeNull();
     });
 });
