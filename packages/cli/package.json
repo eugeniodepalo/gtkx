@@ -78,7 +78,7 @@
         "jiti": "^2.7.0",
         "react-refresh": "^0.18.0",
         "typescript": "^6.0.3",
-        "vite": "^8.0.12"
+        "vite": "^8.0.13"
     },
     "devDependencies": {
         "@gtkx/testing": "workspace:*",

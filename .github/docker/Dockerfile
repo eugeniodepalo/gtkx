@@ -1,4 +1,4 @@
-FROM fedora:43
+FROM fedora:44
 
 RUN echo "keepcache=1" >> /etc/dnf/dnf.conf
 
@@ -29,7 +29,7 @@ RUN dnf install -y \
     && dnf clean all \
     && rm -rf /var/cache/dnf/*
 
-RUN curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+RUN curl -fsSL https://rpm.nodesource.com/setup_26.x | bash - \
     && dnf install -y nodejs \
     && dnf clean all
 
