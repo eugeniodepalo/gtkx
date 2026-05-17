@@ -1,9 +1,11 @@
-import { type Arg, createRef, type NativeHandle } from "@gtkx/native";
+import { createRef, type NativeHandle } from "@gtkx/native";
 import { PathDataType } from "../generated/cairo/cairo.js";
-import { alloc, call, read, t, write } from "../native.js";
+import { alloc, read, t, write } from "../native.js";
 
 export const LIB = "libcairo.so.2";
 const LIB_GOBJECT = "libcairo-gobject.so.2";
+
+const { fn } = t;
 
 const cairoBoxed = (innerType: string, ownership: "borrowed" | "full" = "borrowed", getTypeFn?: string) =>
     t.boxed(innerType, ownership, LIB_GOBJECT, getTypeFn);
@@ -15,40 +17,6 @@ export const PATTERN_T = cairoBoxed("CairoPattern", "full", "cairo_gobject_patte
 export const PATTERN_T_NONE = cairoBoxed("CairoPattern", "borrowed", "cairo_gobject_pattern_get_type");
 export const SURFACE_T = cairoBoxed("CairoSurface", "full", "cairo_gobject_surface_get_type");
 export const SURFACE_T_NONE = cairoBoxed("CairoSurface", "borrowed", "cairo_gobject_surface_get_type");
-
-export const DOUBLE_TYPE = t.float64;
-export const INT_TYPE = t.int32;
-export const ULONG_TYPE = t.uint64;
-
-const DOUBLE_REF = t.ref(DOUBLE_TYPE);
-
-/**
- * Calls a Cairo function returning two `double*` out-params and yields `{ x, y }`.
- */
-export const callGetXY = (fnName: string, selfArg: Arg): { x: number; y: number } => {
-    const xRef = createRef(0);
-    const yRef = createRef(0);
-    call(LIB, fnName, [selfArg, { type: DOUBLE_REF, value: xRef }, { type: DOUBLE_REF, value: yRef }], t.void);
-    return { x: xRef.value, y: yRef.value };
-};
-
-/**
- * Calls a Cairo file-surface constructor (e.g. `cairo_pdf_surface_create`)
- * and returns the resulting `cairo_surface_t*`.
- */
-export const createFileSurface = (fnName: string, filename: string, width: number, height: number): NativeHandle => {
-    return call(
-        LIB,
-        fnName,
-        [
-            { type: t.string("full"), value: filename },
-            { type: DOUBLE_TYPE, value: width },
-            { type: DOUBLE_TYPE, value: height },
-        ],
-        SURFACE_T,
-    ) as NativeHandle;
-};
-
 export const FONT_FACE_T = cairoBoxed("CairoFontFace", "full", "cairo_gobject_font_face_get_type");
 export const FONT_FACE_T_NONE = cairoBoxed("CairoFontFace", "borrowed", "cairo_gobject_font_face_get_type");
 export const SCALED_FONT_T = cairoBoxed("CairoScaledFont", "full", "cairo_gobject_scaled_font_get_type");
@@ -58,12 +26,46 @@ export const DEVICE_T_FULL = cairoBoxed("CairoDevice", "full", "cairo_gobject_de
 export const REGION_T = cairoBoxed("CairoRegion", "full", "cairo_gobject_region_get_type");
 export const REGION_T_NONE = cairoBoxed("CairoRegion", "borrowed", "cairo_gobject_region_get_type");
 
+export const DOUBLE_TYPE = t.float64;
+export const INT_TYPE = t.int32;
+export const ULONG_TYPE = t.uint64;
+
+export const DOUBLE_REF = t.ref(DOUBLE_TYPE);
+export const INT_REF = t.ref(INT_TYPE);
+export const STRING_FULL = t.string("full");
+export const STRING_BORROWED = t.string("borrowed");
+
 export const RECT_INT_T = t.boxed("cairo_rectangle_int_t", "borrowed", LIB);
 export const PATH_STRUCT_T = t.boxed("cairo_path_t", "borrowed", LIB);
 export const GLYPH_BUF_T = t.boxed("cairo_glyph_t", "borrowed", LIB);
 export const RECT_LIST_T = t.boxed("cairo_rectangle_list_t", "borrowed", LIB);
 export const MATRIX_T = t.boxed("cairo_matrix_t", "borrowed", LIB);
 export const CLUSTER_BUF_T = t.boxed("cairo_text_cluster_t", "borrowed", LIB);
+export const TEXT_EXTENTS_T = t.boxed("cairo_text_extents_t", "borrowed", LIB);
+export const FONT_EXTENTS_T = t.boxed("cairo_font_extents_t", "borrowed", LIB);
+
+/**
+ * Binds a Cairo file-surface constructor (e.g. `cairo_pdf_surface_create`),
+ * which always takes `(filename, widthInPoints, heightInPoints)` and returns
+ * an owned `cairo_surface_t*`. Each PDF/PS/SVG surface module resolves its
+ * symbol once through this factory.
+ */
+export const fileSurfaceCreate = (
+    symbol: string,
+): ((filename: string, widthInPoints: number, heightInPoints: number) => unknown) =>
+    fn(LIB, symbol, [{ type: STRING_FULL }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }], SURFACE_T);
+
+/**
+ * Invokes a bound Cairo function that fills two `double*` out-params and
+ * yields `{ x, y }`. The binding is supplied by the caller so that the
+ * underlying symbol is resolved once at module load.
+ */
+export const callGetXY = (self: NativeHandle, boundFn: (...args: unknown[]) => unknown): { x: number; y: number } => {
+    const xRef = createRef(0);
+    const yRef = createRef(0);
+    boundFn(self, xRef, yRef);
+    return { x: xRef.value, y: yRef.value };
+};
 
 export const allocGlyphBuffer = (glyphs: Array<{ index: number; x: number; y: number }>): NativeHandle => {
     const buf = alloc(glyphs.length * 24, "cairo_glyph_t[]", LIB);
@@ -131,6 +133,8 @@ export type PathData =
     | { type: "curveTo"; x1: number; y1: number; x2: number; y2: number; x3: number; y3: number }
     | { type: "closePath" };
 
+const cairo_path_destroy = fn(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T }], t.void);
+
 /**
  * Parses `cairo_path_t` struct layout:
  *   offset  0: cairo_status_t status (int32)
@@ -148,7 +152,7 @@ export type PathData =
 export const parsePath = (pathHandle: NativeHandle): PathData[] => {
     const numData = read(pathHandle, INT_TYPE, 16) as number;
     if (numData === 0) {
-        call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], t.void);
+        cairo_path_destroy(pathHandle);
         return [];
     }
     const dataArray = read(pathHandle, t.struct("cairo_path_data_t", "full", numData * 16), 8) as NativeHandle;
@@ -199,6 +203,6 @@ export const parsePath = (pathHandle: NativeHandle): PathData[] => {
         }
         i += length;
     }
-    call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], t.void);
+    cairo_path_destroy(pathHandle);
     return result;
 };

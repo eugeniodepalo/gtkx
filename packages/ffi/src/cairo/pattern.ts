@@ -2,10 +2,12 @@ import { createRef, type NativeHandle } from "@gtkx/native";
 import type { Extend, Filter, PatternType, Status } from "../generated/cairo/cairo.js";
 import { Pattern, Surface } from "../generated/cairo/cairo.js";
 import { getHandle } from "../handles.js";
-import { call, t } from "../native.js";
+import { t } from "../native.js";
 import { getNativeObject, wrapHandle } from "../registry.js";
 import {
+    DOUBLE_REF,
     DOUBLE_TYPE,
+    INT_REF,
     INT_TYPE,
     LIB,
     MATRIX_T,
@@ -18,6 +20,9 @@ import {
 } from "./common.js";
 import type { Matrix } from "./matrix.js";
 import { allocMatrix } from "./matrix.js";
+
+const { fn } = t;
+const SURFACE_REF = t.ref(SURFACE_T_NONE);
 
 declare module "../generated/cairo/cairo.js" {
     interface Pattern {
@@ -33,98 +38,107 @@ declare module "../generated/cairo/cairo.js" {
     }
 }
 
+const cairo_pattern_create_linear = fn(
+    LIB,
+    "cairo_pattern_create_linear",
+    [{ type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    PATTERN_T,
+);
+
 export class LinearPattern extends Pattern {
     static create(x0: number, y0: number, x1: number, y1: number): LinearPattern {
-        const handle = call(
-            LIB,
-            "cairo_pattern_create_linear",
-            [
-                { type: DOUBLE_TYPE, value: x0 },
-                { type: DOUBLE_TYPE, value: y0 },
-                { type: DOUBLE_TYPE, value: x1 },
-                { type: DOUBLE_TYPE, value: y1 },
-            ],
-            PATTERN_T,
-        ) as NativeHandle;
-        return wrapHandle(LinearPattern, handle);
+        return wrapHandle(LinearPattern, cairo_pattern_create_linear(x0, y0, x1, y1) as NativeHandle);
     }
 }
+
+const cairo_pattern_create_radial = fn(
+    LIB,
+    "cairo_pattern_create_radial",
+    [
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    PATTERN_T,
+);
 
 export class RadialPattern extends Pattern {
     static create(cx0: number, cy0: number, radius0: number, cx1: number, cy1: number, radius1: number): RadialPattern {
-        const handle = call(
-            LIB,
-            "cairo_pattern_create_radial",
-            [
-                { type: DOUBLE_TYPE, value: cx0 },
-                { type: DOUBLE_TYPE, value: cy0 },
-                { type: DOUBLE_TYPE, value: radius0 },
-                { type: DOUBLE_TYPE, value: cx1 },
-                { type: DOUBLE_TYPE, value: cy1 },
-                { type: DOUBLE_TYPE, value: radius1 },
-            ],
-            PATTERN_T,
-        ) as NativeHandle;
-        return wrapHandle(RadialPattern, handle);
+        return wrapHandle(
+            RadialPattern,
+            cairo_pattern_create_radial(cx0, cy0, radius0, cx1, cy1, radius1) as NativeHandle,
+        );
     }
 }
 
+const cairo_pattern_create_for_surface = fn(
+    LIB,
+    "cairo_pattern_create_for_surface",
+    [{ type: SURFACE_T_NONE }],
+    PATTERN_T,
+);
+
 export class SurfacePattern extends Pattern {
     static create(surface: Surface): SurfacePattern {
-        const handle = call(
-            LIB,
-            "cairo_pattern_create_for_surface",
-            [{ type: SURFACE_T_NONE, value: getHandle(surface) }],
-            PATTERN_T,
-        ) as NativeHandle;
-        return wrapHandle(SurfacePattern, handle);
+        return wrapHandle(SurfacePattern, cairo_pattern_create_for_surface(getHandle(surface)) as NativeHandle);
     }
 }
+
+const cairo_pattern_create_rgb = fn(
+    LIB,
+    "cairo_pattern_create_rgb",
+    [{ type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    PATTERN_T,
+);
+const cairo_pattern_create_rgba = fn(
+    LIB,
+    "cairo_pattern_create_rgba",
+    [{ type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    PATTERN_T,
+);
 
 export class SolidPattern extends Pattern {
     static create(r: number, g: number, b: number, a?: number): SolidPattern {
         const handle =
             a === undefined
-                ? (call(
-                      LIB,
-                      "cairo_pattern_create_rgb",
-                      [
-                          { type: DOUBLE_TYPE, value: r },
-                          { type: DOUBLE_TYPE, value: g },
-                          { type: DOUBLE_TYPE, value: b },
-                      ],
-                      PATTERN_T,
-                  ) as NativeHandle)
-                : (call(
-                      LIB,
-                      "cairo_pattern_create_rgba",
-                      [
-                          { type: DOUBLE_TYPE, value: r },
-                          { type: DOUBLE_TYPE, value: g },
-                          { type: DOUBLE_TYPE, value: b },
-                          { type: DOUBLE_TYPE, value: a },
-                      ],
-                      PATTERN_T,
-                  ) as NativeHandle);
+                ? (cairo_pattern_create_rgb(r, g, b) as NativeHandle)
+                : (cairo_pattern_create_rgba(r, g, b, a) as NativeHandle);
         return wrapHandle(SolidPattern, handle);
     }
 }
 
+const cairo_pattern_add_color_stop_rgb = fn(
+    LIB,
+    "cairo_pattern_add_color_stop_rgb",
+    [
+        { type: PATTERN_T_NONE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    t.void,
+);
 Pattern.prototype.addColorStopRgb = function (offset: number, red: number, green: number, blue: number): void {
-    call(
-        LIB,
-        "cairo_pattern_add_color_stop_rgb",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: offset },
-            { type: DOUBLE_TYPE, value: red },
-            { type: DOUBLE_TYPE, value: green },
-            { type: DOUBLE_TYPE, value: blue },
-        ],
-        t.void,
-    );
+    cairo_pattern_add_color_stop_rgb(getHandle(this), offset, red, green, blue);
 };
 
+const cairo_pattern_add_color_stop_rgba = fn(
+    LIB,
+    "cairo_pattern_add_color_stop_rgba",
+    [
+        { type: PATTERN_T_NONE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    t.void,
+);
 Pattern.prototype.addColorStopRgba = function (
     offset: number,
     red: number,
@@ -132,96 +146,64 @@ Pattern.prototype.addColorStopRgba = function (
     blue: number,
     alpha: number,
 ): void {
-    call(
-        LIB,
-        "cairo_pattern_add_color_stop_rgba",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: offset },
-            { type: DOUBLE_TYPE, value: red },
-            { type: DOUBLE_TYPE, value: green },
-            { type: DOUBLE_TYPE, value: blue },
-            { type: DOUBLE_TYPE, value: alpha },
-        ],
-        t.void,
-    );
+    cairo_pattern_add_color_stop_rgba(getHandle(this), offset, red, green, blue, alpha);
 };
 
+const cairo_pattern_set_filter = fn(
+    LIB,
+    "cairo_pattern_set_filter",
+    [{ type: PATTERN_T_NONE }, { type: INT_TYPE }],
+    t.void,
+);
 Pattern.prototype.setFilter = function (filter: Filter): void {
-    call(
-        LIB,
-        "cairo_pattern_set_filter",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: filter },
-        ],
-        t.void,
-    );
+    cairo_pattern_set_filter(getHandle(this), filter);
 };
 
+const cairo_pattern_get_filter = fn(LIB, "cairo_pattern_get_filter", [{ type: PATTERN_T_NONE }], INT_TYPE);
 Pattern.prototype.getFilter = function (): Filter {
-    return call(
-        LIB,
-        "cairo_pattern_get_filter",
-        [{ type: PATTERN_T_NONE, value: getHandle(this) }],
-        INT_TYPE,
-    ) as Filter;
+    return cairo_pattern_get_filter(getHandle(this)) as Filter;
 };
 
+const cairo_pattern_set_extend = fn(
+    LIB,
+    "cairo_pattern_set_extend",
+    [{ type: PATTERN_T_NONE }, { type: INT_TYPE }],
+    t.void,
+);
 Pattern.prototype.setExtend = function (extend: Extend): void {
-    call(
-        LIB,
-        "cairo_pattern_set_extend",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: extend },
-        ],
-        t.void,
-    );
+    cairo_pattern_set_extend(getHandle(this), extend);
 };
 
+const cairo_pattern_get_extend = fn(LIB, "cairo_pattern_get_extend", [{ type: PATTERN_T_NONE }], INT_TYPE);
 Pattern.prototype.getExtend = function (): Extend {
-    return call(
-        LIB,
-        "cairo_pattern_get_extend",
-        [{ type: PATTERN_T_NONE, value: getHandle(this) }],
-        INT_TYPE,
-    ) as Extend;
+    return cairo_pattern_get_extend(getHandle(this)) as Extend;
 };
 
+const cairo_pattern_set_matrix = fn(
+    LIB,
+    "cairo_pattern_set_matrix",
+    [{ type: PATTERN_T_NONE }, { type: MATRIX_T }],
+    t.void,
+);
 Pattern.prototype.setMatrix = function (matrix: Matrix): void {
-    call(
-        LIB,
-        "cairo_pattern_set_matrix",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: MATRIX_T, value: getHandle(matrix) },
-        ],
-        t.void,
-    );
+    cairo_pattern_set_matrix(getHandle(this), getHandle(matrix));
 };
 
+const cairo_pattern_get_matrix = fn(
+    LIB,
+    "cairo_pattern_get_matrix",
+    [{ type: PATTERN_T_NONE }, { type: MATRIX_T }],
+    t.void,
+);
 Pattern.prototype.getMatrix = function (): Matrix {
     const { handle, obj } = allocMatrix();
-    call(
-        LIB,
-        "cairo_pattern_get_matrix",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: MATRIX_T, value: handle },
-        ],
-        t.void,
-    );
+    cairo_pattern_get_matrix(getHandle(this), handle);
     return obj;
 };
 
+const cairo_pattern_get_type = fn(LIB, "cairo_pattern_get_type", [{ type: PATTERN_T_NONE }], INT_TYPE);
 Pattern.prototype.getType = function (): PatternType {
-    return call(
-        LIB,
-        "cairo_pattern_get_type",
-        [{ type: PATTERN_T_NONE, value: getHandle(this) }],
-        INT_TYPE,
-    ) as PatternType;
+    return cairo_pattern_get_type(getHandle(this)) as PatternType;
 };
 
 declare module "../generated/cairo/cairo.js" {
@@ -248,47 +230,58 @@ declare module "../generated/cairo/cairo.js" {
     }
 }
 
+const cairo_pattern_create_mesh = fn(LIB, "cairo_pattern_create_mesh", [], PATTERN_T);
+
 export class MeshPattern extends Pattern {
     static create(): MeshPattern {
-        const handle = call(LIB, "cairo_pattern_create_mesh", [], PATTERN_T) as NativeHandle;
-        return wrapHandle(MeshPattern, handle);
+        return wrapHandle(MeshPattern, cairo_pattern_create_mesh() as NativeHandle);
     }
 }
 
+const cairo_mesh_pattern_begin_patch = fn(LIB, "cairo_mesh_pattern_begin_patch", [{ type: PATTERN_T_NONE }], t.void);
 Pattern.prototype.meshBeginPatch = function (): void {
-    call(LIB, "cairo_mesh_pattern_begin_patch", [{ type: PATTERN_T_NONE, value: getHandle(this) }], t.void);
+    cairo_mesh_pattern_begin_patch(getHandle(this));
 };
 
+const cairo_mesh_pattern_end_patch = fn(LIB, "cairo_mesh_pattern_end_patch", [{ type: PATTERN_T_NONE }], t.void);
 Pattern.prototype.meshEndPatch = function (): void {
-    call(LIB, "cairo_mesh_pattern_end_patch", [{ type: PATTERN_T_NONE, value: getHandle(this) }], t.void);
+    cairo_mesh_pattern_end_patch(getHandle(this));
 };
 
+const cairo_mesh_pattern_move_to = fn(
+    LIB,
+    "cairo_mesh_pattern_move_to",
+    [{ type: PATTERN_T_NONE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Pattern.prototype.meshMoveTo = function (x: number, y: number): void {
-    call(
-        LIB,
-        "cairo_mesh_pattern_move_to",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-        ],
-        t.void,
-    );
+    cairo_mesh_pattern_move_to(getHandle(this), x, y);
 };
 
+const cairo_mesh_pattern_line_to = fn(
+    LIB,
+    "cairo_mesh_pattern_line_to",
+    [{ type: PATTERN_T_NONE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Pattern.prototype.meshLineTo = function (x: number, y: number): void {
-    call(
-        LIB,
-        "cairo_mesh_pattern_line_to",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-        ],
-        t.void,
-    );
+    cairo_mesh_pattern_line_to(getHandle(this), x, y);
 };
 
+const cairo_mesh_pattern_curve_to = fn(
+    LIB,
+    "cairo_mesh_pattern_curve_to",
+    [
+        { type: PATTERN_T_NONE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    t.void,
+);
 Pattern.prototype.meshCurveTo = function (
     x1: number,
     y1: number,
@@ -297,51 +290,42 @@ Pattern.prototype.meshCurveTo = function (
     x3: number,
     y3: number,
 ): void {
-    call(
-        LIB,
-        "cairo_mesh_pattern_curve_to",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: x1 },
-            { type: DOUBLE_TYPE, value: y1 },
-            { type: DOUBLE_TYPE, value: x2 },
-            { type: DOUBLE_TYPE, value: y2 },
-            { type: DOUBLE_TYPE, value: x3 },
-            { type: DOUBLE_TYPE, value: y3 },
-        ],
-        t.void,
-    );
+    cairo_mesh_pattern_curve_to(getHandle(this), x1, y1, x2, y2, x3, y3);
 };
 
+const cairo_mesh_pattern_set_control_point = fn(
+    LIB,
+    "cairo_mesh_pattern_set_control_point",
+    [{ type: PATTERN_T_NONE }, { type: INT_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Pattern.prototype.meshSetControlPoint = function (pointNum: number, x: number, y: number): void {
-    call(
-        LIB,
-        "cairo_mesh_pattern_set_control_point",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: pointNum },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-        ],
-        t.void,
-    );
+    cairo_mesh_pattern_set_control_point(getHandle(this), pointNum, x, y);
 };
 
+const cairo_mesh_pattern_set_corner_color_rgb = fn(
+    LIB,
+    "cairo_mesh_pattern_set_corner_color_rgb",
+    [{ type: PATTERN_T_NONE }, { type: INT_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Pattern.prototype.meshSetCornerColorRgb = function (cornerNum: number, r: number, g: number, b: number): void {
-    call(
-        LIB,
-        "cairo_mesh_pattern_set_corner_color_rgb",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: cornerNum },
-            { type: DOUBLE_TYPE, value: r },
-            { type: DOUBLE_TYPE, value: g },
-            { type: DOUBLE_TYPE, value: b },
-        ],
-        t.void,
-    );
+    cairo_mesh_pattern_set_corner_color_rgb(getHandle(this), cornerNum, r, g, b);
 };
 
+const cairo_mesh_pattern_set_corner_color_rgba = fn(
+    LIB,
+    "cairo_mesh_pattern_set_corner_color_rgba",
+    [
+        { type: PATTERN_T_NONE },
+        { type: INT_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    t.void,
+);
 Pattern.prototype.meshSetCornerColorRgba = function (
     cornerNum: number,
     r: number,
@@ -349,53 +333,48 @@ Pattern.prototype.meshSetCornerColorRgba = function (
     b: number,
     a: number,
 ): void {
-    call(
-        LIB,
-        "cairo_mesh_pattern_set_corner_color_rgba",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: cornerNum },
-            { type: DOUBLE_TYPE, value: r },
-            { type: DOUBLE_TYPE, value: g },
-            { type: DOUBLE_TYPE, value: b },
-            { type: DOUBLE_TYPE, value: a },
-        ],
-        t.void,
-    );
+    cairo_mesh_pattern_set_corner_color_rgba(getHandle(this), cornerNum, r, g, b, a);
 };
 
+const cairo_mesh_pattern_get_patch_count = fn(
+    LIB,
+    "cairo_mesh_pattern_get_patch_count",
+    [{ type: PATTERN_T_NONE }, { type: INT_REF }],
+    INT_TYPE,
+);
 Pattern.prototype.meshGetPatchCount = function (): number {
     const countRef = createRef(0);
-    call(
-        LIB,
-        "cairo_mesh_pattern_get_patch_count",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: t.ref(INT_TYPE), value: countRef },
-        ],
-        INT_TYPE,
-    );
+    cairo_mesh_pattern_get_patch_count(getHandle(this), countRef);
     return countRef.value;
 };
 
+const cairo_mesh_pattern_get_control_point = fn(
+    LIB,
+    "cairo_mesh_pattern_get_control_point",
+    [{ type: PATTERN_T_NONE }, { type: INT_TYPE }, { type: INT_TYPE }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    INT_TYPE,
+);
 Pattern.prototype.meshGetControlPoint = function (patchNum: number, pointNum: number): { x: number; y: number } {
     const xRef = createRef(0);
     const yRef = createRef(0);
-    call(
-        LIB,
-        "cairo_mesh_pattern_get_control_point",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: patchNum },
-            { type: INT_TYPE, value: pointNum },
-            { type: t.ref(DOUBLE_TYPE), value: xRef },
-            { type: t.ref(DOUBLE_TYPE), value: yRef },
-        ],
-        INT_TYPE,
-    );
+    cairo_mesh_pattern_get_control_point(getHandle(this), patchNum, pointNum, xRef, yRef);
     return { x: xRef.value, y: yRef.value };
 };
 
+const cairo_mesh_pattern_get_corner_color_rgba = fn(
+    LIB,
+    "cairo_mesh_pattern_get_corner_color_rgba",
+    [
+        { type: PATTERN_T_NONE },
+        { type: INT_TYPE },
+        { type: INT_TYPE },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+    ],
+    INT_TYPE,
+);
 Pattern.prototype.meshGetCornerColorRgba = function (
     patchNum: number,
     cornerNum: number,
@@ -404,37 +383,36 @@ Pattern.prototype.meshGetCornerColorRgba = function (
     const gRef = createRef(0);
     const bRef = createRef(0);
     const aRef = createRef(0);
-    call(
-        LIB,
-        "cairo_mesh_pattern_get_corner_color_rgba",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: patchNum },
-            { type: INT_TYPE, value: cornerNum },
-            { type: t.ref(DOUBLE_TYPE), value: rRef },
-            { type: t.ref(DOUBLE_TYPE), value: gRef },
-            { type: t.ref(DOUBLE_TYPE), value: bRef },
-            { type: t.ref(DOUBLE_TYPE), value: aRef },
-        ],
-        INT_TYPE,
-    );
+    cairo_mesh_pattern_get_corner_color_rgba(getHandle(this), patchNum, cornerNum, rRef, gRef, bRef, aRef);
     return { r: rRef.value, g: gRef.value, b: bRef.value, a: aRef.value };
 };
 
+const cairo_pattern_get_color_stop_count = fn(
+    LIB,
+    "cairo_pattern_get_color_stop_count",
+    [{ type: PATTERN_T_NONE }, { type: INT_REF }],
+    INT_TYPE,
+);
 Pattern.prototype.getColorStopCount = function (): number {
     const countRef = createRef(0);
-    call(
-        LIB,
-        "cairo_pattern_get_color_stop_count",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: t.ref(INT_TYPE), value: countRef },
-        ],
-        INT_TYPE,
-    );
+    cairo_pattern_get_color_stop_count(getHandle(this), countRef);
     return countRef.value;
 };
 
+const cairo_pattern_get_color_stop_rgba = fn(
+    LIB,
+    "cairo_pattern_get_color_stop_rgba",
+    [
+        { type: PATTERN_T_NONE },
+        { type: INT_TYPE },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+    ],
+    INT_TYPE,
+);
 Pattern.prototype.getColorStopRgba = function (index: number): {
     offset: number;
     r: number;
@@ -447,57 +425,43 @@ Pattern.prototype.getColorStopRgba = function (index: number): {
     const gRef = createRef(0);
     const bRef = createRef(0);
     const aRef = createRef(0);
-    call(
-        LIB,
-        "cairo_pattern_get_color_stop_rgba",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: index },
-            { type: t.ref(DOUBLE_TYPE), value: offsetRef },
-            { type: t.ref(DOUBLE_TYPE), value: rRef },
-            { type: t.ref(DOUBLE_TYPE), value: gRef },
-            { type: t.ref(DOUBLE_TYPE), value: bRef },
-            { type: t.ref(DOUBLE_TYPE), value: aRef },
-        ],
-        INT_TYPE,
-    );
+    cairo_pattern_get_color_stop_rgba(getHandle(this), index, offsetRef, rRef, gRef, bRef, aRef);
     return { offset: offsetRef.value, r: rRef.value, g: gRef.value, b: bRef.value, a: aRef.value };
 };
 
+const cairo_pattern_get_rgba = fn(
+    LIB,
+    "cairo_pattern_get_rgba",
+    [{ type: PATTERN_T_NONE }, { type: DOUBLE_REF }, { type: DOUBLE_REF }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    INT_TYPE,
+);
 Pattern.prototype.getRgba = function (): { r: number; g: number; b: number; a: number } {
     const rRef = createRef(0);
     const gRef = createRef(0);
     const bRef = createRef(0);
     const aRef = createRef(0);
-    call(
-        LIB,
-        "cairo_pattern_get_rgba",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: t.ref(DOUBLE_TYPE), value: rRef },
-            { type: t.ref(DOUBLE_TYPE), value: gRef },
-            { type: t.ref(DOUBLE_TYPE), value: bRef },
-            { type: t.ref(DOUBLE_TYPE), value: aRef },
-        ],
-        INT_TYPE,
-    );
+    cairo_pattern_get_rgba(getHandle(this), rRef, gRef, bRef, aRef);
     return { r: rRef.value, g: gRef.value, b: bRef.value, a: aRef.value };
 };
 
+const cairo_pattern_get_surface = fn(
+    LIB,
+    "cairo_pattern_get_surface",
+    [{ type: PATTERN_T_NONE }, { type: SURFACE_REF }],
+    INT_TYPE,
+);
 Pattern.prototype.getSurface = function (): Surface {
     const surfRef = createRef<NativeHandle | null>(null);
-    call(
-        LIB,
-        "cairo_pattern_get_surface",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: t.ref(SURFACE_T_NONE), value: surfRef },
-        ],
-        INT_TYPE,
-    );
+    cairo_pattern_get_surface(getHandle(this), surfRef);
     return getNativeObject(surfRef.value, Surface) as Surface;
 };
 
+const cairo_pattern_get_linear_points = fn(
+    LIB,
+    "cairo_pattern_get_linear_points",
+    [{ type: PATTERN_T_NONE }, { type: DOUBLE_REF }, { type: DOUBLE_REF }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    INT_TYPE,
+);
 Pattern.prototype.getLinearPoints = function (): {
     x0: number;
     y0: number;
@@ -508,21 +472,24 @@ Pattern.prototype.getLinearPoints = function (): {
     const y0Ref = createRef(0);
     const x1Ref = createRef(0);
     const y1Ref = createRef(0);
-    call(
-        LIB,
-        "cairo_pattern_get_linear_points",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: t.ref(DOUBLE_TYPE), value: x0Ref },
-            { type: t.ref(DOUBLE_TYPE), value: y0Ref },
-            { type: t.ref(DOUBLE_TYPE), value: x1Ref },
-            { type: t.ref(DOUBLE_TYPE), value: y1Ref },
-        ],
-        INT_TYPE,
-    );
+    cairo_pattern_get_linear_points(getHandle(this), x0Ref, y0Ref, x1Ref, y1Ref);
     return { x0: x0Ref.value, y0: y0Ref.value, x1: x1Ref.value, y1: y1Ref.value };
 };
 
+const cairo_pattern_get_radial_circles = fn(
+    LIB,
+    "cairo_pattern_get_radial_circles",
+    [
+        { type: PATTERN_T_NONE },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+        { type: DOUBLE_REF },
+    ],
+    INT_TYPE,
+);
 Pattern.prototype.getRadialCircles = function (): {
     x0: number;
     y0: number;
@@ -537,20 +504,7 @@ Pattern.prototype.getRadialCircles = function (): {
     const x1Ref = createRef(0);
     const y1Ref = createRef(0);
     const r1Ref = createRef(0);
-    call(
-        LIB,
-        "cairo_pattern_get_radial_circles",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: t.ref(DOUBLE_TYPE), value: x0Ref },
-            { type: t.ref(DOUBLE_TYPE), value: y0Ref },
-            { type: t.ref(DOUBLE_TYPE), value: r0Ref },
-            { type: t.ref(DOUBLE_TYPE), value: x1Ref },
-            { type: t.ref(DOUBLE_TYPE), value: y1Ref },
-            { type: t.ref(DOUBLE_TYPE), value: r1Ref },
-        ],
-        INT_TYPE,
-    );
+    cairo_pattern_get_radial_circles(getHandle(this), x0Ref, y0Ref, r0Ref, x1Ref, y1Ref, r1Ref);
     return {
         x0: x0Ref.value,
         y0: y0Ref.value,
@@ -561,8 +515,9 @@ Pattern.prototype.getRadialCircles = function (): {
     };
 };
 
+const cairo_pattern_status = fn(LIB, "cairo_pattern_status", [{ type: PATTERN_T_NONE }], INT_TYPE);
 Pattern.prototype.status = function (): Status {
-    return call(LIB, "cairo_pattern_status", [{ type: PATTERN_T_NONE, value: getHandle(this) }], INT_TYPE) as Status;
+    return cairo_pattern_status(getHandle(this)) as Status;
 };
 
 export enum Dither {
@@ -581,36 +536,27 @@ declare module "../generated/cairo/cairo.js" {
     }
 }
 
+const cairo_mesh_pattern_get_path = fn(
+    LIB,
+    "cairo_mesh_pattern_get_path",
+    [{ type: PATTERN_T_NONE }, { type: INT_TYPE }],
+    PATH_STRUCT_T,
+);
 Pattern.prototype.meshGetPath = function (patchNum: number): PathData[] {
-    const pathHandle = call(
-        LIB,
-        "cairo_mesh_pattern_get_path",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: patchNum },
-        ],
-        PATH_STRUCT_T,
-    ) as NativeHandle;
-    return parsePath(pathHandle);
+    return parsePath(cairo_mesh_pattern_get_path(getHandle(this), patchNum) as NativeHandle);
 };
 
+const cairo_pattern_set_dither = fn(
+    LIB,
+    "cairo_pattern_set_dither",
+    [{ type: PATTERN_T_NONE }, { type: INT_TYPE }],
+    t.void,
+);
 Pattern.prototype.setDither = function (dither: Dither): void {
-    call(
-        LIB,
-        "cairo_pattern_set_dither",
-        [
-            { type: PATTERN_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: dither },
-        ],
-        t.void,
-    );
+    cairo_pattern_set_dither(getHandle(this), dither);
 };
 
+const cairo_pattern_get_dither = fn(LIB, "cairo_pattern_get_dither", [{ type: PATTERN_T_NONE }], INT_TYPE);
 Pattern.prototype.getDither = function (): Dither {
-    return call(
-        LIB,
-        "cairo_pattern_get_dither",
-        [{ type: PATTERN_T_NONE, value: getHandle(this) }],
-        INT_TYPE,
-    ) as Dither;
+    return cairo_pattern_get_dither(getHandle(this)) as Dither;
 };

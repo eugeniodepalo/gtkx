@@ -14,7 +14,7 @@ import type {
 } from "../generated/cairo/cairo.js";
 import { Context, FontFace, Pattern, ScaledFont, Surface } from "../generated/cairo/cairo.js";
 import { getHandle } from "../handles.js";
-import { alloc, call, read, t } from "../native.js";
+import { alloc, read, t } from "../native.js";
 import { getNativeObject, wrapHandle } from "../registry.js";
 import {
     allocClusterBuffer,
@@ -23,7 +23,9 @@ import {
     type CairoGlyph,
     type CairoTextCluster,
     CLUSTER_BUF_T,
+    DOUBLE_REF,
     DOUBLE_TYPE,
+    FONT_EXTENTS_T,
     FONT_FACE_T_NONE,
     FONT_OPTIONS_T,
     type FontExtents,
@@ -40,12 +42,19 @@ import {
     readFontExtents,
     readTextExtents,
     SCALED_FONT_T_NONE,
+    STRING_BORROWED,
+    STRING_FULL,
     SURFACE_T_NONE,
+    TEXT_EXTENTS_T,
     type TextExtents,
 } from "./common.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import type { Matrix } from "./matrix.js";
 import { allocMatrix } from "./matrix.js";
+
+const { fn } = t;
+
+export type { FontExtents, TextExtents } from "./common.js";
 
 declare module "../generated/cairo/cairo.js" {
     interface Context {
@@ -147,58 +156,60 @@ declare module "../generated/cairo/cairo.js" {
     }
 }
 
+const cairo_move_to = fn(
+    LIB,
+    "cairo_move_to",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.moveTo = function (x: number, y: number): void {
-    call(
-        LIB,
-        "cairo_move_to",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-        ],
-        t.void,
-    );
+    cairo_move_to(getHandle(this), x, y);
 };
 
+const cairo_line_to = fn(
+    LIB,
+    "cairo_line_to",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.lineTo = function (x: number, y: number): void {
-    call(
-        LIB,
-        "cairo_line_to",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-        ],
-        t.void,
-    );
+    cairo_line_to(getHandle(this), x, y);
 };
 
+const cairo_rel_move_to = fn(
+    LIB,
+    "cairo_rel_move_to",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.relMoveTo = function (dx: number, dy: number): void {
-    call(
-        LIB,
-        "cairo_rel_move_to",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: dx },
-            { type: DOUBLE_TYPE, value: dy },
-        ],
-        t.void,
-    );
+    cairo_rel_move_to(getHandle(this), dx, dy);
 };
 
+const cairo_rel_line_to = fn(
+    LIB,
+    "cairo_rel_line_to",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.relLineTo = function (dx: number, dy: number): void {
-    call(
-        LIB,
-        "cairo_rel_line_to",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: dx },
-            { type: DOUBLE_TYPE, value: dy },
-        ],
-        t.void,
-    );
+    cairo_rel_line_to(getHandle(this), dx, dy);
 };
 
+const cairo_rel_curve_to = fn(
+    LIB,
+    "cairo_rel_curve_to",
+    [
+        { type: CAIRO_T },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    t.void,
+);
 Context.prototype.relCurveTo = function (
     dx1: number,
     dy1: number,
@@ -207,55 +218,57 @@ Context.prototype.relCurveTo = function (
     dx3: number,
     dy3: number,
 ): void {
-    call(
-        LIB,
-        "cairo_rel_curve_to",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: dx1 },
-            { type: DOUBLE_TYPE, value: dy1 },
-            { type: DOUBLE_TYPE, value: dx2 },
-            { type: DOUBLE_TYPE, value: dy2 },
-            { type: DOUBLE_TYPE, value: dx3 },
-            { type: DOUBLE_TYPE, value: dy3 },
-        ],
-        t.void,
-    );
+    cairo_rel_curve_to(getHandle(this), dx1, dy1, dx2, dy2, dx3, dy3);
 };
 
+const cairo_curve_to = fn(
+    LIB,
+    "cairo_curve_to",
+    [
+        { type: CAIRO_T },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    t.void,
+);
 Context.prototype.curveTo = function (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
-    call(
-        LIB,
-        "cairo_curve_to",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: x1 },
-            { type: DOUBLE_TYPE, value: y1 },
-            { type: DOUBLE_TYPE, value: x2 },
-            { type: DOUBLE_TYPE, value: y2 },
-            { type: DOUBLE_TYPE, value: x3 },
-            { type: DOUBLE_TYPE, value: y3 },
-        ],
-        t.void,
-    );
+    cairo_curve_to(getHandle(this), x1, y1, x2, y2, x3, y3);
 };
 
+const cairo_arc = fn(
+    LIB,
+    "cairo_arc",
+    [
+        { type: CAIRO_T },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    t.void,
+);
 Context.prototype.arc = function (xc: number, yc: number, radius: number, angle1: number, angle2: number): void {
-    call(
-        LIB,
-        "cairo_arc",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: xc },
-            { type: DOUBLE_TYPE, value: yc },
-            { type: DOUBLE_TYPE, value: radius },
-            { type: DOUBLE_TYPE, value: angle1 },
-            { type: DOUBLE_TYPE, value: angle2 },
-        ],
-        t.void,
-    );
+    cairo_arc(getHandle(this), xc, yc, radius, angle1, angle2);
 };
 
+const cairo_arc_negative = fn(
+    LIB,
+    "cairo_arc_negative",
+    [
+        { type: CAIRO_T },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    t.void,
+);
 Context.prototype.arcNegative = function (
     xc: number,
     yc: number,
@@ -263,199 +276,157 @@ Context.prototype.arcNegative = function (
     angle1: number,
     angle2: number,
 ): void {
-    call(
-        LIB,
-        "cairo_arc_negative",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: xc },
-            { type: DOUBLE_TYPE, value: yc },
-            { type: DOUBLE_TYPE, value: radius },
-            { type: DOUBLE_TYPE, value: angle1 },
-            { type: DOUBLE_TYPE, value: angle2 },
-        ],
-        t.void,
-    );
+    cairo_arc_negative(getHandle(this), xc, yc, radius, angle1, angle2);
 };
 
+const cairo_rectangle = fn(
+    LIB,
+    "cairo_rectangle",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.rectangle = function (x: number, y: number, width: number, height: number): void {
-    call(
-        LIB,
-        "cairo_rectangle",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-            { type: DOUBLE_TYPE, value: width },
-            { type: DOUBLE_TYPE, value: height },
-        ],
-        t.void,
-    );
+    cairo_rectangle(getHandle(this), x, y, width, height);
 };
 
+const cairo_close_path = fn(LIB, "cairo_close_path", [{ type: CAIRO_T }], t.void);
 Context.prototype.closePath = function (): void {
-    call(LIB, "cairo_close_path", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_close_path(getHandle(this));
 };
 
+const cairo_new_path = fn(LIB, "cairo_new_path", [{ type: CAIRO_T }], t.void);
 Context.prototype.newPath = function (): void {
-    call(LIB, "cairo_new_path", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_new_path(getHandle(this));
 };
 
+const cairo_new_sub_path = fn(LIB, "cairo_new_sub_path", [{ type: CAIRO_T }], t.void);
 Context.prototype.newSubPath = function (): void {
-    call(LIB, "cairo_new_sub_path", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_new_sub_path(getHandle(this));
 };
 
+const cairo_stroke = fn(LIB, "cairo_stroke", [{ type: CAIRO_T }], t.void);
 Context.prototype.stroke = function (): void {
-    call(LIB, "cairo_stroke", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_stroke(getHandle(this));
 };
 
+const cairo_stroke_preserve = fn(LIB, "cairo_stroke_preserve", [{ type: CAIRO_T }], t.void);
 Context.prototype.strokePreserve = function (): void {
-    call(LIB, "cairo_stroke_preserve", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_stroke_preserve(getHandle(this));
 };
 
+const cairo_fill = fn(LIB, "cairo_fill", [{ type: CAIRO_T }], t.void);
 Context.prototype.fill = function (): void {
-    call(LIB, "cairo_fill", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_fill(getHandle(this));
 };
 
+const cairo_fill_preserve = fn(LIB, "cairo_fill_preserve", [{ type: CAIRO_T }], t.void);
 Context.prototype.fillPreserve = function (): void {
-    call(LIB, "cairo_fill_preserve", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_fill_preserve(getHandle(this));
 };
 
+const cairo_paint = fn(LIB, "cairo_paint", [{ type: CAIRO_T }], t.void);
 Context.prototype.paint = function (): void {
-    call(LIB, "cairo_paint", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_paint(getHandle(this));
 };
 
+const cairo_paint_with_alpha = fn(LIB, "cairo_paint_with_alpha", [{ type: CAIRO_T }, { type: DOUBLE_TYPE }], t.void);
 Context.prototype.paintWithAlpha = function (alpha: number): void {
-    call(
-        LIB,
-        "cairo_paint_with_alpha",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: alpha },
-        ],
-        t.void,
-    );
+    cairo_paint_with_alpha(getHandle(this), alpha);
 };
 
+const cairo_clip = fn(LIB, "cairo_clip", [{ type: CAIRO_T }], t.void);
 Context.prototype.clip = function (): void {
-    call(LIB, "cairo_clip", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_clip(getHandle(this));
 };
 
+const cairo_clip_preserve = fn(LIB, "cairo_clip_preserve", [{ type: CAIRO_T }], t.void);
 Context.prototype.clipPreserve = function (): void {
-    call(LIB, "cairo_clip_preserve", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_clip_preserve(getHandle(this));
 };
 
+const cairo_reset_clip = fn(LIB, "cairo_reset_clip", [{ type: CAIRO_T }], t.void);
 Context.prototype.resetClip = function (): void {
-    call(LIB, "cairo_reset_clip", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_reset_clip(getHandle(this));
 };
 
+const cairo_set_source_rgb = fn(
+    LIB,
+    "cairo_set_source_rgb",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.setSourceRgb = function (red: number, green: number, blue: number): void {
-    call(
-        LIB,
-        "cairo_set_source_rgb",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: red },
-            { type: DOUBLE_TYPE, value: green },
-            { type: DOUBLE_TYPE, value: blue },
-        ],
-        t.void,
-    );
+    cairo_set_source_rgb(getHandle(this), red, green, blue);
 };
 
+const cairo_set_source_rgba = fn(
+    LIB,
+    "cairo_set_source_rgba",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.setSourceRgba = function (red: number, green: number, blue: number, alpha: number): void {
-    call(
-        LIB,
-        "cairo_set_source_rgba",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: red },
-            { type: DOUBLE_TYPE, value: green },
-            { type: DOUBLE_TYPE, value: blue },
-            { type: DOUBLE_TYPE, value: alpha },
-        ],
-        t.void,
-    );
+    cairo_set_source_rgba(getHandle(this), red, green, blue, alpha);
 };
 
+const cairo_set_source = fn(LIB, "cairo_set_source", [{ type: CAIRO_T }, { type: PATTERN_T_NONE }], t.void);
 Context.prototype.setSource = function (pattern: Pattern): void {
-    call(
-        LIB,
-        "cairo_set_source",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: PATTERN_T_NONE, value: getHandle(pattern) },
-        ],
-        t.void,
-    );
+    cairo_set_source(getHandle(this), getHandle(pattern));
 };
 
+const cairo_set_line_width = fn(LIB, "cairo_set_line_width", [{ type: CAIRO_T }, { type: DOUBLE_TYPE }], t.void);
 Context.prototype.setLineWidth = function (width: number): void {
-    call(
-        LIB,
-        "cairo_set_line_width",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: width },
-        ],
-        t.void,
-    );
+    cairo_set_line_width(getHandle(this), width);
 };
 
+const cairo_get_line_width = fn(LIB, "cairo_get_line_width", [{ type: CAIRO_T }], DOUBLE_TYPE);
 Context.prototype.getLineWidth = function (): number {
-    return call(LIB, "cairo_get_line_width", [{ type: CAIRO_T, value: getHandle(this) }], DOUBLE_TYPE) as number;
+    return cairo_get_line_width(getHandle(this)) as number;
 };
 
+const cairo_set_line_cap = fn(LIB, "cairo_set_line_cap", [{ type: CAIRO_T }, { type: INT_TYPE }], t.void);
 Context.prototype.setLineCap = function (lineCap: LineCap): void {
-    call(
-        LIB,
-        "cairo_set_line_cap",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: INT_TYPE, value: lineCap },
-        ],
-        t.void,
-    );
+    cairo_set_line_cap(getHandle(this), lineCap);
 };
 
+const cairo_get_line_cap = fn(LIB, "cairo_get_line_cap", [{ type: CAIRO_T }], INT_TYPE);
 Context.prototype.getLineCap = function (): LineCap {
-    return call(LIB, "cairo_get_line_cap", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as LineCap;
+    return cairo_get_line_cap(getHandle(this)) as LineCap;
 };
 
+const cairo_set_line_join = fn(LIB, "cairo_set_line_join", [{ type: CAIRO_T }, { type: INT_TYPE }], t.void);
 Context.prototype.setLineJoin = function (lineJoin: LineJoin): void {
-    call(
-        LIB,
-        "cairo_set_line_join",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: INT_TYPE, value: lineJoin },
-        ],
-        t.void,
-    );
+    cairo_set_line_join(getHandle(this), lineJoin);
 };
 
+const cairo_get_line_join = fn(LIB, "cairo_get_line_join", [{ type: CAIRO_T }], INT_TYPE);
 Context.prototype.getLineJoin = function (): LineJoin {
-    return call(LIB, "cairo_get_line_join", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as LineJoin;
+    return cairo_get_line_join(getHandle(this)) as LineJoin;
 };
 
+const DASH_ARRAY_T = t.array(DOUBLE_TYPE, "array", "borrowed");
+const cairo_set_dash = fn(
+    LIB,
+    "cairo_set_dash",
+    [{ type: CAIRO_T }, { type: DASH_ARRAY_T }, { type: INT_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.setDash = function (dashes: number[], offset: number): void {
-    call(
-        LIB,
-        "cairo_set_dash",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: t.array(DOUBLE_TYPE, "array", "borrowed"), value: dashes },
-            { type: INT_TYPE, value: dashes.length },
-            { type: DOUBLE_TYPE, value: offset },
-        ],
-        t.void,
-    );
+    cairo_set_dash(getHandle(this), dashes, dashes.length, offset);
 };
 
+const cairo_get_dash_count = fn(LIB, "cairo_get_dash_count", [{ type: CAIRO_T }], INT_TYPE);
 Context.prototype.getDashCount = function (): number {
-    return call(LIB, "cairo_get_dash_count", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as number;
+    return cairo_get_dash_count(getHandle(this)) as number;
 };
 
+const DOUBLE_BUFFER_T = t.boxed("double[]", "borrowed", LIB);
+const cairo_get_dash = fn(
+    LIB,
+    "cairo_get_dash",
+    [{ type: CAIRO_T }, { type: DOUBLE_BUFFER_T }, { type: DOUBLE_REF }],
+    t.void,
+);
 Context.prototype.getDash = function (): [number[], number] {
     const count = this.getDashCount();
     if (count === 0) {
@@ -463,16 +434,7 @@ Context.prototype.getDash = function (): [number[], number] {
     }
     const dashBuf = alloc(count * 8, "double[]", LIB);
     const offsetRef = createRef(0);
-    call(
-        LIB,
-        "cairo_get_dash",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: t.boxed("double[]", "borrowed", LIB), value: dashBuf },
-            { type: t.ref(DOUBLE_TYPE), value: offsetRef },
-        ],
-        t.void,
-    );
+    cairo_get_dash(getHandle(this), dashBuf, offsetRef);
     const dashes: number[] = [];
     for (let i = 0; i < count; i++) {
         dashes.push(read(dashBuf, DOUBLE_TYPE, i * 8) as number);
@@ -480,389 +442,262 @@ Context.prototype.getDash = function (): [number[], number] {
     return [dashes, offsetRef.value];
 };
 
+const cairo_set_miter_limit = fn(LIB, "cairo_set_miter_limit", [{ type: CAIRO_T }, { type: DOUBLE_TYPE }], t.void);
 Context.prototype.setMiterLimit = function (limit: number): void {
-    call(
-        LIB,
-        "cairo_set_miter_limit",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: limit },
-        ],
-        t.void,
-    );
+    cairo_set_miter_limit(getHandle(this), limit);
 };
 
+const cairo_get_miter_limit = fn(LIB, "cairo_get_miter_limit", [{ type: CAIRO_T }], DOUBLE_TYPE);
 Context.prototype.getMiterLimit = function (): number {
-    return call(LIB, "cairo_get_miter_limit", [{ type: CAIRO_T, value: getHandle(this) }], DOUBLE_TYPE) as number;
+    return cairo_get_miter_limit(getHandle(this)) as number;
 };
 
+const cairo_set_tolerance = fn(LIB, "cairo_set_tolerance", [{ type: CAIRO_T }, { type: DOUBLE_TYPE }], t.void);
 Context.prototype.setTolerance = function (tolerance: number): void {
-    call(
-        LIB,
-        "cairo_set_tolerance",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: tolerance },
-        ],
-        t.void,
-    );
+    cairo_set_tolerance(getHandle(this), tolerance);
 };
 
+const cairo_get_tolerance = fn(LIB, "cairo_get_tolerance", [{ type: CAIRO_T }], DOUBLE_TYPE);
 Context.prototype.getTolerance = function (): number {
-    return call(LIB, "cairo_get_tolerance", [{ type: CAIRO_T, value: getHandle(this) }], DOUBLE_TYPE) as number;
+    return cairo_get_tolerance(getHandle(this)) as number;
 };
 
+const cairo_set_fill_rule = fn(LIB, "cairo_set_fill_rule", [{ type: CAIRO_T }, { type: INT_TYPE }], t.void);
 Context.prototype.setFillRule = function (fillRule: FillRule): void {
-    call(
-        LIB,
-        "cairo_set_fill_rule",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: INT_TYPE, value: fillRule },
-        ],
-        t.void,
-    );
+    cairo_set_fill_rule(getHandle(this), fillRule);
 };
 
+const cairo_get_fill_rule = fn(LIB, "cairo_get_fill_rule", [{ type: CAIRO_T }], INT_TYPE);
 Context.prototype.getFillRule = function (): FillRule {
-    return call(LIB, "cairo_get_fill_rule", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as FillRule;
+    return cairo_get_fill_rule(getHandle(this)) as FillRule;
 };
 
+const cairo_save = fn(LIB, "cairo_save", [{ type: CAIRO_T }], t.void);
 Context.prototype.save = function (): void {
-    call(LIB, "cairo_save", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_save(getHandle(this));
 };
 
+const cairo_restore = fn(LIB, "cairo_restore", [{ type: CAIRO_T }], t.void);
 Context.prototype.restore = function (): void {
-    call(LIB, "cairo_restore", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_restore(getHandle(this));
 };
 
+const cairo_translate = fn(
+    LIB,
+    "cairo_translate",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.translate = function (tx: number, ty: number): void {
-    call(
-        LIB,
-        "cairo_translate",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: tx },
-            { type: DOUBLE_TYPE, value: ty },
-        ],
-        t.void,
-    );
+    cairo_translate(getHandle(this), tx, ty);
 };
 
+const cairo_scale = fn(LIB, "cairo_scale", [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }], t.void);
 Context.prototype.scale = function (sx: number, sy: number): void {
-    call(
-        LIB,
-        "cairo_scale",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: sx },
-            { type: DOUBLE_TYPE, value: sy },
-        ],
-        t.void,
-    );
+    cairo_scale(getHandle(this), sx, sy);
 };
 
+const cairo_rotate = fn(LIB, "cairo_rotate", [{ type: CAIRO_T }, { type: DOUBLE_TYPE }], t.void);
 Context.prototype.rotate = function (angle: number): void {
-    call(
-        LIB,
-        "cairo_rotate",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: angle },
-        ],
-        t.void,
-    );
+    cairo_rotate(getHandle(this), angle);
 };
 
+const cairo_set_operator = fn(LIB, "cairo_set_operator", [{ type: CAIRO_T }, { type: INT_TYPE }], t.void);
 Context.prototype.setOperator = function (op: Operator): void {
-    call(
-        LIB,
-        "cairo_set_operator",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: INT_TYPE, value: op },
-        ],
-        t.void,
-    );
+    cairo_set_operator(getHandle(this), op);
 };
 
+const cairo_get_operator = fn(LIB, "cairo_get_operator", [{ type: CAIRO_T }], INT_TYPE);
 Context.prototype.getOperator = function (): Operator {
-    return call(LIB, "cairo_get_operator", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as Operator;
+    return cairo_get_operator(getHandle(this)) as Operator;
 };
 
+const cairo_select_font_face = fn(
+    LIB,
+    "cairo_select_font_face",
+    [{ type: CAIRO_T }, { type: STRING_FULL }, { type: INT_TYPE }, { type: INT_TYPE }],
+    t.void,
+);
 Context.prototype.selectFontFace = function (family: string, slant: FontSlant, weight: FontWeight): void {
-    call(
-        LIB,
-        "cairo_select_font_face",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: t.string("full"), value: family },
-            { type: INT_TYPE, value: slant },
-            { type: INT_TYPE, value: weight },
-        ],
-        t.void,
-    );
+    cairo_select_font_face(getHandle(this), family, slant, weight);
 };
 
+const cairo_set_font_size = fn(LIB, "cairo_set_font_size", [{ type: CAIRO_T }, { type: DOUBLE_TYPE }], t.void);
 Context.prototype.setFontSize = function (size: number): void {
-    call(
-        LIB,
-        "cairo_set_font_size",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: size },
-        ],
-        t.void,
-    );
+    cairo_set_font_size(getHandle(this), size);
 };
 
+const cairo_show_text = fn(LIB, "cairo_show_text", [{ type: CAIRO_T }, { type: STRING_FULL }], t.void);
 Context.prototype.showText = function (text: string): void {
-    call(
-        LIB,
-        "cairo_show_text",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: t.string("full"), value: text },
-        ],
-        t.void,
-    );
+    cairo_show_text(getHandle(this), text);
 };
 
+const cairo_text_path = fn(LIB, "cairo_text_path", [{ type: CAIRO_T }, { type: STRING_FULL }], t.void);
 Context.prototype.textPath = function (text: string): void {
-    call(
-        LIB,
-        "cairo_text_path",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: t.string("full"), value: text },
-        ],
-        t.void,
-    );
+    cairo_text_path(getHandle(this), text);
 };
 
-export type { FontExtents, TextExtents } from "./common.js";
-
+const cairo_text_extents = fn(
+    LIB,
+    "cairo_text_extents",
+    [{ type: CAIRO_T }, { type: STRING_FULL }, { type: TEXT_EXTENTS_T }],
+    t.void,
+);
 Context.prototype.textExtents = function (text: string): TextExtents {
     const extents = alloc(48, "cairo_text_extents_t", LIB);
-    call(
-        LIB,
-        "cairo_text_extents",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: t.string("full"), value: text },
-            {
-                type: t.boxed("cairo_text_extents_t", "borrowed", LIB),
-                value: extents,
-            },
-        ],
-        t.void,
-    );
+    cairo_text_extents(getHandle(this), text, extents);
     return readTextExtents(extents);
 };
 
+const cairo_font_extents = fn(LIB, "cairo_font_extents", [{ type: CAIRO_T }, { type: FONT_EXTENTS_T }], t.void);
 Context.prototype.fontExtents = function (): FontExtents {
     const extents = alloc(40, "cairo_font_extents_t", LIB);
-    call(
-        LIB,
-        "cairo_font_extents",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            {
-                type: t.boxed("cairo_font_extents_t", "borrowed", LIB),
-                value: extents,
-            },
-        ],
-        t.void,
-    );
+    cairo_font_extents(getHandle(this), extents);
     return readFontExtents(extents);
 };
 
+const cairo_set_font_options = fn(LIB, "cairo_set_font_options", [{ type: CAIRO_T }, { type: FONT_OPTIONS_T }], t.void);
 Context.prototype.setFontOptions = function (options: FontOptions): void {
-    call(
-        LIB,
-        "cairo_set_font_options",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: FONT_OPTIONS_T, value: getHandle(options) },
-        ],
-        t.void,
-    );
+    cairo_set_font_options(getHandle(this), getHandle(options));
 };
 
+const cairo_get_font_options = fn(LIB, "cairo_get_font_options", [{ type: CAIRO_T }, { type: FONT_OPTIONS_T }], t.void);
 Context.prototype.getFontOptions = function (): FontOptions {
     const options = FontOptionsConstructor.create();
-    call(
-        LIB,
-        "cairo_get_font_options",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: FONT_OPTIONS_T, value: getHandle(options) },
-        ],
-        t.void,
-    );
+    cairo_get_font_options(getHandle(this), getHandle(options));
     return options;
 };
 
+const cairo_set_antialias = fn(LIB, "cairo_set_antialias", [{ type: CAIRO_T }, { type: INT_TYPE }], t.void);
 Context.prototype.setAntialias = function (antialias: Antialias): void {
-    call(
-        LIB,
-        "cairo_set_antialias",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: INT_TYPE, value: antialias },
-        ],
-        t.void,
-    );
+    cairo_set_antialias(getHandle(this), antialias);
 };
 
+const cairo_get_antialias = fn(LIB, "cairo_get_antialias", [{ type: CAIRO_T }], INT_TYPE);
 Context.prototype.getAntialias = function (): Antialias {
-    return call(LIB, "cairo_get_antialias", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as Antialias;
+    return cairo_get_antialias(getHandle(this)) as Antialias;
 };
 
+const cairo_show_page = fn(LIB, "cairo_show_page", [{ type: CAIRO_T }], t.void);
 Context.prototype.showPage = function (): void {
-    call(LIB, "cairo_show_page", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_show_page(getHandle(this));
 };
 
+const cairo_copy_page = fn(LIB, "cairo_copy_page", [{ type: CAIRO_T }], t.void);
 Context.prototype.copyPage = function (): void {
-    call(LIB, "cairo_copy_page", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_copy_page(getHandle(this));
 };
 
+const cairo_get_target = fn(LIB, "cairo_get_target", [{ type: CAIRO_T }], SURFACE_T_NONE);
 Context.prototype.getTarget = function (): Surface {
-    const ptr = call(
-        LIB,
-        "cairo_get_target",
-        [{ type: CAIRO_T, value: getHandle(this) }],
-        SURFACE_T_NONE,
-    ) as NativeHandle;
-    return getNativeObject(ptr, Surface) as Surface;
+    return getNativeObject(cairo_get_target(getHandle(this)) as NativeHandle, Surface) as Surface;
 };
 
+const cairo_set_source_surface = fn(
+    LIB,
+    "cairo_set_source_surface",
+    [{ type: CAIRO_T }, { type: SURFACE_T_NONE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.setSourceSurface = function (surface: Surface, x: number, y: number): void {
-    call(
-        LIB,
-        "cairo_set_source_surface",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: SURFACE_T_NONE, value: getHandle(surface) },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-        ],
-        t.void,
-    );
+    cairo_set_source_surface(getHandle(this), getHandle(surface), x, y);
 };
 
+const cairo_has_current_point = fn(LIB, "cairo_has_current_point", [{ type: CAIRO_T }], t.boolean);
 Context.prototype.hasCurrentPoint = function (): boolean {
-    return call(LIB, "cairo_has_current_point", [{ type: CAIRO_T, value: getHandle(this) }], t.boolean) as boolean;
+    return cairo_has_current_point(getHandle(this)) as boolean;
 };
 
+const cairo_get_current_point = fn(
+    LIB,
+    "cairo_get_current_point",
+    [{ type: CAIRO_T }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    t.void,
+);
 Context.prototype.getCurrentPoint = function (): [number, number] | null {
-    const hasPoint = this.hasCurrentPoint();
-
-    if (!hasPoint) {
+    if (!this.hasCurrentPoint()) {
         return null;
     }
-
     const xRef = createRef(0);
     const yRef = createRef(0);
-
-    call(
-        LIB,
-        "cairo_get_current_point",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: t.ref(DOUBLE_TYPE), value: xRef },
-            { type: t.ref(DOUBLE_TYPE), value: yRef },
-        ],
-        t.void,
-    );
-
+    cairo_get_current_point(getHandle(this), xRef, yRef);
     return [xRef.value, yRef.value];
 };
 
+const cairo_get_source = fn(LIB, "cairo_get_source", [{ type: CAIRO_T }], PATTERN_T_NONE);
 Context.prototype.getSource = function (): Pattern {
-    const ptr = call(
-        LIB,
-        "cairo_get_source",
-        [{ type: CAIRO_T, value: getHandle(this) }],
-        PATTERN_T_NONE,
-    ) as NativeHandle;
-    return getNativeObject(ptr, Pattern) as Pattern;
+    return getNativeObject(cairo_get_source(getHandle(this)) as NativeHandle, Pattern) as Pattern;
 };
 
-const getExtents = (ctx: Context, fn: string): [number, number, number, number] => {
+const EXTENTS_ARGS = [
+    { type: CAIRO_T },
+    { type: DOUBLE_REF },
+    { type: DOUBLE_REF },
+    { type: DOUBLE_REF },
+    { type: DOUBLE_REF },
+] as const;
+const cairo_stroke_extents = fn(LIB, "cairo_stroke_extents", EXTENTS_ARGS, t.void);
+const cairo_fill_extents = fn(LIB, "cairo_fill_extents", EXTENTS_ARGS, t.void);
+const cairo_clip_extents = fn(LIB, "cairo_clip_extents", EXTENTS_ARGS, t.void);
+const cairo_path_extents = fn(LIB, "cairo_path_extents", EXTENTS_ARGS, t.void);
+
+const getExtents = (ctx: Context, boundFn: (...args: unknown[]) => unknown): [number, number, number, number] => {
     const x1Ref = createRef(0);
     const y1Ref = createRef(0);
     const x2Ref = createRef(0);
     const y2Ref = createRef(0);
-    call(
-        LIB,
-        fn,
-        [
-            { type: CAIRO_T, value: getHandle(ctx) },
-            { type: t.ref(DOUBLE_TYPE), value: x1Ref },
-            { type: t.ref(DOUBLE_TYPE), value: y1Ref },
-            { type: t.ref(DOUBLE_TYPE), value: x2Ref },
-            { type: t.ref(DOUBLE_TYPE), value: y2Ref },
-        ],
-        t.void,
-    );
+    boundFn(getHandle(ctx), x1Ref, y1Ref, x2Ref, y2Ref);
     return [x1Ref.value, y1Ref.value, x2Ref.value, y2Ref.value];
 };
 
 Context.prototype.strokeExtents = function (): [number, number, number, number] {
-    return getExtents(this, "cairo_stroke_extents");
+    return getExtents(this, cairo_stroke_extents);
 };
 
 Context.prototype.fillExtents = function (): [number, number, number, number] {
-    return getExtents(this, "cairo_fill_extents");
+    return getExtents(this, cairo_fill_extents);
 };
 
 Context.prototype.clipExtents = function (): [number, number, number, number] {
-    return getExtents(this, "cairo_clip_extents");
+    return getExtents(this, cairo_clip_extents);
 };
 
 Context.prototype.pathExtents = function (): [number, number, number, number] {
-    return getExtents(this, "cairo_path_extents");
+    return getExtents(this, cairo_path_extents);
 };
 
+const cairo_in_stroke = fn(
+    LIB,
+    "cairo_in_stroke",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.boolean,
+);
 Context.prototype.inStroke = function (x: number, y: number): boolean {
-    return call(
-        LIB,
-        "cairo_in_stroke",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-        ],
-        t.boolean,
-    ) as boolean;
+    return cairo_in_stroke(getHandle(this), x, y) as boolean;
 };
 
+const cairo_in_fill = fn(
+    LIB,
+    "cairo_in_fill",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.boolean,
+);
 Context.prototype.inFill = function (x: number, y: number): boolean {
-    return call(
-        LIB,
-        "cairo_in_fill",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-        ],
-        t.boolean,
-    ) as boolean;
+    return cairo_in_fill(getHandle(this), x, y) as boolean;
 };
 
+const cairo_in_clip = fn(
+    LIB,
+    "cairo_in_clip",
+    [{ type: CAIRO_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.boolean,
+);
 Context.prototype.inClip = function (x: number, y: number): boolean {
-    return call(
-        LIB,
-        "cairo_in_clip",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-        ],
-        t.boolean,
-    ) as boolean;
+    return cairo_in_clip(getHandle(this), x, y) as boolean;
 };
+
+const cairo_copy_clip_rectangle_list = fn(LIB, "cairo_copy_clip_rectangle_list", [{ type: CAIRO_T }], RECT_LIST_T);
+const cairo_rectangle_list_destroy = fn(LIB, "cairo_rectangle_list_destroy", [{ type: RECT_LIST_T }], t.void);
 
 /**
  * Parses `cairo_rectangle_list_t` struct layout:
@@ -882,16 +717,11 @@ Context.prototype.copyClipRectangleList = function (): Array<{
     width: number;
     height: number;
 }> {
-    const listHandle = call(
-        LIB,
-        "cairo_copy_clip_rectangle_list",
-        [{ type: CAIRO_T, value: getHandle(this) }],
-        RECT_LIST_T,
-    ) as NativeHandle;
+    const listHandle = cairo_copy_clip_rectangle_list(getHandle(this)) as NativeHandle;
 
     const numRectangles = read(listHandle, INT_TYPE, 16) as number;
     if (numRectangles === 0) {
-        call(LIB, "cairo_rectangle_list_destroy", [{ type: RECT_LIST_T, value: listHandle }], t.void);
+        cairo_rectangle_list_destroy(listHandle);
         return [];
     }
     const rectsArray = read(listHandle, t.struct("cairo_rectangle_t", "full", numRectangles * 32), 8) as NativeHandle;
@@ -907,113 +737,85 @@ Context.prototype.copyClipRectangleList = function (): Array<{
         });
     }
 
-    call(LIB, "cairo_rectangle_list_destroy", [{ type: RECT_LIST_T, value: listHandle }], t.void);
+    cairo_rectangle_list_destroy(listHandle);
 
     return result;
 };
 
+const cairo_mask = fn(LIB, "cairo_mask", [{ type: CAIRO_T }, { type: PATTERN_T_NONE }], t.void);
 Context.prototype.mask = function (pattern: Pattern): void {
-    call(
-        LIB,
-        "cairo_mask",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: PATTERN_T_NONE, value: getHandle(pattern) },
-        ],
-        t.void,
-    );
+    cairo_mask(getHandle(this), getHandle(pattern));
 };
 
+const cairo_mask_surface = fn(
+    LIB,
+    "cairo_mask_surface",
+    [{ type: CAIRO_T }, { type: SURFACE_T_NONE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
 Context.prototype.maskSurface = function (surface: Surface, x: number, y: number): void {
-    call(
-        LIB,
-        "cairo_mask_surface",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: SURFACE_T_NONE, value: getHandle(surface) },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-        ],
-        t.void,
-    );
+    cairo_mask_surface(getHandle(this), getHandle(surface), x, y);
 };
 
+const cairo_set_matrix = fn(LIB, "cairo_set_matrix", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
 Context.prototype.setMatrix = function (matrix: Matrix): void {
-    call(
-        LIB,
-        "cairo_set_matrix",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: MATRIX_T, value: getHandle(matrix) },
-        ],
-        t.void,
-    );
+    cairo_set_matrix(getHandle(this), getHandle(matrix));
 };
 
+const cairo_get_matrix = fn(LIB, "cairo_get_matrix", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
 Context.prototype.getMatrix = function (): Matrix {
     const { handle, obj } = allocMatrix();
-    call(
-        LIB,
-        "cairo_get_matrix",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: MATRIX_T, value: handle },
-        ],
-        t.void,
-    );
+    cairo_get_matrix(getHandle(this), handle);
     return obj;
 };
 
+const cairo_transform = fn(LIB, "cairo_transform", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
 Context.prototype.transform = function (matrix: Matrix): void {
-    call(
-        LIB,
-        "cairo_transform",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: MATRIX_T, value: getHandle(matrix) },
-        ],
-        t.void,
-    );
+    cairo_transform(getHandle(this), getHandle(matrix));
 };
 
+const cairo_identity_matrix = fn(LIB, "cairo_identity_matrix", [{ type: CAIRO_T }], t.void);
 Context.prototype.identityMatrix = function (): void {
-    call(LIB, "cairo_identity_matrix", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_identity_matrix(getHandle(this));
 };
 
-const coordTransform = (ctx: Context, fn: string, a: number, b: number): [number, number] => {
+const COORD_ARGS = [{ type: CAIRO_T }, { type: DOUBLE_REF }, { type: DOUBLE_REF }] as const;
+const cairo_user_to_device = fn(LIB, "cairo_user_to_device", COORD_ARGS, t.void);
+const cairo_user_to_device_distance = fn(LIB, "cairo_user_to_device_distance", COORD_ARGS, t.void);
+const cairo_device_to_user = fn(LIB, "cairo_device_to_user", COORD_ARGS, t.void);
+const cairo_device_to_user_distance = fn(LIB, "cairo_device_to_user_distance", COORD_ARGS, t.void);
+
+const coordTransform = (
+    ctx: Context,
+    boundFn: (...args: unknown[]) => unknown,
+    a: number,
+    b: number,
+): [number, number] => {
     const aRef = createRef(a);
     const bRef = createRef(b);
-    call(
-        LIB,
-        fn,
-        [
-            { type: CAIRO_T, value: getHandle(ctx) },
-            { type: t.ref(DOUBLE_TYPE), value: aRef },
-            { type: t.ref(DOUBLE_TYPE), value: bRef },
-        ],
-        t.void,
-    );
+    boundFn(getHandle(ctx), aRef, bRef);
     return [aRef.value, bRef.value];
 };
 
 Context.prototype.userToDevice = function (x: number, y: number): [number, number] {
-    return coordTransform(this, "cairo_user_to_device", x, y);
+    return coordTransform(this, cairo_user_to_device, x, y);
 };
 
 Context.prototype.userToDeviceDistance = function (dx: number, dy: number): [number, number] {
-    return coordTransform(this, "cairo_user_to_device_distance", dx, dy);
+    return coordTransform(this, cairo_user_to_device_distance, dx, dy);
 };
 
 Context.prototype.deviceToUser = function (x: number, y: number): [number, number] {
-    return coordTransform(this, "cairo_device_to_user", x, y);
+    return coordTransform(this, cairo_device_to_user, x, y);
 };
 
 Context.prototype.deviceToUserDistance = function (dx: number, dy: number): [number, number] {
-    return coordTransform(this, "cairo_device_to_user_distance", dx, dy);
+    return coordTransform(this, cairo_device_to_user_distance, dx, dy);
 };
 
+const cairo_status = fn(LIB, "cairo_status", [{ type: CAIRO_T }], INT_TYPE);
 Context.prototype.status = function (): Status {
-    return call(LIB, "cairo_status", [{ type: CAIRO_T, value: getHandle(this) }], INT_TYPE) as Status;
+    return cairo_status(getHandle(this)) as Status;
 };
 
 declare module "../generated/cairo/cairo.js" {
@@ -1041,177 +843,114 @@ declare module "../generated/cairo/cairo.js" {
     }
 }
 
+const cairo_push_group = fn(LIB, "cairo_push_group", [{ type: CAIRO_T }], t.void);
 Context.prototype.pushGroup = function (): void {
-    call(LIB, "cairo_push_group", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_push_group(getHandle(this));
 };
 
+const cairo_push_group_with_content = fn(
+    LIB,
+    "cairo_push_group_with_content",
+    [{ type: CAIRO_T }, { type: INT_TYPE }],
+    t.void,
+);
 Context.prototype.pushGroupWithContent = function (content: Content): void {
-    call(
-        LIB,
-        "cairo_push_group_with_content",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: INT_TYPE, value: content },
-        ],
-        t.void,
-    );
+    cairo_push_group_with_content(getHandle(this), content);
 };
 
+const cairo_pop_group = fn(LIB, "cairo_pop_group", [{ type: CAIRO_T }], PATTERN_T);
 Context.prototype.popGroup = function (): Pattern {
-    const ptr = call(LIB, "cairo_pop_group", [{ type: CAIRO_T, value: getHandle(this) }], PATTERN_T) as NativeHandle;
-    return getNativeObject(ptr, Pattern) as Pattern;
+    return getNativeObject(cairo_pop_group(getHandle(this)) as NativeHandle, Pattern) as Pattern;
 };
 
+const cairo_pop_group_to_source = fn(LIB, "cairo_pop_group_to_source", [{ type: CAIRO_T }], t.void);
 Context.prototype.popGroupToSource = function (): void {
-    call(LIB, "cairo_pop_group_to_source", [{ type: CAIRO_T, value: getHandle(this) }], t.void);
+    cairo_pop_group_to_source(getHandle(this));
 };
 
+const cairo_get_group_target = fn(LIB, "cairo_get_group_target", [{ type: CAIRO_T }], SURFACE_T_NONE);
 Context.prototype.getGroupTarget = function (): Surface {
-    const ptr = call(
-        LIB,
-        "cairo_get_group_target",
-        [{ type: CAIRO_T, value: getHandle(this) }],
-        SURFACE_T_NONE,
-    ) as NativeHandle;
-    return getNativeObject(ptr, Surface) as Surface;
+    return getNativeObject(cairo_get_group_target(getHandle(this)) as NativeHandle, Surface) as Surface;
 };
 
+const cairo_set_font_face = fn(LIB, "cairo_set_font_face", [{ type: CAIRO_T }, { type: FONT_FACE_T_NONE }], t.void);
 Context.prototype.setFontFace = function (fontFace: FontFace): void {
-    call(
-        LIB,
-        "cairo_set_font_face",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: FONT_FACE_T_NONE, value: getHandle(fontFace) },
-        ],
-        t.void,
-    );
+    cairo_set_font_face(getHandle(this), getHandle(fontFace));
 };
 
+const cairo_get_font_face = fn(LIB, "cairo_get_font_face", [{ type: CAIRO_T }], FONT_FACE_T_NONE);
 Context.prototype.getFontFace = function (): FontFace {
-    const ptr = call(
-        LIB,
-        "cairo_get_font_face",
-        [{ type: CAIRO_T, value: getHandle(this) }],
-        FONT_FACE_T_NONE,
-    ) as NativeHandle;
-    return getNativeObject(ptr, FontFace) as FontFace;
+    return getNativeObject(cairo_get_font_face(getHandle(this)) as NativeHandle, FontFace) as FontFace;
 };
 
+const cairo_set_font_matrix = fn(LIB, "cairo_set_font_matrix", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
 Context.prototype.setFontMatrix = function (matrix: Matrix): void {
-    call(
-        LIB,
-        "cairo_set_font_matrix",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: MATRIX_T, value: getHandle(matrix) },
-        ],
-        t.void,
-    );
+    cairo_set_font_matrix(getHandle(this), getHandle(matrix));
 };
 
+const cairo_get_font_matrix = fn(LIB, "cairo_get_font_matrix", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
 Context.prototype.getFontMatrix = function (): Matrix {
     const { handle, obj } = allocMatrix();
-    call(
-        LIB,
-        "cairo_get_font_matrix",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: MATRIX_T, value: handle },
-        ],
-        t.void,
-    );
+    cairo_get_font_matrix(getHandle(this), handle);
     return obj;
 };
 
+const cairo_set_scaled_font = fn(
+    LIB,
+    "cairo_set_scaled_font",
+    [{ type: CAIRO_T }, { type: SCALED_FONT_T_NONE }],
+    t.void,
+);
 Context.prototype.setScaledFont = function (scaledFont: ScaledFont): void {
-    call(
-        LIB,
-        "cairo_set_scaled_font",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: SCALED_FONT_T_NONE, value: getHandle(scaledFont) },
-        ],
-        t.void,
-    );
+    cairo_set_scaled_font(getHandle(this), getHandle(scaledFont));
 };
 
+const cairo_get_scaled_font = fn(LIB, "cairo_get_scaled_font", [{ type: CAIRO_T }], SCALED_FONT_T_NONE);
 Context.prototype.getScaledFont = function (): ScaledFont {
-    const ptr = call(
-        LIB,
-        "cairo_get_scaled_font",
-        [{ type: CAIRO_T, value: getHandle(this) }],
-        SCALED_FONT_T_NONE,
-    ) as NativeHandle;
-    return getNativeObject(ptr, ScaledFont) as ScaledFont;
+    return getNativeObject(cairo_get_scaled_font(getHandle(this)) as NativeHandle, ScaledFont) as ScaledFont;
 };
 
+const cairo_show_glyphs = fn(
+    LIB,
+    "cairo_show_glyphs",
+    [{ type: CAIRO_T }, { type: GLYPH_BUF_T }, { type: INT_TYPE }],
+    t.void,
+);
 Context.prototype.showGlyphs = function (glyphs: Array<{ index: number; x: number; y: number }>): void {
-    const buf = allocGlyphBuffer(glyphs);
-    call(
-        LIB,
-        "cairo_show_glyphs",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: GLYPH_BUF_T, value: buf },
-            { type: INT_TYPE, value: glyphs.length },
-        ],
-        t.void,
-    );
+    cairo_show_glyphs(getHandle(this), allocGlyphBuffer(glyphs), glyphs.length);
 };
 
+const cairo_glyph_path = fn(
+    LIB,
+    "cairo_glyph_path",
+    [{ type: CAIRO_T }, { type: GLYPH_BUF_T }, { type: INT_TYPE }],
+    t.void,
+);
 Context.prototype.glyphPath = function (glyphs: Array<{ index: number; x: number; y: number }>): void {
-    const buf = allocGlyphBuffer(glyphs);
-    call(
-        LIB,
-        "cairo_glyph_path",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: GLYPH_BUF_T, value: buf },
-            { type: INT_TYPE, value: glyphs.length },
-        ],
-        t.void,
-    );
+    cairo_glyph_path(getHandle(this), allocGlyphBuffer(glyphs), glyphs.length);
 };
 
+const cairo_glyph_extents = fn(
+    LIB,
+    "cairo_glyph_extents",
+    [{ type: CAIRO_T }, { type: GLYPH_BUF_T }, { type: INT_TYPE }, { type: TEXT_EXTENTS_T }],
+    t.void,
+);
 Context.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: number; y: number }>): TextExtents {
     const buf = allocGlyphBuffer(glyphs);
     const extents = alloc(48, "cairo_text_extents_t", LIB);
-    call(
-        LIB,
-        "cairo_glyph_extents",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: GLYPH_BUF_T, value: buf },
-            { type: INT_TYPE, value: glyphs.length },
-            {
-                type: t.boxed("cairo_text_extents_t", "borrowed", LIB),
-                value: extents,
-            },
-        ],
-        t.void,
-    );
+    cairo_glyph_extents(getHandle(this), buf, glyphs.length, extents);
     return readTextExtents(extents);
 };
 
+const cairo_copy_path = fn(LIB, "cairo_copy_path", [{ type: CAIRO_T }], PATH_STRUCT_T);
 Context.prototype.copyPath = function (): PathData[] {
-    const pathHandle = call(
-        LIB,
-        "cairo_copy_path",
-        [{ type: CAIRO_T, value: getHandle(this) }],
-        PATH_STRUCT_T,
-    ) as NativeHandle;
-    return parsePath(pathHandle);
+    return parsePath(cairo_copy_path(getHandle(this)) as NativeHandle);
 };
 
+const cairo_copy_path_flat = fn(LIB, "cairo_copy_path_flat", [{ type: CAIRO_T }], PATH_STRUCT_T);
 Context.prototype.copyPathFlat = function (): PathData[] {
-    const pathHandle = call(
-        LIB,
-        "cairo_copy_path_flat",
-        [{ type: CAIRO_T, value: getHandle(this) }],
-        PATH_STRUCT_T,
-    ) as NativeHandle;
-    return parsePath(pathHandle);
+    return parsePath(cairo_copy_path_flat(getHandle(this)) as NativeHandle);
 };
 
 Context.prototype.appendPath = function (data: PathData[]): void {
@@ -1233,19 +972,16 @@ Context.prototype.appendPath = function (data: PathData[]): void {
     }
 };
 
+const cairo_status_to_string = fn(LIB, "cairo_status_to_string", [{ type: INT_TYPE }], STRING_BORROWED);
 export const statusToString = (status: Status): string => {
-    return call(LIB, "cairo_status_to_string", [{ type: INT_TYPE, value: status }], t.string("borrowed")) as string;
+    return cairo_status_to_string(status) as string;
 };
+
+const cairo_create = fn(LIB, "cairo_create", [{ type: SURFACE_T_NONE }], CAIRO_T);
 
 class ContextImpl extends Context {
     static create(surface: Surface): ContextImpl {
-        const handle = call(
-            LIB,
-            "cairo_create",
-            [{ type: SURFACE_T_NONE, value: getHandle(surface) }],
-            CAIRO_T,
-        ) as NativeHandle;
-        return wrapHandle(ContextImpl, handle);
+        return wrapHandle(ContextImpl, cairo_create(getHandle(surface)) as NativeHandle);
     }
 }
 
@@ -1264,31 +1000,36 @@ declare module "../generated/cairo/cairo.js" {
     }
 }
 
+const cairo_tag_begin = fn(
+    LIB,
+    "cairo_tag_begin",
+    [{ type: CAIRO_T }, { type: STRING_FULL }, { type: STRING_FULL }],
+    t.void,
+);
 Context.prototype.tagBegin = function (tagName: string, attributes: string): void {
-    call(
-        LIB,
-        "cairo_tag_begin",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: t.string("full"), value: tagName },
-            { type: t.string("full"), value: attributes },
-        ],
-        t.void,
-    );
+    cairo_tag_begin(getHandle(this), tagName, attributes);
 };
 
+const cairo_tag_end = fn(LIB, "cairo_tag_end", [{ type: CAIRO_T }, { type: STRING_FULL }], t.void);
 Context.prototype.tagEnd = function (tagName: string): void {
-    call(
-        LIB,
-        "cairo_tag_end",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: t.string("full"), value: tagName },
-        ],
-        t.void,
-    );
+    cairo_tag_end(getHandle(this), tagName);
 };
 
+const cairo_show_text_glyphs = fn(
+    LIB,
+    "cairo_show_text_glyphs",
+    [
+        { type: CAIRO_T },
+        { type: STRING_FULL },
+        { type: INT_TYPE },
+        { type: GLYPH_BUF_T },
+        { type: INT_TYPE },
+        { type: CLUSTER_BUF_T },
+        { type: INT_TYPE },
+        { type: INT_TYPE },
+    ],
+    t.void,
+);
 Context.prototype.showTextGlyphs = function (
     text: string,
     glyphs: CairoGlyph[],
@@ -1297,21 +1038,15 @@ Context.prototype.showTextGlyphs = function (
 ): void {
     const glyphBuf = allocGlyphBuffer(glyphs);
     const clusterBuf = allocClusterBuffer(clusters);
-    const encoder = new TextEncoder();
-    const utf8 = encoder.encode(text);
-    call(
-        LIB,
-        "cairo_show_text_glyphs",
-        [
-            { type: CAIRO_T, value: getHandle(this) },
-            { type: t.string("full"), value: text },
-            { type: INT_TYPE, value: utf8.length },
-            { type: GLYPH_BUF_T, value: glyphBuf },
-            { type: INT_TYPE, value: glyphs.length },
-            { type: CLUSTER_BUF_T, value: clusterBuf },
-            { type: INT_TYPE, value: clusters.length },
-            { type: INT_TYPE, value: clusterFlags },
-        ],
-        t.void,
+    const utf8 = new TextEncoder().encode(text);
+    cairo_show_text_glyphs(
+        getHandle(this),
+        text,
+        utf8.length,
+        glyphBuf,
+        glyphs.length,
+        clusterBuf,
+        clusters.length,
+        clusterFlags,
     );
 };

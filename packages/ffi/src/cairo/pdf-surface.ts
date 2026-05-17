@@ -1,9 +1,12 @@
+import type { NativeHandle } from "@gtkx/native";
 import { Surface } from "../generated/cairo/cairo.js";
 import { getHandle } from "../handles.js";
-import { call, t } from "../native.js";
+import { t } from "../native.js";
 import { wrapHandle } from "../registry.js";
-import { createFileSurface, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";
-import { enumToString, getEnumList } from "./enum-helpers.js";
+import { DOUBLE_TYPE, fileSurfaceCreate, INT_TYPE, LIB, STRING_FULL, SURFACE_T_NONE } from "./common.js";
+import { enumListGetter, enumToStringFn } from "./enum-helpers.js";
+
+const { fn } = t;
 
 export enum PdfMetadata {
     TITLE = 0,
@@ -29,6 +32,44 @@ export enum PdfOutlineFlags {
     ITALIC = 4,
 }
 
+const cairo_pdf_surface_create = fileSurfaceCreate("cairo_pdf_surface_create");
+const cairo_pdf_surface_set_size = fn(
+    LIB,
+    "cairo_pdf_surface_set_size",
+    [{ type: SURFACE_T_NONE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
+const cairo_pdf_surface_set_metadata = fn(
+    LIB,
+    "cairo_pdf_surface_set_metadata",
+    [{ type: SURFACE_T_NONE }, { type: INT_TYPE }, { type: STRING_FULL }],
+    t.void,
+);
+const cairo_pdf_surface_set_page_label = fn(
+    LIB,
+    "cairo_pdf_surface_set_page_label",
+    [{ type: SURFACE_T_NONE }, { type: STRING_FULL }],
+    t.void,
+);
+const cairo_pdf_surface_set_thumbnail_size = fn(
+    LIB,
+    "cairo_pdf_surface_set_thumbnail_size",
+    [{ type: SURFACE_T_NONE }, { type: INT_TYPE }, { type: INT_TYPE }],
+    t.void,
+);
+const cairo_pdf_surface_restrict_to_version = fn(
+    LIB,
+    "cairo_pdf_surface_restrict_to_version",
+    [{ type: SURFACE_T_NONE }, { type: INT_TYPE }],
+    t.void,
+);
+const cairo_pdf_surface_add_outline = fn(
+    LIB,
+    "cairo_pdf_surface_add_outline",
+    [{ type: SURFACE_T_NONE }, { type: INT_TYPE }, { type: STRING_FULL }, { type: STRING_FULL }, { type: INT_TYPE }],
+    INT_TYPE,
+);
+
 export class PdfSurface extends Surface {
     declare restrictToVersion: (version: PdfVersion) => void;
     declare addOutline: (parentId: number, name: string, linkAttribs: string, flags: PdfOutlineFlags) => number;
@@ -37,72 +78,31 @@ export class PdfSurface extends Surface {
      * Creates a PDF surface that writes its output to the given filename.
      */
     static create(filename: string, widthInPoints: number, heightInPoints: number): PdfSurface {
-        const handle = createFileSurface("cairo_pdf_surface_create", filename, widthInPoints, heightInPoints);
-        return wrapHandle(PdfSurface, handle);
+        return wrapHandle(
+            PdfSurface,
+            cairo_pdf_surface_create(filename, widthInPoints, heightInPoints) as NativeHandle,
+        );
     }
 
     setSize(widthInPoints: number, heightInPoints: number): void {
-        call(
-            LIB,
-            "cairo_pdf_surface_set_size",
-            [
-                { type: SURFACE_T_NONE, value: getHandle(this) },
-                { type: DOUBLE_TYPE, value: widthInPoints },
-                { type: DOUBLE_TYPE, value: heightInPoints },
-            ],
-            t.void,
-        );
+        cairo_pdf_surface_set_size(getHandle(this), widthInPoints, heightInPoints);
     }
 
     setMetadata(metadata: PdfMetadata, value: string): void {
-        call(
-            LIB,
-            "cairo_pdf_surface_set_metadata",
-            [
-                { type: SURFACE_T_NONE, value: getHandle(this) },
-                { type: INT_TYPE, value: metadata },
-                { type: t.string("full"), value: value },
-            ],
-            t.void,
-        );
+        cairo_pdf_surface_set_metadata(getHandle(this), metadata, value);
     }
 
     setPageLabel(label: string): void {
-        call(
-            LIB,
-            "cairo_pdf_surface_set_page_label",
-            [
-                { type: SURFACE_T_NONE, value: getHandle(this) },
-                { type: t.string("full"), value: label },
-            ],
-            t.void,
-        );
+        cairo_pdf_surface_set_page_label(getHandle(this), label);
     }
 
     setThumbnailSize(width: number, height: number): void {
-        call(
-            LIB,
-            "cairo_pdf_surface_set_thumbnail_size",
-            [
-                { type: SURFACE_T_NONE, value: getHandle(this) },
-                { type: INT_TYPE, value: width },
-                { type: INT_TYPE, value: height },
-            ],
-            t.void,
-        );
+        cairo_pdf_surface_set_thumbnail_size(getHandle(this), width, height);
     }
 }
 
 PdfSurface.prototype.restrictToVersion = function (this: PdfSurface, version: PdfVersion): void {
-    call(
-        LIB,
-        "cairo_pdf_surface_restrict_to_version",
-        [
-            { type: SURFACE_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: version },
-        ],
-        t.void,
-    );
+    cairo_pdf_surface_restrict_to_version(getHandle(this), version);
 };
 
 PdfSurface.prototype.addOutline = function (
@@ -112,24 +112,9 @@ PdfSurface.prototype.addOutline = function (
     linkAttribs: string,
     flags: PdfOutlineFlags,
 ): number {
-    return call(
-        LIB,
-        "cairo_pdf_surface_add_outline",
-        [
-            { type: SURFACE_T_NONE, value: getHandle(this) },
-            { type: INT_TYPE, value: parentId },
-            { type: t.string("full"), value: name },
-            { type: t.string("full"), value: linkAttribs },
-            { type: INT_TYPE, value: flags },
-        ],
-        INT_TYPE,
-    ) as number;
+    return cairo_pdf_surface_add_outline(getHandle(this), parentId, name, linkAttribs, flags) as number;
 };
 
-export const pdfGetVersions = (): PdfVersion[] => {
-    return getEnumList<PdfVersion>("cairo_pdf_get_versions");
-};
+export const pdfGetVersions = enumListGetter<PdfVersion>("cairo_pdf_get_versions");
 
-export const pdfVersionToString = (version: PdfVersion): string => {
-    return enumToString("cairo_pdf_version_to_string", version);
-};
+export const pdfVersionToString = enumToStringFn<PdfVersion>("cairo_pdf_version_to_string");
