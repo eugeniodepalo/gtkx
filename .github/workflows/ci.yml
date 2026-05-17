@@ -85,3 +85,15 @@ jobs:
           cache-cargo: "true"
           cache-pnpm: "true"
           extra-env: -e NODE_OPTIONS="--max-old-space-size=8192"
+
+  native-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Native test coverage
+        uses: ./.github/actions/run-in-container
+        with:
+          command: cd packages/native && pnpm native-coverage
+          cache-cargo: "true"

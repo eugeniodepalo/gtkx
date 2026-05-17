@@ -1,0 +1,404 @@
+//! Coverage tests for [`native::types::GObjectType`] codec implementations.
+
+mod common;
+
+use std::ffi::c_void;
+
+use gtk4::glib;
+use gtk4::glib::translate::ToGlibPtrMut as _;
+use gtk4::glib::value::ToValue as _;
+use gtk4::prelude::ObjectType as _;
+use gtk4::prelude::StaticType as _;
+
+use native::ffi;
+use native::managed::NativeHandle;
+use native::types::{FfiDecoder, FfiEncoder, GObjectType, GlibValueCodec, Ownership, RawPtrCodec};
+use native::value::Value;
+
+use common::get_gobject_refcount;
+
+fn borrowed() -> GObjectType {
+    GObjectType {
+        ownership: Ownership::Borrowed,
+    }
+}
+
+fn full() -> GObjectType {
+    GObjectType {
+        ownership: Ownership::Full,
+    }
+}
+
+#[test]
+fn encode_full_transfer_adds_exactly_one_ref() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    let before = get_gobject_refcount(obj_ptr);
+
+    let encoded = full()
+        .encode(
+            &Value::Object(NativeHandle::borrowed(obj_ptr as *mut c_void)),
+            false,
+        )
+        .expect("full encode should succeed");
+
+    let after = get_gobject_refcount(obj_ptr);
+    assert_eq!(after, before + 1);
+
+    let ffi::FfiValue::Ptr(ptr) = encoded else {
+        panic!("expected Ptr ffi value");
+    };
+    assert_eq!(ptr, obj_ptr as *mut c_void);
+
+    unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
+    assert_eq!(get_gobject_refcount(obj_ptr), before);
+}
+
+#[test]
+fn encode_borrowed_does_not_change_refcount() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    let before = get_gobject_refcount(obj_ptr);
+
+    let encoded = borrowed()
+        .encode(
+            &Value::Object(NativeHandle::borrowed(obj_ptr as *mut c_void)),
+            false,
+        )
+        .expect("borrowed encode should succeed");
+
+    assert_eq!(get_gobject_refcount(obj_ptr), before);
+    assert!(matches!(encoded, ffi::FfiValue::Ptr(_)));
+}
+
+#[test]
+fn encode_null_object_stays_null() {
+    common::ensure_gtk_init();
+
+    let encoded = full()
+        .encode(&Value::Null, false)
+        .expect("null encode should succeed");
+    assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
+}
+
+#[test]
+fn encode_rejects_non_object() {
+    common::ensure_gtk_init();
+    assert!(full().encode(&Value::Number(1.0), false).is_err());
+}
+
+#[test]
+fn ref_for_transfer_full_adds_one_ref() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    let before = get_gobject_refcount(obj_ptr);
+
+    let returned = full()
+        .ref_for_transfer(obj_ptr as *mut c_void)
+        .expect("ref_for_transfer should succeed");
+
+    assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
+    assert_eq!(returned, obj_ptr as *mut c_void);
+
+    unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
+    assert_eq!(get_gobject_refcount(obj_ptr), before);
+}
+
+#[test]
+fn ref_for_transfer_borrowed_keeps_refcount() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    let before = get_gobject_refcount(obj_ptr);
+
+    let returned = borrowed()
+        .ref_for_transfer(obj_ptr as *mut c_void)
+        .expect("ref_for_transfer should succeed");
+
+    assert_eq!(get_gobject_refcount(obj_ptr), before);
+    assert_eq!(returned, obj_ptr as *mut c_void);
+}
+
+#[test]
+fn ref_for_transfer_full_null_is_noop() {
+    common::ensure_gtk_init();
+    let returned = full()
+        .ref_for_transfer(std::ptr::null_mut())
+        .expect("null ref_for_transfer should succeed");
+    assert!(returned.is_null());
+}
+
+#[test]
+fn decode_borrowed_adds_exactly_one_ref() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    let before = get_gobject_refcount(obj_ptr);
+
+    let decoded = borrowed()
+        .decode(&ffi::FfiValue::Ptr(obj_ptr as *mut c_void))
+        .expect("borrowed decode should succeed");
+
+    assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
+    assert!(matches!(decoded, Value::Object(_)));
+
+    drop(decoded);
+}
+
+#[test]
+fn decode_full_transfer_keeps_refcount_net_of_wrapper() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+
+    unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
+    let before = get_gobject_refcount(obj_ptr);
+
+    let decoded = full()
+        .decode(&ffi::FfiValue::Ptr(obj_ptr as *mut c_void))
+        .expect("full decode should succeed");
+
+    assert_eq!(get_gobject_refcount(obj_ptr), before);
+    assert!(matches!(decoded, Value::Object(_)));
+}
+
+#[test]
+fn decode_floating_object_is_sunk() {
+    common::ensure_gtk_init();
+
+    let obj_ptr = unsafe {
+        glib::gobject_ffi::g_object_new(
+            glib::gobject_ffi::g_initially_unowned_get_type(),
+            std::ptr::null(),
+        )
+    };
+
+    assert!(unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 });
+    let before = get_gobject_refcount(obj_ptr);
+
+    let decoded = full()
+        .decode(&ffi::FfiValue::Ptr(obj_ptr as *mut c_void))
+        .expect("floating decode should succeed");
+
+    assert!(!unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 });
+    assert_eq!(get_gobject_refcount(obj_ptr), before);
+    assert!(matches!(decoded, Value::Object(_)));
+}
+
+#[test]
+fn decode_null_pointer_yields_null() {
+    common::ensure_gtk_init();
+    let decoded = borrowed()
+        .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
+        .expect("null decode should succeed");
+    assert!(matches!(decoded, Value::Null));
+}
+
+#[test]
+fn decode_invalid_type_class_bails() {
+    common::ensure_gtk_init();
+
+    let mut fake = [0usize; 4];
+    let fake_ptr = fake.as_mut_ptr() as *mut c_void;
+    let result = borrowed().decode(&ffi::FfiValue::Ptr(fake_ptr));
+    assert!(result.is_err());
+}
+
+#[test]
+fn ptr_to_value_wraps_borrowed_object() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    let before = get_gobject_refcount(obj_ptr);
+
+    let value = borrowed()
+        .ptr_to_value(obj_ptr as *mut c_void, "ctx")
+        .expect("ptr_to_value should succeed");
+
+    assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
+    assert!(matches!(value, Value::Object(_)));
+    drop(value);
+}
+
+#[test]
+fn ptr_to_value_null_yields_null() {
+    common::ensure_gtk_init();
+    let value = borrowed()
+        .ptr_to_value(std::ptr::null_mut(), "ctx")
+        .expect("null ptr_to_value should succeed");
+    assert!(matches!(value, Value::Null));
+}
+
+#[test]
+fn ptr_to_value_invalid_type_class_bails() {
+    common::ensure_gtk_init();
+
+    let mut fake = [0usize; 4];
+    let fake_ptr = fake.as_mut_ptr() as *mut c_void;
+    assert!(borrowed().ptr_to_value(fake_ptr, "ctx").is_err());
+}
+
+#[test]
+fn read_from_raw_ptr_dereferences_and_wraps() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr() as *mut c_void;
+    let slot: *mut c_void = obj_ptr;
+
+    let value = borrowed()
+        .read_from_raw_ptr(&slot as *const *mut c_void as *const c_void, "ctx")
+        .expect("read_from_raw_ptr should succeed");
+    assert!(matches!(value, Value::Object(_)));
+    drop(value);
+}
+
+#[test]
+fn write_return_to_raw_ptr_writes_object_pointer() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    let before = get_gobject_refcount(obj_ptr);
+
+    let mut slot: *mut c_void = std::ptr::null_mut();
+    let value: Result<Value, ()> = Ok(Value::Object(NativeHandle::borrowed(
+        obj_ptr as *mut c_void,
+    )));
+    borrowed().write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
+
+    assert_eq!(slot, obj_ptr as *mut c_void);
+    assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
+    unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
+}
+
+#[test]
+fn write_return_to_raw_ptr_err_writes_null() {
+    common::ensure_gtk_init();
+
+    let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
+    let value: Result<Value, ()> = Err(());
+    borrowed().write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
+    assert!(slot.is_null());
+}
+
+#[test]
+fn write_value_to_raw_ptr_writes_object() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+
+    let mut slot: *mut c_void = std::ptr::null_mut();
+    borrowed()
+        .write_value_to_raw_ptr(
+            &mut slot as *mut *mut c_void as *mut c_void,
+            &Value::Object(NativeHandle::borrowed(obj_ptr as *mut c_void)),
+        )
+        .expect("write_value_to_raw_ptr should succeed");
+    assert_eq!(slot, obj_ptr as *mut c_void);
+}
+
+#[test]
+fn to_glib_value_wraps_object() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+
+    let gvalue = borrowed()
+        .to_glib_value(&Value::Object(NativeHandle::borrowed(
+            obj_ptr as *mut c_void,
+        )))
+        .expect("to_glib_value should succeed")
+        .expect("expected Some(glib::Value)");
+    assert!(gvalue.type_().is_a(glib::Object::static_type()));
+}
+
+#[test]
+fn to_glib_value_null_yields_none_object() {
+    common::ensure_gtk_init();
+
+    let gvalue = borrowed()
+        .to_glib_value(&Value::Null)
+        .expect("to_glib_value should succeed")
+        .expect("expected Some(glib::Value)");
+    assert!(gvalue.type_().is_a(glib::Object::static_type()));
+}
+
+#[test]
+fn to_glib_value_null_pointer_handle_yields_none_object() {
+    common::ensure_gtk_init();
+
+    let gvalue = borrowed()
+        .to_glib_value(&Value::Object(NativeHandle::borrowed(std::ptr::null_mut())))
+        .expect("to_glib_value should succeed")
+        .expect("expected Some(glib::Value)");
+    assert!(gvalue.type_().is_a(glib::Object::static_type()));
+}
+
+#[test]
+fn to_glib_value_non_object_yields_none() {
+    common::ensure_gtk_init();
+
+    let result = borrowed()
+        .to_glib_value(&Value::Number(2.0))
+        .expect("to_glib_value should succeed");
+    assert!(result.is_none());
+}
+
+#[test]
+fn from_glib_value_extracts_object() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let gvalue = obj.to_value();
+
+    let value = borrowed()
+        .from_glib_value(&gvalue)
+        .expect("from_glib_value should succeed");
+    assert!(matches!(value, Value::Object(_)));
+    drop(value);
+}
+
+#[test]
+fn from_glib_value_null_object_yields_null() {
+    common::ensure_gtk_init();
+
+    let gvalue = Option::<glib::Object>::None.to_value();
+    let value = borrowed()
+        .from_glib_value(&gvalue)
+        .expect("from_glib_value should succeed");
+    assert!(matches!(value, Value::Null));
+}
+
+#[test]
+fn from_glib_value_invalid_type_class_bails() {
+    common::ensure_gtk_init();
+
+    let mut fake = [0usize; 4];
+    let fake_ptr = fake.as_mut_ptr() as *mut c_void;
+
+    let mut gvalue = glib::Value::from_type(glib::Object::static_type());
+    unsafe {
+        let raw = gvalue.to_glib_none_mut().0;
+        (*raw).data[0].v_pointer = fake_ptr;
+    }
+    let result = borrowed().from_glib_value(&gvalue);
+    assert!(result.is_err());
+
+    unsafe {
+        let raw = gvalue.to_glib_none_mut().0;
+        (*raw).data[0].v_pointer = std::ptr::null_mut();
+    }
+}

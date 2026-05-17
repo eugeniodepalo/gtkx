@@ -138,9 +138,24 @@ fn clone_null_ptr_safe() {
         )
     };
 
-    let cloned = fundamental;
+    let cloned = fundamental.clone();
 
     assert!(cloned.as_ptr().is_null());
+    assert!(!cloned.is_owned());
+    assert!(fundamental.as_ptr().is_null());
+}
+
+#[test]
+fn debug_format_includes_fields() {
+    let ptr = create_param_spec();
+    let fundamental =
+        Fundamental::from_glib_full(ptr, Some(param_spec_ref), Some(param_spec_unref));
+
+    let debug_str = format!("{fundamental:?}");
+    assert!(debug_str.contains("Fundamental"));
+    assert!(debug_str.contains("owned: true"));
+
+    drop(fundamental);
 }
 
 #[test]

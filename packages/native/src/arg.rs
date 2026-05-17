@@ -35,10 +35,12 @@ impl Arg {
         }
     }
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_array(env: &Env, value: &Array) -> napi::Result<Vec<Self>> {
         crate::value::map_js_array(env, value, Self::from_js_value)
     }
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
         let obj: JsObject = unsafe { JsObject::from_napi_value(env.raw(), value.raw())? };
         let type_prop: Unknown<'_> = obj.get_named_property("type")?;

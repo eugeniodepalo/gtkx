@@ -23,6 +23,7 @@ struct ClosureContext {
     arg_types: Vec<Type>,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl ClosureContext {
     fn from_callback(callback: &Callback, callback_type: &CallbackType) -> Self {
         Self {
@@ -143,6 +144,7 @@ pub struct CallbackType {
 }
 
 impl CallbackType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let (arg_types, return_type) =
             super::parse_callback_arg_and_return_types(env, obj, "callback")?;
@@ -153,6 +155,7 @@ impl CallbackType {
     }
 
     #[must_use]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn build_ffi_value(&self, callback: &Callback) -> ffi::FfiValue {
         let ctx = ClosureContext::from_callback(callback, self);
         let closure = ctx.build_closure_with_guard(self.return_type.clone());
@@ -169,6 +172,7 @@ impl CallbackType {
 }
 
 impl FfiEncoder for CallbackType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 

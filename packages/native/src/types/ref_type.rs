@@ -27,6 +27,7 @@ impl RefType {
         }
     }
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let inner_type_value: Unknown<'_> = obj.get_named_property("innerType")?;
         let inner_type = Type::from_js_value(env, inner_type_value)?;
@@ -36,6 +37,7 @@ impl RefType {
 }
 
 impl FfiEncoder for RefType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ref_val = match val {
             value::Value::Ref(r) => r,
@@ -261,6 +263,7 @@ impl RefType {
     /// Builds an [`ffi::FfiValue::Storage`] holding a heap-allocated null
     /// pointer, the out-parameter slot a native callee writes a result pointer
     /// into.
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn null_ptr_storage() -> ffi::FfiValue {
         let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
         let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;

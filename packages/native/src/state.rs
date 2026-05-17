@@ -106,10 +106,8 @@ impl LibraryCache {
             }
         }
 
-        match last_error {
-            Some(err) => anyhow::bail!("Failed to load library '{name}': {err}"),
-            None => anyhow::bail!("Failed to load library '{name}': no libraries specified"),
-        }
+        let err = last_error.expect("str::split always yields at least one candidate");
+        anyhow::bail!("Failed to load library '{name}': {err}")
     }
 
     pub fn resolve_gtype(

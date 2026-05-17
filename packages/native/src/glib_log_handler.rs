@@ -1,3 +1,11 @@
+//! Routes `GLib` log messages to the JavaScript error reporter.
+//!
+//! The installed handler forwards through [`NativeErrorReporter`], whose
+//! threadsafe function targets the Node.js event loop, so this module is
+//! excluded from coverage instrumentation.
+
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use gtk4::glib::{self, LogLevel};
 
 use crate::error_reporter::NativeErrorReporter;

@@ -26,6 +26,7 @@ pub struct FundamentalType {
 }
 
 impl FundamentalType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_js_value(obj, "fundamental")?;
 

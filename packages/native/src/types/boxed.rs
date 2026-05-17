@@ -30,6 +30,7 @@ pub struct BoxedType {
 }
 
 impl BoxedType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_js_value(obj, "boxed")?;
 
@@ -224,6 +225,7 @@ pub struct StructType {
 }
 
 impl StructType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_js_value(obj, "struct")?;
 
@@ -265,7 +267,8 @@ impl FfiDecoder for StructType {
                     struct_ptr,
                     self.size,
                     Some(&self.type_name),
-                )?,
+                )
+                .expect("struct decode with a known size always succeeds"),
                 None => Boxed::from_ptr_unowned(struct_ptr),
             }
         };

@@ -45,6 +45,7 @@ use crate::{ffi, value};
 /// Shared parser for the `argTypes` and `returnType` properties used by both
 /// `CallbackType` and `TrampolineType`. Returns the parsed argument types and
 /// return type or returns a JS type error referencing `kind` (e.g. `"callback"`).
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub(crate) fn parse_callback_arg_and_return_types(
     env: &Env,
     obj: &JsObject,
@@ -97,7 +98,7 @@ pub use hashtable::{HashTableEntryEncoder, HashTableType};
 pub use numeric::{FloatKind, IntegerKind, TaggedKind, TaggedType};
 pub use ref_type::RefType;
 pub use string::StringType;
-pub use trampoline::TrampolineType;
+pub use trampoline::{TrampolineScope, TrampolineType};
 pub use unichar::UnicharType;
 pub use void::VoidType;
 
@@ -124,6 +125,7 @@ impl Ownership {
 }
 
 impl Ownership {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(obj: &JsObject, type_name: &str) -> napi::Result<Self> {
         let missing = || {
             napi::Error::new(
@@ -308,6 +310,7 @@ impl std::fmt::Display for Type {
 }
 
 impl Type {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
         let obj: JsObject = unsafe { JsObject::from_napi_value(env.raw(), value.raw())? };
         let ty: String = obj.get_named_property("type")?;

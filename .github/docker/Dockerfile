@@ -42,6 +42,9 @@ ENV PATH="/usr/local/cargo/bin:${PATH}"
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy,llvm-tools-preview --default-toolchain stable \
     && chmod -R a+rwX $RUSTUP_HOME $CARGO_HOME
 
+RUN /usr/local/cargo/bin/rustup toolchain install nightly --profile minimal --component llvm-tools-preview \
+    && chmod -R a+rwX $RUSTUP_HOME $CARGO_HOME
+
 RUN /usr/local/cargo/bin/cargo install cargo-llvm-cov --locked \
     && chmod -R a+rwX $CARGO_HOME
 

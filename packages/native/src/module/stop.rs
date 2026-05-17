@@ -19,6 +19,11 @@
 //! via [`std::mem::forget`] — running `GLib` finalizers after the main loop
 //! has exited can crash on libraries like `WebKit` that depend on the loop
 //! for their own cleanup.
+//!
+//! [`stop`] is a napi export that dispatches through a live [`napi::Env`], so
+//! the module is excluded from coverage instrumentation.
+
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use gtk4::glib;
 use napi::Env;

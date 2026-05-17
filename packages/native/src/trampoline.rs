@@ -1,3 +1,15 @@
+//! libffi closures that route native callbacks into JavaScript.
+//!
+//! A [`TrampolineState`] owns a libffi closure whose handler reads the native
+//! arguments, invokes the captured JS function through [`Mailbox`], and writes
+//! the JS return value back into the native result slot.
+//!
+//! Every type here holds a [`JsRef`] to a JavaScript function and dispatches
+//! into the JavaScript runtime, so the module is excluded from coverage
+//! instrumentation — a `cargo test` process has no runtime to invoke.
+
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use std::ffi::c_void;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;

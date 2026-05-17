@@ -293,3 +293,32 @@ fn clone_without_gtype_returns_non_owned_shallow_copy() {
     assert_eq!(cloned.as_ptr(), boxed.as_ptr());
     assert!(!cloned.is_owned());
 }
+
+#[test]
+fn clone_null_ptr_with_gtype_stays_null() {
+    common::ensure_gtk_init();
+
+    let gtype = gdk::RGBA::static_type();
+    let boxed = Boxed::from_glib_full(Some(gtype), std::ptr::null_mut());
+
+    let cloned = boxed.clone();
+
+    assert!(cloned.as_ptr().is_null());
+    assert!(!cloned.is_owned());
+    assert_eq!(cloned.gtype(), boxed.gtype());
+    assert_eq!(cloned.gtype(), Some(gtype));
+}
+
+#[test]
+fn clone_null_ptr_without_gtype_stays_null() {
+    common::ensure_gtk_init();
+
+    let boxed = Boxed::from_glib_full(None, std::ptr::null_mut());
+
+    let cloned = boxed.clone();
+
+    assert!(cloned.as_ptr().is_null());
+    assert!(!cloned.is_owned());
+    assert_eq!(cloned.gtype(), boxed.gtype());
+    assert_eq!(cloned.gtype(), None);
+}

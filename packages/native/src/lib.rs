@@ -47,6 +47,7 @@
 //! `Send + Sync` reference type for the typed surface.
 
 #![allow(deprecated)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 #[macro_use]
 mod macros;

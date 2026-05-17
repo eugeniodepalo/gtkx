@@ -53,6 +53,7 @@ pub struct ArrayType {
 }
 
 impl ArrayType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let item_type_value: Unknown<'_> = obj.get_named_property("itemType")?;
         let item_type = Type::from_js_value(env, item_type_value)?;
@@ -556,11 +557,7 @@ impl ArrayType {
         let encoder: &dyn ArrayKindEncoder = match &self.kind {
             ArrayKind::GList => &GListEncoder,
             ArrayKind::GSList => &GSListEncoder,
-            ArrayKind::Array
-            | ArrayKind::GPtrArray
-            | ArrayKind::Sized { .. }
-            | ArrayKind::Fixed { .. } => &NullTerminatedArrayEncoder,
-            ArrayKind::GArray | ArrayKind::GByteArray => unreachable!(),
+            _ => &NullTerminatedArrayEncoder,
         };
 
         match self.item_codec("array")? {

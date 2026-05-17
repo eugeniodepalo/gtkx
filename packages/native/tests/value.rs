@@ -38,7 +38,10 @@ fn gobject_transfer_none_does_not_take_ownership() {
 
     let after_ref = get_gobject_refcount(obj_ptr);
 
-    assert!(after_ref >= initial_ref);
+    assert_eq!(after_ref, initial_ref + 1);
+
+    drop(result);
+    assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
 }
 
 #[test]
@@ -66,7 +69,10 @@ fn gobject_full_transfer_takes_ownership() {
 
     let ref_after_transfer = get_gobject_refcount(obj_ptr);
 
-    assert!(ref_after_transfer <= ref_before_transfer);
+    assert_eq!(ref_after_transfer, ref_before_transfer);
+
+    drop(result);
+    assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer - 1);
 }
 
 #[test]
@@ -471,7 +477,10 @@ fn from_glib_value_gobject_transfer_none() {
     assert!(result.is_ok());
 
     let after_ref = get_gobject_refcount(obj_ptr);
-    assert!(after_ref >= initial_ref);
+    assert_eq!(after_ref, initial_ref + 1);
+
+    drop(result);
+    assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
 }
 
 #[test]
@@ -1095,4 +1104,190 @@ fn from_cif_value_struct_owned_without_size() {
     } else {
         panic!("Expected Value::Object for struct");
     }
+}
+
+#[test]
+fn result_to_ptr_returns_handle_pointer_for_object() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr() as *mut c_void;
+    let handle: native::NativeHandle = native::NativeValue::GObject(obj).into();
+
+    let result: Result<Value, ()> = Ok(Value::Object(handle));
+    assert_eq!(Value::result_to_ptr(&result), obj_ptr);
+}
+
+#[test]
+fn result_to_ptr_returns_null_for_non_object_ok() {
+    let result: Result<Value, ()> = Ok(Value::Number(7.0));
+    assert!(Value::result_to_ptr(&result).is_null());
+}
+
+#[test]
+fn result_to_ptr_returns_null_for_err() {
+    let result: Result<Value, ()> = Err(());
+    assert!(Value::result_to_ptr(&result).is_null());
+}
+
+#[test]
+fn as_number_extracts_number_payload() {
+    assert_eq!(Value::Number(3.5).as_number(), Some(3.5));
+}
+
+#[test]
+fn as_number_is_none_for_other_variants() {
+    assert_eq!(Value::String("x".to_string()).as_number(), None);
+    assert_eq!(Value::Boolean(true).as_number(), None);
+    assert_eq!(Value::Null.as_number(), None);
+    assert_eq!(Value::Undefined.as_number(), None);
+}
+
+#[test]
+fn object_ptr_returns_handle_pointer() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr() as *mut c_void;
+    let handle: native::NativeHandle = native::NativeValue::GObject(obj).into();
+
+    let value = Value::Object(handle);
+    assert_eq!(value.object_ptr("GObject").unwrap(), obj_ptr);
+}
+
+#[test]
+fn object_ptr_returns_null_for_null_and_undefined() {
+    assert!(Value::Null.object_ptr("GObject").unwrap().is_null());
+    assert!(Value::Undefined.object_ptr("GObject").unwrap().is_null());
+}
+
+#[test]
+fn object_ptr_errors_for_non_object_variants() {
+    assert!(Value::Number(1.0).object_ptr("GObject").is_err());
+    assert!(
+        Value::String("s".to_string())
+            .object_ptr("GObject")
+            .is_err()
+    );
+    assert!(Value::Boolean(false).object_ptr("GObject").is_err());
+    assert!(Value::Array(vec![]).object_ptr("GObject").is_err());
+}
+
+#[test]
+fn from_ffi_value_with_args_decodes_integer() {
+    common::ensure_gtk_init();
+
+    let ffi_value = ffi::FfiValue::I32(99);
+    let type_ = Type::Integer(native::types::IntegerKind::I32);
+
+    let result = Value::from_ffi_value_with_args(&ffi_value, &type_, &[], &[]);
+
+    assert!(result.is_ok());
+    if let Value::Number(n) = result.unwrap() {
+        assert_eq!(n, 99.0);
+    } else {
+        panic!("Expected Value::Number");
+    }
+}
+
+#[test]
+fn into_glib_value_with_default_no_type_returns_none() {
+    let result = Value::Undefined.into_glib_value_with_default(None);
+    assert!(result.is_none());
+}
+
+#[test]
+fn into_glib_value_with_default_undefined_string_uses_null() {
+    common::ensure_gtk_init();
+
+    let string_type = StringType {
+        ownership: Ownership::Borrowed,
+        length: None,
+    };
+    let result = Value::Undefined.into_glib_value_with_default(Some(&Type::String(string_type)));
+    assert!(result.is_some());
+}
+
+#[test]
+fn into_glib_value_with_default_undefined_gobject_uses_null() {
+    common::ensure_gtk_init();
+
+    let gobject_type = GObjectType {
+        ownership: Ownership::Borrowed,
+    };
+    let result = Value::Undefined.into_glib_value_with_default(Some(&Type::GObject(gobject_type)));
+    assert!(result.is_some());
+}
+
+#[test]
+fn into_glib_value_with_default_undefined_unsupported_type_returns_none() {
+    common::ensure_gtk_init();
+
+    let result = Value::Undefined.into_glib_value_with_default(Some(&Type::Void(VoidType)));
+    assert!(result.is_none());
+}
+
+#[test]
+fn into_glib_value_with_default_undefined_default_conversion_failure_returns_none() {
+    common::ensure_gtk_init();
+
+    let tagged = native::types::TaggedType {
+        kind: native::types::TaggedKind::Enum,
+        library: "libnonexistent_for_default_12345.so".to_string(),
+        get_type_fn: "no_such_get_type".to_string(),
+        storage: native::types::IntegerKind::I32,
+    };
+    let result = Value::Undefined.into_glib_value_with_default(Some(&Type::Tagged(tagged)));
+    assert!(result.is_none());
+}
+
+#[test]
+fn into_glib_value_with_default_regular_value_conversion_failure_returns_none() {
+    common::ensure_gtk_init();
+
+    let result = Value::Null.into_glib_value_with_default(None);
+    assert!(result.is_none());
+}
+
+#[test]
+fn to_glib_value_typed_uses_expected_type_when_available() {
+    common::ensure_gtk_init();
+
+    let value = Value::Boolean(true);
+    let gvalue = value.to_glib_value_typed(Some(&Type::Boolean(BooleanType)));
+
+    assert!(gvalue.is_ok());
+}
+
+#[test]
+fn to_glib_value_object_with_pointer() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let handle: native::NativeHandle = native::NativeValue::GObject(obj).into();
+
+    let value = Value::Object(handle);
+    let gvalue = value.to_glib_value();
+
+    assert!(gvalue.is_ok());
+}
+
+#[test]
+fn to_glib_value_object_with_null_pointer() {
+    common::ensure_gtk_init();
+
+    let value = Value::Object(native::NativeHandle::borrowed(std::ptr::null_mut()));
+    let gvalue = value.to_glib_value();
+
+    assert!(gvalue.is_ok());
+}
+
+#[test]
+fn to_glib_value_array_is_unsupported() {
+    common::ensure_gtk_init();
+
+    let value = Value::Array(vec![Value::Number(1.0)]);
+    let gvalue = value.to_glib_value();
+
+    assert!(gvalue.is_err());
 }

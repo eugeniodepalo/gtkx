@@ -140,6 +140,7 @@ pub struct HashTableType {
 }
 
 impl HashTableType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let key_type_value: Unknown<'_> = obj.get_named_property("keyType")?;
         let key_type = Type::from_js_value(env, key_type_value)?;

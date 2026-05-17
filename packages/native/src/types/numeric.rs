@@ -465,6 +465,7 @@ pub struct TaggedType {
 }
 
 impl TaggedType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(_env: &Env, obj: &JsObject, kind: TaggedKind) -> napi::Result<Self> {
         let library: String = obj.get_named_property("library")?;
         let get_type_fn: String = obj.get_named_property("getTypeFn")?;
@@ -490,6 +491,7 @@ impl TaggedType {
     }
 
     #[cfg(debug_assertions)]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn validate_enum_value(&self, value: i32) {
         let Ok(gtype) = self.resolve_gtype() else {
             return;

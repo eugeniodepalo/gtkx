@@ -8,6 +8,12 @@
 //!
 //! The TSFN is `Weak`, so a pending error never keeps the Node.js event loop
 //! alive past natural shutdown.
+//!
+//! Every path here either installs or invokes a threadsafe function bound to
+//! the Node.js event loop, so the module is excluded from coverage
+//! instrumentation — a `cargo test` process has no event loop to drive it.
+
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use std::sync::{Arc, OnceLock};
 

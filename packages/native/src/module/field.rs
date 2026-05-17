@@ -73,25 +73,6 @@ impl ModuleRequest for ReadRequest {
     }
 }
 
-#[napi]
-#[cfg_attr(test, allow(dead_code))]
-pub fn read<'env>(
-    env: &'env Env,
-    handle: &External<NativeHandle>,
-    js_type: Unknown<'_>,
-    offset: f64,
-) -> napi::Result<Unknown<'env>> {
-    let field_type = Type::from_js_value(env, js_type)?;
-    let request = ReadRequest {
-        location: FieldLocation {
-            base_addr: handle.ptr_as_usize(),
-            offset: offset as usize,
-        },
-        field_type,
-    };
-    request.dispatch(env)
-}
-
 #[cfg_attr(test, allow(dead_code))]
 struct WriteRequest {
     location: FieldLocation,
@@ -113,24 +94,142 @@ impl ModuleRequest for WriteRequest {
     }
 }
 
-#[napi]
-#[cfg_attr(test, allow(dead_code))]
-pub fn write<'env>(
-    env: &'env Env,
-    handle: &External<NativeHandle>,
-    js_type: Unknown<'_>,
-    offset: f64,
-    value: Unknown<'_>,
-) -> napi::Result<Unknown<'env>> {
-    let field_type = Type::from_js_value(env, js_type)?;
-    let parsed_value = Value::from_js_value(env, value)?;
-    let request = WriteRequest {
-        location: FieldLocation {
-            base_addr: handle.ptr_as_usize(),
-            offset: offset as usize,
-        },
-        field_type,
-        value: parsed_value,
-    };
-    request.dispatch(env)
+/// napi export shims for field access. Excluded from coverage instrumentation:
+/// both parse JS values through a live [`napi::Env`]. The [`ReadRequest`] and
+/// [`WriteRequest`] `execute` logic they dispatch is exercised directly by
+/// tests.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[allow(clippy::wildcard_imports)]
+mod napi_export {
+    use super::*;
+
+    #[napi]
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn read<'env>(
+        env: &'env Env,
+        handle: &External<NativeHandle>,
+        js_type: Unknown<'_>,
+        offset: f64,
+    ) -> napi::Result<Unknown<'env>> {
+        let field_type = Type::from_js_value(env, js_type)?;
+        let request = ReadRequest {
+            location: FieldLocation {
+                base_addr: handle.ptr_as_usize(),
+                offset: offset as usize,
+            },
+            field_type,
+        };
+        request.dispatch(env)
+    }
+
+    #[napi]
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn write<'env>(
+        env: &'env Env,
+        handle: &External<NativeHandle>,
+        js_type: Unknown<'_>,
+        offset: f64,
+        value: Unknown<'_>,
+    ) -> napi::Result<Unknown<'env>> {
+        let field_type = Type::from_js_value(env, js_type)?;
+        let parsed_value = Value::from_js_value(env, value)?;
+        let request = WriteRequest {
+            location: FieldLocation {
+                base_addr: handle.ptr_as_usize(),
+                offset: offset as usize,
+            },
+            field_type,
+            value: parsed_value,
+        };
+        request.dispatch(env)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::IntegerKind;
+
+    use super::*;
+
+    #[test]
+    fn resolve_returns_offset_address() {
+        let mut buffer = [0u8; 32];
+        let base_addr = buffer.as_mut_ptr() as usize;
+        let location = FieldLocation {
+            base_addr,
+            offset: 8,
+        };
+        let resolved = location.resolve().expect("resolve should succeed");
+        assert_eq!(resolved as usize, base_addr + 8);
+    }
+
+    #[test]
+    fn resolve_rejects_null_base() {
+        let location = FieldLocation {
+            base_addr: 0,
+            offset: 0,
+        };
+        let err = location.resolve().expect_err("null base should fail");
+        assert!(err.to_string().contains("null pointer"));
+    }
+
+    #[test]
+    fn write_then_read_round_trips_an_integer() {
+        let mut buffer = [0u8; 32];
+        let base_addr = buffer.as_mut_ptr() as usize;
+
+        let write = WriteRequest {
+            location: FieldLocation {
+                base_addr,
+                offset: 8,
+            },
+            field_type: Type::Integer(IntegerKind::I32),
+            value: Value::Number(1234.0),
+        };
+        write.execute().expect("write should succeed");
+
+        let read = ReadRequest {
+            location: FieldLocation {
+                base_addr,
+                offset: 8,
+            },
+            field_type: Type::Integer(IntegerKind::I32),
+        };
+        let value = read.execute().expect("read should succeed");
+        let n = value.as_number().expect("read result should be a number");
+        assert!((n - 1234.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn read_rejects_null_base() {
+        let read = ReadRequest {
+            location: FieldLocation {
+                base_addr: 0,
+                offset: 0,
+            },
+            field_type: Type::Integer(IntegerKind::I32),
+        };
+        let err = read.execute().expect_err("null base read should fail");
+        assert!(err.to_string().contains("null pointer"));
+    }
+
+    #[test]
+    fn write_rejects_null_base() {
+        let write = WriteRequest {
+            location: FieldLocation {
+                base_addr: 0,
+                offset: 0,
+            },
+            field_type: Type::Integer(IntegerKind::I32),
+            value: Value::Number(0.0),
+        };
+        let err = write.execute().expect_err("null base write should fail");
+        assert!(err.to_string().contains("null pointer"));
+    }
+
+    #[test]
+    fn error_contexts_are_stable() {
+        assert_eq!(ReadRequest::error_context(), "field read");
+        assert_eq!(WriteRequest::error_context(), "field write");
+    }
 }

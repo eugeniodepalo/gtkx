@@ -125,17 +125,15 @@ fn object_boxed_clone_creates_copy() {
 #[test]
 fn gobject_refcount_preserved_when_handle_owns() {
     let obj = create_test_gobject();
-    let initial_ref = unsafe {
-        let ptr = obj.as_ptr();
-        (*ptr).ref_count
-    };
+    let ptr = obj.as_ptr();
+    let initial_ref = common::get_gobject_refcount(ptr);
 
-    let _handle: NativeHandle = NativeValue::GObject(obj.clone()).into();
+    let handle: NativeHandle = NativeValue::GObject(obj.clone()).into();
 
-    let after_ref = unsafe {
-        let ptr = obj.as_ptr();
-        (*ptr).ref_count
-    };
+    let after_ref = common::get_gobject_refcount(ptr);
+    assert_eq!(after_ref, initial_ref + 1);
 
-    assert!(after_ref >= initial_ref);
+    drop(handle);
+    assert_eq!(common::get_gobject_refcount(ptr), initial_ref);
+    drop(obj);
 }

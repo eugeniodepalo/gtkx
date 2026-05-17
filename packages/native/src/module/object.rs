@@ -4,6 +4,11 @@
 //! object. This is primarily used for object-identity comparisons in JavaScript.
 //! With pointer-bearing handles, the read is purely synchronous and never
 //! crosses the `GLib` thread boundary.
+//!
+//! [`get_native_id`] is a napi export, so the module is excluded from coverage
+//! instrumentation.
+
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use napi::bindgen_prelude::*;
 use napi_derive::napi;

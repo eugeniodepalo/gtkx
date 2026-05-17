@@ -1,6 +1,6 @@
 mod common;
 
-use native::state::GtkThreadState;
+use native::state::{GtkThread, GtkThreadState};
 
 #[test]
 fn gtk_thread_state_default_initializes_correctly() {
@@ -59,4 +59,232 @@ fn get_library_tries_comma_separated_names() {
         GtkThreadState::with(|state| state.library("libnonexistent.so,libglib-2.0.so.0").is_ok());
 
     assert!(success);
+}
+
+#[test]
+fn library_cache_len_and_is_empty_track_loads() {
+    common::ensure_gtk_init();
+
+    GtkThreadState::with(|state| {
+        let before = state.libs.len();
+        let _ = state.library("libgobject-2.0.so.0");
+        assert!(!state.libs.is_empty());
+        assert!(state.libs.len() > before || before > 0);
+    });
+}
+
+#[test]
+fn library_cache_load_total_failure_reports_error() {
+    common::ensure_gtk_init();
+
+    let err = GtkThreadState::with(|state| {
+        state
+            .library("libnope_one_12345.so,libnope_two_12345.so")
+            .err()
+            .map(|e| e.to_string())
+    });
+
+    let message = err.expect("loading nonexistent libraries should fail");
+    assert!(message.contains("Failed to load library"));
+}
+
+#[test]
+fn gtype_from_lib_resolves_known_get_type_function() {
+    common::ensure_gtk_init();
+
+    let gtype =
+        GtkThreadState::with(|state| state.gtype_from_lib("libgtk-4.so.1", "gtk_widget_get_type"));
+
+    let gtype = gtype.expect("gtk_widget_get_type should resolve");
+    assert_ne!(gtype, gtk4::glib::Type::INVALID);
+}
+
+#[test]
+fn gtype_from_lib_missing_symbol_returns_error() {
+    common::ensure_gtk_init();
+
+    let err = GtkThreadState::with(|state| {
+        state
+            .gtype_from_lib("libgtk-4.so.1", "no_such_get_type_symbol_12345")
+            .err()
+            .map(|e| e.to_string())
+    });
+
+    let message = err.expect("missing get_type symbol should fail");
+    assert!(message.contains("Failed to find symbol"));
+}
+
+#[test]
+fn lookup_fundamental_fns_resolves_ref_and_unref() {
+    common::ensure_gtk_init();
+
+    let resolved = GtkThreadState::with(|state| {
+        state
+            .lookup_fundamental_fns("libgobject-2.0.so.0", "g_object_ref", "g_object_unref")
+            .map(|(r, u)| (r.is_some(), u.is_some()))
+    });
+
+    assert_eq!(resolved.unwrap(), (true, true));
+}
+
+#[test]
+fn lookup_fundamental_fns_caches_repeated_lookups() {
+    common::ensure_gtk_init();
+
+    GtkThreadState::with(|state| {
+        let first = state
+            .lookup_fundamental_fns("libgobject-2.0.so.0", "g_object_ref", "g_object_unref")
+            .expect("first lookup should succeed");
+        let second = state
+            .lookup_fundamental_fns("libgobject-2.0.so.0", "g_object_ref", "g_object_unref")
+            .expect("cached lookup should succeed");
+
+        assert_eq!(first.0.is_some(), second.0.is_some());
+        assert_eq!(first.1.is_some(), second.1.is_some());
+    });
+}
+
+#[test]
+fn lookup_fundamental_fns_empty_names_yield_none() {
+    common::ensure_gtk_init();
+
+    let resolved = GtkThreadState::with(|state| {
+        state
+            .lookup_fundamental_fns("libgobject-2.0.so.0", "", "")
+            .map(|(r, u)| (r.is_none(), u.is_none()))
+    });
+
+    assert_eq!(resolved.unwrap(), (true, true));
+}
+
+#[test]
+fn lookup_fundamental_fns_missing_ref_symbol_errors() {
+    common::ensure_gtk_init();
+
+    let err = GtkThreadState::with(|state| {
+        state
+            .lookup_fundamental_fns(
+                "libgobject-2.0.so.0",
+                "no_such_ref_symbol_12345",
+                "g_object_unref",
+            )
+            .err()
+            .map(|e| e.to_string())
+    });
+
+    let message = err.expect("missing ref symbol should fail");
+    assert!(message.contains("Failed to find ref symbol"));
+}
+
+#[test]
+fn lookup_fundamental_fns_missing_unref_symbol_errors() {
+    common::ensure_gtk_init();
+
+    let err = GtkThreadState::with(|state| {
+        state
+            .lookup_fundamental_fns(
+                "libgobject-2.0.so.0",
+                "g_object_ref",
+                "no_such_unref_symbol_12345",
+            )
+            .err()
+            .map(|e| e.to_string())
+    });
+
+    let message = err.expect("missing unref symbol should fail");
+    assert!(message.contains("Failed to find unref symbol"));
+}
+
+#[test]
+fn gtk_thread_state_debug_format() {
+    common::ensure_gtk_init();
+
+    GtkThreadState::with(|state| {
+        let debug_str = format!("{state:?}");
+        assert!(debug_str.contains("GtkThreadState"));
+        assert!(debug_str.contains("libraries_len"));
+
+        let libs_debug = format!("{:?}", state.libs);
+        assert!(libs_debug.contains("LibraryCache"));
+        assert!(libs_debug.contains("len"));
+
+        let fns_debug = format!("{:?}", state.fundamental_fns);
+        assert!(fns_debug.contains("FundamentalFnCache"));
+        assert!(fns_debug.contains("len"));
+    });
+}
+
+#[test]
+fn gtk_thread_global_is_stable_singleton() {
+    let first = GtkThread::global() as *const GtkThread;
+    let second = GtkThread::global() as *const GtkThread;
+    assert_eq!(first, second);
+}
+
+#[test]
+fn gtk_thread_join_without_handle_returns_none() {
+    assert!(GtkThread::global().join().is_none());
+}
+
+#[test]
+fn gtk_thread_set_handle_then_join_collects_thread() {
+    let handle = std::thread::spawn(|| {});
+    GtkThread::global().set_handle(handle);
+
+    let result = GtkThread::global().join();
+    assert!(result.is_none());
+}
+
+#[test]
+fn gtk_thread_join_reports_str_panic_payload() {
+    let _guard = common::serial_guard();
+
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let handle = std::thread::spawn(|| {
+        std::panic::panic_any("static panic message");
+    });
+    GtkThread::global().set_handle(handle);
+    let result = GtkThread::global().join();
+    std::panic::set_hook(previous_hook);
+
+    assert_eq!(result.as_deref(), Some("static panic message"));
+}
+
+#[test]
+fn gtk_thread_join_reports_string_panic_payload() {
+    let _guard = common::serial_guard();
+
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let handle = std::thread::spawn(|| {
+        panic!("{}", String::from("owned panic message"));
+    });
+    GtkThread::global().set_handle(handle);
+    let result = GtkThread::global().join();
+    std::panic::set_hook(previous_hook);
+
+    assert_eq!(result.as_deref(), Some("owned panic message"));
+}
+
+#[test]
+fn gtk_thread_join_reports_unknown_panic_payload() {
+    let _guard = common::serial_guard();
+
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let handle = std::thread::spawn(|| {
+        std::panic::panic_any(42_u32);
+    });
+    GtkThread::global().set_handle(handle);
+    let result = GtkThread::global().join();
+    std::panic::set_hook(previous_hook);
+
+    assert_eq!(result.as_deref(), Some("unknown panic"));
+}
+
+#[test]
+fn gtk_thread_debug_format() {
+    let debug_str = format!("{:?}", GtkThread::global());
+    assert!(debug_str.contains("GtkThread"));
 }

@@ -3,14 +3,38 @@ mod common;
 use std::ffi::c_void;
 
 use gtk4::glib;
+use gtk4::prelude::StaticType as _;
 
+use native::NativeHandle;
 use native::ffi::FfiValue;
 use native::types::{
-    BooleanType, FloatKind, HashTableEntryEncoder, HashTableType, IntegerKind, Ownership,
-    StringType, StructType, Type,
+    ArrayKind, ArrayType, BooleanType, FloatKind, HashTableEntryEncoder, HashTableType,
+    IntegerKind, Ownership, StringType, StructType, Type, VoidType,
 };
 use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec};
 use native::value::Value;
+
+fn struct_type() -> Type {
+    Type::Struct(StructType {
+        ownership: Ownership::Borrowed,
+        type_name: "TestStruct".to_string(),
+        size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
+    })
+}
+
+fn gptrarray_type() -> Type {
+    Type::Array(ArrayType {
+        item_type: Box::new(struct_type()),
+        kind: ArrayKind::GPtrArray,
+        ownership: Ownership::Borrowed,
+        element_size: None,
+    })
+}
+
+fn boxed_handle() -> NativeHandle {
+    let ptr = common::allocate_test_boxed(gtk4::gdk::RGBA::static_type());
+    NativeHandle::borrowed(ptr)
+}
 
 #[test]
 fn encoder_from_type_boolean() {
@@ -523,6 +547,324 @@ fn float_memory_properly_freed_on_drop() {
         .encode(&input, false)
         .expect("encoding should succeed");
     let _ = ht_type.decode(&encoded).expect("decoding should succeed");
+}
+
+#[test]
+fn encoder_from_type_native_handle() {
+    assert_eq!(
+        HashTableEntryEncoder::from_type(&struct_type()),
+        Some(HashTableEntryEncoder::NativeHandle)
+    );
+}
+
+#[test]
+fn encoder_from_type_ptr_array() {
+    let encoder = HashTableEntryEncoder::from_type(&gptrarray_type());
+    assert!(matches!(encoder, Some(HashTableEntryEncoder::PtrArray(_))));
+}
+
+#[test]
+fn encoder_from_type_unsupported_returns_none() {
+    assert_eq!(
+        HashTableEntryEncoder::from_type(&Type::Void(VoidType)),
+        None
+    );
+    let non_ptr_array = Type::Array(ArrayType {
+        item_type: Box::new(Type::Integer(IntegerKind::I32)),
+        kind: ArrayKind::Array,
+        ownership: Ownership::Full,
+        element_size: None,
+    });
+    assert_eq!(HashTableEntryEncoder::from_type(&non_ptr_array), None);
+}
+
+#[test]
+fn encoder_partial_eq_compares_by_discriminant() {
+    assert_eq!(
+        HashTableEntryEncoder::PtrArray(Box::new(Type::Integer(IntegerKind::I32))),
+        HashTableEntryEncoder::PtrArray(Box::new(Type::Boolean(BooleanType)))
+    );
+    assert_ne!(
+        HashTableEntryEncoder::String,
+        HashTableEntryEncoder::Integer
+    );
+}
+
+#[test]
+fn integer_encoder_hash_equal_and_free() {
+    let encoder = HashTableEntryEncoder::Integer;
+    assert!(encoder.hash_func().is_some());
+    assert!(encoder.equal_func().is_some());
+    assert!(encoder.free_func().is_none());
+}
+
+#[test]
+fn string_encoder_hash_equal_and_free() {
+    let encoder = HashTableEntryEncoder::String;
+    assert!(encoder.hash_func().is_some());
+    assert!(encoder.equal_func().is_some());
+    assert!(encoder.free_func().is_some());
+}
+
+#[test]
+fn native_handle_encoder_hash_equal_and_free() {
+    let encoder = HashTableEntryEncoder::NativeHandle;
+    assert!(encoder.hash_func().is_some());
+    assert!(encoder.equal_func().is_some());
+    assert!(encoder.free_func().is_none());
+}
+
+#[test]
+fn ptr_array_encoder_hash_equal_and_free() {
+    let encoder = HashTableEntryEncoder::PtrArray(Box::new(Type::Integer(IntegerKind::I32)));
+    assert!(encoder.hash_func().is_some());
+    assert!(encoder.equal_func().is_some());
+    assert!(encoder.free_func().is_some());
+}
+
+#[test]
+fn encode_string_value_and_wrong_type() {
+    common::ensure_gtk_init();
+    let encoder = HashTableEntryEncoder::String;
+    let ptr = encoder.encode(&Value::String("hi".to_string())).unwrap();
+    assert!(!ptr.is_null());
+    unsafe { glib::ffi::g_free(ptr) };
+
+    assert!(encoder.encode(&Value::Number(1.0)).is_err());
+}
+
+#[test]
+fn encode_integer_value_and_wrong_type() {
+    let encoder = HashTableEntryEncoder::Integer;
+    let ptr = encoder.encode(&Value::Number(7.0)).unwrap();
+    assert_eq!(ptr as isize, 7);
+
+    assert!(encoder.encode(&Value::Boolean(true)).is_err());
+}
+
+#[test]
+fn encode_native_handle_value_null_and_wrong_type() {
+    common::ensure_gtk_init();
+    let encoder = HashTableEntryEncoder::NativeHandle;
+    let handle = boxed_handle();
+    let ptr = encoder.encode(&Value::Object(handle.clone())).unwrap();
+    assert_eq!(ptr, handle.ptr());
+
+    assert!(encoder.encode(&Value::Null).unwrap().is_null());
+    assert!(encoder.encode(&Value::Undefined).unwrap().is_null());
+    assert!(encoder.encode(&Value::Number(1.0)).is_err());
+}
+
+#[test]
+fn encode_ptr_array_value_with_objects_and_nulls() {
+    common::ensure_gtk_init();
+    let encoder = HashTableEntryEncoder::PtrArray(Box::new(struct_type()));
+    let ptr = encoder
+        .encode(&Value::Array(vec![
+            Value::Object(boxed_handle()),
+            Value::Null,
+            Value::Undefined,
+        ]))
+        .unwrap();
+    assert!(!ptr.is_null());
+    unsafe { glib::ffi::g_ptr_array_unref(ptr as *mut glib::ffi::GPtrArray) };
+}
+
+#[test]
+fn ptr_array_value_freed_when_hashtable_storage_drops() {
+    common::ensure_gtk_init();
+    let ht_type = HashTableType {
+        key_type: Box::new(Type::Integer(IntegerKind::I32)),
+        value_type: Box::new(gptrarray_type()),
+        ownership: Ownership::Borrowed,
+    };
+    let input = Value::Array(vec![Value::Array(vec![
+        Value::Number(1.0),
+        Value::Array(vec![Value::Object(boxed_handle())]),
+    ])]);
+    {
+        let _encoded = ht_type.encode(&input, false).unwrap();
+    }
+}
+
+#[test]
+fn encode_ptr_array_rejects_non_array() {
+    let encoder = HashTableEntryEncoder::PtrArray(Box::new(struct_type()));
+    assert!(encoder.encode(&Value::Number(1.0)).is_err());
+}
+
+#[test]
+fn encode_ptr_array_rejects_non_object_item() {
+    let encoder = HashTableEntryEncoder::PtrArray(Box::new(struct_type()));
+    assert!(
+        encoder
+            .encode(&Value::Array(vec![Value::Number(1.0)]))
+            .is_err()
+    );
+}
+
+#[test]
+fn encoder_debug_and_clone() {
+    let encoder = HashTableEntryEncoder::PtrArray(Box::new(Type::Integer(IntegerKind::I32)));
+    let cloned = Clone::clone(&encoder);
+    assert!(format!("{cloned:?}").contains("PtrArray"));
+}
+
+#[test]
+fn hashtable_encode_rejects_non_array() {
+    let ht_type = HashTableType {
+        key_type: Box::new(Type::Boolean(BooleanType)),
+        value_type: Box::new(Type::Boolean(BooleanType)),
+        ownership: Ownership::Full,
+    };
+    assert!(ht_type.encode(&Value::Number(1.0), false).is_err());
+}
+
+#[test]
+fn hashtable_encode_rejects_unsupported_key_type() {
+    let ht_type = HashTableType {
+        key_type: Box::new(Type::Void(VoidType)),
+        value_type: Box::new(Type::Boolean(BooleanType)),
+        ownership: Ownership::Full,
+    };
+    assert!(ht_type.encode(&Value::Array(vec![]), false).is_err());
+}
+
+#[test]
+fn hashtable_encode_rejects_unsupported_value_type() {
+    let ht_type = HashTableType {
+        key_type: Box::new(Type::Boolean(BooleanType)),
+        value_type: Box::new(Type::Void(VoidType)),
+        ownership: Ownership::Full,
+    };
+    assert!(ht_type.encode(&Value::Array(vec![]), false).is_err());
+}
+
+#[test]
+fn hashtable_encode_rejects_non_tuple_entry() {
+    common::ensure_gtk_init();
+    let ht_type = HashTableType {
+        key_type: Box::new(Type::Boolean(BooleanType)),
+        value_type: Box::new(Type::Boolean(BooleanType)),
+        ownership: Ownership::Full,
+    };
+    let input = Value::Array(vec![Value::Array(vec![Value::Boolean(true)])]);
+    assert!(ht_type.encode(&input, false).is_err());
+}
+
+#[test]
+fn hashtable_encode_propagates_key_encoder_error() {
+    common::ensure_gtk_init();
+    let ht_type = HashTableType {
+        key_type: Box::new(Type::Boolean(BooleanType)),
+        value_type: Box::new(Type::Boolean(BooleanType)),
+        ownership: Ownership::Full,
+    };
+    let input = Value::Array(vec![Value::Array(vec![
+        Value::Number(1.0),
+        Value::Boolean(true),
+    ])]);
+    assert!(ht_type.encode(&input, false).is_err());
+}
+
+#[test]
+fn hashtable_decode_null_yields_empty_array() {
+    let ht_type = HashTableType {
+        key_type: Box::new(Type::Boolean(BooleanType)),
+        value_type: Box::new(Type::Boolean(BooleanType)),
+        ownership: Ownership::Full,
+    };
+    let decoded = ht_type
+        .decode(&FfiValue::Ptr(std::ptr::null_mut()))
+        .unwrap();
+    assert!(matches!(decoded, Value::Array(items) if items.is_empty()));
+}
+
+#[test]
+fn hashtable_ptr_to_value_null_and_populated() {
+    common::ensure_gtk_init();
+    let ht_type = HashTableType {
+        key_type: Box::new(Type::Integer(IntegerKind::I32)),
+        value_type: Box::new(Type::Integer(IntegerKind::I32)),
+        ownership: Ownership::Borrowed,
+    };
+
+    let empty = ht_type.ptr_to_value(std::ptr::null_mut(), "ctx").unwrap();
+    assert!(matches!(empty, Value::Array(items) if items.is_empty()));
+
+    let hash_table = unsafe {
+        glib::ffi::g_hash_table_new_full(
+            Some(glib::ffi::g_direct_hash),
+            Some(glib::ffi::g_direct_equal),
+            None,
+            None,
+        )
+    };
+    unsafe {
+        glib::ffi::g_hash_table_insert(
+            hash_table,
+            std::ptr::without_provenance_mut(1),
+            std::ptr::without_provenance_mut(10),
+        );
+    }
+    let decoded = ht_type
+        .ptr_to_value(hash_table as *mut c_void, "ctx")
+        .unwrap();
+    assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
+    unsafe { glib::ffi::g_hash_table_unref(hash_table) };
+}
+
+#[test]
+fn hashtable_decode_full_ownership_from_raw_ptr_unrefs() {
+    common::ensure_gtk_init();
+    let ht_type = HashTableType {
+        key_type: Box::new(Type::Integer(IntegerKind::I32)),
+        value_type: Box::new(Type::Integer(IntegerKind::I32)),
+        ownership: Ownership::Full,
+    };
+    let hash_table = unsafe {
+        glib::ffi::g_hash_table_new_full(
+            Some(glib::ffi::g_direct_hash),
+            Some(glib::ffi::g_direct_equal),
+            None,
+            None,
+        )
+    };
+    unsafe {
+        glib::ffi::g_hash_table_insert(
+            hash_table,
+            std::ptr::without_provenance_mut(3),
+            std::ptr::without_provenance_mut(30),
+        );
+        glib::ffi::g_hash_table_ref(hash_table);
+    }
+
+    let decoded = ht_type
+        .decode(&FfiValue::Ptr(hash_table as *mut c_void))
+        .unwrap();
+    assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
+
+    let size = unsafe { glib::ffi::g_hash_table_size(hash_table) };
+    assert_eq!(size, 1);
+
+    unsafe { glib::ffi::g_hash_table_unref(hash_table) };
+}
+
+#[test]
+fn hashtable_encode_native_handle_keys_roundtrips() {
+    common::ensure_gtk_init();
+    let ht_type = HashTableType {
+        key_type: Box::new(struct_type()),
+        value_type: Box::new(Type::Integer(IntegerKind::I32)),
+        ownership: Ownership::Full,
+    };
+    let input = Value::Array(vec![Value::Array(vec![
+        Value::Object(boxed_handle()),
+        Value::Number(5.0),
+    ])]);
+    let encoded = ht_type.encode(&input, false).unwrap();
+    let decoded = ht_type.decode(&encoded).unwrap();
+    assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
 }
 
 #[test]

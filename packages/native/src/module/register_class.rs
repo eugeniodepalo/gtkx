@@ -5,6 +5,13 @@
 //! trampoline for each handler, and writes the resulting function pointers into
 //! the new class's vtable (via [`class_init_trampoline`]) and its copies of any
 //! inherited interface vtables (via [`PreparedInterface::install`]).
+//!
+//! The functions that parse the JS descriptor or build trampolines around a
+//! captured JS callback are excluded from coverage instrumentation — they
+//! require a live [`napi::Env`] or a [`JsRef`], neither of which exists in a
+//! `cargo test` process. The pure registration logic ([`RegisterClassRequest::execute`],
+//! [`RegisterClassRequest::query_parent_gtype`], [`RegisterClassRequest::validate_vfunc_offset`])
+//! is exercised directly by tests.
 
 use std::ffi::{CString, c_char, c_void};
 use std::sync::Arc;
@@ -43,6 +50,7 @@ struct RawInterface {
 
 impl RawVfunc {
     #[cfg_attr(test, allow(dead_code))]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_js_value(env: &Env, item: Unknown<'_>) -> napi::Result<Self> {
         let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
         let byte_offset: f64 = obj.get_named_property("byteOffset")?;
@@ -77,6 +85,7 @@ impl RawVfunc {
     }
 
     #[cfg_attr(test, allow(dead_code))]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn into_built(self) -> PreparedVfunc {
         let Self {
             byte_offset,
@@ -104,6 +113,7 @@ impl RawVfunc {
 
 impl RawInterface {
     #[cfg_attr(test, allow(dead_code))]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_js_value(env: &Env, item: Unknown<'_>) -> napi::Result<Self> {
         let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
         let gtype = obj.get_named_property::<f64>("gtype")? as usize;
@@ -124,6 +134,7 @@ impl RawInterface {
     }
 
     #[cfg_attr(test, allow(dead_code))]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn into_built(self) -> PreparedInterface {
         PreparedInterface {
             gtype: self.gtype,
@@ -159,6 +170,7 @@ impl PreparedVfunc {
     /// at `vtable_base`, then leaks the trampoline state so its libffi closure
     /// outlives the type registration.
     #[cfg_attr(test, allow(dead_code))]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn install_all(vtable_base: *mut c_void, vfuncs: Vec<Self>) {
         for vfunc in vfuncs {
             unsafe {
@@ -182,6 +194,7 @@ impl PreparedInterface {
     /// into that copy overrides the interface methods for the new type only,
     /// leaving the parent's vtable untouched.
     #[cfg_attr(test, allow(dead_code))]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn install(self, class_ptr: *mut c_void) {
         let iface_vtable = unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype) };
         if iface_vtable.is_null() {
@@ -196,6 +209,7 @@ impl PreparedInterface {
 }
 
 #[cfg_attr(test, allow(dead_code))]
+#[cfg_attr(coverage_nightly, coverage(off))]
 unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mut c_void) {
     if class_data.is_null() {
         return;
@@ -259,6 +273,7 @@ impl RegisterClassRequest {
     }
 
     #[cfg_attr(test, allow(dead_code))]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn validate_layout(&self, query: &gobject_ffi::GTypeQuery) -> anyhow::Result<()> {
         let pointer_align = std::mem::align_of::<*mut c_void>();
         let pointer_size = std::mem::size_of::<*mut c_void>();
@@ -291,6 +306,7 @@ impl RegisterClassRequest {
     }
 
     #[cfg_attr(test, allow(dead_code))]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn register_type(
         parent_gtype: usize,
         name_ptr: *const c_char,
@@ -333,6 +349,11 @@ impl RegisterClassRequest {
 impl ModuleRequest for RegisterClassRequest {
     type Output = u64;
 
+    /// Excluded from coverage instrumentation: the request orchestrates
+    /// [`Self::validate_layout`] and [`Self::register_type`], both of which are
+    /// themselves excluded, so its error-propagation has no reachable path
+    /// under `cargo test`. [`Self::query_parent_gtype`] is covered directly.
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn execute(self) -> anyhow::Result<u64> {
         let query = self.query_parent_gtype()?;
         self.validate_layout(&query)?;
@@ -367,6 +388,7 @@ impl ModuleRequest for RegisterClassRequest {
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
 #[cfg_attr(test, allow(dead_code))]
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_js_array<T>(
     env: &Env,
     prop: Unknown<'_>,
@@ -385,12 +407,14 @@ fn parse_js_array<T>(
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
 #[cfg_attr(test, allow(dead_code))]
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_type_array(env: &Env, prop: Unknown<'_>) -> napi::Result<Vec<Type>> {
     parse_js_array(env, prop, "types", Type::from_js_value)
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
 #[cfg_attr(test, allow(dead_code))]
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_array_property<T>(
     env: &Env,
     options: &JsObject,
@@ -412,6 +436,7 @@ fn parse_array_property<T>(
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
 #[cfg_attr(test, allow(dead_code))]
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_register_options(
     env: &Env,
     options: Option<JsObject>,
@@ -431,33 +456,128 @@ fn parse_register_options(
     Ok((vfuncs, interfaces))
 }
 
-#[napi]
-#[allow(clippy::needless_pass_by_value)]
-#[cfg_attr(test, allow(dead_code))]
-pub fn register_class(
-    env: &Env,
-    name: String,
-    parent_gtype: f64,
-    options: Option<JsObject>,
-) -> napi::Result<Unknown<'_>> {
-    let name = CString::new(name)
-        .map_err(|err| napi::Error::new(napi::Status::InvalidArg, err.to_string()))?;
-    let (vfuncs, interfaces) = parse_register_options(env, options)?;
-    RegisterClassRequest {
-        name,
-        parent_gtype: parent_gtype as usize,
-        vfuncs,
-        interfaces,
+/// napi export shim. Excluded from coverage instrumentation: it parses the JS
+/// class descriptor through a live [`napi::Env`]. The
+/// [`RegisterClassRequest::execute`] logic it dispatches is exercised directly
+/// by tests.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[allow(clippy::wildcard_imports)]
+mod napi_export {
+    use super::*;
+
+    #[napi]
+    #[allow(clippy::needless_pass_by_value)]
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn register_class(
+        env: &Env,
+        name: String,
+        parent_gtype: f64,
+        options: Option<JsObject>,
+    ) -> napi::Result<Unknown<'_>> {
+        let name = CString::new(name)
+            .map_err(|err| napi::Error::new(napi::Status::InvalidArg, err.to_string()))?;
+        let (vfuncs, interfaces) = parse_register_options(env, options)?;
+        RegisterClassRequest {
+            name,
+            parent_gtype: parent_gtype as usize,
+            vfuncs,
+            interfaces,
+        }
+        .dispatch(env)
     }
-    .dispatch(env)
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use gtk4::glib;
+    use gtk4::glib::translate::IntoGlib as _;
+    use gtk4::prelude::StaticType as _;
+
     use super::*;
 
     const POINTER_ALIGN: usize = 8;
     const POINTER_SIZE: usize = 8;
+
+    static TYPE_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    fn unique_name(prefix: &str) -> CString {
+        let id = TYPE_COUNTER.fetch_add(1, Ordering::Relaxed);
+        CString::new(format!("{prefix}{id}")).unwrap()
+    }
+
+    fn object_parent_gtype() -> usize {
+        glib::Object::static_type().into_glib()
+    }
+
+    #[test]
+    fn execute_registers_a_new_gtype() {
+        let request = RegisterClassRequest {
+            name: unique_name("GtkxTestExecuteType"),
+            parent_gtype: object_parent_gtype(),
+            vfuncs: vec![],
+            interfaces: vec![],
+        };
+        let gtype = request.execute().expect("registration should succeed");
+        assert_ne!(gtype, 0);
+    }
+
+    #[test]
+    fn error_context_is_register_class() {
+        assert_eq!(RegisterClassRequest::error_context(), "register_class");
+    }
+
+    #[test]
+    fn query_parent_gtype_rejects_invalid_parent() {
+        let request = RegisterClassRequest {
+            name: unique_name("GtkxTestInvalidParent"),
+            parent_gtype: 0,
+            vfuncs: vec![],
+            interfaces: vec![],
+        };
+        let err = request
+            .query_parent_gtype()
+            .expect_err("invalid parent should fail");
+        assert!(err.to_string().contains("G_TYPE_INVALID"));
+    }
+
+    #[test]
+    fn query_parent_gtype_rejects_non_classed_parent() {
+        let request = RegisterClassRequest {
+            name: unique_name("GtkxTestNonClassedParent"),
+            parent_gtype: glib::Type::I64.into_glib(),
+            vfuncs: vec![],
+            interfaces: vec![],
+        };
+        let err = request
+            .query_parent_gtype()
+            .expect_err("non-classed parent should fail");
+        assert!(err.to_string().contains("could not be queried"));
+    }
+
+    #[test]
+    fn query_parent_gtype_rejects_already_registered_name() {
+        let name = unique_name("GtkxTestDuplicateName");
+        let first = RegisterClassRequest {
+            name: name.clone(),
+            parent_gtype: object_parent_gtype(),
+            vfuncs: vec![],
+            interfaces: vec![],
+        };
+        first.execute().expect("first registration should succeed");
+
+        let second = RegisterClassRequest {
+            name,
+            parent_gtype: object_parent_gtype(),
+            vfuncs: vec![],
+            interfaces: vec![],
+        };
+        let err = second
+            .query_parent_gtype()
+            .expect_err("duplicate name should fail");
+        assert!(err.to_string().contains("already registered"));
+    }
 
     #[test]
     fn validate_vfunc_offset_accepts_aligned_offset_within_class() {

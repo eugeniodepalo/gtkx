@@ -14,6 +14,12 @@
 //! 4. Block the JS thread on the barrier; once unblocked, return the handle
 //! 5. The loop runs until JS calls `stop`, which dispatches a final task to
 //!    drain pending finalizers and quit the loop
+//!
+//! Every function here wires threadsafe functions to a live [`napi::Env`] and
+//! spawns the `GLib` thread, so the module is excluded from coverage
+//! instrumentation.
+
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use std::sync::Arc;
 use std::sync::mpsc;

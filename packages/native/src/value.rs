@@ -10,6 +10,12 @@
 //! - Objects: `GObjects`, boxed types, structs
 //! - Callbacks: JavaScript functions invocable from native code
 //! - Arrays and references
+//!
+//! [`JsRef`], [`Callback`], [`Ref`], and the [`napi::Env`]-bound conversions
+//! ([`Value::from_js_value`], [`Value::to_js_value`], [`map_js_array`]) wrap
+//! live JavaScript references, so they are excluded from coverage
+//! instrumentation — a `cargo test` process has no JavaScript runtime to
+//! exercise them against.
 
 use std::ffi::c_void;
 use std::marker::PhantomData;
@@ -45,12 +51,14 @@ pub struct JsRef<T> {
 unsafe impl<T> Send for JsRef<T> {}
 unsafe impl<T> Sync for JsRef<T> {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl<T> std::fmt::Debug for JsRef<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("JsRef").finish_non_exhaustive()
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl<T> Drop for JsRef<T> {
     fn drop(&mut self) {
         let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
@@ -58,6 +66,7 @@ impl<T> Drop for JsRef<T> {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl<T: NapiRaw + NapiValue> JsRef<T> {
     /// Creates a reference that keeps `value` alive so it can outlive the JS
     /// call and be resolved later, possibly from another thread.
@@ -96,11 +105,20 @@ impl<T: NapiRaw + NapiValue> JsRef<T> {
     }
 }
 
-#[derive(Debug)]
+/// A JavaScript function held across the FFI boundary so native code can invoke
+/// it as a callback.
 pub struct Callback {
     pub js_func: Arc<JsRef<JsFunction>>,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
+impl std::fmt::Debug for Callback {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Callback").finish_non_exhaustive()
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl Callback {
     #[must_use]
     pub fn new(js_func: Arc<JsRef<JsFunction>>) -> Self {
@@ -119,6 +137,7 @@ impl Callback {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl Clone for Callback {
     fn clone(&self) -> Self {
         Self {
@@ -127,12 +146,23 @@ impl Clone for Callback {
     }
 }
 
-#[derive(Debug)]
+/// An out-parameter reference: a boxed inner [`Value`] paired with the JS
+/// wrapper object whose `value` property receives the updated result.
 pub struct Ref {
     pub value: Box<Value>,
     pub js_obj: Arc<JsRef<JsObject>>,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
+impl std::fmt::Debug for Ref {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Ref")
+            .field("value", &self.value)
+            .finish_non_exhaustive()
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl Clone for Ref {
     fn clone(&self) -> Self {
         Self {
@@ -142,6 +172,7 @@ impl Clone for Ref {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl Ref {
     #[must_use]
     pub fn new(value: Value, js_obj: Arc<JsRef<JsObject>>) -> Self {
@@ -290,6 +321,7 @@ impl Value {
         }
     }
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
         let value_type = value.get_type()?;
 
@@ -333,6 +365,7 @@ impl Value {
         }
     }
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn to_js_value(self, env: &Env) -> napi::Result<Unknown<'_>> {
         match self {
             Self::Number(n) => unsafe {
@@ -388,6 +421,7 @@ impl Value {
 ///
 /// Fails if any index is absent (a sparse hole), naming the offending index.
 #[allow(clippy::trivially_copy_pass_by_ref)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub(crate) fn map_js_array<T>(
     env: &Env,
     array: &Array,

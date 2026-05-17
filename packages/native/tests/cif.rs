@@ -563,6 +563,56 @@ fn try_from_struct_invalid_boolean() {
 }
 
 #[test]
+fn try_from_array_optional_null_yields_null_ptr() {
+    let arg = Arg {
+        ty: Type::Array(ArrayType {
+            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+            kind: ArrayKind::Array,
+            ownership: Ownership::Full,
+            element_size: None,
+        }),
+        value: value::Value::Null,
+        optional: true,
+    };
+
+    match FfiValue::try_from(arg).unwrap() {
+        FfiValue::Ptr(ptr) => assert!(ptr.is_null()),
+        other => panic!("Expected null FfiValue::Ptr, got {other:?}"),
+    }
+}
+
+#[test]
+fn try_from_array_propagates_encode_error() {
+    let arg = Arg::new(
+        Type::Array(ArrayType {
+            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+            kind: ArrayKind::Array,
+            ownership: Ownership::Full,
+            element_size: None,
+        }),
+        value::Value::Number(1.0),
+    );
+
+    assert!(FfiValue::try_from(arg).is_err());
+}
+
+#[test]
+fn try_from_array_f32_storage_converts_to_libffi_arg() {
+    let arg = Arg::new(
+        Type::Array(ArrayType {
+            item_type: Box::new(Type::Float(FloatKind::F32)),
+            kind: ArrayKind::Array,
+            ownership: Ownership::Full,
+            element_size: None,
+        }),
+        value::Value::Array(vec![value::Value::Number(0.5)]),
+    );
+
+    let ffi_value = FfiValue::try_from(arg).unwrap();
+    let _arg: libffi::middle::Arg = (&ffi_value).into();
+}
+
+#[test]
 fn try_from_struct_transfer_none_vs_full() {
     let transfer_none_type = native::types::StructType {
         ownership: Ownership::Full,

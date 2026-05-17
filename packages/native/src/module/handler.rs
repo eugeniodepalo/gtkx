@@ -1,3 +1,12 @@
+//! Request/response plumbing shared by the napi export handlers.
+//!
+//! [`ModuleRequest::dispatch`] and the [`ModuleResponse`] conversions all
+//! require a live [`napi::Env`], so the module is excluded from coverage
+//! instrumentation. The per-request `execute` logic lives in the sibling
+//! modules and is exercised directly by tests.
+
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use std::sync::Arc;
 
 use napi::bindgen_prelude::*;

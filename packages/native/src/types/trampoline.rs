@@ -45,6 +45,7 @@ pub struct TrampolineType {
 }
 
 impl TrampolineType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let (arg_types, return_type) =
             super::parse_callback_arg_and_return_types(env, obj, "trampoline")?;
@@ -107,6 +108,7 @@ impl FfiEncoder for TrampolineType {
         }
     }
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 
