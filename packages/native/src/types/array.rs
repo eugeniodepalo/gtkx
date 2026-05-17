@@ -153,27 +153,42 @@ impl RawPtrCodec for ArrayType {
 
 impl GlibValueCodec for ArrayType {}
 
+fn checked_f32_vec(values: &[f64]) -> anyhow::Result<Vec<f32>> {
+    values
+        .iter()
+        .enumerate()
+        .map(|(i, &v)| {
+            if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
+                bail!("Array element {i}: value {v} is out of range for f32");
+            }
+            Ok(v as f32)
+        })
+        .collect()
+}
+
+fn encode_integer_array(values: &[f64], int_type: IntegerKind) -> anyhow::Result<ffi::FfiValue> {
+    Ok(ffi::FfiValue::Storage(
+        int_type.checked_to_ffi_storage(values)?,
+    ))
+}
+
+fn encode_float_array(values: &[f64], float_kind: FloatKind) -> anyhow::Result<ffi::FfiValue> {
+    match float_kind {
+        FloatKind::F32 => Ok(ffi::FfiValue::Storage(checked_f32_vec(values)?.into())),
+        FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.to_vec().into())),
+    }
+}
+
+fn encode_boolean_array(values: &[i32]) -> ffi::FfiValue {
+    ffi::FfiValue::Storage(values.to_vec().into())
+}
+
+/// Encodes JS array elements into the layout of a specific [`ArrayKind`].
+///
+/// Only string and GObject-like elements vary by kind; scalar elements share
+/// one contiguous representation and are encoded by the free `encode_*_array`
+/// functions instead.
 trait ArrayKindEncoder {
-    fn encode_integers(
-        &self,
-        values: &[f64],
-        int_type: IntegerKind,
-        ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue>;
-
-    fn encode_floats(
-        &self,
-        values: &[f64],
-        float_kind: FloatKind,
-        ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue>;
-
-    fn encode_booleans(
-        &self,
-        values: &[i32],
-        ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue>;
-
     fn encode_strings(
         &self,
         cstrings: Vec<CString>,
@@ -192,49 +207,6 @@ trait ArrayKindEncoder {
 struct NullTerminatedArrayEncoder;
 
 impl ArrayKindEncoder for NullTerminatedArrayEncoder {
-    fn encode_integers(
-        &self,
-        values: &[f64],
-        int_type: IntegerKind,
-        _ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(ffi::FfiValue::Storage(
-            int_type.checked_to_ffi_storage(values)?,
-        ))
-    }
-
-    fn encode_floats(
-        &self,
-        values: &[f64],
-        float_kind: FloatKind,
-        _ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        match float_kind {
-            FloatKind::F32 => {
-                let values: Vec<f32> = values
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &v)| {
-                        if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
-                            bail!("Array element {i}: value {v} is out of range for f32");
-                        }
-                        Ok(v as f32)
-                    })
-                    .collect::<anyhow::Result<Vec<f32>>>()?;
-                Ok(ffi::FfiValue::Storage(values.into()))
-            }
-            FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.to_vec().into())),
-        }
-    }
-
-    fn encode_booleans(
-        &self,
-        values: &[i32],
-        _ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(ffi::FfiValue::Storage(values.to_vec().into()))
-    }
-
     fn encode_strings(
         &self,
         cstrings: Vec<CString>,
@@ -288,49 +260,6 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
 struct GListEncoder;
 
 impl ArrayKindEncoder for GListEncoder {
-    fn encode_integers(
-        &self,
-        values: &[f64],
-        int_type: IntegerKind,
-        _ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(ffi::FfiValue::Storage(
-            int_type.checked_to_ffi_storage(values)?,
-        ))
-    }
-
-    fn encode_floats(
-        &self,
-        values: &[f64],
-        float_kind: FloatKind,
-        _ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        match float_kind {
-            FloatKind::F32 => {
-                let values: Vec<f32> = values
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &v)| {
-                        if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
-                            bail!("Array element {i}: value {v} is out of range for f32");
-                        }
-                        Ok(v as f32)
-                    })
-                    .collect::<anyhow::Result<Vec<f32>>>()?;
-                Ok(ffi::FfiValue::Storage(values.into()))
-            }
-            FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.to_vec().into())),
-        }
-    }
-
-    fn encode_booleans(
-        &self,
-        values: &[i32],
-        _ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(ffi::FfiValue::Storage(values.to_vec().into()))
-    }
-
     fn encode_strings(
         &self,
         cstrings: Vec<CString>,
@@ -388,49 +317,6 @@ impl ArrayKindEncoder for GListEncoder {
 struct GSListEncoder;
 
 impl ArrayKindEncoder for GSListEncoder {
-    fn encode_integers(
-        &self,
-        values: &[f64],
-        int_type: IntegerKind,
-        _ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(ffi::FfiValue::Storage(
-            int_type.checked_to_ffi_storage(values)?,
-        ))
-    }
-
-    fn encode_floats(
-        &self,
-        values: &[f64],
-        float_kind: FloatKind,
-        _ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        match float_kind {
-            FloatKind::F32 => {
-                let values: Vec<f32> = values
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &v)| {
-                        if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
-                            bail!("Array element {i}: value {v} is out of range for f32");
-                        }
-                        Ok(v as f32)
-                    })
-                    .collect::<anyhow::Result<Vec<f32>>>()?;
-                Ok(ffi::FfiValue::Storage(values.into()))
-            }
-            FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.to_vec().into())),
-        }
-    }
-
-    fn encode_booleans(
-        &self,
-        values: &[i32],
-        _ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(ffi::FfiValue::Storage(values.to_vec().into()))
-    }
-
     fn encode_strings(
         &self,
         cstrings: Vec<CString>,
@@ -539,8 +425,7 @@ impl ArrayType {
             | Type::Struct(_)
             | Type::Fundamental(_)
             | Type::String(_) => Some(std::mem::size_of::<*mut c_void>()),
-            Type::Enum(e) => Some(e.storage.byte_size()),
-            Type::Flags(f) => Some(f.storage.byte_size()),
+            Type::Tagged(t) => Some(t.storage.byte_size()),
             Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
@@ -580,17 +465,12 @@ impl ArrayType {
 
         match &*self.item_type {
             Type::Integer(int_type) => {
-                let values = Self::extract_numbers(array)?;
-                encoder.encode_integers(&values, *int_type, self.ownership)
+                encode_integer_array(&Self::extract_numbers(array)?, *int_type)
             }
             Type::Float(float_kind) => {
-                let values = Self::extract_numbers(array)?;
-                encoder.encode_floats(&values, *float_kind, self.ownership)
+                encode_float_array(&Self::extract_numbers(array)?, *float_kind)
             }
-            Type::Boolean(_) => {
-                let values = Self::extract_booleans(array)?;
-                encoder.encode_booleans(&values, self.ownership)
-            }
+            Type::Boolean(_) => Ok(encode_boolean_array(&Self::extract_booleans(array)?)),
             Type::String(_) => {
                 let cstrings = Self::extract_strings(array)?;
                 let dup_elements =
@@ -621,13 +501,9 @@ impl ArrayType {
 
                 encoder.encode_handles(&handles, &self.item_type, self.ownership)
             }
-            Type::Enum(e) => {
+            Type::Tagged(t) => {
                 let values = Self::extract_numbers(array)?;
-                Ok(ffi::FfiValue::Storage(e.storage.to_ffi_storage(&values)))
-            }
-            Type::Flags(f) => {
-                let values = Self::extract_numbers(array)?;
-                Ok(ffi::FfiValue::Storage(f.storage.to_ffi_storage(&values)))
+                Ok(ffi::FfiValue::Storage(t.storage.to_ffi_storage(&values)))
             }
             Type::Void(_)
             | Type::Array(_)
@@ -675,8 +551,8 @@ impl ArrayType {
         int_type: &super::IntegerKind,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
+        let mut buf = [0u8; size_of::<i64>()];
         for n in Self::extract_numbers(array)? {
-            let mut buf = vec![0u8; int_type.byte_size()];
             int_type.write_ptr(buf.as_mut_ptr(), n);
             unsafe {
                 glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
@@ -732,21 +608,6 @@ impl ArrayType {
         Ok(())
     }
 
-    fn append_enum_like_values_to_garray(
-        g_array: *mut glib::ffi::GArray,
-        storage: &super::IntegerKind,
-        array: &[value::Value],
-    ) -> anyhow::Result<()> {
-        for n in Self::extract_numbers(array)? {
-            let mut buf = vec![0u8; storage.byte_size()];
-            storage.write_ptr(buf.as_mut_ptr(), n);
-            unsafe {
-                glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
-            }
-        }
-        Ok(())
-    }
-
     fn append_items_to_garray(
         &self,
         g_array: *mut glib::ffi::GArray,
@@ -787,8 +648,7 @@ impl ArrayType {
                 }
                 Ok(())
             }
-            Type::Enum(e) => Self::append_enum_like_values_to_garray(g_array, &e.storage, array),
-            Type::Flags(f) => Self::append_enum_like_values_to_garray(g_array, &f.storage, array),
+            Type::Tagged(t) => Self::append_integer_values_to_garray(g_array, &t.storage, array),
             Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
@@ -796,8 +656,7 @@ impl ArrayType {
             | Type::Trampoline(_)
             | Type::Ref(_)
             | Type::Unichar(_) => {
-                unsafe { glib::ffi::g_array_unref(g_array) };
-                bail!("Unsupported GArray item type: {:?}", self.item_type);
+                bail!("Unsupported GArray item type: {:?}", self.item_type)
             }
         }
     }
@@ -816,7 +675,10 @@ impl ArrayType {
         let g_array =
             unsafe { glib::ffi::g_array_sized_new(0, 0, element_size as u32, array.len() as u32) };
 
-        self.append_items_to_garray(g_array, array)?;
+        if let Err(err) = self.append_items_to_garray(g_array, array) {
+            unsafe { glib::ffi::g_array_unref(g_array) };
+            return Err(err);
+        }
 
         let should_free = self.ownership.is_borrowed();
         Ok(ffi::FfiValue::Storage(FfiStorage::new(
@@ -979,12 +841,8 @@ impl ArrayType {
                 }
                 values
             }
-            Type::Enum(e) => {
-                let f64_values = e.storage.read_slice(data, len);
-                f64_values.into_iter().map(value::Value::Number).collect()
-            }
-            Type::Flags(f) => {
-                let f64_values = f.storage.read_slice(data, len);
+            Type::Tagged(t) => {
+                let f64_values = t.storage.read_slice(data, len);
                 f64_values.into_iter().map(value::Value::Number).collect()
             }
             Type::Void(_)
@@ -1137,12 +995,8 @@ impl ArrayType {
                     .map(|handle| value::Value::Object(handle.clone()))
                     .collect()
             }
-            Type::Enum(e) => {
-                let f64_vec = e.storage.vec_to_f64(storage)?;
-                f64_vec.into_iter().map(value::Value::Number).collect()
-            }
-            Type::Flags(f) => {
-                let f64_vec = f.storage.vec_to_f64(storage)?;
+            Type::Tagged(t) => {
+                let f64_vec = t.storage.vec_to_f64(storage)?;
                 f64_vec.into_iter().map(value::Value::Number).collect()
             }
             Type::Void(_)
@@ -1170,8 +1024,7 @@ impl ArrayType {
             | Type::Struct(_)
             | Type::String(_)
             | Type::Fundamental(_) => self.decode_sized_ptr_array(ptr, length),
-            Type::Enum(e) => Ok(Self::decode_sized_byte_array(ptr, length, &e.storage)),
-            Type::Flags(f) => Ok(Self::decode_sized_byte_array(ptr, length, &f.storage)),
+            Type::Tagged(t) => Ok(Self::decode_sized_byte_array(ptr, length, &t.storage)),
             Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)

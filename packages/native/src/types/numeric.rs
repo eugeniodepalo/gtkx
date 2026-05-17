@@ -291,24 +291,6 @@ impl From<IntegerKind> for libffi::Type {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct TaggedType {
-    pub library: String,
-    pub get_type_fn: String,
-}
-
-impl TaggedType {
-    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let library: String = obj.get_named_property("library")?;
-        let get_type_fn: String = obj.get_named_property("getTypeFn")?;
-
-        Ok(Self {
-            library,
-            get_type_fn,
-        })
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub enum FloatKind {
@@ -485,54 +467,84 @@ impl From<FloatKind> for libffi::Type {
     }
 }
 
+/// Distinguishes a `GLib` enumeration from a flags (bitfield) type.
+///
+/// The two share an identical FFI representation and differ only in how they
+/// convert to and from a `GValue`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum TaggedKind {
+    Enum,
+    Flags,
+}
+
+/// A `GLib`-registered enumeration or flags type.
+///
+/// Marshaled across the FFI boundary as its underlying integer `storage`, and
+/// converted to a `GValue` of the `GType` resolved from `library` and
+/// `get_type_fn`.
 #[derive(Debug, Clone)]
-pub struct EnumType {
-    pub tagged: TaggedType,
+pub struct TaggedType {
+    pub kind: TaggedKind,
+    pub library: String,
+    pub get_type_fn: String,
     pub storage: IntegerKind,
 }
 
-impl EnumType {
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let tagged = TaggedType::from_js_value(env, obj)?;
+impl TaggedType {
+    pub fn from_js_value(_env: &Env, obj: &JsObject, kind: TaggedKind) -> napi::Result<Self> {
+        let library: String = obj.get_named_property("library")?;
+        let get_type_fn: String = obj.get_named_property("getTypeFn")?;
         let signed: bool = obj.get_named_property("signed")?;
         let storage = if signed {
             IntegerKind::I32
         } else {
             IntegerKind::U32
         };
-        Ok(Self { tagged, storage })
-    }
-}
 
-impl EnumType {
+        Ok(Self {
+            kind,
+            library,
+            get_type_fn,
+            storage,
+        })
+    }
+
+    fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
+        crate::state::GtkThreadState::with(|state| {
+            state.gtype_from_lib(&self.library, &self.get_type_fn)
+        })
+    }
+
     #[cfg(debug_assertions)]
     fn validate_enum_value(&self, value: i32) {
-        if let Ok(gtype) = crate::state::GtkThreadState::with(|state| {
-            state.gtype_from_lib(&self.tagged.library, &self.tagged.get_type_fn)
-        }) {
-            unsafe {
-                let enum_class = glib::gobject_ffi::g_type_class_ref(gtype.into_glib())
-                    as *mut glib::gobject_ffi::GEnumClass;
-                if !enum_class.is_null() {
-                    let enum_value = glib::gobject_ffi::g_enum_get_value(enum_class, value);
-                    if enum_value.is_null() {
-                        crate::error_reporter::NativeErrorReporter::global().report_str(&format!(
-                            "Enum value {} is not a valid member of {} (GType {})",
-                            value, self.tagged.get_type_fn, gtype
-                        ));
-                    }
-                    glib::gobject_ffi::g_type_class_unref(enum_class as *mut _);
-                }
+        let Ok(gtype) = self.resolve_gtype() else {
+            return;
+        };
+        unsafe {
+            let enum_class = glib::gobject_ffi::g_type_class_ref(gtype.into_glib())
+                as *mut glib::gobject_ffi::GEnumClass;
+            if enum_class.is_null() {
+                return;
             }
+            if glib::gobject_ffi::g_enum_get_value(enum_class, value).is_null() {
+                crate::error_reporter::NativeErrorReporter::global().report_str(&format!(
+                    "Enum value {value} is not a valid member of {} (GType {gtype})",
+                    self.get_type_fn
+                ));
+            }
+            glib::gobject_ffi::g_type_class_unref(enum_class as *mut _);
         }
     }
 }
 
-impl FfiEncoder for EnumType {
+impl FfiEncoder for TaggedType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let result = FfiEncoder::encode(&self.storage, value, optional)?;
         #[cfg(debug_assertions)]
-        if let value::Value::Number(n) = value {
+        if self.kind == TaggedKind::Enum
+            && let value::Value::Number(n) = value
+        {
             self.validate_enum_value(*n as i32);
         }
         Ok(result)
@@ -552,13 +564,13 @@ impl FfiEncoder for EnumType {
     }
 }
 
-impl FfiDecoder for EnumType {
+impl FfiDecoder for TaggedType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         FfiDecoder::decode(&self.storage, ffi_value)
     }
 }
 
-impl RawPtrCodec for EnumType {
+impl RawPtrCodec for TaggedType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         Ok(self.storage.ptr_to_value_raw(ptr))
     }
@@ -582,113 +594,36 @@ impl RawPtrCodec for EnumType {
     }
 }
 
-impl GlibValueCodec for EnumType {
+impl GlibValueCodec for TaggedType {
     fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
         let value::Value::Number(n) = val else {
             return Ok(None);
         };
-        let gtype = crate::state::GtkThreadState::with(|state| {
-            state.gtype_from_lib(&self.tagged.library, &self.tagged.get_type_fn)
-        })?;
-        let mut gvalue = glib::Value::from_type(gtype);
+        let mut gvalue = glib::Value::from_type(self.resolve_gtype()?);
         unsafe {
-            glib::gobject_ffi::g_value_set_enum(gvalue.to_glib_none_mut().0, *n as i32);
+            match self.kind {
+                TaggedKind::Enum => {
+                    glib::gobject_ffi::g_value_set_enum(gvalue.to_glib_none_mut().0, *n as i32);
+                }
+                TaggedKind::Flags => {
+                    glib::gobject_ffi::g_value_set_flags(gvalue.to_glib_none_mut().0, *n as u32);
+                }
+            }
         }
         Ok(Some(gvalue))
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let v = unsafe { glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _) };
-        Ok(value::Value::Number(v as f64))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct FlagsType {
-    pub tagged: TaggedType,
-    pub storage: IntegerKind,
-}
-
-impl FlagsType {
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let tagged = TaggedType::from_js_value(env, obj)?;
-        let signed: bool = obj.get_named_property("signed")?;
-        let storage = if signed {
-            IntegerKind::I32
-        } else {
-            IntegerKind::U32
+        let number = unsafe {
+            match self.kind {
+                TaggedKind::Enum => {
+                    glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _) as f64
+                }
+                TaggedKind::Flags => {
+                    glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _) as f64
+                }
+            }
         };
-        Ok(Self { tagged, storage })
-    }
-}
-
-impl FfiEncoder for FlagsType {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        FfiEncoder::encode(&self.storage, value, optional)
-    }
-
-    fn libffi_type(&self) -> libffi::Type {
-        self.storage.ffi_type()
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        FfiEncoder::call_cif(&self.storage, cif, ptr, args)
-    }
-}
-
-impl FfiDecoder for FlagsType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        FfiDecoder::decode(&self.storage, ffi_value)
-    }
-}
-
-impl RawPtrCodec for FlagsType {
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        Ok(self.storage.ptr_to_value_raw(ptr))
-    }
-
-    fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Number(
-            self.storage.read_ptr(ptr as *const u8),
-        ))
-    }
-
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        RawPtrCodec::write_return_to_raw_ptr(&self.storage, ret, value);
-    }
-
-    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        RawPtrCodec::write_value_to_raw_ptr(&self.storage, ptr, value)
-    }
-}
-
-impl GlibValueCodec for FlagsType {
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let value::Value::Number(n) = val else {
-            return Ok(None);
-        };
-        let gtype = crate::state::GtkThreadState::with(|state| {
-            state.gtype_from_lib(&self.tagged.library, &self.tagged.get_type_fn)
-        })?;
-        let mut gvalue = glib::Value::from_type(gtype);
-        unsafe {
-            glib::gobject_ffi::g_value_set_flags(gvalue.to_glib_none_mut().0, *n as u32);
-        }
-        Ok(Some(gvalue))
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let v =
-            unsafe { glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _) };
-        Ok(value::Value::Number(v as f64))
+        Ok(value::Value::Number(number))
     }
 }

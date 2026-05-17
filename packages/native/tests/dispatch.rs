@@ -14,6 +14,7 @@ fn drain_pending() {
 
 #[test]
 fn dispatch_pending_returns_false_when_empty() {
+    let _guard = common::serial_guard();
     common::ensure_gtk_init();
     drain_pending();
 
@@ -23,6 +24,7 @@ fn dispatch_pending_returns_false_when_empty() {
 
 #[test]
 fn schedule_glib_then_dispatch_pending_runs_task() {
+    let _guard = common::serial_guard();
     common::ensure_gtk_init();
     drain_pending();
 
@@ -42,6 +44,7 @@ fn schedule_glib_then_dispatch_pending_runs_task() {
 
 #[test]
 fn schedule_glib_drops_task_when_stopped() {
+    let _guard = common::serial_guard();
     common::ensure_gtk_init();
     drain_pending();
 
@@ -64,6 +67,7 @@ fn schedule_glib_drops_task_when_stopped() {
 
 #[test]
 fn freeze_returns_true_only_for_outermost_call() {
+    let _guard = common::serial_guard();
     let mailbox = Mailbox::global();
 
     assert!(mailbox.freeze());
@@ -80,6 +84,7 @@ fn freeze_returns_true_only_for_outermost_call() {
 
 #[test]
 fn dispatch_pending_drains_multiple_tasks_in_fifo_order() {
+    let _guard = common::serial_guard();
     common::ensure_gtk_init();
     drain_pending();
 

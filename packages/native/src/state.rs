@@ -9,7 +9,7 @@
 //! - [`GtkThread`]: Singleton for GTK thread lifecycle management
 
 use std::cell::RefCell;
-use std::collections::{HashMap, hash_map::Entry};
+use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::sync::{Mutex, OnceLock};
 use std::thread::JoinHandle;
@@ -87,32 +87,28 @@ impl LibraryCache {
     }
 
     pub fn get_or_load(&mut self, name: &str) -> anyhow::Result<&Library> {
-        match self.libraries.entry(name.to_string()) {
-            Entry::Occupied(entry) => Ok(entry.into_mut()),
-            Entry::Vacant(entry) => {
-                let lib_names: Vec<&str> = name.split(',').collect();
-                let mut last_error = None;
+        if !self.libraries.contains_key(name) {
+            let library = Self::load(name)?;
+            self.libraries.insert(name.to_owned(), library);
+        }
+        Ok(&self.libraries[name])
+    }
 
-                for lib_name in &lib_names {
-                    // SAFETY: Loading a shared library with RTLD_NOW | RTLD_GLOBAL
-                    // is safe as long as the library path is valid
-                    match unsafe { Library::open(Some(*lib_name), RTLD_NOW | RTLD_GLOBAL) } {
-                        Ok(lib) => {
-                            return Ok(entry.insert(lib));
-                        }
-                        Err(err) => {
-                            last_error = Some(err);
-                        }
-                    }
-                }
+    fn load(name: &str) -> anyhow::Result<Library> {
+        let mut last_error = None;
 
-                match last_error {
-                    Some(err) => anyhow::bail!("Failed to load library '{name}': {err}"),
-                    None => {
-                        anyhow::bail!("Failed to load library '{name}': no libraries specified")
-                    }
-                }
+        for lib_name in name.split(',') {
+            // SAFETY: Loading a shared library with RTLD_NOW | RTLD_GLOBAL
+            // is safe as long as the library path is valid.
+            match unsafe { Library::open(Some(lib_name), RTLD_NOW | RTLD_GLOBAL) } {
+                Ok(lib) => return Ok(lib),
+                Err(err) => last_error = Some(err),
             }
+        }
+
+        match last_error {
+            Some(err) => anyhow::bail!("Failed to load library '{name}': {err}"),
+            None => anyhow::bail!("Failed to load library '{name}': no libraries specified"),
         }
     }
 
@@ -147,14 +143,17 @@ impl LibraryCache {
     }
 }
 
+type FundamentalFns = (Option<RefFn>, Option<UnrefFn>);
+
 pub struct FundamentalFnCache {
-    cache: HashMap<(String, String), (Option<RefFn>, Option<UnrefFn>)>,
+    cache: HashMap<String, HashMap<String, FundamentalFns>>,
 }
 
 impl std::fmt::Debug for FundamentalFnCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let len: usize = self.cache.values().map(HashMap::len).sum();
         f.debug_struct("FundamentalFnCache")
-            .field("len", &self.cache.len())
+            .field("len", &len)
             .finish()
     }
 }
@@ -172,9 +171,12 @@ impl FundamentalFnCache {
         library_name: &str,
         ref_func: &str,
         unref_func: &str,
-    ) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
-        let key = (ref_func.to_owned(), unref_func.to_owned());
-        if let Some(cached) = self.cache.get(&key) {
+    ) -> anyhow::Result<FundamentalFns> {
+        if let Some(cached) = self
+            .cache
+            .get(ref_func)
+            .and_then(|by_unref| by_unref.get(unref_func))
+        {
             return Ok(*cached);
         }
 
@@ -201,7 +203,10 @@ impl FundamentalFnCache {
         };
 
         let result = (ref_fn, unref_fn);
-        self.cache.insert(key, result);
+        self.cache
+            .entry(ref_func.to_owned())
+            .or_default()
+            .insert(unref_func.to_owned(), result);
         Ok(result)
     }
 }

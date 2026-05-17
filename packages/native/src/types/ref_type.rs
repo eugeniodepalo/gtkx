@@ -14,7 +14,7 @@ use crate::ffi::{FfiStorage, FfiStorageKind};
 use crate::managed::{Boxed, Fundamental, NativeValue};
 use crate::{
     ffi,
-    types::{ArrayKind, FfiDecoder, FfiEncoder, GlibValueCodec, IntegerKind, RawPtrCodec, Type},
+    types::{ArrayKind, FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, Type},
     value,
 };
 
@@ -239,12 +239,8 @@ impl FfiDecoder for RefType {
                 let number = int_type.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
             }
-            Type::Enum(_) => {
-                let number = IntegerKind::I32.read_ptr(storage.ptr() as *const u8);
-                Ok(value::Value::Number(number))
-            }
-            Type::Flags(_) => {
-                let number = IntegerKind::U32.read_ptr(storage.ptr() as *const u8);
+            Type::Tagged(tagged) => {
+                let number = tagged.storage.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
             }
             Type::Float(float_kind) => {
@@ -302,12 +298,8 @@ impl GlibValueCodec for RefType {
                 let val = int_kind.read_ptr(ptr as *const u8);
                 Ok(value::Value::Number(val))
             }
-            Type::Enum(_) => {
-                let val = IntegerKind::I32.read_ptr(ptr as *const u8);
-                Ok(value::Value::Number(val))
-            }
-            Type::Flags(_) => {
-                let val = IntegerKind::U32.read_ptr(ptr as *const u8);
+            Type::Tagged(tagged) => {
+                let val = tagged.storage.read_ptr(ptr as *const u8);
                 Ok(value::Value::Number(val))
             }
             Type::Boolean(_) => {

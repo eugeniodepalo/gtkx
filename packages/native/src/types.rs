@@ -103,7 +103,7 @@ pub use callback::CallbackType;
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
 pub use hashtable::{HashTableEntryEncoder, HashTableType};
-pub use numeric::{EnumType, FlagsType, FloatKind, IntegerKind, TaggedType};
+pub use numeric::{FloatKind, IntegerKind, TaggedKind, TaggedType};
 pub use ref_type::RefType;
 pub use string::StringType;
 pub use trampoline::TrampolineType;
@@ -274,8 +274,7 @@ impl<T: FfiEncoder + FfiDecoder + RawPtrCodec + GlibValueCodec> FfiCodec for T {
 pub enum Type {
     Integer(IntegerKind),
     Float(FloatKind),
-    Enum(EnumType),
-    Flags(FlagsType),
+    Tagged(TaggedType),
     String(StringType),
     Void(VoidType),
     Boolean(BooleanType),
@@ -296,8 +295,10 @@ impl std::fmt::Display for Type {
         match self {
             Self::Integer(kind) => write!(f, "Integer({kind:?})"),
             Self::Float(kind) => write!(f, "Float({kind:?})"),
-            Self::Enum(t) => write!(f, "Enum({})", t.tagged.get_type_fn),
-            Self::Flags(t) => write!(f, "Flags({})", t.tagged.get_type_fn),
+            Self::Tagged(t) => match t.kind {
+                TaggedKind::Enum => write!(f, "Enum({})", t.get_type_fn),
+                TaggedKind::Flags => write!(f, "Flags({})", t.get_type_fn),
+            },
             Self::String(_) => write!(f, "String"),
             Self::Void(_) => write!(f, "Void"),
             Self::Boolean(_) => write!(f, "Boolean"),
@@ -331,8 +332,16 @@ impl Type {
             "uint64" => Ok(Self::Integer(IntegerKind::U64)),
             "float32" => Ok(Self::Float(FloatKind::F32)),
             "float64" => Ok(Self::Float(FloatKind::F64)),
-            "enum" => Ok(Self::Enum(EnumType::from_js_value(env, &obj)?)),
-            "flags" => Ok(Self::Flags(FlagsType::from_js_value(env, &obj)?)),
+            "enum" => Ok(Self::Tagged(TaggedType::from_js_value(
+                env,
+                &obj,
+                TaggedKind::Enum,
+            )?)),
+            "flags" => Ok(Self::Tagged(TaggedType::from_js_value(
+                env,
+                &obj,
+                TaggedKind::Flags,
+            )?)),
             "string" => Ok(Self::String(StringType::from_js_value(env, &obj)?)),
             "boolean" => Ok(Self::Boolean(BooleanType)),
             "void" => Ok(Self::Void(VoidType)),

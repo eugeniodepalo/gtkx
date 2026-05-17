@@ -272,9 +272,7 @@ impl Value {
                 let ty = return_type?;
                 let default = match ty {
                     Type::Boolean(_) => Self::Boolean(false),
-                    Type::Integer(_) | Type::Enum(_) | Type::Flags(_) | Type::Float(_) => {
-                        Self::Number(0.0)
-                    }
+                    Type::Integer(_) | Type::Tagged(_) | Type::Float(_) => Self::Number(0.0),
                     Type::String(_) | Type::GObject(_) => Self::Null,
                     _ => return None,
                 };

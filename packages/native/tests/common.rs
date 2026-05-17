@@ -1,4 +1,4 @@
-use std::sync::Once;
+use std::sync::{Mutex, MutexGuard, Once, PoisonError};
 
 use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
@@ -8,10 +8,23 @@ use gtk4::prelude::StaticType as _;
 static GTK_INIT: Once = Once::new();
 
 #[allow(dead_code)]
+static SERIAL: Mutex<()> = Mutex::new(());
+
+#[allow(dead_code)]
 pub fn ensure_gtk_init() {
     GTK_INIT.call_once(|| {
         gtk4::init().expect("Failed to initialize GTK4 for tests");
     });
+}
+
+/// Serializes tests that mutate process-global state.
+///
+/// Tests within a binary run on concurrent threads, so any test touching a
+/// singleton (such as the dispatch `Mailbox`) must hold this guard for its
+/// whole duration to avoid racing with its siblings.
+#[allow(dead_code)]
+pub fn serial_guard() -> MutexGuard<'static, ()> {
+    SERIAL.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 #[allow(dead_code)]
