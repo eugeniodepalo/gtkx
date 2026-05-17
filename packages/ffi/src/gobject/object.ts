@@ -4,27 +4,10 @@ import { Object as GObject, signalEmitv, signalParseName, Value } from "../gener
 import { GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT } from "../gtype.js";
 import { getHandle } from "../handles.js";
 import { alloc, call, read, t } from "../native.js";
-import { objectNewWithProperties } from "../object.js";
 import { getNativeObject } from "../registry.js";
+import { valueFromJS, valueFromObject, valueGetType, valueToJS } from "../value-marshal.js";
 
 declare module "../generated/gobject/gobject.js" {
-    namespace Object {
-        /**
-         * Creates a new instance of a GObject subtype and sets its properties
-         * using the provided arrays. Both arrays must have exactly the same
-         * number of elements, and the names and values correspond by index.
-         *
-         * Construction parameters (see G_PARAM_CONSTRUCT, G_PARAM_CONSTRUCT_ONLY)
-         * which are not explicitly specified are set to their default values.
-         *
-         * @param objectType - The GType of the object to instantiate
-         * @param names - The names of each property to be set
-         * @param values - The values of each property to be set
-         * @returns A new instance of the specified type
-         */
-        function newWithProperties(objectType: GType, names: string[], values: Value[]): Object;
-    }
-
     interface Object {
         /**
          * Runtime GType of the underlying GObject, stamped onto every instance
@@ -32,7 +15,7 @@ declare module "../generated/gobject/gobject.js" {
          * the concrete leaf type, which may be more derived than the static
          * wrapper type the instance is referenced through.
          */
-        readonly __gtype__: GType;
+        __gtype__: number;
 
         /**
          * Disconnects a signal handler previously connected via
@@ -80,7 +63,8 @@ declare module "../generated/gobject/gobject.js" {
          *
          * The property's GType is resolved at runtime via the object's class,
          * a GValue is initialized with that type, populated by
-         * `g_object_get_property`, and finally unmarshalled via {@link Value.toJS}.
+         * `g_object_get_property`, and finally unmarshalled via
+         * {@link valueToJS}.
          *
          * @param propertyName - The property name (kebab-case GIR name)
          * @throws if no property with that name exists on this object's class
@@ -91,7 +75,7 @@ declare module "../generated/gobject/gobject.js" {
          * Sets a property by name from a plain JavaScript value.
          *
          * The property's GType is resolved at runtime via the object's class,
-         * `value` is marshalled via {@link Value.fromJS}, and the resulting
+         * `value` is marshalled via {@link valueFromJS}, and the resulting
          * GValue is dispatched to `g_object_set_property`.
          *
          * @param propertyName - The property name (kebab-case GIR name)
@@ -104,21 +88,6 @@ declare module "../generated/gobject/gobject.js" {
 }
 
 const GOBJECT_BORROWED = t.object("borrowed");
-
-type ObjectStatic = {
-    newWithProperties(objectType: GType, names: string[], values: Value[]): GObject;
-};
-
-const ObjectWithStatics = GObject as typeof GObject & ObjectStatic;
-
-ObjectWithStatics.newWithProperties = (objectType: GType, names: string[], values: Value[]): GObject => {
-    const handle = objectNewWithProperties(
-        objectType,
-        names,
-        values.map((v) => getHandle(v)),
-    );
-    return getNativeObject<GObject>(handle);
-};
 
 // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
 type Listener = (...args: any[]) => any;
@@ -238,11 +207,11 @@ function emitImpl(this: GObject, sigName: string, ...args: unknown[]): void {
         ) as NativeHandle;
         for (let i = 0; i < paramCount; i++) {
             const paramGType = gtypeFromFfi(read(paramTypes, t.uint64, i * GTYPE_SIZE));
-            paramValues.push(Value.fromJS(paramGType, args[i]));
+            paramValues.push(valueFromJS(paramGType, args[i]));
         }
     }
 
-    signalEmitv([Value.newFromObject(this), ...paramValues], signalId, detail);
+    signalEmitv([valueFromObject(this), ...paramValues], signalId, detail);
 }
 GObject.prototype.emit = emitImpl;
 
@@ -252,7 +221,7 @@ const resolvePropertyValueType = (obj: GObject, propertyName: string): GType => 
         const className = obj.constructor.name || "GObject";
         throw new Error(`No property '${propertyName}' on ${className}`);
     }
-    return getNativeObject<ParamSpec>(pspecHandle).getDefaultValue().getType();
+    return valueGetType(getNativeObject<ParamSpec>(pspecHandle).getDefaultValue());
 };
 
 const dispatchPropertyCall = (fnName: string, obj: GObject, propertyName: string, gvalue: Value): void => {
@@ -273,11 +242,11 @@ GObject.prototype.getProperty = function getProperty(propertyName: string): unkn
     const gvalue = new Value();
     gvalue.init(valueType);
     dispatchPropertyCall("g_object_get_property", this, propertyName, gvalue);
-    return gvalue.toJS();
+    return valueToJS(gvalue);
 };
 
 GObject.prototype.setProperty = function setProperty(propertyName: string, value: unknown): void {
     const valueType = resolvePropertyValueType(this, propertyName);
-    const gvalue = Value.fromJS(valueType, value);
+    const gvalue = valueFromJS(valueType, value);
     dispatchPropertyCall("g_object_set_property", this, propertyName, gvalue);
 };

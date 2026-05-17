@@ -25,7 +25,6 @@ import { EnumGenerator } from "./generators/enum.js";
 import { FunctionGenerator } from "./generators/function.js";
 import { InterfaceGenerator } from "./generators/interface.js";
 import { RecordGenerator } from "./generators/record/index.js";
-import { getRuntimeAugmentation } from "./runtime-augmentations.js";
 
 /**
  * Configuration for generating a namespace's FFI bindings.
@@ -145,9 +144,7 @@ export class FfiGenerator {
         }
 
         const path = `${this.namespaceDir}/${this.namespaceDir}.js`;
-        const trailer = [getRuntimeAugmentation(this.options.namespace), this.namespaceBootstrap(namespace, file)]
-            .filter((part) => part.length > 0)
-            .join("\n");
+        const trailer = this.namespaceBootstrap(namespace, file);
         const content = trailer ? `${stringify(file)}\n${trailer}\n` : stringify(file);
         const files: GeneratedFile[] = [{ path, content }];
 

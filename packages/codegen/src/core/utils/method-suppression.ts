@@ -48,4 +48,4 @@ export const isMethodSuppressed = (qualifiedName: string, cIdentifier: string): 
 export const DIVERGENT_OVERRIDE_METHODS_BY_NAMESPACE: ReadonlyMap<
     string,
     ReadonlyMap<string, ReadonlySet<string>>
-> = new Map([["gobject", new Map([["Value", new Set(["getBoxed"])]])]]);
+> = new Map();

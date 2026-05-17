@@ -44,8 +44,9 @@ export type SignalGValue = { init(gtype: unknown): void };
 export type SignalGObject = {
     readonly Value: {
         new (): SignalGValue;
-        newFrom(type: Type, value: unknown): SignalGValue;
     };
+    /** Marshals a JS value into a `GValue` using its FFI type descriptor. */
+    valueFromFfi(type: Type, value: unknown): SignalGValue;
     signalLookup(name: string, gtype: unknown): number;
     signalEmitv(values: readonly SignalGValue[], signalId: number, detail: number, returnValue?: SignalGValue): void;
 };
@@ -175,11 +176,11 @@ export function emitSignal(
     }
 
     const { gobject } = meta;
-    const values: SignalGValue[] = [gobject.Value.newFrom(t.object("full"), instance)];
+    const values: SignalGValue[] = [gobject.valueFromFfi(t.object("full"), instance)];
     for (let i = 0; i < descriptor.emitTypes.length; i++) {
         const emitType = descriptor.emitTypes[i];
         if (emitType !== undefined) {
-            values.push(gobject.Value.newFrom(emitType, args[i]));
+            values.push(gobject.valueFromFfi(emitType, args[i]));
         }
     }
 

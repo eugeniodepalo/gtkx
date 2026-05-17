@@ -1,4 +1,4 @@
-import { createRef, type NativeHandle } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 import { PathDataType } from "../generated/cairo/cairo.js";
 import { alloc, read, t, write } from "../native.js";
 
@@ -21,8 +21,6 @@ export const FONT_FACE_T = cairoBoxed("CairoFontFace", "full", "cairo_gobject_fo
 export const FONT_FACE_T_NONE = cairoBoxed("CairoFontFace", "borrowed", "cairo_gobject_font_face_get_type");
 export const SCALED_FONT_T = cairoBoxed("CairoScaledFont", "full", "cairo_gobject_scaled_font_get_type");
 export const SCALED_FONT_T_NONE = cairoBoxed("CairoScaledFont", "borrowed", "cairo_gobject_scaled_font_get_type");
-export const DEVICE_T = cairoBoxed("CairoDevice", "borrowed", "cairo_gobject_device_get_type");
-export const DEVICE_T_FULL = cairoBoxed("CairoDevice", "full", "cairo_gobject_device_get_type");
 export const REGION_T = cairoBoxed("CairoRegion", "full", "cairo_gobject_region_get_type");
 export const REGION_T_NONE = cairoBoxed("CairoRegion", "borrowed", "cairo_gobject_region_get_type");
 
@@ -43,29 +41,6 @@ export const MATRIX_T = t.boxed("cairo_matrix_t", "borrowed", LIB);
 export const CLUSTER_BUF_T = t.boxed("cairo_text_cluster_t", "borrowed", LIB);
 export const TEXT_EXTENTS_T = t.boxed("cairo_text_extents_t", "borrowed", LIB);
 export const FONT_EXTENTS_T = t.boxed("cairo_font_extents_t", "borrowed", LIB);
-
-/**
- * Binds a Cairo file-surface constructor (e.g. `cairo_pdf_surface_create`),
- * which always takes `(filename, widthInPoints, heightInPoints)` and returns
- * an owned `cairo_surface_t*`. Each PDF/PS/SVG surface module resolves its
- * symbol once through this factory.
- */
-export const fileSurfaceCreate = (
-    symbol: string,
-): ((filename: string, widthInPoints: number, heightInPoints: number) => unknown) =>
-    fn(LIB, symbol, [{ type: STRING_FULL }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }], SURFACE_T);
-
-/**
- * Invokes a bound Cairo function that fills two `double*` out-params and
- * yields `{ x, y }`. The binding is supplied by the caller so that the
- * underlying symbol is resolved once at module load.
- */
-export const callGetXY = (self: NativeHandle, boundFn: (...args: unknown[]) => unknown): { x: number; y: number } => {
-    const xRef = createRef(0);
-    const yRef = createRef(0);
-    boundFn(self, xRef, yRef);
-    return { x: xRef.value, y: yRef.value };
-};
 
 export const allocGlyphBuffer = (glyphs: Array<{ index: number; x: number; y: number }>): NativeHandle => {
     const buf = alloc(glyphs.length * 24, "cairo_glyph_t[]", LIB);

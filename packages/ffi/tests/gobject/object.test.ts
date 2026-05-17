@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import * as Gdk from "../../src/generated/gdk/gdk.js";
 import * as Gtk from "../../src/generated/gtk/gtk.js";
 import "../../src/gobject/object.js";
-import "../../src/gobject/value.js";
 
 describe("Object.setProperty / getProperty auto-marshalling", () => {
     it("round-trips a string property through pspec lookup", () => {

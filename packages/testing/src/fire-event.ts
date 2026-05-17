@@ -1,5 +1,7 @@
-import { signalEmitv, signalLookup, Value } from "@gtkx/ffi/gobject";
+import type { Value } from "@gtkx/ffi/gobject";
+import { signalEmitv, signalLookup } from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { valueFromObject } from "@gtkx/ffi/value-marshal";
 import { tick } from "./timing.js";
 
 /**
@@ -15,14 +17,14 @@ import { tick } from "./timing.js";
  * @example
  * ```tsx
  * import { fireEvent } from "@gtkx/testing";
- * import { Value } from "@gtkx/ffi/gobject";
+ * import { valueFromDouble } from "@gtkx/ffi/value-marshal";
  *
  * // Emit signal on widget
  * await fireEvent(widget, "clicked");
  *
  * // Emit signal on gesture controller
  * const gesture = widget.observeControllers().getObject(0) as Gtk.GestureDrag;
- * await fireEvent(gesture, "drag-begin", Value.newFromDouble(100), Value.newFromDouble(100));
+ * await fireEvent(gesture, "drag-begin", valueFromDouble(100), valueFromDouble(100));
  * ```
  *
  * @see {@link userEvent} for high-level user interactions
@@ -35,7 +37,7 @@ export const fireEvent = async (
     const gtype = element.__gtype__;
     const signalId = signalLookup(signalName, gtype);
 
-    const instanceValue = Value.newFromObject(element);
+    const instanceValue = valueFromObject(element);
 
     signalEmitv([instanceValue, ...args], signalId, 0);
 

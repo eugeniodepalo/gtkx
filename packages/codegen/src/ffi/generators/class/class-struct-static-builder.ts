@@ -2,10 +2,15 @@
  * Class-Struct Static Builder
  *
  * GIR exposes class-level operations as `<method>` elements on a class's
- * gtype-struct record (e.g. `GtkWidgetClass` for `GtkWidget`). ts-for-gir
- * hoists those onto the owning class as static methods. This builder locates
- * the gtype-struct record for a class and emits each of its methods as a
- * static, marshaling the class-struct pointer from the first argument.
+ * gtype-struct record (e.g. `GtkWidgetClass` for `GtkWidget`). ts-for-gir's
+ * node-gtk output hoists those onto the owning class as static methods, so
+ * this builder locates the gtype-struct record for a class and emits each of
+ * its methods as a static, marshaling the class-struct pointer from the first
+ * argument.
+ *
+ * `GObject.Object` is excluded: the node-gtk contract models the `GObjectClass`
+ * operations on a dedicated `ObjectClass` interface rather than as statics on
+ * `Object`, so hoisting them there would diverge from the contract.
  */
 
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
@@ -19,6 +24,14 @@ import {
     type MethodStructure,
 } from "../../../core/writers/index.js";
 import type { GirClass, GirMethod, GirRecord, GirRepository } from "../../../gir/index.js";
+
+/**
+ * Qualified names of classes whose gtype-struct operations the node-gtk
+ * contract models on a dedicated `*Class` interface rather than as statics on
+ * the class itself. Hoisting their class-struct methods would diverge from the
+ * contract, so this builder emits nothing for them.
+ */
+const CLASS_STRUCT_STATIC_EXCLUDED: ReadonlySet<string> = new Set(["GObject.Object"]);
 
 /**
  * Builds static methods on a class from its gtype-struct record's methods.
@@ -47,6 +60,8 @@ export class ClassStructStaticBuilder {
      * throwing stubs so the runtime surface stays complete.
      */
     buildStructures(): MethodStructure[] {
+        if (CLASS_STRUCT_STATIC_EXCLUDED.has(this.cls.qualifiedName)) return [];
+
         const record = this.findClassStructRecord();
         if (!record) return [];
 

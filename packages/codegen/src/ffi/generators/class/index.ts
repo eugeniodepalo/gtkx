@@ -24,7 +24,11 @@ import {
     SELF_TYPE_GOBJECT,
     type SelfTypeDescriptor,
 } from "../../../core/type-system/ffi-types.js";
-import { collectParentFactoryMethodNames, collectParentMethodNames } from "../../../core/utils/class-traversal.js";
+import {
+    collectParentFactoryMethodNames,
+    collectParentMethodNames,
+    collectReachableVirtualMethodNames,
+} from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { isMethodSuppressed } from "../../../core/utils/method-suppression.js";
 import {
@@ -41,7 +45,6 @@ import type { GirClass, GirMethod, GirRepository } from "../../../gir/index.js";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
 import { ClassStructStaticBuilder } from "./class-struct-static-builder.js";
 import { ConstructorBuilder } from "./constructor-builder.js";
-import { ClassInstanceFieldBuilder } from "./instance-field-builder.js";
 import { MethodBuilder } from "./method-builder.js";
 import { PropertyAccessorBuilder } from "./property-accessor-builder.js";
 import { SignalBuilder } from "./signal-builder.js";
@@ -74,7 +77,6 @@ export class ClassGenerator {
     private readonly methodBuilder: MethodBuilder;
     private readonly staticBuilder: StaticFunctionBuilder;
     private readonly classStructStaticBuilder: ClassStructStaticBuilder;
-    private readonly instanceFieldBuilder: ClassInstanceFieldBuilder;
     private readonly signalBuilder: SignalBuilder;
     private readonly propertyAccessorBuilder: PropertyAccessorBuilder;
     private readonly classMetaBuilder: ClassMetaBuilder;
@@ -101,7 +103,6 @@ export class ClassGenerator {
             options,
             selfNames,
         );
-        this.instanceFieldBuilder = new ClassInstanceFieldBuilder(cls);
         this.signalBuilder = new SignalBuilder(cls, ffiMapper, file, repository, options, selfNames);
         this.propertyAccessorBuilder = new PropertyAccessorBuilder(
             cls,
@@ -166,13 +167,6 @@ export class ClassGenerator {
         const propertyEmissions = this.propertyAccessorBuilder.buildAccessors();
         for (const { accessor } of propertyEmissions) {
             cls.addAccessor(accessor);
-        }
-
-        const accessorNames = new Set(propertyEmissions.map(({ accessor }) => accessor.name));
-        for (const fieldAccessor of this.instanceFieldBuilder.buildAccessors()) {
-            if (!accessorNames.has(fieldAccessor.name)) {
-                cls.addAccessor(fieldAccessor);
-            }
         }
 
         this.file.add(cls);
@@ -339,8 +333,24 @@ export class ClassGenerator {
         this.methodRenames.set(method.cIdentifier, renamedMethod);
     }
 
+    /**
+     * Collects the camelCased names of the class properties whose accessor the
+     * runtime actually emits.
+     *
+     * A property whose name collides with a reachable `<virtual-method>` is
+     * suppressed by {@link PropertyAccessorBuilder} — ts-for-gir resolves that
+     * conflict by dropping the property and keeping the same-named `<method>`.
+     * Excluding such a property here lets {@link filterClassMethods} keep that
+     * method instead of shadowing it with an accessor that is never emitted.
+     */
     private collectPropertyNames(): Set<string> {
-        return new Set(this.cls.getAllProperties().map((p) => toCamelCase(p.name)));
+        const virtualMethodNames = collectReachableVirtualMethodNames(this.cls, this.repository);
+        return new Set(
+            this.cls
+                .getAllProperties()
+                .map((p) => toCamelCase(p.name))
+                .filter((name) => !virtualMethodNames.has(name)),
+        );
     }
 
     private filterClassMethods(parentMethodNames: Set<string>): GirMethod[] {

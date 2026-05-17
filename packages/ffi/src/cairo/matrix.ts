@@ -2,29 +2,11 @@ import { createRef, type NativeHandle } from "@gtkx/native";
 import { registerConstructionMeta } from "../construction-meta.js";
 import type { Status } from "../generated/cairo/cairo.js";
 import { getHandle, NativeObject } from "../handles.js";
-import { alloc, read, t } from "../native.js";
+import { alloc, t } from "../native.js";
 import { wrapHandle } from "../registry.js";
 import { DOUBLE_REF, DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T } from "./common.js";
 
 const { fn } = t;
-
-declare module "../generated/cairo/cairo.js" {
-    interface Matrix {
-        xx: number;
-        yx: number;
-        xy: number;
-        yy: number;
-        x0: number;
-        y0: number;
-        translate(tx: number, ty: number): void;
-        scale(sx: number, sy: number): void;
-        rotate(radians: number): void;
-        invert(): Status;
-        multiply(other: Matrix): Matrix;
-        transformPoint(x: number, y: number): [number, number];
-        transformDistance(dx: number, dy: number): [number, number];
-    }
-}
 
 export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
     const handle = alloc(48, "cairo_matrix_t", LIB);
@@ -64,20 +46,7 @@ const cairo_matrix_transform_distance = fn(
     [{ type: MATRIX_T }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
     t.void,
 );
-const cairo_matrix_init = fn(
-    LIB,
-    "cairo_matrix_init",
-    [
-        { type: MATRIX_T },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
-    ],
-    t.void,
-);
+const cairo_matrix_init_identity = fn(LIB, "cairo_matrix_init_identity", [{ type: MATRIX_T }], t.void);
 const cairo_matrix_init_translate = fn(
     LIB,
     "cairo_matrix_init_translate",
@@ -101,56 +70,41 @@ const cairo_matrix_init_rotate = fn(
  * Cairo affine transformation matrix backed by the `cairo_matrix_t` C struct.
  *
  * The struct is treated as an opaque 48-byte block accessed through cairo's
- * own functions and direct field reads. The TypeScript getters and instance
- * methods on the prototype expose the canonical cairo_matrix_t API.
+ * own functions. Instances are produced by the static `init*` factories and
+ * mutated in place by the prototype methods.
  */
 export class Matrix extends NativeObject {
-    get xx(): number {
-        return read(getHandle(this), DOUBLE_TYPE, 0) as number;
-    }
-
-    get yx(): number {
-        return read(getHandle(this), DOUBLE_TYPE, 8) as number;
-    }
-
-    get xy(): number {
-        return read(getHandle(this), DOUBLE_TYPE, 16) as number;
-    }
-
-    get yy(): number {
-        return read(getHandle(this), DOUBLE_TYPE, 24) as number;
-    }
-
-    get x0(): number {
-        return read(getHandle(this), DOUBLE_TYPE, 32) as number;
-    }
-
-    get y0(): number {
-        return read(getHandle(this), DOUBLE_TYPE, 40) as number;
-    }
-
+    /**
+     * Applies a translation to the transformation in `this` by `(tx, ty)`.
+     */
     translate(tx: number, ty: number): void {
         cairo_matrix_translate(getHandle(this), tx, ty);
     }
 
+    /**
+     * Applies scaling by `(sx, sy)` to the transformation in `this`.
+     */
     scale(sx: number, sy: number): void {
         cairo_matrix_scale(getHandle(this), sx, sy);
     }
 
+    /**
+     * Applies a rotation by `radians` to the transformation in `this`.
+     */
     rotate(radians: number): void {
         cairo_matrix_rotate(getHandle(this), radians);
     }
 
+    /**
+     * Inverts the transformation in `this`, returning the resulting status.
+     */
     invert(): Status {
         return cairo_matrix_invert(getHandle(this)) as Status;
     }
 
-    multiply(other: Matrix): Matrix {
-        const { handle, obj } = allocMatrix();
-        cairo_matrix_multiply(handle, getHandle(this), getHandle(other));
-        return obj;
-    }
-
+    /**
+     * Transforms the point `(x, y)` by the transformation in `this`.
+     */
     transformPoint(x: number, y: number): [number, number] {
         const xRef = createRef(x);
         const yRef = createRef(y);
@@ -158,6 +112,9 @@ export class Matrix extends NativeObject {
         return [xRef.value, yRef.value];
     }
 
+    /**
+     * Transforms the distance vector `(dx, dy)` by the transformation in `this`.
+     */
     transformDistance(dx: number, dy: number): [number, number] {
         const dxRef = createRef(dx);
         const dyRef = createRef(dy);
@@ -166,29 +123,47 @@ export class Matrix extends NativeObject {
     }
 
     /**
-     * Allocates a matrix and initialises it from explicit affine values.
+     * Allocates a matrix initialised to the identity transformation.
      */
-    static init(xx: number, yx: number, xy: number, yy: number, x0: number, y0: number): Matrix {
+    static initIdentity(): Matrix {
         const { handle, obj } = allocMatrix();
-        cairo_matrix_init(handle, xx, yx, xy, yy, x0, y0);
+        cairo_matrix_init_identity(handle);
         return obj;
     }
 
-    static createTranslate(tx: number, ty: number): Matrix {
+    /**
+     * Allocates a matrix initialised to a translation by `(tx, ty)`.
+     */
+    static initTranslate(tx: number, ty: number): Matrix {
         const { handle, obj } = allocMatrix();
         cairo_matrix_init_translate(handle, tx, ty);
         return obj;
     }
 
-    static createScale(sx: number, sy: number): Matrix {
+    /**
+     * Allocates a matrix initialised to a scaling by `(sx, sy)`.
+     */
+    static initScale(sx: number, sy: number): Matrix {
         const { handle, obj } = allocMatrix();
         cairo_matrix_init_scale(handle, sx, sy);
         return obj;
     }
 
-    static createRotate(radians: number): Matrix {
+    /**
+     * Allocates a matrix initialised to a rotation by `radians`.
+     */
+    static initRotate(radians: number): Matrix {
         const { handle, obj } = allocMatrix();
         cairo_matrix_init_rotate(handle, radians);
+        return obj;
+    }
+
+    /**
+     * Allocates a matrix holding the product of matrices `a` and `b`.
+     */
+    static multiply(a: Matrix, b: Matrix): Matrix {
+        const { handle, obj } = allocMatrix();
+        cairo_matrix_multiply(handle, getHandle(a), getHandle(b));
         return obj;
     }
 }

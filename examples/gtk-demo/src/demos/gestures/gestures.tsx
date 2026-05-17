@@ -1,5 +1,5 @@
 import type { Context } from "@gtkx/ffi/cairo";
-import { LinearPattern } from "@gtkx/ffi/cairo";
+import { Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkDrawingArea, GtkGestureLongPress, GtkGestureRotate, GtkGestureSwipe, GtkGestureZoom } from "@gtkx/react";
 import { useCallback, useRef } from "react";
@@ -89,7 +89,7 @@ const GesturesDemo = () => {
             cr.rotate(angle);
             cr.scale(scale, scale);
 
-            const pattern = LinearPattern.create(-rectSize / 2, 0, rectSize, 0);
+            const pattern = Pattern.createLinear(-rectSize / 2, 0, rectSize, 0);
             pattern.addColorStopRgb(0, 0, 0, 1);
             pattern.addColorStopRgb(1, 1, 0, 0);
             cr.setSource(pattern);

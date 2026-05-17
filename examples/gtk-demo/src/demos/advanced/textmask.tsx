@@ -1,5 +1,5 @@
 import type { Context } from "@gtkx/ffi/cairo";
-import { LinearPattern } from "@gtkx/ffi/cairo";
+import { Pattern } from "@gtkx/ffi/cairo";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -25,7 +25,7 @@ const TextmaskDemo = () => {
         cr.moveTo(30, 20);
         PangoCairo.layoutPath(cr, layout);
 
-        const pattern = LinearPattern.create(0, 0, width, height);
+        const pattern = Pattern.createLinear(0, 0, width, height);
         pattern.addColorStopRgb(0, 1, 0, 0);
         pattern.addColorStopRgb(0.2, 1, 0, 0);
         pattern.addColorStopRgb(0.3, 1, 1, 0);

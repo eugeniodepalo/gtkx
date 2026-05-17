@@ -49,8 +49,7 @@ import {
     type TextExtents,
 } from "./common.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
-import type { Matrix } from "./matrix.js";
-import { allocMatrix } from "./matrix.js";
+import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
 const { fn } = t;
 
@@ -91,7 +90,6 @@ declare module "../generated/cairo/cairo.js" {
         getLineCap(): LineCap;
         setLineJoin(lineJoin: LineJoin): void;
         getLineJoin(): LineJoin;
-        setDash(dashes: number[], offset: number): void;
         getDashCount(): number;
         getDash(): [number[], number];
         setMiterLimit(limit: number): void;
@@ -143,9 +141,9 @@ declare module "../generated/cairo/cairo.js" {
         mask(pattern: Pattern): void;
         maskSurface(surface: Surface, x: number, y: number): void;
 
-        setMatrix(matrix: Matrix): void;
-        getMatrix(): Matrix;
-        transform(matrix: Matrix): void;
+        setMatrix(matrix: CairoMatrix): void;
+        getMatrix(): CairoMatrix;
+        transform(matrix: CairoMatrix): void;
         identityMatrix(): void;
         userToDevice(x: number, y: number): [number, number];
         userToDeviceDistance(dx: number, dy: number): [number, number];
@@ -153,6 +151,7 @@ declare module "../generated/cairo/cairo.js" {
         deviceToUserDistance(dx: number, dy: number): [number, number];
 
         status(): Status;
+        getReferenceCount(): number;
     }
 }
 
@@ -402,17 +401,6 @@ Context.prototype.setLineJoin = function (lineJoin: LineJoin): void {
 const cairo_get_line_join = fn(LIB, "cairo_get_line_join", [{ type: CAIRO_T }], INT_TYPE);
 Context.prototype.getLineJoin = function (): LineJoin {
     return cairo_get_line_join(getHandle(this)) as LineJoin;
-};
-
-const DASH_ARRAY_T = t.array(DOUBLE_TYPE, "array", "borrowed");
-const cairo_set_dash = fn(
-    LIB,
-    "cairo_set_dash",
-    [{ type: CAIRO_T }, { type: DASH_ARRAY_T }, { type: INT_TYPE }, { type: DOUBLE_TYPE }],
-    t.void,
-);
-Context.prototype.setDash = function (dashes: number[], offset: number): void {
-    cairo_set_dash(getHandle(this), dashes, dashes.length, offset);
 };
 
 const cairo_get_dash_count = fn(LIB, "cairo_get_dash_count", [{ type: CAIRO_T }], INT_TYPE);
@@ -758,19 +746,19 @@ Context.prototype.maskSurface = function (surface: Surface, x: number, y: number
 };
 
 const cairo_set_matrix = fn(LIB, "cairo_set_matrix", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
-Context.prototype.setMatrix = function (matrix: Matrix): void {
+Context.prototype.setMatrix = function (matrix: CairoMatrix): void {
     cairo_set_matrix(getHandle(this), getHandle(matrix));
 };
 
 const cairo_get_matrix = fn(LIB, "cairo_get_matrix", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
-Context.prototype.getMatrix = function (): Matrix {
+Context.prototype.getMatrix = function (): CairoMatrix {
     const { handle, obj } = allocMatrix();
     cairo_get_matrix(getHandle(this), handle);
     return obj;
 };
 
 const cairo_transform = fn(LIB, "cairo_transform", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
-Context.prototype.transform = function (matrix: Matrix): void {
+Context.prototype.transform = function (matrix: CairoMatrix): void {
     cairo_transform(getHandle(this), getHandle(matrix));
 };
 
@@ -818,6 +806,11 @@ Context.prototype.status = function (): Status {
     return cairo_status(getHandle(this)) as Status;
 };
 
+const cairo_get_reference_count = fn(LIB, "cairo_get_reference_count", [{ type: CAIRO_T }], INT_TYPE);
+Context.prototype.getReferenceCount = function (): number {
+    return cairo_get_reference_count(getHandle(this)) as number;
+};
+
 declare module "../generated/cairo/cairo.js" {
     interface Context {
         pushGroup(): void;
@@ -828,8 +821,8 @@ declare module "../generated/cairo/cairo.js" {
 
         setFontFace(fontFace: FontFace): void;
         getFontFace(): FontFace;
-        setFontMatrix(matrix: Matrix): void;
-        getFontMatrix(): Matrix;
+        setFontMatrix(matrix: CairoMatrix): void;
+        getFontMatrix(): CairoMatrix;
         setScaledFont(scaledFont: ScaledFont): void;
         getScaledFont(): ScaledFont;
 
@@ -884,12 +877,12 @@ Context.prototype.getFontFace = function (): FontFace {
 };
 
 const cairo_set_font_matrix = fn(LIB, "cairo_set_font_matrix", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
-Context.prototype.setFontMatrix = function (matrix: Matrix): void {
+Context.prototype.setFontMatrix = function (matrix: CairoMatrix): void {
     cairo_set_font_matrix(getHandle(this), getHandle(matrix));
 };
 
 const cairo_get_font_matrix = fn(LIB, "cairo_get_font_matrix", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
-Context.prototype.getFontMatrix = function (): Matrix {
+Context.prototype.getFontMatrix = function (): CairoMatrix {
     const { handle, obj } = allocMatrix();
     cairo_get_font_matrix(getHandle(this), handle);
     return obj;

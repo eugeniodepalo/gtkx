@@ -1,19 +1,6 @@
 import { existsSync, unlinkSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import {
-    Context,
-    FontOptions,
-    ImageSurface,
-    LinearPattern,
-    Matrix,
-    Pattern,
-    PdfSurface,
-    RadialPattern,
-    Region,
-    SolidPattern,
-    Surface,
-    SurfacePattern,
-} from "../../src/cairo/index.js";
+import { Context, FontOptions, ImageSurface, MeshPattern, Pattern, Region, Surface } from "../../src/cairo/index.js";
 import {
     Content,
     Extend,
@@ -31,7 +18,7 @@ import {
 } from "../../src/generated/cairo/cairo.js";
 
 const createTestSurface = (): Surface => {
-    return PdfSurface.create("/dev/null", 200, 200);
+    return ImageSurface.create(Format.ARGB32, 200, 200);
 };
 
 const createTestContext = (): Context => {
@@ -39,93 +26,57 @@ const createTestContext = (): Context => {
 };
 
 describe("Matrix", () => {
-    it("creates with explicit values", () => {
-        const m = Matrix.init(1, 0, 0, 1, 10, 20);
-        expect(m.xx).toBeCloseTo(1);
-        expect(m.yx).toBeCloseTo(0);
-        expect(m.xy).toBeCloseTo(0);
-        expect(m.yy).toBeCloseTo(1);
-        expect(m.x0).toBeCloseTo(10);
-        expect(m.y0).toBeCloseTo(20);
-    });
-
-    it("creates identity matrix", () => {
-        const m = Matrix.init(1, 0, 0, 1, 0, 0);
-        expect(m.xx).toBeCloseTo(1);
-        expect(m.yx).toBeCloseTo(0);
-        expect(m.xy).toBeCloseTo(0);
-        expect(m.yy).toBeCloseTo(1);
-        expect(m.x0).toBeCloseTo(0);
-        expect(m.y0).toBeCloseTo(0);
+    it("creates an identity matrix", () => {
+        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        const p = m.transformPoint(5, 7);
+        expect(p[0]).toBeCloseTo(5);
+        expect(p[1]).toBeCloseTo(7);
     });
 
     it("creates a translation matrix", () => {
-        const m = Matrix.createTranslate(5, 10);
-        expect(m.x0).toBeCloseTo(5);
-        expect(m.y0).toBeCloseTo(10);
+        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        m.translate(5, 10);
+        const p = m.transformPoint(0, 0);
+        expect(p[0]).toBeCloseTo(5);
+        expect(p[1]).toBeCloseTo(10);
     });
 
     it("creates a scale matrix", () => {
-        const m = Matrix.createScale(2, 3);
-        expect(m.xx).toBeCloseTo(2);
-        expect(m.yy).toBeCloseTo(3);
+        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        m.scale(2, 3);
+        const d = m.transformDistance(1, 1);
+        expect(d[0]).toBeCloseTo(2);
+        expect(d[1]).toBeCloseTo(3);
     });
 
     it("creates a rotation matrix", () => {
-        const m = Matrix.createRotate(Math.PI / 2);
-        expect(m.xx).toBeCloseTo(0, 5);
-        expect(m.yx).toBeCloseTo(1, 5);
-        expect(m.xy).toBeCloseTo(-1, 5);
-        expect(m.yy).toBeCloseTo(0, 5);
-    });
-
-    it("translates in place", () => {
-        const m = Matrix.init(1, 0, 0, 1, 0, 0);
-        m.translate(5, 10);
-        expect(m.x0).toBeCloseTo(5);
-        expect(m.y0).toBeCloseTo(10);
-    });
-
-    it("scales in place", () => {
-        const m = Matrix.init(1, 0, 0, 1, 0, 0);
-        m.scale(2, 3);
-        expect(m.xx).toBeCloseTo(2);
-        expect(m.yy).toBeCloseTo(3);
-    });
-
-    it("rotates in place", () => {
-        const m = Matrix.init(1, 0, 0, 1, 0, 0);
+        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
         m.rotate(Math.PI / 2);
-        expect(m.xx).toBeCloseTo(0, 5);
-        expect(m.yx).toBeCloseTo(1, 5);
+        const d = m.transformDistance(1, 0);
+        expect(d[0]).toBeCloseTo(0, 5);
+        expect(d[1]).toBeCloseTo(1, 5);
     });
 
     it("inverts", () => {
-        const m = Matrix.createScale(2, 4);
+        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        m.scale(2, 4);
         m.invert();
-        expect(m.xx).toBeCloseTo(0.5);
-        expect(m.yy).toBeCloseTo(0.25);
-    });
-
-    it("multiplies two matrices", () => {
-        const a = Matrix.createScale(2, 2);
-        const b = Matrix.createTranslate(10, 10);
-        const c = a.multiply(b);
-        expect(c).toBeInstanceOf(Matrix);
-        const p = c.transformPoint(5, 5);
-        expect(p[0]).toBeCloseTo(20);
-        expect(p[1]).toBeCloseTo(20);
+        const d = m.transformDistance(2, 4);
+        expect(d[0]).toBeCloseTo(1);
+        expect(d[1]).toBeCloseTo(1);
     });
 
     it("transforms a point", () => {
-        const m = Matrix.createTranslate(10, 20);
+        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        m.translate(10, 20);
         const p = m.transformPoint(5, 5);
         expect(p[0]).toBeCloseTo(15);
         expect(p[1]).toBeCloseTo(25);
     });
 
     it("transforms a distance", () => {
-        const m = Matrix.createScale(3, 4);
+        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        m.scale(3, 4);
         const d = m.transformDistance(2, 3);
         expect(d[0]).toBeCloseTo(6);
         expect(d[1]).toBeCloseTo(12);
@@ -332,7 +283,7 @@ describe("Context", () => {
 
         it("sets a pattern as source", () => {
             const ctx = createTestContext();
-            const pattern = LinearPattern.create(0, 0, 100, 100);
+            const pattern = Pattern.createLinear(0, 0, 100, 100);
             pattern.addColorStopRgb(0, 1, 0, 0);
             pattern.addColorStopRgb(1, 0, 0, 1);
             ctx.setSource(pattern);
@@ -359,27 +310,8 @@ describe("Context", () => {
             expect(ctx.getLineJoin()).toBe(LineJoin.BEVEL);
         });
 
-        it("sets dash pattern", () => {
+        it("reports zero dash count by default", () => {
             const ctx = createTestContext();
-            ctx.setDash([5, 3], 0);
-            expect(ctx.status()).toBe(Status.SUCCESS);
-        });
-
-        it("gets dash count and dash values", () => {
-            const ctx = createTestContext();
-            ctx.setDash([5, 3, 2], 1.5);
-            expect(ctx.getDashCount()).toBe(3);
-            const dash = ctx.getDash();
-            expect(dash[0]).toHaveLength(3);
-            expect(dash[0][0]).toBeCloseTo(5);
-            expect(dash[0][1]).toBeCloseTo(3);
-            expect(dash[0][2]).toBeCloseTo(2);
-            expect(dash[1]).toBeCloseTo(1.5);
-        });
-
-        it("returns empty dash when none set", () => {
-            const ctx = createTestContext();
-            ctx.setDash([], 0);
             expect(ctx.getDashCount()).toBe(0);
             const dash = ctx.getDash();
             expect(dash[0]).toHaveLength(0);
@@ -620,7 +552,7 @@ describe("Context", () => {
         it("masks with a pattern", () => {
             const ctx = createTestContext();
             ctx.setSourceRgb(1, 0, 0);
-            const pattern = SolidPattern.create(0, 0, 0, 0.5);
+            const pattern = Pattern.createRgba(0, 0, 0, 0.5);
             ctx.mask(pattern);
             expect(ctx.status()).toBe(Status.SUCCESS);
         });
@@ -629,7 +561,7 @@ describe("Context", () => {
             const surface = createTestSurface();
             const ctx = Context.create(surface);
             ctx.setSourceRgb(1, 0, 0);
-            const maskSurf = surface.createSimilar("ALPHA", 100, 100);
+            const maskSurf = Surface.createSimilar(surface, Content.ALPHA, 100, 100);
             ctx.maskSurface(maskSurf, 0, 0);
             expect(ctx.status()).toBe(Status.SUCCESS);
         });
@@ -638,29 +570,32 @@ describe("Context", () => {
     describe("matrix operations", () => {
         it("sets and gets matrix", () => {
             const ctx = createTestContext();
-            const m = Matrix.createTranslate(10, 20);
+            const m = ctx.getMatrix();
+            m.translate(10, 20);
             ctx.setMatrix(m);
             const got = ctx.getMatrix();
-            expect(got.x0).toBeCloseTo(10);
-            expect(got.y0).toBeCloseTo(20);
+            const p = got.transformPoint(0, 0);
+            expect(p[0]).toBeCloseTo(10);
+            expect(p[1]).toBeCloseTo(20);
         });
 
         it("transforms with matrix", () => {
             const ctx = createTestContext();
-            const m = Matrix.createScale(2, 2);
+            const m = ctx.getMatrix();
+            m.scale(2, 2);
             ctx.transform(m);
-            const got = ctx.getMatrix();
-            expect(got.xx).toBeCloseTo(2);
-            expect(got.yy).toBeCloseTo(2);
+            const d = ctx.getMatrix().transformDistance(1, 1);
+            expect(d[0]).toBeCloseTo(2);
+            expect(d[1]).toBeCloseTo(2);
         });
 
         it("resets to identity matrix", () => {
             const ctx = createTestContext();
             ctx.translate(50, 50);
             ctx.identityMatrix();
-            const m = ctx.getMatrix();
-            expect(m.xx).toBeCloseTo(1);
-            expect(m.x0).toBeCloseTo(0);
+            const p = ctx.getMatrix().transformPoint(0, 0);
+            expect(p[0]).toBeCloseTo(0);
+            expect(p[1]).toBeCloseTo(0);
         });
 
         it("converts user to device coordinates", () => {
@@ -701,30 +636,52 @@ describe("Context", () => {
             const ctx = createTestContext();
             expect(ctx.status()).toBe(Status.SUCCESS);
         });
+
+        it("reports a positive reference count", () => {
+            const ctx = createTestContext();
+            expect(ctx.getReferenceCount()).toBeGreaterThan(0);
+        });
     });
 });
 
 describe("Pattern", () => {
     describe("createLinear", () => {
         it("creates a linear gradient pattern", () => {
-            const pattern = LinearPattern.create(0, 0, 100, 100);
+            const pattern = Pattern.createLinear(0, 0, 100, 100);
             expect(pattern).not.toBeNull();
             expect(pattern).toBeInstanceOf(Pattern);
+        });
+
+        it("reports its linear points", () => {
+            const pattern = Pattern.createLinear(1, 2, 30, 40);
+            const points = pattern.getLinearPoints();
+            expect(points.x0).toBeCloseTo(1);
+            expect(points.y0).toBeCloseTo(2);
+            expect(points.x1).toBeCloseTo(30);
+            expect(points.y1).toBeCloseTo(40);
         });
     });
 
     describe("createRadial", () => {
         it("creates a radial gradient pattern", () => {
-            const pattern = RadialPattern.create(50, 50, 10, 50, 50, 50);
+            const pattern = Pattern.createRadial(50, 50, 10, 50, 50, 50);
             expect(pattern).not.toBeNull();
             expect(pattern).toBeInstanceOf(Pattern);
+        });
+
+        it("reports its circles", () => {
+            const pattern = Pattern.createRadial(1, 2, 3, 4, 5, 6);
+            const circles = pattern.getRadialCircles();
+            expect(circles.x0).toBeCloseTo(1);
+            expect(circles.r0).toBeCloseTo(3);
+            expect(circles.r1).toBeCloseTo(6);
         });
     });
 
     describe("createForSurface", () => {
         it("creates a pattern from a surface", () => {
             const surface = createTestSurface();
-            const pattern = SurfacePattern.create(surface);
+            const pattern = Pattern.createForSurface(surface);
             expect(pattern).toBeInstanceOf(Pattern);
             expect(pattern.getType()).toBe(PatternType.SURFACE);
         });
@@ -732,39 +689,70 @@ describe("Pattern", () => {
 
     describe("createRgb", () => {
         it("creates a solid RGB pattern", () => {
-            const pattern = SolidPattern.create(1, 0, 0);
+            const pattern = Pattern.createRgb(1, 0, 0);
             expect(pattern).toBeInstanceOf(Pattern);
             expect(pattern.getType()).toBe(PatternType.SOLID);
+        });
+
+        it("reports its color", () => {
+            const pattern = Pattern.createRgb(0.25, 0.5, 0.75);
+            const rgba = pattern.getRgba();
+            expect(rgba.red).toBeCloseTo(0.25);
+            expect(rgba.green).toBeCloseTo(0.5);
+            expect(rgba.blue).toBeCloseTo(0.75);
         });
     });
 
     describe("createRgba", () => {
         it("creates a solid RGBA pattern", () => {
-            const pattern = SolidPattern.create(1, 0, 0, 0.5);
+            const pattern = Pattern.createRgba(1, 0, 0, 0.5);
             expect(pattern).toBeInstanceOf(Pattern);
             expect(pattern.getType()).toBe(PatternType.SOLID);
         });
     });
 
+    describe("createMesh", () => {
+        it("creates a mesh pattern", () => {
+            const pattern = Pattern.createMesh();
+            expect(pattern).toBeInstanceOf(MeshPattern);
+        });
+
+        it("records a patch", () => {
+            const pattern = Pattern.createMesh();
+            pattern.beginPatch();
+            pattern.moveTo(0, 0);
+            pattern.lineTo(10, 0);
+            pattern.lineTo(10, 10);
+            pattern.lineTo(0, 10);
+            pattern.setCornerColorRgb(0, 1, 0, 0);
+            pattern.endPatch();
+            expect(pattern.getPatchCount()).toBe(1);
+        });
+    });
+
     describe("addColorStopRgb", () => {
         it("adds an RGB color stop to a gradient", () => {
-            const pattern = LinearPattern.create(0, 0, 100, 0);
+            const pattern = Pattern.createLinear(0, 0, 100, 0);
             pattern.addColorStopRgb(0, 1, 0, 0);
             expect(pattern.status()).toBe(Status.SUCCESS);
+            expect(pattern.getColorStopCount()).toBe(1);
         });
     });
 
     describe("addColorStopRgba", () => {
         it("adds an RGBA color stop to a gradient", () => {
-            const pattern = LinearPattern.create(0, 0, 100, 0);
+            const pattern = Pattern.createLinear(0, 0, 100, 0);
             pattern.addColorStopRgba(0.5, 0, 1, 0, 0.5);
             expect(pattern.status()).toBe(Status.SUCCESS);
+            const stop = pattern.getColorStopRgba(0);
+            expect(stop.offset).toBeCloseTo(0.5);
+            expect(stop.green).toBeCloseTo(1);
         });
     });
 
     describe("extend", () => {
         it("sets and gets extend mode", () => {
-            const pattern = LinearPattern.create(0, 0, 100, 0);
+            const pattern = Pattern.createLinear(0, 0, 100, 0);
             pattern.setExtend(Extend.REPEAT);
             expect(pattern.getExtend()).toBe(Extend.REPEAT);
         });
@@ -772,7 +760,7 @@ describe("Pattern", () => {
 
     describe("filter", () => {
         it("sets and gets filter", () => {
-            const pattern = LinearPattern.create(0, 0, 100, 0);
+            const pattern = Pattern.createLinear(0, 0, 100, 0);
             pattern.setFilter(Filter.NEAREST);
             expect(pattern.getFilter()).toBe(Filter.NEAREST);
         });
@@ -780,24 +768,33 @@ describe("Pattern", () => {
 
     describe("matrix", () => {
         it("sets and gets matrix", () => {
-            const pattern = LinearPattern.create(0, 0, 100, 0);
-            const m = Matrix.createTranslate(5, 10);
+            const pattern = Pattern.createLinear(0, 0, 100, 0);
+            const m = pattern.getMatrix();
+            m.translate(5, 10);
             pattern.setMatrix(m);
             const got = pattern.getMatrix();
-            expect(got.x0).toBeCloseTo(5);
-            expect(got.y0).toBeCloseTo(10);
+            const p = got.transformPoint(0, 0);
+            expect(p[0]).toBeCloseTo(5);
+            expect(p[1]).toBeCloseTo(10);
         });
     });
 
     describe("getType", () => {
         it("returns LINEAR for linear pattern", () => {
-            const pattern = LinearPattern.create(0, 0, 100, 0);
+            const pattern = Pattern.createLinear(0, 0, 100, 0);
             expect(pattern.getType()).toBe(PatternType.LINEAR);
         });
 
         it("returns RADIAL for radial pattern", () => {
-            const pattern = RadialPattern.create(50, 50, 10, 50, 50, 50);
+            const pattern = Pattern.createRadial(50, 50, 10, 50, 50, 50);
             expect(pattern.getType()).toBe(PatternType.RADIAL);
+        });
+    });
+
+    describe("getReferenceCount", () => {
+        it("reports a positive reference count", () => {
+            const pattern = Pattern.createLinear(0, 0, 100, 0);
+            expect(pattern.getReferenceCount()).toBeGreaterThan(0);
         });
     });
 });
@@ -864,15 +861,13 @@ describe("FontOptions", () => {
         });
     });
 
-    describe("copy", () => {
-        it("creates a copy with same values", () => {
-            const orig = FontOptions.create();
-            orig.setHintStyle(HintStyle.SLIGHT);
-            orig.setSubpixelOrder(SubpixelOrder.BGR);
-            const copy = orig.copy();
-            expect(copy.getHintStyle()).toBe(HintStyle.SLIGHT);
-            expect(copy.getSubpixelOrder()).toBe(SubpixelOrder.BGR);
-            expect(orig.equal(copy)).toBe(true);
+    describe("hash", () => {
+        it("returns equal hashes for equal options", () => {
+            const a = FontOptions.create();
+            const b = FontOptions.create();
+            a.setHintStyle(HintStyle.SLIGHT);
+            b.setHintStyle(HintStyle.SLIGHT);
+            expect(a.hash()).toBe(b.hash());
         });
     });
 });
@@ -897,9 +892,17 @@ describe("Surface", () => {
     describe("createSimilar", () => {
         it("creates a similar surface", () => {
             const surface = createTestSurface();
-            const similar = surface.createSimilar("COLOR_ALPHA", 100, 100);
+            const similar = Surface.createSimilar(surface, Content.COLOR_ALPHA, 100, 100);
             expect(similar).not.toBeNull();
             expect(similar).toBeInstanceOf(Surface);
+        });
+    });
+
+    describe("createForRectangle", () => {
+        it("creates a sub-surface", () => {
+            const surface = createTestSurface();
+            const sub = Surface.createForRectangle(surface, 10, 10, 50, 50);
+            expect(sub).toBeInstanceOf(Surface);
         });
     });
 
@@ -932,11 +935,6 @@ describe("Surface", () => {
     });
 
     describe("getType", () => {
-        it("returns PDF type for PdfSurface", () => {
-            const surface = PdfSurface.create("/dev/null", 100, 100);
-            expect(surface.getType()).toBe(SurfaceType.PDF);
-        });
-
         it("returns IMAGE type for ImageSurface", () => {
             const surface = ImageSurface.create(Format.ARGB32, 10, 10);
             expect(surface.getType()).toBe(SurfaceType.IMAGE);
@@ -947,6 +945,21 @@ describe("Surface", () => {
         it("returns content type", () => {
             const surface = ImageSurface.create(Format.ARGB32, 10, 10);
             expect(surface.getContent()).toBe(Content.COLOR_ALPHA);
+        });
+    });
+
+    describe("getFontOptions", () => {
+        it("returns a FontOptions instance", () => {
+            const surface = createTestSurface();
+            const options = surface.getFontOptions();
+            expect(options).toBeInstanceOf(FontOptions);
+        });
+    });
+
+    describe("getReferenceCount", () => {
+        it("reports a positive reference count", () => {
+            const surface = createTestSurface();
+            expect(surface.getReferenceCount()).toBeGreaterThan(0);
         });
     });
 });
@@ -1005,38 +1018,11 @@ describe("ImageSurface", () => {
     });
 });
 
-describe("PdfSurface", () => {
-    it("creates a PDF surface with given dimensions", () => {
-        const tmpPath = "/tmp/gtkx-test-cairo.pdf";
-        try {
-            const surface = PdfSurface.create(tmpPath, 612, 792);
-            expect(surface).toBeInstanceOf(Surface);
-            const ctx = Context.create(surface);
-            ctx.setSourceRgb(0, 0, 0);
-            ctx.selectFontFace("Sans", 0, 0);
-            ctx.setFontSize(12);
-            ctx.moveTo(72, 72);
-            ctx.showText("Test PDF");
-            surface.finish();
-            expect(existsSync(tmpPath)).toBe(true);
-        } finally {
-            if (existsSync(tmpPath)) unlinkSync(tmpPath);
-        }
-    });
-});
-
 describe("Surface.createSimilarImage", () => {
-    it("returns an ImageSurface instance", () => {
+    it("returns a Surface instance", () => {
         const surface = ImageSurface.create(Format.ARGB32, 100, 100);
-        const similar = surface.createSimilarImage(Format.ARGB32, 50, 30);
-        expect(similar).toBeInstanceOf(ImageSurface);
-    });
-
-    it("has correct dimensions", () => {
-        const surface = ImageSurface.create(Format.ARGB32, 100, 100);
-        const similar = surface.createSimilarImage(Format.ARGB32, 50, 30);
-        expect(similar.getWidth()).toBe(50);
-        expect(similar.getHeight()).toBe(30);
+        const similar = Surface.createSimilarImage(surface, Format.ARGB32, 50, 30);
+        expect(similar).toBeInstanceOf(Surface);
     });
 });
 
@@ -1060,8 +1046,8 @@ describe("Context.hasCurrentPoint", () => {
     });
 });
 
-describe("Region.createRectangles", () => {
-    it("creates from multiple non-overlapping rects", () => {
+describe("Region", () => {
+    it("creates a rectangle region", () => {
         const region = Region.createRectangles([
             { x: 0, y: 0, width: 10, height: 10 },
             { x: 20, y: 20, width: 10, height: 10 },

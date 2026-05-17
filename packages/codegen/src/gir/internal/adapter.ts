@@ -179,7 +179,10 @@ function adaptInterfaces(interfaces: GirInterfaceElement[]): RawInterface[] {
  * class and interface bodies, which node-gtk's runtime never exposes.
  */
 function adaptFieldNames(fields: GirFieldElement[]): string[] {
-    return fields.map((field) => attrsOf(field).name ?? "").filter((name) => name.length > 0);
+    return fields
+        .filter((field) => attrsOf(field).introspectable !== "0")
+        .map((field) => attrsOf(field).name ?? "")
+        .filter((name) => name.length > 0);
 }
 
 /**
@@ -256,6 +259,7 @@ function adaptCallbacks(callbacks: GirCallbackElement[]): RawCallback[] {
 function adaptRecords(records: Array<GirRecordElement | GirUnionElement>, isUnion: boolean): RawRecord[] {
     return records.map((record) => {
         const a = attrsOf(record);
+        const isGtypeStructFor = a["glib:is-gtype-struct-for"] || undefined;
         return {
             name: a.name ?? "",
             cType: a["c:type"] ?? a["glib:type-name"] ?? "",
@@ -264,10 +268,10 @@ function adaptRecords(records: Array<GirRecordElement | GirUnionElement>, isUnio
             isUnion,
             glibTypeName: a["glib:type-name"],
             glibGetType: a["glib:get-type"],
-            isGtypeStructFor: a["glib:is-gtype-struct-for"] || undefined,
+            isGtypeStructFor,
             copyFunction: a["copy-function"],
             freeFunction: a["free-function"],
-            fields: adaptRecordMembers(record),
+            fields: adaptRecordMembers(record, isGtypeStructFor !== undefined),
             methods: adaptMethods(record.method ?? []),
             constructors: adaptConstructors(constructorElements(record)),
             functions: adaptFunctions(record.function ?? []),
@@ -279,10 +283,15 @@ function adaptRecords(records: Array<GirRecordElement | GirUnionElement>, isUnio
 /**
  * Adapts the field-like members of a record or union: declared `<field>`
  * elements followed by inline `<record>` / `<union>` composite members.
+ *
+ * @param node - The `<record>` or `<union>` element.
+ * @param keepNonIntrospectable - Retains `introspectable="0"` fields when set,
+ *   required for class-struct (vtable) records.
+ * @returns The adapted field-like members.
  */
-function adaptRecordMembers(node: GirRecordElement | GirUnionElement): RawField[] {
+function adaptRecordMembers(node: GirRecordElement | GirUnionElement, keepNonIntrospectable = false): RawField[] {
     return [
-        ...adaptFields(node.field ?? []),
+        ...adaptFields(node.field ?? [], keepNonIntrospectable),
         ...looseChildren(node, "record").map((nested) => adaptInlineComposite(nested as GirRecordElement, false)),
         ...looseChildren(node, "union").map((nested) => adaptInlineComposite(nested as GirUnionElement, true)),
     ];
@@ -301,25 +310,40 @@ function adaptInlineComposite(node: GirRecordElement | GirUnionElement, isUnion:
     };
 }
 
-function adaptFields(fields: GirFieldElement[]): RawField[] {
-    return fields.map((field) => {
-        const a = attrsOf(field);
-        const fieldName = a.name ?? "";
-        const callbackNode = field.callback?.[0];
-        const callback = callbackNode ? adaptInlineCallback(callbackNode, fieldName) : undefined;
-        const type = callback ? { ...GPOINTER_TYPE } : adaptType(pickTypeNode(field));
-        const bits = a.bits === undefined ? undefined : Number(a.bits);
-        return {
-            name: fieldName,
-            type,
-            writable: a.writable === "1",
-            readable: a.readable !== "0",
-            private: a.private === "1",
-            bits: bits !== undefined && Number.isFinite(bits) && bits > 0 ? bits : undefined,
-            callback,
-            doc: extractDoc(field),
-        };
-    });
+/**
+ * Adapts the `<field>` elements of a class, interface, or record.
+ *
+ * A field flagged `introspectable="0"` is dropped, matching the surface
+ * ts-for-gir emits — unless `keepNonIntrospectable` is set, which a class-struct
+ * (vtable) record requires: its vfunc slots, including the non-introspectable
+ * `constructor` slot, are load-bearing for the runtime's struct layout and
+ * native class registration even though they never reach the type contract.
+ *
+ * @param fields - The `<field>` elements to adapt.
+ * @param keepNonIntrospectable - Retains `introspectable="0"` fields when set.
+ * @returns The adapted fields.
+ */
+function adaptFields(fields: GirFieldElement[], keepNonIntrospectable = false): RawField[] {
+    return fields
+        .filter((field) => keepNonIntrospectable || attrsOf(field).introspectable !== "0")
+        .map((field) => {
+            const a = attrsOf(field);
+            const fieldName = a.name ?? "";
+            const callbackNode = field.callback?.[0];
+            const callback = callbackNode ? adaptInlineCallback(callbackNode, fieldName) : undefined;
+            const type = callback ? { ...GPOINTER_TYPE } : adaptType(pickTypeNode(field));
+            const bits = a.bits === undefined ? undefined : Number(a.bits);
+            return {
+                name: fieldName,
+                type,
+                writable: a.writable === "1",
+                readable: a.readable !== "0",
+                private: a.private === "1",
+                bits: bits !== undefined && Number.isFinite(bits) && bits > 0 ? bits : undefined,
+                callback,
+                doc: extractDoc(field),
+            };
+        });
 }
 
 function adaptInlineCallback(node: GirCallbackElement, fieldName: string): RawCallback {
@@ -386,32 +410,34 @@ function adaptAliases(aliases: GirAliasElement[]): RawAlias[] {
 }
 
 function adaptProperties(properties: GirPropertyElement[]): RawProperty[] {
-    return properties.map((prop) => {
-        const a = attrsOf(prop);
-        let getter = a.getter;
-        let setter = a.setter;
+    return properties
+        .filter((prop) => attrsOf(prop).introspectable !== "0")
+        .map((prop) => {
+            const a = attrsOf(prop);
+            let getter = a.getter;
+            let setter = a.setter;
 
-        for (const attribute of looseChildren(prop, "attribute")) {
-            const attributeAttrs = attrsOf(attribute);
-            if (attributeAttrs.name === "org.gtk.Property.get" && attributeAttrs.value) {
-                getter = attributeAttrs.value;
-            } else if (attributeAttrs.name === "org.gtk.Property.set" && attributeAttrs.value) {
-                setter = attributeAttrs.value;
+            for (const attribute of looseChildren(prop, "attribute")) {
+                const attributeAttrs = attrsOf(attribute);
+                if (attributeAttrs.name === "org.gtk.Property.get" && attributeAttrs.value) {
+                    getter = attributeAttrs.value;
+                } else if (attributeAttrs.name === "org.gtk.Property.set" && attributeAttrs.value) {
+                    setter = attributeAttrs.value;
+                }
             }
-        }
 
-        return {
-            name: a.name ?? "",
-            type: adaptType(pickTypeNode(prop)),
-            readable: a.readable !== "0",
-            writable: a.writable === "1",
-            constructOnly: a["construct-only"] === "1",
-            defaultValueRaw: a["default-value"],
-            getter,
-            setter,
-            doc: extractDoc(prop),
-        };
-    });
+            return {
+                name: a.name ?? "",
+                type: adaptType(pickTypeNode(prop)),
+                readable: a.readable !== "0",
+                writable: a.writable === "1",
+                constructOnly: a["construct-only"] === "1",
+                defaultValueRaw: a["default-value"],
+                getter,
+                setter,
+                doc: extractDoc(prop),
+            };
+        });
 }
 
 function adaptSignals(signals: GirSignalElement[]): RawSignal[] {

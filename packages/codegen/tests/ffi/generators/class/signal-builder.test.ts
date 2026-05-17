@@ -686,7 +686,7 @@ describe("SignalBuilder - GObject namespace specifics", () => {
 
         const code = renderMeta(builder);
 
-        expect(code).toContain("{ Value, signalEmitv, signalLookup }");
+        expect(code).toContain("{ Value, valueFromFfi, signalEmitv, signalLookup }");
     });
 });
 

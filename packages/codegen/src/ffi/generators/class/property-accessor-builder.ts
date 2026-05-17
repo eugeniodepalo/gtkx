@@ -25,6 +25,7 @@ import {
     collectDirectMembers,
     collectParentMethodNames,
     collectParentPropertyNames,
+    collectReachableVirtualMethodNames,
 } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
@@ -59,10 +60,17 @@ export type InterfacePropertySource = {
      * be marshaled through the generic `g_object_get_property` path.
      */
     readonly methodsByCIdentifier: ReadonlyMap<string, GirMethod>;
+    /**
+     * camelCased `<virtual-method>` names reachable on the interface. A property
+     * whose name collides with one of these is suppressed, mirroring how
+     * ts-for-gir resolves the same-name property/virtual-method conflict.
+     */
+    readonly virtualMethodNames: ReadonlySet<string>;
 };
 
 export class PropertyAccessorBuilder {
     private readonly parentMethodNames: ReadonlySet<string>;
+    private readonly conflictingVirtualMethodNames: ReadonlySet<string>;
 
     constructor(
         private readonly cls: GirClass | null,
@@ -74,6 +82,10 @@ export class PropertyAccessorBuilder {
         private readonly interfaceSource: InterfacePropertySource | null = null,
     ) {
         this.parentMethodNames = cls === null ? new Set() : collectParentMethodNames(cls, repository);
+        this.conflictingVirtualMethodNames =
+            cls === null
+                ? (interfaceSource?.virtualMethodNames ?? new Set())
+                : collectReachableVirtualMethodNames(cls, repository);
     }
 
     buildAccessors(): PropertyAccessorEmission[] {
@@ -97,6 +109,10 @@ export class PropertyAccessorBuilder {
 
     private buildAccessor(prop: GirProperty): PropertyAccessorEmission | null {
         const camelName = toCamelCase(prop.name);
+
+        if (this.conflictingVirtualMethodNames.has(camelName)) {
+            return null;
+        }
 
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
 
@@ -433,9 +449,9 @@ interface GValueGetterInfo {
 interface GValueSetterInfo {
     staticConstructor?: string;
     /**
-     * GLib type name. For `staticConstructor === "newFromBoxed"`, passed as the
-     * second argument to `Value.newFromBoxed(value, typeFromName(name))`.
-     * For `isFundamental`-style setters, used to initialize a fresh `GValue`.
+     * GLib type name. For boxed setters, identifies the boxed `GType` the JS
+     * value marshals into. For `isFundamental`-style setters, used to
+     * initialize a fresh `GValue`.
      */
     gtypeName?: string;
     setMethod?: string;

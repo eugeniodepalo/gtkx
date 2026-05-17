@@ -1,8 +1,11 @@
 /**
- * Re-export the helpers FIRST so that ES modules visit `./helpers.js`
- * before the generated-code imports below. Generated bindings call `t.fn(...)`
- * at module load time, which would hit a TDZ error if `helpers.js` were
- * evaluated after the generated modules in our import-graph cycle.
+ * Native error handling and the consolidated FFI helper re-export.
+ *
+ * Re-exports the `@gtkx/native` primitives and the `t` binding/type helpers
+ * from `./helpers.js` under a single specifier hand-written bindings import
+ * from, and defines the `NativeError` class and error-domain machinery that
+ * generated throwing callables use to surface `GError` failures as
+ * `instanceof`-discriminable JavaScript errors.
  */
 
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";

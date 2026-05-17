@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
     annotateReturns,
+    checkSource,
     getPropertyAnnotateReturns,
     handWrittenEntryPath,
     implEntryPath,
@@ -9,6 +10,7 @@ import {
     normalizeContract,
     promisifyAnnotateReturns,
     tupleAnnotateArrayReturns,
+    UNCONTRACTED_NAMESPACES,
 } from "../scripts/conformance.js";
 
 describe("implEntryPath", () => {
@@ -100,5 +102,35 @@ describe("normalizeContract", () => {
     it("keeps Promise and Array constructors while normalizing their arguments", () => {
         const source = "export declare function f(): Promise<Widget>;";
         expect(normalizeContract(source, "c.d.ts")).toContain("Promise<any>");
+    });
+});
+
+describe("checkSource", () => {
+    it("emits a static-extra assertion per shared class", () => {
+        const source = checkSource("gtk", ["Widget", "Button"]);
+
+        expect(source).toContain("const _noStaticExtra0:");
+        expect(source).toContain('implOnlyStatic: Exclude<keyof (typeof impl)["Widget"], keyof Contract["Widget"]>');
+        expect(source).toContain("const _noStaticExtra1:");
+    });
+
+    it("emits an instance-extra assertion per shared class", () => {
+        const source = checkSource("gtk", ["Widget"]);
+
+        expect(source).toContain("const _noInstanceExtra0:");
+        expect(source).toContain("implOnlyInstance: Exclude<keyof _Impl0, keyof _Contract0>");
+    });
+
+    it("keeps the forward and reverse assertions", () => {
+        const source = checkSource("gobject", ["Object"]);
+
+        expect(source).toContain("const _forward = impl satisfies Contract;");
+        expect(source).toContain("const _reverse0 = (undefined as unknown as _Contract0) satisfies");
+    });
+});
+
+describe("UNCONTRACTED_NAMESPACES", () => {
+    it("excludes cairo from the conformance gate", () => {
+        expect(UNCONTRACTED_NAMESPACES.has("cairo")).toBe(true);
     });
 });

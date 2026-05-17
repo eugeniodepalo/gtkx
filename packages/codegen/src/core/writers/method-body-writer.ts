@@ -361,7 +361,7 @@ export class MethodBodyWriter {
     /**
      * Resolves the method name, applying any dynamic renames.
      */
-    resolveMethodName(method: GirMethod, methodRenames: Map<string, string>): string {
+    resolveMethodName(method: GirMethod, methodRenames: ReadonlyMap<string, string>): string {
         const dynamicRename = methodRenames.get(method.cIdentifier);
         const camelName = toCamelCase(method.name);
         return dynamicRename ?? camelName;

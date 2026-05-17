@@ -1,7 +1,17 @@
 import * as net from "node:net";
 import * as Gio from "@gtkx/ffi/gio";
-import { Value } from "@gtkx/ffi/gobject";
+import type { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
+import {
+    valueFromBoolean,
+    valueFromDouble,
+    valueFromFloat,
+    valueFromInt,
+    valueFromInt64,
+    valueFromString,
+    valueFromUint,
+    valueFromUint64,
+} from "@gtkx/ffi/value-marshal";
 import {
     DEFAULT_SOCKET_PATH,
     type IpcMethod,
@@ -389,22 +399,22 @@ class McpClient {
 
         switch (argType) {
             case "boolean":
-                return Value.newFromBoolean(argValue as boolean);
+                return valueFromBoolean(argValue as boolean);
             case "int":
-                return Value.newFromInt(argValue as number);
+                return valueFromInt(argValue as number);
             case "uint":
-                return Value.newFromUint(argValue as number);
+                return valueFromUint(argValue as number);
             case "int64":
-                return Value.newFromInt64(argValue as number);
+                return valueFromInt64(argValue as number);
             case "uint64":
-                return Value.newFromUint64(argValue as number);
+                return valueFromUint64(argValue as number);
             case "float":
-                return Value.newFromFloat(argValue as number);
+                return valueFromFloat(argValue as number);
             case "double":
             case "number":
-                return Value.newFromDouble(argValue as number);
+                return valueFromDouble(argValue as number);
             case "string":
-                return Value.newFromString(argValue as string | null);
+                return valueFromString(argValue as string | null);
             default:
                 throw new McpError(McpErrorCode.INVALID_REQUEST, `Unknown argument type: ${argType}`);
         }

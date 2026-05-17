@@ -52,13 +52,15 @@ for (const [name, glibName] of Object.entries(FUNDAMENTAL_TYPE_NAMES)) {
  * memoizes it by GLib type name, so `INVALID` and `NONE` (both `void`)
  * share a single resolution.
  *
- * Use with {@link Value} factory methods that require explicit type specification.
+ * Use with the `@gtkx/ffi/value-marshal` factory functions that require
+ * explicit type specification.
  *
  * @example
  * ```ts
- * import { Type, Value } from "@gtkx/ffi/gobject";
+ * import { Type } from "@gtkx/ffi/gobject";
+ * import { valueFromEnum } from "@gtkx/ffi/value-marshal";
  *
- * const enumValue = Value.newFromEnum(myEnumGType, 0);
+ * const enumValue = valueFromEnum(myEnumGType, 0);
  * console.log(Type.STRING); // GType for gchararray
  * ```
  */

@@ -1,2 +1,4 @@
+import "./scrolled-window.js";
+
 export * from "../generated/gtk/gtk.js";
 export * from "./constants.js";

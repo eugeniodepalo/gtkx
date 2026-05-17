@@ -11,7 +11,10 @@ import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
 import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
-import { collectGObjectMethodNames } from "../../core/utils/class-traversal.js";
+import {
+    collectGObjectMethodNames,
+    collectInterfaceReachableVirtualMethodNames,
+} from "../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
 import { partitionSupportedFunctions, partitionSupportedMethods } from "../../core/utils/filtering.js";
 import {
@@ -36,6 +39,14 @@ import { PropertyAccessorBuilder, type PropertyAccessorEmission } from "./class/
  */
 export class InterfaceGenerator {
     private readonly methodBody: MethodBodyWriter;
+
+    /**
+     * Renamed interface methods keyed by C identifier. Only a GIR `<method>`
+     * named `connect` is renamed — to an owner-prefixed name — so it does not
+     * shadow the inherited GObject signal-subscription `connect`. Every other
+     * method keeps its plain camelCase name; a name colliding across
+     * prerequisites is deduplicated rather than renamed.
+     */
     private readonly methodRenames = new Map<string, string>();
 
     constructor(
@@ -81,17 +92,25 @@ export class InterfaceGenerator {
 
         this.emitConstructorPropertiesNamespace(iface, interfaceName);
 
+        const gobjectMethodNames = collectGObjectMethodNames(this.repository);
         const properties = this.collectInterfaceProperties(iface);
         const propertyNames = new Set(properties.map((prop) => toCamelCase(prop.name)));
         const isPropertyCollision = (m: GirMethod) => propertyNames.has(toCamelCase(m.name));
+        const isGObjectBaseMethod = (m: GirMethod) =>
+            m.name !== "connect" && gobjectMethodNames.has(toCamelCase(m.name));
         const ownMethods = iface.methods.filter((m) => !isPropertyCollision(m));
-        const inheritedMethods = prerequisiteMethods.filter((m) => !isPropertyCollision(m));
+        const inheritedMethods = prerequisiteMethods.filter((m) => !isPropertyCollision(m) && !isGObjectBaseMethod(m));
 
-        const gobjectMethodNames = collectGObjectMethodNames(this.repository);
+        for (const method of [...ownMethods, ...inheritedMethods]) {
+            if (method.name === "connect") {
+                this.methodRenames.set(method.cIdentifier, generateConflictingMethodName(iface.name, "connect"));
+            }
+        }
+
         const finishCandidateMethods = [...iface.methods, ...prerequisiteMethods];
         const methodStructures: MethodStructure[] = [
-            ...this.buildMethodStructures(ownMethods, iface.name, gobjectMethodNames, finishCandidateMethods),
-            ...this.buildMethodStructures(inheritedMethods, iface.name, gobjectMethodNames, finishCandidateMethods),
+            ...this.buildMethodStructures(ownMethods, finishCandidateMethods),
+            ...this.buildMethodStructures(inheritedMethods, finishCandidateMethods),
             ...this.buildStaticFunctionStructures(iface),
         ];
 
@@ -100,7 +119,7 @@ export class InterfaceGenerator {
         }
 
         const reachableMethods = [...iface.methods, ...prerequisiteMethods];
-        const accessorEmissions = this.buildPropertyAccessors(interfaceName, reachableMethods, properties);
+        const accessorEmissions = this.buildPropertyAccessors(iface, interfaceName, reachableMethods, properties);
         for (const { accessor } of accessorEmissions) {
             cls.addAccessor(accessor);
         }
@@ -155,8 +174,6 @@ export class InterfaceGenerator {
 
     private buildMethodStructures(
         methods: readonly GirMethod[],
-        ifaceName: string,
-        gobjectMethodNames: Set<string>,
         finishCandidateMethods: readonly GirMethod[],
     ): MethodStructure[] {
         const { supported, unsupported } = partitionSupportedMethods(
@@ -164,24 +181,13 @@ export class InterfaceGenerator {
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
-        const applyRename = (m: GirMethod) => {
-            const methodName = toCamelCase(m.name);
-            if (gobjectMethodNames.has(methodName)) {
-                const renamedMethod = generateConflictingMethodName(ifaceName, m.name);
-                this.methodRenames.set(m.cIdentifier, renamedMethod);
-            }
-        };
         const asyncPairs = collectAsyncCallablePairs(supported, finishCandidateMethods);
         return [
             ...supported.map((m) => {
-                applyRename(m);
                 const pair = asyncPairs.get(m.name);
                 return pair ? this.buildAsyncMethodStructure(pair) : this.buildMethodStructure(m);
             }),
-            ...unsupported.map((m) => {
-                applyRename(m);
-                return this.buildMethodStub(m);
-            }),
+            ...unsupported.map((m) => this.buildMethodStub(m)),
         ];
     }
 
@@ -267,16 +273,11 @@ export class InterfaceGenerator {
         const seenMethodNames = new Set(existingMethodNames);
         const visitedInterfaces = new Set<string>();
 
-        const collectMethods = (ownerName: string, ownerMethods: readonly GirMethod[]) => {
+        const collectMethods = (ownerMethods: readonly GirMethod[]) => {
             for (const m of ownerMethods) {
-                if (seenMethodNames.has(m.name)) {
-                    const renamedMethod = generateConflictingMethodName(ownerName, m.name);
-                    this.methodRenames.set(m.cIdentifier, renamedMethod);
-                    methods.push(m);
-                } else {
-                    seenMethodNames.add(m.name);
-                    methods.push(m);
-                }
+                if (seenMethodNames.has(m.name)) continue;
+                seenMethodNames.add(m.name);
+                methods.push(m);
             }
         };
 
@@ -290,7 +291,7 @@ export class InterfaceGenerator {
             for (const ancestorName of cls.getInheritanceChain()) {
                 const ancestor = this.repository.resolveClass(ancestorName);
                 if (!ancestor) continue;
-                collectMethods(ancestor.name, ancestor.methods);
+                collectMethods(ancestor.methods);
                 for (const implemented of ancestor.getAllImplementedInterfaces()) {
                     collectFromPrerequisite(implemented);
                 }
@@ -311,7 +312,7 @@ export class InterfaceGenerator {
                 collectFromPrerequisite(prereqPrereq);
             }
 
-            collectMethods(prereq.name, prereq.methods);
+            collectMethods(prereq.methods);
         };
 
         for (const prereqName of iface.prerequisites) {
@@ -322,6 +323,7 @@ export class InterfaceGenerator {
     }
 
     private buildPropertyAccessors(
+        iface: GirInterface,
         interfaceName: string,
         reachableMethods: readonly GirMethod[],
         properties: readonly GirProperty[],
@@ -340,7 +342,12 @@ export class InterfaceGenerator {
             this.repository,
             this.options,
             new Set([interfaceName]),
-            { ownerName: interfaceName, properties, methodsByCIdentifier },
+            {
+                ownerName: interfaceName,
+                properties,
+                methodsByCIdentifier,
+                virtualMethodNames: collectInterfaceReachableVirtualMethodNames(iface, this.repository),
+            },
         );
         return builder.buildAccessors();
     }

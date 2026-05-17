@@ -1,4 +1,4 @@
-import { Antialias, Context, Filter, FontOptions, HintMetrics, HintStyle } from "@gtkx/ffi/cairo";
+import { Antialias, Content, Context, Filter, FontOptions, HintMetrics, HintStyle, Surface } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -248,7 +248,7 @@ const FontRenderingDemo = () => {
             fontOptions.setHintMetrics(hintMetrics ? HintMetrics.ON : HintMetrics.OFF);
 
             const target = cr.getTarget();
-            const offscreen = target.createSimilar("COLOR_ALPHA", width, height);
+            const offscreen = Surface.createSimilar(target, Content.COLOR_ALPHA, width, height);
             const offCr = Context.create(offscreen);
 
             offCr.setFontOptions(fontOptions);
@@ -274,7 +274,7 @@ const FontRenderingDemo = () => {
             const surfaceWidth = inkPixel.width + 20;
             const surfaceHeight = inkPixel.height + 20;
 
-            const small = target.createSimilar("COLOR_ALPHA", surfaceWidth, surfaceHeight);
+            const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
             const smallCr = Context.create(small);
 
             smallCr.setSourceRgb(1, 1, 1);
@@ -356,7 +356,7 @@ const FontRenderingDemo = () => {
             }
 
             if (outlineAlpha > 0) {
-                const outlineSurface = target.createSimilar("COLOR_ALPHA", surfaceWidth, surfaceHeight);
+                const outlineSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
                 const outlineCr = Context.create(outlineSurface);
                 outlineCr.setFontOptions(fontOptions);
                 const outlineCtx = PangoCairo.createContext(outlineCr);
@@ -392,7 +392,7 @@ const FontRenderingDemo = () => {
         (cr: Context, width: number, height: number) => {
             const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
             const target = cr.getTarget();
-            const tmpSurface = target.createSimilar("COLOR_ALPHA", 1, 1);
+            const tmpSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, 1, 1);
             const tmpCr = Context.create(tmpSurface);
             tmpCr.setFontOptions(fontOptions);
 
@@ -406,7 +406,7 @@ const FontRenderingDemo = () => {
 
             const surfaceWidth = Math.round((logicalRect.width * 3) / 2);
             const surfaceHeight = logicalRect.height * 4;
-            const small = target.createSimilar("COLOR_ALPHA", surfaceWidth, surfaceHeight);
+            const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
             const smallSetup = renderSmallSurface(small, fontOptions, fontDesc, ch, hintMetrics);
             if (!smallSetup) {
                 small.finish();

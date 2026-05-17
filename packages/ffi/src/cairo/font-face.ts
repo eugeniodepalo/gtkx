@@ -3,7 +3,7 @@ import type { FontSlant, FontType, FontWeight, Status } from "../generated/cairo
 import { FontFace } from "../generated/cairo/cairo.js";
 import { getHandle } from "../handles.js";
 import { t } from "../native.js";
-import { getNativeObject } from "../registry.js";
+import { wrapHandle } from "../registry.js";
 import { FONT_FACE_T, FONT_FACE_T_NONE, INT_TYPE, LIB, STRING_BORROWED, STRING_FULL } from "./common.js";
 
 const { fn } = t;
@@ -14,34 +14,15 @@ declare module "../generated/cairo/cairo.js" {
     interface FontFace {
         status(): Status;
         getType(): FontType;
-        toyGetFamily(): string;
-        toyGetSlant(): FontSlant;
-        toyGetWeight(): FontWeight;
+        getReferenceCount(): number;
     }
 
     namespace FontFace {
-        function createToy(family: string, slant: FontSlant, weight: FontWeight): FontFace;
+        function create(family: string, slant: FontSlant, weight: FontWeight): ToyFontFace;
+        function createForFtFace(face: NativeHandle, loadFlags: number): FtFontFace;
+        function createForPattern(pattern: NativeHandle): FtFontFace;
     }
 }
-
-type FontFaceStatic = {
-    createToy(family: string, slant: FontSlant, weight: FontWeight): FontFace;
-    createFromFcPattern(pattern: NativeHandle): FontFace;
-    createFromFtFace(ftFace: NativeHandle, loadFlags: number): FontFace;
-};
-
-const FontFaceWithStatics = FontFace as typeof FontFace & FontFaceStatic;
-
-const cairo_toy_font_face_create = fn(
-    LIB,
-    "cairo_toy_font_face_create",
-    [{ type: STRING_FULL }, { type: INT_TYPE }, { type: INT_TYPE }],
-    FONT_FACE_T,
-);
-FontFaceWithStatics.createToy = (family: string, slant: FontSlant, weight: FontWeight): FontFace => {
-    const ptr = cairo_toy_font_face_create(family, slant, weight) as NativeHandle;
-    return getNativeObject(ptr, FontFace) as FontFace;
-};
 
 const cairo_font_face_status = fn(LIB, "cairo_font_face_status", [{ type: FONT_FACE_T_NONE }], INT_TYPE);
 FontFace.prototype.status = function (): Status {
@@ -53,53 +34,117 @@ FontFace.prototype.getType = function (): FontType {
     return cairo_font_face_get_type(getHandle(this)) as FontType;
 };
 
+const cairo_font_face_get_reference_count = fn(
+    LIB,
+    "cairo_font_face_get_reference_count",
+    [{ type: FONT_FACE_T_NONE }],
+    INT_TYPE,
+);
+FontFace.prototype.getReferenceCount = function (): number {
+    return cairo_font_face_get_reference_count(getHandle(this)) as number;
+};
+
 const cairo_toy_font_face_get_family = fn(
     LIB,
     "cairo_toy_font_face_get_family",
     [{ type: FONT_FACE_T_NONE }],
     STRING_BORROWED,
 );
-FontFace.prototype.toyGetFamily = function (): string {
-    return cairo_toy_font_face_get_family(getHandle(this)) as string;
-};
-
 const cairo_toy_font_face_get_slant = fn(LIB, "cairo_toy_font_face_get_slant", [{ type: FONT_FACE_T_NONE }], INT_TYPE);
-FontFace.prototype.toyGetSlant = function (): FontSlant {
-    return cairo_toy_font_face_get_slant(getHandle(this)) as FontSlant;
-};
-
 const cairo_toy_font_face_get_weight = fn(
     LIB,
     "cairo_toy_font_face_get_weight",
     [{ type: FONT_FACE_T_NONE }],
     INT_TYPE,
 );
-FontFace.prototype.toyGetWeight = function (): FontWeight {
-    return cairo_toy_font_face_get_weight(getHandle(this)) as FontWeight;
-};
+const cairo_ft_font_face_get_synthesize = fn(
+    LIB,
+    "cairo_ft_font_face_get_synthesize",
+    [{ type: FONT_FACE_T_NONE }],
+    INT_TYPE,
+);
+const cairo_ft_font_face_set_synthesize = fn(
+    LIB,
+    "cairo_ft_font_face_set_synthesize",
+    [{ type: FONT_FACE_T_NONE }, { type: INT_TYPE }],
+    t.void,
+);
+const cairo_ft_font_face_unset_synthesize = fn(
+    LIB,
+    "cairo_ft_font_face_unset_synthesize",
+    [{ type: FONT_FACE_T_NONE }, { type: INT_TYPE }],
+    t.void,
+);
 
-declare module "../generated/cairo/cairo.js" {
-    interface FontFace {
-        ftGetSynthesize(): number;
-        ftSetSynthesize(flags: number): void;
-        ftUnsetSynthesize(flags: number): void;
+/**
+ * Toy-API font face produced by {@link FontFace.create}.
+ */
+export class ToyFontFace extends FontFace {
+    /**
+     * Returns the font family name.
+     */
+    getFamily(): string {
+        return cairo_toy_font_face_get_family(getHandle(this)) as string;
     }
 
-    namespace FontFace {
-        function createFromFcPattern(pattern: NativeHandle): FontFace;
-        function createFromFtFace(ftFace: NativeHandle, loadFlags: number): FontFace;
+    /**
+     * Returns the font slant.
+     */
+    getSlant(): FontSlant {
+        return cairo_toy_font_face_get_slant(getHandle(this)) as FontSlant;
+    }
+
+    /**
+     * Returns the font weight.
+     */
+    getWeight(): FontWeight {
+        return cairo_toy_font_face_get_weight(getHandle(this)) as FontWeight;
     }
 }
 
-const cairo_ft_font_face_create_for_pattern = fn(
+/**
+ * FreeType-backed font face produced by {@link FontFace.createForFtFace} and
+ * {@link FontFace.createForPattern}.
+ */
+export class FtFontFace extends FontFace {
+    /**
+     * Returns the synthesis flags applied to the font.
+     */
+    getSynthesize(): number {
+        return cairo_ft_font_face_get_synthesize(getHandle(this)) as number;
+    }
+
+    /**
+     * Enables the given synthesis flags on the font.
+     */
+    setSynthesize(synthFlags: number): void {
+        cairo_ft_font_face_set_synthesize(getHandle(this), synthFlags);
+    }
+
+    /**
+     * Disables the given synthesis flags on the font.
+     */
+    unsetSynthesize(synthFlags: number): void {
+        cairo_ft_font_face_unset_synthesize(getHandle(this), synthFlags);
+    }
+}
+
+type FontFaceStatic = {
+    create(family: string, slant: FontSlant, weight: FontWeight): ToyFontFace;
+    createForFtFace(face: NativeHandle, loadFlags: number): FtFontFace;
+    createForPattern(pattern: NativeHandle): FtFontFace;
+};
+
+const FontFaceWithStatics = FontFace as typeof FontFace & FontFaceStatic;
+
+const cairo_toy_font_face_create = fn(
     LIB,
-    "cairo_ft_font_face_create_for_pattern",
-    [{ type: FC_PATTERN_T }],
+    "cairo_toy_font_face_create",
+    [{ type: STRING_FULL }, { type: INT_TYPE }, { type: INT_TYPE }],
     FONT_FACE_T,
 );
-FontFaceWithStatics.createFromFcPattern = (pattern: NativeHandle): FontFace => {
-    const ptr = cairo_ft_font_face_create_for_pattern(pattern) as NativeHandle;
-    return getNativeObject(ptr, FontFace) as FontFace;
+FontFaceWithStatics.create = (family: string, slant: FontSlant, weight: FontWeight): ToyFontFace => {
+    return wrapHandle(ToyFontFace, cairo_toy_font_face_create(family, slant, weight) as NativeHandle);
 };
 
 const cairo_ft_font_face_create_for_ft_face = fn(
@@ -108,37 +153,16 @@ const cairo_ft_font_face_create_for_ft_face = fn(
     [{ type: FT_FACE_T }, { type: INT_TYPE }],
     FONT_FACE_T,
 );
-FontFaceWithStatics.createFromFtFace = (ftFace: NativeHandle, loadFlags: number): FontFace => {
-    const ptr = cairo_ft_font_face_create_for_ft_face(ftFace, loadFlags) as NativeHandle;
-    return getNativeObject(ptr, FontFace) as FontFace;
+FontFaceWithStatics.createForFtFace = (face: NativeHandle, loadFlags: number): FtFontFace => {
+    return wrapHandle(FtFontFace, cairo_ft_font_face_create_for_ft_face(face, loadFlags) as NativeHandle);
 };
 
-const cairo_ft_font_face_get_synthesize = fn(
+const cairo_ft_font_face_create_for_pattern = fn(
     LIB,
-    "cairo_ft_font_face_get_synthesize",
-    [{ type: FONT_FACE_T_NONE }],
-    INT_TYPE,
+    "cairo_ft_font_face_create_for_pattern",
+    [{ type: FC_PATTERN_T }],
+    FONT_FACE_T,
 );
-FontFace.prototype.ftGetSynthesize = function (): number {
-    return cairo_ft_font_face_get_synthesize(getHandle(this)) as number;
-};
-
-const cairo_ft_font_face_set_synthesize = fn(
-    LIB,
-    "cairo_ft_font_face_set_synthesize",
-    [{ type: FONT_FACE_T_NONE }, { type: INT_TYPE }],
-    t.void,
-);
-FontFace.prototype.ftSetSynthesize = function (flags: number): void {
-    cairo_ft_font_face_set_synthesize(getHandle(this), flags);
-};
-
-const cairo_ft_font_face_unset_synthesize = fn(
-    LIB,
-    "cairo_ft_font_face_unset_synthesize",
-    [{ type: FONT_FACE_T_NONE }, { type: INT_TYPE }],
-    t.void,
-);
-FontFace.prototype.ftUnsetSynthesize = function (flags: number): void {
-    cairo_ft_font_face_unset_synthesize(getHandle(this), flags);
+FontFaceWithStatics.createForPattern = (pattern: NativeHandle): FtFontFace => {
+    return wrapHandle(FtFontFace, cairo_ft_font_face_create_for_pattern(pattern) as NativeHandle);
 };

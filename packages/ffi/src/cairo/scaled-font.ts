@@ -32,7 +32,6 @@ import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
 const { fn } = t;
-const FT_FACE_T = t.boxed("FT_Face", "borrowed", LIB);
 const GLYPH_BUF_REF = t.ref(GLYPH_BUF_T);
 const CLUSTER_BUF_REF = t.ref(CLUSTER_BUF_T);
 
@@ -48,6 +47,7 @@ declare module "../generated/cairo/cairo.js" {
         getCtm(): CairoMatrix;
         getScaleMatrix(): CairoMatrix;
         getType(): FontType;
+        getReferenceCount(): number;
     }
 
     namespace ScaledFont {
@@ -194,11 +194,19 @@ ScaledFont.prototype.getType = function (): FontType {
     return cairo_scaled_font_get_type(getHandle(this)) as FontType;
 };
 
+const cairo_scaled_font_get_reference_count = fn(
+    LIB,
+    "cairo_scaled_font_get_reference_count",
+    [{ type: SCALED_FONT_T_NONE }],
+    INT_TYPE,
+);
+ScaledFont.prototype.getReferenceCount = function (): number {
+    return cairo_scaled_font_get_reference_count(getHandle(this)) as number;
+};
+
 declare module "../generated/cairo/cairo.js" {
     interface ScaledFont {
         textToGlyphs(x: number, y: number, text: string): [CairoGlyph[], CairoTextCluster[], TextClusterFlags];
-        ftLockFace(): NativeHandle;
-        ftUnlockFace(): void;
     }
 }
 
@@ -285,24 +293,4 @@ ScaledFont.prototype.textToGlyphs = function (
     }
 
     return [glyphs, clusters, clusterFlagsRef.value as TextClusterFlags];
-};
-
-const cairo_ft_scaled_font_lock_face = fn(
-    LIB,
-    "cairo_ft_scaled_font_lock_face",
-    [{ type: SCALED_FONT_T_NONE }],
-    FT_FACE_T,
-);
-ScaledFont.prototype.ftLockFace = function (): NativeHandle {
-    return cairo_ft_scaled_font_lock_face(getHandle(this)) as NativeHandle;
-};
-
-const cairo_ft_scaled_font_unlock_face = fn(
-    LIB,
-    "cairo_ft_scaled_font_unlock_face",
-    [{ type: SCALED_FONT_T_NONE }],
-    t.void,
-);
-ScaledFont.prototype.ftUnlockFace = function (): void {
-    cairo_ft_scaled_font_unlock_face(getHandle(this));
 };

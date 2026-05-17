@@ -3,7 +3,7 @@ import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from ".
 import { FontOptions } from "../generated/cairo/cairo.js";
 import { getHandle } from "../handles.js";
 import { t } from "../native.js";
-import { getNativeObject, wrapHandle } from "../registry.js";
+import { wrapHandle } from "../registry.js";
 import { FONT_OPTIONS_T, FONT_OPTIONS_T_FULL, INT_TYPE, LIB, STRING_BORROWED, STRING_FULL } from "./common.js";
 
 const { fn } = t;
@@ -20,7 +20,6 @@ declare module "../generated/cairo/cairo.js" {
         getSubpixelOrder(): SubpixelOrder;
         equal(other: FontOptions): boolean;
         merge(other: FontOptions): void;
-        copy(): FontOptions;
     }
 }
 
@@ -132,11 +131,6 @@ const cairo_font_options_merge = fn(
 );
 FontOptions.prototype.merge = function (other: FontOptions): void {
     cairo_font_options_merge(getHandle(this), getHandle(other));
-};
-
-const cairo_font_options_copy = fn(LIB, "cairo_font_options_copy", [{ type: FONT_OPTIONS_T }], FONT_OPTIONS_T_FULL);
-FontOptions.prototype.copy = function (): FontOptions {
-    return getNativeObject(cairo_font_options_copy(getHandle(this)) as NativeHandle, FontOptions);
 };
 
 declare module "../generated/cairo/cairo.js" {

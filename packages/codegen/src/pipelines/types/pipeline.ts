@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { GenerationHandler } from "@ts-for-gir/cli";
 import { GeneratorType } from "@ts-for-gir/generator-base";
 import { FfiMapper } from "../../core/type-system/ffi-mapper.js";
-import { type AsyncCapableCallable, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
+import {
+    type AsyncCapableCallable,
+    collectAsyncCallablePairs,
+    findAsyncReadyCallbackParameter,
+    resolveFinishCallableName,
+} from "../../core/utils/async-callable.js";
 import { collectParentMethodNames } from "../../core/utils/class-traversal.js";
 import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
 import { isClassVtable } from "../../core/utils/record-filter.js";
@@ -155,6 +160,12 @@ export const collectByOwner = (
  * The type pipeline uses these to strip the field declarations, which
  * node-gtk's runtime never exposes.
  *
+ * A field name that also names a GObject `<property>` of the same owner is
+ * left out of the strip set: ts-for-gir collapses such a field and property
+ * into a single member, which is the genuine, runtime-exposed property — not
+ * a layout-only struct field — and stripping it by name would remove the
+ * property the contract must keep.
+ *
  * @param repository - The loaded GIR repository.
  * @returns Field names keyed lowercase namespace identifier then owner name.
  */
@@ -165,12 +176,15 @@ export const collectClassFieldNames = (repository: GirRepository): FieldNameMap 
         if (!namespace) continue;
         const owners = new Map<string, Set<string>>();
         for (const cls of namespace.classes.values()) {
-            owners.set(toPascalCase(cls.name), new Set(cls.fieldNames.map(toCamelCase)));
+            const propertyNames = new Set(cls.properties.map((property) => toCamelCase(property.name)));
+            const fieldNames = cls.fieldNames.map(toCamelCase).filter((name) => !propertyNames.has(name));
+            owners.set(toPascalCase(cls.name), new Set(fieldNames));
         }
         for (const iface of namespace.interfaces.values()) {
-            const names = new Set(iface.fieldNames.map(toCamelCase));
+            const propertyNames = new Set(iface.properties.map((property) => toCamelCase(property.name)));
+            const names = new Set(iface.fieldNames.map(toCamelCase).filter((name) => !propertyNames.has(name)));
             for (const prereq of collectPrerequisiteFieldNames(repository, iface.prerequisites)) {
-                names.add(prereq);
+                if (!propertyNames.has(prereq)) names.add(prereq);
             }
             owners.set(toPascalCase(iface.name), names);
         }
@@ -265,15 +279,29 @@ export const connectRenameFor = (ownerName: string): string => {
 };
 
 /**
- * Counts the parameters a method contributes to its declared signature: every
- * non-`out` GIR parameter, matching the surface ts-for-gir emits once `out`
- * parameters have been folded into the return tuple.
+ * Counts the parameters a method contributes to its declared signature.
+ *
+ * Every non-`out` GIR parameter is counted, matching the surface ts-for-gir
+ * emits once `out` parameters have been folded into the return tuple. For a
+ * GIO-style async method the trailing `GAsyncReadyCallback` and its companion
+ * user-data parameter are excluded as well, matching the Promise-returning
+ * wrapper the runtime — and the contract — emit in the callback's place.
  *
  * @param method - The GIR method.
  * @returns The declared parameter count.
  */
-export const declaredParameterCount = (method: GirMethod): number =>
-    method.parameters.filter((parameter) => parameter.direction !== "out").length;
+export const declaredParameterCount = (method: GirMethod): number => {
+    const callbackParameter = findAsyncReadyCallbackParameter(method);
+    const excludedIndices = new Set<number>();
+    if (callbackParameter !== null && resolveFinishCallableName(method) !== null) {
+        excludedIndices.add(method.parameters.indexOf(callbackParameter));
+        if (callbackParameter.closure !== undefined) {
+            excludedIndices.add(callbackParameter.closure);
+        }
+    }
+    return method.parameters.filter((parameter, index) => parameter.direction !== "out" && !excludedIndices.has(index))
+        .length;
+};
 
 /**
  * Collects, for every class, the methods the gtkx codegen renamed because

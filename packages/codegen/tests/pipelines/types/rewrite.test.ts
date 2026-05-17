@@ -320,7 +320,7 @@ describe("stripEventEmitterSignalOverloads", () => {
         );
     });
 
-    it("removes the synthetic _init, gTypeInstance, __gtype__, and notify::__gtype__ lines", () => {
+    it("removes the synthetic _init, gTypeInstance, and notify::__gtype__ lines, keeping __gtype__", () => {
         const source = [
             "export class Widget {",
             "    _init(config?: Widget.ConstructorProperties): void",
@@ -335,8 +335,8 @@ describe("stripEventEmitterSignalOverloads", () => {
 
         expect(result).not.toContain("_init(config?:");
         expect(result).not.toContain("gTypeInstance: TypeInstance");
-        expect(result).not.toContain("__gtype__: number");
         expect(result).not.toContain("notify::__gtype__");
+        expect(result).toContain("__gtype__: number");
         expect(result).toContain("realMethod(): void");
     });
 

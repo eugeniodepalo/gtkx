@@ -39,13 +39,25 @@
             "types": "./dist/cairo/index.d.ts",
             "default": "./dist/cairo/index.js"
         },
+        "./gdk": {
+            "types": "./dist/gdk/index.d.ts",
+            "default": "./dist/gdk/index.js"
+        },
         "./gobject": {
             "types": "./dist/gobject/index.d.ts",
             "default": "./dist/gobject/index.js"
         },
+        "./graphene": {
+            "types": "./dist/graphene/index.d.ts",
+            "default": "./dist/graphene/index.js"
+        },
         "./gtk": {
             "types": "./dist/gtk/index.d.ts",
             "default": "./dist/gtk/index.js"
+        },
+        "./value-marshal": {
+            "types": "./dist/value-marshal.d.ts",
+            "default": "./dist/value-marshal.js"
         },
         "./*": {
             "types": "./dist/generated/*/*.d.ts",

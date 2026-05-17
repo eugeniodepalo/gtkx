@@ -19,6 +19,9 @@
  *     // per class C exported by both:
  *     const _reverseC = (undefined as InstanceType<Contract["C"]>) satisfies
  *         Pick<InstanceType<(typeof impl)["C"]>, keyof InstanceType<Contract["C"]>>;
+ *     // per class C: the runtime adds no static/instance member the contract omits:
+ *     type _StaticExtraC = Exclude<keyof (typeof impl)["C"], keyof Contract["C"]>;
+ *     type _InstanceExtraC = Exclude<keyof InstanceType<(typeof impl)["C"]>, keyof InstanceType<Contract["C"]>>;
  *
  * The impl side is the full shipping `@gtkx/ffi/<ns>` surface, not the bare
  * generated `<ns>.js`. A namespace with a hand-written runtime directory
@@ -37,10 +40,18 @@
  * or whose runtime declares a member with a drifting call shape — produces a
  * diagnostic and fails the build.
  *
- * Beyond member existence, the bidirectional assertion verifies call-convention
- * SHAPE for class and interface methods: parameter arity in both directions,
- * the length and order of out/inout-parameter return tuples, `Promise` wrapping
- * of async methods, and void-versus-value returns.
+ * Beyond member existence, the assertions verify call-convention SHAPE for
+ * class and interface methods: parameter arity in both directions, the length
+ * and order of out/inout-parameter return tuples, `Promise` wrapping of async
+ * methods, and void-versus-value returns.
+ *
+ * Two extra-member directions assert per shared class that the runtime exposes
+ * no member — static or instance — the contract omits: a binding must not
+ * surface an API node-gtk's ts-for-gir contract never declared. `cairo` is
+ * excluded from the gate entirely: ts-for-gir emits no cairo contract (its
+ * cairo template is an unfinished stub), so the generated `cairo.d.ts` carries
+ * only empty GObject-metadata shells. gtkx's cairo bindings are written against
+ * node-gtk's cairo runtime directly and verified separately.
  *
  * Three source transforms make that possible without a primitive-precise type
  * model:
@@ -347,6 +358,17 @@ const normalizeContract = (source: string, fileName: string): string => {
 };
 
 /**
+ * Namespaces excluded from the conformance gate because ts-for-gir produces
+ * no usable contract for them.
+ *
+ * `cairo` has no ts-for-gir contract: ts-for-gir's cairo template is an
+ * unfinished stub, so the generated `cairo.d.ts` carries only empty
+ * GObject-metadata shells. gtkx's cairo bindings are written against node-gtk's
+ * cairo runtime directly and are verified separately, not against a contract.
+ */
+const UNCONTRACTED_NAMESPACES = new Set(["cairo"]);
+
+/**
  * Enumerates every generated namespace that has both a runtime and a
  * declaration file under `src/generated/`.
  *
@@ -387,8 +409,7 @@ const collectExportedClassNames = (source: string, fileName: string, scriptKind:
 };
 
 /**
- * Renders the bidirectional conformance assertion source for a single
- * namespace.
+ * Renders the conformance assertion source for a single namespace.
  *
  * The forward direction (`impl satisfies Contract`) catches a runtime missing a
  * declared member, a runtime method with surplus required parameters, and a
@@ -402,22 +423,34 @@ const collectExportedClassNames = (source: string, fileName: string, scriptKind:
  * literal key, so the relation is resolved eagerly instead of through the
  * homomorphic mapped-type fast path that elides deferred indexed accesses.
  * Restricting to shared members catches a contract method with surplus
- * parameters and a contract return tuple shorter than the runtime's, while
- * keeping runtime-only instance members — class-struct fields, virtual-method
- * accessors — out of scope, as the static side and free functions already are.
+ * parameters and a contract return tuple shorter than the runtime's.
+ *
+ * The extra-member directions emit, per shared class, two assertions that the
+ * runtime exposes no member the contract omits — one for the constructor
+ * (static) side, one for the instance side: `Exclude<keyof Impl, keyof
+ * Contract>` must resolve to `never`. Any leftover key names a member the
+ * binding exposes but node-gtk's ts-for-gir contract never declared, and fails
+ * the build.
  *
  * @param namespace - Namespace identifier.
  * @param sharedClasses - Names of classes exported by both runtime and contract.
  * @returns TypeScript source asserting runtime and contract agree on shape.
  */
 const checkSource = (namespace: string, sharedClasses: readonly string[]): string => {
-    const reverseAssertions = sharedClasses
+    const classAssertions = sharedClasses
         .map((name, index) => {
             const key = JSON.stringify(name);
             return (
                 `type _Contract${index} = InstanceType<Contract[${key}]>;\n` +
+                `type _Impl${index} = InstanceType<(typeof impl)[${key}]>;\n` +
                 `const _reverse${index} = (undefined as unknown as _Contract${index}) satisfies ` +
-                `Pick<InstanceType<(typeof impl)[${key}]>, keyof _Contract${index}>;`
+                `Pick<_Impl${index}, keyof _Contract${index}>;\n` +
+                `const _noStaticExtra${index}: ` +
+                `[Exclude<keyof (typeof impl)[${key}], keyof Contract[${key}]>] extends [never] ? true : ` +
+                `{ class: ${key}; implOnlyStatic: Exclude<keyof (typeof impl)[${key}], keyof Contract[${key}]> } = true;\n` +
+                `const _noInstanceExtra${index}: ` +
+                `[Exclude<keyof _Impl${index}, keyof _Contract${index}>] extends [never] ? true : ` +
+                `{ class: ${key}; implOnlyInstance: Exclude<keyof _Impl${index}, keyof _Contract${index}> } = true;`
             );
         })
         .join("\n");
@@ -425,7 +458,7 @@ const checkSource = (namespace: string, sharedClasses: readonly string[]): strin
         `import * as impl from ${JSON.stringify(IMPL_PREFIX + namespace)};\n` +
         `type Contract = typeof import(${JSON.stringify(CONTRACT_PREFIX + namespace)});\n` +
         `const _forward = impl satisfies Contract;\n` +
-        `${reverseAssertions}\n`
+        `${classAssertions}\n`
     );
 };
 
@@ -586,7 +619,7 @@ const main = (): void => {
         process.exit(1);
     }
 
-    const namespaces = collectNamespaces();
+    const namespaces = collectNamespaces().filter((namespace) => !UNCONTRACTED_NAMESPACES.has(namespace));
     if (namespaces.length === 0) {
         console.error("conformance: no generated namespaces found under src/generated.");
         process.exit(1);
@@ -647,11 +680,15 @@ const main = (): void => {
         process.exit(1);
     }
 
-    console.log(`conformance: ${namespaces.length} namespace(s) verified — runtime .js satisfies .d.ts contract.`);
+    console.log(
+        `conformance: ${namespaces.length} namespace(s) verified — runtime .js satisfies .d.ts contract ` +
+            `(${[...UNCONTRACTED_NAMESPACES].toSorted((a, b) => a.localeCompare(b)).join(", ")} excluded — no contract).`,
+    );
 };
 
 export {
     annotateReturns,
+    checkSource,
     getPropertyAnnotateReturns,
     handWrittenEntryPath,
     implEntryPath,
@@ -659,6 +696,7 @@ export {
     normalizeContract,
     promisifyAnnotateReturns,
     tupleAnnotateArrayReturns,
+    UNCONTRACTED_NAMESPACES,
 };
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {

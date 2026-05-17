@@ -456,13 +456,14 @@ export class SignalBuilder {
     }
 
     private gobjectArgExpression(): string {
+        this.imports.addImport("../../value-marshal.js", ["valueFromFfi"]);
         if (this.options.namespace === "GObject") {
             this.imports.addImport("./value.js", ["Value"]);
             this.imports.addImport("./functions.js", ["signalEmitv", "signalLookup"]);
-            return "{ Value, signalEmitv, signalLookup }";
+            return "{ Value, valueFromFfi, signalEmitv, signalLookup }";
         }
         this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
-        return "GObject";
+        return "{ Value: GObject.Value, valueFromFfi, signalEmitv: GObject.signalEmitv, signalLookup: GObject.signalLookup }";
     }
 
     private returnGTypeExpression(ffiType: FfiTypeDescriptor): string {

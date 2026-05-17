@@ -505,7 +505,14 @@ describe("ClassGenerator", () => {
             const ifaceMethods = interfaceMethods.map((m) => m as any);
             (repo as unknown as { resolveInterface(qn: string): unknown }).resolveInterface = (qn: string) => {
                 if (qn !== ifaceQn) return null;
-                return { name: interfaceName, methods: ifaceMethods, properties: [], signals: [] };
+                return {
+                    name: interfaceName,
+                    methods: ifaceMethods,
+                    properties: [],
+                    signals: [],
+                    virtualMethodNames: [],
+                    prerequisites: [],
+                };
             };
 
             const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
@@ -565,6 +572,8 @@ describe("ClassGenerator", () => {
                         ],
                         properties: [],
                         signals: [],
+                        virtualMethodNames: [],
+                        prerequisites: [],
                     };
                 }
                 if (qn === qualifiedName("Gtk", "Buildable")) {
@@ -579,6 +588,8 @@ describe("ClassGenerator", () => {
                         ],
                         properties: [],
                         signals: [],
+                        virtualMethodNames: [],
+                        prerequisites: [],
                     };
                 }
                 return null;

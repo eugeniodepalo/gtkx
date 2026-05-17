@@ -1,7 +1,15 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import type { GType } from "@gtkx/ffi/gobject";
-import { signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
+import { signalEmitv, signalLookup, typeFromName } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
+import {
+    valueFromBoolean,
+    valueFromDouble,
+    valueFromFlags,
+    valueFromInt,
+    valueFromObject,
+    valueFromUint,
+} from "@gtkx/ffi/value-marshal";
 import { fireEvent } from "./fire-event.js";
 import { tick } from "./timing.js";
 import { isEditable } from "./widget.js";
@@ -23,12 +31,7 @@ const emitClickSequence = async (element: Gtk.Widget, nPress: number): Promise<v
     const controller = getOrCreateController(element, Gtk.GestureClick);
 
     for (let i = 1; i <= nPress; i++) {
-        const args = [
-            Value.newFromObject(controller),
-            Value.newFromInt(i),
-            Value.newFromDouble(0),
-            Value.newFromDouble(0),
-        ];
+        const args = [valueFromObject(controller), valueFromInt(i), valueFromDouble(0), valueFromDouble(0)];
         signalEmitv(args, getSignalId(controller, "pressed"), 0);
         signalEmitv(args, getSignalId(controller, "released"), 0);
     }
@@ -221,7 +224,7 @@ const getSignalId = (target: Gtk.EventController, signalName: string): number =>
 const hover = async (element: Gtk.Widget): Promise<void> => {
     const controller = getOrCreateController(element, Gtk.EventControllerMotion);
     signalEmitv(
-        [Value.newFromObject(controller), Value.newFromDouble(0), Value.newFromDouble(0)],
+        [valueFromObject(controller), valueFromDouble(0), valueFromDouble(0)],
         getSignalId(controller, "enter"),
         0,
     );
@@ -230,7 +233,7 @@ const hover = async (element: Gtk.Widget): Promise<void> => {
 
 const unhover = async (element: Gtk.Widget): Promise<void> => {
     const controller = getOrCreateController(element, Gtk.EventControllerMotion);
-    signalEmitv([Value.newFromObject(controller)], getSignalId(controller, "leave"), 0);
+    signalEmitv([valueFromObject(controller)], getSignalId(controller, "leave"), 0);
     await tick();
 };
 
@@ -334,13 +337,13 @@ const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
         }
 
         const signalName = action.press ? "key-pressed" : "key-released";
-        const returnValue = action.press ? Value.newFromBoolean(false) : undefined;
+        const returnValue = action.press ? valueFromBoolean(false) : undefined;
         signalEmitv(
             [
-                Value.newFromObject(controller),
-                Value.newFromUint(action.keyval),
-                Value.newFromUint(0),
-                Value.newFromFlags(modifierType, modifierState),
+                valueFromObject(controller),
+                valueFromUint(action.keyval),
+                valueFromUint(0),
+                valueFromFlags(modifierType, modifierState),
             ],
             getSignalId(controller, signalName),
             0,
@@ -366,18 +369,8 @@ export type PointerInput = "click" | "down" | "up" | "[MouseLeft]" | "[MouseLeft
 
 const pointer = async (element: Gtk.Widget, input: PointerInput): Promise<void> => {
     const controller = getOrCreateController(element, Gtk.GestureClick);
-    const pressedArgs = [
-        Value.newFromObject(controller),
-        Value.newFromInt(1),
-        Value.newFromDouble(0),
-        Value.newFromDouble(0),
-    ];
-    const releasedArgs = [
-        Value.newFromObject(controller),
-        Value.newFromInt(1),
-        Value.newFromDouble(0),
-        Value.newFromDouble(0),
-    ];
+    const pressedArgs = [valueFromObject(controller), valueFromInt(1), valueFromDouble(0), valueFromDouble(0)];
+    const releasedArgs = [valueFromObject(controller), valueFromInt(1), valueFromDouble(0), valueFromDouble(0)];
 
     if (input === "[MouseLeft]" || input === "click") {
         signalEmitv(pressedArgs, getSignalId(controller, "pressed"), 0);

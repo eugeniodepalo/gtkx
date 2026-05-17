@@ -20,12 +20,6 @@ const cairo_image_surface_create_from_png = fn(
     [{ type: STRING_FULL }],
     SURFACE_T,
 );
-const cairo_format_stride_for_width = fn(
-    LIB,
-    "cairo_format_stride_for_width",
-    [{ type: INT_TYPE }, { type: INT_TYPE }],
-    INT_TYPE,
-);
 const cairo_image_surface_get_width = fn(LIB, "cairo_image_surface_get_width", [{ type: SURFACE_T_NONE }], INT_TYPE);
 const cairo_image_surface_get_height = fn(LIB, "cairo_image_surface_get_height", [{ type: SURFACE_T_NONE }], INT_TYPE);
 const cairo_image_surface_get_format = fn(LIB, "cairo_image_surface_get_format", [{ type: SURFACE_T_NONE }], INT_TYPE);
@@ -41,10 +35,6 @@ export class ImageSurface extends Surface {
         const surface = Object.create(ImageSurface.prototype) as ImageSurface;
         setHandle(surface, ptr);
         return surface;
-    }
-
-    static strideForWidth(format: Format, width: number): number {
-        return cairo_format_stride_for_width(format, width) as number;
     }
 
     getWidth(): number {

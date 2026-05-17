@@ -949,9 +949,9 @@ const findMatchingBracket = (source: string, from: number): number => {
 const TYPE_BLOCK_HEADER = /(^|\n)[ \t]*export[ \t]+(?:abstract[ \t]+)?(?:interface|class)[ \t]+(\w+)\b[^{]*\{/g;
 
 const EVENT_EMITTER_SIGNAL_RETURN = /(\n[ \t]*(?:on|once|off)\(sigName:[^\n]*\): )NodeJS\.EventEmitter\b/g;
-const SYNTHETIC_GTYPE_FIELD_LINE = /^[ \t]*__gtype__: number[ \t]*\n/gm;
 const SYNTHETIC_GTYPE_SIGNAL_LINE = /^[ \t]*(?:connect|on|once|off|emit)\(sigName: "notify::__gtype__"[^\n]*\n/gm;
 const SYNTHETIC_GTYPE_INSTANCE_LINE = /^[ \t]*gTypeInstance: TypeInstance[ \t]*\n/gm;
+const SYNTHETIC_PARENT_INSTANCE_LINE = /^[ \t]*parentInstance: any[ \t]*\n/gm;
 const SYNTHETIC_INIT_LINE = /^[ \t]*_init\(config\?: [\w.]*ConstructorProperties\): void[ \t]*\n/gm;
 
 /**
@@ -967,13 +967,12 @@ const SYNTHETIC_INIT_LINE = /^[ \t]*_init\(config\?: [\w.]*ConstructorProperties
  * are kept because they are genuine public API.
  *
  * ts-for-gir also synthesizes a `_init(config?)` constructor helper, a
- * `gTypeInstance: TypeInstance` field, a bare `__gtype__: number` field, and
- * `notify::__gtype__` signal overloads. `_init`, `gTypeInstance` and the
- * `notify::__gtype__` signal are GJS-isms with no node-gtk or gtkx counterpart
- * and are removed. The runtime-stamped `__gtype__` is genuine API, but the
- * hand-written GObject override declares it authoritatively — as a `readonly`
- * branded `GType` — so the loosely-typed ts-for-gir `__gtype__: number` line
- * is removed in favor of that override declaration.
+ * `gTypeInstance: TypeInstance` field, a `parentInstance: any` field, and
+ * `notify::__gtype__` signal overloads. `_init`, `gTypeInstance`,
+ * `parentInstance` and the `notify::__gtype__` signal are GJS-isms — node-gtk
+ * never enumerates class instance-struct fields — with no gtkx counterpart and
+ * are removed. The runtime-stamped `__gtype__: number` field is genuine
+ * node-gtk API and is kept.
  *
  * @param source - The `.d.ts` source to rewrite.
  * @returns The source with the signal-companion surface aligned to the runtime.
@@ -996,9 +995,9 @@ export function stripEventEmitterSignalOverloads(source: string): string {
         TYPE_BLOCK_HEADER.lastIndex = bodyStart + newBody.length;
     }
     return result
-        .replace(SYNTHETIC_GTYPE_FIELD_LINE, "")
         .replace(SYNTHETIC_GTYPE_SIGNAL_LINE, "")
         .replace(SYNTHETIC_GTYPE_INSTANCE_LINE, "")
+        .replace(SYNTHETIC_PARENT_INSTANCE_LINE, "")
         .replace(SYNTHETIC_INIT_LINE, "");
 }
 

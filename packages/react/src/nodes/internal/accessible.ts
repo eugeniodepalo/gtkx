@@ -1,7 +1,15 @@
 import { getClassGType } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
-import { Value } from "@gtkx/ffi/gobject";
+import type { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
+import {
+    valueFromBoolean,
+    valueFromBoxed,
+    valueFromDouble,
+    valueFromInt,
+    valueFromObject,
+    valueFromString,
+} from "@gtkx/ffi/value-marshal";
 import type { Props } from "../../types.js";
 
 type CreateValue = (jsValue: unknown) => Value;
@@ -26,16 +34,16 @@ type RelationDef = {
 
 type AccessiblePropDef = PropertyDef | StateDef | RelationDef;
 
-const fromString: CreateValue = (val) => Value.newFromString(val as string);
-const fromBoolean: CreateValue = (val) => Value.newFromBoolean(val as boolean);
-const fromInt: CreateValue = (val) => Value.newFromInt(val as number);
-const fromDouble: CreateValue = (val) => Value.newFromDouble(val as number);
-const fromObject: CreateValue = (val) => Value.newFromObject((val as GObject.Object) ?? null);
+const fromString: CreateValue = (val) => valueFromString(val as string);
+const fromBoolean: CreateValue = (val) => valueFromBoolean(val as boolean);
+const fromInt: CreateValue = (val) => valueFromInt(val as number);
+const fromDouble: CreateValue = (val) => valueFromDouble(val as number);
+const fromObject: CreateValue = (val) => valueFromObject((val as GObject.Object) ?? null);
 
 const fromRefList: CreateValue = (val) => {
     const widgets = val as Gtk.Accessible[];
     const list = Gtk.AccessibleList.newFromList(widgets);
-    return Value.newFromBoxed(list, getClassGType(Gtk.AccessibleList));
+    return valueFromBoxed(list, getClassGType(Gtk.AccessibleList));
 };
 
 const prop = (enumValue: Gtk.AccessibleProperty, createValue: CreateValue): PropertyDef => ({

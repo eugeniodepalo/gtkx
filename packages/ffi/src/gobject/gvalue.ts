@@ -269,15 +269,14 @@ let fundamentalMarshallers: Map<GType, FundamentalMarshaller> | undefined;
  * The single fundamental-keyed marshalling table.
  *
  * Both directions dispatch through it: {@link fromJS} reads each entry's
- * `to`, and `Value.prototype.toJS` reads its `from`. Supporting a new
- * fundamental — or correcting how an existing one is marshalled — is a
- * one-line edit here rather than a change spread across parallel write and
- * read structures.
+ * `to`, and `valueToJS` reads its `from`. Supporting a new fundamental — or
+ * correcting how an existing one is marshalled — is a one-line edit here
+ * rather than a change spread across parallel write and read structures.
  *
  * Built lazily because every key is a {@link Type} member whose GType is
  * itself resolved on first access.
  *
- * @internal Shared by the read path in `./value.js`.
+ * @internal Shared by the read path in `../value-marshal.js`.
  */
 export function getFundamentalMarshallers(): Map<GType, FundamentalMarshaller> {
     fundamentalMarshallers ??= new Map<GType, FundamentalMarshaller>([

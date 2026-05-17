@@ -1,4 +1,4 @@
-import { Context, Format, ImageSurface, Operator } from "@gtkx/ffi/cairo";
+import { Content, Context, Format, ImageSurface, Operator, Surface } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
@@ -78,9 +78,9 @@ const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
 
     fillChecks(cr, 0, 0, width, height);
 
-    const overlay = cr.getTarget().createSimilar("COLOR_ALPHA", width, height);
-    const punch = cr.getTarget().createSimilar("ALPHA", width, height);
-    const circles = cr.getTarget().createSimilar("COLOR_ALPHA", width, height);
+    const overlay = Surface.createSimilar(cr.getTarget(), Content.COLOR_ALPHA, width, height);
+    const punch = Surface.createSimilar(cr.getTarget(), Content.ALPHA, width, height);
+    const circles = Surface.createSimilar(cr.getTarget(), Content.COLOR_ALPHA, width, height);
 
     const overlayCr = Context.create(overlay);
     overlayCr.setSourceRgb(0, 0, 0);

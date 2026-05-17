@@ -34,7 +34,14 @@ const cairo_recording_surface_get_extents = fn(
     t.boolean,
 );
 
+/**
+ * Cairo recording surface, which captures drawing operations for later replay.
+ */
 export class RecordingSurface extends Surface {
+    /**
+     * Allocates a recording surface for the given content type, optionally
+     * bounded by `extents`.
+     */
     static create(
         content: Content,
         extents?: { x: number; y: number; width: number; height: number },
@@ -53,15 +60,22 @@ export class RecordingSurface extends Surface {
         return wrapHandle(RecordingSurface, handle);
     }
 
-    inkExtents(): { x: number; y: number; width: number; height: number } {
-        const xRef = createRef(0);
-        const yRef = createRef(0);
-        const wRef = createRef(0);
-        const hRef = createRef(0);
-        cairo_recording_surface_ink_extents(getHandle(this), xRef, yRef, wRef, hRef);
-        return { x: xRef.value, y: yRef.value, width: wRef.value, height: hRef.value };
+    /**
+     * Measures the extents of the operations recorded into the surface.
+     */
+    inkExtents(): { x0: number; y0: number; width: number; height: number } {
+        const x0Ref = createRef(0);
+        const y0Ref = createRef(0);
+        const widthRef = createRef(0);
+        const heightRef = createRef(0);
+        cairo_recording_surface_ink_extents(getHandle(this), x0Ref, y0Ref, widthRef, heightRef);
+        return { x0: x0Ref.value, y0: y0Ref.value, width: widthRef.value, height: heightRef.value };
     }
 
+    /**
+     * Returns the bounding rectangle the surface was created with, or `null`
+     * when the surface is unbounded.
+     */
     getExtents(): { x: number; y: number; width: number; height: number } | null {
         const rect = alloc(32, "cairo_rectangle_t", LIB);
         const result = cairo_recording_surface_get_extents(getHandle(this), rect) as boolean;

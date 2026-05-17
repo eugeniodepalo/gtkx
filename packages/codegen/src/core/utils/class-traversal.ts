@@ -91,6 +91,84 @@ export function collectParentSignalNames(cls: GirClass, repo: GirRepository): Se
 }
 
 /**
+ * Collects the camelCased `<virtual-method>` names reachable on a class: its
+ * own virtual methods plus those of every ancestor class and every directly or
+ * transitively implemented interface.
+ *
+ * ts-for-gir resolves a same-named GObject `<property>` and `<virtual-method>`
+ * on a class by dropping the property; the FFI runtime mirrors that by
+ * suppressing the property accessor whose name appears in this set.
+ *
+ * @param cls - The class to start from.
+ * @param repo - GIR repository for interface resolution.
+ * @returns The camelCased reachable virtual-method names.
+ */
+export function collectReachableVirtualMethodNames(cls: GirClass, repo: GirRepository): Set<string> {
+    const names = new Set<string>();
+    const visitedInterfaces = new Set<string>();
+
+    const visitInterface = (qualifiedName: string): void => {
+        if (visitedInterfaces.has(qualifiedName)) return;
+        visitedInterfaces.add(qualifiedName);
+        const iface = repo.resolveInterface(qualifiedName);
+        if (!iface) return;
+        for (const name of iface.virtualMethodNames) names.add(toCamelCase(name));
+        for (const prereq of iface.prerequisites) visitInterface(prereq);
+    };
+
+    let current: GirClass | null = cls;
+    while (current) {
+        for (const name of current.virtualMethodNames) names.add(toCamelCase(name));
+        for (const ifaceQName of current.implements) visitInterface(ifaceQName);
+        current = current.getParent();
+    }
+
+    return names;
+}
+
+/**
+ * Collects the camelCased `<virtual-method>` names reachable on an interface:
+ * its own virtual methods plus those of every transitive prerequisite class
+ * and interface.
+ *
+ * @param iface - The interface to start from.
+ * @param repo - GIR repository for prerequisite resolution.
+ * @returns The camelCased reachable virtual-method names.
+ */
+export function collectInterfaceReachableVirtualMethodNames(iface: GirInterface, repo: GirRepository): Set<string> {
+    const names = new Set<string>();
+    const visited = new Set<string>();
+
+    const visitClass = (qualifiedName: string): void => {
+        const cls = repo.resolveClass(qualifiedName);
+        if (!cls) return;
+        for (const ancestorName of cls.getInheritanceChain()) {
+            const ancestor = repo.resolveClass(ancestorName);
+            if (!ancestor) continue;
+            for (const name of ancestor.virtualMethodNames) names.add(toCamelCase(name));
+            for (const implemented of ancestor.getAllImplementedInterfaces()) visitInterface(implemented);
+        }
+    };
+
+    const visitInterface = (qualifiedName: string): void => {
+        if (visited.has(qualifiedName)) return;
+        visited.add(qualifiedName);
+        const prereqInterface = repo.resolveInterface(qualifiedName);
+        if (!prereqInterface) {
+            visitClass(qualifiedName);
+            return;
+        }
+        for (const name of prereqInterface.virtualMethodNames) names.add(toCamelCase(name));
+        for (const prereq of prereqInterface.prerequisites) visitInterface(prereq);
+    };
+
+    for (const name of iface.virtualMethodNames) names.add(toCamelCase(name));
+    for (const prereq of iface.prerequisites) visitInterface(prereq);
+
+    return names;
+}
+
+/**
  * Collects method names from all parent classes and their interfaces.
  */
 export function collectParentMethodNames(cls: GirClass, repo: GirRepository): Set<string> {

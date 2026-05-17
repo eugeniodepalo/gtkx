@@ -5,6 +5,7 @@ import * as GObject from "@gtkx/ffi/gobject";
 import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { valueFromBoxed, valueFromString, valueGetBoxed, valueGetType } from "@gtkx/ffi/value-marshal";
 import {
     GtkBox,
     GtkButton,
@@ -158,7 +159,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
     const createColorProvider = useCallback(() => {
         const rgba = new Gdk.RGBA();
         rgba.parse(color);
-        return Gdk.ContentProvider.newForValue(GObject.Value.newFromBoxed(rgba, getGdkRgbaType()));
+        return Gdk.ContentProvider.newForValue(valueFromBoxed(rgba, getGdkRgbaType()));
     }, [color]);
 
     return (
@@ -170,7 +171,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
 
 function CssPatternSwatch({ cssClass }: Readonly<{ cssClass: string }>) {
     const createClassProvider = useCallback(() => {
-        return Gdk.ContentProvider.newForValue(GObject.Value.newFromString(cssClass));
+        return Gdk.ContentProvider.newForValue(valueFromString(cssClass));
     }, [cssClass]);
 
     return (
@@ -266,7 +267,7 @@ const DndDemo = ({ window }: DemoProps) => {
     }, [items]);
 
     const createContentProvider = useCallback((itemId: string) => {
-        return Gdk.ContentProvider.newForValue(GObject.Value.newFromString(itemId));
+        return Gdk.ContentProvider.newForValue(valueFromString(itemId));
     }, []);
 
     const handleCanvasDrop = useCallback((value: GObject.Value, x: number, y: number) => {
@@ -366,9 +367,9 @@ const DndDemo = ({ window }: DemoProps) => {
     }, []);
 
     const handleItemColorDrop = useCallback((itemId: string, value: GObject.Value) => {
-        const gtype = value.getType();
+        const gtype = valueGetType(value);
         if (gtype === getGdkRgbaType()) {
-            const rgba = value.getBoxed(Gdk.RGBA, getGdkRgbaType());
+            const rgba = valueGetBoxed(value, Gdk.RGBA, getGdkRgbaType());
             if (rgba) {
                 const cssColor = rgba.toString() ?? "transparent";
                 setItems((prev) =>
