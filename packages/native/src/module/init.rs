@@ -97,47 +97,39 @@ impl UnhandledRejection {
     /// synthesized `Error` whose message is `msg`. The event flows through
     /// Node's standard rejection handling so userland code can suppress or
     /// redirect it via `process.on('unhandledRejection', ...)`.
+    ///
+    /// Falls back to `stderr` if any step of the emission fails.
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(test, allow(dead_code))]
     fn emit(env: &Env, msg: &str) {
+        if Self::try_emit(env, msg).is_none() {
+            eprintln!("[gtkx] ERROR: {msg}");
+        }
+    }
+
+    /// Performs the `unhandledRejection` emission, returning `None` as soon as
+    /// any napi step fails so [`emit`](Self::emit) can fall back to `stderr`.
+    #[cfg_attr(test, allow(dead_code))]
+    fn try_emit(env: &Env, msg: &str) -> Option<()> {
         let raw_env = env.raw();
         unsafe {
             let mut global = std::ptr::null_mut();
-            if sys::napi_get_global(raw_env, &mut global) != sys::Status::napi_ok {
-                eprintln!("[gtkx] ERROR: {msg}");
-                return;
-            }
+            (sys::napi_get_global(raw_env, &mut global) == sys::Status::napi_ok).then_some(())?;
 
             let mut process = std::ptr::null_mut();
-            if sys::napi_get_named_property(raw_env, global, c"process".as_ptr(), &mut process)
-                != sys::Status::napi_ok
-            {
-                eprintln!("[gtkx] ERROR: {msg}");
-                return;
-            }
+            (sys::napi_get_named_property(raw_env, global, c"process".as_ptr(), &mut process)
+                == sys::Status::napi_ok)
+                .then_some(())?;
 
             let mut emit_fn = std::ptr::null_mut();
-            if sys::napi_get_named_property(raw_env, process, c"emit".as_ptr(), &mut emit_fn)
-                != sys::Status::napi_ok
-            {
-                eprintln!("[gtkx] ERROR: {msg}");
-                return;
-            }
+            (sys::napi_get_named_property(raw_env, process, c"emit".as_ptr(), &mut emit_fn)
+                == sys::Status::napi_ok)
+                .then_some(())?;
 
-            let Ok(event_name) = String::to_napi_value(raw_env, "unhandledRejection".to_owned())
-            else {
-                eprintln!("[gtkx] ERROR: {msg}");
-                return;
-            };
-
-            let Some(error_obj) = Self::make_error_object(raw_env, msg) else {
-                eprintln!("[gtkx] ERROR: {msg}");
-                return;
-            };
-
-            let Some(promise) = Self::make_resolved_promise(raw_env) else {
-                eprintln!("[gtkx] ERROR: {msg}");
-                return;
-            };
+            let event_name =
+                String::to_napi_value(raw_env, "unhandledRejection".to_owned()).ok()?;
+            let error_obj = Self::make_error_object(raw_env, msg)?;
+            let promise = Self::make_resolved_promise(raw_env)?;
 
             let args = [event_name, error_obj, promise];
             let mut result = std::ptr::null_mut();
@@ -157,6 +149,7 @@ impl UnhandledRejection {
                 sys::napi_get_and_clear_last_exception(raw_env, &mut exc);
             }
         }
+        Some(())
     }
 
     #[cfg_attr(test, allow(dead_code))]

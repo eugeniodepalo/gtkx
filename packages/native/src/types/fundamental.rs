@@ -79,6 +79,21 @@ impl FundamentalType {
         }
         Ok(value)
     }
+
+    /// Wraps a non-null fundamental `ptr` into a [`value::Value`], honoring
+    /// `ownership`: a full transfer adopts the pointer while a borrowed one
+    /// takes a fresh reference.
+    fn wrap_ptr(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+        let (ref_fn, unref_fn) = self.lookup_fns()?;
+        let fundamental = if self.ownership.is_full() {
+            Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
+        } else {
+            unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
+        };
+        Ok(value::Value::Object(
+            NativeValue::Fundamental(fundamental).into(),
+        ))
+    }
 }
 
 impl FfiEncoder for FundamentalType {
@@ -112,17 +127,7 @@ impl FfiDecoder for FundamentalType {
         let Some(ptr) = ffi_value.as_non_null_ptr("Fundamental")? else {
             return Ok(value::Value::Null);
         };
-
-        let (ref_fn, unref_fn) = self.lookup_fns()?;
-        let fundamental = if self.ownership.is_full() {
-            Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
-        } else {
-            unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
-        };
-
-        Ok(value::Value::Object(
-            NativeValue::Fundamental(fundamental).into(),
-        ))
+        self.wrap_ptr(ptr)
     }
 }
 
@@ -179,14 +184,6 @@ impl GlibValueCodec for FundamentalType {
         if ptr.is_null() {
             return Ok(value::Value::Null);
         }
-        let (ref_fn, unref_fn) = self.lookup_fns()?;
-        let fundamental = if self.ownership.is_full() {
-            Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
-        } else {
-            unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
-        };
-        Ok(value::Value::Object(
-            NativeValue::Fundamental(fundamental).into(),
-        ))
+        self.wrap_ptr(ptr)
     }
 }
