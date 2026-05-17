@@ -29,13 +29,13 @@ const g_type_class_ref = t.fn(LIB, "g_type_class_ref", [{ type: t.uint64 }], t.o
  * Accepted spellings of a class identity at a class-struct call site: the
  * generated class itself, a live instance of it, or its raw `GType`.
  */
-export type ClassStructTarget = NativeClass | NativeHandle | GType | number | bigint;
+export type ClassStructTarget = NativeClass | NativeHandle | GType | number;
 
 const isNativeClass = (value: unknown): value is NativeClass => typeof value === "function";
 
 const resolveGType = (target: ClassStructTarget): GType => {
-    if (typeof target === "number" || typeof target === "bigint") {
-        return Number(target);
+    if (typeof target === "number") {
+        return target;
     }
     if (isNativeClass(target)) {
         return getClassGType(target);

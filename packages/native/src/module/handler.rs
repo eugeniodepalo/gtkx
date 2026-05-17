@@ -79,13 +79,7 @@ impl ModuleResponse for bool {
 impl ModuleResponse for u64 {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         unsafe {
-            let raw = BigInt::to_napi_value(
-                env.raw(),
-                BigInt {
-                    sign_bit: false,
-                    words: vec![self],
-                },
-            )?;
+            let raw = f64::to_napi_value(env.raw(), self as f64)?;
             Ok(Unknown::from_raw_unchecked(env.raw(), raw))
         }
     }

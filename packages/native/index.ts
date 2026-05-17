@@ -19,7 +19,7 @@ type NativeVfuncDefinition = {
 };
 
 type NativeInterfaceVfuncsDefinition = {
-    readonly gtype: bigint;
+    readonly gtype: number;
     readonly vfuncs: readonly NativeVfuncDefinition[];
 };
 
@@ -33,11 +33,11 @@ const native = nativeBinding as unknown as {
     call: (library: string, symbol: string, args: unknown[], returnType: unknown) => unknown;
     findObjectProperty: (external: unknown, propertyName: string) => unknown;
     freeze: () => void;
-    getInstanceGtype: (external: unknown) => bigint;
+    getInstanceGtype: (external: unknown) => number;
     getNativeId: (external: unknown) => number;
     init: () => unknown;
     read: (external: unknown, type: unknown, offset: number) => unknown;
-    registerClass: (name: string, parentGtype: bigint, options?: NativeRegisterClassOptions) => bigint;
+    registerClass: (name: string, parentGtype: number, options?: NativeRegisterClassOptions) => number;
     stop: (mainLoop: unknown) => void;
     unfreeze: () => void;
     write: (external: unknown, type: unknown, offset: number, value: unknown) => unknown;
@@ -281,7 +281,7 @@ export function findObjectProperty(handle: NativeHandle, propertyName: string): 
  * @param handle - Handle to a live GObject-compatible instance
  */
 export function getInstanceGType(handle: NativeHandle): number {
-    return Number(native.getInstanceGtype(handle));
+    return native.getInstanceGtype(handle);
 }
 
 /**
@@ -345,14 +345,14 @@ export type RegisterClassNativeOptions = {
  */
 export function registerClass(name: string, parentGtype: number, options?: RegisterClassNativeOptions): number {
     const nativeOptions = options ? buildNativeOptions(options) : undefined;
-    return Number(native.registerClass(name, BigInt(parentGtype), nativeOptions));
+    return native.registerClass(name, parentGtype, nativeOptions);
 }
 
 function buildNativeOptions(options: RegisterClassNativeOptions): NativeRegisterClassOptions {
     return {
         vfuncs: options.vfuncs?.map(toNativeVfunc),
         interfaceVfuncs: options.interfaceVfuncs?.map((iface) => ({
-            gtype: BigInt(iface.gtype),
+            gtype: iface.gtype,
             vfuncs: iface.vfuncs.map(toNativeVfunc),
         })),
     };

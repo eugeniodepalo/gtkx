@@ -450,7 +450,7 @@ fn parse_vfunc(env: &Env, item: Unknown<'_>) -> napi::Result<RawVfunc> {
 
 fn parse_interface(env: &Env, item: Unknown<'_>) -> napi::Result<RawInterface> {
     let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
-    let (_, gtype, _) = obj.get_named_property::<BigInt>("gtype")?.get_u64();
+    let gtype = obj.get_named_property::<f64>("gtype")? as usize;
     if gtype == 0 {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
@@ -459,10 +459,7 @@ fn parse_interface(env: &Env, item: Unknown<'_>) -> napi::Result<RawInterface> {
     }
     let vfuncs_prop: Unknown<'_> = obj.get_named_property("vfuncs")?;
     let vfuncs = parse_js_array(env, vfuncs_prop, "interface vfuncs", parse_vfunc)?;
-    Ok(RawInterface {
-        gtype: gtype as usize,
-        vfuncs,
-    })
+    Ok(RawInterface { gtype, vfuncs })
 }
 
 fn parse_array_property<T>(
@@ -522,18 +519,17 @@ fn parse_register_options(
 pub fn register_class(
     env: &Env,
     name: String,
-    parent_gtype: BigInt,
+    parent_gtype: f64,
     options: Option<JsObject>,
 ) -> napi::Result<Unknown<'_>> {
     let name = CString::new(name)
         .map_err(|err| napi::Error::new(napi::Status::InvalidArg, err.to_string()))?;
-    let (_, parent_gtype_value, _) = parent_gtype.get_u64();
     let (vfuncs, interfaces) = parse_register_options(env, options)?;
     dispatch_request(
         env,
         RegisterClassRequest {
             name,
-            parent_gtype: parent_gtype_value as usize,
+            parent_gtype: parent_gtype as usize,
             vfuncs,
             interfaces,
         },
