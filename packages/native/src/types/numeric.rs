@@ -101,6 +101,19 @@ macro_rules! impl_integer_kind_dispatch {
 }
 with_integer_kinds!(impl_integer_kind_dispatch);
 
+/// Extracts the `f64` payload of a JS number, mapping any other variant to
+/// `None`.
+///
+/// Every `GlibValueCodec::to_glib_value` impl in this module — the numeric
+/// kinds and `TaggedType` — treats a non-number input as "no `GValue`
+/// produced", so this is their shared prologue.
+fn js_number(val: &value::Value) -> Option<f64> {
+    match val {
+        value::Value::Number(n) => Some(*n),
+        _ => None,
+    }
+}
+
 /// Generates the four FFI codec trait impls (`FfiEncoder`, `FfiDecoder`,
 /// `RawPtrCodec`, `GlibValueCodec`) for a numeric kind enum.
 ///
@@ -166,11 +179,7 @@ macro_rules! impl_numeric_codecs {
                 Ok(value::Value::Number(self.read_ptr(ptr as *const u8)))
             }
 
-            fn write_return_to_raw_ptr(
-                &self,
-                ret: *mut c_void,
-                value: &Result<value::Value, ()>,
-            ) {
+            fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
                 let n = match value {
                     Ok(value::Value::Number(n)) => *n,
                     _ => 0.0,
@@ -184,7 +193,10 @@ macro_rules! impl_numeric_codecs {
                 value: &value::Value,
             ) -> anyhow::Result<()> {
                 let value::Value::Number(n) = value else {
-                    bail!("Expected a Number for {} field write, got {value:?}", $label);
+                    bail!(
+                        "Expected a Number for {} field write, got {value:?}",
+                        $label
+                    );
                 };
                 self.write_ptr(ptr as *mut u8, *n);
                 Ok(())
@@ -192,14 +204,8 @@ macro_rules! impl_numeric_codecs {
         }
 
         impl GlibValueCodec for $kind {
-            fn to_glib_value(
-                &self,
-                val: &value::Value,
-            ) -> anyhow::Result<Option<glib::Value>> {
-                let value::Value::Number(n) = val else {
-                    return Ok(None);
-                };
-                Ok(Some(self.number_to_glib_value(*n)))
+            fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
+                Ok(js_number(val).map(|n| self.number_to_glib_value(n)))
             }
 
             fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
@@ -576,17 +582,17 @@ impl RawPtrCodec for TaggedType {
 
 impl GlibValueCodec for TaggedType {
     fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let value::Value::Number(n) = val else {
+        let Some(n) = js_number(val) else {
             return Ok(None);
         };
         let mut gvalue = glib::Value::from_type(self.resolve_gtype()?);
         unsafe {
             match self.kind {
                 TaggedKind::Enum => {
-                    glib::gobject_ffi::g_value_set_enum(gvalue.to_glib_none_mut().0, *n as i32);
+                    glib::gobject_ffi::g_value_set_enum(gvalue.to_glib_none_mut().0, n as i32);
                 }
                 TaggedKind::Flags => {
-                    glib::gobject_ffi::g_value_set_flags(gvalue.to_glib_none_mut().0, *n as u32);
+                    glib::gobject_ffi::g_value_set_flags(gvalue.to_glib_none_mut().0, n as u32);
                 }
             }
         }

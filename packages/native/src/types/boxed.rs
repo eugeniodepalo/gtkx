@@ -14,6 +14,7 @@ use gtk4::glib::{
 };
 use napi::{Env, JsObject};
 
+use super::raw_ptr::{null_guarded, write_object_ptr, write_return_object_ptr};
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::error_reporter::NativeErrorReporter;
 use crate::managed::{Boxed, NativeValue};
@@ -142,30 +143,23 @@ impl FfiDecoder for BoxedType {
 
 impl RawPtrCodec for BoxedType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let gtype = self.gtype();
-        let boxed = Boxed::from_glib_none(gtype, ptr)?;
-        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+        null_guarded(ptr, |ptr| {
+            let gtype = self.gtype();
+            let boxed = Boxed::from_glib_none(gtype, ptr)?;
+            Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+        })
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let ptr = value::Value::result_to_ptr(value);
-        let ptr = if ptr.is_null() {
-            ptr
-        } else {
+        write_return_object_ptr(ret, value, |ptr| {
             self.gtype().map_or(ptr, |gtype| unsafe {
                 glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
             })
-        };
-        unsafe { *(ret as *mut *mut c_void) = ptr };
+        });
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        let obj_ptr = value.object_ptr("Boxed field write")?;
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
-        Ok(())
+        write_object_ptr(ptr, value, "Boxed field write")
     }
 }
 
@@ -282,22 +276,19 @@ impl FfiDecoder for StructType {
 
 impl RawPtrCodec for StructType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let boxed = Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))?;
-        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+        null_guarded(ptr, |ptr| {
+            let boxed =
+                Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))?;
+            Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+        })
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let ptr = value::Value::result_to_ptr(value);
-        unsafe { *(ret as *mut *mut c_void) = ptr };
+        write_return_object_ptr(ret, value, std::convert::identity);
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        let obj_ptr = value.object_ptr("Struct field write")?;
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
-        Ok(())
+        write_object_ptr(ptr, value, "Struct field write")
     }
 }
 

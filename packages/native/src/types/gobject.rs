@@ -8,6 +8,7 @@ use gtk4::glib::{
 };
 use napi::{Env, JsObject};
 
+use super::raw_ptr::{null_guarded, write_object_ptr, write_return_object_ptr};
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::managed::NativeValue;
 use crate::{ffi, value};
@@ -89,34 +90,27 @@ impl FfiDecoder for GObjectType {
 
 impl RawPtrCodec for GObjectType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let gobject_ptr = ptr as *mut glib::gobject_ffi::GObject;
-        let type_class = unsafe { (*gobject_ptr).g_type_instance.g_class };
-        if type_class.is_null() {
-            bail!("GObject has invalid type class (object may have been freed)");
-        }
-        let object = unsafe { glib::Object::from_glib_none(gobject_ptr) };
-        Ok(value::Value::Object(NativeValue::GObject(object).into()))
+        null_guarded(ptr, |ptr| {
+            let gobject_ptr = ptr as *mut glib::gobject_ffi::GObject;
+            let type_class = unsafe { (*gobject_ptr).g_type_instance.g_class };
+            if type_class.is_null() {
+                bail!("GObject has invalid type class (object may have been freed)");
+            }
+            let object = unsafe { glib::Object::from_glib_none(gobject_ptr) };
+            Ok(value::Value::Object(NativeValue::GObject(object).into()))
+        })
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let ptr = value::Value::result_to_ptr(value);
-        let owned_ptr = if ptr.is_null() {
-            ptr
-        } else {
+        write_return_object_ptr(ret, value, |ptr| {
             let obj: glib::Object =
                 unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
             IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>()
-        };
-        unsafe { *(ret as *mut *mut c_void) = owned_ptr };
+        });
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        let obj_ptr = value.object_ptr("GObject field write")?;
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
-        Ok(())
+        write_object_ptr(ptr, value, "GObject field write")
     }
 }
 

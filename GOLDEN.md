@@ -56,7 +56,9 @@
 - **Why it matters:** The two gtkx structs are identical — `{ raw, env }`, the `unsafe impl Send/Sync`, the `Debug`, the `Drop` with `napi_delete_reference` + `debug_assert_eq!`, the `from_js_*` and `get_value` bodies — differing only in `JsFunction` vs `JsObject`. Any fix to ref lifecycle (e.g. handling a non-`napi_ok` delete status) must land in both, and they can silently diverge. The crate doc in `lib.rs:40-48` correctly explains why `napi::Ref<T>` itself can't be used (it isn't `Send + Sync` on the typed surface) — so the fix is not "adopt `napi::Ref`" but to collapse the two into one in-house generic that *mirrors* its shape.
 - **Suggested change:** Define one `JsRef<T>` generic over the napi JS type (`T: NapiRaw + ...`), with a `PhantomData<T>` like napi-rs's `Ref<T>`; let `Callback` and `Ref` hold `JsRef<JsFunction>` / `JsRef<JsObject>`.
 
-#### [MEDIUM] Pointer-typed codecs duplicate their `RawPtrCodec` boilerplate
+#### ✅ COMPLETED — [MEDIUM] Pointer-typed codecs duplicate their `RawPtrCodec` boilerplate
+
+> **Resolved.** A new private module `src/types/raw_ptr.rs` holds three shared primitives — `write_object_ptr` (the four byte-identical `write_value_to_raw_ptr` bodies), `write_return_object_ptr` (the `result_to_ptr`/null-check/write shell, with the per-type ownership transfer kept as a closure argument), and `null_guarded` (the null-short-circuit prologue of `ptr_to_value`). `GObjectType`, `BoxedType`, `StructType` and `FundamentalType` delegate all three; `StringType` adopts `null_guarded`. The genuinely type-specific parts — `g_boxed_copy`, the GObject ref, the fundamental `ref_fn`, struct's no-op transfer — stay at each call site as the closure body. jscpd reports the `write_value_to_raw_ptr`, `ptr_to_value` null-prologue and `write_return_to_raw_ptr` clones gone; the now-redundant `#[allow(clippy::not_unsafe_ptr_arg_deref)]` on `FundamentalType::ptr_to_value` was removed too.
 
 - **Where:** `write_value_to_raw_ptr` is effectively byte-identical (only the error label changes) across `src/types/gobject.rs:116-120`, `boxed.rs:165-169`, `boxed.rs:297-301` (`StructType`), `fundamental.rs:154-158`. jscpd also flags the shared `ptr_to_value` null-prologue (`gobject.rs:90-95`≈`boxed.rs:143-148`≈`boxed.rs:283-288`≈`string.rs:71-76`) and the `write_return_to_raw_ptr` shape (`boxed.rs:150-155`≈`gobject.rs:101-106`, `boxed.rs:161-166`≈`fundamental.rs:150-155`).
 - **Standard:** Measurable defect — four identical method bodies plus several 6-line clones. The methodology's "same logic in several places" smell.
@@ -108,7 +110,7 @@
 
 1. ✅ **COMPLETED — Delete the dead code** (`Value::from_glib_values`, `FfiValue::storage()`) and tighten the `allow(dead_code)` scope — Dead Code finding. Minutes of effort, removes misleading API surface immediately.
 2. ✅ **COMPLETED — Generate `IntegerKind` + `FloatKind` codec impls from the numeric-kinds macro** — DRY-1 / Pattern Alignment. The `impl_numeric_codecs!` macro now generates all four codec trait impls for both kinds; `numeric.rs` reports 0 clones.
-3. **Extract the shared pointer-codec helpers** (`write_object_ptr`, null-guard prologue) — DRY-4. Small, mechanical, and it consolidates `unsafe` pointer writes into one reviewed place.
+3. ✅ **COMPLETED — Extract the shared pointer-codec helpers** (`write_object_ptr`, `write_return_object_ptr`, `null_guarded` in `src/types/raw_ptr.rs`) — DRY-4. The four pointer-typed codecs delegate their `RawPtrCodec` boilerplate to one reviewed module.
 4. **Collapse `JsCallbackRef`/`JsObjectRefValue` into one generic `JsRef<T>`** — DRY-2. Self-contained change in `value.rs`, modeled on napi-rs's `Ref<T>`.
 5. **Unify `RefType`'s `decode_*_inner` with the inner types' own decoders** — DRY-5. Removes a genuine correctness hazard (ownership rules duplicated per type).
 6. **Split `register_class` out of `module/gobject.rs`** — SRP finding. Mechanical move; best done the next time that subsystem is touched.

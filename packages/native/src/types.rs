@@ -89,6 +89,7 @@ mod fundamental;
 mod gobject;
 mod hashtable;
 mod numeric;
+mod raw_ptr;
 mod ref_type;
 mod string;
 mod trampoline;

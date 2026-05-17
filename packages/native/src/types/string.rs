@@ -4,6 +4,7 @@ use anyhow::bail;
 use gtk4::glib;
 use napi::{Env, JsObject};
 
+use super::raw_ptr::null_guarded;
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::{ffi, value};
 
@@ -70,11 +71,10 @@ impl FfiDecoder for StringType {
 
 impl RawPtrCodec for StringType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
-        Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
+        null_guarded(ptr, |ptr| {
+            let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
+            Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
+        })
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {

@@ -10,6 +10,7 @@ use anyhow::bail;
 use gtk4::glib::{self, translate::ToGlibPtr as _, translate::ToGlibPtrMut as _};
 use napi::{Env, JsObject};
 
+use super::raw_ptr::{null_guarded, write_object_ptr, write_return_object_ptr};
 use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::managed::{Fundamental, NativeValue, RefFn, UnrefFn};
 use crate::state::GtkThreadState;
@@ -126,35 +127,25 @@ impl FfiDecoder for FundamentalType {
 }
 
 impl RawPtrCodec for FundamentalType {
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let (ref_fn, unref_fn) = self.lookup_fns()?;
-        let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
-        Ok(value::Value::Object(
-            NativeValue::Fundamental(fundamental).into(),
-        ))
+        null_guarded(ptr, |ptr| {
+            let (ref_fn, unref_fn) = self.lookup_fns()?;
+            let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
+            Ok(value::Value::Object(
+                NativeValue::Fundamental(fundamental).into(),
+            ))
+        })
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let ptr = value::Value::result_to_ptr(value);
-        let ptr = if ptr.is_null() {
-            ptr
-        } else {
-            match self.lookup_fns() {
-                Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
-                _ => ptr,
-            }
-        };
-        unsafe { *(ret as *mut *mut c_void) = ptr };
+        write_return_object_ptr(ret, value, |ptr| match self.lookup_fns() {
+            Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
+            _ => ptr,
+        });
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        let obj_ptr = value.object_ptr("Fundamental field write")?;
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
-        Ok(())
+        write_object_ptr(ptr, value, "Fundamental field write")
     }
 }
 
