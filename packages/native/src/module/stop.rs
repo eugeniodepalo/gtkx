@@ -35,16 +35,11 @@ pub fn stop(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> 
     Mailbox::global()
         .dispatch_to_glib_and_wait(env, move || {
             Mailbox::global().mark_stopped();
-            drain_pending_sources();
+            let context = glib::MainContext::default();
+            while context.iteration(false) {}
             main_loop.quit();
         })
         .map_err(|err| napi::Error::new(napi::Status::GenericFailure, err.to_string()))?;
 
     Ok(())
-}
-
-#[cfg_attr(test, allow(dead_code))]
-fn drain_pending_sources() {
-    let context = glib::MainContext::default();
-    while context.iteration(false) {}
 }

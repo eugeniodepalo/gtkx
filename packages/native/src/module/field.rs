@@ -29,32 +29,42 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::handler::{ModuleRequest, dispatch_request};
+use super::handler::ModuleRequest;
 use crate::managed::NativeHandle;
 use crate::types::{RawPtrCodec as _, Type};
 use crate::value::Value;
 
+/// The address of a field inside a boxed/structured native value: the base
+/// pointer of the owning allocation plus a byte `offset`.
 #[cfg_attr(test, allow(dead_code))]
-fn require_non_null(addr: usize) -> anyhow::Result<*mut c_void> {
-    if addr == 0 {
-        anyhow::bail!("NativeHandle has a null pointer");
+struct FieldLocation {
+    base_addr: usize,
+    offset: usize,
+}
+
+impl FieldLocation {
+    /// Resolves the field's address, failing when the owning handle holds a
+    /// null pointer.
+    #[cfg_attr(test, allow(dead_code))]
+    fn resolve(&self) -> anyhow::Result<*mut c_void> {
+        if self.base_addr == 0 {
+            anyhow::bail!("NativeHandle has a null pointer");
+        }
+        Ok(unsafe { (self.base_addr as *mut u8).add(self.offset) as *mut c_void })
     }
-    Ok(addr as *mut c_void)
 }
 
 #[cfg_attr(test, allow(dead_code))]
 struct ReadRequest {
-    base_addr: usize,
+    location: FieldLocation,
     field_type: Type,
-    offset: usize,
 }
 
 impl ModuleRequest for ReadRequest {
     type Output = Value;
 
     fn execute(self) -> anyhow::Result<Value> {
-        let base_ptr = require_non_null(self.base_addr)?;
-        let field_ptr = unsafe { (base_ptr as *const u8).add(self.offset) as *const c_void };
+        let field_ptr = self.location.resolve()?.cast_const();
         self.field_type.read_from_raw_ptr(field_ptr, "field read")
     }
 
@@ -73,18 +83,19 @@ pub fn read<'env>(
 ) -> napi::Result<Unknown<'env>> {
     let field_type = Type::from_js_value(env, js_type)?;
     let request = ReadRequest {
-        base_addr: handle.ptr_as_usize(),
+        location: FieldLocation {
+            base_addr: handle.ptr_as_usize(),
+            offset: offset as usize,
+        },
         field_type,
-        offset: offset as usize,
     };
-    dispatch_request(env, request)
+    request.dispatch(env)
 }
 
 #[cfg_attr(test, allow(dead_code))]
 struct WriteRequest {
-    base_addr: usize,
+    location: FieldLocation,
     field_type: Type,
-    offset: usize,
     value: Value,
 }
 
@@ -92,8 +103,7 @@ impl ModuleRequest for WriteRequest {
     type Output = ();
 
     fn execute(self) -> anyhow::Result<()> {
-        let base_ptr = require_non_null(self.base_addr)?;
-        let field_ptr = unsafe { (base_ptr as *mut u8).add(self.offset) as *mut c_void };
+        let field_ptr = self.location.resolve()?;
         self.field_type
             .write_value_to_raw_ptr(field_ptr, &self.value)
     }
@@ -115,10 +125,12 @@ pub fn write<'env>(
     let field_type = Type::from_js_value(env, js_type)?;
     let parsed_value = Value::from_js_value(env, value)?;
     let request = WriteRequest {
-        base_addr: handle.ptr_as_usize(),
+        location: FieldLocation {
+            base_addr: handle.ptr_as_usize(),
+            offset: offset as usize,
+        },
         field_type,
-        offset: offset as usize,
         value: parsed_value,
     };
-    dispatch_request(env, request)
+    request.dispatch(env)
 }

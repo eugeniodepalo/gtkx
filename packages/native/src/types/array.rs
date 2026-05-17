@@ -153,36 +153,6 @@ impl RawPtrCodec for ArrayType {
 
 impl GlibValueCodec for ArrayType {}
 
-fn checked_f32_vec(values: &[f64]) -> anyhow::Result<Vec<f32>> {
-    values
-        .iter()
-        .enumerate()
-        .map(|(i, &v)| {
-            if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
-                bail!("Array element {i}: value {v} is out of range for f32");
-            }
-            Ok(v as f32)
-        })
-        .collect()
-}
-
-fn encode_integer_array(values: &[f64], int_type: IntegerKind) -> anyhow::Result<ffi::FfiValue> {
-    Ok(ffi::FfiValue::Storage(
-        int_type.checked_to_ffi_storage(values)?,
-    ))
-}
-
-fn encode_float_array(values: &[f64], float_kind: FloatKind) -> anyhow::Result<ffi::FfiValue> {
-    match float_kind {
-        FloatKind::F32 => Ok(ffi::FfiValue::Storage(checked_f32_vec(values)?.into())),
-        FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.to_vec().into())),
-    }
-}
-
-fn encode_boolean_array(values: &[i32]) -> ffi::FfiValue {
-    ffi::FfiValue::Storage(values.to_vec().into())
-}
-
 /// The native representation of one array element, resolved once from an
 /// [`ArrayType`]'s `item_type`.
 ///
@@ -245,8 +215,8 @@ impl ItemCodec {
 /// Encodes JS array elements into the layout of a specific [`ArrayKind`].
 ///
 /// Only string and GObject-like elements vary by kind; scalar elements share
-/// one contiguous representation and are encoded by the free `encode_*_array`
-/// functions instead.
+/// one contiguous representation and are encoded by `ArrayType`'s
+/// `encode_*_array` associated functions instead.
 trait ArrayKindEncoder {
     fn encode_strings(
         &self,
@@ -431,6 +401,41 @@ impl ArrayKindEncoder for GSListEncoder {
 }
 
 impl ArrayType {
+    fn checked_f32_vec(values: &[f64]) -> anyhow::Result<Vec<f32>> {
+        values
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| {
+                if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
+                    bail!("Array element {i}: value {v} is out of range for f32");
+                }
+                Ok(v as f32)
+            })
+            .collect()
+    }
+
+    fn encode_integer_array(
+        values: &[f64],
+        int_type: IntegerKind,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(ffi::FfiValue::Storage(
+            int_type.checked_to_ffi_storage(values)?,
+        ))
+    }
+
+    fn encode_float_array(values: &[f64], float_kind: FloatKind) -> anyhow::Result<ffi::FfiValue> {
+        match float_kind {
+            FloatKind::F32 => Ok(ffi::FfiValue::Storage(
+                Self::checked_f32_vec(values)?.into(),
+            )),
+            FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.to_vec().into())),
+        }
+    }
+
+    fn encode_boolean_array(values: &[i32]) -> ffi::FfiValue {
+        ffi::FfiValue::Storage(values.to_vec().into())
+    }
+
     fn extract_numbers(array: &[value::Value]) -> anyhow::Result<Vec<f64>> {
         array
             .iter()
@@ -559,12 +564,16 @@ impl ArrayType {
         };
 
         match self.item_codec("array")? {
-            ItemCodec::Integer(kind) => encode_integer_array(&Self::extract_numbers(array)?, kind),
+            ItemCodec::Integer(kind) => {
+                Self::encode_integer_array(&Self::extract_numbers(array)?, kind)
+            }
             ItemCodec::Tagged(kind) => Ok(ffi::FfiValue::Storage(
                 kind.to_ffi_storage(&Self::extract_numbers(array)?),
             )),
-            ItemCodec::Float(kind) => encode_float_array(&Self::extract_numbers(array)?, kind),
-            ItemCodec::Boolean => Ok(encode_boolean_array(&Self::extract_booleans(array)?)),
+            ItemCodec::Float(kind) => {
+                Self::encode_float_array(&Self::extract_numbers(array)?, kind)
+            }
+            ItemCodec::Boolean => Ok(Self::encode_boolean_array(&Self::extract_booleans(array)?)),
             ItemCodec::String => {
                 let cstrings = Self::extract_strings(array)?;
                 let dup_elements =

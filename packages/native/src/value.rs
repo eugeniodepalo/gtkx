@@ -184,6 +184,16 @@ impl Value {
         }
     }
 
+    /// Extracts the `f64` payload of a [`Value::Number`], mapping every other
+    /// variant to `None`.
+    #[must_use]
+    pub fn as_number(&self) -> Option<f64> {
+        match self {
+            Self::Number(n) => Some(*n),
+            _ => None,
+        }
+    }
+
     pub fn object_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
             Self::Object(handle) => Ok(handle.ptr()),

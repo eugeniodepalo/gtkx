@@ -207,35 +207,34 @@ impl FfiStorage {
             unsafe { glib::ffi::g_slist_free(data.list_ptr) };
         }
     }
-}
-
-fn drop_hash_table(data: &HashTableData) {
-    if data.should_free && !data.handle.is_null() {
-        unsafe { glib::ffi::g_hash_table_unref(data.handle) };
+    fn drop_hash_table(data: &HashTableData) {
+        if data.should_free && !data.handle.is_null() {
+            unsafe { glib::ffi::g_hash_table_unref(data.handle) };
+        }
     }
-}
 
-fn drop_glist(data: &GListData) {
-    if data.should_free && !data.list_ptr.is_null() {
-        unsafe { glib::ffi::g_list_free(data.list_ptr) };
+    fn drop_glist(data: &GListData) {
+        if data.should_free && !data.list_ptr.is_null() {
+            unsafe { glib::ffi::g_list_free(data.list_ptr) };
+        }
     }
-}
 
-fn drop_gslist(data: &GSListData) {
-    if data.should_free && !data.list_ptr.is_null() {
-        unsafe { glib::ffi::g_slist_free(data.list_ptr) };
+    fn drop_gslist(data: &GSListData) {
+        if data.should_free && !data.list_ptr.is_null() {
+            unsafe { glib::ffi::g_slist_free(data.list_ptr) };
+        }
     }
-}
 
-fn drop_garray(data: &GArrayData) {
-    if data.should_free && !data.array_ptr.is_null() {
-        unsafe { glib::ffi::g_array_unref(data.array_ptr) };
+    fn drop_garray(data: &GArrayData) {
+        if data.should_free && !data.array_ptr.is_null() {
+            unsafe { glib::ffi::g_array_unref(data.array_ptr) };
+        }
     }
-}
 
-fn drop_gbyte_array(data: &GByteArrayData) {
-    if data.should_free && !data.array_ptr.is_null() {
-        unsafe { glib::ffi::g_byte_array_unref(data.array_ptr) };
+    fn drop_gbyte_array(data: &GByteArrayData) {
+        if data.should_free && !data.array_ptr.is_null() {
+            unsafe { glib::ffi::g_byte_array_unref(data.array_ptr) };
+        }
     }
 }
 
@@ -243,11 +242,11 @@ impl Drop for FfiStorage {
     fn drop(&mut self) {
         match &self.kind {
             FfiStorageKind::GClosure => self.drop_gclosure(),
-            FfiStorageKind::HashTable(data) => drop_hash_table(data),
-            FfiStorageKind::GList(data) => drop_glist(data),
-            FfiStorageKind::GSList(data) => drop_gslist(data),
-            FfiStorageKind::GArray(data) => drop_garray(data),
-            FfiStorageKind::GByteArray(data) => drop_gbyte_array(data),
+            FfiStorageKind::HashTable(data) => Self::drop_hash_table(data),
+            FfiStorageKind::GList(data) => Self::drop_glist(data),
+            FfiStorageKind::GSList(data) => Self::drop_gslist(data),
+            FfiStorageKind::GArray(data) => Self::drop_garray(data),
+            FfiStorageKind::GByteArray(data) => Self::drop_gbyte_array(data),
             FfiStorageKind::StringGList(data) => Self::drop_string_glist(data),
             FfiStorageKind::StringGSList(data) => Self::drop_string_gslist(data),
             FfiStorageKind::Unit

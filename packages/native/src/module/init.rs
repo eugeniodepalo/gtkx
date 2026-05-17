@@ -47,7 +47,7 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
     let error_fn =
         env.create_function_from_closure::<String, (), _>("gtkx_report_error", |ctx| {
             let msg: String = ctx.get(0)?;
-            emit_unhandled_rejection(ctx.env, &msg);
+            UnhandledRejection::emit(ctx.env, &msg);
             Ok(())
         })?;
 
@@ -87,106 +87,114 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
     Ok(External::new(main_loop))
 }
 
-/// Emits an `unhandledRejection` event on the Node.js process with a synthesized
-/// `Error` whose message is `msg`. The event flows through Node's standard
-/// rejection handling so userland code can suppress or redirect it via
-/// `process.on('unhandledRejection', ...)`.
+/// Surfaces native-side failures that have no JavaScript stack of their own by
+/// emitting `unhandledRejection` events on the Node.js process.
 #[cfg_attr(test, allow(dead_code))]
-fn emit_unhandled_rejection(env: &Env, msg: &str) {
-    let raw_env = env.raw();
-    unsafe {
-        let mut global = std::ptr::null_mut();
-        if sys::napi_get_global(raw_env, &mut global) != sys::Status::napi_ok {
-            eprintln!("[gtkx] ERROR: {msg}");
-            return;
-        }
+struct UnhandledRejection;
 
-        let mut process = std::ptr::null_mut();
-        if sys::napi_get_named_property(raw_env, global, c"process".as_ptr(), &mut process)
-            != sys::Status::napi_ok
-        {
-            eprintln!("[gtkx] ERROR: {msg}");
-            return;
-        }
+impl UnhandledRejection {
+    /// Emits an `unhandledRejection` event on the Node.js process with a
+    /// synthesized `Error` whose message is `msg`. The event flows through
+    /// Node's standard rejection handling so userland code can suppress or
+    /// redirect it via `process.on('unhandledRejection', ...)`.
+    #[cfg_attr(test, allow(dead_code))]
+    fn emit(env: &Env, msg: &str) {
+        let raw_env = env.raw();
+        unsafe {
+            let mut global = std::ptr::null_mut();
+            if sys::napi_get_global(raw_env, &mut global) != sys::Status::napi_ok {
+                eprintln!("[gtkx] ERROR: {msg}");
+                return;
+            }
 
-        let mut emit = std::ptr::null_mut();
-        if sys::napi_get_named_property(raw_env, process, c"emit".as_ptr(), &mut emit)
-            != sys::Status::napi_ok
-        {
-            eprintln!("[gtkx] ERROR: {msg}");
-            return;
-        }
+            let mut process = std::ptr::null_mut();
+            if sys::napi_get_named_property(raw_env, global, c"process".as_ptr(), &mut process)
+                != sys::Status::napi_ok
+            {
+                eprintln!("[gtkx] ERROR: {msg}");
+                return;
+            }
 
-        let Ok(event_name) = String::to_napi_value(raw_env, "unhandledRejection".to_owned()) else {
-            eprintln!("[gtkx] ERROR: {msg}");
-            return;
-        };
+            let mut emit_fn = std::ptr::null_mut();
+            if sys::napi_get_named_property(raw_env, process, c"emit".as_ptr(), &mut emit_fn)
+                != sys::Status::napi_ok
+            {
+                eprintln!("[gtkx] ERROR: {msg}");
+                return;
+            }
 
-        let Some(error_obj) = make_error_object(raw_env, msg) else {
-            eprintln!("[gtkx] ERROR: {msg}");
-            return;
-        };
+            let Ok(event_name) = String::to_napi_value(raw_env, "unhandledRejection".to_owned())
+            else {
+                eprintln!("[gtkx] ERROR: {msg}");
+                return;
+            };
 
-        let Some(promise) = make_resolved_promise(raw_env) else {
-            eprintln!("[gtkx] ERROR: {msg}");
-            return;
-        };
+            let Some(error_obj) = Self::make_error_object(raw_env, msg) else {
+                eprintln!("[gtkx] ERROR: {msg}");
+                return;
+            };
 
-        let args = [event_name, error_obj, promise];
-        let mut result = std::ptr::null_mut();
-        let _ = sys::napi_call_function(
-            raw_env,
-            process,
-            emit,
-            args.len(),
-            args.as_ptr(),
-            &mut result,
-        );
+            let Some(promise) = Self::make_resolved_promise(raw_env) else {
+                eprintln!("[gtkx] ERROR: {msg}");
+                return;
+            };
 
-        let mut had_exception = false;
-        sys::napi_is_exception_pending(raw_env, &mut had_exception);
-        if had_exception {
-            let mut exc = std::ptr::null_mut();
-            sys::napi_get_and_clear_last_exception(raw_env, &mut exc);
+            let args = [event_name, error_obj, promise];
+            let mut result = std::ptr::null_mut();
+            let _ = sys::napi_call_function(
+                raw_env,
+                process,
+                emit_fn,
+                args.len(),
+                args.as_ptr(),
+                &mut result,
+            );
+
+            let mut had_exception = false;
+            sys::napi_is_exception_pending(raw_env, &mut had_exception);
+            if had_exception {
+                let mut exc = std::ptr::null_mut();
+                sys::napi_get_and_clear_last_exception(raw_env, &mut exc);
+            }
         }
     }
-}
 
-#[cfg_attr(test, allow(dead_code))]
-unsafe fn make_error_object(env: sys::napi_env, msg: &str) -> Option<sys::napi_value> {
-    unsafe {
-        let mut msg_value = std::ptr::null_mut();
-        let bytes = msg.as_bytes();
-        if sys::napi_create_string_utf8(
-            env,
-            bytes.as_ptr().cast(),
-            bytes.len() as isize,
-            &mut msg_value,
-        ) != sys::Status::napi_ok
-        {
-            return None;
+    #[cfg_attr(test, allow(dead_code))]
+    unsafe fn make_error_object(env: sys::napi_env, msg: &str) -> Option<sys::napi_value> {
+        unsafe {
+            let mut msg_value = std::ptr::null_mut();
+            let bytes = msg.as_bytes();
+            if sys::napi_create_string_utf8(
+                env,
+                bytes.as_ptr().cast(),
+                bytes.len() as isize,
+                &mut msg_value,
+            ) != sys::Status::napi_ok
+            {
+                return None;
+            }
+            let mut error = std::ptr::null_mut();
+            if sys::napi_create_error(env, std::ptr::null_mut(), msg_value, &mut error)
+                != sys::Status::napi_ok
+            {
+                return None;
+            }
+            Some(error)
         }
-        let mut error = std::ptr::null_mut();
-        if sys::napi_create_error(env, std::ptr::null_mut(), msg_value, &mut error)
-            != sys::Status::napi_ok
-        {
-            return None;
-        }
-        Some(error)
     }
-}
 
-#[cfg_attr(test, allow(dead_code))]
-unsafe fn make_resolved_promise(env: sys::napi_env) -> Option<sys::napi_value> {
-    unsafe {
-        let mut deferred = std::ptr::null_mut();
-        let mut promise = std::ptr::null_mut();
-        if sys::napi_create_promise(env, &mut deferred, &mut promise) != sys::Status::napi_ok {
-            return None;
+    #[cfg_attr(test, allow(dead_code))]
+    unsafe fn make_resolved_promise(env: sys::napi_env) -> Option<sys::napi_value> {
+        unsafe {
+            let mut deferred = std::ptr::null_mut();
+            let mut promise = std::ptr::null_mut();
+            if sys::napi_create_promise(env, &mut deferred, &mut promise) != sys::Status::napi_ok {
+                return None;
+            }
+            let mut undefined = std::ptr::null_mut();
+            sys::napi_get_undefined(env, &mut undefined);
+            sys::napi_resolve_deferred(env, deferred, undefined);
+            Some(promise)
         }
-        let mut undefined = std::ptr::null_mut();
-        sys::napi_get_undefined(env, &mut undefined);
-        sys::napi_resolve_deferred(env, deferred, undefined);
-        Some(promise)
     }
 }

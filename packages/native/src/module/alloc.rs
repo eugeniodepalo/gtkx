@@ -17,7 +17,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::handler::{ModuleRequest, dispatch_request};
+use super::handler::ModuleRequest;
 use crate::managed::{Boxed, NativeHandle, NativeValue};
 
 #[cfg_attr(test, allow(dead_code))]
@@ -60,5 +60,5 @@ pub fn alloc(
         size: size as usize,
         type_name,
     };
-    dispatch_request(env, request)
+    request.dispatch(env)
 }

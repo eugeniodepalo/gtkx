@@ -12,25 +12,26 @@ pub trait ModuleRequest: Sized + Send + 'static {
     type Output: ModuleResponse + Send + 'static;
     fn execute(self) -> anyhow::Result<Self::Output>;
     fn error_context() -> &'static str;
+
+    /// Dispatches the request onto the `GLib` thread, blocks the JS thread
+    /// until it completes, and converts the outcome into a JavaScript value.
+    fn dispatch(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        let result = dispatch::Mailbox::global()
+            .dispatch_to_glib_and_wait(*env, move || self.execute())
+            .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?
+            .map_err(|e| {
+                napi::Error::new(
+                    napi::Status::GenericFailure,
+                    format!("Error during {}: {e}", Self::error_context()),
+                )
+            })?;
+        result.to_js_response(env)
+    }
 }
 
 #[cfg_attr(test, allow(dead_code))]
 pub trait ModuleResponse: Sized {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>>;
-}
-
-#[cfg_attr(test, allow(dead_code))]
-pub fn dispatch_request<R: ModuleRequest>(env: &Env, request: R) -> napi::Result<Unknown<'_>> {
-    let result = dispatch::Mailbox::global()
-        .dispatch_to_glib_and_wait(*env, move || request.execute())
-        .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?
-        .map_err(|e| {
-            napi::Error::new(
-                napi::Status::GenericFailure,
-                format!("Error during {}: {e}", R::error_context()),
-            )
-        })?;
-    result.to_js_response(env)
 }
 
 impl ModuleResponse for Value {

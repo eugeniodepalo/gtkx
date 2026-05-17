@@ -28,7 +28,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::handler::{ModuleRequest, RefUpdate, dispatch_request};
+use super::handler::{ModuleRequest, RefUpdate};
 use crate::{
     arg::Arg,
     ffi,
@@ -139,5 +139,5 @@ pub fn call<'env>(
         args: parsed_args,
         result_type,
     };
-    dispatch_request(env, request)
+    request.dispatch(env)
 }

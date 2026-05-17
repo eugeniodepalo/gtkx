@@ -35,17 +35,6 @@ impl RefType {
     }
 }
 
-/// Builds an [`ffi::FfiValue::Storage`] holding a heap-allocated null pointer,
-/// the out-parameter slot a native callee writes a result pointer into.
-fn null_ptr_storage() -> ffi::FfiValue {
-    let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
-    let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
-    ffi::FfiValue::Storage(FfiStorage::new(
-        ptr,
-        FfiStorageKind::PtrStorage(ptr_storage),
-    ))
-}
-
 impl FfiEncoder for RefType {
     fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ref_val = match val {
@@ -59,7 +48,7 @@ impl FfiEncoder for RefType {
         match &*self.inner_type {
             Type::Boxed(_) | Type::Struct(_) | Type::GObject(_) | Type::Fundamental(_) => {
                 match &*ref_val.value {
-                    value::Value::Null | value::Value::Undefined => Ok(null_ptr_storage()),
+                    value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_storage()),
                     _ => bail!(
                         "Expected Null for Ref<Boxed/Struct/GObject/Fundamental>, got {:?}",
                         ref_val.value
@@ -75,7 +64,7 @@ impl FfiEncoder for RefType {
                     }
                 }
                 value::Value::Null | value::Value::Undefined | value::Value::Array(_) => {
-                    Ok(null_ptr_storage())
+                    Ok(Self::null_ptr_storage())
                 }
                 _ => bail!(
                     "Expected Array, Null, or Undefined for Ref<Array>, got {:?}",
@@ -88,7 +77,7 @@ impl FfiEncoder for RefType {
                     (Some(len), value::Value::Null | value::Value::Undefined) => (*len, None),
                     (None, value::Value::String(s)) => (s.len() + 1, Some(s.as_bytes())),
                     (None, value::Value::Null | value::Value::Undefined) => {
-                        return Ok(null_ptr_storage());
+                        return Ok(Self::null_ptr_storage());
                     }
                     _ => bail!(
                         "Expected a String, Null, or length for Ref<String>, got {:?}",
@@ -267,6 +256,18 @@ impl RefType {
         }
 
         self.decode(ffi_value)
+    }
+
+    /// Builds an [`ffi::FfiValue::Storage`] holding a heap-allocated null
+    /// pointer, the out-parameter slot a native callee writes a result pointer
+    /// into.
+    fn null_ptr_storage() -> ffi::FfiValue {
+        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
+        let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+        ffi::FfiValue::Storage(FfiStorage::new(
+            ptr,
+            FfiStorageKind::PtrStorage(ptr_storage),
+        ))
     }
 
     fn decode_ref_string(storage: &FfiStorage, string_type: &super::StringType) -> value::Value {

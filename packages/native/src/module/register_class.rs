@@ -4,7 +4,7 @@
 //! descriptor: parses vfunc and inherited-interface overrides, builds a libffi
 //! trampoline for each handler, and writes the resulting function pointers into
 //! the new class's vtable (via [`class_init_trampoline`]) and its copies of any
-//! inherited interface vtables (via [`install_interface_vfuncs`]).
+//! inherited interface vtables (via [`PreparedInterface::install`]).
 
 use std::ffi::{CString, c_char, c_void};
 use std::sync::Arc;
@@ -15,7 +15,7 @@ use napi::bindgen_prelude::*;
 use napi::{Env, JsFunction, JsObject, NapiValue as _};
 use napi_derive::napi;
 
-use super::handler::{ModuleRequest, dispatch_request};
+use super::handler::ModuleRequest;
 use crate::error_reporter::NativeErrorReporter;
 use crate::trampoline::{TrampolineData, TrampolineState};
 use crate::types::Type;
@@ -42,6 +42,40 @@ struct RawInterface {
 }
 
 impl RawVfunc {
+    #[cfg_attr(test, allow(dead_code))]
+    fn from_js_value(env: &Env, item: Unknown<'_>) -> napi::Result<Self> {
+        let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
+        let byte_offset: f64 = obj.get_named_property("byteOffset")?;
+        if byte_offset < 0.0 {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "register_class: vfunc byteOffset must be non-negative",
+            ));
+        }
+        let arg_types_prop: Unknown<'_> = obj.get_named_property("argTypes")?;
+        let return_type_prop: Unknown<'_> = obj.get_named_property("returnType")?;
+        let handler_prop: Unknown<'_> = obj.get_named_property("fn")?;
+        if !matches!(handler_prop.get_type()?, napi::ValueType::Function) {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "register_class: vfunc 'fn' must be a function",
+            ));
+        }
+        let handler: JsFunction =
+            unsafe { JsFunction::from_raw_unchecked(env.raw(), handler_prop.raw()) };
+
+        let arg_types = parse_type_array(env, arg_types_prop)?;
+        let return_type = Type::from_js_value(env, return_type_prop)?;
+        let js_func = Arc::new(JsRef::from_js_value(env, &handler)?);
+
+        Ok(Self {
+            byte_offset: byte_offset as usize,
+            js_func,
+            arg_types,
+            return_type,
+        })
+    }
+
     #[cfg_attr(test, allow(dead_code))]
     fn into_built(self) -> PreparedVfunc {
         let Self {
@@ -70,6 +104,26 @@ impl RawVfunc {
 
 impl RawInterface {
     #[cfg_attr(test, allow(dead_code))]
+    fn from_js_value(env: &Env, item: Unknown<'_>) -> napi::Result<Self> {
+        let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
+        let gtype = obj.get_named_property::<f64>("gtype")? as usize;
+        if gtype == 0 {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "register_class: interface gtype must be non-zero",
+            ));
+        }
+        let vfuncs_prop: Unknown<'_> = obj.get_named_property("vfuncs")?;
+        let vfuncs = parse_js_array(
+            env,
+            vfuncs_prop,
+            "interface vfuncs",
+            RawVfunc::from_js_value,
+        )?;
+        Ok(Self { gtype, vfuncs })
+    }
+
+    #[cfg_attr(test, allow(dead_code))]
     fn into_built(self) -> PreparedInterface {
         PreparedInterface {
             gtype: self.gtype,
@@ -93,27 +147,51 @@ struct PreparedVfunc {
 ///
 /// `gtype` identifies the interface; each vfunc's `byte_offset` is relative to
 /// the interface struct base. The overrides are written into the new class's
-/// own copy of the inherited interface vtable by [`install_interface_vfuncs`].
+/// own copy of the inherited interface vtable by [`PreparedInterface::install`].
 #[cfg_attr(test, allow(dead_code))]
 struct PreparedInterface {
     gtype: usize,
     vfuncs: Vec<PreparedVfunc>,
 }
 
-/// Writes each prepared vfunc's trampoline pointer into the vtable rooted at
-/// `vtable_base`, then leaks the trampoline state so its libffi closure
-/// outlives the type registration.
-#[cfg_attr(test, allow(dead_code))]
-fn install_vfuncs(vtable_base: *mut c_void, vfuncs: Vec<PreparedVfunc>) {
-    for vfunc in vfuncs {
-        unsafe {
-            let slot = vtable_base
-                .cast::<u8>()
-                .add(vfunc.byte_offset)
-                .cast::<*mut c_void>();
-            slot.write(vfunc.code_ptr);
+impl PreparedVfunc {
+    /// Writes each prepared vfunc's trampoline pointer into the vtable rooted
+    /// at `vtable_base`, then leaks the trampoline state so its libffi closure
+    /// outlives the type registration.
+    #[cfg_attr(test, allow(dead_code))]
+    fn install_all(vtable_base: *mut c_void, vfuncs: Vec<Self>) {
+        for vfunc in vfuncs {
+            unsafe {
+                let slot = vtable_base
+                    .cast::<u8>()
+                    .add(vfunc.byte_offset)
+                    .cast::<*mut c_void>();
+                slot.write(vfunc.code_ptr);
+            }
+            std::mem::forget(vfunc.state);
         }
-        std::mem::forget(vfunc.state);
+    }
+}
+
+impl PreparedInterface {
+    /// Writes this interface's vfunc overrides into the new class's own copy of
+    /// the inherited interface vtable.
+    ///
+    /// `g_type_class_ref` has already initialized the class, so `GLib` has
+    /// allocated a per-type copy of every inherited interface vtable. Writing
+    /// into that copy overrides the interface methods for the new type only,
+    /// leaving the parent's vtable untouched.
+    #[cfg_attr(test, allow(dead_code))]
+    fn install(self, class_ptr: *mut c_void) {
+        let iface_vtable = unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype) };
+        if iface_vtable.is_null() {
+            NativeErrorReporter::global().report_str(&format!(
+                "register_class: registered type does not conform to interface {:#x}",
+                self.gtype
+            ));
+            return;
+        }
+        PreparedVfunc::install_all(iface_vtable, self.vfuncs);
     }
 }
 
@@ -123,27 +201,7 @@ unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mu
         return;
     }
     let vfuncs = unsafe { Box::from_raw(class_data.cast::<Vec<PreparedVfunc>>()) };
-    install_vfuncs(g_class, *vfuncs);
-}
-
-/// Writes interface vfunc overrides into the new class's copy of an inherited
-/// interface vtable.
-///
-/// `g_type_class_ref` has already initialized the class, so `GLib` has
-/// allocated a per-type copy of every inherited interface vtable. Writing into
-/// that copy overrides the interface methods for the new type only, leaving the
-/// parent's vtable untouched.
-#[cfg_attr(test, allow(dead_code))]
-fn install_interface_vfuncs(class_ptr: *mut c_void, iface: PreparedInterface) {
-    let iface_vtable = unsafe { gobject_ffi::g_type_interface_peek(class_ptr, iface.gtype) };
-    if iface_vtable.is_null() {
-        NativeErrorReporter::global().report_str(&format!(
-            "register_class: registered type does not conform to interface {:#x}",
-            iface.gtype
-        ));
-        return;
-    }
-    install_vfuncs(iface_vtable, iface.vfuncs);
+    PreparedVfunc::install_all(g_class, *vfuncs);
 }
 
 #[cfg_attr(test, allow(dead_code))]
@@ -231,45 +289,45 @@ impl RegisterClassRequest {
         }
         Ok(())
     }
-}
 
-#[cfg_attr(test, allow(dead_code))]
-fn register_class_type(
-    parent_gtype: usize,
-    name_ptr: *const c_char,
-    class_vfuncs_ptr: *mut c_void,
-    interfaces: Vec<PreparedInterface>,
-    class_size: u16,
-    instance_size: u16,
-) -> anyhow::Result<usize> {
-    let info = gobject_ffi::GTypeInfo {
-        class_size,
-        base_init: None,
-        base_finalize: None,
-        class_init: Some(class_init_trampoline),
-        class_finalize: None,
-        class_data: class_vfuncs_ptr,
-        instance_size,
-        n_preallocs: 0,
-        instance_init: None,
-        value_table: std::ptr::null(),
-    };
+    #[cfg_attr(test, allow(dead_code))]
+    fn register_type(
+        parent_gtype: usize,
+        name_ptr: *const c_char,
+        class_vfuncs_ptr: *mut c_void,
+        interfaces: Vec<PreparedInterface>,
+        class_size: u16,
+        instance_size: u16,
+    ) -> anyhow::Result<usize> {
+        let info = gobject_ffi::GTypeInfo {
+            class_size,
+            base_init: None,
+            base_finalize: None,
+            class_init: Some(class_init_trampoline),
+            class_finalize: None,
+            class_data: class_vfuncs_ptr,
+            instance_size,
+            n_preallocs: 0,
+            instance_init: None,
+            value_table: std::ptr::null(),
+        };
 
-    let new_gtype =
-        unsafe { gobject_ffi::g_type_register_static(parent_gtype, name_ptr, &info, 0) };
+        let new_gtype =
+            unsafe { gobject_ffi::g_type_register_static(parent_gtype, name_ptr, &info, 0) };
 
-    if new_gtype == 0 {
-        drop(unsafe { Box::from_raw(class_vfuncs_ptr.cast::<Vec<PreparedVfunc>>()) });
-        anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
+        if new_gtype == 0 {
+            drop(unsafe { Box::from_raw(class_vfuncs_ptr.cast::<Vec<PreparedVfunc>>()) });
+            anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
+        }
+
+        let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
+
+        for iface in interfaces {
+            iface.install(class_ptr);
+        }
+
+        Ok(new_gtype)
     }
-
-    let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
-
-    for iface in interfaces {
-        install_interface_vfuncs(class_ptr, iface);
-    }
-
-    Ok(new_gtype)
 }
 
 impl ModuleRequest for RegisterClassRequest {
@@ -290,7 +348,7 @@ impl ModuleRequest for RegisterClassRequest {
             .collect();
         let class_vfuncs_ptr = Box::into_raw(Box::new(class_vfuncs)).cast::<c_void>();
 
-        let new_gtype = register_class_type(
+        let new_gtype = Self::register_type(
             self.parent_gtype,
             self.name.as_ptr(),
             class_vfuncs_ptr,
@@ -331,55 +389,6 @@ fn parse_type_array(env: &Env, prop: Unknown<'_>) -> napi::Result<Vec<Type>> {
     parse_js_array(env, prop, "types", Type::from_js_value)
 }
 
-#[cfg_attr(test, allow(dead_code))]
-fn parse_vfunc(env: &Env, item: Unknown<'_>) -> napi::Result<RawVfunc> {
-    let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
-    let byte_offset: f64 = obj.get_named_property("byteOffset")?;
-    if byte_offset < 0.0 {
-        return Err(napi::Error::new(
-            napi::Status::InvalidArg,
-            "register_class: vfunc byteOffset must be non-negative",
-        ));
-    }
-    let arg_types_prop: Unknown<'_> = obj.get_named_property("argTypes")?;
-    let return_type_prop: Unknown<'_> = obj.get_named_property("returnType")?;
-    let handler_prop: Unknown<'_> = obj.get_named_property("fn")?;
-    if !matches!(handler_prop.get_type()?, napi::ValueType::Function) {
-        return Err(napi::Error::new(
-            napi::Status::InvalidArg,
-            "register_class: vfunc 'fn' must be a function",
-        ));
-    }
-    let handler: JsFunction =
-        unsafe { JsFunction::from_raw_unchecked(env.raw(), handler_prop.raw()) };
-
-    let arg_types = parse_type_array(env, arg_types_prop)?;
-    let return_type = Type::from_js_value(env, return_type_prop)?;
-    let js_func = Arc::new(JsRef::from_js_value(env, &handler)?);
-
-    Ok(RawVfunc {
-        byte_offset: byte_offset as usize,
-        js_func,
-        arg_types,
-        return_type,
-    })
-}
-
-#[cfg_attr(test, allow(dead_code))]
-fn parse_interface(env: &Env, item: Unknown<'_>) -> napi::Result<RawInterface> {
-    let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
-    let gtype = obj.get_named_property::<f64>("gtype")? as usize;
-    if gtype == 0 {
-        return Err(napi::Error::new(
-            napi::Status::InvalidArg,
-            "register_class: interface gtype must be non-zero",
-        ));
-    }
-    let vfuncs_prop: Unknown<'_> = obj.get_named_property("vfuncs")?;
-    let vfuncs = parse_js_array(env, vfuncs_prop, "interface vfuncs", parse_vfunc)?;
-    Ok(RawInterface { gtype, vfuncs })
-}
-
 #[allow(clippy::trivially_copy_pass_by_ref)]
 #[cfg_attr(test, allow(dead_code))]
 fn parse_array_property<T>(
@@ -411,8 +420,13 @@ fn parse_register_options(
         return Ok((Vec::new(), Vec::new()));
     };
 
-    let vfuncs = parse_array_property(env, &options, "vfuncs", parse_vfunc)?;
-    let interfaces = parse_array_property(env, &options, "interfaceVfuncs", parse_interface)?;
+    let vfuncs = parse_array_property(env, &options, "vfuncs", RawVfunc::from_js_value)?;
+    let interfaces = parse_array_property(
+        env,
+        &options,
+        "interfaceVfuncs",
+        RawInterface::from_js_value,
+    )?;
 
     Ok((vfuncs, interfaces))
 }
@@ -429,15 +443,13 @@ pub fn register_class(
     let name = CString::new(name)
         .map_err(|err| napi::Error::new(napi::Status::InvalidArg, err.to_string()))?;
     let (vfuncs, interfaces) = parse_register_options(env, options)?;
-    dispatch_request(
-        env,
-        RegisterClassRequest {
-            name,
-            parent_gtype: parent_gtype as usize,
-            vfuncs,
-            interfaces,
-        },
-    )
+    RegisterClassRequest {
+        name,
+        parent_gtype: parent_gtype as usize,
+        vfuncs,
+        interfaces,
+    }
+    .dispatch(env)
 }
 
 #[cfg(test)]

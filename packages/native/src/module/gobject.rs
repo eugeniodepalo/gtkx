@@ -11,7 +11,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::handler::{ModuleRequest, dispatch_request};
+use super::handler::ModuleRequest;
 use crate::managed::NativeHandle;
 
 #[cfg_attr(test, allow(dead_code))]
@@ -59,13 +59,11 @@ pub fn find_object_property<'env>(
 ) -> napi::Result<Unknown<'env>> {
     let property_name = CString::new(property_name)
         .map_err(|err| napi::Error::new(napi::Status::InvalidArg, err.to_string()))?;
-    dispatch_request(
-        env,
-        FindObjectPropertyRequest {
-            instance_addr: handle.ptr_as_usize(),
-            property_name,
-        },
-    )
+    FindObjectPropertyRequest {
+        instance_addr: handle.ptr_as_usize(),
+        property_name,
+    }
+    .dispatch(env)
 }
 
 #[cfg_attr(test, allow(dead_code))]
@@ -100,10 +98,8 @@ pub fn get_instance_gtype<'env>(
     env: &'env Env,
     handle: &External<NativeHandle>,
 ) -> napi::Result<Unknown<'env>> {
-    dispatch_request(
-        env,
-        GetInstanceGtypeRequest {
-            instance_addr: handle.ptr_as_usize(),
-        },
-    )
+    GetInstanceGtypeRequest {
+        instance_addr: handle.ptr_as_usize(),
+    }
+    .dispatch(env)
 }

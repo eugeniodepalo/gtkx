@@ -101,19 +101,6 @@ macro_rules! impl_integer_kind_dispatch {
 }
 with_integer_kinds!(impl_integer_kind_dispatch);
 
-/// Extracts the `f64` payload of a JS number, mapping any other variant to
-/// `None`.
-///
-/// Every `GlibValueCodec::to_glib_value` impl in this module — the numeric
-/// kinds and `TaggedType` — treats a non-number input as "no `GValue`
-/// produced", so this is their shared prologue.
-fn js_number(val: &value::Value) -> Option<f64> {
-    match val {
-        value::Value::Number(n) => Some(*n),
-        _ => None,
-    }
-}
-
 /// Generates the four FFI codec trait impls (`FfiEncoder`, `FfiDecoder`,
 /// `RawPtrCodec`, `GlibValueCodec`) for a numeric kind enum.
 ///
@@ -205,7 +192,7 @@ macro_rules! impl_numeric_codecs {
 
         impl GlibValueCodec for $kind {
             fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-                Ok(js_number(val).map(|n| self.number_to_glib_value(n)))
+                Ok(val.as_number().map(|n| self.number_to_glib_value(n)))
             }
 
             fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
@@ -582,7 +569,7 @@ impl RawPtrCodec for TaggedType {
 
 impl GlibValueCodec for TaggedType {
     fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let Some(n) = js_number(val) else {
+        let Some(n) = val.as_number() else {
             return Ok(None);
         };
         let mut gvalue = glib::Value::from_type(self.resolve_gtype()?);
