@@ -14,7 +14,21 @@ import { createRef } from "@gtkx/native";
 import type { GType } from "./generated/gobject/gobject.js";
 import { t } from "./helpers.js";
 
-const LIB = "libgobject-2.0.so.0";
+/**
+ * Shared-object name of libgobject, home of every `g_type_*`, `g_value_*`,
+ * and `g_object_*` symbol bound across the runtime and value layer.
+ */
+export const LIBGOBJECT = "libgobject-2.0.so.0";
+
+/** Size of a `GValue` struct in bytes — a fixed GObject ABI fact. */
+export const GVALUE_SIZE = 24;
+
+/**
+ * FFI descriptor for a borrowed `GValue` pointer argument: the shape every
+ * `g_value_*` and `g_object_*_property` call passes for a `GValue *` whose
+ * ownership stays with the caller.
+ */
+export const GVALUE_BORROWED = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
 
 /**
  * The invalid GType sentinel (`G_TYPE_INVALID`), the numeric `0` the GObject
@@ -36,12 +50,12 @@ export const G_TYPE_INVALID: GType = 0;
  */
 export const gtypeFromFfi: (value: unknown) => GType = Number;
 
-const g_type_is_a = t.fn(LIB, "g_type_is_a", [{ type: t.uint64 }, { type: t.uint64 }], t.boolean);
+const g_type_is_a = t.fn(LIBGOBJECT, "g_type_is_a", [{ type: t.uint64 }, { type: t.uint64 }], t.boolean);
 
-const g_type_parent = t.fn(LIB, "g_type_parent", [{ type: t.uint64 }], t.uint64);
+const g_type_parent = t.fn(LIBGOBJECT, "g_type_parent", [{ type: t.uint64 }], t.uint64);
 
 const g_type_interfaces = t.fn(
-    LIB,
+    LIBGOBJECT,
     "g_type_interfaces",
     [{ type: t.uint64 }, { type: t.ref(t.uint32) }],
     t.sizedArray(t.uint64, 1, "full"),

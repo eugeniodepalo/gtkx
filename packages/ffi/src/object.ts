@@ -1,12 +1,41 @@
 import { alloc, call, type NativeHandle, read, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
 import { gvalueFromProp } from "./gobject/gvalue.js";
+import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
 import { type GTypeStamped, getParentClass, type NativeClass, type NativeObject, setHandle } from "./handles.js";
 import { t } from "./helpers.js";
 import { getClassGType, registerNativeObject } from "./registry.js";
 
-const GVALUE_BORROWED = t.boxed("GValue", "borrowed", "libgobject-2.0.so.0", "g_value_get_type");
-const GVALUE_SIZE = 24;
+/**
+ * Dispatches `g_object_new_with_properties` and returns the owned handle of
+ * the freshly constructed instance.
+ *
+ * The single home for the four-element descriptor layout the native call
+ * requires; both the generated-constructor path ({@link constructGObject})
+ * and the public `Object.newWithProperties` wrapper route through here so the
+ * fiddly `gtype`/count/sized-name-array/sized-`GValue`-array shape is encoded
+ * exactly once.
+ *
+ * @param gtype - GType of the object to instantiate
+ * @param names - GIR property names, paired by index with `values`
+ * @param values - Borrowed `GValue` handles, one per name
+ * @returns The owned handle of the new instance
+ *
+ * @internal Module-private construction primitive invoked by generated bindings.
+ */
+export function objectNewWithProperties(gtype: number, names: string[], values: NativeHandle[]): NativeHandle {
+    return call(
+        LIBGOBJECT,
+        "g_object_new_with_properties",
+        [
+            { type: t.uint64, value: gtype },
+            { type: t.uint32, value: names.length },
+            { type: t.sizedArray(t.string("borrowed"), 1, "borrowed"), value: names },
+            { type: t.sizedArray(GVALUE_BORROWED, 1, "borrowed", GVALUE_SIZE), value: values },
+        ],
+        t.object("full"),
+    ) as NativeHandle;
+}
 
 /**
  * Performs the native allocation, handle binding, and identity registration
@@ -58,26 +87,7 @@ function constructGObject(
     const seen = new Set<string>();
     walkPropsForGObject(leafCtor, props, names, values, seen);
 
-    const gtype = Number(leafMeta.gtype());
-    return call(
-        "libgobject-2.0.so.0",
-        "g_object_new_with_properties",
-        [
-            { type: t.uint64, value: gtype, optional: false },
-            { type: t.uint32, value: names.length, optional: false },
-            {
-                type: t.sizedArray(t.string("borrowed"), 1, "borrowed"),
-                value: names,
-                optional: false,
-            },
-            {
-                type: t.array(GVALUE_BORROWED, "sized", "borrowed", { sizeParamIndex: 1, elementSize: GVALUE_SIZE }),
-                value: values,
-                optional: false,
-            },
-        ],
-        t.object("full"),
-    ) as NativeHandle;
+    return objectNewWithProperties(Number(leafMeta.gtype()), names, values);
 }
 
 function walkPropsForGObject(

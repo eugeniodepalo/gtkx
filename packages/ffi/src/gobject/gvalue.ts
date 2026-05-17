@@ -3,19 +3,17 @@ import type { GObjectPropMeta } from "../construction-meta.js";
 import type * as GLib from "../generated/glib/glib.js";
 import type { Object as GObject, GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { typeFromName, typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
-import { G_TYPE_INVALID, gtypeFromFfi } from "../gtype.js";
+import { G_TYPE_INVALID, GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT } from "../gtype.js";
 import { getHandle, type NativeObject } from "../handles.js";
 import { call, t } from "../native.js";
 import { Type } from "./types.js";
 
-const GVALUE_ARG = t.boxed("GValue", "borrowed", "libgobject-2.0.so.0", "g_value_get_type");
-
-const g_strv_get_type = t.fn("libgobject-2.0.so.0", "g_strv_get_type", [], t.uint64);
+const g_strv_get_type = t.fn(LIBGOBJECT, "g_strv_get_type", [], t.uint64);
 
 const g_value_set_boxed_strv = t.fn(
-    "libgobject-2.0.so.0",
+    LIBGOBJECT,
     "g_value_set_boxed",
-    [{ type: GVALUE_ARG }, { type: t.array(t.string("borrowed")) }],
+    [{ type: GVALUE_BORROWED }, { type: t.array(t.string("borrowed")) }],
     t.void,
 );
 
@@ -105,12 +103,12 @@ export function newFromBoxed(value: object, gtype: GType): Value {
     }
     return initValue(gtype, (v) => {
         call(
-            "libgobject-2.0.so.0",
+            LIBGOBJECT,
             "g_value_set_boxed",
             [
-                { type: GVALUE_ARG, value: getHandle(v) },
+                { type: GVALUE_BORROWED, value: getHandle(v) },
                 {
-                    type: t.boxed(glibTypeName, "borrowed", "libgobject-2.0.so.0"),
+                    type: t.boxed(glibTypeName, "borrowed", LIBGOBJECT),
                     value: getHandle(value),
                     optional: true,
                 },
@@ -235,57 +233,76 @@ export function newFrom(ffiType: FfiType, value: unknown): Value {
     }
 }
 
-function newCharValue(gtype: GType, fundamental: GType, value: unknown): Value {
-    const v = new Value();
-    v.init(gtype);
-    if (fundamental === Type.CHAR) v.setSchar(value as number);
-    else v.setUchar(value as number);
-    return v;
+/** Creates a `GValue` typed as `gtype` but holding no payload. */
+function emptyValue(gtype: GType): Value {
+    return initValue(gtype, () => {});
 }
 
 function newPointerValue(gtype: GType, value: unknown): Value {
     if (value !== null && value !== undefined) {
         throw new Error("G_TYPE_POINTER properties cannot be set from a non-null JS value");
     }
-    const v = new Value();
-    v.init(gtype);
-    return v;
+    return emptyValue(gtype);
 }
 
 function newBoxedValue(gtype: GType, value: unknown): Value {
-    if (value === null || value === undefined) {
-        const v = new Value();
-        v.init(gtype);
-        return v;
-    }
+    if (value === null || value === undefined) return emptyValue(gtype);
     return newFromBoxed(value as NativeObject, gtype);
 }
 
 function newStrvValue(gtype: GType, value: unknown): Value {
-    if (value === null || value === undefined) {
-        const v = new Value();
-        v.init(gtype);
-        return v;
-    }
+    if (value === null || value === undefined) return emptyValue(gtype);
     return newFromStrv(value as string[]);
 }
 
-function valueFromFundamentalFactory(gtype: GType, fundamental: GType, value: unknown): Value | null {
-    if (fundamental === Type.BOOLEAN) return newFromBoolean(value as boolean);
-    if (fundamental === Type.INT) return newFromInt(value as number);
-    if (fundamental === Type.UINT) return newFromUint(value as number);
-    if (fundamental === Type.LONG) return newFromLong(value as number);
-    if (fundamental === Type.ULONG) return newFromUlong(value as number);
-    if (fundamental === Type.INT64) return newFromInt64(value as number);
-    if (fundamental === Type.UINT64) return newFromUint64(value as number);
-    if (fundamental === Type.FLOAT) return newFromFloat(value as number);
-    if (fundamental === Type.DOUBLE) return newFromDouble(value as number);
-    if (fundamental === Type.STRING) return newFromString(value as string | null);
-    if (fundamental === Type.ENUM) return newFromEnum(gtype, value as number);
-    if (fundamental === Type.FLAGS) return newFromFlags(gtype, value as number);
-    if (fundamental === Type.OBJECT) return newFromObject(value as GObject | null);
-    if (fundamental === Type.VARIANT) return newFromVariant(value as GLib.Variant);
-    return null;
+/** Marshals a JS value to and from a `GValue` for one GObject fundamental. */
+type FundamentalMarshaller = {
+    /** Builds a `GValue` of the concrete `gtype` from a JS `value`. */
+    to: (gtype: GType, value: unknown) => Value;
+    /** Reads the JS value held by a `GValue`. */
+    from: (value: Value) => unknown;
+};
+
+let fundamentalMarshallers: Map<GType, FundamentalMarshaller> | undefined;
+
+/**
+ * The single fundamental-keyed marshalling table.
+ *
+ * Both directions dispatch through it: {@link fromJS} reads each entry's
+ * `to`, and `Value.prototype.toJS` reads its `from`. Supporting a new
+ * fundamental — or correcting how an existing one is marshalled — is a
+ * one-line edit here rather than a change spread across parallel write and
+ * read structures.
+ *
+ * Built lazily because every key is a {@link Type} member whose GType is
+ * itself resolved on first access.
+ *
+ * @internal Shared by the read path in `./value.js`.
+ */
+export function getFundamentalMarshallers(): Map<GType, FundamentalMarshaller> {
+    fundamentalMarshallers ??= new Map<GType, FundamentalMarshaller>([
+        [Type.BOOLEAN, { to: (_g, v) => newFromBoolean(v as boolean), from: (v) => v.getBoolean() }],
+        [Type.INT, { to: (_g, v) => newFromInt(v as number), from: (v) => v.getInt() }],
+        [Type.UINT, { to: (_g, v) => newFromUint(v as number), from: (v) => v.getUint() }],
+        [Type.LONG, { to: (_g, v) => newFromLong(v as number), from: (v) => v.getLong() }],
+        [Type.ULONG, { to: (_g, v) => newFromUlong(v as number), from: (v) => v.getUlong() }],
+        [Type.INT64, { to: (_g, v) => newFromInt64(v as number), from: (v) => v.getInt64() }],
+        [Type.UINT64, { to: (_g, v) => newFromUint64(v as number), from: (v) => v.getUint64() }],
+        [Type.FLOAT, { to: (_g, v) => newFromFloat(v as number), from: (v) => v.getFloat() }],
+        [Type.DOUBLE, { to: (_g, v) => newFromDouble(v as number), from: (v) => v.getDouble() }],
+        [Type.STRING, { to: (_g, v) => newFromString(v as string | null), from: (v) => v.getString() }],
+        [Type.CHAR, { to: (g, v) => initValue(g, (val) => val.setSchar(v as number)), from: (v) => v.getSchar() }],
+        [Type.UCHAR, { to: (g, v) => initValue(g, (val) => val.setUchar(v as number)), from: (v) => v.getUchar() }],
+        [Type.ENUM, { to: (g, v) => newFromEnum(g, v as number), from: (v) => v.getEnum() }],
+        [Type.FLAGS, { to: (g, v) => newFromFlags(g, v as number), from: (v) => v.getFlags() }],
+        [Type.OBJECT, { to: (_g, v) => newFromObject(v as GObject | null), from: (v) => v.getObject() }],
+        [Type.VARIANT, { to: (_g, v) => newFromVariant(v as GLib.Variant), from: (v) => v.getVariant() }],
+        [
+            Type.PARAM,
+            { to: (g, v) => initValue(g, (val) => val.setParam(v as ParamSpec | null)), from: (v) => v.getParam() },
+        ],
+    ]);
+    return fundamentalMarshallers;
 }
 
 /**
@@ -296,19 +313,8 @@ export function fromJS(gtype: GType, value: unknown): Value {
     if (gtype === getStrvGType()) return newStrvValue(gtype, value);
 
     const fundamental = typeFundamental(gtype);
-    const fundamentalValue = valueFromFundamentalFactory(gtype, fundamental, value);
-    if (fundamentalValue) return fundamentalValue;
-
-    if (fundamental === Type.CHAR || fundamental === Type.UCHAR) {
-        return newCharValue(gtype, fundamental, value);
-    }
-
-    if (fundamental === Type.PARAM) {
-        const v = new Value();
-        v.init(gtype);
-        v.setParam(value as ParamSpec | null);
-        return v;
-    }
+    const marshaller = getFundamentalMarshallers().get(fundamental);
+    if (marshaller) return marshaller.to(gtype, value);
 
     if (fundamental === Type.POINTER) return newPointerValue(gtype, value);
     if (fundamental === Type.BOXED) return newBoxedValue(gtype, value);

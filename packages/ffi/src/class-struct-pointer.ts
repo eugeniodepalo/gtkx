@@ -15,15 +15,14 @@
  */
 
 import type { GType } from "./generated/gobject/gobject.js";
+import { LIBGOBJECT } from "./gtype.js";
 import type { NativeClass, NativeHandle } from "./handles.js";
 import { tryGetHandle } from "./handles.js";
 import { t } from "./helpers.js";
 import { getInstanceGType } from "./native.js";
 import { getClassGType } from "./registry.js";
 
-const LIB = "libgobject-2.0.so.0";
-
-const g_type_class_ref = t.fn(LIB, "g_type_class_ref", [{ type: t.uint64 }], t.object("borrowed"));
+const g_type_class_ref = t.fn(LIBGOBJECT, "g_type_class_ref", [{ type: t.uint64 }], t.object("borrowed"));
 
 /**
  * Accepted spellings of a class identity at a class-struct call site: the

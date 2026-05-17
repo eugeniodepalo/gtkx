@@ -2,12 +2,13 @@ import type { Type as FfiType, NativeHandle } from "@gtkx/native";
 import type * as GLib from "../generated/glib/glib.js";
 import type { Object as GObject, GType } from "../generated/gobject/gobject.js";
 import { typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
-import { gtypeFromFfi } from "../gtype.js";
+import { GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT } from "../gtype.js";
 import { getHandle } from "../handles.js";
 import { call, type NativeClass, read, t } from "../native.js";
 import { findNativeClass, getNativeObject } from "../registry.js";
 import {
     fromJS,
+    getFundamentalMarshallers,
     getStrvGType,
     newFrom,
     newFromBoolean,
@@ -29,12 +30,10 @@ import {
 } from "./gvalue.js";
 import { Type } from "./types.js";
 
-const GVALUE_ARG = t.boxed("GValue", "borrowed", "libgobject-2.0.so.0", "g_value_get_type");
-
 const g_value_get_boxed_strv = t.fn(
-    "libgobject-2.0.so.0",
+    LIBGOBJECT,
     "g_value_get_boxed",
-    [{ type: GVALUE_ARG }],
+    [{ type: GVALUE_BORROWED }],
     t.array(t.string("borrowed")),
 );
 
@@ -232,10 +231,10 @@ Value.prototype.getBoxed = function getBoxed<T extends object>(
         throw new Error(`Cannot resolve type name for boxed gtype ${String(targetGType)}`);
     }
     const ptr = call(
-        "libgobject-2.0.so.0",
+        LIBGOBJECT,
         "g_value_dup_boxed",
-        [{ type: t.boxed("GValue", "borrowed", "libgobject-2.0.so.0"), value: getHandle(this) }],
-        t.boxed(glibTypeName, "full", "libgobject-2.0.so.0"),
+        [{ type: GVALUE_BORROWED, value: getHandle(this) }],
+        t.boxed(glibTypeName, "full", LIBGOBJECT),
     );
     if (ptr === null) return null;
     return getNativeObject(ptr as NativeHandle, targetType);
@@ -245,38 +244,9 @@ Value.prototype.getStrv = function (): string[] {
     return (g_value_get_boxed_strv(getHandle(this)) as string[] | null) ?? [];
 };
 
-type FundamentalGetter = (value: Value) => unknown;
-let fundamentalGetters: Map<GType, FundamentalGetter> | undefined;
-
-const getFundamentalGetters = (): Map<GType, FundamentalGetter> => {
-    if (!fundamentalGetters) {
-        const entries: Array<[GType, FundamentalGetter]> = [
-            [Type.BOOLEAN, (v) => v.getBoolean()],
-            [Type.INT, (v) => v.getInt()],
-            [Type.UINT, (v) => v.getUint()],
-            [Type.LONG, (v) => v.getLong()],
-            [Type.ULONG, (v) => v.getUlong()],
-            [Type.INT64, (v) => v.getInt64()],
-            [Type.UINT64, (v) => v.getUint64()],
-            [Type.FLOAT, (v) => v.getFloat()],
-            [Type.DOUBLE, (v) => v.getDouble()],
-            [Type.CHAR, (v) => v.getSchar()],
-            [Type.UCHAR, (v) => v.getUchar()],
-            [Type.STRING, (v) => v.getString()],
-            [Type.ENUM, (v) => v.getEnum()],
-            [Type.FLAGS, (v) => v.getFlags()],
-            [Type.OBJECT, (v) => v.getObject()],
-            [Type.VARIANT, (v) => v.getVariant()],
-            [Type.PARAM, (v) => v.getParam()],
-        ];
-        fundamentalGetters = new Map(entries);
-    }
-    return fundamentalGetters;
-};
-
 const valueFromFundamental = (value: Value, fundamental: GType): unknown => {
-    const getter = getFundamentalGetters().get(fundamental);
-    return getter ? getter(value) : undefined;
+    const marshaller = getFundamentalMarshallers().get(fundamental);
+    return marshaller ? marshaller.from(value) : undefined;
 };
 
 const readPointerValue = (handle: NativeHandle): null => {

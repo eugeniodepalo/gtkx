@@ -1,9 +1,10 @@
 import { findObjectProperty, getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { Object as GObject, signalEmitv, signalParseName, Value } from "../generated/gobject/gobject.js";
-import { gtypeFromFfi } from "../gtype.js";
+import { GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT } from "../gtype.js";
 import { getHandle } from "../handles.js";
 import { alloc, call, read, t } from "../native.js";
+import { objectNewWithProperties } from "../object.js";
 import { getNativeObject } from "../registry.js";
 
 declare module "../generated/gobject/gobject.js" {
@@ -102,10 +103,6 @@ declare module "../generated/gobject/gobject.js" {
     }
 }
 
-const LIB = "libgobject-2.0.so.0";
-const GVALUE_SIZE = 24;
-
-const GVALUE_BORROWED_TYPE = t.boxed("GValue", "borrowed", LIB, "g_value_get_type");
 const GOBJECT_BORROWED = t.object("borrowed");
 
 type ObjectStatic = {
@@ -115,24 +112,12 @@ type ObjectStatic = {
 const ObjectWithStatics = GObject as typeof GObject & ObjectStatic;
 
 ObjectWithStatics.newWithProperties = (objectType: GType, names: string[], values: Value[]): GObject => {
-    const ptr = call(
-        LIB,
-        "g_object_new_with_properties",
-        [
-            { type: t.uint64, value: objectType },
-            { type: t.uint32, value: names.length },
-            { type: t.sizedArray(t.string("borrowed"), 1), value: names },
-            {
-                type: t.array(GVALUE_BORROWED_TYPE, "sized", "borrowed", {
-                    sizeParamIndex: 1,
-                    elementSize: GVALUE_SIZE,
-                }),
-                value: values.map((v) => getHandle(v)),
-            },
-        ],
-        GOBJECT_BORROWED,
+    const handle = objectNewWithProperties(
+        objectType,
+        names,
+        values.map((v) => getHandle(v)),
     );
-    return getNativeObject<GObject>(ptr as NativeHandle);
+    return getNativeObject<GObject>(handle);
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
@@ -178,7 +163,7 @@ const untrackListener = (instance: GObject, signal: string, handler: Listener): 
 
 GObject.prototype.disconnect = function disconnect(handlerId: number): void {
     call(
-        LIB,
+        LIBGOBJECT,
         "g_signal_handler_disconnect",
         [
             { type: GOBJECT_BORROWED, value: getHandle(this) },
@@ -234,7 +219,7 @@ function emitImpl(this: GObject, sigName: string, ...args: unknown[]): void {
 
     const query = alloc(SIGNAL_QUERY_SIZE);
     call(
-        LIB,
+        LIBGOBJECT,
         "g_signal_query",
         [
             { type: t.uint32, value: signalId },
@@ -272,12 +257,12 @@ const resolvePropertyValueType = (obj: GObject, propertyName: string): GType => 
 
 const dispatchPropertyCall = (fnName: string, obj: GObject, propertyName: string, gvalue: Value): void => {
     call(
-        LIB,
+        LIBGOBJECT,
         fnName,
         [
             { type: GOBJECT_BORROWED, value: getHandle(obj) },
             { type: t.string("borrowed"), value: propertyName },
-            { type: GVALUE_BORROWED_TYPE, value: getHandle(gvalue) },
+            { type: GVALUE_BORROWED, value: getHandle(gvalue) },
         ],
         t.void,
     );

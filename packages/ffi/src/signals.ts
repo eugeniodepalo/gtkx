@@ -10,10 +10,9 @@
  */
 
 import type { Type } from "@gtkx/native";
+import { LIBGOBJECT } from "./gtype.js";
 import { getHandle, type NativeClass } from "./handles.js";
 import { call, t } from "./helpers.js";
-
-const LIB = "libgobject-2.0.so.0";
 
 /** A user-supplied signal handler. */
 export type SignalHandler = (...args: unknown[]) => unknown;
@@ -86,7 +85,7 @@ const connectClosureFallback = (
 ): number => {
     const wrappedHandler = (...args: unknown[]): unknown => handler(...args.slice(1));
     return call(
-        LIB,
+        LIBGOBJECT,
         "g_signal_connect_closure",
         [
             { type: t.object("borrowed"), value: getHandle(instance) },
@@ -132,7 +131,7 @@ export function connectSignal(
 
     const wrappedHandler = (...args: unknown[]): unknown => descriptor.invoke(handler, args);
     return call(
-        LIB,
+        LIBGOBJECT,
         "g_signal_connect_data",
         [
             { type: t.object("borrowed"), value: getHandle(instance) },

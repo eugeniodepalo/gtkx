@@ -37,7 +37,7 @@ This audit covers the **hand-written runtime** of `@gtkx/ffi` (~7,950 lines acro
   ```
   or via a thin `cairoMethod(selfType, name, argTypes, ret)` helper that wraps `t.fn` and prepends `getHandle(this)`. The handful of methods with genuinely dynamic descriptors (`image-surface.ts` `getData`'s size-dependent `t.struct`, dynamic boxed type names) stay as direct `call()` — that is the legitimate residue.
 
-#### [MEDIUM] Two divergent code paths build the same `g_object_new_with_properties` call
+#### [MEDIUM] ✅ COMPLETED — Two divergent code paths build the same `g_object_new_with_properties` call
 
 - **Where:** `src/object.ts:51-81` (`constructGObject`) and `src/gobject/object.ts:117-136` (`Object.newWithProperties`).
 - **Standard:** GJS routes all object construction through one path; node-gtk likewise has a single `g_object_new*` entry point. A native operation as intricate as `g_object_new_with_properties` — with its four-element descriptor array (`uint64` gtype, `uint32` count, sized string array, sized `GValue` array with `elementSize`/`sizeParamIndex`) — should have exactly one home.
@@ -46,14 +46,14 @@ This audit covers the **hand-written runtime** of `@gtkx/ffi` (~7,950 lines acro
 
 ### DRY
 
-#### [MEDIUM] The borrowed-`GValue` FFI descriptor, its size, and the libgobject library name are redefined repeatedly
+#### [MEDIUM] ✅ COMPLETED — The borrowed-`GValue` FFI descriptor, its size, and the libgobject library name are redefined repeatedly
 
 - **Where:** the descriptor `t.boxed("GValue", "borrowed", "libgobject-2.0.so.0", "g_value_get_type")` is defined **four times** — `object.ts:8` (`GVALUE_BORROWED`), `gobject/gvalue.ts:11` (`GVALUE_ARG`), `gobject/value.ts:32` (`GVALUE_ARG`), `gobject/object.ts:108` (`GVALUE_BORROWED_TYPE`). `GVALUE_SIZE = 24` is defined in both `object.ts:9` and `gobject/object.ts:106`. The string `"libgobject-2.0.so.0"` appears as a literal **16 times** across non-generated files (sometimes as a local `LIB` const, sometimes inlined).
 - **Standard:** This is a measurable defect — the same piece of ABI knowledge (the GValue struct is 24 bytes; the boxed descriptor is exactly this) living in four to sixteen places.
 - **Why it matters:** `GVALUE_SIZE` is a hard ABI fact; if it ever has to change (or someone questions it), two definitions must stay in lockstep with no compiler help. The four descriptor constants already drift in naming, which obscures that they are the same thing.
 - **Suggested change:** Export `LIBGOBJECT`, `GVALUE_SIZE`, and a single `GVALUE_BORROWED` descriptor from one module (a `gobject/constants.ts`, or extend the existing `gtype.ts`) and import them everywhere.
 
-#### [MEDIUM] `gobject/types.ts` is 22 hand-rolled lazy getters
+#### [MEDIUM] ✅ COMPLETED — `gobject/types.ts` is 22 hand-rolled lazy getters
 
 - **Where:** `src/gobject/types.ts:4-130` — 22 module-scope `let xxxType` cache variables paired with 22 getters on `Type`, each body identical except for the type-name string: `get INT() { intType ??= typeFromName("gint"); return intType; }`.
 - **Standard:** A measurable defect: one piece of knowledge (the name→GType map) expanded into ~110 lines of mechanical repetition. Note also `INVALID` and `NONE` both resolve `typeFromName("void")` with two separate cache variables.
@@ -71,9 +71,11 @@ This audit covers the **hand-written runtime** of `@gtkx/ffi` (~7,950 lines acro
 
 The non-generated source is **essentially free of dead code** — `knip`-style analysis is unreliable here because 21 generated files consume the runtime exports through the `runtime.ts` barrel, but a manual cross-reference of each public export found them all reachable (`freeze`/`unfreeze`/`getNativeId` are used by generated bindings; `registerClass`, `findNativeClass`, `getClassGType`, `getParentClass`, `CONSTRUCTION_META` are consumed by `packages/react`). One item to **confirm rather than remove**: `getNativeInterface` (`native.ts:170`, re-exported from `index.ts`) is referenced only by its own tests. It is documented public library API, so it is most likely an intentional consumer-facing surface — verify that intent rather than treating it as dead.
 
+✅ CONFIRMED — `getNativeInterface` is intentional consumer-facing API: it is exported from the package `index.ts` and carries a full doc comment with a usage `@example`. Kept as-is.
+
 ### SOLID
 
-#### [MEDIUM] Open/Closed: the GLib-fundamental ↔ JS-value mapping is scattered across three dispatch structures
+#### [MEDIUM] ✅ COMPLETED — Open/Closed: the GLib-fundamental ↔ JS-value mapping is scattered across three dispatch structures
 
 - **Where:** `src/gobject/gvalue.ts:168` (`newFrom` — a `switch` over `ffiType.type`), `src/gobject/gvalue.ts:273` (`valueFromFundamentalFactory` — an `if`-ladder over `typeFundamental`), and `src/gobject/value.ts:251` (`getFundamentalGetters` — a `Map` keyed by fundamental, the read direction).
 - **Standard:** GJS centralizes this in `gi/value.cpp`: `gjs_value_to_g_value_internal()` and `gjs_value_from_g_value_internal()` are one dispatcher per direction. Adding a type means touching exactly one switch per direction.
@@ -82,9 +84,9 @@ The non-generated source is **essentially free of dead code** — `knip`-style a
 
 ## Prioritized roadmap
 
-1. **D1 — consolidate the GValue descriptor, `GVALUE_SIZE`, and library name** into one module. Smallest possible effort, immediately removes a four-way drift hazard on ABI-critical constants. Pure quick win.
-2. **PA2 — unify the two `g_object_new_with_properties` paths** behind one private helper. Small, contained, removes a real correctness-drift risk in object construction.
-3. **D2 — collapse `gobject/types.ts`** from 22 getters to a table-driven factory. Small effort, ~80 lines removed, and it sets up finding S1.
-4. **S1 — centralize the fundamental ↔ JS mapping** into one shared table consumed by both directions. Medium effort; do it right after D2 since they touch the same area.
+1. ✅ **D1 — consolidate the GValue descriptor, `GVALUE_SIZE`, and library name.** Completed. `LIBGOBJECT`, `GVALUE_SIZE`, and a single `GVALUE_BORROWED` descriptor are exported from `gtype.ts` and imported everywhere; the four descriptor copies, two size copies, and sixteen string literals are gone (the literal now appears exactly once).
+2. ✅ **PA2 — unify the two `g_object_new_with_properties` paths.** Completed. Both `constructGObject` and `Object.newWithProperties` route through one `objectNewWithProperties` helper in `object.ts`. This also corrected `newWithProperties`, which declared a `borrowed` return where `g_object_new_with_properties` transfers `full` ownership.
+3. ✅ **D2 — collapse `gobject/types.ts`** from 22 getters to a table-driven factory. Completed. One `{ INVALID: "void", … }` name table drives memoizing getters built in a loop; `INVALID`/`NONE` now share a single cache entry. 130 lines → 67.
+4. ✅ **S1 — centralize the fundamental ↔ JS mapping.** Completed. One fundamental-keyed `{ to, from }` table in `gvalue.ts` is consumed by both the `fromJS` write path and the `Value.prototype.toJS` read path; the `valueFromFundamentalFactory` if-ladder and the `getFundamentalGetters` map are gone, and the `newCharValue`/PARAM special cases fold into the table.
 5. ✅ **PA1 — rebind the `cairo/` module on `t.fn`.** Completed. Every cairo C symbol is bound once at module load, mirroring `gl/gl.ts`; hot-path per-call descriptor allocation is eliminated. The one genuinely dynamic call (`ImageSurface.getData`, runtime struct size) remains as `call()`.
 6. ✅ **D3 — fold the cairo file-surface boilerplate** into a shared factory. Completed as part of the PA1 pass via `fileSurfaceCreate` in `common.ts`.
