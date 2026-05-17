@@ -5,14 +5,15 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 
 use ::libffi::low as libffi_low;
 use ::libffi::middle as libffi;
+use napi::JsFunction;
 
 use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
 use crate::types::{FfiEncoder as _, RawPtrCodec as _, Type};
-use crate::value::{JsCallbackRef, Value};
+use crate::value::{JsRef, Value};
 
 pub struct TrampolineData {
-    pub js_func: Arc<JsCallbackRef>,
+    pub js_func: Arc<JsRef<JsFunction>>,
     pub arg_types: Vec<Type>,
     pub return_type: Type,
     pub user_data_index: Option<usize>,

@@ -35,10 +35,10 @@ use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use gtk4::glib;
 use napi::bindgen_prelude::{FromNapiValue, Unknown};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
-use napi::{Env, Status};
+use napi::{Env, JsFunction, Status};
 
 use crate::error_reporter::NativeErrorReporter;
-use crate::value::{JsCallbackRef, Value};
+use crate::value::{JsRef, Value};
 use crate::wait_signal::WaitSignal;
 
 type GlibTask = Box<dyn FnOnce() + Send + 'static>;
@@ -46,7 +46,7 @@ type GlibTask = Box<dyn FnOnce() + Send + 'static>;
 pub type WakeJsTsfn = ThreadsafeFunction<(), (), (), Status, false, true>;
 
 struct NodeCallback {
-    callback: Arc<JsCallbackRef>,
+    callback: Arc<JsRef<JsFunction>>,
     args: Vec<Value>,
     capture_result: bool,
     result_tx: mpsc::Sender<anyhow::Result<Value>>,
@@ -293,7 +293,7 @@ impl Mailbox {
     /// calls progress.
     pub fn invoke_node_and_wait(
         &self,
-        callback: &Arc<JsCallbackRef>,
+        callback: &Arc<JsRef<JsFunction>>,
         args: Vec<Value>,
         capture_result: bool,
     ) -> anyhow::Result<Value> {
@@ -353,7 +353,7 @@ impl Mailbox {
 
     fn execute_callback(
         env: Env,
-        callback: &Arc<JsCallbackRef>,
+        callback: &Arc<JsRef<JsFunction>>,
         args: Vec<Value>,
         capture_result: bool,
     ) -> anyhow::Result<Value> {

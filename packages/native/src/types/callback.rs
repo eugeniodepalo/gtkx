@@ -7,7 +7,7 @@ use gtk4::glib::{
     translate::{FromGlibPtrFull as _, ToGlibPtr as _},
 };
 use libffi::middle as libffi;
-use napi::{Env, JsObject};
+use napi::{Env, JsFunction, JsObject};
 
 use crate::callback::ClosureGuard;
 use crate::dispatch::Mailbox;
@@ -16,10 +16,10 @@ use crate::ffi::{self, FfiStorage};
 use crate::managed::{Boxed, NativeValue};
 use crate::types::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, Type};
 use crate::value;
-use crate::value::{Callback, JsCallbackRef};
+use crate::value::{Callback, JsRef};
 
 struct ClosureContext {
-    js_func: Arc<JsCallbackRef>,
+    js_func: Arc<JsRef<JsFunction>>,
     arg_types: Vec<Type>,
 }
 

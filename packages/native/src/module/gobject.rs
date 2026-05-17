@@ -18,7 +18,7 @@ use crate::error_reporter::NativeErrorReporter;
 use crate::managed::NativeHandle;
 use crate::trampoline::{TrampolineData, TrampolineState};
 use crate::types::Type;
-use crate::value::JsCallbackRef;
+use crate::value::JsRef;
 
 #[cfg_attr(test, allow(dead_code))]
 struct FindObjectPropertyRequest {
@@ -121,7 +121,7 @@ pub fn get_instance_gtype<'env>(
 #[cfg_attr(test, allow(dead_code))]
 struct RawVfunc {
     byte_offset: usize,
-    js_func: Arc<JsCallbackRef>,
+    js_func: Arc<JsRef<JsFunction>>,
     arg_types: Vec<Type>,
     return_type: Type,
 }
@@ -457,7 +457,7 @@ fn parse_vfunc(env: &Env, item: Unknown<'_>) -> napi::Result<RawVfunc> {
 
     let arg_types = parse_type_array(env, arg_types_prop)?;
     let return_type = Type::from_js_value(env, return_type_prop)?;
-    let js_func = Arc::new(JsCallbackRef::from_js_function(env, &handler)?);
+    let js_func = Arc::new(JsRef::from_js_value(env, &handler)?);
 
     Ok(RawVfunc {
         byte_offset: byte_offset as usize,

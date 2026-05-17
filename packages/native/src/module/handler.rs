@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use napi::Env;
 use napi::bindgen_prelude::*;
+use napi::{Env, JsObject};
 
 use crate::dispatch;
 use crate::managed::NativeHandle;
-use crate::value::{JsObjectRefValue, Value};
+use crate::value::{JsRef, Value};
 
 #[cfg_attr(test, allow(dead_code))]
 pub trait ModuleRequest: Sized + Send + 'static {
@@ -98,7 +98,7 @@ impl ModuleResponse for () {
 }
 
 #[cfg_attr(test, allow(dead_code))]
-pub type RefUpdate = (Arc<JsObjectRefValue>, Value);
+pub type RefUpdate = (Arc<JsRef<JsObject>>, Value);
 
 impl ModuleResponse for (Value, Vec<RefUpdate>) {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {

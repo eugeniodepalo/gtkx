@@ -12,156 +12,104 @@
 //! - Arrays and references
 
 use std::ffi::c_void;
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::FromGlibPtrNone as _, value::ToValue as _};
 use napi::bindgen_prelude::*;
 use napi::sys;
-use napi::{Env, JsFunction, JsObject, NapiRaw as _, ValueType};
+use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, ValueType};
 
 use crate::error_reporter::NativeErrorReporter;
 use crate::managed::NativeHandle;
 use crate::types::{FfiDecoder, GlibValueCodec, Type};
 use crate::{arg::Arg, ffi};
 
-/// Send-safe napi reference to a JavaScript function.
+/// Send-safe napi reference to a JavaScript value of type `T`.
 ///
 /// Wraps a raw `napi_ref` paired with its `napi_env`. Sending the ref across
 /// threads is safe because the contained pointer is opaque; only the JS thread
-/// dereferences it via `get_value`. The reference is released on `Drop`.
-pub struct JsCallbackRef {
-    raw: sys::napi_ref,
-    env: sys::napi_env,
-}
-
-unsafe impl Send for JsCallbackRef {}
-unsafe impl Sync for JsCallbackRef {}
-
-impl std::fmt::Debug for JsCallbackRef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("JsCallbackRef").finish_non_exhaustive()
-    }
-}
-
-impl Drop for JsCallbackRef {
-    fn drop(&mut self) {
-        let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
-        debug_assert_eq!(status, sys::Status::napi_ok);
-    }
-}
-
-impl JsCallbackRef {
-    pub fn from_js_function(env: &Env, func: &JsFunction) -> napi::Result<Self> {
-        let raw_value = unsafe { func.raw() };
-        let mut raw_ref = std::ptr::null_mut();
-        unsafe {
-            let status = sys::napi_create_reference(env.raw(), raw_value, 1, &mut raw_ref);
-            if status != sys::Status::napi_ok {
-                return Err(napi::Error::new(
-                    napi::Status::GenericFailure,
-                    "Failed to create function reference",
-                ));
-            }
-        }
-        Ok(Self {
-            raw: raw_ref,
-            env: env.raw(),
-        })
-    }
-
-    pub fn get_value(&self, env: &Env) -> napi::Result<JsFunction> {
-        use napi::NapiValue as _;
-        let mut raw_value = std::ptr::null_mut();
-        unsafe {
-            let status = sys::napi_get_reference_value(env.raw(), self.raw, &mut raw_value);
-            if status != sys::Status::napi_ok {
-                return Err(napi::Error::new(
-                    napi::Status::GenericFailure,
-                    "Failed to get function reference value",
-                ));
-            }
-            Ok(JsFunction::from_raw_unchecked(env.raw(), raw_value))
-        }
-    }
-}
-
-/// Send-safe napi reference to a JavaScript object.
+/// dereferences it via [`get_value`](Self::get_value). The reference is
+/// released on `Drop`.
 ///
-/// Mirrors [`JsCallbackRef`] but stores a reference to a `JsObject` rather than
-/// a `JsFunction`. Used by `Ref` values to write back updated `value` properties
-/// after an FFI call completes.
-pub struct JsObjectRefValue {
+/// `T` is the napi JS value kind the reference resolves to (e.g. [`JsFunction`]
+/// for callbacks, [`JsObject`] for `Ref` write-backs); it is tracked purely at
+/// the type level via [`PhantomData`].
+pub struct JsRef<T> {
     raw: sys::napi_ref,
     env: sys::napi_env,
+    _marker: PhantomData<T>,
 }
 
-unsafe impl Send for JsObjectRefValue {}
-unsafe impl Sync for JsObjectRefValue {}
+unsafe impl<T> Send for JsRef<T> {}
+unsafe impl<T> Sync for JsRef<T> {}
 
-impl std::fmt::Debug for JsObjectRefValue {
+impl<T> std::fmt::Debug for JsRef<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("JsObjectRefValue").finish_non_exhaustive()
+        f.debug_struct("JsRef").finish_non_exhaustive()
     }
 }
 
-impl Drop for JsObjectRefValue {
+impl<T> Drop for JsRef<T> {
     fn drop(&mut self) {
         let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
         debug_assert_eq!(status, sys::Status::napi_ok);
     }
 }
 
-impl JsObjectRefValue {
-    pub fn from_js_object(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let raw_value = unsafe { obj.raw() };
+impl<T: NapiRaw + NapiValue> JsRef<T> {
+    /// Creates a reference that keeps `value` alive so it can outlive the JS
+    /// call and be resolved later, possibly from another thread.
+    pub fn from_js_value(env: &Env, value: &T) -> napi::Result<Self> {
+        let raw_value = unsafe { value.raw() };
         let mut raw_ref = std::ptr::null_mut();
         unsafe {
             let status = sys::napi_create_reference(env.raw(), raw_value, 1, &mut raw_ref);
             if status != sys::Status::napi_ok {
                 return Err(napi::Error::new(
                     napi::Status::GenericFailure,
-                    "Failed to create object reference",
+                    "Failed to create reference",
                 ));
             }
         }
         Ok(Self {
             raw: raw_ref,
             env: env.raw(),
+            _marker: PhantomData,
         })
     }
 
-    pub fn get_value(&self, env: &Env) -> napi::Result<JsObject> {
-        use napi::NapiValue as _;
+    /// Resolves the reference back to its JavaScript value on the JS thread.
+    pub fn get_value(&self, env: &Env) -> napi::Result<T> {
         let mut raw_value = std::ptr::null_mut();
         unsafe {
             let status = sys::napi_get_reference_value(env.raw(), self.raw, &mut raw_value);
             if status != sys::Status::napi_ok {
                 return Err(napi::Error::new(
                     napi::Status::GenericFailure,
-                    "Failed to get object reference value",
+                    "Failed to get reference value",
                 ));
             }
-            Ok(JsObject::from_raw_unchecked(env.raw(), raw_value))
+            Ok(T::from_raw_unchecked(env.raw(), raw_value))
         }
     }
 }
 
 #[derive(Debug)]
 pub struct Callback {
-    pub js_func: Arc<JsCallbackRef>,
+    pub js_func: Arc<JsRef<JsFunction>>,
 }
 
 impl Callback {
     #[must_use]
-    pub fn new(js_func: Arc<JsCallbackRef>) -> Self {
+    pub fn new(js_func: Arc<JsRef<JsFunction>>) -> Self {
         Self { js_func }
     }
 
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
-        use napi::NapiValue as _;
         let func: JsFunction = unsafe { JsFunction::from_raw_unchecked(env.raw(), value.raw()) };
-        let func_ref = JsCallbackRef::from_js_function(env, &func)?;
+        let func_ref = JsRef::from_js_value(env, &func)?;
         Ok(Self::new(Arc::new(func_ref)))
     }
 
@@ -182,7 +130,7 @@ impl Clone for Callback {
 #[derive(Debug)]
 pub struct Ref {
     pub value: Box<Value>,
-    pub js_obj: Arc<JsObjectRefValue>,
+    pub js_obj: Arc<JsRef<JsObject>>,
 }
 
 impl Clone for Ref {
@@ -196,7 +144,7 @@ impl Clone for Ref {
 
 impl Ref {
     #[must_use]
-    pub fn new(value: Value, js_obj: Arc<JsObjectRefValue>) -> Self {
+    pub fn new(value: Value, js_obj: Arc<JsRef<JsObject>>) -> Self {
         Self {
             value: Box::new(value),
             js_obj,
@@ -204,11 +152,10 @@ impl Ref {
     }
 
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
-        use napi::NapiValue as _;
         let obj: JsObject = unsafe { JsObject::from_raw_unchecked(env.raw(), value.raw()) };
         let value_prop: Unknown<'_> = obj.get_named_property("value")?;
         let inner = Value::from_js_value(env, value_prop)?;
-        let js_obj_ref = JsObjectRefValue::from_js_object(env, &obj)?;
+        let js_obj_ref = JsRef::from_js_value(env, &obj)?;
 
         Ok(Self::new(inner, Arc::new(js_obj_ref)))
     }

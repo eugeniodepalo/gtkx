@@ -49,7 +49,9 @@
 - **Why it matters:** Adding an array element type (or changing how, say, `Tagged` elements are laid out) means finding and editing all six ladders. Miss one and the result is either a silent wrong decode or a runtime `bail!("Unsupported … item type")` — the compiler cannot catch the omission because each ladder's `_`/explicit-rest arm absorbs it.
 - **Suggested change:** Introduce one `ItemCodec` abstraction keyed off `item_type` that exposes `element_size()`, `encode_contiguous()`, `decode_contiguous(ptr, len)`. Each `ArrayKind` path (`encode_garray`, `decode_storage`, `decode_sized_array`, …) then asks the `ItemCodec` once instead of re-matching the type. New element types become one `ItemCodec` arm.
 
-#### [MEDIUM] `JsCallbackRef` and `JsObjectRefValue` are the same struct written twice
+#### ✅ COMPLETED — [MEDIUM] `JsCallbackRef` and `JsObjectRefValue` are the same struct written twice
+
+> **Resolved.** A single `JsRef<T>` generic in `src/value.rs` — `{ raw, env, _marker: PhantomData<T> }`, with `unsafe impl<T> Send/Sync`, and `Debug`/`Drop` impls that need no bound on `T` — replaces both hand-written structs; `from_js_value`/`get_value` are bounded on `T: NapiRaw + NapiValue` and recover the type-specific behavior from `T`, exactly mirroring napi-rs's `Ref<T>` `PhantomData` shape. `Callback` now holds `Arc<JsRef<JsFunction>>` and `Ref` holds `Arc<JsRef<JsObject>>`; the five downstream sites (`dispatch.rs`, `trampoline.rs`, `types/callback.rs`, `module/gobject.rs`, `module/handler.rs`) were updated to the generic. jscpd no longer reports the `value.rs` self-clone.
 
 - **Where:** `src/value.rs` — `JsCallbackRef` (`33-87`) and `JsObjectRefValue` (`94-148`). jscpd: `56-63`≈`117-124`, `73-81`≈`134-142`.
 - **Standard:** `napi-rs`, `crates/napi/src/js_values/value_ref.rs`: a single `Ref<T>` carries `raw_ref: sys::napi_ref` + `PhantomData<T>`, is `unsafe impl<T> Send/Sync`, and recovers type-specific behavior from `T`'s `FromNapiValue`/`JsValue` impls. One generic type serves functions, objects, and arrays.
@@ -111,7 +113,7 @@
 1. ✅ **COMPLETED — Delete the dead code** (`Value::from_glib_values`, `FfiValue::storage()`) and tighten the `allow(dead_code)` scope — Dead Code finding. Minutes of effort, removes misleading API surface immediately.
 2. ✅ **COMPLETED — Generate `IntegerKind` + `FloatKind` codec impls from the numeric-kinds macro** — DRY-1 / Pattern Alignment. The `impl_numeric_codecs!` macro now generates all four codec trait impls for both kinds; `numeric.rs` reports 0 clones.
 3. ✅ **COMPLETED — Extract the shared pointer-codec helpers** (`write_object_ptr`, `write_return_object_ptr`, `null_guarded` in `src/types/raw_ptr.rs`) — DRY-4. The four pointer-typed codecs delegate their `RawPtrCodec` boilerplate to one reviewed module.
-4. **Collapse `JsCallbackRef`/`JsObjectRefValue` into one generic `JsRef<T>`** — DRY-2. Self-contained change in `value.rs`, modeled on napi-rs's `Ref<T>`.
+4. ✅ **COMPLETED — Collapse `JsCallbackRef`/`JsObjectRefValue` into one generic `JsRef<T>`** — DRY-2. One `JsRef<T>` generic in `value.rs`, modeled on napi-rs's `Ref<T>`; `Callback`/`Ref` hold `JsRef<JsFunction>`/`JsRef<JsObject>`.
 5. **Unify `RefType`'s `decode_*_inner` with the inner types' own decoders** — DRY-5. Removes a genuine correctness hazard (ownership rules duplicated per type).
 6. **Split `register_class` out of `module/gobject.rs`** — SRP finding. Mechanical move; best done the next time that subsystem is touched.
 7. **Introduce an `ItemCodec` abstraction for `array.rs`** — DRY-3. Highest structural payoff but the largest effort; sequence it after the cheaper wins so the file is calmer when restructured.
