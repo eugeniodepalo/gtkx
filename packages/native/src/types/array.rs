@@ -183,6 +183,65 @@ fn encode_boolean_array(values: &[i32]) -> ffi::FfiValue {
     ffi::FfiValue::Storage(values.to_vec().into())
 }
 
+/// The native representation of one array element, resolved once from an
+/// [`ArrayType`]'s `item_type`.
+///
+/// [`ItemCodec::resolve`] is the single classifier that maps a [`Type`] to its
+/// array representation, or rejects it as unsupported. Sizing, encoding, and
+/// decoding then each match this closed set exhaustively, so the compiler flags
+/// any element kind a new operation forgets to handle.
+#[derive(Debug, Clone, Copy)]
+enum ItemCodec {
+    /// `Type::Integer`: a fixed-width integer encoded with range checking.
+    Integer(IntegerKind),
+    /// `Type::Tagged`: an integer-storage element encoded without range
+    /// checking, since the tag already constrains its value range.
+    Tagged(IntegerKind),
+    /// `Type::Float`.
+    Float(FloatKind),
+    /// `Type::Boolean`, stored as a C `int`.
+    Boolean,
+    /// A pointer-sized handle element: `GObject`/`Boxed`/`Struct`/`Fundamental`.
+    Pointer,
+    /// A null-terminated C string element.
+    String,
+}
+
+impl ItemCodec {
+    /// Resolves the array representation of `item_type`, or `None` when the
+    /// type cannot appear as an array element.
+    fn resolve(item_type: &Type) -> Option<Self> {
+        Some(match item_type {
+            Type::Integer(kind) => Self::Integer(*kind),
+            Type::Tagged(tagged) => Self::Tagged(tagged.storage),
+            Type::Float(kind) => Self::Float(*kind),
+            Type::Boolean(_) => Self::Boolean,
+            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
+                Self::Pointer
+            }
+            Type::String(_) => Self::String,
+            Type::Void(_)
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Ref(_)
+            | Type::Unichar(_) => return None,
+        })
+    }
+
+    /// The size in bytes of one element in a contiguous buffer.
+    fn element_size(self) -> usize {
+        match self {
+            Self::Integer(kind) | Self::Tagged(kind) => kind.byte_size(),
+            Self::Float(FloatKind::F32) => size_of::<f32>(),
+            Self::Float(FloatKind::F64) => size_of::<f64>(),
+            Self::Boolean => size_of::<i32>(),
+            Self::Pointer | Self::String => size_of::<*mut c_void>(),
+        }
+    }
+}
+
 /// Encodes JS array elements into the layout of a specific [`ArrayKind`].
 ///
 /// Only string and GObject-like elements vary by kind; scalar elements share
@@ -415,25 +474,61 @@ impl ArrayType {
     }
 
     fn item_element_size(&self) -> Option<usize> {
-        match &*self.item_type {
-            Type::Integer(int_type) => Some(int_type.byte_size()),
-            Type::Float(super::FloatKind::F32) => Some(4),
-            Type::Float(super::FloatKind::F64) => Some(8),
-            Type::Boolean(_) => Some(size_of::<i32>()),
-            Type::GObject(_)
-            | Type::Boxed(_)
-            | Type::Struct(_)
-            | Type::Fundamental(_)
-            | Type::String(_) => Some(std::mem::size_of::<*mut c_void>()),
-            Type::Tagged(t) => Some(t.storage.byte_size()),
-            Type::Void(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Ref(_)
-            | Type::Unichar(_) => None,
+        ItemCodec::resolve(&self.item_type).map(ItemCodec::element_size)
+    }
+
+    /// Resolves the [`ItemCodec`] for this array's element type, failing with a
+    /// `context`-specific message when the type cannot appear as an element.
+    fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {
+        ItemCodec::resolve(&self.item_type)
+            .ok_or_else(|| anyhow::anyhow!("Unsupported {context} item type: {:?}", self.item_type))
+    }
+
+    /// Decodes `len` elements laid out contiguously starting at `data`.
+    ///
+    /// Used for both `GArray` payloads and length-prefixed (`sized`/`fixed`)
+    /// arrays, which share an identical contiguous layout.
+    fn decode_contiguous(
+        &self,
+        codec: ItemCodec,
+        data: *const u8,
+        len: usize,
+    ) -> anyhow::Result<Vec<value::Value>> {
+        if len == 0 || data.is_null() {
+            return Ok(Vec::new());
         }
+        let values = match codec {
+            ItemCodec::Integer(kind) | ItemCodec::Tagged(kind) => kind
+                .read_slice(data, len)
+                .into_iter()
+                .map(value::Value::Number)
+                .collect(),
+            ItemCodec::Float(FloatKind::F32) => {
+                unsafe { std::slice::from_raw_parts(data.cast::<f32>(), len) }
+                    .iter()
+                    .map(|&v| value::Value::Number(f64::from(v)))
+                    .collect()
+            }
+            ItemCodec::Float(FloatKind::F64) => {
+                unsafe { std::slice::from_raw_parts(data.cast::<f64>(), len) }
+                    .iter()
+                    .copied()
+                    .map(value::Value::Number)
+                    .collect()
+            }
+            ItemCodec::Boolean => unsafe { std::slice::from_raw_parts(data.cast::<i32>(), len) }
+                .iter()
+                .map(|&v| value::Value::Boolean(v != 0))
+                .collect(),
+            ItemCodec::Pointer | ItemCodec::String => {
+                let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
+                return ptrs
+                    .iter()
+                    .map(|&item_ptr| self.item_type.decode(&ffi::FfiValue::Ptr(item_ptr)))
+                    .collect();
+            }
+        };
+        Ok(values)
     }
 
     pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
@@ -463,21 +558,20 @@ impl ArrayType {
             ArrayKind::GArray | ArrayKind::GByteArray => unreachable!(),
         };
 
-        match &*self.item_type {
-            Type::Integer(int_type) => {
-                encode_integer_array(&Self::extract_numbers(array)?, *int_type)
-            }
-            Type::Float(float_kind) => {
-                encode_float_array(&Self::extract_numbers(array)?, *float_kind)
-            }
-            Type::Boolean(_) => Ok(encode_boolean_array(&Self::extract_booleans(array)?)),
-            Type::String(_) => {
+        match self.item_codec("array")? {
+            ItemCodec::Integer(kind) => encode_integer_array(&Self::extract_numbers(array)?, kind),
+            ItemCodec::Tagged(kind) => Ok(ffi::FfiValue::Storage(
+                kind.to_ffi_storage(&Self::extract_numbers(array)?),
+            )),
+            ItemCodec::Float(kind) => encode_float_array(&Self::extract_numbers(array)?, kind),
+            ItemCodec::Boolean => Ok(encode_boolean_array(&Self::extract_booleans(array)?)),
+            ItemCodec::String => {
                 let cstrings = Self::extract_strings(array)?;
                 let dup_elements =
                     matches!(&*self.item_type, Type::String(s) if s.ownership.is_full());
                 encoder.encode_strings(cstrings, dup_elements, self.ownership)
             }
-            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
+            ItemCodec::Pointer => {
                 let handles = Self::extract_handles(array)?;
 
                 if let Some(element_size) = self.element_size {
@@ -501,17 +595,6 @@ impl ArrayType {
 
                 encoder.encode_handles(&handles, &self.item_type, self.ownership)
             }
-            Type::Tagged(t) => {
-                let values = Self::extract_numbers(array)?;
-                Ok(ffi::FfiValue::Storage(t.storage.to_ffi_storage(&values)))
-            }
-            Type::Void(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Ref(_)
-            | Type::Unichar(_) => bail!("Unsupported array item type: {:?}", self.item_type),
         }
     }
 
@@ -548,7 +631,7 @@ impl ArrayType {
 
     fn append_integer_values_to_garray(
         g_array: *mut glib::ffi::GArray,
-        int_type: &super::IntegerKind,
+        int_type: super::IntegerKind,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
         let mut buf = [0u8; size_of::<i64>()];
@@ -563,7 +646,7 @@ impl ArrayType {
 
     fn append_float_values_to_garray(
         g_array: *mut glib::ffi::GArray,
-        float_kind: &super::FloatKind,
+        float_kind: super::FloatKind,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
         for n in Self::extract_numbers(array)? {
@@ -613,14 +696,12 @@ impl ArrayType {
         g_array: *mut glib::ffi::GArray,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
-        match &*self.item_type {
-            Type::Integer(int_type) => {
-                Self::append_integer_values_to_garray(g_array, int_type, array)
+        match self.item_codec("GArray")? {
+            ItemCodec::Integer(kind) | ItemCodec::Tagged(kind) => {
+                Self::append_integer_values_to_garray(g_array, kind, array)
             }
-            Type::Float(float_kind) => {
-                Self::append_float_values_to_garray(g_array, float_kind, array)
-            }
-            Type::Boolean(_) => {
+            ItemCodec::Float(kind) => Self::append_float_values_to_garray(g_array, kind, array),
+            ItemCodec::Boolean => {
                 for b in Self::extract_booleans(array)? {
                     unsafe {
                         glib::ffi::g_array_append_vals(
@@ -632,10 +713,8 @@ impl ArrayType {
                 }
                 Ok(())
             }
-            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
-                self.append_handle_values_to_garray(g_array, array)
-            }
-            Type::String(_) => {
+            ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),
+            ItemCodec::String => {
                 for cstr in Self::extract_strings(array)? {
                     let dup = unsafe { glib::ffi::g_strdup(cstr.as_ptr()) };
                     unsafe {
@@ -647,16 +726,6 @@ impl ArrayType {
                     }
                 }
                 Ok(())
-            }
-            Type::Tagged(t) => Self::append_integer_values_to_garray(g_array, &t.storage, array),
-            Type::Void(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Ref(_)
-            | Type::Unichar(_) => {
-                bail!("Unsupported GArray item type: {:?}", self.item_type)
             }
         }
     }
@@ -790,69 +859,11 @@ impl ArrayType {
             return Ok(value::Value::Array(vec![]));
         };
 
+        let codec = self.item_codec("GArray")?;
         let g_array = array_ptr as *const glib::ffi::GArray;
         let data = unsafe { (*g_array).data as *const u8 };
         let len = unsafe { (*g_array).len as usize };
-
-        let values = match &*self.item_type {
-            Type::Integer(int_type) => {
-                let f64_values = int_type.read_slice(data, len);
-                f64_values.into_iter().map(value::Value::Number).collect()
-            }
-            Type::Float(float_kind) => match float_kind {
-                super::FloatKind::F32 => unsafe {
-                    std::slice::from_raw_parts(data as *const f32, len)
-                        .iter()
-                        .map(|&v| value::Value::Number(v as f64))
-                        .collect()
-                },
-                super::FloatKind::F64 => unsafe {
-                    std::slice::from_raw_parts(data as *const f64, len)
-                        .iter()
-                        .map(|&v| value::Value::Number(v))
-                        .collect()
-                },
-            },
-            Type::Boolean(_) => unsafe {
-                std::slice::from_raw_parts(data as *const i32, len)
-                    .iter()
-                    .map(|&v| value::Value::Boolean(v != 0))
-                    .collect()
-            },
-            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
-                let ptrs = unsafe { std::slice::from_raw_parts(data as *const *mut c_void, len) };
-                let mut values = Vec::with_capacity(len);
-                for &item_ptr in ptrs {
-                    let item_ffi = ffi::FfiValue::Ptr(item_ptr);
-                    values.push(self.item_type.decode(&item_ffi)?);
-                }
-                values
-            }
-            Type::String(_) => {
-                let ptrs = unsafe { std::slice::from_raw_parts(data as *const *const c_char, len) };
-                let mut values = Vec::with_capacity(len);
-                for &str_ptr in ptrs {
-                    if str_ptr.is_null() {
-                        values.push(value::Value::Null);
-                    } else {
-                        let c_str = unsafe { CStr::from_ptr(str_ptr) };
-                        values.push(value::Value::String(c_str.to_string_lossy().into_owned()));
-                    }
-                }
-                values
-            }
-            Type::Tagged(t) => {
-                let f64_values = t.storage.read_slice(data, len);
-                f64_values.into_iter().map(value::Value::Number).collect()
-            }
-            Type::Void(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Ref(_)
-            | Type::Unichar(_) => bail!("Unsupported GArray item type: {:?}", self.item_type),
-        };
+        let values = self.decode_contiguous(codec, data, len)?;
 
         if self.ownership.is_full() {
             let storage_owns = matches!(ffi_value, ffi::FfiValue::Storage(_));
@@ -956,158 +967,46 @@ impl ArrayType {
     }
 
     fn decode_storage(&self, storage: &FfiStorage) -> anyhow::Result<value::Value> {
-        let values = match &*self.item_type {
-            Type::Integer(int_type) => {
-                let f64_vec = int_type.vec_to_f64(storage)?;
-                f64_vec.into_iter().map(value::Value::Number).collect()
-            }
-            Type::Float(float_kind) => match float_kind {
-                FloatKind::F32 => {
-                    let f32_vec = storage.as_f32_slice()?;
-                    f32_vec
-                        .iter()
-                        .map(|v| value::Value::Number(*v as f64))
-                        .collect()
-                }
-                FloatKind::F64 => {
-                    let f64_vec = storage.as_f64_slice()?;
-                    f64_vec.iter().map(|v| value::Value::Number(*v)).collect()
-                }
-            },
-            Type::String(_) => {
-                let cstrings = storage.as_cstring_array()?;
-                cstrings
-                    .iter()
-                    .map(|cstr| Ok(value::Value::String(cstr.to_str()?.to_string())))
-                    .collect::<anyhow::Result<Vec<value::Value>>>()?
-            }
-            Type::Boolean(_) => {
-                let bool_vec = storage.as_bool_slice()?;
-                bool_vec
-                    .iter()
-                    .map(|v| value::Value::Boolean(*v != 0))
-                    .collect()
-            }
-            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
-                let handles = storage.as_object_array()?;
-                handles
-                    .iter()
-                    .map(|handle| value::Value::Object(handle.clone()))
-                    .collect()
-            }
-            Type::Tagged(t) => {
-                let f64_vec = t.storage.vec_to_f64(storage)?;
-                f64_vec.into_iter().map(value::Value::Number).collect()
-            }
-            Type::Void(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Ref(_)
-            | Type::Unichar(_) => bail!(
-                "Unsupported array item type for ffi value conversion: {:?}",
-                self.item_type
-            ),
+        let values = match self.item_codec("array")? {
+            ItemCodec::Integer(kind) | ItemCodec::Tagged(kind) => kind
+                .vec_to_f64(storage)?
+                .into_iter()
+                .map(value::Value::Number)
+                .collect(),
+            ItemCodec::Float(FloatKind::F32) => storage
+                .as_f32_slice()?
+                .iter()
+                .map(|v| value::Value::Number(f64::from(*v)))
+                .collect(),
+            ItemCodec::Float(FloatKind::F64) => storage
+                .as_f64_slice()?
+                .iter()
+                .map(|v| value::Value::Number(*v))
+                .collect(),
+            ItemCodec::Boolean => storage
+                .as_bool_slice()?
+                .iter()
+                .map(|v| value::Value::Boolean(*v != 0))
+                .collect(),
+            ItemCodec::Pointer => storage
+                .as_object_array()?
+                .iter()
+                .map(|handle| value::Value::Object(handle.clone()))
+                .collect(),
+            ItemCodec::String => storage
+                .as_cstring_array()?
+                .iter()
+                .map(|cstr| Ok(value::Value::String(cstr.to_str()?.to_string())))
+                .collect::<anyhow::Result<Vec<value::Value>>>()?,
         };
 
         Ok(value::Value::Array(values))
     }
 
     fn decode_sized_array(&self, ptr: *mut c_void, length: usize) -> anyhow::Result<value::Value> {
-        match &*self.item_type {
-            Type::Integer(int_type) => Ok(Self::decode_sized_byte_array(ptr, length, int_type)),
-            Type::Float(float_kind) => Ok(Self::decode_sized_float_array(ptr, length, *float_kind)),
-            Type::Boolean(_) => Ok(Self::decode_sized_bool_array(ptr, length)),
-            Type::GObject(_)
-            | Type::Boxed(_)
-            | Type::Struct(_)
-            | Type::String(_)
-            | Type::Fundamental(_) => self.decode_sized_ptr_array(ptr, length),
-            Type::Tagged(t) => Ok(Self::decode_sized_byte_array(ptr, length, &t.storage)),
-            Type::Void(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Ref(_)
-            | Type::Unichar(_) => bail!(
-                "Unsupported item type for sized array: {:?}",
-                self.item_type
-            ),
-        }
-    }
-
-    fn decode_sized_ptr_array(
-        &self,
-        ptr: *mut c_void,
-        length: usize,
-    ) -> anyhow::Result<value::Value> {
-        let ptr_array = ptr as *const *mut c_void;
-        let mut values = Vec::with_capacity(length);
-        for i in 0..length {
-            let item_ptr = unsafe { *ptr_array.add(i) };
-            let item_ffi = ffi::FfiValue::Ptr(item_ptr);
-            values.push(self.item_type.decode(&item_ffi)?);
-        }
+        let codec = self.item_codec("sized array")?;
+        let values = self.decode_contiguous(codec, ptr.cast::<u8>(), length)?;
         Ok(value::Value::Array(values))
-    }
-
-    fn decode_sized_float_array(
-        ptr: *mut c_void,
-        length: usize,
-        float_kind: super::FloatKind,
-    ) -> value::Value {
-        if ptr.is_null() {
-            return value::Value::Array(vec![]);
-        }
-
-        let values = match float_kind {
-            super::FloatKind::F32 => unsafe {
-                std::slice::from_raw_parts(ptr as *const f32, length)
-                    .iter()
-                    .map(|&v| value::Value::Number(v as f64))
-                    .collect()
-            },
-            super::FloatKind::F64 => unsafe {
-                std::slice::from_raw_parts(ptr as *const f64, length)
-                    .iter()
-                    .map(|&v| value::Value::Number(v))
-                    .collect()
-            },
-        };
-
-        value::Value::Array(values)
-    }
-
-    fn decode_sized_bool_array(ptr: *mut c_void, length: usize) -> value::Value {
-        if ptr.is_null() {
-            return value::Value::Array(vec![]);
-        }
-
-        let values = unsafe {
-            std::slice::from_raw_parts(ptr as *const i32, length)
-                .iter()
-                .map(|&v| value::Value::Boolean(v != 0))
-                .collect()
-        };
-
-        value::Value::Array(values)
-    }
-
-    fn decode_sized_byte_array(
-        ptr: *mut c_void,
-        length: usize,
-        int_kind: &super::IntegerKind,
-    ) -> value::Value {
-        if ptr.is_null() {
-            return value::Value::Array(vec![]);
-        }
-
-        let f64_values = int_kind.read_slice(ptr as *const u8, length);
-        let values = f64_values.into_iter().map(value::Value::Number).collect();
-
-        value::Value::Array(values)
     }
 
     /// # Safety

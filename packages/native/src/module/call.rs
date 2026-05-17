@@ -127,6 +127,12 @@ pub fn call<'env>(
 ) -> napi::Result<Unknown<'env>> {
     let parsed_args = Arg::from_js_array(env, &args)?;
     let result_type = Type::from_js_value(env, return_type)?;
+    if !result_type.can_be_return_type() {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("'{result_type}' cannot be used as a function return type"),
+        ));
+    }
     let request = CallRequest {
         library_name: library,
         symbol_name: symbol,

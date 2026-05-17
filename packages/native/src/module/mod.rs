@@ -10,4 +10,5 @@ mod gobject;
 pub(crate) mod handler;
 mod init;
 mod object;
+mod register_class;
 mod stop;

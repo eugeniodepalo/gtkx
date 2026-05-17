@@ -310,18 +310,7 @@ impl Value {
             ValueType::Object => {
                 if value.is_array()? {
                     let arr: Array = unsafe { Array::from_napi_value(env.raw(), value.raw())? };
-                    let len = arr.len();
-                    let mut values = Vec::with_capacity(len as usize);
-                    for i in 0..len {
-                        let item: Unknown<'_> = arr.get(i)?.ok_or_else(|| {
-                            napi::Error::new(
-                                napi::Status::GenericFailure,
-                                format!("Array element {i} missing"),
-                            )
-                        })?;
-                        values.push(Self::from_js_value(env, item)?);
-                    }
-                    Ok(Self::Array(values))
+                    Ok(Self::Array(map_js_array(env, &arr, Self::from_js_value)?))
                 } else {
                     let r = Ref::from_js_value(env, value)?;
                     Ok(Self::Ref(r))
@@ -382,4 +371,28 @@ impl Value {
     pub fn from_glib_value(gvalue: &glib::Value, ty: &Type) -> anyhow::Result<Self> {
         ty.from_glib_value(gvalue)
     }
+}
+
+/// Maps each element of a JavaScript array through `convert`, collecting the
+/// results in order.
+///
+/// Fails if any index is absent (a sparse hole), naming the offending index.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+pub(crate) fn map_js_array<T>(
+    env: &Env,
+    array: &Array,
+    mut convert: impl FnMut(&Env, Unknown<'_>) -> napi::Result<T>,
+) -> napi::Result<Vec<T>> {
+    let len = array.len();
+    let mut items = Vec::with_capacity(len as usize);
+    for index in 0..len {
+        let item: Unknown<'_> = array.get(index)?.ok_or_else(|| {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("array element {index} is missing"),
+            )
+        })?;
+        items.push(convert(env, item)?);
+    }
+    Ok(items)
 }

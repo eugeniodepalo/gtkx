@@ -36,20 +36,7 @@ impl Arg {
     }
 
     pub fn from_js_array(env: &Env, value: &Array) -> napi::Result<Vec<Self>> {
-        let len = value.len();
-        let mut args = Vec::with_capacity(len as usize);
-
-        for i in 0..len {
-            let item: Unknown<'_> = value.get(i)?.ok_or_else(|| {
-                napi::Error::new(
-                    napi::Status::GenericFailure,
-                    format!("Argument array element {i} missing"),
-                )
-            })?;
-            args.push(Self::from_js_value(env, item)?);
-        }
-
-        Ok(args)
+        crate::value::map_js_array(env, value, Self::from_js_value)
     }
 
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {

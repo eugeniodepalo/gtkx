@@ -766,6 +766,81 @@ fn from_cif_value_ref_float() {
 }
 
 #[test]
+fn from_cif_value_ref_gobject() {
+    common::ensure_gtk_init();
+
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr() as *mut c_void;
+
+    let ptr_storage: Box<*mut c_void> = Box::new(obj_ptr);
+    let storage_ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+    let storage = ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
+    let cif_value = ffi::FfiValue::Storage(storage);
+
+    let ref_type = native::types::RefType::new(Type::GObject(GObjectType {
+        ownership: Ownership::Borrowed,
+    }));
+    let type_ = Type::Ref(ref_type);
+
+    let result = type_
+        .decode(&cif_value)
+        .expect("Ref<GObject> decode failed");
+    if let Value::Object(handle) = result {
+        assert_eq!(handle.ptr(), obj_ptr);
+    } else {
+        panic!("Expected Value::Object");
+    }
+}
+
+#[test]
+fn from_cif_value_ref_gobject_null_inner() {
+    common::ensure_gtk_init();
+
+    let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
+    let storage_ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+    let storage = ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
+    let cif_value = ffi::FfiValue::Storage(storage);
+
+    let ref_type = native::types::RefType::new(Type::GObject(GObjectType {
+        ownership: Ownership::Borrowed,
+    }));
+    let type_ = Type::Ref(ref_type);
+
+    let result = type_
+        .decode(&cif_value)
+        .expect("Ref<GObject> null decode failed");
+    assert!(matches!(result, Value::Null));
+}
+
+#[test]
+fn from_cif_value_ref_boxed() {
+    common::ensure_gtk_init();
+
+    let gtype = gdk::RGBA::static_type();
+    let boxed_ptr = common::allocate_test_boxed(gtype);
+
+    let ptr_storage: Box<*mut c_void> = Box::new(boxed_ptr);
+    let storage_ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+    let storage = ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
+    let cif_value = ffi::FfiValue::Storage(storage);
+
+    let ref_type = native::types::RefType::new(Type::Boxed(BoxedType {
+        ownership: Ownership::Borrowed,
+        type_name: "GdkRGBA".to_string(),
+        library: None,
+        get_type_fn: None,
+    }));
+    let type_ = Type::Ref(ref_type);
+
+    let result = type_.decode(&cif_value).expect("Ref<Boxed> decode failed");
+    assert!(matches!(result, Value::Object(_)));
+
+    unsafe {
+        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), boxed_ptr);
+    }
+}
+
+#[test]
 fn value_to_glib_value_number() {
     common::ensure_gtk_init();
 

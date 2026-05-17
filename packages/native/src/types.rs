@@ -58,17 +58,7 @@ pub(crate) fn parse_callback_arg_and_return_types(
         ));
     }
     let arg_types_arr: Array = unsafe { Array::from_napi_value(env.raw(), arg_types_prop.raw())? };
-    let arr_len = arg_types_arr.len();
-    let mut arg_types = Vec::with_capacity(arr_len as usize);
-    for i in 0..arr_len {
-        let item: Unknown<'_> = arg_types_arr.get(i)?.ok_or_else(|| {
-            napi::Error::new(
-                napi::Status::GenericFailure,
-                format!("'argTypes[{i}]' missing"),
-            )
-        })?;
-        arg_types.push(Type::from_js_value(env, item)?);
-    }
+    let arg_types = crate::value::map_js_array(env, &arg_types_arr, Type::from_js_value)?;
 
     let return_type_prop: Unknown<'_> = obj.get_named_property("returnType")?;
     let return_type = Box::new(Type::from_js_value(env, return_type_prop).map_err(|_| {
@@ -363,5 +353,57 @@ impl Type {
                 format!("Unknown type: {other}"),
             )),
         }
+    }
+
+    /// Whether this type may occupy a function's return slot.
+    ///
+    /// `Callback`, `Trampoline`, and `Ref` describe argument-only shapes — a
+    /// callback handler or an out-parameter — and have no return-slot codec
+    /// (their [`FfiEncoder::call_cif`] implementations bail). Callers consult
+    /// this at the descriptor-parsing boundary to reject a malformed return
+    /// type with a precise `InvalidArg` error.
+    #[must_use]
+    pub fn can_be_return_type(&self) -> bool {
+        !matches!(self, Self::Callback(_) | Self::Trampoline(_) | Self::Ref(_))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::trampoline::TrampolineScope;
+    use super::*;
+
+    #[test]
+    fn scalar_and_pointer_types_can_be_return_types() {
+        assert!(Type::Void(VoidType).can_be_return_type());
+        assert!(Type::Integer(IntegerKind::I32).can_be_return_type());
+        assert!(Type::Boolean(BooleanType).can_be_return_type());
+    }
+
+    #[test]
+    fn callback_cannot_be_return_type() {
+        let callback = CallbackType {
+            arg_types: Vec::new(),
+            return_type: Box::new(Type::Void(VoidType)),
+        };
+        assert!(!Type::Callback(callback).can_be_return_type());
+    }
+
+    #[test]
+    fn trampoline_cannot_be_return_type() {
+        let trampoline = TrampolineType {
+            arg_types: Vec::new(),
+            return_type: Box::new(Type::Void(VoidType)),
+            has_destroy: false,
+            user_data_index: None,
+            scope: TrampolineScope::Call,
+        };
+        assert!(!Type::Trampoline(trampoline).can_be_return_type());
+    }
+
+    #[test]
+    fn ref_cannot_be_return_type() {
+        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
+        assert!(!Type::Ref(ref_type).can_be_return_type());
     }
 }
