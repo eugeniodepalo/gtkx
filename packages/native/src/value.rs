@@ -252,10 +252,6 @@ impl Value {
         }
     }
 
-    pub fn from_ffi_value(ffi_value: &ffi::FfiValue, ty: &Type) -> anyhow::Result<Self> {
-        ty.decode(ffi_value)
-    }
-
     pub fn from_ffi_value_with_args(
         ffi_value: &ffi::FfiValue,
         ty: &Type,
@@ -438,12 +434,5 @@ impl Value {
 
     pub fn from_glib_value(gvalue: &glib::Value, ty: &Type) -> anyhow::Result<Self> {
         ty.from_glib_value(gvalue)
-    }
-
-    pub fn from_glib_values(args: &[glib::Value], arg_types: &[Type]) -> anyhow::Result<Vec<Self>> {
-        args.iter()
-            .zip(arg_types.iter())
-            .map(|(gval, ty)| Self::from_glib_value(gval, ty))
-            .collect()
     }
 }

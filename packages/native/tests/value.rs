@@ -10,8 +10,8 @@ use gtk4::prelude::StaticType as _;
 
 use native::ffi;
 use native::types::{
-    ArrayKind, ArrayType, BooleanType, BoxedType, GObjectType, Ownership, StringType, Type,
-    VoidType,
+    ArrayKind, ArrayType, BooleanType, BoxedType, FfiDecoder, GObjectType, Ownership, StringType,
+    Type, VoidType,
 };
 use native::value::Value;
 
@@ -32,7 +32,7 @@ fn gobject_transfer_none_does_not_take_ownership() {
     let type_ = Type::GObject(gobject_type);
 
     let cif_value = ffi::FfiValue::Ptr(obj_ptr as *mut c_void);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
 
@@ -60,7 +60,7 @@ fn gobject_full_transfer_takes_ownership() {
     let type_ = Type::GObject(gobject_type);
 
     let cif_value = ffi::FfiValue::Ptr(obj_ptr as *mut c_void);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
 
@@ -79,7 +79,7 @@ fn gobject_null_returns_null_value() {
     let type_ = Type::GObject(gobject_type);
 
     let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Value::Null));
@@ -106,7 +106,7 @@ fn gobject_floating_ref_gets_sunk() {
     let type_ = Type::GObject(gobject_type);
 
     let cif_value = ffi::FfiValue::Ptr(obj_ptr as *mut c_void);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
 
@@ -129,7 +129,7 @@ fn string_transfer_none_does_not_free() {
     let type_ = Type::String(string_type);
 
     let cif_value = ffi::FfiValue::Ptr(ptr);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::String(s) = result.unwrap() {
@@ -157,7 +157,7 @@ fn string_full_transfer_frees_memory() {
     let type_ = Type::String(string_type);
 
     let cif_value = ffi::FfiValue::Ptr(allocated_ptr as *mut c_void);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::String(s) = result.unwrap() {
@@ -178,7 +178,7 @@ fn string_null_returns_null_value() {
     let type_ = Type::String(string_type);
 
     let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Value::Null));
@@ -200,7 +200,7 @@ fn boxed_transfer_none_creates_copy() {
     let type_ = Type::Boxed(boxed_type);
 
     let cif_value = ffi::FfiValue::Ptr(original_ptr);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
 
@@ -227,7 +227,7 @@ fn boxed_full_transfer_takes_ownership() {
     let type_ = Type::Boxed(boxed_type);
 
     let cif_value = ffi::FfiValue::Ptr(ptr);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
 }
@@ -245,7 +245,7 @@ fn boxed_null_returns_null_value() {
     let type_ = Type::Boxed(boxed_type);
 
     let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Value::Null));
@@ -277,7 +277,7 @@ fn glist_transfer_none_does_not_free_list() {
     let type_ = Type::Array(array_type);
 
     let cif_value = ffi::FfiValue::Ptr(list as *mut c_void);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -328,7 +328,7 @@ fn glist_full_transfer_frees_list() {
     let type_ = Type::Array(array_type);
 
     let cif_value = ffi::FfiValue::Ptr(list as *mut c_void);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -354,7 +354,7 @@ fn glist_null_returns_empty_array() {
     let type_ = Type::Array(array_type);
 
     let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -390,7 +390,7 @@ fn strv_transfer_none_does_not_free() {
     let type_ = Type::Array(array_type);
 
     let cif_value = ffi::FfiValue::Ptr(strv_ptr);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -441,7 +441,7 @@ fn strv_full_transfer_frees_strings() {
     let type_ = Type::Array(array_type);
 
     let cif_value = ffi::FfiValue::Ptr(strv as *mut c_void);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -684,7 +684,7 @@ fn from_cif_value_fundamental_gvariant_transfer_none() {
     let type_ = Type::Fundamental(fundamental_type);
 
     let cif_value = ffi::FfiValue::Ptr(variant as *mut c_void);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Object(_handle) = result.unwrap() {
@@ -711,7 +711,7 @@ fn from_cif_value_fundamental_null() {
     let type_ = Type::Fundamental(fundamental_type);
 
     let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Value::Null));
@@ -731,7 +731,7 @@ fn from_cif_value_ref_integer() {
 
     let storage = ffi::FfiStorage::new(ptr, ffi::FfiStorageKind::BoxedValue(boxed_value));
     let cif_value = ffi::FfiValue::Storage(storage);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Number(n) = result.unwrap() {
@@ -755,7 +755,7 @@ fn from_cif_value_ref_float() {
 
     let storage = ffi::FfiStorage::new(ptr, ffi::FfiStorageKind::BoxedValue(boxed_value));
     let cif_value = ffi::FfiValue::Storage(storage);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Number(n) = result.unwrap() {
@@ -866,7 +866,7 @@ fn glist_with_string_items() {
     let type_ = Type::Array(array_type);
 
     let cif_value = ffi::FfiValue::Ptr(list as *mut c_void);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -900,7 +900,7 @@ fn from_cif_value_struct_transfer_none_logs_warning() {
     let type_ = Type::Struct(struct_type);
 
     let cif_value = ffi::FfiValue::Ptr(struct_ptr);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Object(_handle) = result.unwrap() {
@@ -927,7 +927,7 @@ fn from_cif_value_struct_full_transfer() {
     let type_ = Type::Struct(struct_type);
 
     let cif_value = ffi::FfiValue::Ptr(struct_ptr);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Object(_handle) = result.unwrap() {
@@ -948,7 +948,7 @@ fn from_cif_value_struct_null_returns_null_value() {
     let type_ = Type::Struct(struct_type);
 
     let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Value::Null));
@@ -986,7 +986,7 @@ fn from_cif_value_struct_transfer_none_without_size_creates_unowned() {
     let type_ = Type::Struct(struct_type);
 
     let cif_value = ffi::FfiValue::Ptr(struct_ptr);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Object(_handle) = result.unwrap() {
@@ -1013,7 +1013,7 @@ fn from_cif_value_struct_owned_without_size() {
     let type_ = Type::Struct(struct_type);
 
     let cif_value = ffi::FfiValue::Ptr(struct_ptr);
-    let result = Value::from_ffi_value(&cif_value, &type_);
+    let result = type_.decode(&cif_value);
 
     assert!(result.is_ok());
     if let Value::Object(_handle) = result.unwrap() {

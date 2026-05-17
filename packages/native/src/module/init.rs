@@ -29,6 +29,7 @@ use crate::error_reporter::{ErrorReporterTsfn, NativeErrorReporter};
 use crate::glib_log_handler::GlibLogHandler;
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
     let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
         Mailbox::global().process_node_pending(*ctx.env);
@@ -90,6 +91,7 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
 /// `Error` whose message is `msg`. The event flows through Node's standard
 /// rejection handling so userland code can suppress or redirect it via
 /// `process.on('unhandledRejection', ...)`.
+#[cfg_attr(test, allow(dead_code))]
 fn emit_unhandled_rejection(env: &Env, msg: &str) {
     let raw_env = env.raw();
     unsafe {
@@ -150,6 +152,7 @@ fn emit_unhandled_rejection(env: &Env, msg: &str) {
     }
 }
 
+#[cfg_attr(test, allow(dead_code))]
 unsafe fn make_error_object(env: sys::napi_env, msg: &str) -> Option<sys::napi_value> {
     unsafe {
         let mut msg_value = std::ptr::null_mut();
@@ -173,6 +176,7 @@ unsafe fn make_error_object(env: sys::napi_env, msg: &str) -> Option<sys::napi_v
     }
 }
 
+#[cfg_attr(test, allow(dead_code))]
 unsafe fn make_resolved_promise(env: sys::napi_env) -> Option<sys::napi_value> {
     unsafe {
         let mut deferred = std::ptr::null_mut();

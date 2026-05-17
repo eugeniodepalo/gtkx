@@ -37,6 +37,7 @@ use crate::{
     value::Value,
 };
 
+#[cfg_attr(test, allow(dead_code))]
 struct CallRequest {
     library_name: String,
     symbol_name: String,
@@ -116,6 +117,7 @@ impl ModuleRequest for CallRequest {
 }
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn call<'env>(
     env: &'env Env,
     library: String,

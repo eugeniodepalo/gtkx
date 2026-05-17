@@ -20,6 +20,7 @@ use crate::trampoline::{TrampolineData, TrampolineState};
 use crate::types::Type;
 use crate::value::JsCallbackRef;
 
+#[cfg_attr(test, allow(dead_code))]
 struct FindObjectPropertyRequest {
     instance_addr: usize,
     property_name: CString,
@@ -56,6 +57,7 @@ impl ModuleRequest for FindObjectPropertyRequest {
 }
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn find_object_property<'env>(
     env: &'env Env,
     handle: &External<NativeHandle>,
@@ -72,6 +74,7 @@ pub fn find_object_property<'env>(
     )
 }
 
+#[cfg_attr(test, allow(dead_code))]
 struct GetInstanceGtypeRequest {
     instance_addr: usize,
 }
@@ -98,6 +101,7 @@ impl ModuleRequest for GetInstanceGtypeRequest {
 }
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn get_instance_gtype<'env>(
     env: &'env Env,
     handle: &External<NativeHandle>,
@@ -114,6 +118,7 @@ pub fn get_instance_gtype<'env>(
 ///
 /// The libffi closure is built on the `GLib` thread inside
 /// [`RawVfunc::into_built`], where the trampoline will eventually fire.
+#[cfg_attr(test, allow(dead_code))]
 struct RawVfunc {
     byte_offset: usize,
     js_func: Arc<JsCallbackRef>,
@@ -123,12 +128,14 @@ struct RawVfunc {
 
 /// JS-thread parse output for the vfunc overrides of one interface that the
 /// new class inherits from its parent.
+#[cfg_attr(test, allow(dead_code))]
 struct RawInterface {
     gtype: usize,
     vfuncs: Vec<RawVfunc>,
 }
 
 impl RawVfunc {
+    #[cfg_attr(test, allow(dead_code))]
     fn into_built(self) -> PreparedVfunc {
         let Self {
             byte_offset,
@@ -155,6 +162,7 @@ impl RawVfunc {
 }
 
 impl RawInterface {
+    #[cfg_attr(test, allow(dead_code))]
     fn into_built(self) -> PreparedInterface {
         PreparedInterface {
             gtype: self.gtype,
@@ -167,6 +175,7 @@ impl RawInterface {
 ///
 /// `code_ptr` is the libffi-generated C function pointer; `state` retains the
 /// `TrampolineData` and libffi closure for the lifetime of the type registration.
+#[cfg_attr(test, allow(dead_code))]
 struct PreparedVfunc {
     byte_offset: usize,
     code_ptr: *mut c_void,
@@ -178,11 +187,13 @@ struct PreparedVfunc {
 /// `gtype` identifies the interface; each vfunc's `byte_offset` is relative to
 /// the interface struct base. The overrides are written into the new class's
 /// own copy of the inherited interface vtable by [`install_interface_vfuncs`].
+#[cfg_attr(test, allow(dead_code))]
 struct PreparedInterface {
     gtype: usize,
     vfuncs: Vec<PreparedVfunc>,
 }
 
+#[cfg_attr(test, allow(dead_code))]
 unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mut c_void) {
     if class_data.is_null() {
         return;
@@ -206,6 +217,7 @@ unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mu
 /// allocated a per-type copy of every inherited interface vtable. Writing into
 /// that copy overrides the interface methods for the new type only, leaving the
 /// parent's vtable untouched.
+#[cfg_attr(test, allow(dead_code))]
 fn install_interface_vfuncs(class_ptr: *mut c_void, iface: PreparedInterface) {
     let iface_vtable = unsafe { gobject_ffi::g_type_interface_peek(class_ptr, iface.gtype) };
     if iface_vtable.is_null() {
@@ -226,6 +238,7 @@ fn install_interface_vfuncs(class_ptr: *mut c_void, iface: PreparedInterface) {
     }
 }
 
+#[cfg_attr(test, allow(dead_code))]
 struct RegisterClassRequest {
     name: CString,
     parent_gtype: usize,
@@ -234,6 +247,7 @@ struct RegisterClassRequest {
 }
 
 impl RegisterClassRequest {
+    #[cfg_attr(test, allow(dead_code))]
     fn query_parent_gtype(&self) -> anyhow::Result<gobject_ffi::GTypeQuery> {
         if self.parent_gtype == 0 {
             anyhow::bail!("parent gtype is invalid (G_TYPE_INVALID)");
@@ -278,6 +292,7 @@ impl RegisterClassRequest {
         Ok(())
     }
 
+    #[cfg_attr(test, allow(dead_code))]
     fn validate_layout(&self, query: &gobject_ffi::GTypeQuery) -> anyhow::Result<()> {
         let pointer_align = std::mem::align_of::<*mut c_void>();
         let pointer_size = std::mem::size_of::<*mut c_void>();
@@ -310,6 +325,7 @@ impl RegisterClassRequest {
     }
 }
 
+#[cfg_attr(test, allow(dead_code))]
 fn register_class_type(
     parent_gtype: usize,
     name_ptr: *const c_char,
@@ -383,6 +399,7 @@ impl ModuleRequest for RegisterClassRequest {
     }
 }
 
+#[cfg_attr(test, allow(dead_code))]
 fn parse_js_array<T>(
     env: &Env,
     prop: Unknown<'_>,
@@ -411,10 +428,12 @@ fn parse_js_array<T>(
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
+#[cfg_attr(test, allow(dead_code))]
 fn parse_type_array(env: &Env, prop: Unknown<'_>) -> napi::Result<Vec<Type>> {
     parse_js_array(env, prop, "types", Type::from_js_value)
 }
 
+#[cfg_attr(test, allow(dead_code))]
 fn parse_vfunc(env: &Env, item: Unknown<'_>) -> napi::Result<RawVfunc> {
     let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
     let byte_offset: f64 = obj.get_named_property("byteOffset")?;
@@ -448,6 +467,7 @@ fn parse_vfunc(env: &Env, item: Unknown<'_>) -> napi::Result<RawVfunc> {
     })
 }
 
+#[cfg_attr(test, allow(dead_code))]
 fn parse_interface(env: &Env, item: Unknown<'_>) -> napi::Result<RawInterface> {
     let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
     let gtype = obj.get_named_property::<f64>("gtype")? as usize;
@@ -462,6 +482,7 @@ fn parse_interface(env: &Env, item: Unknown<'_>) -> napi::Result<RawInterface> {
     Ok(RawInterface { gtype, vfuncs })
 }
 
+#[cfg_attr(test, allow(dead_code))]
 fn parse_array_property<T>(
     env: &Env,
     options: &JsObject,
@@ -500,6 +521,7 @@ fn parse_array_property<T>(
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
+#[cfg_attr(test, allow(dead_code))]
 fn parse_register_options(
     env: &Env,
     options: Option<JsObject>,
@@ -516,6 +538,7 @@ fn parse_register_options(
 
 #[napi]
 #[allow(clippy::needless_pass_by_value)]
+#[cfg_attr(test, allow(dead_code))]
 pub fn register_class(
     env: &Env,
     name: String,

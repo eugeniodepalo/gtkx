@@ -20,6 +20,7 @@ use napi_derive::napi;
 use super::handler::{ModuleRequest, dispatch_request};
 use crate::managed::{Boxed, NativeHandle, NativeValue};
 
+#[cfg_attr(test, allow(dead_code))]
 struct AllocRequest {
     size: usize,
     type_name: Option<String>,
@@ -48,6 +49,7 @@ impl ModuleRequest for AllocRequest {
 }
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn alloc(
     env: &Env,
     size: f64,

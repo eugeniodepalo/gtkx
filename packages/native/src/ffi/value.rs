@@ -166,14 +166,6 @@ impl FfiValue {
             | Self::Void => args.push(self.into()),
         }
     }
-
-    #[must_use]
-    pub fn storage(&self) -> Option<&FfiStorage> {
-        match self {
-            Self::Storage(storage) => Some(storage),
-            _ => None,
-        }
-    }
 }
 
 impl<'a> From<&'a FfiValue> for libffi::Arg<'a> {

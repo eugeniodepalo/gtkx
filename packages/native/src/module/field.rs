@@ -34,6 +34,7 @@ use crate::managed::NativeHandle;
 use crate::types::{RawPtrCodec as _, Type};
 use crate::value::Value;
 
+#[cfg_attr(test, allow(dead_code))]
 fn require_non_null(addr: usize) -> anyhow::Result<*mut c_void> {
     if addr == 0 {
         anyhow::bail!("NativeHandle has a null pointer");
@@ -41,6 +42,7 @@ fn require_non_null(addr: usize) -> anyhow::Result<*mut c_void> {
     Ok(addr as *mut c_void)
 }
 
+#[cfg_attr(test, allow(dead_code))]
 struct ReadRequest {
     base_addr: usize,
     field_type: Type,
@@ -62,6 +64,7 @@ impl ModuleRequest for ReadRequest {
 }
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn read<'env>(
     env: &'env Env,
     handle: &External<NativeHandle>,
@@ -77,6 +80,7 @@ pub fn read<'env>(
     dispatch_request(env, request)
 }
 
+#[cfg_attr(test, allow(dead_code))]
 struct WriteRequest {
     base_addr: usize,
     field_type: Type,
@@ -100,6 +104,7 @@ impl ModuleRequest for WriteRequest {
 }
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn write<'env>(
     env: &'env Env,
     handle: &External<NativeHandle>,

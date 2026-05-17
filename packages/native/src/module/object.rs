@@ -11,6 +11,7 @@ use napi_derive::napi;
 use crate::managed::NativeHandle;
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn get_native_id(handle: &External<NativeHandle>) -> f64 {
     handle.ptr_as_usize() as f64
 }

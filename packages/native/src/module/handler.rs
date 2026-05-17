@@ -7,16 +7,19 @@ use crate::dispatch;
 use crate::managed::NativeHandle;
 use crate::value::{JsObjectRefValue, Value};
 
+#[cfg_attr(test, allow(dead_code))]
 pub trait ModuleRequest: Sized + Send + 'static {
     type Output: ModuleResponse + Send + 'static;
     fn execute(self) -> anyhow::Result<Self::Output>;
     fn error_context() -> &'static str;
 }
 
+#[cfg_attr(test, allow(dead_code))]
 pub trait ModuleResponse: Sized {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>>;
 }
 
+#[cfg_attr(test, allow(dead_code))]
 pub fn dispatch_request<R: ModuleRequest>(env: &Env, request: R) -> napi::Result<Unknown<'_>> {
     let result = dispatch::Mailbox::global()
         .dispatch_to_glib_and_wait(*env, move || request.execute())
@@ -94,6 +97,7 @@ impl ModuleResponse for () {
     }
 }
 
+#[cfg_attr(test, allow(dead_code))]
 pub type RefUpdate = (Arc<JsObjectRefValue>, Value);
 
 impl ModuleResponse for (Value, Vec<RefUpdate>) {

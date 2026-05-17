@@ -28,6 +28,7 @@ use napi_derive::napi;
 use crate::dispatch::Mailbox;
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn stop(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> {
     let main_loop = (**main_loop).clone();
 
@@ -42,6 +43,7 @@ pub fn stop(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> 
     Ok(())
 }
 
+#[cfg_attr(test, allow(dead_code))]
 fn drain_pending_sources() {
     let context = glib::MainContext::default();
     while context.iteration(false) {}

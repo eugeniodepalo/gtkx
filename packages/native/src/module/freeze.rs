@@ -7,6 +7,7 @@ use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn freeze(env: Env) -> napi::Result<()> {
     let mailbox = Mailbox::global();
     let is_outermost = mailbox.freeze();
@@ -32,6 +33,7 @@ pub fn freeze(env: Env) -> napi::Result<()> {
 }
 
 #[napi]
+#[cfg_attr(test, allow(dead_code))]
 pub fn unfreeze() {
     Mailbox::global().unfreeze();
 }
