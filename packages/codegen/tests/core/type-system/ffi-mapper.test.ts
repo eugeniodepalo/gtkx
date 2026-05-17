@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { FfiMapper } from "../../../src/core/type-system/ffi-mapper.js";
 import { FFI_INT32, FFI_POINTER, FFI_UINT32, FFI_VOID } from "../../../src/core/type-system/ffi-types.js";
+import { GirAlias } from "../../../src/gir/index.js";
 import {
     createNormalizedCallback,
     createNormalizedClass,
     createNormalizedEnumeration,
     createNormalizedField,
+    createNormalizedFunction,
     createNormalizedInterface,
     createNormalizedNamespace,
     createNormalizedParameter,
@@ -1936,6 +1938,841 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ffi.library).toBe("libgtk-4.so.1");
             expect(result.ffi.getTypeFn).toBe("gtk_state_flags_get_type");
+        });
+    });
+});
+
+describe("FfiMapper - branch coverage", () => {
+    describe("getCurrentNamespace", () => {
+        it("returns the namespace passed to the constructor", () => {
+            const { mapper } = createTestSetup();
+            expect(mapper.getCurrentNamespace()).toBe("Gtk");
+        });
+    });
+
+    describe("mapType - GType", () => {
+        it("maps GType to a qualified GObject.GType for external namespaces", () => {
+            const { mapper } = createTestSetup();
+            const type = createNormalizedType({ name: "GType" });
+            const result = mapper.mapType(type);
+
+            expect(result.ts).toBe("GObject.GType");
+            expect(result.imports[0]).toMatchObject({ kind: "alias", name: "GType", isExternal: true });
+        });
+
+        it("maps GType to a bare GType inside the GObject namespace", () => {
+            const ns = createNormalizedNamespace({ name: "GObject" });
+            const repo = createMockRepository(new Map([["GObject", ns]]));
+            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GObject");
+
+            const result = mapper.mapType(createNormalizedType({ name: "GType" }));
+
+            expect(result.ts).toBe("GType");
+            expect(result.imports[0]).toMatchObject({ isExternal: false });
+        });
+    });
+
+    describe("mapType - GByteArray and GLib array fallbacks", () => {
+        it("maps a GByteArray to number[]", () => {
+            const { mapper } = createTestSetup();
+            const type = createNormalizedType({
+                name: qualifiedName("GLib", "ByteArray"),
+                isArray: true,
+                containerType: "gbytearray",
+                elementType: createNormalizedType({ name: "guint8" }),
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ts).toBe("number[]");
+            expect(result.ffi.type).toBe("array");
+            if (result.ffi.type === "array") {
+                expect(result.ffi.kind).toBe("gbytearray");
+            }
+        });
+
+        it("maps a GPtrArray without an element type to unknown[]", () => {
+            const { mapper } = createTestSetup();
+            const type = createNormalizedType({
+                name: qualifiedName("GLib", "PtrArray"),
+                isArray: true,
+                containerType: "gptrarray",
+                elementType: null,
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ts).toBe("unknown[]");
+            expect(result.unsafe).toBe(true);
+            expect(result.ffi.type).toBe("array");
+        });
+
+        it("maps a GArray without an element type to unknown[]", () => {
+            const { mapper } = createTestSetup();
+            const type = createNormalizedType({
+                name: qualifiedName("GLib", "Array"),
+                isArray: true,
+                containerType: "garray",
+                elementType: null,
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ts).toBe("unknown[]");
+            expect(result.unsafe).toBe(true);
+        });
+    });
+
+    describe("mapType - unmarshalable record", () => {
+        it("maps an opaque record as an unsafe struct", () => {
+            const opaque = createNormalizedRecord({
+                name: "Private",
+                qualifiedName: qualifiedName("Gtk", "Private"),
+                opaque: true,
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([["Private", opaque]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = mapper.mapType(createNormalizedType({ name: "Private" }));
+
+            expect(result.ts).toBe("unknown");
+            expect(result.ffi.type).toBe("struct");
+            expect(result.unsafe).toBe(true);
+        });
+    });
+
+    describe("mapType - alias resolution", () => {
+        it("resolves an alias to a same-namespace target type", () => {
+            const buttonClass = createNormalizedClass({ name: "Button" });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Button", buttonClass]]),
+                aliases: new Map([
+                    [
+                        "ButtonAlias",
+                        new GirAlias({
+                            name: "ButtonAlias",
+                            qualifiedName: qualifiedName("Gtk", "ButtonAlias"),
+                            cType: "GtkButtonAlias",
+                            targetType: createNormalizedType({ name: "Button" }),
+                        }),
+                    ],
+                ]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const result = mapper.mapType(createNormalizedType({ name: "ButtonAlias" }));
+
+            expect(result.ts).toBe("Button");
+            expect(result.ffi.type).toBe("gobject");
+        });
+
+        it("resolves an alias to a qualified target type", () => {
+            const appClass = createNormalizedClass({
+                name: "Application",
+                qualifiedName: qualifiedName("Gio", "Application"),
+            });
+            const gioNs = createNormalizedNamespace({
+                name: "Gio",
+                classes: new Map([["Application", appClass]]),
+            });
+            const gtkNs = createNormalizedNamespace({
+                name: "Gtk",
+                aliases: new Map([
+                    [
+                        "AppAlias",
+                        new GirAlias({
+                            name: "AppAlias",
+                            qualifiedName: qualifiedName("Gtk", "AppAlias"),
+                            cType: "GtkAppAlias",
+                            targetType: createNormalizedType({ name: "Gio.Application" }),
+                        }),
+                    ],
+                ]),
+            });
+            const { mapper } = createTestSetup(
+                new Map([
+                    ["Gio", gioNs],
+                    ["Gtk", gtkNs],
+                ]),
+            );
+
+            const result = mapper.mapType(createNormalizedType({ name: "AppAlias" }));
+
+            expect(result.ts).toBe("Gio.Application");
+        });
+    });
+
+    describe("mapType - external namespace fallthrough", () => {
+        it("resolves a bare type name found only in an external namespace", () => {
+            const appClass = createNormalizedClass({
+                name: "Application",
+                qualifiedName: qualifiedName("Gio", "Application"),
+            });
+            const gioNs = createNormalizedNamespace({
+                name: "Gio",
+                classes: new Map([["Application", appClass]]),
+            });
+            const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+            const { mapper } = createTestSetup(
+                new Map([
+                    ["Gtk", gtkNs],
+                    ["Gio", gioNs],
+                ]),
+            );
+
+            const result = mapper.mapType(createNormalizedType({ name: "Application" }));
+
+            expect(result.ts).toBe("Gio.Application");
+            expect(result.imports[0]).toMatchObject({ namespace: "Gio", isExternal: true });
+        });
+    });
+
+    describe("enrichStructWithSize", () => {
+        it("adds a computed size to a struct descriptor", () => {
+            const colorRecord = createNormalizedRecord({
+                name: "Color",
+                qualifiedName: qualifiedName("Gtk", "Color"),
+                fields: [
+                    createNormalizedField({ name: "red", type: createNormalizedType({ name: "guint16" }) }),
+                    createNormalizedField({ name: "green", type: createNormalizedType({ name: "guint16" }) }),
+                    createNormalizedField({ name: "blue", type: createNormalizedType({ name: "guint16" }) }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([["Color", colorRecord]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const enriched = mapper.enrichStructWithSize(
+                { type: "struct", innerType: "Color", ownership: "borrowed" },
+                "Color",
+            );
+
+            expect(enriched.type).toBe("struct");
+            if (enriched.type === "struct") {
+                expect(enriched.size).toBeGreaterThan(0);
+            }
+        });
+
+        it("resolves a qualified type name when enriching a struct", () => {
+            const colorRecord = createNormalizedRecord({
+                name: "Color",
+                qualifiedName: qualifiedName("Gdk", "Color"),
+                fields: [createNormalizedField({ name: "red", type: createNormalizedType({ name: "guint32" }) })],
+            });
+            const gdkNs = createNormalizedNamespace({
+                name: "Gdk",
+                records: new Map([["Color", colorRecord]]),
+            });
+            const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+            const { mapper } = createTestSetup(
+                new Map([
+                    ["Gtk", gtkNs],
+                    ["Gdk", gdkNs],
+                ]),
+            );
+
+            const enriched = mapper.enrichStructWithSize(
+                { type: "struct", innerType: "Color", ownership: "borrowed" },
+                "Gdk.Color",
+            );
+
+            if (enriched.type === "struct") {
+                expect(enriched.size).toBe(4);
+            }
+        });
+
+        it("returns the descriptor unchanged when it is not a struct", () => {
+            const { mapper } = createTestSetup();
+            const descriptor = mapper.enrichStructWithSize(FFI_INT32, "Color");
+            expect(descriptor).toEqual(FFI_INT32);
+        });
+
+        it("returns the descriptor unchanged when the size is already set", () => {
+            const { mapper } = createTestSetup();
+            const input = { type: "struct" as const, innerType: "Color", ownership: "borrowed" as const, size: 8 };
+            expect(mapper.enrichStructWithSize(input, "Color")).toBe(input);
+        });
+    });
+
+    describe("canAllocateLocally", () => {
+        it("returns true for a plain struct record with public fields", () => {
+            const record = createNormalizedRecord({
+                name: "Color",
+                qualifiedName: qualifiedName("Gtk", "Color"),
+                fields: [createNormalizedField({ name: "red", type: createNormalizedType({ name: "guint16" }) })],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([["Color", record]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            expect(mapper.canAllocateLocally("Color")).toBe(true);
+        });
+
+        it("returns false for an opaque record", () => {
+            const record = createNormalizedRecord({
+                name: "Opaque",
+                qualifiedName: qualifiedName("Gtk", "Opaque"),
+                opaque: true,
+                fields: [createNormalizedField({ name: "x", type: createNormalizedType({ name: "gint" }) })],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([["Opaque", record]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            expect(mapper.canAllocateLocally("Opaque")).toBe(false);
+        });
+
+        it("returns false when the namespace does not exist", () => {
+            const { mapper } = createTestSetup();
+            expect(mapper.canAllocateLocally("Missing.Type")).toBe(false);
+        });
+
+        it("returns false for an unknown type name", () => {
+            const ns = createNormalizedNamespace({ name: "Gtk" });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            expect(mapper.canAllocateLocally("DoesNotExist")).toBe(false);
+        });
+
+        it("follows an alias to its allocatable target", () => {
+            const record = createNormalizedRecord({
+                name: "Color",
+                qualifiedName: qualifiedName("Gtk", "Color"),
+                fields: [createNormalizedField({ name: "red", type: createNormalizedType({ name: "guint16" }) })],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([["Color", record]]),
+                aliases: new Map([
+                    [
+                        "ColorAlias",
+                        new GirAlias({
+                            name: "ColorAlias",
+                            qualifiedName: qualifiedName("Gtk", "ColorAlias"),
+                            cType: "GtkColorAlias",
+                            targetType: createNormalizedType({ name: "Color" }),
+                        }),
+                    ],
+                ]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            expect(mapper.canAllocateLocally("ColorAlias")).toBe(true);
+        });
+    });
+
+    describe("findFactoryCIdentifier", () => {
+        it("finds a zero-argument factory function for a record", () => {
+            const factory = createNormalizedFunction({
+                name: "map_create",
+                cIdentifier: "hb_map_create",
+                returnType: createNormalizedType({ name: "map_t" }),
+                parameters: [],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                functions: new Map([["map_create", factory]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            expect(mapper.findFactoryCIdentifier("map_t")).toBe("mapCreate");
+        });
+
+        it("returns null when the factory has parameters", () => {
+            const factory = createNormalizedFunction({
+                name: "thing_create",
+                cIdentifier: "thing_create",
+                returnType: createNormalizedType({ name: "thing" }),
+                parameters: [createNormalizedParameter({ name: "arg" })],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                functions: new Map([["thing_create", factory]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            expect(mapper.findFactoryCIdentifier("thing")).toBeNull();
+        });
+
+        it("returns null when no factory function exists", () => {
+            const ns = createNormalizedNamespace({ name: "Gtk" });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            expect(mapper.findFactoryCIdentifier("Missing")).toBeNull();
+        });
+
+        it("returns null for a type in a different namespace", () => {
+            const ns = createNormalizedNamespace({ name: "Gtk" });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            expect(mapper.findFactoryCIdentifier("Gio.Thing")).toBeNull();
+        });
+
+        it("returns null when the factory return type does not match", () => {
+            const factory = createNormalizedFunction({
+                name: "thing_create",
+                cIdentifier: "thing_create",
+                returnType: createNormalizedType({ name: "other" }),
+                parameters: [],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                functions: new Map([["thing_create", factory]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            expect(mapper.findFactoryCIdentifier("thing")).toBeNull();
+        });
+    });
+
+    describe("mapParameter - callback with destroy and scope", () => {
+        it("marks a trampoline as having a destroy notify and a scope", () => {
+            const callback = createNormalizedCallback({
+                name: "Callback",
+                qualifiedName: qualifiedName("Gtk", "Callback"),
+                parameters: [
+                    createNormalizedParameter({ name: "data", type: createNormalizedType({ name: "gpointer" }) }),
+                ],
+                returnType: createNormalizedType({ name: "none" }),
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                callbacks: new Map([["Callback", callback]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const param = createNormalizedParameter({
+                name: "callback",
+                type: createNormalizedType({ name: "Callback" }),
+                destroy: 2,
+                scope: "notified",
+            });
+            const result = mapper.mapParameter(param);
+
+            expect(result.ffi.type).toBe("trampoline");
+            if (result.ffi.type === "trampoline") {
+                expect(result.ffi.hasDestroy).toBe(true);
+                expect(result.ffi.scope).toBe("notified");
+            }
+        });
+    });
+
+    describe("mapCallback - parameters and return", () => {
+        it("builds a callback TS signature with named parameters and a return", () => {
+            const callback = createNormalizedCallback({
+                name: "Predicate",
+                qualifiedName: qualifiedName("Gtk", "Predicate"),
+                parameters: [
+                    createNormalizedParameter({ name: "item_value", type: createNormalizedType({ name: "gint" }) }),
+                ],
+                returnType: createNormalizedType({ name: "gboolean" }),
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                callbacks: new Map([["Predicate", callback]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const param = createNormalizedParameter({
+                name: "predicate",
+                type: createNormalizedType({ name: "Predicate" }),
+            });
+            const result = mapper.mapParameter(param);
+
+            expect(result.ts).toBe("(itemValue: number) => boolean");
+        });
+
+        it("includes a nullable marker on a nullable callback parameter and return", () => {
+            const callback = createNormalizedCallback({
+                name: "Lookup",
+                qualifiedName: qualifiedName("Gtk", "Lookup"),
+                parameters: [
+                    createNormalizedParameter({
+                        name: "key",
+                        type: createNormalizedType({ name: "utf8" }),
+                        nullable: true,
+                    }),
+                ],
+                returnType: createNormalizedType({ name: "utf8", nullable: true }),
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                callbacks: new Map([["Lookup", callback]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const param = createNormalizedParameter({
+                name: "lookup",
+                type: createNormalizedType({ name: "Lookup" }),
+            });
+            const result = mapper.mapParameter(param);
+
+            expect(result.ts).toBe("(key: string | null) => string | null");
+        });
+    });
+
+    describe("getCallbackParamMappings / getCallbackReturnType - non-callback", () => {
+        it("returns null for getCallbackParamMappings on a non-callback parameter", () => {
+            const { mapper } = createTestSetup();
+            const param = createNormalizedParameter({ name: "x", type: createNormalizedType({ name: "gint" }) });
+
+            expect(mapper.getCallbackParamMappings(param)).toBeNull();
+        });
+
+        it("returns null for getCallbackReturnType on a non-callback parameter", () => {
+            const { mapper } = createTestSetup();
+            const param = createNormalizedParameter({ name: "x", type: createNormalizedType({ name: "gint" }) });
+
+            expect(mapper.getCallbackReturnType(param)).toBeNull();
+        });
+    });
+
+    describe("mapType - struct element sizes", () => {
+        it("computes the inline element size for an array of plain structs", () => {
+            const point = createNormalizedRecord({
+                name: "Point",
+                qualifiedName: qualifiedName("Gtk", "Point"),
+                fields: [
+                    createNormalizedField({ name: "x", type: createNormalizedType({ name: "gint32" }) }),
+                    createNormalizedField({ name: "y", type: createNormalizedType({ name: "gint32" }) }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([["Point", point]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const type = createNormalizedType({
+                name: "Point",
+                isArray: true,
+                elementType: createNormalizedType({ name: "Point" }),
+                fixedSize: 3,
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ffi.type).toBe("array");
+            if (result.ffi.type === "array") {
+                expect(result.ffi.elementSize).toBe(8);
+            }
+        });
+
+        it("skips inline element sizing for pointer element types", () => {
+            const { mapper } = createTestSetup();
+            const type = createNormalizedType({
+                name: "utf8",
+                isArray: true,
+                elementType: createNormalizedType({ name: "utf8", cType: "char*" }),
+                fixedSize: 2,
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ffi.type).toBe("array");
+            if (result.ffi.type === "array") {
+                expect(result.ffi.elementSize).toBeUndefined();
+            }
+        });
+
+        it("uses the known struct element size for GValue arrays", () => {
+            const { mapper } = createTestSetup();
+            const type = createNormalizedType({
+                name: "GValue",
+                isArray: true,
+                elementType: createNormalizedType({ name: "GValue" }),
+                fixedSize: 2,
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ffi.type).toBe("array");
+            if (result.ffi.type === "array") {
+                expect(result.ffi.elementSize).toBe(24);
+            }
+        });
+
+        it("computes the size of a union record as its largest field", () => {
+            const union = createNormalizedRecord({
+                name: "Variant",
+                qualifiedName: qualifiedName("Gtk", "Variant"),
+                isUnion: true,
+                fields: [
+                    createNormalizedField({ name: "small", type: createNormalizedType({ name: "gint8" }) }),
+                    createNormalizedField({ name: "big", type: createNormalizedType({ name: "gint64" }) }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([["Variant", union]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const type = createNormalizedType({
+                name: "Variant",
+                isArray: true,
+                elementType: createNormalizedType({ name: "Variant" }),
+                fixedSize: 2,
+            });
+            const result = mapper.mapType(type);
+
+            if (result.ffi.type === "array") {
+                expect(result.ffi.elementSize).toBe(8);
+            }
+        });
+
+        it("computes the size of a record with an inline composite field", () => {
+            const composite = createNormalizedField({
+                name: "_inline",
+                type: createNormalizedType({ name: "gpointer" }),
+                private: true,
+                inlineComposite: {
+                    isUnion: false,
+                    fields: [
+                        createNormalizedField({ name: "a", type: createNormalizedType({ name: "gint32" }) }),
+                        createNormalizedField({ name: "b", type: createNormalizedType({ name: "gint32" }) }),
+                    ],
+                },
+            });
+            const record = createNormalizedRecord({
+                name: "Outer",
+                qualifiedName: qualifiedName("Gtk", "Outer"),
+                fields: [
+                    createNormalizedField({ name: "lead", type: createNormalizedType({ name: "gint32" }) }),
+                    composite,
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([["Outer", record]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const type = createNormalizedType({
+                name: "Outer",
+                isArray: true,
+                elementType: createNormalizedType({ name: "Outer" }),
+                fixedSize: 2,
+            });
+            const result = mapper.mapType(type);
+
+            if (result.ffi.type === "array") {
+                expect(result.ffi.elementSize).toBe(12);
+            }
+        });
+
+        it("treats a callback-typed field as a pointer when sizing a record", () => {
+            const callback = createNormalizedCallback({
+                name: "Notify",
+                qualifiedName: qualifiedName("Gtk", "Notify"),
+            });
+            const record = createNormalizedRecord({
+                name: "WithCallback",
+                qualifiedName: qualifiedName("Gtk", "WithCallback"),
+                fields: [
+                    createNormalizedField({ name: "fn", type: createNormalizedType({ name: "Notify" }) }),
+                    createNormalizedField({ name: "count", type: createNormalizedType({ name: "gint32" }) }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                callbacks: new Map([["Notify", callback]]),
+                records: new Map([["WithCallback", record]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const type = createNormalizedType({
+                name: "WithCallback",
+                isArray: true,
+                elementType: createNormalizedType({ name: "WithCallback" }),
+                fixedSize: 2,
+            });
+            const result = mapper.mapType(type);
+
+            if (result.ffi.type === "array") {
+                expect(result.ffi.elementSize).toBe(16);
+            }
+        });
+
+        it("sizes a record whose field is another record type", () => {
+            const inner = createNormalizedRecord({
+                name: "Inner",
+                qualifiedName: qualifiedName("Gtk", "Inner"),
+                fields: [
+                    createNormalizedField({ name: "a", type: createNormalizedType({ name: "gint32" }) }),
+                    createNormalizedField({ name: "b", type: createNormalizedType({ name: "gint32" }) }),
+                ],
+            });
+            const outer = createNormalizedRecord({
+                name: "Outer2",
+                qualifiedName: qualifiedName("Gtk", "Outer2"),
+                fields: [
+                    createNormalizedField({ name: "lead", type: createNormalizedType({ name: "gint32" }) }),
+                    createNormalizedField({ name: "inner", type: createNormalizedType({ name: "Inner" }) }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([
+                    ["Inner", inner],
+                    ["Outer2", outer],
+                ]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const type = createNormalizedType({
+                name: "Outer2",
+                isArray: true,
+                elementType: createNormalizedType({ name: "Outer2" }),
+                fixedSize: 2,
+            });
+            const result = mapper.mapType(type);
+
+            if (result.ffi.type === "array") {
+                expect(result.ffi.elementSize).toBe(12);
+            }
+        });
+
+        it("sizes a record whose field references a qualified record from another namespace", () => {
+            const inner = createNormalizedRecord({
+                name: "Span",
+                qualifiedName: qualifiedName("Gdk", "Span"),
+                fields: [createNormalizedField({ name: "value", type: createNormalizedType({ name: "gint64" }) })],
+            });
+            const gdkNs = createNormalizedNamespace({
+                name: "Gdk",
+                records: new Map([["Span", inner]]),
+            });
+            const outer = createNormalizedRecord({
+                name: "Holder",
+                qualifiedName: qualifiedName("Gtk", "Holder"),
+                fields: [createNormalizedField({ name: "span", type: createNormalizedType({ name: "Gdk.Span" }) })],
+            });
+            const gtkNs = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([["Holder", outer]]),
+            });
+            const { mapper } = createTestSetup(
+                new Map([
+                    ["Gtk", gtkNs],
+                    ["Gdk", gdkNs],
+                ]),
+            );
+
+            const type = createNormalizedType({
+                name: "Holder",
+                isArray: true,
+                elementType: createNormalizedType({ name: "Holder" }),
+                fixedSize: 2,
+            });
+            const result = mapper.mapType(type);
+
+            if (result.ffi.type === "array") {
+                expect(result.ffi.elementSize).toBe(8);
+            }
+        });
+
+        it("falls back to a pointer size for an opaque nested record field", () => {
+            const opaque = createNormalizedRecord({
+                name: "OpaqueInner",
+                qualifiedName: qualifiedName("Gtk", "OpaqueInner"),
+                opaque: true,
+            });
+            const outer = createNormalizedRecord({
+                name: "OpaqueHolder",
+                qualifiedName: qualifiedName("Gtk", "OpaqueHolder"),
+                fields: [createNormalizedField({ name: "inner", type: createNormalizedType({ name: "OpaqueInner" }) })],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([
+                    ["OpaqueInner", opaque],
+                    ["OpaqueHolder", outer],
+                ]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const type = createNormalizedType({
+                name: "OpaqueHolder",
+                isArray: true,
+                elementType: createNormalizedType({ name: "OpaqueHolder" }),
+                fixedSize: 2,
+            });
+            const result = mapper.mapType(type);
+
+            if (result.ffi.type === "array") {
+                expect(result.ffi.elementSize).toBe(8);
+            }
+        });
+
+        it("sizes a record with a fixed-size primitive array field", () => {
+            const record = createNormalizedRecord({
+                name: "Buffer",
+                qualifiedName: qualifiedName("Gtk", "Buffer"),
+                fields: [
+                    createNormalizedField({
+                        name: "bytes",
+                        type: createNormalizedType({
+                            name: "guint8",
+                            isArray: true,
+                            elementType: createNormalizedType({ name: "guint8" }),
+                            fixedSize: 4,
+                        }),
+                    }),
+                ],
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                records: new Map([["Buffer", record]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const type = createNormalizedType({
+                name: "Buffer",
+                isArray: true,
+                elementType: createNormalizedType({ name: "Buffer" }),
+                fixedSize: 2,
+            });
+            const result = mapper.mapType(type);
+
+            if (result.ffi.type === "array") {
+                expect(result.ffi.elementSize).toBe(4);
+            }
+        });
+    });
+
+    describe("mapType - trampoline FFI descriptor", () => {
+        it("records the user_data index on a callback trampoline descriptor", () => {
+            const callback = createNormalizedCallback({
+                name: "ForEach",
+                qualifiedName: qualifiedName("Gtk", "ForEach"),
+                parameters: [
+                    createNormalizedParameter({ name: "value", type: createNormalizedType({ name: "gint" }) }),
+                    createNormalizedParameter({ name: "user_data", type: createNormalizedType({ name: "gpointer" }) }),
+                ],
+                returnType: createNormalizedType({ name: "gboolean" }),
+            });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                callbacks: new Map([["ForEach", callback]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const param = createNormalizedParameter({
+                name: "callback",
+                type: createNormalizedType({ name: "ForEach" }),
+            });
+            const result = mapper.mapParameter(param);
+
+            expect(result.ffi.type).toBe("trampoline");
+            if (result.ffi.type === "trampoline") {
+                expect(result.ffi.userDataIndex).toBe(1);
+                expect(result.ffi.returnType.type).toBe("boolean");
+            }
         });
     });
 });

@@ -10,6 +10,7 @@ import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
 import { hasVarargs, partitionSupportedFunctions } from "../../core/utils/filtering.js";
+import { jsStringLiteral } from "../../core/utils/js-literal.js";
 import { toCamelCase, toValidExportName } from "../../core/utils/naming.js";
 import { addTypeImports, createMethodBodyWriter, type MethodBodyWriter } from "../../core/writers/index.js";
 import type { GirFunction } from "../../gir/index.js";
@@ -151,7 +152,7 @@ export class FunctionGenerator {
             variableStatement(funcName, {
                 exported: true,
                 initializer: (writer: Writer) => {
-                    writer.write(`() => { throw new Error(${JSON.stringify(message)}); }`);
+                    writer.write(`() => { throw new Error(${jsStringLiteral(message)}); }`);
                 },
                 doc: formatJsDoc(func.doc, this.options.namespace),
             }),

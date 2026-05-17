@@ -54,7 +54,7 @@ declare const __nativeHandleBrand: unique symbol;
  * by user code. The underlying value is a raw
  * native external pointer; the brand ensures TypeScript treats it opaquely.
  */
-export type NativeHandle = unknown & { readonly [__nativeHandleBrand]: never };
+export type NativeHandle = { readonly [__nativeHandleBrand]: never };
 
 /**
  * Returns the numeric pointer identity for a native handle.
@@ -148,7 +148,7 @@ function wrapUserCallback(value: unknown, type: CallbackType | TrampolineType): 
 function wrapValue(value: unknown, type: Type): unknown {
     if (value === null || value === undefined) return value;
 
-    if (isHandleType(type)) return value as NativeHandle;
+    if (isHandleType(type)) return value;
 
     switch (type.type) {
         case "array":

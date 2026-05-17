@@ -19,7 +19,7 @@ export class EventControllerNode<
         containerClass: typeof Gtk.EventController,
     ): Gtk.EventController {
         if (containerClass === Gtk.DropTarget) {
-            const actions = (props.actions as Gdk.DragAction | undefined) ?? (0 as Gdk.DragAction);
+            const actions = (props.actions as Gdk.DragAction | undefined) ?? 0;
             return Gtk.DropTarget.new(G_TYPE_INVALID, actions);
         }
 

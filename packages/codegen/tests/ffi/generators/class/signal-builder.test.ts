@@ -1,16 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
+import { Writer } from "../../../../src/builders/writer.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
 import { SignalBuilder } from "../../../../src/ffi/generators/class/signal-builder.js";
 import {
     createNormalizedClass,
+    createNormalizedEnumeration,
+    createNormalizedInterface,
     createNormalizedNamespace,
     createNormalizedParameter,
+    createNormalizedRecord,
     createNormalizedSignal,
     createNormalizedType,
     qualifiedName,
 } from "../../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../../fixtures/mock-repository.js";
+
+function renderMeta(builder: SignalBuilder): string {
+    const writer = new Writer();
+    const metaWriter = builder.buildSignalMetaWriter();
+    if (!metaWriter) return "";
+    metaWriter(writer);
+    return writer.toString();
+}
 
 function createTestSetup(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
@@ -397,5 +409,341 @@ describe("SignalBuilder - Extended Coverage", () => {
             expect(ownSignals.map((s) => s.name)).toContain("clicked");
             expect(ownSignals.map((s) => s.name)).not.toContain("destroy");
         });
+    });
+});
+
+describe("SignalBuilder - signal meta table", () => {
+    it("writes a registerSignalMeta call with a descriptor entry per signal", () => {
+        const { builder } = createTestSetup({
+            signals: [createNormalizedSignal({ name: "clicked" }), createNormalizedSignal({ name: "activate" })],
+        });
+
+        const code = renderMeta(builder);
+
+        expect(code).toContain("registerSignalMeta(Button, new globalThis.Map([");
+        expect(code).toContain('["clicked", {');
+        expect(code).toContain('["activate", {');
+        expect(code).toContain("trampoline:");
+        expect(code).toContain("invoke:");
+        expect(code).toContain("emitTypes:");
+    });
+
+    it("emits a simple invoke closure that returns the handler result", () => {
+        const { builder } = createTestSetup({
+            signals: [
+                createNormalizedSignal({
+                    name: "toggled",
+                    parameters: [
+                        createNormalizedParameter({ name: "active", type: createNormalizedType({ name: "gboolean" }) }),
+                    ],
+                }),
+            ],
+        });
+
+        const code = renderMeta(builder);
+
+        expect(code).toContain("(handler, args) => {");
+        expect(code).toContain("return handler(");
+        expect(code).toContain("args[1]");
+    });
+
+    it("emits a null returnGType for a signal with no return value", () => {
+        const { builder } = createTestSetup({
+            signals: [createNormalizedSignal({ name: "clicked", returnType: null })],
+        });
+
+        const code = renderMeta(builder);
+
+        expect(code).toContain("returnGType: null,");
+    });
+
+    it("emits a returnGType resolver for a signal with a primitive return value", () => {
+        const { builder } = createTestSetup({
+            signals: [
+                createNormalizedSignal({
+                    name: "query-tooltip",
+                    returnType: createNormalizedType({ name: "gboolean" }),
+                }),
+            ],
+        });
+
+        const code = renderMeta(builder);
+
+        expect(code).toContain("returnGType: () =>");
+        expect(code).toContain("typeFromName");
+    });
+
+    it("resolves the gtype from the glib type name when no get-type function exists", () => {
+        const { builder } = createTestSetup({
+            glibGetType: null,
+            glibTypeName: "GtkButton",
+            signals: [createNormalizedSignal({ name: "clicked" })],
+        });
+
+        const code = renderMeta(builder);
+
+        expect(code).toContain("g_type_from_name");
+        expect(code).toContain('"GtkButton"');
+    });
+
+    it("falls back to a zero gtype when neither get-type nor type-name is available", () => {
+        const { builder } = createTestSetup({
+            glibGetType: null,
+            glibTypeName: null,
+            signals: [createNormalizedSignal({ name: "clicked" })],
+        });
+
+        const code = renderMeta(builder);
+
+        expect(code).toContain("() => 0");
+    });
+
+    it("emits a ref-style invoke closure for signals with out parameters", () => {
+        const { builder } = createTestSetup({
+            signals: [
+                createNormalizedSignal({
+                    name: "populate",
+                    parameters: [
+                        createNormalizedParameter({
+                            name: "result",
+                            type: createNormalizedType({ name: "gint" }),
+                            direction: "out",
+                        }),
+                    ],
+                }),
+            ],
+        });
+
+        const code = renderMeta(builder);
+
+        expect(code).toContain("const _ref0 = { value: args[1] };");
+        expect(code).toContain("return [");
+        expect(code).toContain("_ref0.value");
+    });
+});
+
+describe("SignalBuilder - collectAllSignals composition", () => {
+    it("includes signals contributed by implemented interfaces", () => {
+        const orientable = createNormalizedInterface({
+            name: "Orientable",
+            qualifiedName: qualifiedName("Gtk", "Orientable"),
+            signals: [createNormalizedSignal({ name: "orientation-changed" })],
+        });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            interfaces: new Map([["Orientable", orientable]]),
+        });
+
+        const { builder } = createTestSetup(
+            {
+                implements: [qualifiedName("Gtk", "Orientable")],
+                signals: [createNormalizedSignal({ name: "clicked" })],
+            },
+            new Map([["Gtk", ns]]),
+        );
+
+        const { allSignals } = builder.collectAllSignals();
+
+        expect(allSignals.map((s) => s.name)).toContain("clicked");
+        expect(allSignals.map((s) => s.name)).toContain("orientation-changed");
+    });
+
+    it("collects signals inherited from a same-namespace parent", () => {
+        const ns = createNormalizedNamespace({ name: "Gtk" });
+        const parent = createNormalizedClass(
+            {
+                name: "Widget",
+                qualifiedName: qualifiedName("Gtk", "Widget"),
+                parent: null,
+                signals: [createNormalizedSignal({ name: "destroy" })],
+            },
+            createMockRepository(new Map([["Gtk", ns]])),
+        );
+        ns.classes.set("Widget", parent);
+
+        const repo = createMockRepository(new Map([["Gtk", ns]]));
+        const child = createNormalizedClass(
+            {
+                name: "Button",
+                qualifiedName: qualifiedName("Gtk", "Button"),
+                parent: qualifiedName("Gtk", "Widget"),
+                signals: [createNormalizedSignal({ name: "clicked" })],
+            },
+            repo,
+        );
+        ns.classes.set("Button", child);
+
+        const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+        const builder = new SignalBuilder(child, ffiMapper, fileBuilder(), repo as Parameters<typeof FfiMapper>[0], {
+            namespace: "Gtk",
+            sharedLibrary: "libgtk-4.so.1",
+            glibLibrary: "libglib-2.0.so.0",
+            gobjectLibrary: "libgobject-2.0.so.0",
+        });
+
+        const { allSignals, hasCrossNamespaceParent } = builder.collectAllSignals();
+
+        expect(allSignals.map((s) => s.name)).toContain("destroy");
+        expect(hasCrossNamespaceParent).toBe(false);
+    });
+
+    it("reports a cross-namespace parent when the parent lives in another namespace", () => {
+        const gobjectNs = createNormalizedNamespace({ name: "GObject" });
+        const parent = createNormalizedClass(
+            {
+                name: "Object",
+                qualifiedName: qualifiedName("GObject", "Object"),
+                parent: null,
+                signals: [createNormalizedSignal({ name: "notify" })],
+            },
+            createMockRepository(new Map([["GObject", gobjectNs]])),
+        );
+        gobjectNs.classes.set("Object", parent);
+
+        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+        const repo = createMockRepository(
+            new Map([
+                ["Gtk", gtkNs],
+                ["GObject", gobjectNs],
+            ]),
+        );
+        const child = createNormalizedClass(
+            {
+                name: "Button",
+                qualifiedName: qualifiedName("Gtk", "Button"),
+                parent: qualifiedName("GObject", "Object"),
+                signals: [createNormalizedSignal({ name: "clicked" })],
+            },
+            repo,
+        );
+        gtkNs.classes.set("Button", child);
+
+        const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+        const builder = new SignalBuilder(child, ffiMapper, fileBuilder(), repo as Parameters<typeof FfiMapper>[0], {
+            namespace: "Gtk",
+            sharedLibrary: "libgtk-4.so.1",
+            glibLibrary: "libglib-2.0.so.0",
+            gobjectLibrary: "libgobject-2.0.so.0",
+        });
+
+        const { hasCrossNamespaceParent } = builder.collectAllSignals();
+
+        expect(hasCrossNamespaceParent).toBe(true);
+    });
+});
+
+describe("SignalBuilder - GObject namespace specifics", () => {
+    it("emits the root GObject connect body without a super delegate", () => {
+        const ns = createNormalizedNamespace({ name: "GObject" });
+        const repo = createMockRepository(new Map([["GObject", ns]]));
+        const cls = createNormalizedClass(
+            {
+                name: "Object",
+                qualifiedName: qualifiedName("GObject", "Object"),
+                parent: null,
+                signals: [createNormalizedSignal({ name: "notify" })],
+            },
+            repo,
+        );
+        ns.classes.set("Object", cls);
+
+        const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GObject");
+        const builder = new SignalBuilder(cls, ffiMapper, fileBuilder(), repo as Parameters<typeof FfiMapper>[0], {
+            namespace: "GObject",
+            sharedLibrary: "libgobject-2.0.so.0",
+            glibLibrary: "libglib-2.0.so.0",
+            gobjectLibrary: "libgobject-2.0.so.0",
+        });
+
+        const structures = builder.buildConnectMethodStructures();
+        const connectWriter = new Writer();
+        structures[0]?.statements?.(connectWriter);
+
+        expect(connectWriter.toString()).not.toContain("super.connect");
+    });
+
+    it("inlines the GObject value helpers in the meta registration call", () => {
+        const ns = createNormalizedNamespace({ name: "GObject" });
+        const repo = createMockRepository(new Map([["GObject", ns]]));
+        const cls = createNormalizedClass(
+            {
+                name: "Object",
+                qualifiedName: qualifiedName("GObject", "Object"),
+                parent: null,
+                signals: [createNormalizedSignal({ name: "notify" })],
+            },
+            repo,
+        );
+        ns.classes.set("Object", cls);
+
+        const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GObject");
+        const builder = new SignalBuilder(cls, ffiMapper, fileBuilder(), repo as Parameters<typeof FfiMapper>[0], {
+            namespace: "GObject",
+            sharedLibrary: "libgobject-2.0.so.0",
+            glibLibrary: "libglib-2.0.so.0",
+            gobjectLibrary: "libgobject-2.0.so.0",
+        });
+
+        const code = renderMeta(builder);
+
+        expect(code).toContain("{ Value, signalEmitv, signalLookup }");
+    });
+});
+
+describe("SignalBuilder - enum and record return types", () => {
+    it("emits an enum get-type call for a signal returning an enum", () => {
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            enumerations: new Map([["Orientation", createNormalizedEnumeration({ name: "Orientation" })]]),
+        });
+
+        const { builder } = createTestSetup(
+            {
+                signals: [
+                    createNormalizedSignal({
+                        name: "reoriented",
+                        returnType: createNormalizedType({ name: "Orientation" }),
+                    }),
+                ],
+            },
+            new Map([["Gtk", ns]]),
+        );
+
+        const code = renderMeta(builder);
+
+        expect(code).toContain("returnGType: () =>");
+    });
+
+    it("emits a boxed-record gtype name for a signal returning a boxed record", () => {
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            records: new Map([
+                [
+                    "Border",
+                    createNormalizedRecord({
+                        name: "Border",
+                        qualifiedName: qualifiedName("Gtk", "Border"),
+                        glibTypeName: "GtkBorder",
+                        glibGetType: "gtk_border_get_type",
+                    }),
+                ],
+            ]),
+        });
+
+        const { builder } = createTestSetup(
+            {
+                signals: [
+                    createNormalizedSignal({
+                        name: "bordered",
+                        returnType: createNormalizedType({ name: "Border", transferOwnership: "full" }),
+                    }),
+                ],
+            },
+            new Map([["Gtk", ns]]),
+        );
+
+        const code = renderMeta(builder);
+
+        expect(code).toContain("returnGType: () =>");
     });
 });

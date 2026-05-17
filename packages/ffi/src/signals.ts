@@ -185,11 +185,11 @@ export function emitSignal(
     }
 
     const signalId = gobject.signalLookup(sigName, meta.getType());
-    if (descriptor.returnGType !== null) {
+    if (descriptor.returnGType === null) {
+        gobject.signalEmitv(values, signalId, 0);
+    } else {
         const returnValue = new gobject.Value();
         returnValue.init(descriptor.returnGType());
         gobject.signalEmitv(values, signalId, 0, returnValue);
-    } else {
-        gobject.signalEmitv(values, signalId, 0);
     }
 }

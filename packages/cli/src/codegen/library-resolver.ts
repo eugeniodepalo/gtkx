@@ -87,7 +87,7 @@ export const discoverGirNamespaces = (girPath: readonly string[]): string[] => {
         }
     }
 
-    return [...highestByName.values()].map(({ identifier }) => identifier).sort();
+    return [...highestByName.values()].map(({ identifier }) => identifier).sort((a, b) => a.localeCompare(b));
 };
 
 /**

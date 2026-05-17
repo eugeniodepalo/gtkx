@@ -40,7 +40,7 @@ const resolveGType = (target: ClassStructTarget): GType => {
     if (isNativeClass(target)) {
         return getClassGType(target);
     }
-    const handle = tryGetHandle(target as object) ?? (target as NativeHandle);
+    const handle = tryGetHandle(target) ?? target;
     return getInstanceGType(handle);
 };
 

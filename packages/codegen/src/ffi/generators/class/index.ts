@@ -253,7 +253,7 @@ export class ClassGenerator {
         const doc = buildJsDocStructure(this.cls.doc, this.options.namespace);
         const cls = classDecl(this.className, {
             exported: true,
-            ...(extendsBase !== undefined ? { extends: extendsBase } : {}),
+            ...(extendsBase === undefined ? {} : { extends: extendsBase }),
             abstract: this.cls.abstract,
             doc: doc?.[0]?.description,
         });

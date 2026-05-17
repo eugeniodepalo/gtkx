@@ -167,12 +167,14 @@ const annotateReturns = (source: string, fileName: string, annotate: ReturnAnnot
         if (ts.isReturnStatement(node) && node.expression !== undefined) {
             const annotation = annotate(node.expression);
             if (annotation !== undefined) {
-                edits.push({
-                    start: node.expression.getStart(sourceFile),
-                    end: node.expression.getStart(sourceFile),
-                    text: `/** @type {${annotation}} */ (`,
-                });
-                edits.push({ start: node.expression.getEnd(), end: node.expression.getEnd(), text: ")" });
+                edits.push(
+                    {
+                        start: node.expression.getStart(sourceFile),
+                        end: node.expression.getStart(sourceFile),
+                        text: `/** @type {${annotation}} */ (`,
+                    },
+                    { start: node.expression.getEnd(), end: node.expression.getEnd(), text: ")" },
+                );
             }
         }
         ts.forEachChild(node, visit);
@@ -339,7 +341,7 @@ const normalizeContract = (source: string, fileName: string): string => {
 
     const result = ts.transform(sourceFile, [transformer]);
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-    const printed = printer.printFile(result.transformed[0] as ts.SourceFile);
+    const printed = printer.printFile(result.transformed[0] ?? sourceFile);
     result.dispose();
     return printed;
 };
@@ -359,7 +361,7 @@ const collectNamespaces = (): string[] =>
                 existsSync(join(GENERATED_DIR, name, `${name}.js`)) &&
                 existsSync(join(GENERATED_DIR, name, `${name}.d.ts`)),
         )
-        .sort();
+        .sort((a, b) => a.localeCompare(b));
 
 /**
  * Collects the names of every exported `class` declaration in a source file.
@@ -465,11 +467,12 @@ const resolveSpecifier = (
         };
     }
 
-    const contractNamespace = specifier.startsWith(CONTRACT_PREFIX)
-        ? specifier.slice(CONTRACT_PREFIX.length)
-        : specifier.startsWith(FFI_PACKAGE_PREFIX)
-          ? specifier.slice(FFI_PACKAGE_PREFIX.length)
-          : undefined;
+    let contractNamespace: string | undefined;
+    if (specifier.startsWith(CONTRACT_PREFIX)) {
+        contractNamespace = specifier.slice(CONTRACT_PREFIX.length);
+    } else if (specifier.startsWith(FFI_PACKAGE_PREFIX)) {
+        contractNamespace = specifier.slice(FFI_PACKAGE_PREFIX.length);
+    }
 
     if (contractNamespace !== undefined && namespaces.has(contractNamespace)) {
         return {
@@ -483,7 +486,7 @@ const resolveSpecifier = (
 
     if (containingFile.startsWith(`${GENERATED_DIR}/`)) {
         const resolvedPath = specifier.startsWith(".") ? resolve(dirname(containingFile), specifier) : undefined;
-        if (resolvedPath === undefined || !resolvedPath.startsWith(`${GENERATED_DIR}/`)) {
+        if (!resolvedPath?.startsWith(`${GENERATED_DIR}/`)) {
             return { resolvedModule: undefined };
         }
     }
@@ -607,7 +610,9 @@ const main = (): void => {
 
         const contractClasses = collectExportedClassNames(normalizedDeclaration, declarationPath, ts.ScriptKind.TS);
         const runtimeClasses = collectExportedClassNames(runtime, runtimePath, ts.ScriptKind.JS);
-        const sharedClasses = [...contractClasses].filter((name) => runtimeClasses.has(name)).sort();
+        const sharedClasses = [...contractClasses]
+            .filter((name) => runtimeClasses.has(name))
+            .sort((a, b) => a.localeCompare(b));
 
         const checkPath = checkTsPath(namespace);
         virtualFiles.set(checkPath, checkSource(namespace, sharedClasses));

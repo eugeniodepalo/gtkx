@@ -7,6 +7,7 @@
 import { enumDecl, type FileBuilder } from "../../builders/index.js";
 import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
+import { jsStringLiteral } from "../../core/utils/js-literal.js";
 import { normalizeClassName, toConstantCase } from "../../core/utils/naming.js";
 import type { GirEnumeration } from "../../gir/index.js";
 
@@ -68,7 +69,7 @@ export class EnumGenerator {
      */
     private errorDomainResolver(quark: string): string {
         this.file.addImport("../../native.js", ["makeErrorDomain"]);
-        const literal = JSON.stringify(quark);
+        const literal = jsStringLiteral(quark);
         if (this.options.namespace === "GLib") {
             return `() => quarkFromString(${literal})`;
         }

@@ -100,10 +100,10 @@ export class GirClass {
     /** Gets the full inheritance chain from this class to the root. */
     getInheritanceChain(): string[] {
         const chain: string[] = [this.qualifiedName];
-        let current: GirClass | null = this;
-        while (current?.parent) {
-            chain.push(current.parent);
-            current = this.repo.resolveClass(current.parent);
+        let parentName: string | null = this.parent;
+        while (parentName) {
+            chain.push(parentName);
+            parentName = this.repo.resolveClass(parentName)?.parent ?? null;
         }
         return chain;
     }

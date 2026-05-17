@@ -288,15 +288,14 @@ fn glist_transfer_none_does_not_free_list() {
 
     assert!(!list.is_null());
 
-    let mut current = list;
-    while !current.is_null() {
-        let data = unsafe { (*current).data };
+    let length = unsafe { glib::ffi::g_list_length(list) };
+    for index in 0..length {
+        let data = unsafe { glib::ffi::g_list_nth_data(list, index) };
         if !data.is_null() {
             unsafe {
                 glib::gobject_ffi::g_object_unref(data as *mut glib::gobject_ffi::GObject);
             }
         }
-        current = unsafe { (*current).next };
     }
     unsafe {
         glib::ffi::g_list_free(list);

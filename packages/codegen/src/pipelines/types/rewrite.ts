@@ -9,7 +9,7 @@ const RAW_FILE_PATTERN = /^node-(.+?)-\d+(?:\.\d+)*\.d\.ts$/;
  * stubs, the `node-ambient` shim, the bare `node-gtk` namespace augmentor.
  */
 export function namespaceFromRawFilename(filename: string): string | null {
-    const match = filename.match(RAW_FILE_PATTERN);
+    const match = RAW_FILE_PATTERN.exec(filename);
     if (!match) return null;
     if (filename.endsWith("-import.d.ts")) return null;
     return match[1] ?? null;
@@ -75,8 +75,8 @@ const EXPORT_DEFAULT_LINE = /^export\s+default\s+\w+\s*;?\s*$/gm;
  * redundant outer layer so callers can write `M.Status` directly.
  */
 export function unwrapOuterNamespace(source: string): string {
-    const match = source.match(NAMESPACE_HEADER_PATTERN);
-    if (!match || match.index === undefined) return source;
+    const match = NAMESPACE_HEADER_PATTERN.exec(source);
+    if (match?.index === undefined) return source;
 
     const headerStart = match.index;
     const bodyStart = headerStart + match[0].length;
@@ -103,77 +103,121 @@ const liftNamespaceBody = (body: string): string => {
     return prefixTopLevelDeclarations(dedented);
 };
 
+type PendingDeclaration = { lineStart: number; lineDepth: number };
+
+const renderScannedLine = (
+    source: string,
+    lineStart: number,
+    lineEnd: number,
+    pendingDecl: PendingDeclaration | null,
+): string => {
+    if (pendingDecl?.lineDepth === 0) {
+        const line = source.slice(pendingDecl.lineStart, lineEnd);
+        const trimmed = line.trimStart();
+        const indent = line.slice(0, line.length - trimmed.length);
+        return `${indent}export ${trimmed}`;
+    }
+    return source.slice(lineStart, lineEnd);
+};
+
+type ScannerState = {
+    i: number;
+    depth: number;
+    inLineComment: boolean;
+    inBlockComment: boolean;
+};
+
+const isOpaqueRegionStart = (source: string, i: number): boolean => {
+    const ch = source[i];
+    return ch === "/" || ch === '"' || ch === "'" || ch === "`";
+};
+
+const advanceWithinComment = (source: string, state: ScannerState): boolean => {
+    if (state.inLineComment) {
+        state.i += 1;
+        return true;
+    }
+    if (state.inBlockComment) {
+        if (source[state.i] === "*" && source[state.i + 1] === "/") {
+            state.inBlockComment = false;
+            state.i += 2;
+        } else {
+            state.i += 1;
+        }
+        return true;
+    }
+    return false;
+};
+
+const advanceOpaqueRegion = (source: string, state: ScannerState): boolean => {
+    const ch = source[state.i];
+    if (ch === "/" && source[state.i + 1] === "/") {
+        state.inLineComment = true;
+        state.i += 2;
+        return true;
+    }
+    if (ch === "/" && source[state.i + 1] === "*") {
+        state.inBlockComment = true;
+        state.i += 2;
+        return true;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+        state.i = skipStringLiteral(source, state.i, ch);
+        return true;
+    }
+    return false;
+};
+
+type LineScanContext = {
+    out: string[];
+    lineStart: number;
+    pendingDecl: PendingDeclaration | null;
+};
+
+const flushScannedLine = (source: string, state: ScannerState, ctx: LineScanContext): void => {
+    ctx.out.push(renderScannedLine(source, ctx.lineStart, state.i, ctx.pendingDecl), "\n");
+    state.inLineComment = false;
+    ctx.lineStart = state.i + 1;
+    ctx.pendingDecl = null;
+    state.i += 1;
+};
+
+const detectPendingDeclaration = (source: string, state: ScannerState, ctx: LineScanContext): void => {
+    if (ctx.pendingDecl || state.depth !== 0) return;
+    if (state.i !== firstNonSpaceOnLine(source, ctx.lineStart)) return;
+    if (!lineStartsDeclaration(source, state.i)) return;
+    ctx.pendingDecl = { lineStart: ctx.lineStart, lineDepth: state.depth };
+};
+
+const updateBraceDepth = (state: ScannerState, ch: string | undefined): void => {
+    if (ch === "{") state.depth += 1;
+    else if (ch === "}") state.depth = Math.max(0, state.depth - 1);
+};
+
 const prefixTopLevelDeclarations = (source: string): string => {
-    const out: string[] = [];
     const len = source.length;
-    let depth = 0;
-    let inLineComment = false;
-    let inBlockComment = false;
-    let i = 0;
-    let lineStart = 0;
-    let pendingDecl: { lineStart: number; lineDepth: number } | null = null;
+    const state: ScannerState = { i: 0, depth: 0, inLineComment: false, inBlockComment: false };
+    const ctx: LineScanContext = { out: [], lineStart: 0, pendingDecl: null };
 
-    while (i <= len) {
-        const ch = i < len ? source[i] : "\n";
+    while (state.i <= len) {
+        const ch = state.i < len ? source[state.i] : "\n";
 
-        if (ch === "\n" || i === len) {
-            if (pendingDecl && pendingDecl.lineDepth === 0) {
-                const line = source.slice(pendingDecl.lineStart, i);
-                const trimmed = line.trimStart();
-                const indent = line.slice(0, line.length - trimmed.length);
-                out.push(`${indent}export ${trimmed}`);
-            } else {
-                out.push(source.slice(lineStart, i));
-            }
-            out.push("\n");
-            if (i === len) break;
-            inLineComment = false;
-            lineStart = i + 1;
-            pendingDecl = null;
-            i++;
+        if (ch === "\n" || state.i === len) {
+            const atEnd = state.i === len;
+            flushScannedLine(source, state, ctx);
+            if (atEnd) break;
             continue;
         }
 
-        if (inLineComment) {
-            i++;
-            continue;
-        }
-        if (inBlockComment) {
-            if (ch === "*" && source[i + 1] === "/") {
-                inBlockComment = false;
-                i += 2;
-                continue;
-            }
-            i++;
-            continue;
-        }
-        if (ch === "/" && source[i + 1] === "/") {
-            inLineComment = true;
-            i += 2;
-            continue;
-        }
-        if (ch === "/" && source[i + 1] === "*") {
-            inBlockComment = true;
-            i += 2;
-            continue;
-        }
-        if (ch === '"' || ch === "'" || ch === "`") {
-            i = skipStringLiteral(source, i, ch);
-            continue;
-        }
+        if (advanceWithinComment(source, state)) continue;
+        if (isOpaqueRegionStart(source, state.i) && advanceOpaqueRegion(source, state)) continue;
 
-        if (!pendingDecl && depth === 0 && i === firstNonSpaceOnLine(source, lineStart)) {
-            if (lineStartsDeclaration(source, i)) {
-                pendingDecl = { lineStart, lineDepth: depth };
-            }
-        }
-
-        if (ch === "{") depth++;
-        else if (ch === "}") depth = Math.max(0, depth - 1);
-        i++;
+        detectPendingDeclaration(source, state, ctx);
+        updateBraceDepth(state, ch);
+        state.i += 1;
     }
 
-    return out.join("").replace(/\n$/, "");
+    return ctx.out.join("").replace(/\n$/, "");
 };
 
 const firstNonSpaceOnLine = (source: string, lineStart: number): number => {
@@ -208,7 +252,7 @@ const dedentBody = (body: string): string => {
     let minIndent = Number.POSITIVE_INFINITY;
     for (const line of lines) {
         if (line.trim().length === 0) continue;
-        const match = line.match(/^[ \t]*/);
+        const match = /^[ \t]*/.exec(line);
         const width = match ? match[0].length : 0;
         if (width < minIndent) minIndent = width;
     }
@@ -340,16 +384,16 @@ export function rewriteEnumsToConstObjects(
         matches.push({
             start: result.index,
             end: bodyEnd + 1,
-            replacement: renderEnumReplacement(
-                lineStart ?? "",
-                indent ?? "",
-                exportKw ?? "",
-                leadingDoc ?? "",
+            replacement: renderEnumReplacement({
+                lineStart: lineStart ?? "",
+                indent: indent ?? "",
+                exportKw: exportKw ?? "",
+                leadingDoc: leadingDoc ?? "",
                 name,
                 body,
-                enumValues?.get(name),
-                errorDomainNames?.has(name) ?? false,
-            ),
+                memberValues: enumValues?.get(name),
+                isErrorDomain: errorDomainNames?.has(name) ?? false,
+            }),
         });
     }
 
@@ -358,24 +402,26 @@ export function rewriteEnumsToConstObjects(
     const parts: string[] = [];
     let cursor = 0;
     for (const { start, end, replacement } of matches) {
-        parts.push(normalized.slice(cursor, start));
-        parts.push(replacement);
+        parts.push(normalized.slice(cursor, start), replacement);
         cursor = end;
     }
     parts.push(normalized.slice(cursor));
     return parts.join("");
 }
 
-const renderEnumReplacement = (
-    lineStart: string,
-    indent: string,
-    exportKw: string,
-    leadingDoc: string,
-    name: string,
-    body: string,
-    memberValues?: ReadonlyMap<string, number>,
-    isErrorDomain = false,
-): string => {
+type EnumReplacementInput = {
+    lineStart: string;
+    indent: string;
+    exportKw: string;
+    leadingDoc: string;
+    name: string;
+    body: string;
+    memberValues?: ReadonlyMap<string, number>;
+    isErrorDomain: boolean;
+};
+
+const renderEnumReplacement = (input: EnumReplacementInput): string => {
+    const { lineStart, indent, exportKw, leadingDoc, name, body, memberValues, isErrorDomain } = input;
     const stripped = body.replace(BLOCK_COMMENT_PATTERN, "").replace(LINE_COMMENT_PATTERN, "");
     let nextOrdinal = 0;
     const memberLines: string[] = [];
@@ -391,13 +437,13 @@ const renderEnumReplacement = (
         if (knownValue !== undefined) {
             literal = String(knownValue);
             nextOrdinal = knownValue + 1;
-        } else if (initializer !== undefined) {
+        } else if (initializer === undefined) {
+            literal = String(nextOrdinal);
+            nextOrdinal += 1;
+        } else {
             literal = initializer;
             const numeric = parseNumericLiteral(initializer);
             if (numeric !== null) nextOrdinal = numeric + 1;
-        } else {
-            literal = String(nextOrdinal);
-            nextOrdinal += 1;
         }
         memberLines.push(`    readonly ${memberName}: ${literal};`);
     }
@@ -435,7 +481,7 @@ const parseNumericLiteral = (text: string): number | null => {
 };
 
 const taggedDocPattern = (tag: string): RegExp =>
-    new RegExp(`[ \\t]*\\/\\*\\*(?:(?!\\*\\/)[\\s\\S])*?@${tag}\\b(?:(?!\\*\\/)[\\s\\S])*?\\*\\/`, "g");
+    new RegExp(String.raw`[ \t]*\/\*\*(?:(?!\*\/)[\s\S])*?@${tag}\b(?:(?!\*\/)[\s\S])*?\*\/`, "g");
 
 /**
  * Removes each member declaration whose preceding JSDoc block carries the
@@ -450,6 +496,26 @@ const taggedDocPattern = (tag: string): RegExp =>
  * @param memberFilter - Optional predicate over the trimmed member line.
  * @returns The source with the tagged member declarations removed.
  */
+/**
+ * Region spanning the single source line that immediately follows a tagged
+ * JSDoc block, with `text` trimmed of its bounding whitespace.
+ */
+type FollowingMemberLine = { start: number; end: number; text: string };
+
+const indexOfLineEnd = (source: string, from: number): number => {
+    let i = from;
+    while (i < source.length && source[i] !== "\n") i += 1;
+    return i;
+};
+
+const followingMemberLine = (source: string, docEnd: number): FollowingMemberLine => {
+    let start = indexOfLineEnd(source, docEnd);
+    if (start < source.length) start += 1;
+    const lineEnd = indexOfLineEnd(source, start);
+    const end = lineEnd < source.length ? lineEnd + 1 : lineEnd;
+    return { start, end, text: source.slice(start, lineEnd) };
+};
+
 const stripTaggedMembers = (source: string, tag: string, memberFilter?: (memberLine: string) => boolean): string => {
     const pattern = taggedDocPattern(tag);
     const parts: string[] = [];
@@ -460,19 +526,13 @@ const stripTaggedMembers = (source: string, tag: string, memberFilter?: (memberL
         const docStart = match.index;
         const lineStart = source.lastIndexOf("\n", docStart) + 1;
         const docEnd = docStart + match[0].length;
-        let memberLineStart = docEnd;
-        while (memberLineStart < source.length && source[memberLineStart] !== "\n") memberLineStart += 1;
-        if (memberLineStart < source.length) memberLineStart += 1;
-        let memberEnd = memberLineStart;
-        while (memberEnd < source.length && source[memberEnd] !== "\n") memberEnd += 1;
-        const memberLine = source.slice(memberLineStart, memberEnd);
-        if (memberEnd < source.length) memberEnd += 1;
-        if (memberFilter && !memberFilter(memberLine.trim())) {
+        const member = followingMemberLine(source, docEnd);
+        if (memberFilter && !memberFilter(member.text.trim())) {
             pattern.lastIndex = docEnd;
             continue;
         }
         parts.push(source.slice(cursor, lineStart));
-        cursor = memberEnd;
+        cursor = member.end;
         pattern.lastIndex = cursor;
     }
     parts.push(source.slice(cursor));
@@ -538,9 +598,9 @@ const stripBlockMethods = (source: string, strippedByOwner: ReadonlyMap<string, 
     let result = source;
     for (const [owner, methodNames] of strippedByOwner) {
         for (const blockKeyword of ["interface", "class"]) {
-            const header = new RegExp(`(^|\\n)[ \\t]*export[ \\t]+${blockKeyword}[ \\t]+${owner}\\b[^{]*\\{`);
-            const headerMatch = result.match(header);
-            if (headerMatch === null || headerMatch.index === undefined) continue;
+            const header = new RegExp(String.raw`(^|\n)[ \t]*export[ \t]+${blockKeyword}[ \t]+${owner}\b[^{]*\{`);
+            const headerMatch = header.exec(result);
+            if (headerMatch?.index === undefined) continue;
             const bodyStart = headerMatch.index + headerMatch[0].length;
             const bodyEnd = findMatchingBrace(result, bodyStart);
             if (bodyEnd < 0) continue;
@@ -606,14 +666,14 @@ export function stripDivergentOverrideMethods(
  * member. The inner `(?!\*\/)` guard keeps the lazy body from spanning past
  * the block's own `*\/` into later declarations.
  */
-const OPTIONAL_LEADING_JSDOC = "(?:\\/\\*\\*(?:(?!\\*\\/)[\\s\\S])*?\\*\\/[ \\t\\n]*)?";
+const OPTIONAL_LEADING_JSDOC = String.raw`(?:\/\*\*(?:(?!\*\/)[\s\S])*?\*\/[ \t\n]*)?`;
 
 const stripMethodsFromBody = (body: string, methodNames: ReadonlySet<string>): string => {
     let result = body;
     for (const name of methodNames) {
-        const memberLine = new RegExp(`(^|\\n)([ \\t]*)${OPTIONAL_LEADING_JSDOC}${name}[<(][^\\n]*`);
-        const match = result.match(memberLine);
-        if (match === null || match.index === undefined) continue;
+        const memberLine = new RegExp(String.raw`(^|\n)([ \t]*)${OPTIONAL_LEADING_JSDOC}${name}[<(][^\n]*`);
+        const match = memberLine.exec(result);
+        if (match?.index === undefined) continue;
         const start = match.index + (match[1] ?? "").length;
         let end = match.index + match[0].length;
         if (result[end] === "\n") end += 1;
@@ -659,9 +719,9 @@ export function stripClassFields(source: string, fieldNamesByOwner?: NamespaceFi
     for (const [owner, fieldNames] of fieldNamesByOwner) {
         if (fieldNames.size === 0) continue;
         for (const blockKeyword of ["interface", "class"]) {
-            const header = new RegExp(`(^|\\n)[ \\t]*export[ \\t]+${blockKeyword}[ \\t]+${owner}\\b[^{]*\\{`);
-            const headerMatch = result.match(header);
-            if (headerMatch === null || headerMatch.index === undefined) continue;
+            const header = new RegExp(String.raw`(^|\n)[ \t]*export[ \t]+${blockKeyword}[ \t]+${owner}\b[^{]*\{`);
+            const headerMatch = header.exec(result);
+            if (headerMatch?.index === undefined) continue;
             const bodyStart = headerMatch.index + headerMatch[0].length;
             const bodyEnd = findMatchingBrace(result, bodyStart);
             if (bodyEnd < 0) continue;
@@ -675,9 +735,9 @@ export function stripClassFields(source: string, fieldNamesByOwner?: NamespaceFi
 const stripFieldsFromBody = (body: string, fieldNames: ReadonlySet<string>): string => {
     let result = body;
     for (const name of fieldNames) {
-        const memberLine = new RegExp(`(^|\\n)([ \\t]*)${OPTIONAL_LEADING_JSDOC}${name}(\\?)?:[ \\t][^\\n]*`);
-        const match = result.match(memberLine);
-        if (match === null || match.index === undefined) continue;
+        const memberLine = new RegExp(String.raw`(^|\n)([ \t]*)${OPTIONAL_LEADING_JSDOC}${name}(\?)?:[ \t][^\n]*`);
+        const match = memberLine.exec(result);
+        if (match?.index === undefined) continue;
         const start = match.index + (match[1] ?? "").length;
         let end = match.index + match[0].length;
         if (result[end] === "\n") end += 1;
@@ -949,39 +1009,48 @@ export function stripEventEmitterSignalOverloads(source: string): string {
  * @param body - The text between a tuple type's brackets.
  * @returns The number of comma-separated entries.
  */
+const OPENING_BRACKETS = new Set(["<", "(", "[", "{"]);
+const CLOSING_BRACKETS = new Set([">", ")", "]", "}"]);
+const TUPLE_WHITESPACE = new Set([" ", "\t", "\r", "\n"]);
+
+type TupleScanState = { entries: number; depth: number; hasContent: boolean };
+
+const skipTupleOpaqueRegion = (body: string, i: number, ch: string): number | null => {
+    if (ch === '"' || ch === "'" || ch === "`") return skipStringLiteral(body, i, ch);
+    if (ch === "/" && body[i + 1] === "*") return skipBlockComment(body, i);
+    if (ch === "/" && body[i + 1] === "/") return skipLineComment(body, i);
+    return null;
+};
+
+const applyTupleChar = (state: TupleScanState, ch: string): void => {
+    if (OPENING_BRACKETS.has(ch)) {
+        state.depth++;
+        state.hasContent = true;
+    } else if (CLOSING_BRACKETS.has(ch)) {
+        state.depth = Math.max(0, state.depth - 1);
+    } else if (ch === "," && state.depth === 0) {
+        state.entries++;
+    } else if (!TUPLE_WHITESPACE.has(ch)) {
+        state.hasContent = true;
+    }
+};
+
 const countTupleEntries = (body: string): number => {
-    let entries = 0;
-    let depth = 0;
-    let hasContent = false;
+    const state: TupleScanState = { entries: 0, depth: 0, hasContent: false };
     let i = 0;
     while (i < body.length) {
         const ch = body[i];
-        if (ch === '"' || ch === "'" || ch === "`") {
-            i = skipStringLiteral(body, i, ch);
-            hasContent = true;
+        if (ch === undefined) break;
+        const skipTo = skipTupleOpaqueRegion(body, i, ch);
+        if (skipTo !== null) {
+            if (ch !== "/") state.hasContent = true;
+            i = skipTo;
             continue;
         }
-        if (ch === "/" && body[i + 1] === "*") {
-            i = skipBlockComment(body, i);
-            continue;
-        }
-        if (ch === "/" && body[i + 1] === "/") {
-            i = skipLineComment(body, i);
-            continue;
-        }
-        if (ch === "<" || ch === "(" || ch === "[" || ch === "{") {
-            depth++;
-            hasContent = true;
-        } else if (ch === ">" || ch === ")" || ch === "]" || ch === "}") {
-            depth = Math.max(0, depth - 1);
-        } else if (ch === "," && depth === 0) {
-            entries++;
-        } else if (ch !== " " && ch !== "\t" && ch !== "\r" && ch !== "\n") {
-            hasContent = true;
-        }
+        applyTupleChar(state, ch);
         i++;
     }
-    return hasContent ? entries + 1 : 0;
+    return state.hasContent ? state.entries + 1 : 0;
 };
 
 /**
@@ -1011,8 +1080,7 @@ export function relaxMultiReturnTuples(source: string): string {
         if (closeIndex < 0) break;
         const arity = countTupleEntries(source.slice(bracketIndex + 1, closeIndex));
         const tuple = arity > 0 ? `[${Array.from({ length: arity }, () => "any").join(", ")}]` : "any[]";
-        parts.push(source.slice(cursor, match.index));
-        parts.push(`: ${tuple}`);
+        parts.push(source.slice(cursor, match.index), `: ${tuple}`);
         cursor = closeIndex + 1;
         MULTI_RETURN_TUPLE_PATTERN.lastIndex = cursor;
     }
@@ -1078,7 +1146,7 @@ const honorConflictSignaturesInBlock = (body: string): string => {
         const params = match[2];
         const returnType = match[3];
         if (name === undefined || params === undefined || returnType === undefined) continue;
-        const memberPattern = new RegExp(`(\\n[ \\t]*${escapeRegExp(name)})\\([^\\n]*\\): [^\\n]+`);
+        const memberPattern = new RegExp(String.raw`(\n[ \t]*${escapeRegExp(name)})\([^\n]*\): [^\n]+`);
         result = result.replace(memberPattern, `$1(${params}): ${returnType}`);
     }
     return result;
@@ -1091,7 +1159,7 @@ const honorConflictSignaturesInBlock = (body: string): string => {
  * @returns The text safe for embedding in a `RegExp`.
  */
 function escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 const METHOD_CONNECT_LINE = /(\n[ \t]*)connect\((?!sigName:)([^\n]*)/g;
@@ -1237,7 +1305,7 @@ export function renameShadowedMethods(source: string, renames?: NamespaceMethodS
  * @returns The body with the matching overload renamed.
  */
 const renameMethodOverload = (body: string, rename: MethodShadowRename): string => {
-    const pattern = new RegExp(`(\\n[ \\t]*)${escapeRegExp(rename.original)}\\(`, "g");
+    const pattern = new RegExp(String.raw`(\n[ \t]*)${escapeRegExp(rename.original)}\(`, "g");
     for (;;) {
         const match = pattern.exec(body);
         if (match === null) return body;
@@ -1272,7 +1340,7 @@ export function relaxOptionalInoutReturns(source: string): string {
     return source.replace(
         OPTIONAL_INOUT_RETURN,
         (match, params: string, returnType: string, paramName: string, suffix: string) => {
-            const optionalParam = new RegExp(`\\b${escapeRegExp(paramName)}\\?:`);
+            const optionalParam = new RegExp(String.raw`\b${escapeRegExp(paramName)}\?:`);
             if (!optionalParam.test(params)) return match;
             return `(${params}): ${returnType}${suffix} | null`;
         },
@@ -1314,16 +1382,16 @@ export type AsyncMemberMap = ReadonlyMap<string, NamespaceAsyncMembers>;
  */
 const findMemberReturnType = (region: string, memberName: string, isFunction: boolean): string | null => {
     const head = isFunction
-        ? `(?:^|\\n)[ \\t]*export[ \\t]+function[ \\t]+${escapeRegExp(memberName)}\\s*\\(`
-        : `(?:^|\\n)[ \\t]*${escapeRegExp(memberName)}\\s*\\(`;
-    const headMatch = region.match(new RegExp(head));
-    if (headMatch === null || headMatch.index === undefined) return null;
+        ? String.raw`(?:^|\n)[ \t]*export[ \t]+function[ \t]+${escapeRegExp(memberName)}\s*\(`
+        : String.raw`(?:^|\n)[ \t]*${escapeRegExp(memberName)}\s*\(`;
+    const headMatch = new RegExp(head).exec(region);
+    if (headMatch?.index === undefined) return null;
     const parenStart = region.indexOf("(", headMatch.index);
     if (parenStart < 0) return null;
     const parenEnd = findMatchingParen(region, parenStart + 1);
     if (parenEnd < 0) return null;
     const afterParams = region.slice(parenEnd + 1);
-    const returnMatch = afterParams.match(/^\s*:\s*([^\n;]+)/);
+    const returnMatch = /^\s*:\s*([^\n;]+)/.exec(afterParams);
     if (returnMatch?.[1] === undefined) return null;
     return returnMatch[1].trim().replace(/;$/, "").trim();
 };
@@ -1374,8 +1442,8 @@ const rewriteAsyncMemberDeclaration = (
     isFunction: boolean,
 ): string => {
     const head = isFunction
-        ? `((?:^|\\n)[ \\t]*export[ \\t]+function[ \\t]+${escapeRegExp(memberName)}\\s*)\\(`
-        : `((?:^|\\n)[ \\t]*${escapeRegExp(memberName)}\\s*)\\(`;
+        ? String.raw`((?:^|\n)[ \t]*export[ \t]+function[ \t]+${escapeRegExp(memberName)}\s*)\(`
+        : String.raw`((?:^|\n)[ \t]*${escapeRegExp(memberName)}\s*)\(`;
     const pattern = new RegExp(head, "g");
     let result = region;
     for (;;) {
@@ -1395,7 +1463,7 @@ const rewriteAsyncMemberDeclaration = (
             continue;
         }
         const afterParams = result.slice(parenEnd + 1);
-        const returnMatch = afterParams.match(/^\s*:\s*[^\n;]+/);
+        const returnMatch = /^\s*:\s*[^\n;]+/.exec(afterParams);
         const returnLength = returnMatch ? returnMatch[0].length : 0;
         const replacement = `${headText}(${newParams}): Promise<${finishReturnType}>`;
         result = result.slice(0, match.index) + replacement + result.slice(parenEnd + 1 + returnLength);
@@ -1474,6 +1542,47 @@ const splitParameterList = (params: string): string[] => {
  * @param asyncMembers - Async callable entries keyed by owner type name.
  * @returns The source with async callable signatures made Promise-returning.
  */
+/**
+ * Applies `transformBody` to the body of the `class` or `interface` block
+ * named `owner`, for each block keyword. The transform receives the current
+ * body text and returns the rewritten body.
+ *
+ * @param source - The source containing the owner blocks.
+ * @param owner - The class or interface name to locate.
+ * @param transformBody - The body-text transform applied within the block.
+ * @returns The source with the located block bodies transformed.
+ */
+const rewriteOwnerBlockBodies = (source: string, owner: string, transformBody: (body: string) => string): string => {
+    let result = source;
+    for (const blockKeyword of ["interface", "class"]) {
+        const header = new RegExp(
+            String.raw`(^|\n)[ \t]*export[ \t]+(?:abstract[ \t]+)?${blockKeyword}[ \t]+${owner}\b[^{]*\{`,
+        );
+        const headerMatch = header.exec(result);
+        if (headerMatch?.index === undefined) continue;
+        const bodyStart = headerMatch.index + headerMatch[0].length;
+        const bodyEnd = findMatchingBrace(result, bodyStart);
+        if (bodyEnd < 0) continue;
+        const body = result.slice(bodyStart, bodyEnd);
+        result = result.slice(0, bodyStart) + transformBody(body) + result.slice(bodyEnd);
+    }
+    return result;
+};
+
+const rewriteAsyncEntriesInRegion = (
+    region: string,
+    entries: readonly AsyncMemberEntry[],
+    isFunction: boolean,
+): string => {
+    let result = region;
+    for (const { asyncMember, finishMember } of entries) {
+        const finishReturn = findMemberReturnType(result, finishMember, isFunction);
+        if (finishReturn === null) continue;
+        result = rewriteAsyncMemberDeclaration(result, asyncMember, finishReturn, isFunction);
+    }
+    return result;
+};
+
 export function rewriteAsyncSignatures(source: string, asyncMembers?: NamespaceAsyncMembers): string {
     if (asyncMembers === undefined || asyncMembers.size === 0) return source;
 
@@ -1481,32 +1590,12 @@ export function rewriteAsyncSignatures(source: string, asyncMembers?: NamespaceA
 
     const functionEntries = asyncMembers.get("");
     if (functionEntries) {
-        for (const { asyncMember, finishMember } of functionEntries) {
-            const finishReturn = findMemberReturnType(result, finishMember, true);
-            if (finishReturn === null) continue;
-            result = rewriteAsyncMemberDeclaration(result, asyncMember, finishReturn, true);
-        }
+        result = rewriteAsyncEntriesInRegion(result, functionEntries, true);
     }
 
     for (const [owner, entries] of asyncMembers) {
         if (owner === "" || entries.length === 0) continue;
-        for (const blockKeyword of ["interface", "class"]) {
-            const header = new RegExp(
-                `(^|\\n)[ \\t]*export[ \\t]+(?:abstract[ \\t]+)?${blockKeyword}[ \\t]+${owner}\\b[^{]*\\{`,
-            );
-            const headerMatch = result.match(header);
-            if (headerMatch === null || headerMatch.index === undefined) continue;
-            const bodyStart = headerMatch.index + headerMatch[0].length;
-            const bodyEnd = findMatchingBrace(result, bodyStart);
-            if (bodyEnd < 0) continue;
-            let body = result.slice(bodyStart, bodyEnd);
-            for (const { asyncMember, finishMember } of entries) {
-                const finishReturn = findMemberReturnType(body, finishMember, false);
-                if (finishReturn === null) continue;
-                body = rewriteAsyncMemberDeclaration(body, asyncMember, finishReturn, false);
-            }
-            result = result.slice(0, bodyStart) + body + result.slice(bodyEnd);
-        }
+        result = rewriteOwnerBlockBodies(result, owner, (body) => rewriteAsyncEntriesInRegion(body, entries, false));
     }
 
     return result;
@@ -1549,8 +1638,8 @@ const HASH_TABLE_TYPE_TOKEN = /\b(?:GLib\.)?HashTable\b/g;
  */
 const rewriteHashTableMemberDeclaration = (region: string, entry: HashTableMemberEntry): string => {
     const head = entry.isFunction
-        ? `((?:^|\\n)[ \\t]*export[ \\t]+function[ \\t]+${escapeRegExp(entry.member)}\\s*)\\(`
-        : `((?:^|\\n)[ \\t]*(?:static[ \\t]+)?${escapeRegExp(entry.member)}\\s*)\\(`;
+        ? String.raw`((?:^|\n)[ \t]*export[ \t]+function[ \t]+${escapeRegExp(entry.member)}\s*)\(`
+        : String.raw`((?:^|\n)[ \t]*(?:static[ \t]+)?${escapeRegExp(entry.member)}\s*)\(`;
     const pattern = new RegExp(head, "g");
     let result = region;
     for (;;) {
@@ -1564,7 +1653,7 @@ const rewriteHashTableMemberDeclaration = (region: string, entry: HashTableMembe
             continue;
         }
         const afterParams = result.slice(parenEnd + 1);
-        const returnMatch = afterParams.match(/^\s*:\s*[^\n;]+/);
+        const returnMatch = /^\s*:\s*[^\n;]+/.exec(afterParams);
         const returnLength = returnMatch ? returnMatch[0].length : 0;
         const declarationEnd = parenEnd + 1 + returnLength;
         const declaration = result.slice(parenStart, declarationEnd);
@@ -1593,6 +1682,14 @@ const rewriteHashTableMemberDeclaration = (region: string, entry: HashTableMembe
  * @param hashTableMembers - Keyed-`GHashTable` entries keyed by owner type name.
  * @returns The source with keyed `GHashTable` signatures retyped to `Map`.
  */
+const rewriteHashTableEntriesInRegion = (region: string, entries: readonly HashTableMemberEntry[]): string => {
+    let result = region;
+    for (const entry of entries) {
+        result = rewriteHashTableMemberDeclaration(result, entry);
+    }
+    return result;
+};
+
 export function rewriteHashTableTypes(source: string, hashTableMembers?: NamespaceHashTableMembers): string {
     if (hashTableMembers === undefined || hashTableMembers.size === 0) return source;
 
@@ -1600,28 +1697,12 @@ export function rewriteHashTableTypes(source: string, hashTableMembers?: Namespa
 
     const functionEntries = hashTableMembers.get("");
     if (functionEntries) {
-        for (const entry of functionEntries) {
-            result = rewriteHashTableMemberDeclaration(result, entry);
-        }
+        result = rewriteHashTableEntriesInRegion(result, functionEntries);
     }
 
     for (const [owner, entries] of hashTableMembers) {
         if (owner === "" || entries.length === 0) continue;
-        for (const blockKeyword of ["interface", "class"]) {
-            const header = new RegExp(
-                `(^|\\n)[ \\t]*export[ \\t]+(?:abstract[ \\t]+)?${blockKeyword}[ \\t]+${owner}\\b[^{]*\\{`,
-            );
-            const headerMatch = result.match(header);
-            if (headerMatch === null || headerMatch.index === undefined) continue;
-            const bodyStart = headerMatch.index + headerMatch[0].length;
-            const bodyEnd = findMatchingBrace(result, bodyStart);
-            if (bodyEnd < 0) continue;
-            let body = result.slice(bodyStart, bodyEnd);
-            for (const entry of entries) {
-                body = rewriteHashTableMemberDeclaration(body, entry);
-            }
-            result = result.slice(0, bodyStart) + body + result.slice(bodyEnd);
-        }
+        result = rewriteOwnerBlockBodies(result, owner, (body) => rewriteHashTableEntriesInRegion(body, entries));
     }
 
     return result;
@@ -1662,30 +1743,61 @@ export type RewriteResult = {
 };
 
 /**
+ * Per-namespace GIR-derived data the rewrites consult to keep the generated
+ * `.d.ts` aligned with the gtkx runtime. Every field is optional; a namespace
+ * absent from a given map falls back to the corresponding rewrite's default.
+ */
+export type RewriteInputs = {
+    /**
+     * Real enum member values used to keep rewritten enum const-objects
+     * accurate; namespaces absent from the map fall back to ts-for-gir
+     * initializers and ordinals.
+     */
+    enumValues?: EnumValueMap;
+    /**
+     * Gtype-struct record names whose `export abstract class` value
+     * declarations are stripped to match node-gtk's runtime.
+     */
+    gtypeStructNames?: GtypeStructMap;
+    /** Instance-struct field names stripped from class and interface bodies. */
+    classFieldNames?: FieldNameMap;
+    /** Signal-action and virtual-method names stripped from type bodies. */
+    signalActionMethodNames?: FieldNameMap;
+    /** Renamed `connect`-method names keyed owner type name. */
+    connectRenames?: ConnectRenameMap;
+    /** Names of numeric-valued constants whose declared type is relaxed. */
+    numericConstantNames?: FieldNameMap;
+    /** GIO-style async callable entries retyped to Promise-returning. */
+    asyncMembers?: AsyncMemberMap;
+    /** Method shadow-renames keyed owner type name. */
+    methodShadowRenames?: MethodShadowRenameMap;
+    /** Keyed-`GHashTable` member entries retyped to `Map<K, V>`. */
+    hashTableMembers?: HashTableMemberMap;
+    /** Error-domain enum names rewritten with an `instanceof`-capable member. */
+    errorDomainNames?: ErrorDomainMap;
+};
+
+/**
  * Applies every rewrite to each per-namespace `.d.ts` produced by ts-for-gir.
  * Files outside the per-namespace pattern (ambient shims, the bare `node-gtk`
  * augmentor, `-import` stubs) are ignored.
  *
  * @param rawFilesByName - ts-for-gir output keyed by raw filename.
- * @param enumValues - Real enum member values used to keep rewritten enum
- *     const-objects accurate; namespaces absent from the map fall back to
- *     ts-for-gir initializers and ordinals.
- * @param gtypeStructNames - Gtype-struct record names whose `export abstract
- *     class` value declarations are stripped to match node-gtk's runtime.
+ * @param inputs - Per-namespace GIR-derived data consulted by the rewrites.
  */
-export function loadAndRewrite(
-    rawFilesByName: Map<string, string>,
-    enumValues?: EnumValueMap,
-    gtypeStructNames?: GtypeStructMap,
-    classFieldNames?: FieldNameMap,
-    signalActionMethodNames?: FieldNameMap,
-    connectRenames?: ConnectRenameMap,
-    numericConstantNames?: FieldNameMap,
-    asyncMembers?: AsyncMemberMap,
-    methodShadowRenames?: MethodShadowRenameMap,
-    hashTableMembers?: HashTableMemberMap,
-    errorDomainNames?: ErrorDomainMap,
-): RewriteResult[] {
+export function loadAndRewrite(rawFilesByName: Map<string, string>, inputs: RewriteInputs = {}): RewriteResult[] {
+    const {
+        enumValues,
+        gtypeStructNames,
+        classFieldNames,
+        signalActionMethodNames,
+        connectRenames,
+        numericConstantNames,
+        asyncMembers,
+        methodShadowRenames,
+        hashTableMembers,
+        errorDomainNames,
+    } = inputs;
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
         const namespace = namespaceFromRawFilename(filename);

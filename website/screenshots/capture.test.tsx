@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { css } from "@gtkx/css";
@@ -51,7 +51,7 @@ const saveDisplayScreenshot = async (filename: string) => {
     ensureDarkMode();
     await new Promise((resolve) => setTimeout(resolve, 200));
     const filepath = resolve(IMAGES_DIR, filename);
-    execSync(`import -window root -trim +repage png:${filepath}`);
+    execFileSync("import", ["-window", "root", "-trim", "+repage", `png:${filepath}`]);
 };
 
 interface Note {

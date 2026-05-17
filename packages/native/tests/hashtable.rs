@@ -98,9 +98,11 @@ fn encode_float_value() {
 
     let ptr = encoder.encode(&value).expect("encoding should succeed");
 
-    assert!(!ptr.is_null());
-
-    let stored_value = unsafe { *(ptr as *const f64) };
+    let stored_value = unsafe {
+        *ptr.cast::<f64>()
+            .as_ref()
+            .expect("encoded float pointer should be non-null")
+    };
     assert!((stored_value - std::f64::consts::PI).abs() < f64::EPSILON);
 
     unsafe { glib::ffi::g_free(ptr) };
@@ -113,7 +115,11 @@ fn encode_float_negative() {
 
     let ptr = encoder.encode(&value).expect("encoding should succeed");
 
-    let stored_value = unsafe { *(ptr as *const f64) };
+    let stored_value = unsafe {
+        *ptr.cast::<f64>()
+            .as_ref()
+            .expect("encoded float pointer should be non-null")
+    };
     assert!((stored_value - (-123.456)).abs() < f64::EPSILON);
 
     unsafe { glib::ffi::g_free(ptr) };

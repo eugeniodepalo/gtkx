@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isMethodDuplicate, partitionSupportedMethods } from "../../../src/core/utils/filtering.js";
 import {
-    CLASS_RENAMES,
     generateConflictingMethodName,
     kebabToSnake,
     normalizeClassName,
@@ -319,12 +318,6 @@ describe("partitionSupportedMethods", () => {
             () => false,
         );
         expect(supported).toHaveLength(3);
-    });
-});
-
-describe("CLASS_RENAMES", () => {
-    it("starts empty so node-gtk-aligned names pass through unchanged", () => {
-        expect(CLASS_RENAMES.size).toBe(0);
     });
 });
 

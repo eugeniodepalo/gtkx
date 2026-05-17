@@ -98,21 +98,24 @@ export const toValidIdentifier = (str: string): string => {
     return result;
 };
 
+const RESERVED_WORD_EXPORT_SUFFIX = "_TODO";
+
 /**
- * Produces a valid identifier for an exported namespace member, matching
- * ts-for-gir's `<name>_TODO` suffix for names that collide with a reserved
- * word (e.g. the Pango `break` function becomes `break_TODO`).
+ * Produces a valid identifier for an exported namespace member.
+ *
+ * A name that collides with a reserved word receives
+ * {@link RESERVED_WORD_EXPORT_SUFFIX}, matching ts-for-gir's collision-suffix
+ * convention (e.g. the Pango `break` function is exported with that suffix
+ * appended).
  *
  * @param str - The raw member name.
  * @returns The collision-safe exported member name.
  */
 export const toValidExportName = (str: string): string => {
     const result = toValidMemberName(str);
-    if (RESERVED_WORDS.has(result)) return `${result}_TODO`;
+    if (RESERVED_WORDS.has(result)) return `${result}${RESERVED_WORD_EXPORT_SUFFIX}`;
     return result;
 };
-
-export const CLASS_RENAMES = new Map<string, string>();
 
 /**
  * HarfBuzz publishes every public type in lowercase `snake_case_t` form
@@ -124,10 +127,9 @@ export const CLASS_RENAMES = new Map<string, string>();
  */
 export const normalizeClassName = (name: string): string => {
     if (name.endsWith("_t") && /^[a-z][a-z0-9_]*_t$/.test(name)) {
-        return CLASS_RENAMES.get(name) ?? name;
+        return name;
     }
-    const pascalName = toPascalCase(name);
-    return CLASS_RENAMES.get(pascalName) ?? pascalName;
+    return toPascalCase(name);
 };
 
 export const generateConflictingMethodName = (prefix: string, methodName: string): string => {

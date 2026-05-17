@@ -4,24 +4,31 @@ import { stringify } from "../../../src/builders/stringify.js";
 import { FfiMapper } from "../../../src/core/type-system/ffi-mapper.js";
 import { InterfaceGenerator } from "../../../src/ffi/generators/interface.js";
 import {
+    createNormalizedClass,
+    createNormalizedFunction,
     createNormalizedInterface,
     createNormalizedMethod,
     createNormalizedNamespace,
     createNormalizedParameter,
     createNormalizedProperty,
     createNormalizedType,
+    qualifiedName,
 } from "../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../fixtures/mock-repository.js";
 
-function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map()) {
-    const ns = createNormalizedNamespace({ name: "Gtk" });
-    namespaces.set("Gtk", ns);
+function createTestSetup(
+    namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map(),
+    namespace = "Gtk",
+) {
+    if (!namespaces.has(namespace)) {
+        namespaces.set(namespace, createNormalizedNamespace({ name: namespace }));
+    }
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], namespace);
     const file = fileBuilder();
     const options = {
-        namespace: "Gtk",
-        sharedLibrary: "libgtk-4.so.1",
+        namespace,
+        sharedLibrary: namespace === "GObject" ? "libgobject-2.0.so.0" : "libgtk-4.so.1",
         glibLibrary: "libglib-2.0.so.0",
         gobjectLibrary: "libgobject-2.0.so.0",
     };
@@ -490,5 +497,258 @@ describe("InterfaceGenerator", () => {
             expect(code).toContain("getOrientation");
             expect(code).toContain("setOrientation");
         });
+    });
+});
+
+describe("InterfaceGenerator - GObject namespace", () => {
+    it("extends the local Object class within the GObject namespace", () => {
+        const { generator, file } = createTestSetup(new Map(), "GObject");
+        const iface = createNormalizedInterface({
+            name: "TypePlugin",
+            qualifiedName: qualifiedName("GObject", "TypePlugin"),
+            methods: [],
+        });
+
+        generator.generate(iface);
+
+        const code = stringify(file);
+        expect(code).toContain("export class TypePlugin extends Object");
+    });
+
+    it("extends the local Object ConstructorProperties within the GObject namespace", () => {
+        const { generator, file } = createTestSetup(new Map(), "GObject");
+        const iface = createNormalizedInterface({
+            name: "TypePlugin",
+            qualifiedName: qualifiedName("GObject", "TypePlugin"),
+            methods: [],
+        });
+
+        generator.generate(iface);
+
+        const code = stringify(file);
+        expect(code).toContain("Object.ConstructorProperties");
+    });
+});
+
+describe("InterfaceGenerator - constructor properties namespace", () => {
+    it("extends the ConstructorProperties of a same-namespace prerequisite interface", () => {
+        const ns = createNormalizedNamespace({ name: "Gtk" });
+        const buildable = createNormalizedInterface({
+            name: "Buildable",
+            qualifiedName: qualifiedName("Gtk", "Buildable"),
+            methods: [],
+        });
+        ns.interfaces.set("Buildable", buildable);
+        const { generator, file } = createTestSetup(new Map([["Gtk", ns]]));
+
+        const iface = createNormalizedInterface({
+            name: "Orientable",
+            qualifiedName: qualifiedName("Gtk", "Orientable"),
+            prerequisites: [qualifiedName("Gtk", "Buildable")],
+            methods: [],
+        });
+
+        generator.generate(iface);
+
+        const code = stringify(file);
+        expect(code).toContain("Buildable.ConstructorProperties");
+    });
+});
+
+describe("InterfaceGenerator - prerequisite methods", () => {
+    it("emits methods inherited from a prerequisite interface", () => {
+        const ns = createNormalizedNamespace({ name: "Gtk" });
+        const buildable = createNormalizedInterface({
+            name: "Buildable",
+            qualifiedName: qualifiedName("Gtk", "Buildable"),
+            methods: [
+                createNormalizedMethod({
+                    name: "get_buildable_id",
+                    cIdentifier: "gtk_buildable_get_buildable_id",
+                    returnType: createNormalizedType({ name: "utf8" }),
+                }),
+            ],
+        });
+        ns.interfaces.set("Buildable", buildable);
+        const { generator, file } = createTestSetup(new Map([["Gtk", ns]]));
+
+        const iface = createNormalizedInterface({
+            name: "Orientable",
+            qualifiedName: qualifiedName("Gtk", "Orientable"),
+            prerequisites: [qualifiedName("Gtk", "Buildable")],
+            methods: [
+                createNormalizedMethod({
+                    name: "get_orientation",
+                    cIdentifier: "gtk_orientable_get_orientation",
+                    returnType: createNormalizedType({ name: "gint" }),
+                }),
+            ],
+        });
+
+        generator.generate(iface);
+
+        const code = stringify(file);
+        expect(code).toContain("getBuildableId");
+        expect(code).toContain("getOrientation");
+    });
+
+    it("emits methods inherited from a prerequisite class hierarchy", () => {
+        const ns = createNormalizedNamespace({ name: "Gtk" });
+        const widget = createNormalizedClass(
+            {
+                name: "Widget",
+                qualifiedName: qualifiedName("Gtk", "Widget"),
+                parent: null,
+                methods: [
+                    createNormalizedMethod({
+                        name: "show",
+                        cIdentifier: "gtk_widget_show",
+                        returnType: createNormalizedType({ name: "none" }),
+                    }),
+                ],
+            },
+            createMockRepository(new Map([["Gtk", ns]])),
+        );
+        ns.classes.set("Widget", widget);
+        const { generator, file } = createTestSetup(new Map([["Gtk", ns]]));
+
+        const iface = createNormalizedInterface({
+            name: "Native",
+            qualifiedName: qualifiedName("Gtk", "Native"),
+            prerequisites: [qualifiedName("Gtk", "Widget")],
+            methods: [],
+        });
+
+        generator.generate(iface);
+
+        const code = stringify(file);
+        expect(code).toContain("show");
+    });
+
+    it("emits properties inherited from a prerequisite interface", () => {
+        const ns = createNormalizedNamespace({ name: "Gtk" });
+        const buildable = createNormalizedInterface({
+            name: "Buildable",
+            qualifiedName: qualifiedName("Gtk", "Buildable"),
+            methods: [],
+            properties: [
+                createNormalizedProperty({
+                    name: "build-name",
+                    type: createNormalizedType({ name: "utf8" }),
+                    getter: undefined,
+                    setter: undefined,
+                }),
+            ],
+        });
+        ns.interfaces.set("Buildable", buildable);
+        const { generator, file } = createTestSetup(new Map([["Gtk", ns]]));
+
+        const iface = createNormalizedInterface({
+            name: "Orientable",
+            qualifiedName: qualifiedName("Gtk", "Orientable"),
+            prerequisites: [qualifiedName("Gtk", "Buildable")],
+            methods: [],
+        });
+
+        generator.generate(iface);
+
+        const code = stringify(file);
+        expect(code).toContain("get buildName()");
+    });
+});
+
+describe("InterfaceGenerator - static functions", () => {
+    it("emits a static function declared on the interface", () => {
+        const { generator, file } = createTestSetup();
+        const iface = createNormalizedInterface({
+            name: "Buildable",
+            methods: [],
+            staticFunctions: [
+                createNormalizedFunction({
+                    name: "get_default",
+                    cIdentifier: "gtk_buildable_get_default",
+                    returnType: createNormalizedType({ name: "gint" }),
+                }),
+            ],
+        });
+
+        generator.generate(iface);
+
+        const code = stringify(file);
+        expect(code).toContain("getDefault");
+    });
+
+    it("emits a throwing stub for an unsafe static function", () => {
+        const { generator, file } = createTestSetup();
+        const iface = createNormalizedInterface({
+            name: "Buildable",
+            methods: [],
+            staticFunctions: [
+                createNormalizedFunction({
+                    name: "with_closure",
+                    cIdentifier: "gtk_buildable_with_closure",
+                    returnType: createNormalizedType({ name: "none" }),
+                    parameters: [
+                        createNormalizedParameter({
+                            name: "closure",
+                            type: createNormalizedType({ name: "GLib.Closure" }),
+                        }),
+                    ],
+                }),
+            ],
+        });
+
+        generator.generate(iface);
+
+        const code = stringify(file);
+        expect(code).toContain("withClosure");
+        expect(code).toContain("throwUnsupported");
+    });
+});
+
+describe("InterfaceGenerator - method name collisions", () => {
+    it("renames an interface method that collides with a GObject method name", () => {
+        const gobjectNs = createNormalizedNamespace({ name: "GObject" });
+        const gobject = createNormalizedClass(
+            {
+                name: "Object",
+                qualifiedName: qualifiedName("GObject", "Object"),
+                parent: null,
+                methods: [
+                    createNormalizedMethod({
+                        name: "connect",
+                        cIdentifier: "g_object_connect",
+                        returnType: createNormalizedType({ name: "none" }),
+                    }),
+                ],
+            },
+            createMockRepository(new Map([["GObject", gobjectNs]])),
+        );
+        gobjectNs.classes.set("Object", gobject);
+
+        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+        const { generator, file } = createTestSetup(
+            new Map([
+                ["Gtk", gtkNs],
+                ["GObject", gobjectNs],
+            ]),
+        );
+
+        const iface = createNormalizedInterface({
+            name: "Buildable",
+            qualifiedName: qualifiedName("Gtk", "Buildable"),
+            methods: [
+                createNormalizedMethod({
+                    name: "connect",
+                    cIdentifier: "gtk_buildable_connect",
+                    returnType: createNormalizedType({ name: "none" }),
+                }),
+            ],
+        });
+
+        const result = generator.generate(iface);
+
+        expect(result).toBe(true);
+        expect(stringify(file)).toContain("class Buildable");
     });
 });

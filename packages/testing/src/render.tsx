@@ -179,9 +179,7 @@ export const cleanup = async (): Promise<void> => {
 };
 
 const handleSignal = (): void => {
-    try {
-        stop();
-    } catch {}
+    stop().catch(() => {});
     process.exit(0);
 };
 

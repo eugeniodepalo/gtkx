@@ -36,6 +36,18 @@ type FieldLayout = {
 };
 
 /**
+ * The shared storage unit a run of consecutive C bitfield members is packed
+ * into: its byte offset, the bits consumed so far, the unit's total bit
+ * capacity, and the GIR type name that fixed that capacity.
+ */
+type BitUnit = {
+    offset: number;
+    bitsUsed: number;
+    capacityBits: number;
+    typeName: string;
+};
+
+/**
  * Builds field getters/setters and handles struct memory layout.
  */
 export class FieldBuilder {
@@ -66,7 +78,7 @@ export class FieldBuilder {
     calculateLayout(fields: readonly GirField[], includePrivate = false, isUnion = false): FieldLayout[] {
         const layout: FieldLayout[] = [];
         let currentOffset = 0;
-        let bitUnit: { offset: number; bitsUsed: number; capacityBits: number; typeName: string } | null = null;
+        let bitUnit: BitUnit | null = null;
 
         for (const field of fields) {
             if (field.private && !includePrivate) continue;
@@ -75,33 +87,15 @@ export class FieldBuilder {
             const alignment = this.getMemberAlignment(field);
 
             if (field.bits !== undefined && field.bits > 0) {
-                if (isUnion) {
-                    layout.push({ field, offset: 0, size, alignment, bitOffset: 0, bitWidth: field.bits });
-                    continue;
-                }
-
-                const typeName = String(field.type.name);
-                const capacityBits = size * 8;
-
-                if (
-                    bitUnit === null ||
-                    bitUnit.typeName !== typeName ||
-                    bitUnit.bitsUsed + field.bits > bitUnit.capacityBits
-                ) {
-                    currentOffset = Math.ceil(currentOffset / alignment) * alignment;
-                    bitUnit = { offset: currentOffset, bitsUsed: 0, capacityBits, typeName };
-                    currentOffset += size;
-                }
-
-                layout.push({
+                ({ currentOffset, bitUnit } = this.appendBitfieldLayout(
                     field,
-                    offset: bitUnit.offset,
                     size,
                     alignment,
-                    bitOffset: bitUnit.bitsUsed,
-                    bitWidth: field.bits,
-                });
-                bitUnit.bitsUsed += field.bits;
+                    isUnion,
+                    layout,
+                    currentOffset,
+                    bitUnit,
+                ));
                 continue;
             }
 
@@ -125,6 +119,60 @@ export class FieldBuilder {
         }
 
         return layout;
+    }
+
+    /**
+     * Places one bitfield member into the layout, packing it into the open
+     * bit-storage unit when it still fits or opening a fresh unit otherwise.
+     *
+     * @returns The running offset and open bit-storage unit after placement.
+     */
+    private appendBitfieldLayout(
+        field: GirField,
+        size: number,
+        alignment: number,
+        isUnion: boolean,
+        layout: FieldLayout[],
+        currentOffset: number,
+        bitUnit: BitUnit | null,
+    ): { currentOffset: number; bitUnit: BitUnit | null } {
+        const bits = field.bits ?? 0;
+
+        if (isUnion) {
+            layout.push({ field, offset: 0, size, alignment, bitOffset: 0, bitWidth: bits });
+            return { currentOffset, bitUnit };
+        }
+
+        const typeName = String(field.type.name);
+        let nextOffset = currentOffset;
+        let activeUnit: BitUnit;
+        if (this.bitUnitFits(bitUnit, typeName, bits)) {
+            activeUnit = bitUnit;
+        } else {
+            nextOffset = Math.ceil(currentOffset / alignment) * alignment;
+            activeUnit = { offset: nextOffset, bitsUsed: 0, capacityBits: size * 8, typeName };
+            nextOffset += size;
+        }
+
+        layout.push({
+            field,
+            offset: activeUnit.offset,
+            size,
+            alignment,
+            bitOffset: activeUnit.bitsUsed,
+            bitWidth: bits,
+        });
+        activeUnit.bitsUsed += bits;
+        return { currentOffset: nextOffset, bitUnit: activeUnit };
+    }
+
+    /**
+     * Reports whether an open bit-storage unit can still hold a bitfield member
+     * of the given GIR type and width: the unit must exist, share that type,
+     * and have enough unused bits left.
+     */
+    private bitUnitFits(bitUnit: BitUnit | null, typeName: string, bits: number): bitUnit is BitUnit {
+        return bitUnit?.typeName === typeName && bitUnit.bitsUsed + bits <= bitUnit.capacityBits;
     }
 
     /**

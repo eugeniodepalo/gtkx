@@ -15,6 +15,7 @@ import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType } from "../../../core/type-system/ffi-types.js";
 import { collectDirectMembers, collectParentSignalNames } from "../../../core/utils/class-traversal.js";
 import { filterVarargs } from "../../../core/utils/filtering.js";
+import { jsStringLiteral } from "../../../core/utils/js-literal.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
 import type { FfiDescriptorRegistry } from "../../../core/writers/descriptor-registry.js";
@@ -469,14 +470,15 @@ export class SignalBuilder {
         const prefix = isGObjectNamespace ? "" : "GObject.";
         if (ffiType.type === "enum" || ffiType.type === "flags") {
             this.imports.addImport("../../native.js", ["call", "t"]);
-            return `call(${JSON.stringify(ffiType.library)}, ${JSON.stringify(ffiType.getTypeFn)}, [], t.uint64)`;
+            const { library = "", getTypeFn = "" } = ffiType;
+            return `call(${jsStringLiteral(library)}, ${jsStringLiteral(getTypeFn)}, [], t.uint64)`;
         }
         if (isGObjectNamespace) {
             this.imports.addImport("./functions.js", ["typeFromName"]);
         } else {
             this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
         }
-        return `${prefix}typeFromName(${JSON.stringify(this.gtypeName(ffiType))})`;
+        return `${prefix}typeFromName(${jsStringLiteral(this.gtypeName(ffiType))})`;
     }
 
     private gtypeName(ffiType: FfiTypeDescriptor): string {

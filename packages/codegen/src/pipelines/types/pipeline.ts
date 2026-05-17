@@ -39,7 +39,7 @@ import {
  * @param repository - The loaded GIR repository.
  * @returns Enum member values keyed namespace → enum name → member name.
  */
-const collectEnumValues = (repository: GirRepository): EnumValueMap => {
+export const collectEnumValues = (repository: GirRepository): EnumValueMap => {
     const namespaces = new Map<string, Map<string, Map<string, number>>>();
     for (const namespaceName of repository.getNamespaceNames()) {
         const namespace = repository.getNamespace(namespaceName);
@@ -70,7 +70,7 @@ const collectEnumValues = (repository: GirRepository): EnumValueMap => {
  * @param repository - The loaded GIR repository.
  * @returns Error-domain enum names keyed lowercase namespace identifier.
  */
-const collectErrorDomainNames = (repository: GirRepository): ErrorDomainMap => {
+export const collectErrorDomainNames = (repository: GirRepository): ErrorDomainMap => {
     const namespaces = new Map<string, Set<string>>();
     for (const namespaceName of repository.getNamespaceNames()) {
         const namespace = repository.getNamespace(namespaceName);
@@ -92,7 +92,7 @@ const collectErrorDomainNames = (repository: GirRepository): ErrorDomainMap => {
  * @param repository - The loaded GIR repository.
  * @returns Gtype-struct record names keyed lowercase namespace identifier.
  */
-const collectGtypeStructNames = (repository: GirRepository): GtypeStructMap => {
+export const collectGtypeStructNames = (repository: GirRepository): GtypeStructMap => {
     const namespaces = new Map<string, Set<string>>();
     for (const namespaceName of repository.getNamespaceNames()) {
         const namespace = repository.getNamespace(namespaceName);
@@ -128,7 +128,7 @@ type OwnerDeclaration = {
  * @param selectNames - Maps one owner declaration to the names to record.
  * @returns Names keyed lowercase namespace identifier then owner name.
  */
-const collectByOwner = (
+export const collectByOwner = (
     repository: GirRepository,
     selectNames: (owner: OwnerDeclaration) => Iterable<string>,
 ): FieldNameMap => {
@@ -158,7 +158,7 @@ const collectByOwner = (
  * @param repository - The loaded GIR repository.
  * @returns Field names keyed lowercase namespace identifier then owner name.
  */
-const collectClassFieldNames = (repository: GirRepository): FieldNameMap => {
+export const collectClassFieldNames = (repository: GirRepository): FieldNameMap => {
     const namespaces = new Map<string, Map<string, Set<string>>>();
     for (const namespaceName of repository.getNamespaceNames()) {
         const namespace = repository.getNamespace(namespaceName);
@@ -183,7 +183,10 @@ const collectClassFieldNames = (repository: GirRepository): FieldNameMap => {
  * Collects the camelCased field names of every transitive prerequisite class
  * and interface reachable from the given prerequisite qualified names.
  */
-const collectPrerequisiteFieldNames = (repository: GirRepository, prerequisites: readonly string[]): Set<string> => {
+export const collectPrerequisiteFieldNames = (
+    repository: GirRepository,
+    prerequisites: readonly string[],
+): Set<string> => {
     const names = new Set<string>();
     const visited = new Set<string>();
     const visit = (qualifiedName: string) => {
@@ -222,7 +225,7 @@ const collectPrerequisiteFieldNames = (repository: GirRepository, prerequisites:
  * @param repository - The loaded GIR repository.
  * @returns Strippable member names keyed namespace then owner name.
  */
-const collectSignalActionMethodNames = (repository: GirRepository): FieldNameMap =>
+export const collectSignalActionMethodNames = (repository: GirRepository): FieldNameMap =>
     collectByOwner(repository, (owner) => {
         const methodNames = new Set(owner.methods.map((m) => toCamelCase(m.name)));
         const candidates = [...owner.signals.map((s) => s.name), ...owner.virtualMethodNames];
@@ -240,7 +243,7 @@ const collectSignalActionMethodNames = (repository: GirRepository): FieldNameMap
  * @param repository - The loaded GIR repository.
  * @returns Numeric constant names keyed lowercase namespace identifier.
  */
-const collectNumericConstantNames = (repository: GirRepository): FieldNameMap => {
+export const collectNumericConstantNames = (repository: GirRepository): FieldNameMap => {
     const namespaces = new Map<string, Map<string, Set<string>>>();
     for (const namespaceName of repository.getNamespaceNames()) {
         const namespace = repository.getNamespace(namespaceName);
@@ -256,7 +259,7 @@ const collectNumericConstantNames = (repository: GirRepository): FieldNameMap =>
     return namespaces;
 };
 
-const connectRenameFor = (ownerName: string): string => {
+export const connectRenameFor = (ownerName: string): string => {
     const prefix = toCamelCase(ownerName);
     return `${prefix.charAt(0).toLowerCase()}${prefix.slice(1)}Connect`;
 };
@@ -269,7 +272,7 @@ const connectRenameFor = (ownerName: string): string => {
  * @param method - The GIR method.
  * @returns The declared parameter count.
  */
-const declaredParameterCount = (method: GirMethod): number =>
+export const declaredParameterCount = (method: GirMethod): number =>
     method.parameters.filter((parameter) => parameter.direction !== "out").length;
 
 /**
@@ -284,7 +287,7 @@ const declaredParameterCount = (method: GirMethod): number =>
  * @param repository - The loaded GIR repository.
  * @returns Method shadow-renames keyed namespace then owner name.
  */
-const collectMethodShadowRenames = (repository: GirRepository): MethodShadowRenameMap => {
+export const collectMethodShadowRenames = (repository: GirRepository): MethodShadowRenameMap => {
     const namespaces = new Map<string, Map<string, MethodShadowRename[]>>();
     for (const namespaceName of repository.getNamespaceNames()) {
         const namespace = repository.getNamespace(namespaceName);
@@ -322,20 +325,31 @@ const collectMethodShadowRenames = (repository: GirRepository): MethodShadowRena
  * @param repository - The loaded GIR repository.
  * @returns Renamed `connect` names keyed namespace then owner name.
  */
-const collectConnectMethodRenames = (repository: GirRepository): ConnectRenameMap => {
+type GirClassLike = NonNullable<ReturnType<GirRepository["resolveClass"]>>;
+
+/**
+ * Finds the ancestor (the class itself or a forebear) that declares a
+ * `connect` GIR `<method>`, or `null` when no class in the chain declares one.
+ */
+export const findConnectMethodDeclarer = (cls: GirClassLike): GirClassLike | null => {
+    let current: GirClassLike | null = cls;
+    while (current) {
+        if (current.methods.some((m) => m.name === "connect")) return current;
+        current = current.getParent();
+    }
+    return null;
+};
+
+export const collectConnectMethodRenames = (repository: GirRepository): ConnectRenameMap => {
     const namespaces = new Map<string, Map<string, string>>();
     for (const namespaceName of repository.getNamespaceNames()) {
         const namespace = repository.getNamespace(namespaceName);
         if (!namespace) continue;
         const renames = new Map<string, string>();
         for (const cls of namespace.classes.values()) {
-            let current: ReturnType<typeof cls.getParent> | typeof cls = cls;
-            while (current) {
-                if (current.methods.some((m) => m.name === "connect")) {
-                    renames.set(toPascalCase(cls.name), connectRenameFor(current.name));
-                    break;
-                }
-                current = current.getParent();
+            const declarer = findConnectMethodDeclarer(cls);
+            if (declarer) {
+                renames.set(toPascalCase(cls.name), connectRenameFor(declarer.name));
             }
         }
         for (const iface of namespace.interfaces.values()) {
@@ -353,7 +367,7 @@ const collectConnectMethodRenames = (repository: GirRepository): ConnectRenameMa
  * their finish-candidate pool, naming each member as the camelCased contract
  * member that declares it.
  */
-const buildAsyncEntries = <C extends AsyncCapableCallable, F extends AsyncCapableCallable>(
+export const buildAsyncEntries = <C extends AsyncCapableCallable, F extends AsyncCapableCallable>(
     callables: readonly C[],
     finishCandidates: readonly F[],
 ): AsyncMemberEntry[] => {
@@ -373,7 +387,10 @@ const buildAsyncEntries = <C extends AsyncCapableCallable, F extends AsyncCapabl
  * plus those of every transitive prerequisite interface — matching the surface
  * ts-for-gir emits into the interface's contract `class` body.
  */
-const collectInterfaceFlattenedMethods = (repository: GirRepository, ifaceQualifiedName: string): GirMethod[] => {
+export const collectInterfaceFlattenedMethods = (
+    repository: GirRepository,
+    ifaceQualifiedName: string,
+): GirMethod[] => {
     const methods: GirMethod[] = [];
     const seen = new Set<string>();
     const visited = new Set<string>();
@@ -404,7 +421,7 @@ const collectInterfaceFlattenedMethods = (repository: GirRepository, ifaceQualif
  * @param repository - The loaded GIR repository.
  * @returns Async callable entries keyed namespace then owner name.
  */
-const collectAsyncMembers = (repository: GirRepository): AsyncMemberMap => {
+export const collectAsyncMembers = (repository: GirRepository): AsyncMemberMap => {
     const namespaces = new Map<string, NamespaceAsyncMembers>();
     for (const namespaceName of repository.getNamespaceNames()) {
         const namespace = repository.getNamespace(namespaceName);
@@ -445,7 +462,7 @@ const collectAsyncMembers = (repository: GirRepository): AsyncMemberMap => {
  * The opaque `GLib.HashTable` API models its tables as `gpointer`-to-`gpointer`
  * and is left as the bare handle type; only keyed tables marshal to a `Map`.
  */
-const isKeyedHashTable = (type: GirType): boolean => {
+export const isKeyedHashTable = (type: GirType): boolean => {
     if (!type.isHashTable()) return false;
     const keyType = type.getKeyType();
     const valueType = type.getValueType();
@@ -460,7 +477,7 @@ const isKeyedHashTable = (type: GirType): boolean => {
  * parameter table or, failing that, the return table — through the FFI mapper,
  * so it matches the namespace-relative form ts-for-gir emits in the contract.
  */
-const buildHashTableEntry = (
+export const buildHashTableEntry = (
     callable: AsyncCapableCallable,
     member: string,
     isFunction: boolean,
@@ -488,7 +505,42 @@ const buildHashTableEntry = (
  * @param repository - The loaded GIR repository.
  * @returns Keyed-`GHashTable` member entries keyed namespace then owner name.
  */
-const collectHashTableMembers = (repository: GirRepository): HashTableMemberMap => {
+/**
+ * Records a {@link HashTableMemberEntry} under an owner, allocating the
+ * owner's entry list on first use and dropping `null` (no keyed table) entries.
+ */
+const recordHashTableEntry = (
+    owners: Map<string, HashTableMemberEntry[]>,
+    owner: string,
+    entry: HashTableMemberEntry | null,
+): void => {
+    if (entry === null) return;
+    const existing = owners.get(owner);
+    if (existing) existing.push(entry);
+    else owners.set(owner, [entry]);
+};
+
+/**
+ * Records every keyed-`GHashTable` entry an owner's callables contribute,
+ * mapping each callable through {@link buildHashTableEntry}.
+ */
+const recordOwnerHashTableEntries = (
+    owners: Map<string, HashTableMemberEntry[]>,
+    owner: string,
+    callables: readonly AsyncCapableCallable[],
+    isFunction: boolean,
+    mapper: FfiMapper,
+): void => {
+    for (const callable of callables) {
+        recordHashTableEntry(
+            owners,
+            owner,
+            buildHashTableEntry(callable, toCamelCase(callable.name), isFunction, mapper),
+        );
+    }
+};
+
+export const collectHashTableMembers = (repository: GirRepository): HashTableMemberMap => {
     const namespaces = new Map<string, NamespaceHashTableMembers>();
     for (const namespaceName of repository.getNamespaceNames()) {
         const namespace = repository.getNamespace(namespaceName);
@@ -496,43 +548,23 @@ const collectHashTableMembers = (repository: GirRepository): HashTableMemberMap 
         const mapper = new FfiMapper(repository, namespaceName);
         const owners = new Map<string, HashTableMemberEntry[]>();
 
-        const record = (owner: string, entry: HashTableMemberEntry | null): void => {
-            if (entry === null) return;
-            const existing = owners.get(owner);
-            if (existing) existing.push(entry);
-            else owners.set(owner, [entry]);
-        };
-
         for (const cls of namespace.classes.values()) {
             const owner = toPascalCase(cls.name);
-            for (const method of cls.methods) {
-                record(owner, buildHashTableEntry(method, toCamelCase(method.name), false, mapper));
-            }
-            for (const fn of cls.staticFunctions) {
-                record(owner, buildHashTableEntry(fn, toCamelCase(fn.name), false, mapper));
-            }
+            recordOwnerHashTableEntries(owners, owner, cls.methods, false, mapper);
+            recordOwnerHashTableEntries(owners, owner, cls.staticFunctions, false, mapper);
         }
         for (const iface of namespace.interfaces.values()) {
             const owner = toPascalCase(iface.name);
-            for (const method of collectInterfaceFlattenedMethods(repository, iface.qualifiedName)) {
-                record(owner, buildHashTableEntry(method, toCamelCase(method.name), false, mapper));
-            }
-            for (const fn of iface.staticFunctions) {
-                record(owner, buildHashTableEntry(fn, toCamelCase(fn.name), false, mapper));
-            }
+            const flattened = collectInterfaceFlattenedMethods(repository, iface.qualifiedName);
+            recordOwnerHashTableEntries(owners, owner, flattened, false, mapper);
+            recordOwnerHashTableEntries(owners, owner, iface.staticFunctions, false, mapper);
         }
         for (const rec of namespace.records.values()) {
             const owner = toPascalCase(rec.name);
-            for (const method of rec.methods) {
-                record(owner, buildHashTableEntry(method, toCamelCase(method.name), false, mapper));
-            }
-            for (const fn of rec.staticFunctions) {
-                record(owner, buildHashTableEntry(fn, toCamelCase(fn.name), false, mapper));
-            }
+            recordOwnerHashTableEntries(owners, owner, rec.methods, false, mapper);
+            recordOwnerHashTableEntries(owners, owner, rec.staticFunctions, false, mapper);
         }
-        for (const fn of namespace.functions.values()) {
-            record("", buildHashTableEntry(fn, toCamelCase(fn.name), true, mapper));
-        }
+        recordOwnerHashTableEntries(owners, "", [...namespace.functions.values()], true, mapper);
 
         namespaces.set(namespaceName.toLowerCase(), owners);
     }
@@ -566,19 +598,18 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             rawFilesByName.set(filename, contents);
         }
 
-        const rewritten = loadAndRewrite(
-            rawFilesByName,
-            collectEnumValues(loaded.repository),
-            collectGtypeStructNames(loaded.repository),
-            collectClassFieldNames(loaded.repository),
-            collectSignalActionMethodNames(loaded.repository),
-            collectConnectMethodRenames(loaded.repository),
-            collectNumericConstantNames(loaded.repository),
-            collectAsyncMembers(loaded.repository),
-            collectMethodShadowRenames(loaded.repository),
-            collectHashTableMembers(loaded.repository),
-            collectErrorDomainNames(loaded.repository),
-        );
+        const rewritten = loadAndRewrite(rawFilesByName, {
+            enumValues: collectEnumValues(loaded.repository),
+            gtypeStructNames: collectGtypeStructNames(loaded.repository),
+            classFieldNames: collectClassFieldNames(loaded.repository),
+            signalActionMethodNames: collectSignalActionMethodNames(loaded.repository),
+            connectRenames: collectConnectMethodRenames(loaded.repository),
+            numericConstantNames: collectNumericConstantNames(loaded.repository),
+            asyncMembers: collectAsyncMembers(loaded.repository),
+            methodShadowRenames: collectMethodShadowRenames(loaded.repository),
+            hashTableMembers: collectHashTableMembers(loaded.repository),
+            errorDomainNames: collectErrorDomainNames(loaded.repository),
+        });
 
         await mkdir(outDir, { recursive: true });
         const namespacesWritten: string[] = [];
@@ -589,7 +620,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             namespacesWritten.push(namespace);
         }
 
-        return { namespaces: namespacesWritten.sort() };
+        return { namespaces: namespacesWritten.toSorted((a, b) => a.localeCompare(b)) };
     } finally {
         await rm(scratchDir, { recursive: true, force: true });
     }

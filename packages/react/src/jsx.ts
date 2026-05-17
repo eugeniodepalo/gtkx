@@ -217,7 +217,7 @@ export type TextTagProps = {
     /** Font size scale factor relative to default */
     scale?: number;
     /** Font weight (use Pango.Weight constants) */
-    weight?: Pango.Weight | number;
+    weight?: Pango.Weight | (number & {});
     /** Font style (use Pango.Style constants) */
     style?: Pango.Style;
     /** Font stretch (use Pango.Stretch constants) */

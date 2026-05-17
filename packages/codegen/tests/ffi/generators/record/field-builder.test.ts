@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
+import { Writer } from "../../../../src/builders/writer.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
 import { FieldBuilder } from "../../../../src/ffi/generators/record/field-builder.js";
+import type { GirRepository } from "../../../../src/gir/index.js";
 import {
     createNormalizedField,
     createNormalizedNamespace,
+    createNormalizedRecord,
     createNormalizedType,
 } from "../../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../../fixtures/mock-repository.js";
@@ -17,6 +20,30 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     const imports = fileBuilder();
     const builder = new FieldBuilder(ffiMapper, imports, "libgtk-4.so.1", "libglib-2.0.so.0");
     return { builder, imports, ffiMapper };
+}
+
+function createRepoBackedSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>>) {
+    if (!namespaces.has("Gtk")) {
+        namespaces.set("Gtk", createNormalizedNamespace({ name: "Gtk" }));
+    }
+    const repo = createMockRepository(namespaces);
+    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const imports = fileBuilder();
+    const builder = new FieldBuilder(
+        ffiMapper,
+        imports,
+        "libgtk-4.so.1",
+        "libglib-2.0.so.0",
+        repo as unknown as GirRepository,
+        "Gtk",
+    );
+    return { builder, imports, ffiMapper, repo };
+}
+
+function render(write: (writer: Writer) => void): string {
+    const writer = new Writer();
+    write(writer);
+    return writer.toString();
 }
 
 describe("FieldBuilder", () => {
@@ -443,5 +470,251 @@ describe("FieldBuilder", () => {
 
             expect(layout[1].offset).toBe(8);
         });
+    });
+});
+
+describe("FieldBuilder - bitfields and unions", () => {
+    it("packs consecutive bitfield members into a shared storage unit", () => {
+        const { builder } = createTestSetup();
+        const fields = [
+            createNormalizedField({ name: "a", type: createNormalizedType({ name: "guint" }), bits: 3 }),
+            createNormalizedField({ name: "b", type: createNormalizedType({ name: "guint" }), bits: 5 }),
+        ];
+
+        const layout = builder.calculateLayout(fields);
+
+        expect(layout[0].offset).toBe(0);
+        expect(layout[0].bitOffset).toBe(0);
+        expect(layout[1].offset).toBe(0);
+        expect(layout[1].bitOffset).toBe(3);
+    });
+
+    it("opens a fresh storage unit when a bitfield run overflows the current one", () => {
+        const { builder } = createTestSetup();
+        const fields = [
+            createNormalizedField({ name: "a", type: createNormalizedType({ name: "guint8" }), bits: 6 }),
+            createNormalizedField({ name: "b", type: createNormalizedType({ name: "guint8" }), bits: 6 }),
+        ];
+
+        const layout = builder.calculateLayout(fields);
+
+        expect(layout[0].offset).toBe(0);
+        expect(layout[1].offset).toBe(1);
+        expect(layout[1].bitOffset).toBe(0);
+    });
+
+    it("overlays union members at offset zero", () => {
+        const { builder } = createTestSetup();
+        const fields = [
+            createNormalizedField({ name: "asInt", type: createNormalizedType({ name: "gint" }) }),
+            createNormalizedField({ name: "asLong", type: createNormalizedType({ name: "gint64" }) }),
+        ];
+
+        const layout = builder.calculateLayout(fields, false, true);
+
+        expect(layout[0].offset).toBe(0);
+        expect(layout[1].offset).toBe(0);
+    });
+
+    it("overlays union bitfield members at offset zero", () => {
+        const { builder } = createTestSetup();
+        const fields = [
+            createNormalizedField({ name: "flag", type: createNormalizedType({ name: "guint" }), bits: 4 }),
+        ];
+
+        const layout = builder.calculateLayout(fields, false, true);
+
+        expect(layout[0].offset).toBe(0);
+        expect(layout[0].bitOffset).toBe(0);
+        expect(layout[0].bitWidth).toBe(4);
+    });
+
+    it("sizes a union as its widest member rounded to alignment", () => {
+        const { builder } = createTestSetup();
+        const fields = [
+            createNormalizedField({ name: "asInt", type: createNormalizedType({ name: "gint" }) }),
+            createNormalizedField({ name: "asLong", type: createNormalizedType({ name: "gint64" }) }),
+        ];
+
+        expect(builder.calculateStructSize(fields, true)).toBe(8);
+    });
+});
+
+describe("FieldBuilder - inline composite members", () => {
+    it("sizes an inline composite member from its nested fields", () => {
+        const { builder } = createTestSetup();
+        const fields = [
+            createNormalizedField({
+                name: "inner",
+                type: createNormalizedType({ name: "AnonStruct" }),
+                inlineComposite: {
+                    isUnion: false,
+                    fields: [
+                        createNormalizedField({ name: "x", type: createNormalizedType({ name: "gint" }) }),
+                        createNormalizedField({ name: "y", type: createNormalizedType({ name: "gint" }) }),
+                    ],
+                },
+            }),
+        ];
+
+        const layout = builder.calculateLayout(fields, true);
+
+        expect(layout[0].size).toBe(8);
+        expect(layout[0].alignment).toBe(4);
+    });
+});
+
+describe("FieldBuilder - nested struct resolution", () => {
+    function pointWithRepo() {
+        const point = createNormalizedRecord({
+            name: "Point",
+            qualifiedName: "Gtk.Point",
+            isUnion: false,
+            fields: [
+                createNormalizedField({ name: "x", type: createNormalizedType({ name: "gint" }) }),
+                createNormalizedField({ name: "y", type: createNormalizedType({ name: "gint" }) }),
+            ],
+        });
+        const ns = createNormalizedNamespace({ name: "Gtk", records: new Map([["Point", point]]) });
+        return createRepoBackedSetup(new Map([["Gtk", ns]]));
+    }
+
+    it("identifies a plain nested struct type", () => {
+        const { builder } = pointWithRepo();
+
+        expect(builder.isNestedStructType("Point")).toBe(true);
+        expect(builder.isNestedStructType("gint")).toBe(false);
+    });
+
+    it("computes the layout of a nested struct", () => {
+        const { builder } = pointWithRepo();
+
+        const layout = builder.getNestedStructLayout("Point");
+
+        expect(layout).not.toBeNull();
+        expect(layout).toHaveLength(2);
+    });
+
+    it("returns null layout for an unknown type", () => {
+        const { builder } = pointWithRepo();
+
+        expect(builder.getNestedStructLayout("DoesNotExist")).toBeNull();
+    });
+
+    it("reports a nested struct as having a readable layout", () => {
+        const { builder } = pointWithRepo();
+
+        expect(builder.hasReadableStructLayout("Point")).toBe(true);
+        expect(builder.hasReadableStructLayout("gint")).toBe(false);
+    });
+
+    it("computes the byte size of a nested record type", () => {
+        const { builder } = pointWithRepo();
+
+        expect(builder.getRecordSize("Point")).toBe(8);
+    });
+
+    it("identifies an inline nested struct field with writable sub-fields", () => {
+        const { builder } = pointWithRepo();
+        const field = createNormalizedField({ name: "origin", type: createNormalizedType({ name: "Point" }) });
+
+        expect(builder.isInlineNestedStruct(field)).toBe(true);
+    });
+
+    it("rejects a pointer-to-struct field as an inline nested struct", () => {
+        const { builder } = pointWithRepo();
+        const field = createNormalizedField({
+            name: "originPtr",
+            type: createNormalizedType({ name: "Point", cType: "GtkPoint*" }),
+        });
+
+        expect(builder.isInlineNestedStruct(field)).toBe(false);
+    });
+
+    it("treats a boxed record type as not a plain nested struct", () => {
+        const boxed = createNormalizedRecord({
+            name: "Border",
+            qualifiedName: "Gtk.Border",
+            isUnion: false,
+            glibTypeName: "GtkBorder",
+            fields: [createNormalizedField({ name: "left", type: createNormalizedType({ name: "gint" }) })],
+        });
+        const ns = createNormalizedNamespace({ name: "Gtk", records: new Map([["Border", boxed]]) });
+        const { builder } = createRepoBackedSetup(new Map([["Gtk", ns]]));
+
+        expect(builder.isNestedStructType("Border")).toBe(false);
+    });
+
+    it("falls back to primitive detection when no repository is configured", () => {
+        const { builder } = createTestSetup();
+
+        expect(builder.isGeneratableFieldType("gint")).toBe(true);
+        expect(builder.isGeneratableFieldType("SomethingUnknown")).toBe(false);
+    });
+});
+
+describe("FieldBuilder - writeFieldWrites", () => {
+    it("emits guarded write statements for writable primitive fields", () => {
+        const { builder } = createTestSetup();
+        const fields = [createNormalizedField({ name: "value", type: createNormalizedType({ name: "gint" }) })];
+
+        const code = render(builder.writeFieldWrites(fields));
+
+        expect(code).toContain("if (init.value !== undefined) write(getHandle(this),");
+    });
+
+    it("emits per-sub-field writes for an inline nested struct field", () => {
+        const point = createNormalizedRecord({
+            name: "Point",
+            qualifiedName: "Gtk.Point",
+            isUnion: false,
+            fields: [
+                createNormalizedField({ name: "x", type: createNormalizedType({ name: "gint" }) }),
+                createNormalizedField({ name: "y", type: createNormalizedType({ name: "gint" }) }),
+            ],
+        });
+        const ns = createNormalizedNamespace({ name: "Gtk", records: new Map([["Point", point]]) });
+        const { builder } = createRepoBackedSetup(new Map([["Gtk", ns]]));
+        const fields = [createNormalizedField({ name: "origin", type: createNormalizedType({ name: "Point" }) })];
+
+        const code = render(builder.writeFieldWrites(fields));
+
+        expect(code).toContain("if (init.origin !== undefined) {");
+        expect(code).toContain("init.origin.x");
+        expect(code).toContain("init.origin.y");
+    });
+
+    it("renames an id field to avoid the reserved member name", () => {
+        const { builder } = createTestSetup();
+        const fields = [createNormalizedField({ name: "id", type: createNormalizedType({ name: "gint" }) })];
+
+        const code = render(builder.writeFieldWrites(fields));
+
+        expect(code).toContain("init.id_");
+    });
+
+    it("returns initializable fields including inline nested structs", () => {
+        const point = createNormalizedRecord({
+            name: "Point",
+            qualifiedName: "Gtk.Point",
+            isUnion: false,
+            fields: [createNormalizedField({ name: "x", type: createNormalizedType({ name: "gint" }) })],
+        });
+        const ns = createNormalizedNamespace({ name: "Gtk", records: new Map([["Point", point]]) });
+        const { builder } = createRepoBackedSetup(new Map([["Gtk", ns]]));
+        const fields = [
+            createNormalizedField({ name: "value", type: createNormalizedType({ name: "gint" }) }),
+            createNormalizedField({ name: "origin", type: createNormalizedType({ name: "Point" }) }),
+        ];
+
+        const initializable = builder.getInitializableFields(fields);
+
+        expect(initializable.map((f) => f.name)).toEqual(["value", "origin"]);
+    });
+
+    it("exposes the FFI type writer", () => {
+        const { builder } = createTestSetup();
+
+        expect(builder.getFfiTypeWriter()).toBeDefined();
     });
 });

@@ -73,13 +73,14 @@ export class PropertyAccessorBuilder {
         private readonly selfNames: ReadonlySet<string> = new Set(),
         private readonly interfaceSource: InterfacePropertySource | null = null,
     ) {
-        this.parentMethodNames = cls !== null ? collectParentMethodNames(cls, repository) : new Set();
+        this.parentMethodNames = cls === null ? new Set() : collectParentMethodNames(cls, repository);
     }
 
     buildAccessors(): PropertyAccessorEmission[] {
         const directProps =
-            this.cls !== null
-                ? collectDirectMembers({
+            this.cls === null
+                ? (this.interfaceSource?.properties ?? [])
+                : collectDirectMembers({
                       cls: this.cls,
                       repo: this.repository,
                       getClassMembers: (c) => c.properties,
@@ -87,8 +88,7 @@ export class PropertyAccessorBuilder {
                       getParentNames: collectParentPropertyNames,
                       transformName: toCamelCase,
                       isHidden: () => false,
-                  })
-                : (this.interfaceSource?.properties ?? []);
+                  });
 
         return directProps
             .map((prop) => this.buildAccessor(prop))

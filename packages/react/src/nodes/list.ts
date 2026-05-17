@@ -846,18 +846,14 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const { onSelectionChanged } = this.props;
 
         if (this.isDropDown()) {
-            const handler = onSelectionChanged
-                ? this.buildDropDownSelectionHandler(onSelectionChanged as (id: string) => void)
-                : undefined;
+            const handler = onSelectionChanged ? this.buildDropDownSelectionHandler(onSelectionChanged) : undefined;
             this.signalStore.set(this, this.container, "notify::selected", handler);
             return;
         }
 
         if (!this.selectionModel) return;
 
-        const handler = onSelectionChanged
-            ? this.buildMultiSelectionHandler(onSelectionChanged as (ids: string[]) => void)
-            : undefined;
+        const handler = onSelectionChanged ? this.buildMultiSelectionHandler(onSelectionChanged) : undefined;
 
         this.signalStore.set(this, this.selectionModel, "selection-changed", handler, {
             blockable: false,

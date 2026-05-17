@@ -4,7 +4,7 @@ import { arch, platform } from "node:os";
 import { join } from "node:path";
 import type { Plugin } from "vite";
 
-const NATIVE_BINDING_RE = /native-binding\.cjs$/;
+const NATIVE_BINDING_SUFFIX = "native-binding.cjs";
 const EMITTED_BINDING_SPECIFIER = "./gtkx.node";
 
 /**
@@ -57,7 +57,7 @@ export function gtkxNative(root: string): Plugin {
         },
 
         transform(_code, id) {
-            if (!NATIVE_BINDING_RE.test(id)) {
+            if (!id.endsWith(NATIVE_BINDING_SUFFIX)) {
                 return null;
             }
 

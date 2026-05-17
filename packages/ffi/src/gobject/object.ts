@@ -232,7 +232,7 @@ function emitImpl(this: GObject, sigName: string, ...args: unknown[]): void {
         throw new Error(`Unknown signal '${sigName}' on ${this.constructor.name || "GObject"}`);
     }
 
-    const query = alloc(SIGNAL_QUERY_SIZE) as NativeHandle;
+    const query = alloc(SIGNAL_QUERY_SIZE);
     call(
         LIB,
         "g_signal_query",

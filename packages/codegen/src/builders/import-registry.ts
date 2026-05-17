@@ -85,15 +85,27 @@ export class ImportRegistry implements Builder {
         }
 
         for (const [specifier, entry] of this.entries) {
-            if (this.mode === "js" && specifier.startsWith("./")) continue;
-            if (entry.namespaceAlias) {
-                if (this.mode === "js" && entry.namespaceTypeOnly) continue;
-                return false;
-            }
-            if (entry.names.size > 0) return false;
-            if (this.mode !== "js" && entry.typeOnlyNames.size > 0) return false;
+            if (this.isSkippedSpecifier(specifier)) continue;
+            if (this.emitsEntry(entry)) return false;
         }
         return true;
+    }
+
+    private isSkippedSpecifier(specifier: string): boolean {
+        return this.mode === "js" && specifier.startsWith("./");
+    }
+
+    private emitsNamespace(entry: ImportEntry): boolean {
+        if (!entry.namespaceAlias) return false;
+        return !(this.mode === "js" && entry.namespaceTypeOnly);
+    }
+
+    private emitsEntry(entry: ImportEntry): boolean {
+        if (entry.namespaceAlias) {
+            return this.emitsNamespace(entry);
+        }
+        if (entry.names.size > 0) return true;
+        return this.mode !== "js" && entry.typeOnlyNames.size > 0;
     }
 
     /** Write all collected imports, sorted alphabetically by specifier. */
@@ -105,37 +117,44 @@ export class ImportRegistry implements Builder {
         const sorted = [...this.entries.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 
         for (const [specifier, entry] of sorted) {
-            if (this.mode === "js" && specifier.startsWith("./")) continue;
-
+            if (this.isSkippedSpecifier(specifier)) continue;
             if (entry.namespaceAlias) {
-                if (this.mode === "js" && entry.namespaceTypeOnly) continue;
-                const typePrefix = entry.namespaceTypeOnly ? "type " : "";
-                writer.writeLine(`import ${typePrefix}* as ${entry.namespaceAlias} from "${specifier}";`);
-                continue;
-            }
-
-            const compareNames = (a: string, b: string): number => a.localeCompare(b);
-            const valueNames = [...entry.names].filter((n) => !entry.typeOnlyNames.has(n)).sort(compareNames);
-            const typeOnlyNames = [...entry.typeOnlyNames].filter((n) => !entry.names.has(n)).sort(compareNames);
-            const bothNames = [...entry.names].filter((n) => entry.typeOnlyNames.has(n)).sort(compareNames);
-
-            const parts: string[] = [];
-            if (this.mode !== "js") {
-                for (const name of typeOnlyNames) {
-                    parts.push(`type ${name}`);
-                }
-                for (const name of bothNames) {
-                    parts.push(`type ${name}`);
-                }
-            }
-            for (const name of valueNames) {
-                parts.push(name);
-            }
-
-            if (parts.length > 0) {
-                writer.writeLine(`import { ${parts.join(", ")} } from "${specifier}";`);
+                this.writeNamespaceImport(writer, specifier, entry);
+            } else {
+                this.writeNamedImport(writer, specifier, entry);
             }
         }
+    }
+
+    private writeNamespaceImport(writer: Writer, specifier: string, entry: ImportEntry): void {
+        if (!this.emitsNamespace(entry)) return;
+        const typePrefix = entry.namespaceTypeOnly ? "type " : "";
+        writer.writeLine(`import ${typePrefix}* as ${entry.namespaceAlias} from "${specifier}";`);
+    }
+
+    private writeNamedImport(writer: Writer, specifier: string, entry: ImportEntry): void {
+        const parts = this.buildNamedImportParts(entry);
+        if (parts.length > 0) {
+            writer.writeLine(`import { ${parts.join(", ")} } from "${specifier}";`);
+        }
+    }
+
+    private buildNamedImportParts(entry: ImportEntry): string[] {
+        const compareNames = (a: string, b: string): number => a.localeCompare(b);
+        const valueNames = [...entry.names].filter((n) => !entry.typeOnlyNames.has(n)).sort(compareNames);
+
+        const parts: string[] = [];
+        if (this.mode !== "js") {
+            const typeOnlyNames = [...entry.typeOnlyNames].filter((n) => !entry.names.has(n)).sort(compareNames);
+            const bothNames = [...entry.names].filter((n) => entry.typeOnlyNames.has(n)).sort(compareNames);
+            for (const name of [...typeOnlyNames, ...bothNames]) {
+                parts.push(`type ${name}`);
+            }
+        }
+        for (const name of valueNames) {
+            parts.push(name);
+        }
+        return parts;
     }
 
     private getOrCreate(specifier: string): ImportEntry {

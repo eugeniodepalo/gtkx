@@ -34,9 +34,7 @@ export const G_TYPE_INVALID: GType = 0;
  * @param value - The marshaled FFI result of a type-resolution call.
  * @returns The result as a `GType`.
  */
-export function gtypeFromFfi(value: unknown): GType {
-    return Number(value);
-}
+export const gtypeFromFfi: (value: unknown) => GType = Number;
 
 const g_type_is_a = t.fn(LIB, "g_type_is_a", [{ type: t.uint64 }, { type: t.uint64 }], t.boolean);
 

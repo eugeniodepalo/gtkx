@@ -152,7 +152,9 @@ function discoverClassVfuncs(klass: NativeClass): DiscoveredClassVfunc[] {
     for (const methodName of ownInstanceMethodNames(klass)) {
         const descriptor = findClassVfuncDescriptor(klass, methodName);
         if (!descriptor) continue;
-        result.push({ ...descriptor, methodName, fn: proto[methodName] as VfuncFn });
+        const fn = proto[methodName];
+        if (!fn) continue;
+        result.push({ ...descriptor, methodName, fn });
     }
     return result;
 }
@@ -192,10 +194,12 @@ function discoverInterfaceVfuncs(
         if (claimedMethodNames.has(methodName)) continue;
         const descriptor = struct[methodName];
         if (!descriptor || (descriptor as { kind?: string }).kind !== "interface") continue;
+        const fn = proto[methodName];
+        if (!fn) continue;
         result.push({
             ...(descriptor as RegisterClassInterfaceVfuncDescriptor),
             methodName,
-            fn: proto[methodName] as VfuncFn,
+            fn,
         });
     }
     return result;
