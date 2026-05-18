@@ -25,7 +25,6 @@ import {
     rewriteNamespaceDeclarations,
     stripAnonymousCompositeClasses,
     stripClassFields,
-    stripDivergentOverrideMethods,
     stripEventEmitterSignalOverloads,
     stripGtypeStructClasses,
     stripPositionalConstructors,
@@ -151,7 +150,7 @@ describe("rewriteModuleKeywordToNamespace", () => {
 });
 
 describe("rewriteGTypeDeclaration", () => {
-    it("rewrites the phantom-object GType alias to a branded number", () => {
+    it("rewrites the phantom-object GType alias to number", () => {
         const input = [
             "export type GType<T = unknown> = {",
             "    __type__(arg: never): T",
@@ -159,9 +158,7 @@ describe("rewriteGTypeDeclaration", () => {
             "};",
         ].join("\n");
 
-        expect(rewriteGTypeDeclaration(input)).toBe(
-            "export type GType<T = unknown> = number & { readonly __gtype__?: T };",
-        );
+        expect(rewriteGTypeDeclaration(input)).toBe("export type GType<T = unknown> = number;");
     });
 
     it("retypes the TYPE_INVALID bigint literal to GType", () => {
@@ -737,29 +734,6 @@ describe("stripClassFields", () => {
         const source = ["export class Widget {", "    priv: WidgetPrivate", "}"].join("\n");
         const fieldNames: NamespaceFieldNames = new Map([["Widget", new Set()]]);
         expect(stripClassFields(source, fieldNames)).toBe(source);
-    });
-});
-
-describe("stripDivergentOverrideMethods", () => {
-    it("removes a divergent-override method declaration scoped to its owner block", () => {
-        const source = [
-            "export class Object {",
-            "    bindProperty(source: string): Binding",
-            "    realMethod(): void",
-            "}",
-        ].join("\n");
-        const stripped = new Map([["Object", new Set(["bindProperty"])]]);
-
-        const result = stripDivergentOverrideMethods(source, stripped);
-
-        expect(result).not.toContain("bindProperty(source: string)");
-        expect(result).toContain("realMethod(): void");
-    });
-
-    it("returns the source unchanged when no divergent overrides are supplied", () => {
-        const source = ["export class Object {", "    bindProperty(): void", "}"].join("\n");
-        expect(stripDivergentOverrideMethods(source, undefined)).toBe(source);
-        expect(stripDivergentOverrideMethods(source, new Map())).toBe(source);
     });
 });
 

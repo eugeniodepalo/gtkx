@@ -55,10 +55,6 @@
             "types": "./dist/gtk/index.d.ts",
             "default": "./dist/gtk/index.js"
         },
-        "./value-marshal": {
-            "types": "./dist/value-marshal.d.ts",
-            "default": "./dist/value-marshal.js"
-        },
         "./*": {
             "types": "./dist/generated/*/*.d.ts",
             "default": "./dist/generated/*/*.js"

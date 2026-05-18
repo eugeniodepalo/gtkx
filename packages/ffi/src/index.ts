@@ -6,3 +6,4 @@ export { type RegisterClassOptions, registerClass } from "./register-class.js";
 export { findNativeClass, getClassGType } from "./registry.js";
 import "./cairo/index.js";
 import "./gobject/object.js";
+import "./gobject/value.js";

@@ -82,8 +82,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     private readonly sectionModels: Gtk.StringList[] = [];
     private sectionStore: Gio.ListStore | null = null;
     private flattenModel: Gtk.FlattenListModel | null = null;
-    private readonly treeChildModels = new WeakMap<GObject.Object, Gtk.StringList>();
-    private readonly queriedLeaves = new WeakSet<GObject.Object>();
+    private readonly treeChildModels = new Map<string, Gtk.StringList>();
     private rootItemIds: string[] = [];
 
     public override isValidChild(child: Node): boolean {
@@ -460,6 +459,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
     private initializeTreeModel(rootItems: ListItem[], newSize: number): void {
         if (!this.model) return;
+        this.treeChildModels.clear();
         this.model.splice(0, this.model.getNItems(), new Array(newSize).fill(""));
         this.rootItemIds = rootItems.map((item) => item.id);
 
@@ -475,29 +475,11 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private collectOverlapTransitions(rootItems: ListItem[], overlap: number): number[] {
-        if (!this.model) return [];
         const transitionPositions: number[] = [];
 
         for (let i = 0; i < overlap; i++) {
-            const obj = this.model.getItem(i);
-            if (!obj) continue;
-
-            if (this.rootItemIds[i] !== rootItems[i]?.id) {
-                this.treeChildModels.delete(obj);
-                this.queriedLeaves.delete(obj);
-                transitionPositions.push(i);
-                continue;
-            }
-
-            const cachedChildModel = this.treeChildModels.get(obj);
-            const newChildCount = rootItems[i]?.children?.length ?? 0;
-
-            if (cachedChildModel && newChildCount > 0) {
-                resizeStringList(cachedChildModel, newChildCount);
-            } else if (cachedChildModel && newChildCount === 0) {
-                this.treeChildModels.delete(obj);
-                transitionPositions.push(i);
-            } else if (!cachedChildModel && newChildCount > 0) {
+            const rootItem = rootItems[i];
+            if (rootItem && this.reconcileRootChildModel(rootItem, this.rootItemIds[i])) {
                 transitionPositions.push(i);
             }
         }
@@ -505,14 +487,33 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         return transitionPositions;
     }
 
-    private clearRemovedTreeItems(overlap: number, oldSize: number): void {
-        if (!this.model) return;
-        for (let i = overlap; i < oldSize; i++) {
-            const obj = this.model.getItem(i);
-            if (obj) {
-                this.treeChildModels.delete(obj);
-                this.queriedLeaves.delete(obj);
+    private reconcileRootChildModel(rootItem: ListItem, oldId: string | undefined): boolean {
+        const newId = rootItem.id;
+
+        if (oldId !== newId) {
+            if (oldId !== undefined) this.treeChildModels.delete(oldId);
+            return true;
+        }
+
+        const cachedChildModel = this.treeChildModels.get(newId);
+        const newChildCount = rootItem.children?.length ?? 0;
+
+        if (cachedChildModel) {
+            if (newChildCount > 0) {
+                resizeStringList(cachedChildModel, newChildCount);
+                return false;
             }
+            this.treeChildModels.delete(newId);
+            return true;
+        }
+
+        return newChildCount > 0;
+    }
+
+    private clearRemovedTreeItems(overlap: number, oldSize: number): void {
+        for (let i = overlap; i < oldSize; i++) {
+            const removedId = this.rootItemIds[i];
+            if (removedId !== undefined) this.treeChildModels.delete(removedId);
         }
     }
 
@@ -520,11 +521,6 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (!this.model) return;
         for (const pos of transitionPositions) {
             if (pos >= newSize) continue;
-            const oldObj = this.model.getItem(pos);
-            if (oldObj) {
-                this.queriedLeaves.delete(oldObj);
-                this.treeChildModels.delete(oldObj);
-            }
             this.model.splice(pos, 1, [""]);
         }
     }
@@ -557,20 +553,17 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const position = this.findStringObjectPosition(_item);
 
         if (position === null || position >= rootItems.length) {
-            this.queriedLeaves.add(_item);
             return null;
         }
 
         const item = rootItems[position];
         if (!item?.children || item.children.length === 0) {
-            this.queriedLeaves.add(_item);
             return null;
         }
 
         const childModel = new Gtk.StringList();
         resizeStringList(childModel, item.children.length);
-        this.treeChildModels.set(_item, childModel);
-        this.queriedLeaves.delete(_item);
+        this.treeChildModels.set(item.id, childModel);
         return childModel;
     }
 

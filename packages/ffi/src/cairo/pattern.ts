@@ -1,6 +1,12 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
-import type { Extend, Filter, PatternType, Status } from "../generated/cairo/cairo.js";
-import { Pattern, type Surface } from "../generated/cairo/cairo.js";
+import {
+    type Extend,
+    type Filter,
+    Pattern,
+    type PatternType,
+    type Status,
+    type Surface,
+} from "../generated/cairo/cairo.js";
 import { getHandle } from "../handles.js";
 import { t } from "../native.js";
 import { wrapHandle } from "../registry.js";

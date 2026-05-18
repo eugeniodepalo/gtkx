@@ -42,9 +42,7 @@ export type SignalGValue = { init(gtype: unknown): void };
 
 /** The `GObject` namespace surface that {@link emitSignal} marshals through. */
 export type SignalGObject = {
-    readonly Value: {
-        new (): SignalGValue;
-    };
+    readonly Value: new () => SignalGValue;
     /** Marshals a JS value into a `GValue` using its FFI type descriptor. */
     valueFromFfi(type: Type, value: unknown): SignalGValue;
     signalLookup(name: string, gtype: unknown): number;

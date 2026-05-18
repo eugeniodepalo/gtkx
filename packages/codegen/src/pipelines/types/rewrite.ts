@@ -1,5 +1,3 @@
-import { DIVERGENT_OVERRIDE_METHODS_BY_NAMESPACE } from "../../core/utils/method-suppression.js";
-
 const RAW_FILE_PATTERN = /^node-(.+?)-\d+(?:\.\d+)*\.d\.ts$/;
 
 /**
@@ -637,31 +635,6 @@ export function stripSignalActionMethods(
 }
 
 /**
- * Removes the contract declaration of a GIR method that a hand-written FFI
- * runtime override supplies under the same name but with a signature that
- * diverges from the GIR shape.
- *
- * Where a suppressed method whose override preserves the GIR call shape keeps
- * its contract declaration — the override and the declaration merge cleanly —
- * a divergent override cannot: its `declare module` declaration would form an
- * incompatible overload set with the ts-for-gir declaration. Dropping the
- * ts-for-gir declaration leaves the override's declaration as the single,
- * authoritative one. The member still ships on `@gtkx/ffi/<ns>` through the
- * override, and the conformance gate verifies it there.
- *
- * @param source - The `.d.ts` source to rewrite.
- * @param strippedByOwner - Divergent-override method names keyed by owner name.
- * @returns The source with the divergent-override declarations removed.
- */
-export function stripDivergentOverrideMethods(
-    source: string,
-    strippedByOwner?: ReadonlyMap<string, ReadonlySet<string>>,
-): string {
-    if (strippedByOwner === undefined || strippedByOwner.size === 0) return source;
-    return stripBlockMethods(source, strippedByOwner);
-}
-
-/**
  * Regex fragment matching an optional JSDoc block immediately preceding a
  * member. The inner `(?!\*\/)` guard keeps the lazy body from spanning past
  * the block's own `*\/` into later declarations.
@@ -892,24 +865,26 @@ const TYPE_INVALID_DECLARATION_PATTERN = /export let TYPE_INVALID(\s*): 0n/;
 
 /**
  * Rewrites the `GType` type alias from the ts-for-gir phantom-object shape
- * to a branded number — `number & { readonly __gtype__?: T }`.
+ * to the plain `number` a GType is at runtime.
  *
  * ts-for-gir declares `GType` as an object type carrying a phantom `__type__`
- * method, but a GType is a plain numeric `gsize` at runtime. The branded form
- * keeps the phantom `<T>` payload the typed `typeFromName` overloads depend on
- * while making a runtime `number` directly assignable to a `GType` slot — and
- * a `GType` usable as an arithmetic operand, `Map` key, or `=== 0` operand.
+ * method that forces nominal matching, but a GType is a plain numeric `gsize`
+ * at runtime and no contract member consumes the phantom `<T>` payload. The
+ * `number` form makes a runtime `number` directly assignable to a `GType`
+ * slot and a `GType` usable as an arithmetic operand, `Map` key, or `=== 0`
+ * operand. The `<T = unknown>` parameter is kept so the `GType<...>`
+ * references the ts-for-gir output carries continue to resolve.
  *
  * The companion `TYPE_INVALID` declaration is retyped from the `0n` bigint
  * literal to `GType` so the typed `typeFromName("void")` overload yields a
  * `GType` consistent with the numeric runtime value.
  *
  * @param source - The `.d.ts` source to rewrite.
- * @returns The source with the `GType` alias rewritten to a branded number.
+ * @returns The source with the `GType` alias rewritten to `number`.
  */
 export function rewriteGTypeDeclaration(source: string): string {
     return source
-        .replace(GTYPE_OBJECT_ALIAS_PATTERN, "export type GType<T = unknown> = number & { readonly __gtype__?: T };")
+        .replace(GTYPE_OBJECT_ALIAS_PATTERN, "export type GType<T = unknown> = number;")
         .replace(TYPE_INVALID_DECLARATION_PATTERN, "export let TYPE_INVALID$1: GType");
 }
 
@@ -1809,7 +1784,6 @@ export function loadAndRewrite(rawFilesByName: Map<string, string>, inputs: Rewr
         source = stripPositionalConstructors(source);
         source = stripUntaggedPositionalConstructors(source);
         source = stripSignalActionMethods(source, signalActionMethodNames?.get(namespace));
-        source = stripDivergentOverrideMethods(source, DIVERGENT_OVERRIDE_METHODS_BY_NAMESPACE.get(namespace));
         source = relaxMultiReturnTuples(source);
         source = relaxOptionalInoutReturns(source);
         source = renameConflictingConnectMethods(source, connectRenames?.get(namespace));

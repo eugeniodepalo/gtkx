@@ -5,7 +5,8 @@ import type { Object as GObject, GType, ParamSpec } from "../generated/gobject/g
 import { typeFromName, typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
 import { G_TYPE_INVALID, GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT } from "../gtype.js";
 import { getHandle, type NativeObject } from "../handles.js";
-import { call, t } from "../native.js";
+import { call, read, t } from "../native.js";
+import { findNativeClass, getNativeObject } from "../registry.js";
 import { Type } from "./types.js";
 
 const g_strv_get_type = t.fn(LIBGOBJECT, "g_strv_get_type", [], t.uint64);
@@ -32,53 +33,111 @@ function initValue(gtype: GType, populate: (v: Value) => void): Value {
     return v;
 }
 
+/** The `GType` a `GValue` currently holds — the `G_VALUE_TYPE` C macro. */
+function valueHeldType(value: Value): GType {
+    return gtypeFromFfi(read(getHandle(value), t.uint64, 0));
+}
+
+/** Resolves the GLib type name of a boxed `GType`, throwing when unknown. */
+function boxedTypeName(gtype: GType): string {
+    const name = typeName(gtype);
+    if (!name) {
+        throw new Error(`Cannot resolve type name for boxed GType ${String(gtype)}`);
+    }
+    return name;
+}
+
+/** Sets the boxed payload of a `GValue` already typed with a boxed `GType`. */
+export function writeBoxed(value: Value, vBoxed: object | null): void {
+    call(
+        LIBGOBJECT,
+        "g_value_set_boxed",
+        [
+            { type: GVALUE_BORROWED, value: getHandle(value) },
+            {
+                type: t.boxed(boxedTypeName(valueHeldType(value)), "borrowed", LIBGOBJECT),
+                value: vBoxed === null ? null : getHandle(vBoxed),
+                optional: true,
+            },
+        ],
+        t.void,
+    );
+}
+
+/**
+ * Reads the boxed payload of a `GValue`, resolving the wrapper class through
+ * the registry.
+ *
+ * @param value - The `GValue` to read.
+ * @returns The wrapped boxed instance, or `null` when the value holds no boxed
+ *   type or the boxed pointer is NULL.
+ * @throws if the boxed `GType` has no registered wrapper class.
+ */
+export function readBoxed(value: Value): object | null {
+    const gtype = valueHeldType(value);
+    if (typeFundamental(gtype) !== Type.BOXED) {
+        return null;
+    }
+    const cls = findNativeClass(gtype, false);
+    if (!cls) {
+        throw new Error(`No registered class for boxed GType '${typeName(gtype) ?? String(gtype)}'`);
+    }
+    const ptr = call(
+        LIBGOBJECT,
+        "g_value_dup_boxed",
+        [{ type: GVALUE_BORROWED, value: getHandle(value) }],
+        t.boxed(boxedTypeName(gtype), "full", LIBGOBJECT),
+    );
+    return ptr === null ? null : getNativeObject(ptr as NativeHandle, cls);
+}
+
 /** Creates a `GValue` initialized with a boolean. */
-export function newFromBoolean(value: boolean): Value {
+function newFromBoolean(value: boolean): Value {
     return initValue(Type.BOOLEAN, (v) => v.setBoolean(value));
 }
 
 /** Creates a `GValue` initialized with a signed 32-bit integer. */
-export function newFromInt(value: number): Value {
+function newFromInt(value: number): Value {
     return initValue(Type.INT, (v) => v.setInt(value));
 }
 
 /** Creates a `GValue` initialized with an unsigned 32-bit integer. */
-export function newFromUint(value: number): Value {
+function newFromUint(value: number): Value {
     return initValue(Type.UINT, (v) => v.setUint(value));
 }
 
 /** Creates a `GValue` initialized with a signed long integer. */
-export function newFromLong(value: number): Value {
+function newFromLong(value: number): Value {
     return initValue(Type.LONG, (v) => v.setLong(value));
 }
 
 /** Creates a `GValue` initialized with an unsigned long integer. */
-export function newFromUlong(value: number): Value {
+function newFromUlong(value: number): Value {
     return initValue(Type.ULONG, (v) => v.setUlong(value));
 }
 
 /** Creates a `GValue` initialized with a signed 64-bit integer. */
-export function newFromInt64(value: number): Value {
+function newFromInt64(value: number): Value {
     return initValue(Type.INT64, (v) => v.setInt64(value));
 }
 
 /** Creates a `GValue` initialized with an unsigned 64-bit integer. */
-export function newFromUint64(value: number): Value {
+function newFromUint64(value: number): Value {
     return initValue(Type.UINT64, (v) => v.setUint64(value));
 }
 
 /** Creates a `GValue` initialized with a single-precision float. */
-export function newFromFloat(value: number): Value {
+function newFromFloat(value: number): Value {
     return initValue(Type.FLOAT, (v) => v.setFloat(value));
 }
 
 /** Creates a `GValue` initialized with a double-precision float. */
-export function newFromDouble(value: number): Value {
+function newFromDouble(value: number): Value {
     return initValue(Type.DOUBLE, (v) => v.setDouble(value));
 }
 
 /** Creates a `GValue` initialized with a string (or `null`). */
-export function newFromString(value: string | null): Value {
+function newFromString(value: string | null): Value {
     return initValue(Type.STRING, (v) => v.setString(value));
 }
 
@@ -96,45 +155,27 @@ export function newFromObject(value: GObject | null): Value {
 }
 
 /** Creates a `GValue` initialized with a boxed value of the given `GType`. */
-export function newFromBoxed(value: object, gtype: GType): Value {
-    const glibTypeName = typeName(gtype);
-    if (!glibTypeName) {
-        throw new Error(`Cannot resolve type name for boxed gtype ${String(gtype)}`);
-    }
-    return initValue(gtype, (v) => {
-        call(
-            LIBGOBJECT,
-            "g_value_set_boxed",
-            [
-                { type: GVALUE_BORROWED, value: getHandle(v) },
-                {
-                    type: t.boxed(glibTypeName, "borrowed", LIBGOBJECT),
-                    value: getHandle(value),
-                    optional: true,
-                },
-            ],
-            t.void,
-        );
-    });
+function newFromBoxed(value: object, gtype: GType): Value {
+    return initValue(gtype, (v) => writeBoxed(v, value));
 }
 
 /** Creates a `GValue` initialized with a `GStrv` from a JS string array. */
-export function newFromStrv(value: string[]): Value {
+function newFromStrv(value: string[]): Value {
     return initValue(getStrvGType(), (v) => g_value_set_boxed_strv(getHandle(v), value));
 }
 
 /** Creates a `GValue` initialized with a `GVariant`. */
-export function newFromVariant(value: GLib.Variant): Value {
+function newFromVariant(value: GLib.Variant): Value {
     return initValue(Type.VARIANT, (v) => v.setVariant(value));
 }
 
 /** Creates a `GValue` initialized with an enum payload of the given `GType`. */
-export function newFromEnum(gtype: GType, value: number): Value {
+function newFromEnum(gtype: GType, value: number): Value {
     return initValue(gtype, (v) => v.setEnum(value));
 }
 
 /** Creates a `GValue` initialized with a flags payload of the given `GType`. */
-export function newFromFlags(gtype: GType, value: number): Value {
+function newFromFlags(gtype: GType, value: number): Value {
     return initValue(gtype, (v) => v.setFlags(value));
 }
 

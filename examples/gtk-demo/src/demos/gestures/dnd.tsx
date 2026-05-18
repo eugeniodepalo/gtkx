@@ -5,7 +5,6 @@ import * as GObject from "@gtkx/ffi/gobject";
 import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { valueFromBoxed, valueFromString, valueGetBoxed, valueGetType } from "@gtkx/ffi/value-marshal";
 import {
     GtkBox,
     GtkButton,
@@ -23,6 +22,7 @@ import {
     GtkSeparator,
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { makeValue } from "../../gvalue.js";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
 
@@ -159,7 +159,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
     const createColorProvider = useCallback(() => {
         const rgba = new Gdk.RGBA();
         rgba.parse(color);
-        return Gdk.ContentProvider.newForValue(valueFromBoxed(rgba, getGdkRgbaType()));
+        return Gdk.ContentProvider.newForValue(makeValue(getGdkRgbaType(), (v) => v.setBoxed(rgba)));
     }, [color]);
 
     return (
@@ -171,7 +171,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
 
 function CssPatternSwatch({ cssClass }: Readonly<{ cssClass: string }>) {
     const createClassProvider = useCallback(() => {
-        return Gdk.ContentProvider.newForValue(valueFromString(cssClass));
+        return Gdk.ContentProvider.newForValue(makeValue(GObject.Type.STRING, (v) => v.setString(cssClass)));
     }, [cssClass]);
 
     return (
@@ -267,7 +267,7 @@ const DndDemo = ({ window }: DemoProps) => {
     }, [items]);
 
     const createContentProvider = useCallback((itemId: string) => {
-        return Gdk.ContentProvider.newForValue(valueFromString(itemId));
+        return Gdk.ContentProvider.newForValue(makeValue(GObject.Type.STRING, (v) => v.setString(itemId)));
     }, []);
 
     const handleCanvasDrop = useCallback((value: GObject.Value, x: number, y: number) => {
@@ -367,24 +367,19 @@ const DndDemo = ({ window }: DemoProps) => {
     }, []);
 
     const handleItemColorDrop = useCallback((itemId: string, value: GObject.Value) => {
-        const gtype = valueGetType(value);
-        if (gtype === getGdkRgbaType()) {
-            const rgba = valueGetBoxed(value, Gdk.RGBA, getGdkRgbaType());
-            if (rgba) {
-                const cssColor = rgba.toString() ?? "transparent";
-                setItems((prev) =>
-                    prev.map((item) => (item.id === itemId ? { ...item, style: { type: "rgba", cssColor } } : item)),
-                );
-            }
-        } else if (gtype === GObject.Type.STRING) {
-            const className = value.getString();
-            if (className) {
-                setItems((prev) =>
-                    prev.map((item) =>
-                        item.id === itemId ? { ...item, style: { type: "cssClass", className } } : item,
-                    ),
-                );
-            }
+        const rgba = value.getBoxed<Gdk.RGBA>();
+        if (rgba instanceof Gdk.RGBA) {
+            const cssColor = rgba.toString() ?? "transparent";
+            setItems((prev) =>
+                prev.map((item) => (item.id === itemId ? { ...item, style: { type: "rgba", cssColor } } : item)),
+            );
+            return true;
+        }
+        const className = value.getString();
+        if (className) {
+            setItems((prev) =>
+                prev.map((item) => (item.id === itemId ? { ...item, style: { type: "cssClass", className } } : item)),
+            );
         }
         return true;
     }, []);

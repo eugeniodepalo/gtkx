@@ -28,3 +28,4 @@ export {
 } from "./fundamental-types.js";
 export * from "./object.js";
 export * from "./types.js";
+export * from "./value.js";

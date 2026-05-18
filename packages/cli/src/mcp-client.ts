@@ -1,17 +1,6 @@
 import * as net from "node:net";
 import * as Gio from "@gtkx/ffi/gio";
-import type { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    valueFromBoolean,
-    valueFromDouble,
-    valueFromFloat,
-    valueFromInt,
-    valueFromInt64,
-    valueFromString,
-    valueFromUint,
-    valueFromUint64,
-} from "@gtkx/ffi/value-marshal";
 import {
     DEFAULT_SOCKET_PATH,
     type IpcMethod,
@@ -392,32 +381,9 @@ class McpClient {
         return { success: true };
     }
 
-    private buildSignalArgValue(arg: unknown): Value {
+    private extractSignalArg(arg: unknown): unknown {
         const isTypedArg = typeof arg === "object" && arg !== null && "type" in arg && "value" in arg;
-        const argType = isTypedArg ? (arg as { type: string }).type : typeof arg;
-        const argValue = isTypedArg ? (arg as { value: unknown }).value : arg;
-
-        switch (argType) {
-            case "boolean":
-                return valueFromBoolean(argValue as boolean);
-            case "int":
-                return valueFromInt(argValue as number);
-            case "uint":
-                return valueFromUint(argValue as number);
-            case "int64":
-                return valueFromInt64(argValue as number);
-            case "uint64":
-                return valueFromUint64(argValue as number);
-            case "float":
-                return valueFromFloat(argValue as number);
-            case "double":
-            case "number":
-                return valueFromDouble(argValue as number);
-            case "string":
-                return valueFromString(argValue as string | null);
-            default:
-                throw new McpError(McpErrorCode.INVALID_REQUEST, `Unknown argument type: ${argType}`);
-        }
+        return isTypedArg ? (arg as { value: unknown }).value : arg;
     }
 
     private async handleFireEvent(params: unknown): Promise<unknown> {
@@ -431,7 +397,7 @@ class McpClient {
         if (!widget) {
             throw widgetNotFoundError(p.widgetId);
         }
-        const signalArgs = (p.args ?? []).map((arg) => this.buildSignalArgValue(arg));
+        const signalArgs = (p.args ?? []).map((arg) => this.extractSignalArg(arg));
         await testing.fireEvent(widget, p.signal, ...signalArgs);
         return { success: true };
     }

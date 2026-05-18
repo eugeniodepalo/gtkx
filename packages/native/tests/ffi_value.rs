@@ -64,9 +64,8 @@ fn as_raw_ptr_scalar_variants_point_to_payload() {
     macro_rules! check {
         ($variant:ident, $value:expr, $ty:ty) => {{
             let v = FfiValue::$variant($value);
-            let ptr = v.as_raw_ptr();
-            assert!(!ptr.is_null());
-            let read = unsafe { *(ptr as *const $ty) };
+            let ptr = std::ptr::NonNull::new(v.as_raw_ptr()).expect("payload pointer is non-null");
+            let read = unsafe { *(ptr.as_ptr() as *const $ty) };
             assert_eq!(read, $value);
         }};
     }
@@ -86,8 +85,8 @@ fn as_raw_ptr_scalar_variants_point_to_payload() {
 fn as_raw_ptr_ptr_variant_dereferences_to_inner() {
     let inner = std::ptr::without_provenance_mut::<c_void>(0x1234);
     let v = FfiValue::Ptr(inner);
-    let ptr = v.as_raw_ptr();
-    let read = unsafe { *(ptr as *const *mut c_void) };
+    let ptr = std::ptr::NonNull::new(v.as_raw_ptr()).expect("payload pointer is non-null");
+    let read = unsafe { *(ptr.as_ptr() as *const *mut c_void) };
     assert_eq!(read, inner);
 }
 

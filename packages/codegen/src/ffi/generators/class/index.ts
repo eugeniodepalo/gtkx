@@ -30,7 +30,6 @@ import {
     collectReachableVirtualMethodNames,
 } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { isMethodSuppressed } from "../../../core/utils/method-suppression.js";
 import {
     generateConflictingMethodName,
     normalizeClassName,
@@ -356,7 +355,6 @@ export class ClassGenerator {
     private filterClassMethods(parentMethodNames: Set<string>): GirMethod[] {
         const propertyNames = this.collectPropertyNames();
         return this.cls.methods.filter((m) => {
-            if (isMethodSuppressed(this.cls.qualifiedName, m.cIdentifier)) return false;
             if (propertyNames.has(toCamelCase(m.name))) return false;
             const needsRename = parentMethodNames.has(m.name) || (m.name === "connect" && this.cls.parent);
             if (needsRename) {

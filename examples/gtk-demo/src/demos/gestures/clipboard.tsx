@@ -4,7 +4,6 @@ import * as Gio from "@gtkx/ffi/gio";
 import type { GType } from "@gtkx/ffi/gobject";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { valueFromBoxed, valueFromObject, valueFromString, valueGetBoxed } from "@gtkx/ffi/value-marshal";
 import {
     GtkBox,
     GtkButton,
@@ -21,6 +20,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { makeValue } from "../../gvalue.js";
 import gtkLogoSvgPath from "../drawing/gtk-logo.svg";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
@@ -135,11 +135,11 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     }, [sourceType, sourceText, sourceFile]);
 
     const createTextDragProvider = useCallback(() => {
-        return Gdk.ContentProvider.newForValue(valueFromString(sourceText));
+        return Gdk.ContentProvider.newForValue(makeValue(GObject.Type.STRING, (v) => v.setString(sourceText)));
     }, [sourceText]);
 
     const createColorDragProvider = useCallback(() => {
-        return Gdk.ContentProvider.newForValue(valueFromBoxed(sourceColor, getGdkRgbaType()));
+        return Gdk.ContentProvider.newForValue(makeValue(getGdkRgbaType(), (v) => v.setBoxed(sourceColor)));
     }, [sourceColor]);
 
     const createImageDragProvider = useCallback(() => {
@@ -147,9 +147,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
         const path = paths[selectedImage] ?? portlandRosePath;
         try {
             const texture = Gdk.Texture.newFromFilename(path);
-            const value = new GObject.Value();
-            value.init(GObject.typeFromName("GdkPaintable"));
-            value.setObject(texture);
+            const value = makeValue(getGdkPaintableType(), (v) => v.setObject(texture));
             return Gdk.ContentProvider.newForValue(value);
         } catch {
             return null;
@@ -158,7 +156,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
 
     const createFileDragProvider = useCallback(() => {
         if (sourceFile) {
-            return Gdk.ContentProvider.newForValue(valueFromObject(sourceFile));
+            return Gdk.ContentProvider.newForValue(makeValue(getGFileType(), (v) => v.setObject(sourceFile)));
         }
         return null;
     }, [sourceFile]);
@@ -168,24 +166,30 @@ const ClipboardDemo = ({ window }: DemoProps) => {
         if (!clipboard) return;
 
         if (sourceType === "Text") {
-            const value = valueFromString(sourceText);
-            setClipboardValue(clipboard, value);
+            setClipboardValue(
+                clipboard,
+                makeValue(GObject.Type.STRING, (v) => v.setString(sourceText)),
+            );
         } else if (sourceType === "Color") {
-            const value = valueFromBoxed(sourceColor, getGdkRgbaType());
-            setClipboardValue(clipboard, value);
+            setClipboardValue(
+                clipboard,
+                makeValue(getGdkRgbaType(), (v) => v.setBoxed(sourceColor)),
+            );
         } else if (sourceType === "Image") {
             const paths = [portlandRosePath, floppyBuddyPath, gtkLogoSvgPath];
             const path = paths[selectedImage] ?? portlandRosePath;
             try {
                 const texture = Gdk.Texture.newFromFilename(path);
-                const value = new GObject.Value();
-                value.init(GObject.typeFromName("GdkPaintable"));
-                value.setObject(texture);
-                setClipboardValue(clipboard, value);
+                setClipboardValue(
+                    clipboard,
+                    makeValue(getGdkPaintableType(), (v) => v.setObject(texture)),
+                );
             } catch {}
         } else if ((sourceType === "File" || sourceType === "Folder") && sourceFile) {
-            const value = valueFromObject(sourceFile);
-            setClipboardValue(clipboard, value);
+            setClipboardValue(
+                clipboard,
+                makeValue(getGFileType(), (v) => v.setObject(sourceFile)),
+            );
         }
     }, [sourceType, sourceText, sourceColor, selectedImage, sourceFile, getClipboard]);
 
@@ -216,7 +220,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
         async (clipboard: Gdk.Clipboard, formats: Gdk.ContentFormats): Promise<boolean> => {
             if (!formats.containGtype(getGdkRgbaType())) return false;
             const value = await readValueAsync(clipboard, getGdkRgbaType());
-            const rgba = valueGetBoxed(value, Gdk.RGBA, getGdkRgbaType());
+            const rgba = value.getBoxed<Gdk.RGBA>();
             if (!rgba) return false;
             setPastedContent({
                 type: "Color",
@@ -291,7 +295,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                 return true;
             }
         }
-        const rgba = valueGetBoxed(value, Gdk.RGBA, getGdkRgbaType());
+        const rgba = value.getBoxed<Gdk.RGBA>();
         if (rgba) {
             setPastedContent({
                 type: "Color",
