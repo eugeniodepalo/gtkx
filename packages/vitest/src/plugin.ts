@@ -5,7 +5,7 @@ import type { Plugin } from "vitest/config";
 /**
  * Creates the GTKX Vitest plugin for running GTK tests.
  *
- * Each worker spawns its own Xvfb instance on a PID-based display number.
+ * Each worker spawns its own Xvfb instance on a display Xvfb selects.
  *
  * @returns Vitest plugin configuration
  *

@@ -1,28 +1,8 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, type StdioOptions, spawn } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeAll } from "vitest";
-
-const display = 100 + (process.pid % 5000);
-const socketPath = `/tmp/.X11-unix/X${display}`;
-
-/**
- * Spawns a long-lived helper process whose lifetime is bound to this worker.
- *
- * `setpriv --pdeathsig SIGKILL` makes the kernel kill the helper the instant
- * the worker process dies — by any signal, including a `SIGSEGV` from a native
- * crash or a `SIGKILL` from the OOM killer — paths that `process.on` exit and
- * signal handlers cannot cover. Without it a crashed worker orphans its `Xvfb`
- * and `dbus-daemon`, leaking one of each per crash.
- */
-const spawnWorkerChild = (command: string, args: string[]): ChildProcess => {
-    const child = spawn("setpriv", ["--pdeathsig", "SIGKILL", command, ...args], { stdio: "ignore" });
-    child.unref();
-    return child;
-};
-
-const xvfb = spawnWorkerChild("Xvfb", [`:${display}`, "-screen", "0", "1024x768x24"]);
+import type { Readable } from "node:stream";
 
 const busDir = mkdtempSync(join(tmpdir(), "gtkx-dbus-"));
 const busConfigPath = join(busDir, "session.conf");
@@ -43,10 +23,25 @@ writeFileSync(
 </busconfig>`,
 );
 
-const dbus = spawnWorkerChild("dbus-daemon", [`--config-file=${busConfigPath}`]);
+/**
+ * Spawns a long-lived helper process whose lifetime is bound to this worker.
+ *
+ * `setpriv --pdeathsig SIGKILL` makes the kernel kill the helper the instant
+ * the worker process dies — by any signal, including a `SIGSEGV` from a native
+ * crash or a `SIGKILL` from the OOM killer — paths that `process.on` exit and
+ * signal handlers cannot cover. Without it a crashed worker orphans its `Xvfb`
+ * and `dbus-daemon`, leaking one of each per crash.
+ */
+const spawnWorkerChild = (command: string, args: string[], stdio: StdioOptions): ChildProcess => {
+    const child = spawn("setpriv", ["--pdeathsig", "SIGKILL", command, ...args], { stdio });
+    child.unref();
+    return child;
+};
+
+const xvfb = spawnWorkerChild("Xvfb", ["-displayfd", "1", "-screen", "0", "1024x768x24"], ["ignore", "pipe", "pipe"]);
+const dbus = spawnWorkerChild("dbus-daemon", [`--config-file=${busConfigPath}`], "ignore");
 
 process.env.DBUS_SESSION_BUS_ADDRESS = `unix:path=${busSocketPath}`;
-process.env.DISPLAY = `:${display}`;
 process.env.GDK_BACKEND = "x11";
 process.env.GDK_DISABLE = "vulkan";
 process.env.GSK_RENDERER = "cairo";
@@ -92,9 +87,67 @@ const waitForFile = async (path: string, label: string, timeout = 15000): Promis
     throw new Error(`${label} did not become available within ${timeout}ms`);
 };
 
-beforeAll(async () => {
-    await Promise.all([
-        waitForFile(socketPath, `Xvfb display :${display}`),
-        waitForFile(busSocketPath, "D-Bus session bus"),
-    ]);
-});
+/**
+ * Resolves with the display number Xvfb chose, reported on its `-displayfd`.
+ *
+ * Letting Xvfb scan for and claim a free display — rather than computing one
+ * from the worker PID — removes collisions between the many worker `Xvfb`
+ * instances a `turbo` run starts concurrently. The number is written only once
+ * the server owns the display and accepts connections, so it is usable as soon
+ * as it arrives. An early server exit is surfaced with its captured log instead
+ * of stalling until the timeout elapses.
+ */
+const waitForDisplay = (timeout = 15000): Promise<string> =>
+    new Promise((resolve, reject) => {
+        const { stdout, stderr } = xvfb;
+        if (stdout === null || stderr === null) {
+            reject(new Error("Xvfb output pipes are unavailable"));
+            return;
+        }
+        stdout.setEncoding("utf8");
+        stderr.setEncoding("utf8");
+        let displayBuffer = "";
+        let log = "";
+        let timer: ReturnType<typeof setTimeout>;
+        const stopListening = (): void => {
+            clearTimeout(timer);
+            stdout.removeAllListeners("data");
+            stderr.removeAllListeners("data");
+            xvfb.removeAllListeners("exit");
+        };
+        const drain = (stream: Readable): void => {
+            stream.resume();
+            (stream as Partial<{ unref(): void }>).unref?.();
+        };
+        const onDisplay = (chunk: string): void => {
+            displayBuffer += chunk;
+            const newline = displayBuffer.indexOf("\n");
+            if (newline === -1) {
+                return;
+            }
+            stopListening();
+            drain(stdout);
+            drain(stderr);
+            resolve(displayBuffer.slice(0, newline).trim());
+        };
+        const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
+            stopListening();
+            reject(
+                new Error(
+                    `Xvfb exited (code ${code ?? "null"}, signal ${signal ?? "null"}) before reporting a display\n${log}`,
+                ),
+            );
+        };
+        timer = setTimeout(() => {
+            stopListening();
+            reject(new Error(`Xvfb did not report a display within ${timeout}ms\n${log}`));
+        }, timeout);
+        stdout.on("data", onDisplay);
+        stderr.on("data", (chunk: string) => {
+            log += chunk;
+        });
+        xvfb.on("exit", onExit);
+    });
+
+const [display] = await Promise.all([waitForDisplay(), waitForFile(busSocketPath, "D-Bus session bus")]);
+process.env.DISPLAY = `:${display}`;
