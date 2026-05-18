@@ -201,18 +201,20 @@ export function teardownNode(node: Node, table: PropDescriptorTable): void {
     arraySyncStates.delete(node);
 }
 
-const applyGenericProps = (
-    node: Node,
+type PendingSignal = { signalName: string; newValue: unknown };
+
+type PendingProperty = { name: string; oldValue: unknown; newValue: unknown };
+
+const collectGenericChanges = (
     container: Container,
     oldProps: Props | null,
     newProps: Props,
     table: PropDescriptorTable,
     exclude: ((name: string) => boolean) | undefined,
-    defaultBlockable: boolean,
-): void => {
+): { pendingSignals: PendingSignal[]; pendingProperties: PendingProperty[] } => {
     const names = new Set([...Object.keys(oldProps ?? {}), ...Object.keys(newProps)]);
-    const pendingSignals: Array<{ signalName: string; newValue: unknown }> = [];
-    const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
+    const pendingSignals: PendingSignal[] = [];
+    const pendingProperties: PendingProperty[] = [];
 
     for (const name of names) {
         if (name === "children" || name in table || exclude?.(name)) continue;
@@ -229,6 +231,20 @@ const applyGenericProps = (
             pendingProperties.push({ name, oldValue, newValue });
         }
     }
+
+    return { pendingSignals, pendingProperties };
+};
+
+const applyGenericProps = (
+    node: Node,
+    container: Container,
+    oldProps: Props | null,
+    newProps: Props,
+    table: PropDescriptorTable,
+    exclude: ((name: string) => boolean) | undefined,
+    defaultBlockable: boolean,
+): void => {
+    const { pendingSignals, pendingProperties } = collectGenericChanges(container, oldProps, newProps, table, exclude);
 
     for (const { signalName, newValue } of pendingSignals) {
         const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;

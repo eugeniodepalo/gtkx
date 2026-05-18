@@ -13,7 +13,7 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
     protected override ownPropDescriptors(): PropDescriptorTable {
         const applyAdjustment = imperative(
             (oldProps) => {
-                this.adjustmentController.apply(oldProps as AdjustableProps | null, this.props);
+                this.adjustmentController.apply(oldProps, this.props);
             },
             { always: true },
         );
