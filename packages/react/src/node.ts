@@ -1,3 +1,4 @@
+import type { PropDescriptorTable } from "./nodes/internal/apply-props.js";
 import { getSignalStore, type SignalStore } from "./nodes/internal/signal-store.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
@@ -19,6 +20,7 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
     rootContainer: Container;
     parent: TParent | null = null;
     children: TChild[] = [];
+    private cachedPropTable: PropDescriptorTable | null = null;
 
     constructor(typeName: string, props: TProps, container: TContainer, rootContainer: Container) {
         this.typeName = typeName;
@@ -102,6 +104,23 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
 
     public commitUpdate(_oldProps: TProps | null, newProps: TProps): void {
         this.props = newProps;
+    }
+
+    /**
+     * The node's bespoke-prop descriptors, merged from its class hierarchy.
+     *
+     * Subclasses override this to declare props that need handling beyond the
+     * generic GObject signal/property path, spreading `super.ownPropDescriptors()`
+     * to compose with their ancestors' descriptors.
+     */
+    protected ownPropDescriptors(): PropDescriptorTable {
+        return {};
+    }
+
+    /** The node's descriptor table, computed once from {@link ownPropDescriptors}. */
+    protected getPropTable(): PropDescriptorTable {
+        this.cachedPropTable ??= this.ownPropDescriptors();
+        return this.cachedPropTable;
     }
 
     public commitMount?(): void;

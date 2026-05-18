@@ -1,5 +1,6 @@
 import type { GType } from "@gtkx/ffi/gobject";
-import { typeFromName, typeName, typeParent } from "@gtkx/ffi/gobject";
+import { typeFromName } from "@gtkx/ffi/gobject";
+import { collectTypeNameChain } from "./metadata.js";
 import type { Node } from "./node.js";
 import { resolveNativeClass } from "./nodes/internal/construct.js";
 import { NODE_REGISTRY, type NodeClass } from "./registry.js";
@@ -15,20 +16,6 @@ import type { Container, ContainerClass, Props } from "./types.js";
  */
 export const resolveContainerClass = (type: string): ContainerClass | null =>
     resolveNativeClass(type) as ContainerClass | null;
-
-const collectTypeNameChain = (gtype: GType): readonly string[] => {
-    const chain: string[] = [];
-    let current = gtype;
-    while (current !== 0) {
-        const name = typeName(current);
-        if (!name) {
-            break;
-        }
-        chain.push(name);
-        current = typeParent(current);
-    }
-    return chain;
-};
 
 const resolveNodeClass = (elementType: string, gtype: GType): NodeClass | null => {
     if (gtype === 0) {

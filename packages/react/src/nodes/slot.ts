@@ -2,12 +2,10 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
+import { toCamelCase } from "./internal/naming.js";
 import { getFocusWidget, isDescendantOf, resolvePropertySetter } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
-
-const toCamelCase = (str: string): string =>
-    str.replaceAll(/[-_]([a-z])/g, (_, letter: string) => letter.toUpperCase());
 
 export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetNode> extends VirtualNode<
     P,

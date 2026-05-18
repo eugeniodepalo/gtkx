@@ -10,7 +10,15 @@ const propMetaCache = new Map<GType, Map<string, string | null>>();
 const signalCache = new Map<GType, Map<string, string | null>>();
 const constructOnlyCache = new Map<GType, Map<string, boolean>>();
 
-const collectTypeNameChain = (gtype: GType): readonly string[] => {
+/**
+ * Returns a GLib type's ancestry as type names, most-derived first.
+ *
+ * Walks the type-parent chain from `gtype` up to the root, collecting each
+ * {@link typeName}. The result is cached per GType.
+ *
+ * @param gtype - the GLib type whose ancestry to collect
+ */
+export const collectTypeNameChain = (gtype: GType): readonly string[] => {
     const cached = typeNameChainCache.get(gtype);
     if (cached) return cached;
 

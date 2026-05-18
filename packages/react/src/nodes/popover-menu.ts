@@ -4,6 +4,7 @@ import type { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
+import { MenuChildController } from "./internal/menu-child.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { SlotNode } from "./slot.js";
@@ -15,7 +16,7 @@ export type PopoverMenuWidget = Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuB
 type PopoverMenuChild = MenuNode | SlotNode | ContainerSlotNode | EventControllerNode | WidgetNode;
 
 export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, PopoverMenuChild> {
-    private readonly menu: MenuModel;
+    private readonly menuController: MenuChildController;
 
     public override isValidChild(child: Node): boolean {
         return (
@@ -35,35 +36,23 @@ export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, Popove
         const prefix = application ? "app" : "menu";
 
         this.container.insertActionGroup(prefix, actionGroup);
-        this.menu = new MenuModel("root", {}, rootContainer, actionGroup, application);
-        this.container.setMenuModel(this.menu.getMenu());
+        const menu = new MenuModel("root", {}, rootContainer, actionGroup, application);
+        this.menuController = new MenuChildController(menu);
+        this.container.setMenuModel(menu.getMenu());
     }
 
     public override appendChild(child: PopoverMenuChild): void {
-        if (child instanceof MenuNode) {
-            this.menu.appendChild(child);
-            return;
-        }
+        if (this.menuController.appendChild(child)) return;
         super.appendChild(child);
     }
 
     public override insertBefore(child: PopoverMenuChild, before: PopoverMenuChild): void {
-        if (child instanceof MenuNode) {
-            if (before instanceof MenuNode) {
-                this.menu.insertBefore(child, before);
-            } else {
-                this.menu.appendChild(child);
-            }
-            return;
-        }
+        if (this.menuController.insertBefore(child, before)) return;
         super.insertBefore(child, before);
     }
 
     public override removeChild(child: PopoverMenuChild): void {
-        if (child instanceof MenuNode) {
-            this.menu.removeChild(child);
-            return;
-        }
+        if (this.menuController.removeChild(child)) return;
         super.removeChild(child);
     }
 }

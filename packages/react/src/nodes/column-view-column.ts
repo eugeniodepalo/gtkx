@@ -5,6 +5,7 @@ import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import type { BoundItem } from "./internal/bound-item.js";
 import { connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
+import { MenuChildController } from "./internal/menu-child.js";
 import { hasChanged } from "./internal/props.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
@@ -16,14 +17,15 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     private columnFactory: Gtk.SignalListItemFactory | null = null;
     private readonly containers = new Map<Gtk.ListItem, number>();
     private readonly containerKeys = new Map<Gtk.ListItem, string>();
-    private readonly menu: MenuModel;
+    private readonly menuController: MenuChildController;
     private readonly actionGroup: Gio.SimpleActionGroup;
 
     constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.actionGroup = new Gio.SimpleActionGroup();
-        this.menu = new MenuModel("root", {}, rootContainer, this.actionGroup);
-        this.menu.setActionMap(this.actionGroup, props.id);
+        const menu = new MenuModel("root", {}, rootContainer, this.actionGroup);
+        menu.setActionMap(this.actionGroup, props.id);
+        this.menuController = new MenuChildController(menu);
     }
 
     public override isValidChild(child: Node): boolean {
@@ -48,22 +50,18 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     }
 
     public override appendChild(child: MenuNode): void {
-        this.menu.appendChild(child);
+        this.menuController.appendChild(child);
         this.updateHeaderMenu();
     }
 
     public override insertBefore(child: MenuNode, before: MenuNode): void {
-        this.menu.insertBefore(child, before);
+        this.menuController.insertBefore(child, before);
         this.updateHeaderMenu();
     }
 
     public override removeChild(child: MenuNode): void {
-        this.menu.removeChild(child);
+        this.menuController.removeChild(child);
         this.updateHeaderMenu();
-    }
-
-    public override detachDeletedInstance(): void {
-        super.detachDeletedInstance();
     }
 
     public getColumn(): Gtk.ColumnViewColumn {
@@ -143,7 +141,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
 
     private updateHeaderMenu(): void {
         if (!this.column) return;
-        const menu = this.menu.getMenu();
+        const menu = this.menuController.menu.getMenu();
         this.column.setHeaderMenu(menu.getNItems() > 0 ? menu : null);
     }
 

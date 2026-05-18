@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { AdjustableProps } from "../jsx.js";
-import { ADJUSTMENT_PROPS, AdjustmentController } from "./internal/adjustment.js";
-import { filterProps, hasChanged } from "./internal/props.js";
+import { AdjustmentController } from "./internal/adjustment.js";
+import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";
 
 /** Widgets the {@link AdjustableNode} reconciler node specializes. */
@@ -10,29 +10,24 @@ export type AdjustableWidget = Gtk.SpinButton | Gtk.ScaleButton | Gtk.Range;
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
     private readonly adjustmentController = new AdjustmentController(this.container);
 
-    public override commitUpdate(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
-        super.commitUpdate(
-            oldProps ? filterProps(oldProps, ADJUSTMENT_PROPS) : null,
-            filterProps(newProps, ADJUSTMENT_PROPS),
+    protected override ownPropDescriptors(): PropDescriptorTable {
+        const applyAdjustment = imperative(
+            (oldProps) => {
+                this.adjustmentController.apply(oldProps as AdjustableProps | null, this.props);
+            },
+            { always: true },
         );
-        this.applyOwnProps(oldProps, newProps);
-    }
-
-    protected ensureAdjustment(props: AdjustableProps): Gtk.Adjustment {
-        return this.adjustmentController.apply(null, props);
-    }
-
-    protected applyOwnProps(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
-        if (hasChanged(oldProps, newProps, "onValueChanged")) {
-            const { onValueChanged } = newProps;
-            this.signalStore.set(
-                this,
-                this.container,
-                "value-changed",
-                onValueChanged ? () => onValueChanged(this.container.getValue()) : undefined,
-            );
-        }
-
-        this.adjustmentController.apply(oldProps, newProps);
+        return {
+            ...super.ownPropDescriptors(),
+            onValueChanged: signal("value-changed", {
+                getArgs: () => [this.container.getValue()],
+            }),
+            value: applyAdjustment,
+            lower: applyAdjustment,
+            upper: applyAdjustment,
+            stepIncrement: applyAdjustment,
+            pageIncrement: applyAdjustment,
+            pageSize: applyAdjustment,
+        };
     }
 }

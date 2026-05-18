@@ -1,19 +1,9 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import type { GtkSourceViewProps } from "../jsx.js";
-import { filterProps, hasChanged } from "./internal/props.js";
+import { hasChanged } from "./internal/props.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
 import { TextViewNode } from "./text-view.js";
-
-const OWN_PROPS = [
-    "language",
-    "styleScheme",
-    "highlightSyntax",
-    "highlightMatchingBrackets",
-    "implicitTrailingNewline",
-    "onCursorMoved",
-    "onHighlightUpdated",
-] as const;
 
 type SourceViewProps = Pick<
     GtkSourceViewProps,
@@ -23,7 +13,13 @@ type SourceViewProps = Pick<
     | "onTextDeleted"
     | "onCanUndoChanged"
     | "onCanRedoChanged"
-    | (typeof OWN_PROPS)[number]
+    | "language"
+    | "styleScheme"
+    | "highlightSyntax"
+    | "highlightMatchingBrackets"
+    | "implicitTrailingNewline"
+    | "onCursorMoved"
+    | "onHighlightUpdated"
 >;
 
 export class SourceViewNode extends TextViewNode {
@@ -36,7 +32,7 @@ export class SourceViewNode extends TextViewNode {
     }
 
     public override commitUpdate(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 

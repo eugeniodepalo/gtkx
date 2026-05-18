@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { Node } from "../node.js";
-import type { Container, Props } from "../types.js";
+import type { Props } from "../types.js";
 import { unparentWidget } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
 
@@ -33,9 +33,5 @@ export class ListItemNode extends Node<Gtk.ListItem | Gtk.ListHeader, Props, Nod
             unparentWidget(child.container);
             this.container.setChild(child.container);
         }
-    }
-
-    public static override createContainer(): Container {
-        throw new Error("ListItemNode does not support container creation");
     }
 }

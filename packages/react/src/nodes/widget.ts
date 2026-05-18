@@ -1,25 +1,20 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { applyAccessibleProps, isAccessibleProp } from "./internal/accessible.js";
+import { applyProps } from "./internal/apply-props.js";
 import { createContainerWithProperties } from "./internal/construct.js";
 import {
     type InsertableWidget,
     isAddable,
     isAppendable,
-    isEditable,
     isInsertable,
     isRemovable,
     isReorderable,
     isSingleChild,
     type ReorderableWidget,
 } from "./internal/predicates.js";
-import { filterProps } from "./internal/props.js";
-import type { SignalHandler } from "./internal/signal-store.js";
 import { attachChild, detachChild, unparentWidget } from "./internal/widget.js";
-
-const EXCLUDED_PROPS = ["children"];
 
 export class WidgetNode<
     T extends Gtk.Widget = Gtk.Widget,
@@ -100,76 +95,7 @@ export class WidgetNode<
         }
 
         applyAccessibleProps(this.container, oldProps, newProps);
-
-        const { pendingSignals, pendingProperties } = this.collectPendingPropChanges(oldProps, newProps);
-        this.applyPendingSignals(pendingSignals);
-        this.applyPendingProperties(pendingProperties);
-    }
-
-    private collectPendingPropChanges(
-        oldProps: P | null,
-        newProps: P,
-    ): {
-        pendingSignals: Array<{ name: string; newValue: unknown }>;
-        pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }>;
-    } {
-        const propNames = new Set([
-            ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
-            ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
-        ]);
-        const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
-        const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
-
-        for (const name of propNames) {
-            this.classifyPropChange(name, oldProps, newProps, pendingSignals, pendingProperties);
-        }
-        return { pendingSignals, pendingProperties };
-    }
-
-    private classifyPropChange(
-        name: string,
-        oldProps: P | null,
-        newProps: P,
-        pendingSignals: Array<{ name: string; newValue: unknown }>,
-        pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }>,
-    ): void {
-        if (isAccessibleProp(name)) return;
-        if (isConstructOnlyProp(this.container, name)) return;
-
-        const oldValue = oldProps?.[name];
-        const newValue = newProps[name];
-        if (oldValue === newValue) return;
-
-        const signalName = resolveSignal(this.container, name);
-        if (signalName) {
-            pendingSignals.push({ name, newValue });
-            return;
-        }
-        if (newValue !== undefined) {
-            pendingProperties.push({ name, oldValue, newValue });
-        }
-    }
-
-    private applyPendingSignals(pendingSignals: Array<{ name: string; newValue: unknown }>): void {
-        for (const { name, newValue } of pendingSignals) {
-            const signalName = resolveSignal(this.container, name);
-            if (!signalName) continue;
-            const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-            this.signalStore.set(this, this.container, signalName, handler);
-        }
-    }
-
-    private applyPendingProperties(
-        pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }>,
-    ): void {
-        for (const { name, oldValue, newValue } of pendingProperties) {
-            if (name === "text" && oldValue !== undefined && isEditable(this.container)) {
-                if (oldValue !== this.container.getText()) {
-                    continue;
-                }
-            }
-            this.setProperty(name, newValue);
-        }
+        applyProps(this, oldProps, newProps, { table: this.getPropTable(), exclude: isAccessibleProp });
     }
 
     private appendWidgetChild(child: WidgetNode): void {
@@ -270,15 +196,6 @@ export class WidgetNode<
         for (const child of widgetChildren) {
             attachChild(child.container, this.container);
         }
-    }
-
-    private setProperty(key: string, value: unknown): void {
-        const propName = resolvePropMeta(this.container, key);
-        if (!propName) return;
-
-        if (typeof value === "string" && Reflect.get(this.container, propName) === value) return;
-
-        Reflect.set(this.container, propName, value);
     }
 
     private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {
