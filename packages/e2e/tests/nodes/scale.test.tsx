@@ -4,6 +4,14 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
+const expectDefaultRange = (scale: Gtk.Scale | null): void => {
+    expect(scale).toBeInstanceOf(Gtk.Scale);
+    const adjustment = scale?.getAdjustment();
+    expect(adjustment?.getLower()).toBe(0);
+    expect(adjustment?.getUpper()).toBe(100);
+    expect(adjustment?.getValue()).toBe(0);
+};
+
 describe("render - Scale", () => {
     describe("ScaleNode", () => {
         it("creates Scale widget without marks", async () => {
@@ -11,7 +19,7 @@ describe("render - Scale", () => {
 
             await render(<GtkScale ref={ref} />);
 
-            expect(ref.current).not.toBeNull();
+            expectDefaultRange(ref.current);
         });
 
         it("creates Scale widget with marks", async () => {
@@ -28,7 +36,7 @@ describe("render - Scale", () => {
                 />,
             );
 
-            expect(ref.current).not.toBeNull();
+            expectDefaultRange(ref.current);
         });
 
         it("sets mark position", async () => {
@@ -44,7 +52,7 @@ describe("render - Scale", () => {
                 />,
             );
 
-            expect(ref.current).not.toBeNull();
+            expectDefaultRange(ref.current);
         });
 
         it("sets marks without labels", async () => {
@@ -57,7 +65,7 @@ describe("render - Scale", () => {
                 />,
             );
 
-            expect(ref.current).not.toBeNull();
+            expectDefaultRange(ref.current);
         });
 
         it("updates marks when props change", async () => {
@@ -76,10 +84,10 @@ describe("render - Scale", () => {
             }
 
             await render(<App label="Start" />);
-            expect(ref.current).not.toBeNull();
+            expectDefaultRange(ref.current);
 
             await render(<App label="Begin" />);
-            expect(ref.current).not.toBeNull();
+            expectDefaultRange(ref.current);
         });
 
         it("removes marks when array changes", async () => {
@@ -100,10 +108,10 @@ describe("render - Scale", () => {
             }
 
             await render(<App showExtra={true} />);
-            expect(ref.current).not.toBeNull();
+            expectDefaultRange(ref.current);
 
             await render(<App showExtra={false} />);
-            expect(ref.current).not.toBeNull();
+            expectDefaultRange(ref.current);
         });
 
         it("handles inserting marks in the middle", async () => {
@@ -124,10 +132,10 @@ describe("render - Scale", () => {
             }
 
             await render(<App showMid={false} />);
-            expect(ref.current).not.toBeNull();
+            expectDefaultRange(ref.current);
 
             await render(<App showMid={true} />);
-            expect(ref.current).not.toBeNull();
+            expectDefaultRange(ref.current);
         });
     });
 });

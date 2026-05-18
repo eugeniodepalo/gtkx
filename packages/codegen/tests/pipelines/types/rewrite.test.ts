@@ -125,6 +125,31 @@ describe("rewriteEnumsToConstObjects", () => {
         expect(text).toContain("readonly A: 0;");
         expect(text).not.toMatch(/\benum\s+Nested\b/);
     });
+
+    it("widens the type alias to number for bitfield enums", () => {
+        const text = rewriteEnumsToConstObjects(
+            "export enum DragAction { COPY, MOVE }",
+            undefined,
+            undefined,
+            new Set(["DragAction"]),
+        );
+
+        expect(text).toContain("export const DragAction: {");
+        expect(text).toContain("readonly COPY: 0;");
+        expect(text).toContain("export type DragAction = number;");
+        expect(text).not.toContain("(typeof DragAction)[keyof typeof DragAction]");
+    });
+
+    it("keeps the structural union for enums absent from the bitfield set", () => {
+        const text = rewriteEnumsToConstObjects(
+            "export enum Orientation { HORIZONTAL, VERTICAL }",
+            undefined,
+            undefined,
+            new Set(["DragAction"]),
+        );
+
+        expect(text).toContain("export type Orientation = (typeof Orientation)[keyof typeof Orientation];");
+    });
 });
 
 describe("rewriteModuleKeywordToNamespace", () => {

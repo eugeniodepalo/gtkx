@@ -4,13 +4,18 @@ import { render } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 
+const accessible = (current: Gtk.Accessible | null): Gtk.Accessible => {
+    if (!current) throw new Error("Expected rendered widget");
+    return current;
+};
+
 describe("accessible props - GValue marshaling regression", () => {
     it("sets accessibleLabel (string) without crashing", async () => {
         const ref = createRef<Gtk.Button>();
 
         await render(<GtkButton ref={ref} accessibleLabel="Zoom in" />);
 
-        expect(ref.current).not.toBeNull();
+        expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe(true);
     });
 
     it("sets accessibleHasPopup (boolean) without crashing", async () => {
@@ -18,7 +23,7 @@ describe("accessible props - GValue marshaling regression", () => {
 
         await render(<GtkButton ref={ref} accessibleHasPopup />);
 
-        expect(ref.current).not.toBeNull();
+        expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.HAS_POPUP)).toBe(true);
     });
 
     it("sets accessibleKeyShortcuts (string) without crashing", async () => {
@@ -26,7 +31,7 @@ describe("accessible props - GValue marshaling regression", () => {
 
         await render(<GtkSwitch ref={ref} accessibleKeyShortcuts="Control+M" />);
 
-        expect(ref.current).not.toBeNull();
+        expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.KEY_SHORTCUTS)).toBe(true);
     });
 
     it("sets accessibleInvalid (token) without crashing", async () => {
@@ -34,7 +39,7 @@ describe("accessible props - GValue marshaling regression", () => {
 
         await render(<GtkEntry ref={ref} accessibleInvalid={Gtk.AccessibleInvalidState.TRUE} />);
 
-        expect(ref.current).not.toBeNull();
+        expect(Gtk.testAccessibleHasState(accessible(ref.current), Gtk.AccessibleState.INVALID)).toBe(true);
     });
 
     it("sets accessibleLabelledBy (reference list) without crashing", async () => {
@@ -52,7 +57,9 @@ describe("accessible props - GValue marshaling regression", () => {
 
         await render(<App />);
 
-        expect(entryRef.current).not.toBeNull();
+        expect(Gtk.testAccessibleHasRelation(accessible(entryRef.current), Gtk.AccessibleRelation.LABELLED_BY)).toBe(
+            true,
+        );
     });
 
     it("updates a string accessible prop across renders without crashing", async () => {
@@ -62,11 +69,11 @@ describe("accessible props - GValue marshaling regression", () => {
             return <GtkButton ref={ref} accessibleLabel={label} />;
         }
 
-        await render(<App label="First" />);
-        await render(<App label="Second" />);
-        await render(<App label="Third" />);
+        const { rerender } = await render(<App label="First" />);
+        await rerender(<App label="Second" />);
+        await rerender(<App label="Third" />);
 
-        expect(ref.current).not.toBeNull();
+        expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe(true);
     });
 
     it("combines multiple accessible props on the same widget", async () => {
@@ -81,7 +88,9 @@ describe("accessible props - GValue marshaling regression", () => {
             />,
         );
 
-        expect(ref.current).not.toBeNull();
+        expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe(true);
+        expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.HAS_POPUP)).toBe(true);
+        expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.DESCRIPTION)).toBe(true);
     });
 
     it("clears an accessible prop when set to undefined", async () => {
@@ -91,9 +100,10 @@ describe("accessible props - GValue marshaling regression", () => {
             return <GtkButton ref={ref} accessibleLabel={label} />;
         }
 
-        await render(<App label="With label" />);
-        await render(<App label={undefined} />);
+        const { rerender } = await render(<App label="With label" />);
+        expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe(true);
 
-        expect(ref.current).not.toBeNull();
+        await rerender(<App label={undefined} />);
+        expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe(false);
     });
 });

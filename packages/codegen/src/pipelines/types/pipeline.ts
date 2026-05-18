@@ -19,6 +19,7 @@ import type { GirType } from "../../gir/model/type.js";
 import {
     type AsyncMemberEntry,
     type AsyncMemberMap,
+    type BitfieldMap,
     type ConnectRenameMap,
     type EnumValueMap,
     type ErrorDomainMap,
@@ -83,6 +84,30 @@ export const collectErrorDomainNames = (repository: GirRepository): ErrorDomainM
         const names = new Set<string>();
         for (const enumeration of namespace.enumerations.values()) {
             if (enumeration.glibErrorDomain) names.add(enumeration.name);
+        }
+        namespaces.set(namespaceName.toLowerCase(), names);
+    }
+    return namespaces;
+};
+
+/**
+ * Collects every `<bitfield>` enum name per namespace from the loaded GIR
+ * repository, keyed as {@link BitfieldMap} expects.
+ *
+ * The type pipeline widens these enums' type alias to `number` so a value may
+ * be any `OR` combination of the flags, including the empty (zero) set.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Bitfield enum names keyed lowercase namespace identifier.
+ */
+export const collectBitfieldNames = (repository: GirRepository): BitfieldMap => {
+    const namespaces = new Map<string, Set<string>>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        const names = new Set<string>();
+        for (const bitfield of namespace.bitfields.values()) {
+            names.add(bitfield.name);
         }
         namespaces.set(namespaceName.toLowerCase(), names);
     }
@@ -637,6 +662,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             methodShadowRenames: collectMethodShadowRenames(loaded.repository),
             hashTableMembers: collectHashTableMembers(loaded.repository),
             errorDomainNames: collectErrorDomainNames(loaded.repository),
+            bitfieldNames: collectBitfieldNames(loaded.repository),
         });
 
         await mkdir(outDir, { recursive: true });

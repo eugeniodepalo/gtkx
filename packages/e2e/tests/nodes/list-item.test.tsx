@@ -1,15 +1,9 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkDropDown, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
+import { GtkDropDown, GtkLabel, GtkListView } from "@gtkx/react";
 import { render, screen, tick } from "@gtkx/testing";
-import type { ReactNode } from "react";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-
-const ScrollWrapper = ({ children }: { children: ReactNode }) => (
-    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
-        {children}
-    </GtkScrolledWindow>
-);
+import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 describe("render - ListItem", () => {
     describe("ListItem", () => {

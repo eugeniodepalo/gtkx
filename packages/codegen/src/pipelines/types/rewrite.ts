@@ -332,8 +332,11 @@ const LINE_COMMENT_PATTERN = /\/\/[^\n]*/g;
 
 /**
  * Converts each `enum Foo { A, B }` declaration into a structural
- * `const Foo: { readonly A: 0; readonly B: 1; }` plus a sibling
- * `type Foo = (typeof Foo)[keyof typeof Foo]` alias.
+ * `const Foo: { readonly A: 0; readonly B: 1; }` plus a sibling type alias:
+ * `type Foo = (typeof Foo)[keyof typeof Foo]` for a plain enumeration, or
+ * `type Foo = number` for a bitfield, whose values are arbitrary `OR`
+ * combinations of its flags — including the empty set — rather than only the
+ * named members.
  *
  * ts-for-gir emits numeric TypeScript enums, which are nominally branded and
  * cannot be satisfied by a plain `Object.freeze({ ... })` value emitted from
@@ -355,11 +358,16 @@ const LINE_COMMENT_PATTERN = /\/\/[^\n]*/g;
  * @param source - The `.d.ts` source to rewrite.
  * @param enumValues - Real enum member values for the namespace, keyed enum
  *     name then member name; members absent from the map fall back as above.
+ * @param errorDomainNames - Names of error-domain enums rewritten with an
+ *     `instanceof`-capable `[Symbol.hasInstance]` member.
+ * @param bitfieldNames - Names of `<bitfield>` enums whose type alias is
+ *     widened to `number` to admit flag combinations and the empty set.
  */
 export function rewriteEnumsToConstObjects(
     source: string,
     enumValues?: NamespaceEnumValues,
     errorDomainNames?: ReadonlySet<string>,
+    bitfieldNames?: ReadonlySet<string>,
 ): string {
     const normalized = source.replace(EXPORT_BEFORE_DOC_ENUM_PATTERN, "$1\nexport $2");
     const matches: Array<{
@@ -391,6 +399,7 @@ export function rewriteEnumsToConstObjects(
                 body,
                 memberValues: enumValues?.get(name),
                 isErrorDomain: errorDomainNames?.has(name) ?? false,
+                isBitfield: bitfieldNames?.has(name) ?? false,
             }),
         });
     }
@@ -416,10 +425,11 @@ type EnumReplacementInput = {
     body: string;
     memberValues?: ReadonlyMap<string, number>;
     isErrorDomain: boolean;
+    isBitfield: boolean;
 };
 
 const renderEnumReplacement = (input: EnumReplacementInput): string => {
-    const { lineStart, indent, exportKw, leadingDoc, name, body, memberValues, isErrorDomain } = input;
+    const { lineStart, indent, exportKw, leadingDoc, name, body, memberValues, isErrorDomain, isBitfield } = input;
     const stripped = body.replace(BLOCK_COMMENT_PATTERN, "").replace(LINE_COMMENT_PATTERN, "");
     let nextOrdinal = 0;
     const memberLines: string[] = [];
@@ -457,12 +467,10 @@ const renderEnumReplacement = (input: EnumReplacementInput): string => {
             `${indent}${exportKw}type ${name} = (typeof ${name})[Exclude<keyof typeof ${name}, symbol>];`,
         ].join("\n");
     }
-    return [
-        `${lineStart}${indent}${leadingDoc}${exportKw}const ${name}: {`,
-        memberBlock,
-        `};`,
-        `${indent}${exportKw}type ${name} = (typeof ${name})[keyof typeof ${name}];`,
-    ].join("\n");
+    const typeAlias = isBitfield
+        ? `${indent}${exportKw}type ${name} = number;`
+        : `${indent}${exportKw}type ${name} = (typeof ${name})[keyof typeof ${name}];`;
+    return [`${lineStart}${indent}${leadingDoc}${exportKw}const ${name}: {`, memberBlock, `};`, typeAlias].join("\n");
 };
 
 const splitEnumMember = (member: string): [string, string | undefined] => {
@@ -1707,6 +1715,13 @@ export type GtypeStructMap = ReadonlyMap<string, ReadonlySet<string>>;
 export type ErrorDomainMap = ReadonlyMap<string, ReadonlySet<string>>;
 
 /**
+ * Bitfield enum names for every namespace, keyed lowercase namespace
+ * identifier. Enums named here receive a `number` type alias so a value may be
+ * any `OR` combination of their flags, including the empty (zero) set.
+ */
+export type BitfieldMap = ReadonlyMap<string, ReadonlySet<string>>;
+
+/**
  * Result of running every rewrite over a single ts-for-gir output file.
  */
 export type RewriteResult = {
@@ -1749,6 +1764,8 @@ export type RewriteInputs = {
     hashTableMembers?: HashTableMemberMap;
     /** Error-domain enum names rewritten with an `instanceof`-capable member. */
     errorDomainNames?: ErrorDomainMap;
+    /** Bitfield enum names whose type alias is widened to `number`. */
+    bitfieldNames?: BitfieldMap;
 };
 
 /**
@@ -1771,13 +1788,19 @@ export function loadAndRewrite(rawFilesByName: Map<string, string>, inputs: Rewr
         methodShadowRenames,
         hashTableMembers,
         errorDomainNames,
+        bitfieldNames,
     } = inputs;
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
         const namespace = namespaceFromRawFilename(filename);
         if (!namespace) continue;
         let source = unwrapOuterNamespace(contents);
-        source = rewriteEnumsToConstObjects(source, enumValues?.get(namespace), errorDomainNames?.get(namespace));
+        source = rewriteEnumsToConstObjects(
+            source,
+            enumValues?.get(namespace),
+            errorDomainNames?.get(namespace),
+            bitfieldNames?.get(namespace),
+        );
         source = stripGtypeStructClasses(source, gtypeStructNames?.get(namespace));
         source = stripAnonymousCompositeClasses(source);
         source = stripClassFields(source, classFieldNames?.get(namespace));

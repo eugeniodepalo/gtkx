@@ -1,13 +1,8 @@
 import type { ListItem } from "@gtkx/react";
-import { GtkListView, GtkScrolledWindow } from "@gtkx/react";
+import { GtkListView } from "@gtkx/react";
 import { render, tick } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-
-const ScrollWrapper = ({ children }: { children: React.ReactNode }) => (
-    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
-        {children}
-    </GtkScrolledWindow>
-);
+import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 function App({ items }: { items: ListItem<string>[] }) {
     return (

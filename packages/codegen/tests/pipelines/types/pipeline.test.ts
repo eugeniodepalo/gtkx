@@ -5,6 +5,7 @@ import {
     buildAsyncEntries,
     buildHashTableEntry,
     collectAsyncMembers,
+    collectBitfieldNames,
     collectByOwner,
     collectClassFieldNames,
     collectConnectMethodRenames,
@@ -156,6 +157,32 @@ describe("collectErrorDomainNames", () => {
         } as unknown as GirRepository;
 
         expect(collectErrorDomainNames(missing).get("ghost")).toBeUndefined();
+    });
+});
+
+describe("collectBitfieldNames", () => {
+    it("collects bitfield enum names keyed by lowercase namespace", () => {
+        const dragAction = createNormalizedEnumeration({
+            name: "DragAction",
+            qualifiedName: "Gdk.DragAction",
+        });
+        const ns = createNormalizedNamespace({
+            name: "Gdk",
+            bitfields: new Map([[dragAction.name, dragAction]]),
+        });
+
+        const result = collectBitfieldNames(singleNamespace(ns));
+
+        expect(result.get("gdk")?.has("DragAction")).toBe(true);
+    });
+
+    it("skips namespace names that do not resolve", () => {
+        const missing: GirRepository = {
+            getNamespaceNames: () => ["Ghost"],
+            getNamespace: () => null,
+        } as unknown as GirRepository;
+
+        expect(collectBitfieldNames(missing).get("ghost")).toBeUndefined();
     });
 });
 

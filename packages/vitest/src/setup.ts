@@ -45,7 +45,7 @@ process.env.DBUS_SESSION_BUS_ADDRESS = `unix:path=${busSocketPath}`;
 process.env.GDK_BACKEND = "x11";
 process.env.GDK_DISABLE = "vulkan";
 process.env.GSK_RENDERER = "cairo";
-process.env.GTK_A11Y = "none";
+process.env.GTK_A11Y = "test";
 process.env.LIBGL_ALWAYS_SOFTWARE = "1";
 
 const killChildren = (): void => {

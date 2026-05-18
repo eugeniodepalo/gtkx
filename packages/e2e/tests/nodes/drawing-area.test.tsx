@@ -25,7 +25,9 @@ describe("render - DrawingArea", () => {
 
             await render(<GtkDrawingArea ref={ref} />);
 
-            expect(ref.current).not.toBeNull();
+            expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
+            expect(ref.current?.getContentWidth()).toBe(0);
+            expect(ref.current?.getContentHeight()).toBe(0);
         });
 
         it("creates DrawingArea with render callback", async () => {
@@ -33,7 +35,9 @@ describe("render - DrawingArea", () => {
 
             await render(<GtkDrawingArea ref={ref} render={noopDraw} />);
 
-            expect(ref.current).not.toBeNull();
+            expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
+            expect(ref.current?.getContentWidth()).toBe(0);
+            expect(ref.current?.getContentHeight()).toBe(0);
         });
 
         it("sets content size", async () => {
@@ -71,10 +75,12 @@ describe("render - DrawingArea", () => {
             }
 
             await render(<App drawFunc={drawFunc1} />);
-            expect(ref.current).not.toBeNull();
+            expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
+            expect(ref.current?.getContentWidth()).toBe(0);
 
             await render(<App drawFunc={drawFunc2} />);
-            expect(ref.current).not.toBeNull();
+            expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
+            expect(ref.current?.getContentWidth()).toBe(0);
         });
 
         it("sets widget properties alongside render", async () => {

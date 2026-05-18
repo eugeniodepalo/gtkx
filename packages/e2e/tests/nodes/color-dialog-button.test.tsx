@@ -21,7 +21,9 @@ describe("render - ColorDialogButton", () => {
 
             await render(<GtkColorDialogButton ref={ref} />);
 
-            expect(ref.current).not.toBeNull();
+            const dialog = ref.current?.getDialog();
+            expect(dialog).not.toBeNull();
+            expect(dialog?.getWithAlpha()).toBe(true);
         });
 
         it("creates ColorDialogButton with initial rgba", async () => {
