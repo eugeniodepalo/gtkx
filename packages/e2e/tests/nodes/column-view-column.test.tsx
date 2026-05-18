@@ -1,19 +1,14 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkColumnView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { GtkColumnView, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 const MenuItem = "MenuItem" as const;
 const MenuSection = "MenuSection" as const;
 const MenuSubmenu = "MenuSubmenu" as const;
-
-const ScrollWrapper = ({ children }: { children: ReactNode }) => (
-    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
-        {children}
-    </GtkScrolledWindow>
-);
 
 describe("render - ColumnViewColumn", () => {
     describe("ColumnViewColumnNode", () => {

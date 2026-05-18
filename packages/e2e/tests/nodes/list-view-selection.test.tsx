@@ -1,0 +1,361 @@
+import type * as Gio from "@gtkx/ffi/gio";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
+import { render, screen, tick, userEvent } from "@gtkx/testing";
+import { createRef, useState } from "react";
+import { describe, expect, it, vi } from "vitest";
+import { renderListView } from "../helpers/list-fixtures.js";
+
+describe("render - ListView - selection", () => {
+    describe("single", () => {
+        it("sets selected item via selected prop", async () => {
+            await renderListView(
+                [
+                    { id: "1", value: { name: "First" } },
+                    { id: "2", value: { name: "Second" } },
+                ],
+                { selected: ["2"] },
+            );
+
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
+        });
+
+        it("calls onSelectionChanged when selection changes", async () => {
+            const onSelectionChanged = vi.fn();
+
+            const { ref } = await renderListView(
+                [
+                    { id: "1", value: { name: "First" } },
+                    { id: "2", value: { name: "Second" } },
+                ],
+                { onSelectionChanged },
+            );
+
+            await userEvent.selectOptions(ref.current, 0);
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["1"]);
+        });
+
+        it("selects correct item after scrolling to bottom of large list", async () => {
+            const onSelectionChanged = vi.fn();
+            const items = Array.from({ length: 100 }, (_, i) => ({
+                id: `item-${i}`,
+                value: { name: `Item ${i}` },
+            }));
+
+            const { ref } = await renderListView(items, { onSelectionChanged });
+
+            const listView = ref.current;
+            listView.scrollTo(99, Gtk.ListScrollFlags.NONE, null);
+            await tick();
+            await tick();
+
+            await userEvent.selectOptions(listView, 99);
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["item-99"]);
+        });
+
+        it("handles unselect (empty selection)", async () => {
+            const { rerender } = await renderListView([{ id: "1", value: { name: "First" } }], { selected: ["1"] });
+
+            await rerender([{ id: "1", value: { name: "First" } }], { selected: [] });
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+        });
+    });
+
+    describe("multiple", () => {
+        it("enables multi-select with selectionMode", async () => {
+            await renderListView(
+                [
+                    { id: "1", value: { name: "First" } },
+                    { id: "2", value: { name: "Second" } },
+                ],
+                { selectionMode: Gtk.SelectionMode.MULTIPLE },
+            );
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
+        });
+
+        it("sets multiple selected items", async () => {
+            await renderListView(
+                [
+                    { id: "1", value: { name: "First" } },
+                    { id: "2", value: { name: "Second" } },
+                    { id: "3", value: { name: "Third" } },
+                ],
+                { selectionMode: Gtk.SelectionMode.MULTIPLE, selected: ["1", "3"] },
+            );
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Third")).toHaveLength(1);
+        });
+
+        it("calls onSelectionChanged with array of ids", async () => {
+            const onSelectionChanged = vi.fn();
+
+            const { ref } = await renderListView(
+                [
+                    { id: "1", value: { name: "First" } },
+                    { id: "2", value: { name: "Second" } },
+                ],
+                { selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged },
+            );
+
+            await userEvent.selectOptions(ref.current, [0, 1]);
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);
+        });
+    });
+
+    describe("tree - single", () => {
+        it("sets selected item via selected prop", async () => {
+            const onSelectionChanged = vi.fn();
+
+            await renderListView(
+                [
+                    { id: "1", value: { name: "First" } },
+                    { id: "2", value: { name: "Second" } },
+                ],
+                { selected: ["2"], onSelectionChanged },
+            );
+
+            await tick();
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["2"]);
+        });
+
+        it("sets initial selection on first render", async () => {
+            const onSelectionChanged = vi.fn();
+
+            await renderListView(
+                [
+                    { id: "first", value: { name: "First" } },
+                    { id: "second", value: { name: "Second" } },
+                    { id: "third", value: { name: "Third" } },
+                ],
+                { selected: ["first"], onSelectionChanged },
+            );
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["first"]);
+        });
+
+        it("calls onSelectionChanged when selection changes", async () => {
+            const onSelectionChanged = vi.fn();
+
+            const { ref } = await renderListView(
+                [
+                    { id: "1", value: { name: "First" } },
+                    { id: "2", value: { name: "Second" } },
+                ],
+                { onSelectionChanged },
+            );
+
+            await userEvent.selectOptions(ref.current, 0);
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["1"]);
+        });
+
+        it("handles unselect (empty selection)", async () => {
+            const { rerender } = await renderListView([{ id: "1", value: { name: "First" } }], { selected: ["1"] });
+
+            await rerender([{ id: "1", value: { name: "First" } }], { selected: [] });
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+        });
+
+        it("selects correct child item after scrolling to bottom of expanded tree", async () => {
+            const onSelectionChanged = vi.fn();
+            const groups = Array.from({ length: 20 }, (_, gi) => ({
+                id: `group-${gi}`,
+                name: `Group ${gi}`,
+                children: Array.from({ length: 5 }, (_, ci) => ({
+                    id: `group-${gi}-child-${ci}`,
+                    name: `Group ${gi} Child ${ci}`,
+                })),
+            }));
+
+            const { ref } = await renderListView(
+                groups.map((group) => ({
+                    id: group.id,
+                    value: { name: group.name },
+                    children: group.children.map((child) => ({
+                        id: child.id,
+                        value: { name: child.name },
+                        hideExpander: true,
+                    })),
+                })),
+                { autoexpand: true, onSelectionChanged },
+            );
+
+            await tick();
+
+            const listView = ref.current;
+            const model = listView.getModel() as Gio.ListModel;
+            const lastPosition = model.getNItems() - 1;
+            listView.scrollTo(lastPosition, Gtk.ListScrollFlags.NONE, null);
+            await tick();
+            await tick();
+
+            await userEvent.selectOptions(listView, lastPosition);
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["group-19-child-4"]);
+        });
+
+        it("preserves tree state and scroll position when selecting after scrolling down", async () => {
+            const ref = createRef<Gtk.ListView>();
+            const scrollRef = createRef<Gtk.ScrolledWindow>();
+
+            interface Item {
+                id: string;
+                name: string;
+                children?: Item[];
+            }
+
+            const data: Item[] = [
+                { id: "intro", name: "Introduction" },
+                ...Array.from({ length: 20 }, (_, gi) => ({
+                    id: `cat-${gi}`,
+                    name: `Category ${gi}`,
+                    children: Array.from({ length: 5 }, (_, ci) => ({
+                        id: `cat-${gi}-demo-${ci}`,
+                        name: `Cat ${gi} Demo ${ci}`,
+                    })),
+                })),
+            ];
+
+            function toListItems(items: Item[]) {
+                return items.map((item) => ({
+                    id: item.id,
+                    value: item,
+                    hideExpander: !item.children,
+                    children: item.children?.map((child) => ({
+                        id: child.id,
+                        value: child,
+                        hideExpander: true,
+                    })),
+                }));
+            }
+
+            function Sidebar({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) {
+                return (
+                    <GtkScrolledWindow
+                        ref={scrollRef}
+                        minContentHeight={200}
+                        maxContentHeight={200}
+                        minContentWidth={200}
+                    >
+                        <GtkListView
+                            ref={ref}
+                            cssClasses={["navigation-sidebar"]}
+                            autoexpand
+                            selectionMode={Gtk.SelectionMode.SINGLE}
+                            items={toListItems(data)}
+                            selected={selectedId ? [selectedId] : []}
+                            onSelectionChanged={(ids: string[]) => {
+                                const id = ids[0];
+                                if (id) onSelect(id);
+                            }}
+                            renderItem={(item: Item) => <GtkLabel label={item.name} />}
+                        />
+                    </GtkScrolledWindow>
+                );
+            }
+
+            function App() {
+                const [selectedId, setSelectedId] = useState<string | null>("intro");
+                const selectedItem = data.flatMap((d) => [d, ...(d.children ?? [])]).find((d) => d.id === selectedId);
+
+                return (
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
+                        <Sidebar selectedId={selectedId} onSelect={setSelectedId} />
+                        <GtkLabel label={selectedItem?.name ?? "None"} vexpand hexpand />
+                    </GtkBox>
+                );
+            }
+
+            await render(<App />);
+            await tick();
+
+            const listView = ref.current as Gtk.ListView;
+            const selectionModel = listView.getModel() as Gtk.SingleSelection;
+            const totalItems = selectionModel.getNItems();
+
+            const targetPosition = totalItems - 1;
+            const scrolledWindow = scrollRef.current as Gtk.ScrolledWindow;
+            const vadj = scrolledWindow.getVadjustment();
+
+            listView.scrollTo(targetPosition, Gtk.ListScrollFlags.FOCUS, null);
+            await tick();
+            await tick();
+            await tick();
+
+            if (vadj.getValue() === 0 && vadj.getUpper() > vadj.getPageSize()) {
+                vadj.setValue(vadj.getUpper() - vadj.getPageSize());
+                await tick();
+                await tick();
+            }
+
+            const scrollPosBefore = vadj.getValue();
+            expect(scrollPosBefore).toBeGreaterThan(0);
+
+            await userEvent.selectOptions(listView, targetPosition);
+            await tick();
+            await tick();
+            await tick();
+            await tick();
+            await tick();
+
+            expect(selectionModel.getSelected()).toBe(targetPosition);
+
+            const scrollPosAfter = vadj.getValue();
+            expect(scrollPosAfter).toBe(scrollPosBefore);
+        });
+    });
+
+    describe("tree - multiple", () => {
+        it("enables multi-select with selectionMode", async () => {
+            await renderListView(
+                [
+                    { id: "1", value: { name: "First" } },
+                    { id: "2", value: { name: "Second" } },
+                ],
+                { selectionMode: Gtk.SelectionMode.MULTIPLE },
+            );
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
+        });
+
+        it("sets multiple selected items", async () => {
+            await renderListView(
+                [
+                    { id: "1", value: { name: "First" } },
+                    { id: "2", value: { name: "Second" } },
+                    { id: "3", value: { name: "Third" } },
+                ],
+                { selectionMode: Gtk.SelectionMode.MULTIPLE, selected: ["1", "3"] },
+            );
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Third")).toHaveLength(1);
+        });
+
+        it("calls onSelectionChanged with array of ids", async () => {
+            const onSelectionChanged = vi.fn();
+
+            const { ref } = await renderListView(
+                [
+                    { id: "1", value: { name: "First" } },
+                    { id: "2", value: { name: "Second" } },
+                ],
+                { selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged },
+            );
+
+            await userEvent.selectOptions(ref.current, [0, 1]);
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);
+        });
+    });
+});

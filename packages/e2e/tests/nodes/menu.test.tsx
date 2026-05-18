@@ -1,12 +1,37 @@
+import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkPopoverMenu, GtkPopoverMenuBar } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const MenuItem = "MenuItem" as const;
 const MenuSection = "MenuSection" as const;
 const MenuSubmenu = "MenuSubmenu" as const;
+
+const itemLabel = (model: Gio.MenuModel, index: number): string | null => {
+    const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_LABEL, null);
+    if (!variant) return null;
+    const [text] = variant.dupString();
+    return typeof text === "string" ? text : null;
+};
+
+const sectionAt = (model: Gio.MenuModel, index: number): Gio.MenuModel | null =>
+    model.getItemLink(index, Gio.MENU_LINK_SECTION);
+
+const submenuAt = (model: Gio.MenuModel, index: number): Gio.MenuModel | null =>
+    model.getItemLink(index, Gio.MENU_LINK_SUBMENU);
+
+const requireModel = (menu: Gtk.PopoverMenu | Gtk.PopoverMenuBar | null): Gio.MenuModel => {
+    const model = menu?.getMenuModel();
+    if (!model) throw new Error("Expected menu model");
+    return model;
+};
+
+const requireLink = (model: Gio.MenuModel | null): Gio.MenuModel => {
+    if (!model) throw new Error("Expected linked menu model");
+    return model;
+};
 
 describe("render - Menu", () => {
     describe("GtkPopoverMenu", () => {
@@ -19,7 +44,9 @@ describe("render - Menu", () => {
                 </GtkPopoverMenu>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(model.getNItems()).toBe(1);
+            expect(itemLabel(model, 0)).toBe("Item 1");
         });
 
         it("rebuilds menu when children change", async () => {
@@ -36,10 +63,13 @@ describe("render - Menu", () => {
             }
 
             await render(<App items={["Item 1", "Item 2"]} />);
+            expect(requireModel(ref.current).getNItems()).toBe(2);
 
             await render(<App items={["Item 1", "Item 2", "Item 3"]} />);
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(model.getNItems()).toBe(3);
+            expect(itemLabel(model, 2)).toBe("Item 3");
         });
     });
 
@@ -55,7 +85,13 @@ describe("render - Menu", () => {
                 </GtkPopoverMenuBar>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(model.getNItems()).toBe(1);
+            expect(itemLabel(model, 0)).toBe("File");
+
+            const fileSubmenu = requireLink(submenuAt(model, 0));
+            expect(fileSubmenu.getNItems()).toBe(1);
+            expect(itemLabel(fileSubmenu, 0)).toBe("New");
         });
     });
 
@@ -69,7 +105,9 @@ describe("render - Menu", () => {
                 </GtkPopoverMenu>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(model.getNItems()).toBe(1);
+            expect(itemLabel(model, 0)).toBe("Test Item");
         });
 
         it("sets keyboard accelerators via accels prop", async () => {
@@ -81,7 +119,9 @@ describe("render - Menu", () => {
                 </GtkPopoverMenu>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(model.getNItems()).toBe(1);
+            expect(itemLabel(model, 0)).toBe("Save");
         });
 
         it("updates label when prop changes", async () => {
@@ -96,29 +136,28 @@ describe("render - Menu", () => {
             }
 
             await render(<App label="Initial" />);
+            expect(itemLabel(requireModel(ref.current), 0)).toBe("Initial");
 
             await render(<App label="Updated" />);
-
-            expect(ref.current).not.toBeNull();
+            expect(itemLabel(requireModel(ref.current), 0)).toBe("Updated");
         });
 
         it("cleans up action on unmount", async () => {
             const ref = createRef<Gtk.PopoverMenu>();
-            const onActivate = vi.fn();
 
             function App({ showItem }: { showItem: boolean }) {
                 return (
                     <GtkPopoverMenu ref={ref}>
-                        {showItem && <MenuItem id="removable" label="Removable" onActivate={onActivate} />}
+                        {showItem && <MenuItem id="removable" label="Removable" onActivate={() => {}} />}
                     </GtkPopoverMenu>
                 );
             }
 
             await render(<App showItem={true} />);
+            expect(requireModel(ref.current).getNItems()).toBe(1);
 
             await render(<App showItem={false} />);
-
-            expect(ref.current).not.toBeNull();
+            expect(requireModel(ref.current).getNItems()).toBe(0);
         });
     });
 
@@ -135,7 +174,13 @@ describe("render - Menu", () => {
                 </GtkPopoverMenu>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(model.getNItems()).toBe(1);
+
+            const section = requireLink(sectionAt(model, 0));
+            expect(section.getNItems()).toBe(2);
+            expect(itemLabel(section, 0)).toBe("Section Item 1");
+            expect(itemLabel(section, 1)).toBe("Section Item 2");
         });
 
         it("adds items within section", async () => {
@@ -152,7 +197,13 @@ describe("render - Menu", () => {
                 </GtkPopoverMenu>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(model.getNItems()).toBe(2);
+
+            const first = requireLink(sectionAt(model, 0));
+            const second = requireLink(sectionAt(model, 1));
+            expect(itemLabel(first, 0)).toBe("Item A");
+            expect(itemLabel(second, 0)).toBe("Item B");
         });
 
         it("sets section label", async () => {
@@ -166,7 +217,9 @@ describe("render - Menu", () => {
                 </GtkPopoverMenu>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(itemLabel(model, 0)).toBe("Section Title");
+            expect(requireLink(sectionAt(model, 0)).getNItems()).toBe(1);
         });
     });
 
@@ -183,7 +236,14 @@ describe("render - Menu", () => {
                 </GtkPopoverMenu>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(model.getNItems()).toBe(1);
+            expect(itemLabel(model, 0)).toBe("File");
+
+            const submenu = requireLink(submenuAt(model, 0));
+            expect(submenu.getNItems()).toBe(2);
+            expect(itemLabel(submenu, 0)).toBe("New");
+            expect(itemLabel(submenu, 1)).toBe("Open");
         });
 
         it("adds items within submenu", async () => {
@@ -199,7 +259,8 @@ describe("render - Menu", () => {
                 </GtkPopoverMenu>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const submenu = requireLink(submenuAt(requireModel(ref.current), 0));
+            expect(submenu.getNItems()).toBe(3);
         });
 
         it("sets submenu label", async () => {
@@ -213,7 +274,9 @@ describe("render - Menu", () => {
                 </GtkPopoverMenu>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(itemLabel(model, 0)).toBe("Help");
+            expect(requireLink(submenuAt(model, 0)).getNItems()).toBe(1);
         });
 
         it("supports nested submenus", async () => {
@@ -230,7 +293,17 @@ describe("render - Menu", () => {
                 </GtkPopoverMenu>,
             );
 
-            expect(ref.current).not.toBeNull();
+            const model = requireModel(ref.current);
+            expect(model.getNItems()).toBe(1);
+
+            const file = requireLink(submenuAt(model, 0));
+            expect(file.getNItems()).toBe(1);
+            expect(itemLabel(file, 0)).toBe("Recent");
+
+            const recent = requireLink(submenuAt(file, 0));
+            expect(recent.getNItems()).toBe(2);
+            expect(itemLabel(recent, 0)).toBe("File 1");
+            expect(itemLabel(recent, 1)).toBe("File 2");
         });
     });
 });

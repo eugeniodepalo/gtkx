@@ -20,6 +20,7 @@ import { render as baseRender, screen, userEvent, waitFor } from "@gtkx/testing"
 import type { ReactNode } from "react";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { countChildren } from "../helpers/child-count.js";
 
 const render = (element: ReactNode) => baseRender(element);
 
@@ -697,9 +698,9 @@ describe("widget - signals", () => {
                 return <GtkLabel ref={ref} label={text} onNotify={handleNotify} />;
             }
 
-            await render(<App text="Initial" />);
+            const { rerender } = await render(<App text="Initial" />);
 
-            await render(<App text="Updated" />);
+            await rerender(<App text="Updated" />);
 
             await waitFor(() => {
                 expect(handleNotify).toHaveBeenCalled();
@@ -755,8 +756,8 @@ describe("widget - child management", () => {
                 );
             }
 
-            await render(<App count={3} />);
-            await render(<App count={1} />);
+            const { rerender } = await render(<App count={3} />);
+            await rerender(<App count={1} />);
 
             expect(boxRef.current?.getFirstChild()).not.toBeNull();
             const first = boxRef.current?.getFirstChild();
@@ -802,13 +803,7 @@ describe("widget - auto-wrapping", () => {
                 </GtkListBox>,
             );
 
-            let count = 0;
-            let child = listBoxRef.current?.getFirstChild();
-            while (child) {
-                count++;
-                child = child.getNextSibling();
-            }
-            expect(count).toBe(3);
+            expect(countChildren(listBoxRef.current)).toBe(3);
         });
 
         it("removes children", async () => {
@@ -824,25 +819,11 @@ describe("widget - auto-wrapping", () => {
                 );
             }
 
-            await render(<App items={["a", "b", "c"]} />);
+            const { rerender } = await render(<App items={["a", "b", "c"]} />);
+            expect(countChildren(listBoxRef.current)).toBe(3);
 
-            let count = 0;
-            let child = listBoxRef.current?.getFirstChild();
-            while (child) {
-                count++;
-                child = child.getNextSibling();
-            }
-            expect(count).toBe(3);
-
-            await render(<App items={["a", "c"]} />);
-
-            count = 0;
-            child = listBoxRef.current?.getFirstChild();
-            while (child) {
-                count++;
-                child = child.getNextSibling();
-            }
-            expect(count).toBe(2);
+            await rerender(<App items={["a", "c"]} />);
+            expect(countChildren(listBoxRef.current)).toBe(2);
         });
 
         it("reorders children", async () => {
@@ -858,8 +839,8 @@ describe("widget - auto-wrapping", () => {
                 );
             }
 
-            await render(<App items={["first", "second"]} />);
-            await render(<App items={["second", "first"]} />);
+            const { rerender } = await render(<App items={["first", "second"]} />);
+            await rerender(<App items={["second", "first"]} />);
 
             expect(listBoxRef.current?.getFirstChild()).not.toBeNull();
         });
@@ -900,13 +881,7 @@ describe("widget - auto-wrapping", () => {
                 </GtkFlowBox>,
             );
 
-            let count = 0;
-            let child = flowBoxRef.current?.getFirstChild();
-            while (child) {
-                count++;
-                child = child.getNextSibling();
-            }
-            expect(count).toBe(3);
+            expect(countChildren(flowBoxRef.current)).toBe(3);
         });
 
         it("removes children", async () => {
@@ -922,25 +897,11 @@ describe("widget - auto-wrapping", () => {
                 );
             }
 
-            await render(<App items={["a", "b", "c"]} />);
+            const { rerender } = await render(<App items={["a", "b", "c"]} />);
+            expect(countChildren(flowBoxRef.current)).toBe(3);
 
-            let count = 0;
-            let child = flowBoxRef.current?.getFirstChild();
-            while (child) {
-                count++;
-                child = child.getNextSibling();
-            }
-            expect(count).toBe(3);
-
-            await render(<App items={["a"]} />);
-
-            count = 0;
-            child = flowBoxRef.current?.getFirstChild();
-            while (child) {
-                count++;
-                child = child.getNextSibling();
-            }
-            expect(count).toBe(1);
+            await rerender(<App items={["a"]} />);
+            expect(countChildren(flowBoxRef.current)).toBe(1);
         });
     });
 });

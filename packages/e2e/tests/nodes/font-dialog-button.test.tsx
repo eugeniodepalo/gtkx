@@ -12,7 +12,8 @@ describe("render - FontDialogButton", () => {
 
             await render(<GtkFontDialogButton ref={ref} />);
 
-            expect(ref.current).not.toBeNull();
+            expect(ref.current?.getDialog()).not.toBeNull();
+            expect(ref.current?.getLevel()).toBe(Gtk.FontLevel.FONT);
         });
 
         it("creates FontDialogButton with initial fontDesc", async () => {

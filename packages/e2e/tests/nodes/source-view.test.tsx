@@ -3,12 +3,7 @@ import { GtkSourceView } from "@gtkx/react";
 import { render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-
-const getBufferText = (buffer: GtkSource.Buffer): string => {
-    const startIter = buffer.getStartIter();
-    const endIter = buffer.getEndIter();
-    return buffer.getText(startIter, endIter, true) ?? "";
-};
+import { getBufferText } from "../helpers/buffer-text.js";
 
 describe("render - SourceView", () => {
     describe("basic rendering", () => {

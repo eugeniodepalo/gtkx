@@ -4,12 +4,7 @@ import { GtkTextView } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, useMemo } from "react";
 import { describe, expect, it } from "vitest";
-
-const getBufferText = (buffer: Gtk.TextBuffer): string => {
-    const startIter = buffer.getStartIter();
-    const endIter = buffer.getEndIter();
-    return buffer.getText(startIter, endIter, true) ?? "";
-};
+import { getBufferText } from "../helpers/buffer-text.js";
 
 const usePaintable = (): Gdk.Paintable | null => {
     return useMemo(() => {

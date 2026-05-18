@@ -13,6 +13,7 @@ import {
 import { render } from "@gtkx/testing";
 import { createElement, createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { countChildren } from "../helpers/child-count.js";
 
 describe("render - ContainerSlot", () => {
     describe("AdwActionRow (addPrefix/addSuffix)", () => {
@@ -527,25 +528,15 @@ describe("render - ContainerSlot", () => {
 
             const { rerender } = await render(<App showBack={false} />);
 
-            const countStartChildren = () => {
-                let count = 0;
-                let child = headerBarRef.current?.getFirstChild();
-                while (child) {
-                    count++;
-                    child = child.getNextSibling();
-                }
-                return count;
-            };
-
-            const initialCount = countStartChildren();
+            const initialCount = countChildren(headerBarRef.current);
 
             await rerender(<App showBack={true} />);
 
-            expect(countStartChildren()).toBe(initialCount);
+            expect(countChildren(headerBarRef.current)).toBe(initialCount);
 
             await rerender(<App showBack={false} />);
 
-            expect(countStartChildren()).toBe(initialCount);
+            expect(countChildren(headerBarRef.current)).toBe(initialCount);
         });
 
         it("reorders children in packStart via insertBefore", async () => {

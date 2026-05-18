@@ -3,18 +3,9 @@ import { GtkApplicationWindow, GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gt
 import { render, screen, within } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { getChildTexts } from "./helpers/widget-text.js";
 
-const getLabelTexts = (parent: Gtk.Widget): string[] => {
-    const labels: string[] = [];
-    let child = parent.getFirstChild();
-    while (child) {
-        if (child.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
-            labels.push((child as Gtk.Label).getLabel() ?? "");
-        }
-        child = child.getNextSibling();
-    }
-    return labels;
-};
+const getLabelTexts = (parent: Gtk.Widget): string[] => getChildTexts(parent, { recursive: false });
 
 describe("host-config - children", () => {
     describe("adding children", () => {
@@ -175,13 +166,13 @@ describe("host-config - children", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
+            const { rerender } = await render(<App items={["A", "B", "C"]} />);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
-            await render(<App items={["A", "D", "B", "C"]} />);
+            await rerender(<App items={["A", "D", "B", "C"]} />);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "D", "B", "C"]);
 
-            await render(<App items={["D", "C"]} />);
+            await rerender(<App items={["D", "C"]} />);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["D", "C"]);
         });
 
@@ -198,10 +189,10 @@ describe("host-config - children", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
+            const { rerender } = await render(<App items={["A", "B", "C"]} />);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
-            await render(<App items={["C", "B", "A"]} />);
+            await rerender(<App items={["C", "B", "A"]} />);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
         });
     });
