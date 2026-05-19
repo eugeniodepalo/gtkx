@@ -7,16 +7,16 @@
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import type { SelfTypeDescriptor } from "../../../core/type-system/ffi-types.js";
-import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../../core/utils/async-callable.js";
 import { partitionSupportedMethods } from "../../../core/utils/filtering.js";
-import { toValidMemberName } from "../../../core/utils/naming.js";
 import {
+    buildCallableStructures,
     createMethodBodyWriter,
     type ImportCollector,
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../core/writers/index.js";
 import type { GirMethod, GirParameter } from "../../../gir/index.js";
+import { methodStructureStrategy } from "../callable-strategies.js";
 
 /**
  * Builds method code for a class.
@@ -47,60 +47,21 @@ export class MethodBuilder {
      * @returns Array of method structures
      */
     buildStructures(methods: readonly GirMethod[], selfTypeDescriptor: SelfTypeDescriptor): MethodStructure[] {
-        const { supported, unsupported } = partitionSupportedMethods(
+        const partition = partitionSupportedMethods(
             methods,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
-
-        const asyncPairs = collectAsyncCallablePairs(supported, methods);
-
-        return [
-            ...supported.map((method) => {
-                const pair = asyncPairs.get(method.name);
-                return pair
-                    ? this.buildAsyncMethodStructure(pair, selfTypeDescriptor)
-                    : this.buildMethodStructure(method, selfTypeDescriptor);
+        return buildCallableStructures(
+            partition,
+            methods,
+            methodStructureStrategy({
+                methodBody: this.methodBody,
+                options: this.options,
+                selfTypeDescriptor,
+                methodRenames: this.methodRenames,
             }),
-            ...unsupported.map((method) => this.buildMethodStub(method)),
-        ];
-    }
-
-    private buildAsyncMethodStructure(
-        pair: AsyncCallablePair<GirMethod, GirMethod>,
-        selfTypeDescriptor: SelfTypeDescriptor,
-    ): MethodStructure {
-        return this.methodBody.buildAsyncCallableStructure({
-            asyncCallable: pair.async,
-            finishCallable: pair.finish,
-            callbackParameter: pair.callbackParameter,
-            memberName: toValidMemberName(this.methodBody.resolveMethodName(pair.async, this.methodRenames)),
-            finishMemberName: toValidMemberName(this.methodBody.resolveMethodName(pair.finish, this.methodRenames)),
-            isStatic: false,
-            sharedLibrary: this.options.sharedLibrary,
-            namespace: this.options.namespace,
-            self: { type: selfTypeDescriptor, value: "getHandle(this)" },
-        });
-    }
-
-    private buildMethodStub(method: GirMethod): MethodStructure {
-        return this.methodBody.buildStubStructure(
-            toValidMemberName(this.methodBody.resolveMethodName(method, this.methodRenames)),
-            `${this.options.namespace}.${method.name}`,
-            method.doc,
-            this.options.namespace,
-            false,
-            method.parameters,
         );
-    }
-
-    private buildMethodStructure(method: GirMethod, selfTypeDescriptor: SelfTypeDescriptor): MethodStructure {
-        return this.methodBody.buildMethodStructure(method, {
-            methodName: this.methodBody.resolveMethodName(method, this.methodRenames),
-            selfTypeDescriptor,
-            sharedLibrary: this.options.sharedLibrary,
-            namespace: this.options.namespace,
-        });
     }
 
     /**

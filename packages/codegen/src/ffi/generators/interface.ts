@@ -10,7 +10,6 @@ import { classDecl, interfaceDecl, namespaceDecl } from "../../builders/index.js
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
-import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
 import {
     collectGObjectMethodNames,
     collectInterfaceMembers,
@@ -18,21 +17,17 @@ import {
 } from "../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
 import { partitionSupportedFunctions, partitionSupportedMethods } from "../../core/utils/filtering.js";
-import {
-    generateConflictingMethodName,
-    toCamelCase,
-    toKebabCase,
-    toPascalCase,
-    toValidMemberName,
-} from "../../core/utils/naming.js";
+import { generateConflictingMethodName, toCamelCase, toKebabCase, toPascalCase } from "../../core/utils/naming.js";
 import { splitQualifiedName } from "../../core/utils/qualified-name.js";
 import {
     addMethodStructure,
+    buildCallableStructures,
     createMethodBodyWriter,
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../core/writers/index.js";
 import type { GirInterface, GirMethod, GirProperty, GirRepository } from "../../gir/index.js";
+import { methodStructureStrategy, staticFunctionStructureStrategy } from "./callable-strategies.js";
 import { PropertyAccessorBuilder, type PropertyAccessorEmission } from "./class/property-accessor-builder.js";
 
 /**
@@ -177,96 +172,39 @@ export class InterfaceGenerator {
         methods: readonly GirMethod[],
         finishCandidateMethods: readonly GirMethod[],
     ): MethodStructure[] {
-        const { supported, unsupported } = partitionSupportedMethods(
+        const partition = partitionSupportedMethods(
             methods,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
-        const asyncPairs = collectAsyncCallablePairs(supported, finishCandidateMethods);
-        return [
-            ...supported.map((m) => {
-                const pair = asyncPairs.get(m.name);
-                return pair ? this.buildAsyncMethodStructure(pair) : this.buildMethodStructure(m);
+        return buildCallableStructures(
+            partition,
+            finishCandidateMethods,
+            methodStructureStrategy({
+                methodBody: this.methodBody,
+                options: this.options,
+                selfTypeDescriptor: SELF_TYPE_GOBJECT,
+                methodRenames: this.methodRenames,
             }),
-            ...unsupported.map((m) => this.buildMethodStub(m)),
-        ];
-    }
-
-    private buildAsyncMethodStructure(pair: AsyncCallablePair<GirMethod, GirMethod>): MethodStructure {
-        return this.methodBody.buildAsyncCallableStructure({
-            asyncCallable: pair.async,
-            finishCallable: pair.finish,
-            callbackParameter: pair.callbackParameter,
-            memberName: toValidMemberName(this.methodBody.resolveMethodName(pair.async, this.methodRenames)),
-            finishMemberName: toValidMemberName(this.methodBody.resolveMethodName(pair.finish, this.methodRenames)),
-            isStatic: false,
-            sharedLibrary: this.options.sharedLibrary,
-            namespace: this.options.namespace,
-            self: { type: SELF_TYPE_GOBJECT, value: "getHandle(this)" },
-        });
-    }
-
-    private buildMethodStub(m: GirMethod): MethodStructure {
-        return this.methodBody.buildStubStructure(
-            toValidMemberName(this.methodBody.resolveMethodName(m, this.methodRenames)),
-            `${this.options.namespace}.${m.name}`,
-            m.doc,
-            this.options.namespace,
-            false,
-            m.parameters,
         );
     }
 
     private buildStaticFunctionStructures(iface: GirInterface): MethodStructure[] {
-        const interfaceName = toPascalCase(iface.name);
-        const { supported, unsupported } = partitionSupportedFunctions(
+        const partition = partitionSupportedFunctions(
             iface.staticFunctions,
             (params) => this.methodBody.hasUnsupportedCallbacks(params),
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
-        const asyncPairs = collectAsyncCallablePairs(supported, iface.staticFunctions);
-        return [
-            ...supported.map((func) => {
-                const pair = asyncPairs.get(func.name);
-                if (pair) {
-                    return this.methodBody.buildAsyncCallableStructure({
-                        asyncCallable: pair.async,
-                        finishCallable: pair.finish,
-                        callbackParameter: pair.callbackParameter,
-                        memberName: toValidMemberName(toCamelCase(pair.async.name)),
-                        finishMemberName: toValidMemberName(toCamelCase(pair.finish.name)),
-                        isStatic: true,
-                        sharedLibrary: this.options.sharedLibrary,
-                        namespace: this.options.namespace,
-                    });
-                }
-                return this.methodBody.buildStaticFunctionStructure(func, {
-                    className: interfaceName,
-                    originalClassName: iface.name,
-                    sharedLibrary: this.options.sharedLibrary,
-                    namespace: this.options.namespace,
-                });
+        return buildCallableStructures(
+            partition,
+            iface.staticFunctions,
+            staticFunctionStructureStrategy({
+                methodBody: this.methodBody,
+                options: this.options,
+                ownerClassName: toPascalCase(iface.name),
+                ownerOriginalName: iface.name,
             }),
-            ...unsupported.map((func) =>
-                this.methodBody.buildStubStructure(
-                    toValidMemberName(toCamelCase(func.name)),
-                    `${this.options.namespace}.${iface.name}.${func.name}`,
-                    func.doc,
-                    this.options.namespace,
-                    true,
-                    func.parameters,
-                ),
-            ),
-        ];
-    }
-
-    private buildMethodStructure(m: GirMethod): MethodStructure {
-        return this.methodBody.buildMethodStructure(m, {
-            methodName: this.methodBody.resolveMethodName(m, this.methodRenames),
-            selfTypeDescriptor: SELF_TYPE_GOBJECT,
-            sharedLibrary: this.options.sharedLibrary,
-            namespace: this.options.namespace,
-        });
+        );
     }
 
     private collectPrerequisiteMethods(iface: GirInterface, existingMethodNames: Set<string>): GirMethod[] {

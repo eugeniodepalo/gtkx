@@ -4,6 +4,11 @@ import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
 import { type ImportCollector, MethodBodyWriter, type MethodStructure } from "./method-body-writer.js";
 
+export {
+    buildCallableStructures,
+    type CallableStructureStrategy,
+    type PartitionedCallables,
+} from "./callable-structures.js";
 export type { ImportCollector, MethodStructure } from "./method-body-writer.js";
 export { addTypeImports, MethodBodyWriter } from "./method-body-writer.js";
 
