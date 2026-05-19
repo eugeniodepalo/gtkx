@@ -21,12 +21,7 @@ import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { hasVarargs, isVararg } from "../utils/filtering.js";
 import { createWrappedName, toCamelCase, toKebabCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
 import { formatNullableReturn } from "../utils/type-qualification.js";
-import {
-    type CallArgument,
-    type CallbackWrapperInfo,
-    CallExpressionBuilder,
-    type CallExpressionOptions,
-} from "./call-expression-builder.js";
+import { type CallArgument, type CallbackWrapperInfo, CallExpressionBuilder } from "./call-expression-builder.js";
 import {
     buildCallableShape,
     type CallableShape,
@@ -35,7 +30,6 @@ import {
     type ShapeCallArg,
 } from "./callable-shape.js";
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
-import { writeFfiTypeExpression } from "./ffi-type-expression.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
 import { buildCallbackWrapperExpression, needsParamWrap, needsReturnUnwrap } from "./param-wrap-writer.js";
 
@@ -265,7 +259,7 @@ type ObjectWrapInfo = {
  *
  * Centralizes common patterns used across generators:
  * - Parameter filtering and validation
- * - Call argument generation (via buildCallArgumentsArray)
+ * - Call argument generation via {@link buildShapeCallArguments}
  * - Out/inout parameter handling via {@link CallableShape}
  * - Return value wrapping decisions
  *
@@ -531,16 +525,6 @@ export class MethodBodyWriter {
         return `[${parts.join(", ")}]`;
     }
 
-    /**
-     * Builds a writer that emits one FFI call expression. Routes through the
-     * shared {@link CallExpressionBuilder} so the descriptor participates in
-     * per-file hoisting (when a registry is configured) or falls back to an
-     * inline `call(...)` for variadic callables.
-     */
-    buildCallWriter(options: CallExpressionOptions): (writer: Writer) => void {
-        return this.callExpression.toWriter(options);
-    }
-
     writeCallbackWrapperDeclarations(writer: Writer, args: readonly CallArgument[]): void {
         for (const arg of args) {
             if (arg.callbackWrapper) {
@@ -552,14 +536,6 @@ export class MethodBodyWriter {
         }
     }
 
-    writeArgumentsToWriter(writer: Writer, args: readonly CallArgument[]): void {
-        for (const arg of args) {
-            writer.write("{ type: ");
-            writeFfiTypeExpression(writer, arg.type);
-            writer.writeLine(`, value: ${arg.value}, optional: ${arg.optional ?? false} },`);
-        }
-    }
-
     /**
      * Builds CallArgument entries from a callable shape.
      *
@@ -568,17 +544,6 @@ export class MethodBodyWriter {
      */
     buildShapeCallArguments(shape: CallableShape, parameters: readonly GirParameter[]): CallArgument[] {
         return shape.callArgs.map((arg) => this.toCallArgument(arg, parameters, shape));
-    }
-
-    /**
-     * Builds call arguments from raw parameters (compatibility entry point).
-     *
-     * Async wrapper generation calls this directly; it has no out/inout
-     * params so the shape's tuple is empty.
-     */
-    buildCallArgumentsArray(parameters: readonly GirParameter[], sizeParamOffset = 0): CallArgument[] {
-        const shape = this.buildShape(parameters, undefined, sizeParamOffset);
-        return this.buildShapeCallArguments(shape, parameters);
     }
 
     /**
@@ -1500,20 +1465,6 @@ export class MethodBodyWriter {
                 writer.writeLine("return getNativeObject(ptr);");
             }
         };
-    }
-
-    /**
-     * Gets the FfiTypeWriter instance.
-     */
-    getFfiTypeWriter(): FfiTypeWriter {
-        return this.ffiTypeWriter;
-    }
-
-    /**
-     * Gets the FfiMapper instance.
-     */
-    getFfiMapper(): FfiMapper {
-        return this.ffiMapper;
     }
 
     /**

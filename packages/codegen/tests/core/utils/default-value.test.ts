@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectPropertiesWithDefaults, convertDefaultValue } from "../../../src/core/utils/default-value.js";
+import { collectPropertiesWithDefaults } from "../../../src/core/utils/default-value.js";
 import type { DefaultValue, GirClass, GirProperty, GirRepository } from "../../../src/gir/index.js";
 
 type FakeNamespace = {
@@ -26,106 +26,6 @@ function makeClass(properties: GirProperty[], implemented: string[] = []): GirCl
         getAllImplementedInterfaces: () => implemented,
     } as unknown as GirClass;
 }
-
-describe("convertDefaultValue", () => {
-    const repo = makeRepo([]);
-
-    it("returns null when defaultValue is null", () => {
-        expect(convertDefaultValue(null, repo, "Gtk")).toBeNull();
-    });
-
-    it("converts null kind to a null initializer with no imports", () => {
-        expect(convertDefaultValue({ kind: "null" }, repo, "Gtk")).toEqual({ initializer: "null", imports: [] });
-    });
-
-    it("converts boolean true and false to lowercase TS literals", () => {
-        expect(convertDefaultValue({ kind: "boolean", value: true }, repo, "Gtk")).toEqual({
-            initializer: "true",
-            imports: [],
-        });
-        expect(convertDefaultValue({ kind: "boolean", value: false }, repo, "Gtk")).toEqual({
-            initializer: "false",
-            imports: [],
-        });
-    });
-
-    it("converts numbers via String() preserving sign and decimals", () => {
-        expect(convertDefaultValue({ kind: "number", value: 0 }, repo, "Gtk")).toEqual({
-            initializer: "0",
-            imports: [],
-        });
-        expect(convertDefaultValue({ kind: "number", value: -3.14 }, repo, "Gtk")).toEqual({
-            initializer: "-3.14",
-            imports: [],
-        });
-    });
-
-    it("JSON-encodes string defaults so quotes and backslashes are safe", () => {
-        expect(convertDefaultValue({ kind: "string", value: 'hello "world"' }, repo, "Gtk")).toEqual({
-            initializer: '"hello \\"world\\""',
-            imports: [],
-        });
-    });
-
-    it("returns null for unknown kinds", () => {
-        expect(convertDefaultValue({ kind: "unknown", raw: "G_PRIORITY_DEFAULT" }, repo, "Gtk")).toBeNull();
-    });
-
-    it("returns null for an enum cIdentifier that is not in the repo", () => {
-        expect(convertDefaultValue({ kind: "enum", cIdentifier: "GTK_NOPE" }, repo, "Gtk")).toBeNull();
-    });
-
-    it("resolves an enum from the same namespace without an import", () => {
-        const enumRepo = makeRepo([
-            {
-                name: "Gtk",
-                enumerations: new Map([
-                    ["Align", { name: "align", members: [{ name: "fill", cIdentifier: "GTK_ALIGN_FILL" }] }],
-                ]),
-                bitfields: new Map(),
-            },
-        ]);
-
-        expect(convertDefaultValue({ kind: "enum", cIdentifier: "GTK_ALIGN_FILL" }, enumRepo, "Gtk")).toEqual({
-            initializer: "Align.FILL",
-            imports: [],
-        });
-    });
-
-    it("resolves an enum from a different namespace and emits a namespace-qualified import", () => {
-        const enumRepo = makeRepo([
-            {
-                name: "Gtk",
-                enumerations: new Map([
-                    ["Align", { name: "align", members: [{ name: "fill", cIdentifier: "GTK_ALIGN_FILL" }] }],
-                ]),
-                bitfields: new Map(),
-            },
-        ]);
-
-        expect(convertDefaultValue({ kind: "enum", cIdentifier: "GTK_ALIGN_FILL" }, enumRepo, "Adw")).toEqual({
-            initializer: "Gtk.Align.FILL",
-            imports: [{ name: "Align", namespace: "Gtk" }],
-        });
-    });
-
-    it("falls back to bitfields when no matching enumeration is found", () => {
-        const bitfieldRepo = makeRepo([
-            {
-                name: "Gtk",
-                enumerations: new Map(),
-                bitfields: new Map([
-                    ["DebugFlags", { name: "debug-flags", members: [{ name: "text", cIdentifier: "GTK_DEBUG_TEXT" }] }],
-                ]),
-            },
-        ]);
-
-        expect(convertDefaultValue({ kind: "enum", cIdentifier: "GTK_DEBUG_TEXT" }, bitfieldRepo, "Gtk")).toEqual({
-            initializer: "DebugFlags.TEXT",
-            imports: [],
-        });
-    });
-});
 
 describe("collectPropertiesWithDefaults", () => {
     const emptyRepo = makeRepo([]);

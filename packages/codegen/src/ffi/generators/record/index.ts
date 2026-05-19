@@ -133,14 +133,7 @@ export class RecordGenerator {
         repo?: GirRepository,
     ) {
         this.repo = repo;
-        this.fieldBuilder = new FieldBuilder(
-            ffiMapper,
-            file,
-            options.sharedLibrary,
-            options.glibLibrary,
-            repo,
-            options.namespace,
-        );
+        this.fieldBuilder = new FieldBuilder(ffiMapper, file, repo, options.namespace);
         this.methodBody = createMethodBodyWriter(ffiMapper, file, {
             sharedLibrary: options.sharedLibrary,
             glibLibrary: options.glibLibrary,

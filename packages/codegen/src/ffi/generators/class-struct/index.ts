@@ -63,14 +63,7 @@ export class ClassStructGenerator {
         private readonly repo: GirRepository,
         private readonly logger: VtableLogger = log,
     ) {
-        this.fieldBuilder = new FieldBuilder(
-            ffiMapper,
-            file,
-            options.sharedLibrary,
-            options.glibLibrary,
-            repo,
-            options.namespace,
-        );
+        this.fieldBuilder = new FieldBuilder(ffiMapper, file, repo, options.namespace);
     }
 
     /**

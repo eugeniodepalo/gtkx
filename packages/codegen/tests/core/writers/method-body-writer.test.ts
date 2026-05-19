@@ -43,13 +43,6 @@ describe("MethodBodyWriter", () => {
             const writer = new MethodBodyWriter(mapper, imports);
             expect(writer).toBeInstanceOf(MethodBodyWriter);
         });
-
-        it("creates writer with custom FfiTypeWriter", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { mapper, imports, ffiTypeWriter } = createTestSetup(new Map([["Gtk", ns]]));
-            const writer = new MethodBodyWriter(mapper, imports, ffiTypeWriter);
-            expect(writer.getFfiTypeWriter()).toBe(ffiTypeWriter);
-        });
     });
 
     describe("isVararg (standalone function)", () => {
@@ -463,48 +456,6 @@ describe("MethodBodyWriter", () => {
         });
     });
 
-    describe("buildCallArgumentsArray", () => {
-        it("builds call arguments for simple parameters", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
-            const params = [createNormalizedParameter({ name: "label", type: createNormalizedType({ name: "utf8" }) })];
-
-            const args = writer.buildCallArgumentsArray(params);
-
-            expect(args).toHaveLength(1);
-            expect(args[0].value).toBe("label");
-            expect(args[0].type.type).toBe("string");
-        });
-
-        it("converts snake_case parameter names", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
-            const params = [
-                createNormalizedParameter({ name: "my_label", type: createNormalizedType({ name: "utf8" }) }),
-            ];
-
-            const args = writer.buildCallArgumentsArray(params);
-
-            expect(args[0].value).toBe("myLabel");
-        });
-
-        it("marks nullable parameters as FFI-optional so null is encoded as NULL", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
-            const params = [
-                createNormalizedParameter({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8", nullable: true }),
-                    nullable: true,
-                }),
-            ];
-
-            const args = writer.buildCallArgumentsArray(params);
-
-            expect(args[0].optional).toBe(true);
-        });
-    });
-
     describe("buildMethodStructure", () => {
         it("builds complete method structure", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
@@ -763,22 +714,6 @@ describe("MethodBodyWriter", () => {
             const output = w.toString();
             expect(output).toContain("const error = createRef(null)");
             expect(output).toContain("checkError(error, GLib.Error)");
-        });
-    });
-
-    describe("getters", () => {
-        it("getFfiTypeWriter returns the FfiTypeWriter", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer, ffiTypeWriter } = createTestSetup(new Map([["Gtk", ns]]));
-
-            expect(writer.getFfiTypeWriter()).toBe(ffiTypeWriter);
-        });
-
-        it("getFfiMapper returns the FfiMapper", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer, mapper } = createTestSetup(new Map([["Gtk", ns]]));
-
-            expect(writer.getFfiMapper()).toBe(mapper);
         });
     });
 });
@@ -1709,24 +1644,6 @@ describe("MethodBodyWriter - extended coverage", () => {
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
 
             expect(writer.setupGErrorImports("GLib")).toBe("Error");
-        });
-    });
-
-    describe("writeArgumentsToWriter", () => {
-        it("writes each argument as a typed FFI entry", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
-
-            const w = new Writer();
-            writer.writeArgumentsToWriter(w, [
-                { type: { type: "string", ownership: "borrowed" }, value: "label" },
-                { type: { type: "int32" }, value: "count", optional: true },
-            ]);
-
-            const output = w.toString();
-            expect(output).toContain("value: label");
-            expect(output).toContain("value: count");
-            expect(output).toContain("optional: true");
         });
     });
 

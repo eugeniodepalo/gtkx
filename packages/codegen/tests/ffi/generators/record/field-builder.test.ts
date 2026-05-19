@@ -18,7 +18,7 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
     const imports = fileBuilder();
-    const builder = new FieldBuilder(ffiMapper, imports, "libgtk-4.so.1", "libglib-2.0.so.0");
+    const builder = new FieldBuilder(ffiMapper, imports);
     return { builder, imports, ffiMapper };
 }
 
@@ -29,14 +29,7 @@ function createRepoBackedSetup(namespaces: Map<string, ReturnType<typeof createN
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
     const imports = fileBuilder();
-    const builder = new FieldBuilder(
-        ffiMapper,
-        imports,
-        "libgtk-4.so.1",
-        "libglib-2.0.so.0",
-        repo as unknown as GirRepository,
-        "Gtk",
-    );
+    const builder = new FieldBuilder(ffiMapper, imports, repo as unknown as GirRepository, "Gtk");
     return { builder, imports, ffiMapper, repo };
 }
 
@@ -710,11 +703,5 @@ describe("FieldBuilder - writeFieldWrites", () => {
         const initializable = builder.getInitializableFields(fields);
 
         expect(initializable.map((f) => f.name)).toEqual(["value", "origin"]);
-    });
-
-    it("exposes the FFI type writer", () => {
-        const { builder } = createTestSetup();
-
-        expect(builder.getFfiTypeWriter()).toBeDefined();
     });
 });

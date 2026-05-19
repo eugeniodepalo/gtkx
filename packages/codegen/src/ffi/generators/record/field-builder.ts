@@ -15,7 +15,6 @@ import {
 import { toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import { isGeneratableFieldType as isGeneratableFieldTypeUtil } from "../../../core/utils/record-filter.js";
 import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
-import { FfiTypeWriter } from "../../../core/writers/ffi-type-writer.js";
 import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
 import type { GirField, GirRecord, GirRepository } from "../../../gir/index.js";
 
@@ -52,21 +51,13 @@ type BitUnit = {
  */
 export class FieldBuilder {
     private readonly sizeCache = new Map<string, number>();
-    private readonly ffiTypeWriter: FfiTypeWriter;
 
     constructor(
         private readonly ffiMapper: FfiMapper,
         private readonly imports: ImportCollector,
-        sharedLibrary: string,
-        glibLibrary?: string,
         private readonly repo?: GirRepository,
         private readonly currentNamespace?: string,
-    ) {
-        this.ffiTypeWriter = new FfiTypeWriter({
-            currentSharedLibrary: sharedLibrary,
-            glibLibrary,
-        });
-    }
+    ) {}
 
     /**
      * Calculates the memory layout of a record's fields.
@@ -335,10 +326,6 @@ export class FieldBuilder {
             return isPrimitiveFieldType(typeName);
         }
         return isGeneratableFieldTypeUtil(typeName, this.repo, this.currentNamespace, visited);
-    }
-
-    getFfiTypeWriter(): FfiTypeWriter {
-        return this.ffiTypeWriter;
     }
 
     private addFieldTypeImports(imports: Parameters<typeof addTypeImports>[1]): void {
