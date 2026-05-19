@@ -114,32 +114,8 @@
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
-        "@gtkx/ffi#build": {
-            "dependsOn": ["^build"],
-            "inputs": ["package.json", "src/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/react#build": {
-            "dependsOn": ["^build"],
-            "inputs": ["package.json", "src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.lib.json"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/ffi#typecheck": {
-            "dependsOn": ["^build"],
-            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
-            "outputs": [],
-            "outputLogs": "new-only"
-        },
         "@gtkx/ffi#conformance": {
             "inputs": ["src/**/*.ts", "src/generated/**/*.js", "src/generated/**/*.d.ts", "scripts/conformance.ts"],
-            "outputs": [],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/react#typecheck": {
-            "dependsOn": ["^build"],
-            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.lib.json"],
             "outputs": [],
             "outputLogs": "new-only"
         },
