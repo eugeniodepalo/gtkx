@@ -1,6 +1,7 @@
 packages:
   - .
   - packages/*
+  - packages/native/npm/*
   - examples/*
   - website
 

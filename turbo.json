@@ -71,8 +71,8 @@
                 "*.node",
                 "native-binding.cjs",
                 "native-binding.d.cts",
-                "$TURBO_ROOT$/packages/native-linux-arm64-gnu/*.node",
-                "$TURBO_ROOT$/packages/native-linux-x64-gnu/*.node"
+                "npm/linux-arm64-gnu/*.node",
+                "npm/linux-x64-gnu/*.node"
             ],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]

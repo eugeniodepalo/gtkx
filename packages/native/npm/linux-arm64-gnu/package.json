@@ -1,0 +1,40 @@
+{
+    "name": "@gtkx/native-linux-arm64-gnu",
+    "version": "0.21.0",
+    "cpu": [
+        "arm64"
+    ],
+    "main": "native.linux-arm64-gnu.node",
+    "files": [
+        "native.linux-arm64-gnu.node"
+    ],
+    "description": "Rust-based native module providing FFI bindings for GTKX",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "native",
+        "ffi",
+        "rust",
+        "napi",
+        "linux",
+        "desktop"
+    ],
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "homepage": "https://gtkx.dev",
+    "license": "MPL-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/gtkx-org/gtkx.git",
+        "directory": "packages/native"
+    },
+    "bugs": {
+        "url": "https://github.com/gtkx-org/gtkx/issues"
+    },
+    "os": [
+        "linux"
+    ],
+    "libc": [
+        "glibc"
+    ]
+}

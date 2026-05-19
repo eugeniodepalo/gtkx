@@ -269,14 +269,14 @@ importers:
     optionalDependencies:
       '@gtkx/native-linux-arm64-gnu':
         specifier: workspace:*
-        version: link:../native-linux-arm64-gnu
+        version: link:npm/linux-arm64-gnu
       '@gtkx/native-linux-x64-gnu':
         specifier: workspace:*
-        version: link:../native-linux-x64-gnu
+        version: link:npm/linux-x64-gnu
 
-  packages/native-linux-arm64-gnu: {}
+  packages/native/npm/linux-arm64-gnu: {}
 
-  packages/native-linux-x64-gnu: {}
+  packages/native/npm/linux-x64-gnu: {}
 
   packages/react:
     dependencies:
