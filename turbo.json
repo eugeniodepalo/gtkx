@@ -1,6 +1,6 @@
 {
     "$schema": "https://turborepo.com/schema.json",
-    "globalDependencies": ["tsconfig.base.json", "biome.json"],
+    "globalDependencies": ["tsconfig.base.json", "biome.json", "vitest.config.ts", "vitest.shared.ts"],
     "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
     "globalPassThroughEnv": [
         "TURBO_TOKEN",
