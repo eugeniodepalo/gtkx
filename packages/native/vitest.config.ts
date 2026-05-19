@@ -1,17 +1,12 @@
 import gtkx from "@gtkx/vitest";
-import { defineConfig, mergeConfig } from "vitest/config";
-import { packageVitestConfig } from "../../vitest.shared.js";
+import { defineConfig } from "vitest/config";
 
-export default mergeConfig(
-    packageVitestConfig(import.meta.url),
-    defineConfig({
-        plugins: [gtkx()],
-        test: {
-            setupFiles: ["packages/native/tests/module/setup.ts"],
-            execArgv: ["--expose-gc"],
-            coverage: {
-                include: ["packages/native/index.ts", "packages/native/types.ts"],
-            },
-        },
-    }),
-);
+export default defineConfig({
+    plugins: [gtkx()],
+    test: {
+        name: "native",
+        include: ["tests/**/*.test.{ts,tsx}"],
+        setupFiles: ["./tests/module/setup.ts"],
+        execArgv: ["--expose-gc"],
+    },
+});

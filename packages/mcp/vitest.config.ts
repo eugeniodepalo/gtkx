@@ -1,4 +1,8 @@
-import { defineConfig, mergeConfig } from "vitest/config";
-import { packageVitestConfig } from "../../vitest.shared.js";
+import { defineConfig } from "vitest/config";
 
-export default mergeConfig(packageVitestConfig(import.meta.url), defineConfig({}));
+export default defineConfig({
+    test: {
+        name: "mcp",
+        include: ["tests/**/*.test.{ts,tsx}"],
+    },
+});

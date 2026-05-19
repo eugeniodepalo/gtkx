@@ -15,8 +15,8 @@
         "knip": "knip",
         "lint": "turbo lint:all && turbo lint --filter=!website --filter=!gtkx",
         "lint:all": "biome check . && knip && pnpm circular",
-        "coverage": "turbo coverage --filter=!website --filter=!gtkx --concurrency=1",
-        "test": "turbo test --filter=!website --filter=!gtkx --concurrency=1",
+        "coverage": "vitest run --coverage",
+        "test": "vitest run",
         "typecheck": "turbo typecheck --filter=!website --filter=!gtkx"
     },
     "devDependencies": {

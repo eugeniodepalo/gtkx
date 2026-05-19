@@ -75,7 +75,13 @@ describe("runCodegen", () => {
     });
 
     it("falls back to process.cwd() when options.cwd is omitted", async () => {
-        await expect(runCodegen()).rejects.toThrow();
+        const originalCwd = process.cwd();
+        process.chdir(cwd);
+        try {
+            await expect(runCodegen()).rejects.toThrow();
+        } finally {
+            process.chdir(originalCwd);
+        }
     });
 });
 

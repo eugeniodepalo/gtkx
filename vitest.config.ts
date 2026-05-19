@@ -1,18 +1,25 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-    oxc: {
-        jsx: "automatic",
-    },
     test: {
-        include: ["tests/**/*.test.{ts,tsx}"],
+        projects: ["packages/*/vitest.config.ts"],
         bail: 1,
         hookTimeout: 30000,
         coverage: {
             provider: "v8",
             reporter: ["lcov", "text-summary"],
             reportsDirectory: "coverage",
-            include: ["src/**/*.{ts,tsx}"],
+            include: [
+                "packages/cli/src/**/*.{ts,tsx}",
+                "packages/codegen/src/**/*.{ts,tsx}",
+                "packages/css/src/**/*.{ts,tsx}",
+                "packages/ffi/src/**/*.{ts,tsx}",
+                "packages/mcp/src/**/*.{ts,tsx}",
+                "packages/native/{index,types}.ts",
+                "packages/react/src/**/*.{ts,tsx}",
+                "packages/testing/src/**/*.{ts,tsx}",
+                "packages/vitest/src/**/*.{ts,tsx}",
+            ],
             exclude: ["**/generated/**", "**/dist/**", "**/out-tsc/**", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
         },
     },

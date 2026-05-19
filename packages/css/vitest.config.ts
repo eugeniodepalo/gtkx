@@ -1,10 +1,10 @@
 import gtkx from "@gtkx/vitest";
-import { defineConfig, mergeConfig } from "vitest/config";
-import { packageVitestConfig } from "../../vitest.shared.js";
+import { defineConfig } from "vitest/config";
 
-export default mergeConfig(
-    packageVitestConfig(import.meta.url),
-    defineConfig({
-        plugins: [gtkx()],
-    }),
-);
+export default defineConfig({
+    plugins: [gtkx()],
+    test: {
+        name: "css",
+        include: ["tests/**/*.test.{ts,tsx}"],
+    },
+});
