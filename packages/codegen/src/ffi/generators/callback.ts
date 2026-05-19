@@ -10,10 +10,10 @@
 
 import type { FileBuilder } from "../../builders/file-builder.js";
 import { typeAlias } from "../../builders/index.js";
-import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
-import { formatJsDoc } from "../../core/utils/doc-formatter.js";
-import { toCamelCase, toValidIdentifier } from "../../core/utils/naming.js";
+import type { SimpleGeneratorOptions } from "../../generator-types.js";
 import type { GirCallback, GirType } from "../../gir/index.js";
+import { formatJsDoc } from "../../utils/doc-formatter.js";
+import { toCamelCase, toValidIdentifier } from "../../utils/naming.js";
 
 /**
  * Generates per-namespace callback type aliases into a FileBuilder.

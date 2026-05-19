@@ -1,8 +1,8 @@
 import { writeJsDoc } from "../members/doc.js";
 import type { ParameterBuilder } from "../members/parameter.js";
+import type { Writer } from "../text-writer.js";
 import type { Builder, Writable } from "../types.js";
 import { writeWritable } from "../types.js";
-import type { Writer } from "../writer.js";
 
 /** A property signature within an interface declaration. */
 export type InterfacePropertySignature = {

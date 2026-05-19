@@ -8,11 +8,11 @@
  * way regardless of whether their owner is a class or an interface.
  */
 
-import type { FfiGeneratorOptions } from "../../core/generator-types.js";
-import type { SelfTypeDescriptor } from "../../core/type-system/ffi-types.js";
-import { toCamelCase, toValidMemberName } from "../../core/utils/naming.js";
-import type { CallableStructureStrategy, MethodBodyWriter } from "../../core/writers/index.js";
+import type { CallableStructureStrategy, MethodBodyWriter } from "../../ffi-emitters/index.js";
+import type { FfiGeneratorOptions } from "../../generator-types.js";
 import type { GirFunction, GirMethod } from "../../gir/index.js";
+import type { SelfTypeDescriptor } from "../../type-system/ffi-types.js";
+import { toCamelCase, toValidMemberName } from "../../utils/naming.js";
 
 /**
  * Context for {@link methodStructureStrategy}.

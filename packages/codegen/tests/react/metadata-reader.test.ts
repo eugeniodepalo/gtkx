@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CodegenWidgetMeta } from "../../src/core/codegen-metadata.js";
+import type { CodegenWidgetMeta } from "../../src/codegen-metadata.js";
 import { MetadataReader, sortWidgetsByClassName } from "../../src/react/metadata-reader.js";
 
 const createWidgetMeta = (overrides: Partial<CodegenWidgetMeta> = {}): CodegenWidgetMeta => ({

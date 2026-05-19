@@ -5,11 +5,11 @@
  */
 
 import { enumDecl, type FileBuilder } from "../../builders/index.js";
-import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
-import { formatJsDoc } from "../../core/utils/doc-formatter.js";
-import { jsStringLiteral } from "../../core/utils/js-literal.js";
-import { normalizeClassName, toConstantCase } from "../../core/utils/naming.js";
+import type { SimpleGeneratorOptions } from "../../generator-types.js";
 import type { GirEnumeration } from "../../gir/index.js";
+import { formatJsDoc } from "../../utils/doc-formatter.js";
+import { jsStringLiteral } from "../../utils/js-literal.js";
+import { normalizeClassName, toConstantCase } from "../../utils/naming.js";
 
 /**
  * Generates enum declarations into a FileBuilder.

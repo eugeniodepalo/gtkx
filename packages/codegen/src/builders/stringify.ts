@@ -1,5 +1,5 @@
+import { Writer } from "./text-writer.js";
 import type { Builder } from "./types.js";
-import { Writer } from "./writer.js";
 
 /**
  * Render a {@link Builder} to its complete source string.

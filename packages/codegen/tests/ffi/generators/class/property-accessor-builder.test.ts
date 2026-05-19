@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { classDecl } from "../../../../src/builders/index.js";
 import { stringify } from "../../../../src/builders/stringify.js";
-import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
 import {
     type InterfacePropertySource,
     PropertyAccessorBuilder,
 } from "../../../../src/ffi/generators/class/property-accessor-builder.js";
 import type { GirMethod, GirProperty, GirRepository } from "../../../../src/gir/index.js";
+import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
 import {
     createNormalizedClass,
     createNormalizedEnumeration,

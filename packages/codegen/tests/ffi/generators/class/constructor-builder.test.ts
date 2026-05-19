@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
-import { Writer } from "../../../../src/builders/writer.js";
-import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
+import { Writer } from "../../../../src/builders/text-writer.js";
 import { ConstructorBuilder } from "../../../../src/ffi/generators/class/constructor-builder.js";
+import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
 import {
     createNormalizedClass,
     createNormalizedConstructor,

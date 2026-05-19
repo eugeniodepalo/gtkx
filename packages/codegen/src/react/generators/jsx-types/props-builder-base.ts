@@ -6,10 +6,10 @@
  */
 
 import type { InterfaceDeclarationBuilder } from "../../../builders/index.js";
-import type { PropertyAnalysis, SignalAnalysis, SignalParam } from "../../../core/generator-types.js";
-import { sanitizeDoc } from "../../../core/utils/doc-formatter.js";
-import { toPascalCase } from "../../../core/utils/naming.js";
-import { qualifyType } from "../../../core/utils/type-qualification.js";
+import type { PropertyAnalysis, SignalAnalysis, SignalParam } from "../../../generator-types.js";
+import { sanitizeDoc } from "../../../utils/doc-formatter.js";
+import { toPascalCase } from "../../../utils/naming.js";
+import { qualifyType } from "../../../utils/type-qualification.js";
 
 export type PropInfo = {
     name: string;

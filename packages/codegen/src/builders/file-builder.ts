@@ -1,8 +1,8 @@
-import { FfiDescriptorRegistry } from "../core/writers/descriptor-registry.js";
+import { FfiDescriptorRegistry } from "../ffi-emitters/descriptor-registry.js";
 import { raw } from "./declarations/raw.js";
 import { ImportRegistry } from "./import-registry.js";
+import { Writer } from "./text-writer.js";
 import type { Builder } from "./types.js";
-import { Writer } from "./writer.js";
 
 /**
  * Builds a complete source file with an import section, an optional FFI-

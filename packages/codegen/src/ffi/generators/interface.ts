@@ -7,26 +7,26 @@
 
 import type { FileBuilder } from "../../builders/file-builder.js";
 import { classDecl, interfaceDecl, namespaceDecl } from "../../builders/index.js";
-import type { FfiGeneratorOptions } from "../../core/generator-types.js";
-import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
-import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
-import {
-    collectGObjectMethodNames,
-    collectInterfaceMembers,
-    collectInterfaceReachableVirtualMethodNames,
-} from "../../core/utils/class-traversal.js";
-import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
-import { partitionSupportedFunctions, partitionSupportedMethods } from "../../core/utils/filtering.js";
-import { generateConflictingMethodName, toCamelCase, toKebabCase, toPascalCase } from "../../core/utils/naming.js";
-import { splitQualifiedName } from "../../core/utils/qualified-name.js";
 import {
     addMethodStructure,
     buildCallableStructures,
     createMethodBodyWriter,
     type MethodBodyWriter,
     type MethodStructure,
-} from "../../core/writers/index.js";
+} from "../../ffi-emitters/index.js";
+import type { FfiGeneratorOptions } from "../../generator-types.js";
 import type { GirInterface, GirMethod, GirProperty, GirRepository } from "../../gir/index.js";
+import type { FfiMapper } from "../../type-system/ffi-mapper.js";
+import { SELF_TYPE_GOBJECT } from "../../type-system/ffi-types.js";
+import {
+    collectGObjectMethodNames,
+    collectInterfaceMembers,
+    collectInterfaceReachableVirtualMethodNames,
+} from "../../utils/class-traversal.js";
+import { buildJsDocStructure } from "../../utils/doc-formatter.js";
+import { partitionSupportedFunctions, partitionSupportedMethods } from "../../utils/filtering.js";
+import { generateConflictingMethodName, toCamelCase, toKebabCase, toPascalCase } from "../../utils/naming.js";
+import { splitQualifiedName } from "../../utils/qualified-name.js";
 import { methodStructureStrategy, staticFunctionStructureStrategy } from "./callable-strategies.js";
 import { PropertyAccessorBuilder, type PropertyAccessorEmission } from "./class/property-accessor-builder.js";
 

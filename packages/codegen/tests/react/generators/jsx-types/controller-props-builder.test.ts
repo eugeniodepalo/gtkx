@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder, stringify } from "../../../../src/builders/index.js";
-import type { CodegenControllerMeta } from "../../../../src/core/codegen-metadata.js";
+import type { CodegenControllerMeta } from "../../../../src/codegen-metadata.js";
 import { ControllerPropsBuilder } from "../../../../src/react/generators/jsx-types/controller-props-builder.js";
 import { createPropertyAnalysis, createSignalAnalysis } from "../../../fixtures/metadata-fixtures.js";
 

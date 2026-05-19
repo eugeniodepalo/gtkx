@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
-import { Writer } from "../../../../src/builders/writer.js";
-import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
+import { Writer } from "../../../../src/builders/text-writer.js";
 import { FieldBuilder } from "../../../../src/ffi/generators/record/field-builder.js";
 import type { GirRepository } from "../../../../src/gir/index.js";
+import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
 import {
     createNormalizedField,
     createNormalizedNamespace,

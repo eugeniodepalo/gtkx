@@ -5,18 +5,14 @@
  * Handles struct memory layout calculations, including nested structs.
  */
 
-import type { Writer } from "../../../builders/writer.js";
-import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import {
-    getPrimitiveTypeSize,
-    isMemoryWritableType,
-    isPrimitiveFieldType,
-} from "../../../core/type-system/ffi-types.js";
-import { toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
-import { isGeneratableFieldType as isGeneratableFieldTypeUtil } from "../../../core/utils/record-filter.js";
-import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
-import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
+import type { Writer } from "../../../builders/text-writer.js";
+import { writeFfiTypeExpression } from "../../../ffi-emitters/ffi-type-expression.js";
+import { addTypeImports, type ImportCollector } from "../../../ffi-emitters/index.js";
 import type { GirField, GirRecord, GirRepository } from "../../../gir/index.js";
+import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
+import { getPrimitiveTypeSize, isMemoryWritableType, isPrimitiveFieldType } from "../../../type-system/ffi-types.js";
+import { toCamelCase, toValidMemberName } from "../../../utils/naming.js";
+import { isGeneratableFieldType as isGeneratableFieldTypeUtil } from "../../../utils/record-filter.js";
 
 /**
  * Field layout information.

@@ -1,6 +1,6 @@
-import { CONSOLIDATED_RUNTIME_SPECIFIERS, RUNTIME_SPECIFIER } from "../core/writers/runtime-imports.js";
+import { CONSOLIDATED_RUNTIME_SPECIFIERS, RUNTIME_SPECIFIER } from "../ffi-emitters/runtime-imports.js";
+import type { Writer } from "./text-writer.js";
 import type { Builder } from "./types.js";
-import type { Writer } from "./writer.js";
 
 type ImportEntry = {
     names: Set<string>;

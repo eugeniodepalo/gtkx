@@ -1,4 +1,4 @@
-import type { CodegenWidgetMeta } from "../core/codegen-metadata.js";
+import type { CodegenWidgetMeta } from "../codegen-metadata.js";
 
 const WIDGET_PRIORITY: Record<string, number> = {
     Widget: 0,

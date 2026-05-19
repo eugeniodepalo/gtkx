@@ -11,4 +11,4 @@ export { ConstructorBuilder, constructorDecl } from "./members/constructor.js";
 export { method, type OverloadSignature } from "./members/method.js";
 export { param } from "./members/parameter.js";
 export { stringify } from "./stringify.js";
-export { Writer } from "./writer.js";
+export { Writer } from "./text-writer.js";

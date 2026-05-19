@@ -4,18 +4,18 @@
  * Builds static function code for classes.
  */
 
-import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
-import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { partitionSupportedFunctions } from "../../../core/utils/filtering.js";
-import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import {
     buildCallableStructures,
     createMethodBodyWriter,
     type ImportCollector,
     type MethodBodyWriter,
     type MethodStructure,
-} from "../../../core/writers/index.js";
+} from "../../../ffi-emitters/index.js";
+import type { FfiGeneratorOptions } from "../../../generator-types.js";
 import type { GirClass, GirFunction } from "../../../gir/index.js";
+import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
+import { partitionSupportedFunctions } from "../../../utils/filtering.js";
+import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../utils/naming.js";
 import { staticFunctionStructureStrategy } from "../callable-strategies.js";
 
 function collectParentStaticFunctionNames(cls: GirClass): Set<string> {

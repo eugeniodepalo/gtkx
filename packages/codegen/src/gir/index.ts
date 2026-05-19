@@ -6,7 +6,7 @@
  *
  * @example
  * ```typescript
- * import { loadGir } from "../gir/index.js";
+ * import { loadGir } from "./index.js";
  *
  * const { repository } = await loadGir(["Gtk-4.0"], ["/usr/share/gir-1.0"]);
  *

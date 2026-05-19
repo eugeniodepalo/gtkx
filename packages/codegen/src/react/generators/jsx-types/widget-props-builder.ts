@@ -7,8 +7,8 @@
 
 import type { InterfaceDeclarationBuilder } from "../../../builders/index.js";
 import { interfaceDecl } from "../../../builders/index.js";
-import type { PropertyAnalysis, SignalAnalysis } from "../../../core/generator-types.js";
-import { toPascalCase } from "../../../core/utils/naming.js";
+import type { PropertyAnalysis, SignalAnalysis } from "../../../generator-types.js";
+import { toPascalCase } from "../../../utils/naming.js";
 import type { JsxWidget } from "./generator.js";
 import { type PropInfo, PropsBuilderBase } from "./props-builder-base.js";
 

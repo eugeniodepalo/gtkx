@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../src/builders/file-builder.js";
 import { stringify } from "../../../src/builders/stringify.js";
-import { FfiMapper } from "../../../src/core/type-system/ffi-mapper.js";
 import { RecordGenerator } from "../../../src/ffi/generators/record/index.js";
+import { FfiMapper } from "../../../src/type-system/ffi-mapper.js";
 import {
     createNormalizedCallback,
     createNormalizedConstructor,

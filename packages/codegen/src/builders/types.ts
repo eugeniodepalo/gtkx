@@ -1,4 +1,4 @@
-import type { Writer } from "./writer.js";
+import type { Writer } from "./text-writer.js";
 
 /**
  * Core interface for all code generation builders. Implementors emit

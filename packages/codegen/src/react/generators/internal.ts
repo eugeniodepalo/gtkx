@@ -7,9 +7,9 @@
 
 import type { FileBuilder } from "../../builders/index.js";
 import { raw, variableStatement } from "../../builders/index.js";
-import type { Writer } from "../../builders/writer.js";
-import type { CodegenControllerMeta } from "../../core/codegen-metadata.js";
-import type { PropertyAnalysis, SignalAnalysis } from "../../core/generator-types.js";
+import type { Writer } from "../../builders/text-writer.js";
+import type { CodegenControllerMeta } from "../../codegen-metadata.js";
+import type { PropertyAnalysis, SignalAnalysis } from "../../generator-types.js";
 
 import { type MetadataReader, sortWidgetsByClassName } from "../metadata-reader.js";
 

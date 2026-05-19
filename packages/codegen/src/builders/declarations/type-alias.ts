@@ -1,7 +1,7 @@
 import { writeJsDoc } from "../members/doc.js";
+import type { Writer } from "../text-writer.js";
 import type { Builder, Writable } from "../types.js";
 import { writeWritable } from "../types.js";
-import type { Writer } from "../writer.js";
 
 /** Configuration options for a type alias declaration. */
 export type TypeAliasOptions = {

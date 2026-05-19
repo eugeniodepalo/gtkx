@@ -7,21 +7,21 @@
  * dispatches based on metadata registered via `registerConstructionMeta`.
  */
 
-import type { Writer } from "../../../builders/writer.js";
-import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
-import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import type { FfiTypeDescriptor, MappedType } from "../../../core/type-system/ffi-types.js";
-import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { kebabToSnake, normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
-import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
+import type { Writer } from "../../../builders/text-writer.js";
+import { writeFfiTypeExpression } from "../../../ffi-emitters/ffi-type-expression.js";
 import {
     addTypeImports,
     createMethodBodyWriter,
     type ImportCollector,
     type MethodBodyWriter,
     type MethodStructure,
-} from "../../../core/writers/index.js";
+} from "../../../ffi-emitters/index.js";
+import type { FfiGeneratorOptions } from "../../../generator-types.js";
 import type { GirClass, GirConstructor, GirProperty, GirRepository } from "../../../gir/index.js";
+import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
+import type { FfiTypeDescriptor, MappedType } from "../../../type-system/ffi-types.js";
+import { buildJsDocStructure } from "../../../utils/doc-formatter.js";
+import { kebabToSnake, normalizeClassName, toCamelCase, toValidIdentifier } from "../../../utils/naming.js";
 
 type SettablePropParam = {
     paramName: string;

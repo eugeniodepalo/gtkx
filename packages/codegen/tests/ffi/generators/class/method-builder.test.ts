@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
-import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
-import { fundamentalSelfType, SELF_TYPE_GOBJECT } from "../../../../src/core/type-system/ffi-types.js";
 import { MethodBuilder } from "../../../../src/ffi/generators/class/method-builder.js";
+import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
+import { fundamentalSelfType, SELF_TYPE_GOBJECT } from "../../../../src/type-system/ffi-types.js";
 import {
     createNormalizedMethod,
     createNormalizedNamespace,

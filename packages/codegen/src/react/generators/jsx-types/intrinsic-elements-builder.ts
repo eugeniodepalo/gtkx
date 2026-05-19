@@ -7,9 +7,9 @@
 
 import type { FileBuilder } from "../../../builders/index.js";
 import { raw, typeAlias, variableStatement } from "../../../builders/index.js";
-import type { CodegenControllerMeta } from "../../../core/codegen-metadata.js";
-import { formatJsDoc } from "../../../core/utils/doc-formatter.js";
-import { toCamelCase } from "../../../core/utils/naming.js";
+import type { CodegenControllerMeta } from "../../../codegen-metadata.js";
+import { formatJsDoc } from "../../../utils/doc-formatter.js";
+import { toCamelCase } from "../../../utils/naming.js";
 import type { JsxWidget } from "./generator.js";
 
 export class IntrinsicElementsBuilder {

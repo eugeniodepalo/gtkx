@@ -1,4 +1,4 @@
-import type { Writer } from "../writer.js";
+import type { Writer } from "../text-writer.js";
 
 /** Write a JSDoc comment block to the writer. Single-line docs use inline format; multi-line docs use block format. */
 export function writeJsDoc(writer: Writer, doc: string | undefined): void {

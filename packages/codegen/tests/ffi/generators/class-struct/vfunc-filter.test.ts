@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
 import { classifyVfunc } from "../../../../src/ffi/generators/class-struct/vfunc-filter.js";
+import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
 import {
     createNormalizedCallback,
     createNormalizedField,

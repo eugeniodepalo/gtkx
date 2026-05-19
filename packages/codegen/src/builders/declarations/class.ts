@@ -2,8 +2,8 @@ import type { AccessorBuilder } from "../members/accessor.js";
 import type { ConstructorBuilder } from "../members/constructor.js";
 import { writeJsDoc } from "../members/doc.js";
 import type { MethodBuilder } from "../members/method.js";
+import type { Writer } from "../text-writer.js";
 import type { Builder } from "../types.js";
-import type { Writer } from "../writer.js";
 
 /** Configuration options for a class declaration. */
 export type ClassOptions = {

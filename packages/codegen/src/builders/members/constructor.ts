@@ -1,5 +1,5 @@
+import type { Writer } from "../text-writer.js";
 import type { Builder } from "../types.js";
-import type { Writer } from "../writer.js";
 import { type BodyContent, writeBody } from "./body.js";
 import type { OverloadSignature } from "./method.js";
 import type { ParameterBuilder } from "./parameter.js";

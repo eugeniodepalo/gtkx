@@ -18,13 +18,13 @@
 
 import type { FileBuilder } from "../../../builders/file-builder.js";
 import { variableStatement } from "../../../builders/index.js";
-import type { Writer } from "../../../builders/writer.js";
-import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
-import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
-import { log } from "../../../core/utils/progress.js";
-import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
+import type { Writer } from "../../../builders/text-writer.js";
+import { writeFfiTypeExpression } from "../../../ffi-emitters/ffi-type-expression.js";
+import type { FfiGeneratorOptions } from "../../../generator-types.js";
 import type { GirField, GirRecord, GirRepository } from "../../../gir/index.js";
+import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
+import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../utils/naming.js";
+import { log } from "../../../utils/progress.js";
 import { FieldBuilder } from "../record/field-builder.js";
 import { classifyVfunc, VFUNC_SKIP_REASON_LABEL } from "./vfunc-filter.js";
 

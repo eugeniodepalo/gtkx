@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { FfiMapper } from "../../../src/core/type-system/ffi-mapper.js";
 import type { GirNamespace, GirRepository } from "../../../src/gir/index.js";
 import {
     buildAsyncEntries,
@@ -23,6 +22,7 @@ import {
     findConnectMethodDeclarer,
     isKeyedHashTable,
 } from "../../../src/pipelines/types/pipeline.js";
+import { FfiMapper } from "../../../src/type-system/ffi-mapper.js";
 import {
     createNormalizedClass,
     createNormalizedConstant,

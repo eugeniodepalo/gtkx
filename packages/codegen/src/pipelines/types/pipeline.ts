@@ -3,19 +3,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GenerationHandler } from "@ts-for-gir/cli";
 import { GeneratorType } from "@ts-for-gir/generator-base";
-import { FfiMapper } from "../../core/type-system/ffi-mapper.js";
+import type { GirNamespace, GirRepository, LoadedGir } from "../../gir/index.js";
+import type { GirMethod } from "../../gir/model/callables.js";
+import type { GirType } from "../../gir/model/type.js";
+import { FfiMapper } from "../../type-system/ffi-mapper.js";
 import {
     type AsyncCapableCallable,
     collectAsyncCallablePairs,
     findAsyncReadyCallbackParameter,
     resolveFinishCallableName,
-} from "../../core/utils/async-callable.js";
-import { collectParentMethodNames } from "../../core/utils/class-traversal.js";
-import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
-import { isClassVtable } from "../../core/utils/record-filter.js";
-import type { GirNamespace, GirRepository, LoadedGir } from "../../gir/index.js";
-import type { GirMethod } from "../../gir/model/callables.js";
-import type { GirType } from "../../gir/model/type.js";
+} from "../../utils/async-callable.js";
+import { collectParentMethodNames } from "../../utils/class-traversal.js";
+import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../utils/naming.js";
+import { isClassVtable } from "../../utils/record-filter.js";
 import {
     type AsyncMemberEntry,
     type AsyncMemberMap,

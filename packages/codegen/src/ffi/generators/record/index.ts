@@ -10,9 +10,18 @@
 
 import type { FileBuilder } from "../../../builders/file-builder.js";
 import { accessor, type ClassDeclarationBuilder, classDecl, constructorDecl, param } from "../../../builders/index.js";
-import type { Writer } from "../../../builders/writer.js";
-import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
-import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
+import type { Writer } from "../../../builders/text-writer.js";
+import { writeFfiTypeExpression } from "../../../ffi-emitters/ffi-type-expression.js";
+import {
+    addMethodStructure,
+    addTypeImports,
+    createMethodBodyWriter,
+    type MethodBodyWriter,
+    type MethodStructure,
+} from "../../../ffi-emitters/index.js";
+import type { FfiGeneratorOptions } from "../../../generator-types.js";
+import type { GirField, GirFunction, GirMethod, GirRecord, GirRepository } from "../../../gir/index.js";
+import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
 import {
     boxedSelfType,
     type FfiTypeDescriptor,
@@ -23,21 +32,12 @@ import {
     SELF_TYPE_GOBJECT,
     type SelfTypeDescriptor,
     UNSAFE_PRIMITIVE_NAMES,
-} from "../../../core/type-system/ffi-types.js";
-import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../../core/utils/async-callable.js";
-import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { partitionSupportedFunctions, partitionSupportedMethods } from "../../../core/utils/filtering.js";
-import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
-import { canAllocateRecord } from "../../../core/utils/record-filter.js";
-import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
-import {
-    addMethodStructure,
-    addTypeImports,
-    createMethodBodyWriter,
-    type MethodBodyWriter,
-    type MethodStructure,
-} from "../../../core/writers/index.js";
-import type { GirField, GirFunction, GirMethod, GirRecord, GirRepository } from "../../../gir/index.js";
+} from "../../../type-system/ffi-types.js";
+import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../../utils/async-callable.js";
+import { buildJsDocStructure } from "../../../utils/doc-formatter.js";
+import { partitionSupportedFunctions, partitionSupportedMethods } from "../../../utils/filtering.js";
+import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../utils/naming.js";
+import { canAllocateRecord } from "../../../utils/record-filter.js";
 import { FieldBuilder } from "./field-builder.js";
 
 type RecordTypeMeta = {

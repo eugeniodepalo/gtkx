@@ -1,4 +1,4 @@
-import type { Writer } from "../writer.js";
+import type { Writer } from "../text-writer.js";
 
 /** Content for a method/constructor/accessor body: literal lines or an explicit writer callback. */
 export type BodyContent = string[] | ((writer: Writer) => void);

@@ -4,18 +4,18 @@
  * Builds instance method code for classes.
  */
 
-import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
-import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import type { SelfTypeDescriptor } from "../../../core/type-system/ffi-types.js";
-import { partitionSupportedMethods } from "../../../core/utils/filtering.js";
 import {
     buildCallableStructures,
     createMethodBodyWriter,
     type ImportCollector,
     type MethodBodyWriter,
     type MethodStructure,
-} from "../../../core/writers/index.js";
+} from "../../../ffi-emitters/index.js";
+import type { FfiGeneratorOptions } from "../../../generator-types.js";
 import type { GirMethod, GirParameter } from "../../../gir/index.js";
+import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
+import type { SelfTypeDescriptor } from "../../../type-system/ffi-types.js";
+import { partitionSupportedMethods } from "../../../utils/filtering.js";
 import { methodStructureStrategy } from "../callable-strategies.js";
 
 /**

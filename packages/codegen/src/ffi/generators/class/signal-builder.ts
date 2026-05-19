@@ -9,31 +9,31 @@
  * every class.
  */
 
-import type { Writer } from "../../../builders/writer.js";
-import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
-import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import type { FfiTypeDescriptor, MappedType } from "../../../core/type-system/ffi-types.js";
-import { collectDirectMembers, collectParentSignalNames } from "../../../core/utils/class-traversal.js";
-import { filterVarargs } from "../../../core/utils/filtering.js";
-import { jsStringLiteral } from "../../../core/utils/js-literal.js";
-import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
-import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
-import type { FfiDescriptorRegistry } from "../../../core/writers/descriptor-registry.js";
-import { writeFfiTypeExpression } from "../../../core/writers/ffi-type-expression.js";
+import type { Writer } from "../../../builders/text-writer.js";
+import type { FfiDescriptorRegistry } from "../../../ffi-emitters/descriptor-registry.js";
+import { writeFfiTypeExpression } from "../../../ffi-emitters/ffi-type-expression.js";
 import {
     addTypeImports,
     createMethodBodyWriter,
     type ImportCollector,
     type MethodBodyWriter,
     type MethodStructure,
-} from "../../../core/writers/index.js";
+} from "../../../ffi-emitters/index.js";
 import {
     needsParamWrap,
     needsReturnUnwrap,
     type ParamWrapInfo,
     writeWrapExpression,
-} from "../../../core/writers/param-wrap-writer.js";
+} from "../../../ffi-emitters/param-wrap-writer.js";
+import type { FfiGeneratorOptions } from "../../../generator-types.js";
 import type { GirClass, GirParameter, GirRepository, GirSignal } from "../../../gir/index.js";
+import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
+import type { FfiTypeDescriptor, MappedType } from "../../../type-system/ffi-types.js";
+import { collectDirectMembers, collectParentSignalNames } from "../../../utils/class-traversal.js";
+import { filterVarargs } from "../../../utils/filtering.js";
+import { jsStringLiteral } from "../../../utils/js-literal.js";
+import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../utils/naming.js";
+import { splitQualifiedName } from "../../../utils/qualified-name.js";
 
 type SignalParamData = {
     mapped: MappedType;

@@ -13,24 +13,24 @@
 
 import { accessor } from "../../../builders/index.js";
 import type { AccessorBuilder } from "../../../builders/members/accessor.js";
-import type { Writer } from "../../../builders/writer.js";
-import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
-import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
+import type { Writer } from "../../../builders/text-writer.js";
+import { addTypeImports, type ImportCollector } from "../../../ffi-emitters/index.js";
+import type { FfiGeneratorOptions } from "../../../generator-types.js";
+import type { GirClass, GirMethod, GirProperty, GirRepository } from "../../../gir/index.js";
+import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
 import {
     getSyntheticGetterPrimitiveInfo,
     getSyntheticSetterPrimitiveInfo,
     type MappedType,
-} from "../../../core/type-system/ffi-types.js";
+} from "../../../type-system/ffi-types.js";
 import {
     collectDirectMembers,
     collectParentMethodNames,
     collectParentPropertyNames,
     collectReachableVirtualMethodNames,
-} from "../../../core/utils/class-traversal.js";
-import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { toCamelCase } from "../../../core/utils/naming.js";
-import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
-import type { GirClass, GirMethod, GirProperty, GirRepository } from "../../../gir/index.js";
+} from "../../../utils/class-traversal.js";
+import { buildJsDocStructure } from "../../../utils/doc-formatter.js";
+import { toCamelCase } from "../../../utils/naming.js";
 
 /**
  * A single property binding expressed as an ES6 `get`/`set` accessor pair

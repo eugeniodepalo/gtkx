@@ -7,8 +7,8 @@
 
 import type { InterfaceDeclarationBuilder } from "../../../builders/index.js";
 import { interfaceDecl } from "../../../builders/index.js";
-import type { CodegenControllerMeta } from "../../../core/codegen-metadata.js";
-import { toPascalCase } from "../../../core/utils/naming.js";
+import type { CodegenControllerMeta } from "../../../codegen-metadata.js";
+import { toPascalCase } from "../../../utils/naming.js";
 import { type PropInfo, PropsBuilderBase } from "./props-builder-base.js";
 
 export class ControllerPropsBuilder extends PropsBuilderBase {

@@ -1,5 +1,5 @@
+import type { Writer } from "../text-writer.js";
 import type { Builder } from "../types.js";
-import type { Writer } from "../writer.js";
 
 /** Builder that emits a raw text string verbatim without any transformation. */
 export class RawStatement implements Builder {

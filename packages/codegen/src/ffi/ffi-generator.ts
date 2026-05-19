@@ -8,14 +8,14 @@
 
 import { type FileBuilder, fileBuilder } from "../builders/file-builder.js";
 import { stringify } from "../builders/stringify.js";
-import { CodegenMetadata } from "../core/codegen-metadata.js";
-import type { GeneratedFile } from "../core/generated-file-set.js";
-import type { FfiGeneratorOptions } from "../core/generator-types.js";
-import { FfiMapper } from "../core/type-system/ffi-mapper.js";
-import { normalizeClassName, toCamelCase, toPascalCase, toValidExportName } from "../core/utils/naming.js";
-import { splitQualifiedName } from "../core/utils/qualified-name.js";
-import { isClassVtable, shouldGenerateRecord } from "../core/utils/record-filter.js";
+import { CodegenMetadata } from "../codegen-metadata.js";
+import type { GeneratedFile } from "../generated-file-set.js";
+import type { FfiGeneratorOptions } from "../generator-types.js";
 import type { GirClass, GirNamespace, GirRepository } from "../gir/index.js";
+import { FfiMapper } from "../type-system/ffi-mapper.js";
+import { normalizeClassName, toCamelCase, toPascalCase, toValidExportName } from "../utils/naming.js";
+import { splitQualifiedName } from "../utils/qualified-name.js";
+import { isClassVtable, shouldGenerateRecord } from "../utils/record-filter.js";
 import { AliasGenerator } from "./generators/alias.js";
 import { CallbackGenerator } from "./generators/callback.js";
 import { ClassGenerator } from "./generators/class/index.js";

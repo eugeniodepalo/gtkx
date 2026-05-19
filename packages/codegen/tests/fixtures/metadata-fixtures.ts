@@ -1,6 +1,6 @@
-import type { CodegenWidgetMeta } from "../../src/core/codegen-metadata.js";
-import { getHiddenPropNames } from "../../src/core/config/index.js";
-import type { PropertyAnalysis, SignalAnalysis } from "../../src/core/generator-types.js";
+import type { CodegenWidgetMeta } from "../../src/codegen-metadata.js";
+import { getHiddenPropNames } from "../../src/config/index.js";
+import type { PropertyAnalysis, SignalAnalysis } from "../../src/generator-types.js";
 
 export function createPropertyAnalysis(overrides: Partial<PropertyAnalysis> = {}): PropertyAnalysis {
     return {

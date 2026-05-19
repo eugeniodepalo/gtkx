@@ -5,6 +5,7 @@
  * Delegates to specialized builders for each component.
  */
 
+import { PropertyAnalyzer, SignalAnalyzer } from "../../../analyzers/index.js";
 import type { FileBuilder } from "../../../builders/file-builder.js";
 import {
     type ClassDeclarationBuilder,
@@ -15,32 +16,27 @@ import {
     namespaceDecl,
     param,
 } from "../../../builders/index.js";
-import { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
-import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
-import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
-import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import {
-    fundamentalSelfType,
-    SELF_TYPE_GOBJECT,
-    type SelfTypeDescriptor,
-} from "../../../core/type-system/ffi-types.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../codegen-metadata.js";
+import { addMethodStructure, type MethodStructure } from "../../../ffi-emitters/index.js";
+import type { FfiGeneratorOptions } from "../../../generator-types.js";
+import type { GirClass, GirMethod, GirRepository } from "../../../gir/index.js";
+import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
+import { fundamentalSelfType, SELF_TYPE_GOBJECT, type SelfTypeDescriptor } from "../../../type-system/ffi-types.js";
 import {
     collectParentFactoryMethodNames,
     collectParentMethodNames,
     collectReachableVirtualMethodNames,
-} from "../../../core/utils/class-traversal.js";
-import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
+} from "../../../utils/class-traversal.js";
+import { buildJsDocStructure } from "../../../utils/doc-formatter.js";
 import {
     generateConflictingMethodName,
     normalizeClassName,
     toCamelCase,
     toKebabCase,
     toPascalCase,
-} from "../../../core/utils/naming.js";
-import { type ParentInfo, parseParentReference } from "../../../core/utils/parent-reference.js";
-import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
-import { addMethodStructure, type MethodStructure } from "../../../core/writers/index.js";
-import type { GirClass, GirMethod, GirRepository } from "../../../gir/index.js";
+} from "../../../utils/naming.js";
+import { type ParentInfo, parseParentReference } from "../../../utils/parent-reference.js";
+import { splitQualifiedName } from "../../../utils/qualified-name.js";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
 import { ClassStructStaticBuilder } from "./class-struct-static-builder.js";
 import { ConstructorBuilder } from "./constructor-builder.js";

@@ -1,6 +1,6 @@
 import { writeJsDoc } from "../members/doc.js";
+import type { Writer } from "../text-writer.js";
 import type { Builder } from "../types.js";
-import type { Writer } from "../writer.js";
 
 /** A single member within an enum declaration. */
 export type EnumMember = {

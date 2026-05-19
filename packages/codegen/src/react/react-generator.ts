@@ -8,8 +8,8 @@
  */
 
 import { fileBuilder, stringify } from "../builders/index.js";
-import type { CodegenControllerMeta, CodegenWidgetMeta } from "../core/codegen-metadata.js";
-import type { GeneratedFile } from "../core/generated-file-set.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../codegen-metadata.js";
+import type { GeneratedFile } from "../generated-file-set.js";
 import { CompoundsGenerator } from "./generators/compounds-generator.js";
 import { InternalGenerator } from "./generators/internal.js";
 import { JsxTypesGenerator } from "./generators/jsx-types/index.js";

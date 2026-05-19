@@ -10,15 +10,15 @@
 
 import type { FileBuilder } from "../../builders/index.js";
 import { raw } from "../../builders/index.js";
-import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../core/codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../codegen-metadata.js";
 import {
     type CompoundChildrenConfig,
     getCompoundChildren,
     getContainerMethodNames,
     getRenderableSlotNames,
-} from "../../core/config/index.js";
-import { formatJsDoc } from "../../core/utils/doc-formatter.js";
-import { toCamelCase, toPascalCase } from "../../core/utils/naming.js";
+} from "../../config/index.js";
+import { formatJsDoc } from "../../utils/doc-formatter.js";
+import { toCamelCase, toPascalCase } from "../../utils/naming.js";
 import type { MetadataReader } from "../metadata-reader.js";
 
 const LIST_WIDGET_NAMES = new Set(["GtkListView", "GtkGridView", "GtkColumnView", "GtkDropDown", "AdwComboRow"]);

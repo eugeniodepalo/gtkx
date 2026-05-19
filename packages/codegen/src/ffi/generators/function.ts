@@ -5,15 +5,15 @@
  */
 
 import { type FileBuilder, variableStatement, type Writer } from "../../builders/index.js";
-import type { FfiGeneratorOptions } from "../../core/generator-types.js";
-import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
-import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
-import { formatJsDoc } from "../../core/utils/doc-formatter.js";
-import { hasVarargs, partitionSupportedFunctions } from "../../core/utils/filtering.js";
-import { jsStringLiteral } from "../../core/utils/js-literal.js";
-import { toCamelCase, toValidExportName } from "../../core/utils/naming.js";
-import { addTypeImports, createMethodBodyWriter, type MethodBodyWriter } from "../../core/writers/index.js";
+import { addTypeImports, createMethodBodyWriter, type MethodBodyWriter } from "../../ffi-emitters/index.js";
+import type { FfiGeneratorOptions } from "../../generator-types.js";
 import type { GirFunction } from "../../gir/index.js";
+import type { FfiMapper } from "../../type-system/ffi-mapper.js";
+import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../utils/async-callable.js";
+import { formatJsDoc } from "../../utils/doc-formatter.js";
+import { hasVarargs, partitionSupportedFunctions } from "../../utils/filtering.js";
+import { jsStringLiteral } from "../../utils/js-literal.js";
+import { toCamelCase, toValidExportName } from "../../utils/naming.js";
 
 /**
  * Generates standalone exported functions into a FileBuilder.

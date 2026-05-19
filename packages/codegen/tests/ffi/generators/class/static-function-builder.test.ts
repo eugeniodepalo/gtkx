@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
-import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
 import { StaticFunctionBuilder } from "../../../../src/ffi/generators/class/static-function-builder.js";
+import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
 import {
     createNormalizedClass,
     createNormalizedFunction,
