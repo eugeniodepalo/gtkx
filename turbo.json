@@ -16,6 +16,11 @@
         "LIBGL_ALWAYS_SOFTWARE"
     ],
     "tasks": {
+        // Knip resolves cross-package imports through each package's `exports`
+        // field (which points into `dist/`); without these build dependencies,
+        // knip reports false-positive "unused dependency" findings for any
+        // workspace consumer that imports from a sibling package. New packages
+        // must be added here, or they silently drop out of the build chain.
         "//#lint:all": {
             "dependsOn": [
                 "@gtkx/cli#build",
@@ -29,7 +34,6 @@
                 "@gtkx/vitest#build"
             ],
             "inputs": ["**/*.ts", "**/*.tsx", "**/package.json", "biome.json", "knip.json"],
-            "outputs": [],
             "outputLogs": "new-only"
         },
         "lint": {
