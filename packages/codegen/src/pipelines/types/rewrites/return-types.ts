@@ -96,7 +96,7 @@ export function relaxMultiReturnTuples(source: string): string {
     return parts.join("");
 }
 
-const OPTIONAL_INOUT_RETURN = /\(((?:[^\n)]|\)(?!: \/\* ))*)\): (\/\* (\w+) \*\/ [\w.]+)(?<suffix>(?:\[\])?)(?=\r?\n)/g;
+const OPTIONAL_INOUT_RETURN = /\): \/\* (\w+) \*\/ [\w.]+(?:\[\])?(?=\r?\n)/g;
 
 /**
  * Relaxes the return type of a callable whose sole out/inout-derived return
@@ -114,12 +114,12 @@ const OPTIONAL_INOUT_RETURN = /\(((?:[^\n)]|\)(?!: \/\* ))*)\): (\/\* (\w+) \*\/
  * @returns The source with optional-inout returns made nullable.
  */
 export function relaxOptionalInoutReturns(source: string): string {
-    return source.replace(
-        OPTIONAL_INOUT_RETURN,
-        (match, params: string, returnType: string, paramName: string, suffix: string) => {
-            const optionalParam = new RegExp(String.raw`\b${escapeRegExp(paramName)}\?:`);
-            if (!optionalParam.test(params)) return match;
-            return `(${params}): ${returnType}${suffix} | null`;
-        },
-    );
+    return source.replace(OPTIONAL_INOUT_RETURN, (match, paramName: string, offset: number) => {
+        const lineStart = source.lastIndexOf("\n", offset) + 1;
+        const openParen = source.indexOf("(", lineStart);
+        if (openParen < 0 || openParen >= offset) return match;
+        const params = source.slice(openParen + 1, offset);
+        const optionalParam = new RegExp(String.raw`\b${escapeRegExp(paramName)}\?:`);
+        return optionalParam.test(params) ? `${match} | null` : match;
+    });
 }
