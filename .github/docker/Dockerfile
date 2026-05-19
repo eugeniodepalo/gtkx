@@ -48,6 +48,10 @@ RUN /usr/local/cargo/bin/rustup toolchain install nightly --profile minimal --co
 RUN /usr/local/cargo/bin/cargo install cargo-llvm-cov --locked \
     && chmod -R a+rwX $CARGO_HOME
 
+RUN npm install -g turbo@2.9.14
+
+RUN find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete
+
 ENV RUSTUP_TOOLCHAIN=stable
 ENV CARGO_INCREMENTAL=0
 ENV CARGO_NET_RETRY=10

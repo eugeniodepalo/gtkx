@@ -10,7 +10,7 @@
 
 import type { FileBuilder } from "../../builders/index.js";
 import { raw } from "../../builders/index.js";
-import type { CodegenControllerMeta } from "../../core/codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../core/codegen-metadata.js";
 import {
     type CompoundChildrenConfig,
     getCompoundChildren,
@@ -70,11 +70,16 @@ export class CompoundsGenerator {
     private collectCompounds(): void {
         if (this.compounds.length > 0) return;
 
+        const metaByClass = new Map<string, CodegenWidgetMeta>();
+        for (const meta of this.reader.getAllCodegenMeta()) {
+            metaByClass.set(`${meta.namespace}:${meta.className}`, meta);
+        }
+
         for (const meta of this.reader.getAllCodegenMeta()) {
             if (!this.namespaceNames.includes(meta.namespace)) continue;
             if (LIST_WIDGET_NAMES.has(meta.jsxName)) continue;
 
-            const renderableSlots = [...getRenderableSlotNames(meta.jsxName)];
+            const renderableSlots = this.collectRenderableSlots(meta, metaByClass);
             const containerMethods = [...getContainerMethodNames(meta.jsxName)];
             const children = getCompoundChildren(meta.jsxName);
 
@@ -108,6 +113,30 @@ export class CompoundsGenerator {
         }
 
         this.compounds.sort((a, b) => a.jsxName.localeCompare(b.jsxName));
+    }
+
+    /**
+     * Collects renderable slot names for a widget, walking its class hierarchy
+     * so subclasses inherit the renderable slots declared on their ancestors.
+     */
+    private collectRenderableSlots(
+        meta: CodegenWidgetMeta,
+        metaByClass: ReadonlyMap<string, CodegenWidgetMeta>,
+    ): string[] {
+        const slots = new Set<string>();
+
+        let current: CodegenWidgetMeta | undefined = meta;
+        while (current) {
+            for (const slot of getRenderableSlotNames(current.jsxName)) {
+                slots.add(slot);
+            }
+            current =
+                current.parentClassName && current.parentNamespace
+                    ? metaByClass.get(`${current.parentNamespace}:${current.parentClassName}`)
+                    : undefined;
+        }
+
+        return [...slots];
     }
 
     private addCompoundImports(file: FileBuilder): void {
