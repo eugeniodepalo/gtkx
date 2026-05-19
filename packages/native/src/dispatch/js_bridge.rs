@@ -6,6 +6,7 @@
 //! instrumentation — there is no JavaScript engine or libuv event loop in a
 //! `cargo test` process to exercise it against.
 
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, mpsc};
 
 use napi::bindgen_prelude::{FromNapiValue, Unknown};
@@ -98,6 +99,7 @@ impl Mailbox {
         args: Vec<Value>,
         capture_result: bool,
     ) -> anyhow::Result<Value> {
+        let callback_depth = self.callback_depth.load(Ordering::Acquire) + 1;
         let (tx, rx) = mpsc::channel();
 
         self.push_node_callback(NodeCallback {
@@ -111,16 +113,20 @@ impl Mailbox {
             tsfn.call((), ThreadsafeFunctionCallMode::NonBlocking);
         }
 
-        self.wait_for_node_result(&rx)
+        self.wait_for_node_result(&rx, callback_depth)
     }
 
+    /// Blocks the `GLib` thread until the node callback at `callback_depth`
+    /// produces a result, draining only `glib_inbox` tasks enqueued at that
+    /// depth or deeper — the nested calls the callback itself makes.
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn wait_for_node_result(
         &self,
         rx: &mpsc::Receiver<anyhow::Result<Value>>,
+        callback_depth: usize,
     ) -> anyhow::Result<Value> {
         loop {
-            self.dispatch_pending();
+            self.dispatch_pending_from_depth(callback_depth);
 
             match rx.try_recv() {
                 Ok(result) => return result,
@@ -145,7 +151,9 @@ impl Mailbox {
                 capture_result,
                 result_tx,
             } = pending;
+            self.enter_callback();
             let result = Self::execute_callback(env, &callback, args, capture_result);
+            self.leave_callback();
             if result_tx.send(result).is_err() {
                 NativeErrorReporter::global()
                     .report_str("Node callback completed but result channel was closed");

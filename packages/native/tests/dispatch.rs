@@ -244,3 +244,72 @@ fn dispatch_pending_drains_multiple_tasks_in_fifo_order() {
     let collected = order.lock().unwrap().clone();
     assert_eq!(collected, vec![0, 1, 2, 3, 4]);
 }
+
+#[test]
+fn dispatch_pending_from_depth_defers_top_level_tasks() {
+    let _guard = common::serial_guard();
+    common::ensure_gtk_init();
+    drain_pending();
+
+    let mailbox = Mailbox::global();
+    let counter = Arc::new(AtomicUsize::new(0));
+
+    let counter_clone = counter.clone();
+    mailbox.schedule_glib(Box::new(move || {
+        counter_clone.fetch_add(1, Ordering::SeqCst);
+    }));
+
+    assert!(!mailbox.dispatch_pending_from_depth(1));
+    assert_eq!(counter.load(Ordering::SeqCst), 0);
+
+    assert!(mailbox.dispatch_pending_from_depth(0));
+    assert_eq!(counter.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn dispatch_pending_from_depth_runs_nested_tasks() {
+    let _guard = common::serial_guard();
+    common::ensure_gtk_init();
+    drain_pending();
+
+    let mailbox = Mailbox::global();
+    let counter = Arc::new(AtomicUsize::new(0));
+
+    mailbox.enter_callback();
+    let counter_clone = counter.clone();
+    mailbox.schedule_glib(Box::new(move || {
+        counter_clone.fetch_add(1, Ordering::SeqCst);
+    }));
+    mailbox.leave_callback();
+
+    assert!(mailbox.dispatch_pending_from_depth(1));
+    assert_eq!(counter.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn dispatch_pending_from_depth_runs_deeper_task_before_shallower_one() {
+    let _guard = common::serial_guard();
+    common::ensure_gtk_init();
+    drain_pending();
+
+    let mailbox = Mailbox::global();
+    let order = Arc::new(std::sync::Mutex::new(Vec::<u32>::new()));
+
+    let order_top = order.clone();
+    mailbox.schedule_glib(Box::new(move || {
+        order_top.lock().unwrap().push(0);
+    }));
+
+    mailbox.enter_callback();
+    let order_nested = order.clone();
+    mailbox.schedule_glib(Box::new(move || {
+        order_nested.lock().unwrap().push(1);
+    }));
+    mailbox.leave_callback();
+
+    assert!(mailbox.dispatch_pending_from_depth(1));
+    assert_eq!(*order.lock().unwrap(), vec![1]);
+
+    assert!(mailbox.dispatch_pending());
+    assert_eq!(*order.lock().unwrap(), vec![1, 0]);
+}

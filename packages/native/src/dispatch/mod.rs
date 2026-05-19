@@ -7,11 +7,18 @@
 //! - `node_inbox`: callbacks pushed by the `GLib` thread for execution in the JS context.
 //!
 //! Each thread parks on its own wake signal while waiting for a response.
-//! Re-entrance falls out of the call stack: while a thread is parked waiting for
-//! a response from the other side, the wait loop also services any incoming
-//! requests on its own inbox. Cross-boundary calls therefore nest naturally
-//! to arbitrary depth without any explicit driver state, depth counter, or
-//! correlation id.
+//! Re-entrance follows the call stack: while a thread is parked waiting for a
+//! response from the other side, the wait loop services incoming requests on
+//! its own inbox so nested `GLib → JS → GLib` calls progress.
+//!
+//! `glib_inbox` tasks are tagged with the JS callback-nesting depth in effect
+//! when they were enqueued. A `GLib` thread parked inside a JS callback drains
+//! only tasks at or deeper than that callback's depth — the nested calls the
+//! callback itself makes. Shallower tasks (an unrelated mutation the JS thread
+//! queued at the top level) stay queued until the callback returns and the
+//! `GLib` thread unwinds to a safe point. This keeps a `Gtk.Window.destroy()`
+//! from running inside the `gtk_widget_render` of a draw callback, where it
+//! would free the window's renderer mid-frame.
 //!
 //! The [`Mailbox`] methods that cross into the JavaScript runtime — invoking JS
 //! callbacks, converting values through a [`napi::Env`], and the wake
@@ -47,6 +54,11 @@ use crate::wait_signal::WaitSignal;
 
 type GlibTask = Box<dyn FnOnce() + Send + 'static>;
 
+/// A queued `GLib` task paired with the JS callback-nesting depth in effect
+/// when it was enqueued. A parked `GLib` thread uses the depth to tell its
+/// own nested calls apart from unrelated top-level work.
+type DepthTaggedTask = (usize, GlibTask);
+
 pub type WakeJsTsfn = ThreadsafeFunction<(), (), (), Status, false, true>;
 
 struct NodeCallback {
@@ -62,8 +74,10 @@ struct NodeCallback {
 /// callbacks bound for the JS thread — plus the wake primitives that park
 /// each thread when its inbox is empty.
 pub struct Mailbox {
-    glib_inbox: Mutex<VecDeque<GlibTask>>,
+    glib_inbox: Mutex<VecDeque<DepthTaggedTask>>,
     node_inbox: Mutex<VecDeque<NodeCallback>>,
+
+    callback_depth: AtomicUsize,
 
     wake_js: WaitSignal,
     wake_glib: WaitSignal,
@@ -98,6 +112,7 @@ impl Mailbox {
         Self {
             glib_inbox: Mutex::new(VecDeque::new()),
             node_inbox: Mutex::new(VecDeque::new()),
+            callback_depth: AtomicUsize::new(0),
             wake_js: WaitSignal::new(),
             wake_glib: WaitSignal::new(),
             wake_js_tsfn: OnceLock::new(),
@@ -157,21 +172,15 @@ impl Mailbox {
     }
 
     fn push_glib_task(&self, task: GlibTask) {
+        let depth = self.callback_depth.load(Ordering::Acquire);
         self.glib_inbox
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .push_back(task);
+            .push_back((depth, task));
         if self.freeze_loop_active.load(Ordering::Acquire) {
             self.freeze_wake.notify();
         }
         self.wake_glib.notify();
-    }
-
-    fn pop_glib_task(&self) -> Option<GlibTask> {
-        self.glib_inbox
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .pop_front()
     }
 
     /// Pushes a fire-and-forget task onto the `GLib` inbox. The task runs on the
@@ -206,14 +215,55 @@ impl Mailbox {
         self.wake_js.notify();
     }
 
-    /// Drains all queued `GLib` tasks. Returns whether any were executed.
-    /// Intended to run on the `GLib` thread.
+    /// Increments the JS callback-nesting depth. Called on the JS thread
+    /// immediately before a node callback is invoked.
+    pub fn enter_callback(&self) {
+        self.callback_depth.fetch_add(1, Ordering::AcqRel);
+    }
+
+    /// Decrements the JS callback-nesting depth. Called on the JS thread
+    /// immediately after a node callback returns.
+    pub fn leave_callback(&self) {
+        self.callback_depth.fetch_sub(1, Ordering::AcqRel);
+    }
+
+    /// Drains every queued `GLib` task regardless of depth. Returns whether any
+    /// were executed. Intended to run on the `GLib` thread at a top-level
+    /// dispatch point — the idle source, the freeze loop, or the main loop.
     pub fn dispatch_pending(&self) -> bool {
+        self.dispatch_pending_from_depth(0)
+    }
+
+    /// Drains queued `GLib` tasks enqueued at callback-nesting depth
+    /// `min_depth` or deeper, in FIFO order, leaving shallower tasks queued.
+    ///
+    /// A `GLib` thread parked inside a JS callback running at depth `min_depth`
+    /// passes that depth so it services only the nested calls that callback
+    /// makes, never an unrelated top-level task that would re-enter `GLib`
+    /// state mid-callback. The inbox lock is reacquired per task so tasks the
+    /// running task enqueues are observed.
+    pub fn dispatch_pending_from_depth(&self, min_depth: usize) -> bool {
         let mut dispatched = false;
 
-        while let Some(task) = self.pop_glib_task() {
-            task();
-            dispatched = true;
+        loop {
+            let task = {
+                let mut inbox = self
+                    .glib_inbox
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                inbox
+                    .iter()
+                    .position(|(depth, _)| *depth >= min_depth)
+                    .and_then(|index| inbox.remove(index))
+            };
+
+            match task {
+                Some((_, task)) => {
+                    task();
+                    dispatched = true;
+                }
+                None => break,
+            }
         }
 
         if dispatched {
